@@ -4,13 +4,28 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ICare247.Api</RootNamespace>
+    <AssemblyName>ICare247.Api</AssemblyName>
   </PropertyGroup>
 
+  <!-- Auth + API -->
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.*" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.13" />
+    <PackageReference Include="Scalar.AspNetCore" Version="2.*" />
   </ItemGroup>
 
+  <!-- Logging -->
   <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Environment" Version="3.*" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+  </ItemGroup>
+
+  <!-- References -->
+  <ItemGroup>
+    <!-- Api chỉ dùng Infrastructure tại composition root (Program.cs) - không dùng trong Controllers -->
     <ProjectReference Include="..\ICare247.Application\ICare247.Application.csproj" />
     <ProjectReference Include="..\ICare247.Infrastructure\ICare247.Infrastructure.csproj" />
   </ItemGroup>
