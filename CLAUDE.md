@@ -1,6 +1,6 @@
 # ICare247 Core Platform — AI Agent Configuration (Claude Code)
 
-<!-- 
+<!--
   FILE: CLAUDE.md
   MỤC ĐÍCH: Cấu hình hành vi cho Claude Code khi làm việc trong repo ICare247.
   Claude Code tự động đọc file này khi khởi động session trong thư mục project.
@@ -19,21 +19,22 @@
 
 ## Tech Stack — Bắt Buộc Dùng
 
-| Thành phần | Công nghệ | KHÔNG dùng |
-|-----------|-----------|-----------|
-| Backend | .NET 9 / ASP.NET Core 9 | - |
-| Frontend | Blazor WebAssembly + DevExpress | - |
-| Database | MS SQL Server | MySQL, PostgreSQL |
-| Data Access | **Dapper** | **EF Core (cấm tuyệt đối)** |
-| Cache | MemoryCache + Redis | - |
-| Logging | Serilog + OpenTelemetry | Console.WriteLine |
-| Auth | JWT + Policy-based | - |
+| Thành phần  | Công nghệ                       | KHÔNG dùng                  |
+| ----------- | ------------------------------- | --------------------------- |
+| Backend     | .NET 9 / ASP.NET Core 9         | -                           |
+| Frontend    | Blazor WebAssembly + DevExpress | -                           |
+| Database    | MS SQL Server                   | MySQL, PostgreSQL           |
+| Data Access | **Dapper**                      | **EF Core (cấm tuyệt đối)** |
+| Cache       | MemoryCache + Redis             | -                           |
+| Logging     | Serilog + OpenTelemetry         | Console.WriteLine           |
+| Auth        | JWT + Policy-based              | -                           |
 
 ---
 
 ## Architecture Rules — Luật Bất Biến
 
 ### Layer Dependency (Clean Architecture)
+
 ```
 Domain          ← KHÔNG import gì (pure C#, no ORM)
 Application     ← chỉ import Domain
@@ -42,13 +43,14 @@ Api             ← chỉ import Application (KHÔNG import Infrastructure trự
 ```
 
 ### Quy tắc khi generate code
+
 - `Api` layer **không bao giờ** `new` trực tiếp bất kỳ class nào từ `Infrastructure`
 - DI registration chỉ trong `DependencyInjection.cs` của từng project
 - `Program.cs` chỉ gọi:
-  ```csharp
-  builder.Services.AddApplication();
-  builder.Services.AddInfrastructure();
-  ```
+    ```csharp
+    builder.Services.AddApplication();
+    builder.Services.AddInfrastructure();
+    ```
 
 ---
 
@@ -77,18 +79,20 @@ Api             ← chỉ import Application (KHÔNG import Infrastructure trự
 ## Naming Conventions
 
 ### C# General
-| Loại | Convention | Ví dụ |
-|------|-----------|-------|
-| Class | PascalCase | `FormMetadata`, `AstParser` |
-| Interface | `I` + PascalCase | `IFormRepository`, `IAstEngine` |
-| Method | PascalCase | `GetByCodeAsync`, `Evaluate` |
-| Property | PascalCase | `FormCode`, `IsActive` |
-| Private field | `_` + camelCase | `_repository`, `_cache` |
-| Local variable | camelCase | `formMetadata`, `ruleList` |
-| Constant | PascalCase | `MaxAstDepth`, `DefaultTimeout` |
-| Async method | suffix `Async` | `GetFormByCodeAsync` |
+
+| Loại           | Convention       | Ví dụ                           |
+| -------------- | ---------------- | ------------------------------- |
+| Class          | PascalCase       | `FormMetadata`, `AstParser`     |
+| Interface      | `I` + PascalCase | `IFormRepository`, `IAstEngine` |
+| Method         | PascalCase       | `GetByCodeAsync`, `Evaluate`    |
+| Property       | PascalCase       | `FormCode`, `IsActive`          |
+| Private field  | `_` + camelCase  | `_repository`, `_cache`         |
+| Local variable | camelCase        | `formMetadata`, `ruleList`      |
+| Constant       | PascalCase       | `MaxAstDepth`, `DefaultTimeout` |
+| Async method   | suffix `Async`   | `GetFormByCodeAsync`            |
 
 ### CQRS Pattern
+
 ```csharp
 // Query (đọc dữ liệu)
 public record GetFormByCodeQuery(string FormCode, string LangCode) : IRequest<FormDto>;
@@ -105,6 +109,7 @@ public record ValidateFieldCommand(int FormId, string FieldCode, object Value)
 ```
 
 ### Repository Pattern
+
 - Interface: `I{Entity}Repository` (VD: `IFormRepository`)
 - Implementation: `{Entity}Repository` (VD: `FormRepository`)
 - Method: `GetByCodeAsync`, `GetByIdAsync`, `GetByFormIdAsync`
@@ -125,6 +130,7 @@ public record ValidateFieldCommand(int FormId, string FieldCode, object Value)
 ## Comment Rules (Tiếng Việt)
 
 ### Class/Interface
+
 ```csharp
 /// <summary>
 /// Repository truy vấn metadata form từ bảng <c>Ui_Form</c> qua Dapper.
@@ -134,6 +140,7 @@ public class FormRepository : IFormRepository
 ```
 
 ### Public Method
+
 ```csharp
 /// <summary>
 /// Load metadata form theo Form_Code. Trả về <c>null</c> nếu không tìm thấy.
@@ -146,6 +153,7 @@ public async Task<FormMetadata?> GetByCodeAsync(string formCode, CancellationTok
 ```
 
 ### Logic Block trong Method
+
 ```csharp
 // ── 1. Check cache ───────────────────────────────────────
 // ── 2. Load from DB ─────────────────────────────────────
@@ -153,6 +161,7 @@ public async Task<FormMetadata?> GetByCodeAsync(string formCode, CancellationTok
 ```
 
 ### Edge Case / Null Check
+
 ```csharp
 // NULL-SAFE: Identifier không tồn tại trong context → trả null, không throw.
 // Lý do: form có thể chưa có giá trị khi mới load → không phải lỗi.
@@ -161,6 +170,7 @@ if (!context.TryGetValue(node.Name, out var value))
 ```
 
 ### TODO Tags
+
 ```csharp
 // TODO(phase2): Hỗ trợ array index trong dot-notation path
 // FIXME: Race condition nếu 2 request cùng compile cùng 1 expression
@@ -191,6 +201,7 @@ SELECT * FROM dbo.Ui_Form
 ```
 
 **Quy tắc bổ sung:**
+
 - Luôn dùng `async`: `QueryAsync`, `QueryFirstOrDefaultAsync`, `ExecuteAsync`
 - Connection từ `IDbConnectionFactory` — không `new SqlConnection()` trực tiếp
 - Bảng có `Tenant_Id` → **bắt buộc** có `AND Tenant_Id = @TenantId` trong WHERE
@@ -227,12 +238,14 @@ var key = $"form_{formCode}_{version}";
 ## API Response Format
 
 **Thành công:** Trả data trực tiếp (không wrap envelope)
+
 ```json
 HTTP 200 OK
 { ...data object... }
 ```
 
 **Lỗi:** RFC 7807 ProblemDetails
+
 ```json
 HTTP 4xx/5xx
 {
@@ -268,16 +281,43 @@ ICare247/
 
 ## Docs Reference
 
-| File | Nội dung |
-|------|---------|
-| `docs/00_PROJECT_OVERVIEW.md` | Tổng quan, mục tiêu, tech stack |
-| `docs/01_ARCHITECTURE.md` | Clean Architecture, caching, security |
-| `docs/02_DATABASE_SCHEMA.md` | Toàn bộ bảng DB, columns, constraints |
-| `docs/03_GRAMMAR_V1_SPEC.md` | Grammar V1, AST node types, null logic |
-| `docs/04_ENGINE_SPEC.md` | Các engine: Metadata, AST, Validation, Event |
-| `docs/05_ACTION_RULE_PARAM_SCHEMA.md` | Action/Rule param schema JSON |
-| `docs/06_SOLUTION_STRUCTURE.md` | Folder structure, naming conventions |
-| `docs/07_API_CONTRACT.md` | API endpoints, request/response schemas |
-| `docs/08_CONVENTIONS.md` | Cache keys, Dapper patterns, comment rules |
+| File                                  | Nội dung                                     |
+| ------------------------------------- | -------------------------------------------- |
+| `docs/00_PROJECT_OVERVIEW.md`         | Tổng quan, mục tiêu, tech stack              |
+| `docs/01_ARCHITECTURE.md`             | Clean Architecture, caching, security        |
+| `docs/02_DATABASE_SCHEMA.md`          | Toàn bộ bảng DB, columns, constraints        |
+| `docs/03_GRAMMAR_V1_SPEC.md`          | Grammar V1, AST node types, null logic       |
+| `docs/04_ENGINE_SPEC.md`              | Các engine: Metadata, AST, Validation, Event |
+| `docs/05_ACTION_RULE_PARAM_SCHEMA.md` | Action/Rule param schema JSON                |
+| `docs/06_SOLUTION_STRUCTURE.md`       | Folder structure, naming conventions         |
+| `docs/07_API_CONTRACT.md`             | API endpoints, request/response schemas      |
+| `docs/08_CONVENTIONS.md`              | Cache keys, Dapper patterns, comment rules   |
 
 > **Khi có câu hỏi về spec** → tra cứu docs/ trước khi tự suy luận.
+
+## Task Tracking
+
+- File tracking: `TASKS.md` (git root)
+- Khi bắt đầu task mới → move từ 🟡 Todo sang 🔴 In Progress
+- Khi hoàn thành → move sang ✅ Done + commit
+- Mọi quyết định thiết kế quan trọng → ghi vào "Decisions Log"
+- Commit sau mỗi task hoàn chỉnh (không commit code dở)
+
+```
+
+---
+
+## Tóm tắt Flow
+```
+
+Mở terminal
+↓
+cd D:/ICare247_Core && claude
+↓
+"Đọc TASKS.md, hôm nay làm [task X]"
+↓
+Claude code → bạn review
+↓
+"Xong rồi, cập nhật TASKS.md và commit"
+↓
+git push

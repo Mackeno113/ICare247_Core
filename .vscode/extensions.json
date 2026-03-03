@@ -1,0 +1,32 @@
+{
+  "recommendations": [
+    // ── .NET / C# ─────────────────────────────────────────
+    "ms-dotnettools.csdevkit",
+    "ms-dotnettools.csharp",
+    "ms-dotnettools.vscode-dotnet-runtime",
+
+    // ── Database ─────────────────────────────────────────
+    "ms-mssql.mssql",
+
+    // ── AI Agent ─────────────────────────────────────────
+    "github.copilot",
+    "github.copilot-chat",
+
+    // ── Git ───────────────────────────────────────────────
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+
+    // ── Code Quality ─────────────────────────────────────
+    "streetsidesoftware.code-spell-checker",
+    "usernamehw.errorlens",
+    "esbenp.prettier-vscode",
+
+    // ── REST API Testing ─────────────────────────────────
+    "humao.rest-client",
+
+    // ── Productivity ─────────────────────────────────────
+    "pkief.material-icon-theme",
+    "gruntfuggly.todo-tree",
+    "wayou.vscode-todo-highlight"
+  ]
+}

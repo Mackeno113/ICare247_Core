@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Hướng Dẫn Sử Dụng Prompts — ICare247 Config Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; }
+
+  .cover {
+    background: linear-gradient(135deg, #1a237e, #1565c0);
+    padding: 50px 60px; color: white;
+  }
+  .cover h1 { font-size: 2rem; font-weight: 700; }
+  .cover p { margin-top: 10px; color: #90caf9; font-size: 1rem; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 32px; }
+
+  h2 { font-size: 1.3rem; color: #58a6ff; border-bottom: 1px solid #21262d;
+       padding-bottom: 8px; margin: 36px 0 16px 0; }
+  h3 { font-size: 1rem; color: #79c0ff; margin: 20px 0 8px 0; }
+
+  p, li { font-size: 0.88rem; line-height: 1.7; color: #8b949e; }
+  li { margin-left: 20px; margin-bottom: 4px; }
+  strong { color: #e6edf3; }
+  code {
+    background: #161b22; border: 1px solid #30363d;
+    padding: 2px 7px; border-radius: 4px;
+    font-family: 'Cascadia Code', monospace; font-size: 0.8rem; color: #79c0ff;
+  }
+
+  /* Step cards */
+  .step-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+  .step-card {
+    background: #161b22; border: 1px solid #21262d;
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .step-card .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #1565c0; color: white; font-weight: 700;
+    font-size: 0.8rem; margin-bottom: 10px;
+  }
+  .step-card h4 { font-size: 0.9rem; color: #e6edf3; margin-bottom: 6px; }
+  .step-card p { font-size: 0.82rem; }
+
+  /* File tree */
+  .filetree {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 16px 20px; font-family: monospace; font-size: 0.8rem;
+    line-height: 1.8; color: #8b949e;
+  }
+  .filetree .dir { color: #58a6ff; font-weight: 600; }
+  .filetree .file { color: #7ee787; }
+  .filetree .important { color: #ffa657; font-weight: 700; }
+  .filetree .note { color: #6e7681; font-style: italic; }
+
+  /* Prompt table */
+  .prompt-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  .prompt-table th {
+    background: #1565c0; color: white; padding: 10px 14px;
+    text-align: left; font-size: 0.82rem;
+  }
+  .prompt-table td { padding: 9px 14px; border-bottom: 1px solid #21262d;
+    font-size: 0.82rem; vertical-align: top; }
+  .prompt-table tr:hover td { background: #161b22; }
+  .prompt-table .file-link { color: #58a6ff; font-family: monospace; }
+  .prompt-table .dep { color: #6e7681; font-size: 0.75rem; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 0.72rem; font-weight: 700;
+  }
+  .badge.core { background: #1565c0; color: white; }
+  .badge.feature { background: #2e7d32; color: white; }
+  .badge.tool { background: #6a1b9a; color: white; }
+  .badge.util { background: #e65100; color: white; }
+
+  /* Tip boxes */
+  .tip {
+    background: #0d2137; border-left: 4px solid #58a6ff;
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 12px 0;
+  }
+  .tip .tip-title { color: #58a6ff; font-weight: 700; font-size: 0.83rem; margin-bottom: 6px; }
+  .tip p { font-size: 0.82rem; }
+  .warn {
+    background: #1f1700; border-left: 4px solid #ffa657;
+    border-radius: 0 8px 8px 0; padding: 14px 18px; margin: 12px 0;
+  }
+  .warn .tip-title { color: #ffa657; font-weight: 700; font-size: 0.83rem; margin-bottom: 6px; }
+
+  /* Code block */
+  .code-block {
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 16px 20px; font-family: 'Cascadia Code', monospace; font-size: 0.78rem;
+    line-height: 1.6; white-space: pre; overflow-x: auto; color: #e6edf3;
+    margin: 10px 0;
+  }
+  .code-block .c1 { color: #6a737d; }
+  .code-block .s { color: #a5d6ff; }
+  .code-block .k { color: #ff7b72; }
+  .code-block .fn { color: #d2a8ff; }
+  .code-block .v { color: #79c0ff; }
+
+  footer { text-align: center; padding: 30px; color: #484f58; font-size: 0.78rem; margin-top: 60px; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>🚀 Hướng Dẫn Sử Dụng Prompts với Claude Code</h1>
+  <p>ICare247 Config Studio WPF — Cách đưa thiết kế vào project thực tế</p>
+</div>
+
+<div class="container">
+
+  <!-- STEP 1: Setup -->
+  <h2>⚡ Bước 1: Chuẩn Bị Project</h2>
+  <p>Trước khi dùng bất kỳ prompt nào, thực hiện 2 việc sau:</p>
+
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="num">1</div>
+      <h4>Copy CLAUDE.md vào project root</h4>
+      <p>File <code>CLAUDE.md</code> là <strong>"bộ nhớ"</strong> của Claude Code cho project này.
+      Mỗi khi bắt đầu session mới, Claude Code tự động đọc file này và hiểu ngay toàn bộ
+      tech stack, convention, DB schema, mà không cần bạn giải thích lại.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">2</div>
+      <h4>Tạo solution structure</h4>
+      <p>Đảm bảo đã có đủ các project trong solution:
+      <code>ICare247.ConfigStudio</code>,
+      <code>ICare247.ConfigStudio.Core</code>,
+      <code>ICare247.ConfigStudio.Modules.Forms</code>,
+      <code>.Modules.Rules</code>,
+      <code>.Modules.Events</code>,
+      <code>.Modules.Grammar</code>.
+      Claude Code sẽ tạo files <em>vào đúng project</em> nhờ CLAUDE.md.</p>
+    </div>
+  </div>
+
+  <div class="filetree" style="margin-top:16px">
+<span class="dir">ICare247.ConfigStudio/</span>        <span class="note">← git root</span>
+├── <span class="important">CLAUDE.md</span>              <span class="note">← ⭐ QUAN TRỌNG: đặt ở đây, Claude Code tự đọc</span>
+├── <span class="dir">prompts/</span>               <span class="note">← tất cả .md prompts (đặt đây để tham chiếu)</span>
+│   ├── <span class="file">01_shell_navigation.md</span>
+│   ├── <span class="file">02_form_manager.md</span>
+│   ├── <span class="file">03_form_editor.md</span>
+│   ├── <span class="file">04_field_config.md</span>
+│   ├── <span class="file">05_validation_rule_editor.md</span>
+│   ├── <span class="file">06_event_editor.md</span>
+│   ├── <span class="file">07_expression_builder.md</span>
+│   └── <span class="file">08_09_10_remaining_screens.md</span>
+└── <span class="dir">src/</span>
+    ├── <span class="dir">ICare247.ConfigStudio/</span>           <span class="note">← WPF Shell app</span>
+    ├── <span class="dir">ICare247.ConfigStudio.Core/</span>      <span class="note">← Shared</span>
+    ├── <span class="dir">ICare247.ConfigStudio.Modules.Forms/</span>
+    ├── <span class="dir">ICare247.ConfigStudio.Modules.Rules/</span>
+    ├── <span class="dir">ICare247.ConfigStudio.Modules.Events/</span>
+    └── <span class="dir">ICare247.ConfigStudio.Modules.Grammar/</span>
+  </div>
+
+  <!-- STEP 2: Thứ tự -->
+  <h2>📋 Bước 2: Thứ Tự Thực Hiện (Quan Trọng)</h2>
+  <p>Các prompt <strong>phụ thuộc nhau</strong> — phải làm theo đúng thứ tự vì screen sau dùng
+  model/service đã tạo ở screen trước.</p>
+
+  <table class="prompt-table">
+    <thead>
+      <tr><th>#</th><th>File Prompt</th><th>Screen</th><th>Loại</th><th>Phụ thuộc</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>01</strong></td>
+        <td class="file-link">01_shell_navigation.md</td>
+        <td>Shell + Navigation + Sidebar</td>
+        <td><span class="badge core">CORE</span></td>
+        <td class="dep">Đầu tiên — không phụ thuộc</td>
+      </tr>
+      <tr>
+        <td><strong>02</strong></td>
+        <td class="file-link">02_form_manager.md</td>
+        <td>Form Manager (danh sách form)</td>
+        <td><span class="badge feature">FEATURE</span></td>
+        <td class="dep">Cần 01 (Shell + RegionNames)</td>
+      </tr>
+      <tr>
+        <td><strong>03</strong></td>
+        <td class="file-link">03_form_editor.md</td>
+        <td>Form Editor (Section + Field)</td>
+        <td><span class="badge feature">FEATURE</span></td>
+        <td class="dep">Cần 02 (FormSummaryDto, navigation)</td>
+      </tr>
+      <tr>
+        <td><strong>04</strong></td>
+        <td class="file-link">04_field_config.md</td>
+        <td>Field Config (4 tab)</td>
+        <td><span class="badge feature">FEATURE</span></td>
+        <td class="dep">Cần 03 (FieldRowDto, navigation params)</td>
+      </tr>
+      <tr>
+        <td><strong>05</strong></td>
+        <td class="file-link">05_validation_rule_editor.md</td>
+        <td>Validation Rule Editor</td>
+        <td><span class="badge tool">TOOL</span></td>
+        <td class="dep">Cần 04 (FieldConfigView, AvailableFields)</td>
+      </tr>
+      <tr>
+        <td><strong>06</strong></td>
+        <td class="file-link">06_event_editor.md</td>
+        <td>Event Editor (Action Chain)</td>
+        <td><span class="badge tool">TOOL</span></td>
+        <td class="dep">Cần 05 (ExpressionBuilder pattern)</td>
+      </tr>
+      <tr>
+        <td><strong>07</strong></td>
+        <td class="file-link">07_expression_builder.md</td>
+        <td>Expression Builder Dialog</td>
+        <td><span class="badge tool">TOOL</span></td>
+        <td class="dep">Cần 05+06 (biết interface cần)</td>
+      </tr>
+      <tr>
+        <td><strong>08</strong></td>
+        <td class="file-link">08_09_10_remaining_screens.md</td>
+        <td>Dependency Viewer + Grammar + i18n + Publish</td>
+        <td><span class="badge util">UTIL</span></td>
+        <td class="dep">Cần 01-07 hoàn chỉnh</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- STEP 3: Cách dùng -->
+  <h2>💬 Bước 3: Cách Dùng Từng Prompt</h2>
+
+  <h3>Cách 1 — Copy toàn bộ nội dung trong block ```...```</h3>
+  <p>Mở file prompt, copy phần text trong block <code>```...```</code>, dán thẳng vào Claude Code chat.</p>
+
+  <div class="tip">
+    <div class="tip-title">💡 Mẹo: Mở file prompt ngay trong Claude Code</div>
+    <p>Bạn có thể nói với Claude Code: <strong>"Đọc file prompts/01_shell_navigation.md và thực hiện theo đó"</strong>
+    — Claude Code sẽ tự đọc file và thực thi mà không cần copy-paste.</p>
+  </div>
+
+  <h3>Cách 2 — Yêu cầu đọc file (khuyến khích)</h3>
+  <div class="code-block"><span class="c1"># Gõ vào Claude Code chat:</span>
+Đọc file prompts/01_shell_navigation.md và implement theo đúng spec trong đó.
+Nhớ đọc CLAUDE.md trước để nắm convention.</div>
+
+  <h3>Cách 3 — Làm từng phần nhỏ (tốt nhất cho màn hình phức tạp)</h3>
+  <div class="code-block"><span class="c1"># Ví dụ cho Prompt 05 (Val Rule Editor — phức tạp):</span>
+
+<span class="c1"># Bước 5a: Chỉ làm layout XAML trước</span>
+Đọc prompts/05_validation_rule_editor.md.
+Chỉ tạo file ValidationRuleEditorView.xaml với đầy đủ layout.
+Chưa cần ViewModel — dùng mock data trong code-behind để preview.
+
+<span class="c1"># Bước 5b: Sau khi xem layout OK, làm ViewModel</span>
+Tiếp tục với ValidationRuleEditorViewModel.cs theo spec trong file prompt.
+Implement Quick Config cho Numeric và Regex trước.
+
+<span class="c1"># Bước 5c: Thêm Expression integration</span>
+Implement kết nối với ExpressionBuilderDialog (đã tạo ở prompt 07).
+Thêm AutoGenerateExpression logic cho tất cả rule types.</div>
+
+  <!-- STEP 4: Tips -->
+  <h2>🎯 Bước 4: Tips Để Prompt Hiệu Quả</h2>
+
+  <div class="step-grid">
+    <div class="step-card">
+      <div class="num">✓</div>
+      <h4>Luôn bắt đầu bằng "Đọc CLAUDE.md"</h4>
+      <p>Câu này đảm bảo Claude Code load toàn bộ context project trước khi code.
+      Nếu không có câu này, Claude Code có thể dùng sai naming convention hoặc pattern.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">✓</div>
+      <h4>Commit sau mỗi prompt</h4>
+      <p>Mỗi prompt = 1 feature nhỏ hoàn chỉnh. <code>git commit</code> sau khi
+      screen chạy được → dễ rollback nếu prompt tiếp theo có vấn đề.
+      Không nên gộp nhiều prompt vào 1 commit.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">✓</div>
+      <h4>Yêu cầu mock data cụ thể</h4>
+      <p>Các prompt đã có sẵn mock data spec. Đảm bảo Claude Code tạo mock data
+      đó để screen có nội dung hiển thị ngay — không bị trắng blank.</p>
+    </div>
+    <div class="step-card">
+      <div class="num">✓</div>
+      <h4>Kiểm tra build trước khi tiếp</h4>
+      <p>Sau mỗi prompt, yêu cầu: <strong>"Build solution và fix tất cả compile error trước khi tiếp tục"</strong>.
+      Nếu có lỗi, Claude Code sẽ tự sửa trong cùng session.</p>
+    </div>
+  </div>
+
+  <div class="warn">
+    <div class="tip-title">⚠️ Thứ tự Prompt 05 → 07</div>
+    <p>Prompt 05 (Rule Editor) mở ExpressionBuilderDialog nhưng Prompt 07 (Dialog) chưa được tạo.
+    Giải pháp: Khi làm Prompt 05, yêu cầu Claude Code <strong>tạo interface/stub</strong> cho
+    ExpressionBuilderDialog trước, sau đó làm Prompt 07 implement đầy đủ. Hoặc làm 07 trước 05.</p>
+  </div>
+
+  <!-- STEP 5: Theo dõi tiến độ -->
+  <h2>📊 Bước 5: Theo Dõi Tiến Độ</h2>
+  <p>Copy checklist này vào file <code>PROGRESS.md</code> trong project để track:</p>
+
+  <div class="code-block"><span class="c1"># PROGRESS.md — Config Studio Implementation</span>
+
+<span class="v">## Screens</span>
+- [ ] <span class="s">01 Shell + Navigation</span>        → <span class="k">prompts/01_shell_navigation.md</span>
+- [ ] <span class="s">02 Form Manager</span>              → <span class="k">prompts/02_form_manager.md</span>
+- [ ] <span class="s">03 Form Editor</span>               → <span class="k">prompts/03_form_editor.md</span>
+- [ ] <span class="s">04 Field Config</span>              → <span class="k">prompts/04_field_config.md</span>
+- [ ] <span class="s">05 Validation Rule Editor</span>    → <span class="k">prompts/05_validation_rule_editor.md</span>
+- [ ] <span class="s">06 Event Editor</span>              → <span class="k">prompts/06_event_editor.md</span>
+- [ ] <span class="s">07 Expression Builder</span>        → <span class="k">prompts/07_expression_builder.md</span>
+- [ ] <span class="s">08 Dependency Viewer</span>         → <span class="k">prompts/08_09_10_remaining_screens.md</span>
+- [ ] <span class="s">09 Grammar Library</span>           → <span class="k">prompts/08_09_10_remaining_screens.md</span>
+- [ ] <span class="s">10 i18n Manager</span>              → <span class="k">prompts/08_09_10_remaining_screens.md</span>
+- [ ] <span class="s">11 Publish Checklist</span>         → <span class="k">prompts/08_09_10_remaining_screens.md</span>
+
+<span class="v">## Core Infrastructure</span>
+- [ ] <span class="s">RegionNames.cs + ViewNames.cs</span> (Core project)
+- [ ] <span class="s">ViewModelBase.cs</span>             (Core project)
+- [ ] <span class="s">MaterialDesign Themes</span>        (Shell.xaml, Navigation.xaml)
+- [ ] <span class="s">All Modules registered</span>      (App.xaml.cs)</div>
+
+  <!-- QUICK START -->
+  <h2>🏁 Quick Start — Lệnh Đầu Tiên</h2>
+  <p>Paste lệnh này vào Claude Code để bắt đầu ngay:</p>
+
+  <div class="code-block">Tôi đang build WPF app ICare247 Config Studio.
+CLAUDE.md đã có ở project root với đầy đủ context.
+
+Bắt đầu từ file prompts/01_shell_navigation.md:
+1. Đọc CLAUDE.md để nắm toàn bộ tech stack và convention
+2. Tạo Core project trước: RegionNames.cs, ViewNames.cs, ViewModelBase.cs
+3. Sau đó implement MainWindow Shell theo spec trong prompts/01_shell_navigation.md
+4. Build và fix tất cả lỗi
+5. Báo cáo files đã tạo và kết quả build</div>
+
+</div>
+
+<footer>ICare247 Config Studio — Prompt Guide · Version 1.0 · 2026-03-03</footer>
+</body>
+</html>
