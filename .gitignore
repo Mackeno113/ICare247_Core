@@ -142,3 +142,15 @@ wwwroot/_framework/
 # .dockerignore đã xử lý phần lớn, nhưng giữ lại để an toàn
 # docker-compose.override.yml — cấu hình Docker Compose local override
 docker-compose.override.yml
+
+# Google Drive sync temp folders/files
+.tmp.driveupload/
+.tmp.drivedownload/
+.tmp.drivefs*/
+.tmp.drive*/
+
+# Sync conflict files created by cloud clients
+*.tmp
+*.tmp.*
+*conflict*
+*conflicted copy*
