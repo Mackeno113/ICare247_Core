@@ -1,0 +1,250 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Grammar.Views.DependencyViewerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="600"
+             d:DesignWidth="900"
+             mc:Ignorable="d">
+
+    <DockPanel>
+        <!-- ── Toolbar ────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top" Height="52"
+                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                Padding="16,0">
+            <DockPanel VerticalAlignment="Center">
+                <Button DockPanel.Dock="Left"
+                        Command="{Binding BackCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Foreground="White" ToolTip="Quay lại Form Editor">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ArrowLeft" VerticalAlignment="Center" />
+                        <TextBlock Text="Back" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <TextBlock DockPanel.Dock="Left" Margin="12,0,0,0"
+                           Foreground="White" FontSize="16" FontWeight="SemiBold"
+                           VerticalAlignment="Center">
+                    <Run Text="Dependency Viewer — " />
+                    <Run Text="{Binding FormCode, Mode=OneWay}" />
+                </TextBlock>
+
+                <!-- Filter controls -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Command="{Binding AutoLayoutCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="White" ToolTip="Sắp xếp tự động">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="AutoFix" VerticalAlignment="Center" />
+                            <TextBlock Text="Auto-layout" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding RegenerateCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            Foreground="White" ToolTip="Tạo lại dependency từ expressions" Margin="8,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Refresh" VerticalAlignment="Center" />
+                            <TextBlock Text="Regenerate" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Toggles -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,16,0">
+                    <CheckBox IsChecked="{Binding ShowRules}" Content="Rules"
+                              Foreground="White" Margin="0,0,12,0" VerticalAlignment="Center" />
+                    <CheckBox IsChecked="{Binding ShowEvents}" Content="Events"
+                              Foreground="White" VerticalAlignment="Center" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Detail Panel (Bottom) ──────────────────────────── -->
+        <Border DockPanel.Dock="Bottom" MinHeight="80"
+                Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
+                BorderThickness="0,1,0,0"
+                Padding="16,8">
+            <DockPanel>
+                <!-- Circular dependency warning -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding HasCircularDependencies, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                    <materialDesign:PackIcon Kind="AlertCircle" Width="20" Height="20"
+                                             Foreground="#EF5350" VerticalAlignment="Center" />
+                    <TextBlock Foreground="#EF5350" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold">
+                        <Run Text="{Binding CircularDependencyCount, Mode=OneWay}" />
+                        <Run Text=" circular dependencies detected" />
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Selected node detail -->
+                <StackPanel Visibility="{Binding HasSelectedNode, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Node type badge -->
+                        <Border CornerRadius="4" Padding="8,2" Margin="0,0,12,0"
+                                VerticalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#757575" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Field">
+                                            <Setter Property="Background" Value="#3F51B5" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Rule">
+                                            <Setter Property="Background" Value="#009688" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Event">
+                                            <Setter Property="Background" Value="#FF8F00" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding SelectedNode.NodeType}" Foreground="White"
+                                       FontSize="11" FontWeight="Bold" />
+                        </Border>
+                        <TextBlock Text="{Binding SelectedNode.Label}" FontSize="16" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                        <TextBlock Text="{Binding SelectedNode.SubLabel, StringFormat=' ({0})'}"
+                                   FontSize="13" VerticalAlignment="Center" Margin="4,0,0,0"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                    </StackPanel>
+                    <Button Command="{Binding OpenNodeEditorCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            HorizontalAlignment="Left" Margin="0,4,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="OpenInNew" VerticalAlignment="Center" />
+                            <TextBlock Text="Open Editor" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <!-- Empty state -->
+                <TextBlock Text="Click vào node trên graph để xem chi tiết"
+                           FontSize="13" FontStyle="Italic"
+                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+                           VerticalAlignment="Center">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasSelectedNode}" Value="True">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Graph Canvas ───────────────────────────────────── -->
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto">
+            <Canvas Width="750" Height="600" Background="Transparent"
+                    ClipToBounds="True">
+
+                <!-- Legend -->
+                <StackPanel Canvas.Left="10" Canvas.Top="10" Orientation="Horizontal">
+                    <Border Background="#3F51B5" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                        <TextBlock Text="Field" Foreground="White" FontSize="11" />
+                    </Border>
+                    <Border Background="#009688" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                        <TextBlock Text="Rule" Foreground="White" FontSize="11" />
+                    </Border>
+                    <Border Background="#FF8F00" CornerRadius="3" Padding="8,2">
+                        <TextBlock Text="Event" Foreground="White" FontSize="11" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Edges (lines) — render trước nodes để nằm phía dưới -->
+                <ItemsControl ItemsSource="{Binding Edges}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:DependencyEdge}">
+                            <Canvas>
+                                <Line X1="{Binding X1}" Y1="{Binding Y1}"
+                                      X2="{Binding X2}" Y2="{Binding Y2}"
+                                      Stroke="{Binding EdgeColor}"
+                                      StrokeThickness="2" />
+                                <!-- Edge label -->
+                                <TextBlock Text="{Binding Label}"
+                                           FontSize="10" FontStyle="Italic"
+                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}">
+                                    <Canvas.Left>
+                                        <MultiBinding StringFormat="{}{0}">
+                                            <Binding Path="X1" />
+                                        </MultiBinding>
+                                    </Canvas.Left>
+                                    <Canvas.Top>
+                                        <MultiBinding StringFormat="{}{0}">
+                                            <Binding Path="Y1" />
+                                        </MultiBinding>
+                                    </Canvas.Top>
+                                </TextBlock>
+                            </Canvas>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Nodes (boxes) -->
+                <ItemsControl ItemsSource="{Binding Nodes}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Canvas.Left" Value="{Binding X}" />
+                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type models:DependencyNode}">
+                            <Border Width="{Binding Width}" Height="{Binding Height}"
+                                    CornerRadius="6" Cursor="Hand"
+                                    BorderThickness="2" Padding="8,4">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="{Binding NodeColor}" />
+                                        <Setter Property="BorderBrush" Value="Transparent" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BorderBrush" Value="White" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding HasWarning}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#EF5350" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <Border.InputBindings>
+                                    <MouseBinding MouseAction="LeftClick"
+                                                  Command="{Binding DataContext.SelectNodeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                  CommandParameter="{Binding}" />
+                                </Border.InputBindings>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Label}" Foreground="White"
+                                               FontWeight="SemiBold" FontSize="13"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding SubLabel}" Foreground="#B0BEC5"
+                                               FontSize="11" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Canvas>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

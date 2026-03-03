@@ -1,0 +1,362 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Grammar.Views.ExpressionBuilderDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinWidth="800" MinHeight="600"
+             d:DesignWidth="900" d:DesignHeight="650"
+             mc:Ignorable="d">
+
+    <prism:Dialog.WindowStyle>
+        <Style TargetType="Window">
+            <Setter Property="Width" Value="900" />
+            <Setter Property="Height" Value="650" />
+            <Setter Property="ResizeMode" Value="CanResize" />
+            <Setter Property="Title" Value="Expression Builder" />
+        </Style>
+    </prism:Dialog.WindowStyle>
+
+    <DockPanel>
+        <!-- ── TitleBar / Context ─────────────────────────────── -->
+        <Border DockPanel.Dock="Top" Height="44"
+                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                Padding="16,0">
+            <DockPanel VerticalAlignment="Center">
+                <materialDesign:PackIcon Kind="Function" Width="24" Height="24"
+                                         Foreground="White" VerticalAlignment="Center" />
+                <TextBlock Text="Expression Builder" Margin="8,0,0,0"
+                           Foreground="White" FontSize="16" FontWeight="SemiBold"
+                           VerticalAlignment="Center" />
+                <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0"
+                           Foreground="#90CAF9" FontSize="12" VerticalAlignment="Center">
+                    <Run Text="Expected: " />
+                    <Run Text="{Binding ExpectedReturnType, Mode=OneWay}" FontWeight="Bold" />
+                    <Run Text="  " />
+                    <Run Text="{Binding ContextInfo, Mode=OneWay}" />
+                </TextBlock>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Footer ─────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Bottom" Height="52"
+                Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+                BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
+                BorderThickness="0,1,0,0"
+                Padding="16,0">
+            <DockPanel VerticalAlignment="Center">
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                    <Button Command="{Binding ApplyCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Check" VerticalAlignment="Center" />
+                            <TextBlock Text="Apply Expression" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding CancelCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Content="Cancel" Margin="0,0,8,0" />
+                    <Button Command="{Binding ResetCommand}"
+                            Style="{StaticResource MaterialDesignFlatButton}"
+                            ToolTip="Xóa toàn bộ expression">
+                        <StackPanel Orientation="Horizontal">
+                            <materialDesign:PackIcon Kind="Refresh" VerticalAlignment="Center" />
+                            <TextBlock Text="Reset" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <Button DockPanel.Dock="Right" Command="{Binding CopyJsonCommand}"
+                        Style="{StaticResource MaterialDesignFlatButton}"
+                        ToolTip="Copy JSON to clipboard">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon Kind="ContentCopy" VerticalAlignment="Center" />
+                        <TextBlock Text="Copy JSON" Margin="4,0,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Main: 3 Columns ────────────────────────────────── -->
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ═══ COL 1: Palette ═════════════════════════════ -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
+                    BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
+                    BorderThickness="0,0,1,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+
+                        <!-- Operators -->
+                        <TextBlock Text="TOÁN TỬ" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Margin="4,8,0,8" />
+                        <ItemsControl ItemsSource="{Binding OperatorItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:PaletteItem}">
+                                    <Button Content="{Binding DisplayName}"
+                                            Command="{Binding DataContext.InsertOperatorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="{Binding Description}"
+                                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                                            Padding="8,4" Margin="2"
+                                            FontFamily="Consolas" FontSize="13"
+                                            MinWidth="36" Height="32" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <Separator Margin="0,12" />
+
+                        <!-- Functions -->
+                        <TextBlock Text="HÀM" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Margin="4,0,0,8" />
+                        <TextBox Text="{Binding FunctionSearch, UpdateSourceTrigger=PropertyChanged}"
+                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                 materialDesign:HintAssist.Hint="Tìm hàm..."
+                                 materialDesign:TextFieldAssist.HasLeadingIcon="True"
+                                 materialDesign:TextFieldAssist.LeadingIcon="Magnify"
+                                 Margin="0,0,0,8" FontSize="12" />
+                        <ListBox ItemsSource="{Binding FilteredFunctions}"
+                                 MaxHeight="200"
+                                 Style="{StaticResource MaterialDesignListBox}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:PaletteItem}">
+                                    <Border Padding="4,2" Cursor="Hand"
+                                            Background="Transparent"
+                                            ToolTip="{Binding Description}">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftDoubleClick"
+                                                          Command="{Binding DataContext.InsertFunctionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="Function" Width="14" Height="14"
+                                                                     Foreground="{DynamicResource MaterialDesign.Brush.Secondary}"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="{Binding DisplayName}" FontFamily="Consolas" FontSize="12" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Separator Margin="0,12" />
+
+                        <!-- Fields -->
+                        <TextBlock Text="FIELD (Form Context)" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Margin="4,0,0,8" />
+                        <ListBox ItemsSource="{Binding FieldItems}"
+                                 MaxHeight="200"
+                                 Style="{StaticResource MaterialDesignListBox}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:PaletteItem}">
+                                    <Border Padding="4,2" Cursor="Hand"
+                                            Background="Transparent"
+                                            ToolTip="{Binding Description}">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftDoubleClick"
+                                                          Command="{Binding DataContext.InsertFieldCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+                                        <StackPanel Orientation="Horizontal">
+                                            <materialDesign:PackIcon Kind="MapMarker" Width="14" Height="14"
+                                                                     Foreground="#66BB6A"
+                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="{Binding Code}" FontWeight="SemiBold" FontSize="12" />
+                                            <TextBlock Text="{Binding NetType, StringFormat=' ({0})'}"
+                                                       FontSize="11" Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <!-- GridSplitter -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                          Background="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}" />
+
+            <!-- ═══ COL 3: Right Panel ═════════════════════════ -->
+            <Grid Grid.Column="2" Margin="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- AST Tree -->
+                <materialDesign:Card Grid.Row="0" Padding="8" Margin="0,0,0,8">
+                    <DockPanel>
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="AST Tree" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                       VerticalAlignment="Center" />
+                            <Button Command="{Binding DeleteSelectedNodeCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    ToolTip="Delete selected node" Padding="4" Margin="12,0,0,0">
+                                <materialDesign:PackIcon Kind="Delete" Width="18" Height="18" />
+                            </Button>
+                            <Button Command="{Binding WrapInBinaryCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    ToolTip="Wrap in Binary (&amp;&amp;)" Padding="4">
+                                <materialDesign:PackIcon Kind="CodeBrackets" Width="18" Height="18" />
+                            </Button>
+                            <Button Command="{Binding WrapInUnaryCommand}"
+                                    Style="{StaticResource MaterialDesignFlatButton}"
+                                    ToolTip="Wrap in Unary (!)" Padding="4">
+                                <materialDesign:PackIcon Kind="ExclamationThick" Width="18" Height="18" />
+                            </Button>
+                        </StackPanel>
+
+                        <TreeView ItemsSource="{Binding RootNodes}">
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate DataType="{x:Type models:AstNodeViewModel}"
+                                                          ItemsSource="{Binding Children}">
+                                    <StackPanel Orientation="Horizontal" Margin="2">
+                                        <materialDesign:PackIcon Kind="{Binding IconKind}"
+                                                                 Width="18" Height="18"
+                                                                 VerticalAlignment="Center"
+                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Secondary}" />
+                                        <TextBlock Text="{Binding DisplayText}" Margin="6,0,0,0"
+                                                   FontSize="13" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </DockPanel>
+                </materialDesign:Card>
+
+                <!-- Preview & Validation -->
+                <materialDesign:Card Grid.Row="1" Padding="12" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Preview &amp; Validation" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Margin="0,0,0,8" />
+
+                        <!-- Natural Language -->
+                        <DockPanel Margin="0,0,0,4">
+                            <materialDesign:PackIcon Kind="Translate" Width="16" Height="16"
+                                                     VerticalAlignment="Center" Margin="0,0,6,0"
+                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                            <TextBlock Text="{Binding NaturalLanguagePreview}"
+                                       TextWrapping="Wrap" FontSize="13" />
+                        </DockPanel>
+
+                        <!-- Validation status -->
+                        <WrapPanel Margin="0,4,0,0">
+                            <!-- Return type -->
+                            <Border CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
+                                    Background="{DynamicResource MaterialDesign.Brush.Primary.Light}">
+                                <TextBlock FontSize="11" Foreground="White">
+                                    <Run Text="Return: " />
+                                    <Run Text="{Binding ValidationResult.ActualReturnType, Mode=OneWay, FallbackValue='?'}" />
+                                </TextBlock>
+                            </Border>
+                            <!-- Depth -->
+                            <Border CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
+                                    Background="{DynamicResource MaterialDesign.Brush.Primary.Light}">
+                                <TextBlock FontSize="11" Foreground="White">
+                                    <Run Text="Depth: " />
+                                    <Run Text="{Binding ValidationResult.Depth, Mode=OneWay, FallbackValue='0'}" />
+                                    <Run Text="/20" />
+                                </TextBlock>
+                            </Border>
+                            <!-- Valid/Invalid -->
+                            <Border CornerRadius="4" Padding="6,2" Margin="0,0,0,4">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Background" Value="#C62828" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                                <Setter Property="Background" Value="#2E7D32" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <StackPanel Orientation="Horizontal">
+                                    <materialDesign:PackIcon Width="14" Height="14" Foreground="White"
+                                                             VerticalAlignment="Center">
+                                        <materialDesign:PackIcon.Style>
+                                            <Style TargetType="materialDesign:PackIcon">
+                                                <Setter Property="Kind" Value="CloseCircle" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                                        <Setter Property="Kind" Value="CheckCircle" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </materialDesign:PackIcon.Style>
+                                    </materialDesign:PackIcon>
+                                    <TextBlock FontSize="11" Foreground="White" Margin="4,0,0,0"
+                                               VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="Invalid" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
+                                                        <Setter Property="Text" Value="Valid" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+                        </WrapPanel>
+
+                        <!-- Errors list -->
+                        <ItemsControl ItemsSource="{Binding ValidationResult.Errors}" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" Margin="0,2">
+                                        <materialDesign:PackIcon Kind="AlertCircle" Width="14" Height="14"
+                                                                 Foreground="#EF5350" VerticalAlignment="Center" />
+                                        <TextBlock Text="{Binding}" Margin="6,0,0,0" FontSize="12"
+                                                   Foreground="#EF5350" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </materialDesign:Card>
+
+                <!-- JSON Output (collapsed) -->
+                <Expander Grid.Row="2" Header="JSON Output" IsExpanded="False">
+                    <TextBox Text="{Binding JsonOutput, Mode=OneWay}"
+                             IsReadOnly="True"
+                             FontFamily="Consolas" FontSize="12"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             MaxHeight="150"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                </Expander>
+            </Grid>
+        </Grid>
+    </DockPanel>
+</UserControl>

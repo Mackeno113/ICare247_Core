@@ -16,6 +16,8 @@ public sealed class GrammarModule : IModule
     public void RegisterTypes(IContainerRegistry containerRegistry)
     {
         containerRegistry.RegisterForNavigation<GrammarLibraryView, GrammarLibraryViewModel>(ViewNames.GrammarLibrary);
+        containerRegistry.RegisterForNavigation<DependencyViewerView, DependencyViewerViewModel>(ViewNames.DependencyViewer);
+        containerRegistry.RegisterDialog<ExpressionBuilderDialog, ExpressionBuilderDialogViewModel>(ViewNames.ExpressionBuilderDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)
