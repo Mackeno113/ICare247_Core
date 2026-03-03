@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ConfigStudio.WPF.UI.Core/ConfigStudio.WPF.UI.Core.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.Events/ConfigStudio.WPF.UI.Modules.Events.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.Forms/ConfigStudio.WPF.UI.Modules.Forms.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.Grammar/ConfigStudio.WPF.UI.Modules.Grammar.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.I18n/ConfigStudio.WPF.UI.Modules.I18n.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.Rules/ConfigStudio.WPF.UI.Modules.Rules.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI/ConfigStudio.WPF.UI.csproj" />
+  </Folder>
+</Solution>

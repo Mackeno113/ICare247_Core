@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MaterialDesignColors" Version="5.*" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.*" />
+    <PackageReference Include="Prism.Unity" Version="9.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Core\ConfigStudio.WPF.UI.Core.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Forms\ConfigStudio.WPF.UI.Modules.Forms.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Rules\ConfigStudio.WPF.UI.Modules.Rules.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Events\ConfigStudio.WPF.UI.Modules.Events.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Grammar\ConfigStudio.WPF.UI.Modules.Grammar.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.I18n\ConfigStudio.WPF.UI.Modules.I18n.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,322 @@
+<Window x:Class="ConfigStudio.WPF.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Converters"
+        xmlns:core="clr-namespace:ConfigStudio.WPF.UI.Core.Constants;assembly=ConfigStudio.WPF.UI.Core"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Models"
+        xmlns:prism="http://prismlibrary.com/"
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        Title="ICare247 Config Studio"
+        Width="1280"
+        Height="800"
+        MinWidth="1024"
+        MinHeight="640"
+        FontFamily="{DynamicResource ShellFontFamily}"
+        Background="{DynamicResource ShellWindowBackgroundBrush}"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="False"
+        WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <conv:LevelToIndentConverter x:Key="LevelToIndentConverter" />
+    </Window.Resources>
+
+    <Border BorderBrush="{DynamicResource ShellWindowBorderBrush}"
+            BorderThickness="1"
+            Background="{DynamicResource ShellWindowBackgroundBrush}">
+        <Border.Effect>
+            <DynamicResource ResourceKey="ShellCardShadowEffect" />
+        </Border.Effect>
+
+        <Border.Style>
+            <Style TargetType="{x:Type Border}">
+                <Setter Property="CornerRadius" Value="14" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                        <Setter Property="CornerRadius" Value="0" />
+                        <Setter Property="BorderThickness" Value="0" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <DockPanel>
+            <Grid DockPanel.Dock="Top"
+                  Height="52"
+                  Background="{DynamicResource ShellTitleBarBackgroundBrush}"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Style="{StaticResource ShellTitleBarButtonStyle}"
+                        Command="{Binding ToggleSidebarCommand}"
+                        ToolTip="Toggle sidebar">
+                    <materialDesign:PackIcon Kind="Menu" Width="18" Height="18" />
+                </Button>
+
+                <TextBlock Grid.Column="1"
+                           Margin="10,0,0,0"
+                           VerticalAlignment="Center"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{DynamicResource ShellTitleBarTextBrush}"
+                           Text="ICare247 Config Studio" />
+
+                <Border Grid.Column="2"
+                        Margin="0,0,10,0"
+                        Padding="10,4"
+                        VerticalAlignment="Center"
+                        Background="{DynamicResource ShellTenantBadgeBackgroundBrush}"
+                        BorderBrush="{DynamicResource ShellTenantBadgeBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <TextBlock Foreground="{DynamicResource ShellTenantBadgeTextBrush}"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Text="{Binding TenantName}" />
+                </Border>
+
+                <TextBlock Grid.Column="3"
+                           Margin="0,0,14,0"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource ShellTitleBarTextBrush}"
+                           Text="{Binding CurrentUser}" />
+
+                <StackPanel Grid.Column="4"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0,0,10,0">
+                    <TextBlock Margin="0,0,8,0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource ShellTitleBarTextBrush}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Text="{Binding CurrentThemeDisplayName}" />
+
+                    <Button Style="{StaticResource ShellThemeSwitchButtonStyle}"
+                            Command="{Binding ChangeThemeCommand}"
+                            CommandParameter="light"
+                            Content="Light Ocean"
+                            ToolTip="Theme: Light Ocean" />
+
+                    <Button Style="{StaticResource ShellThemeSwitchButtonStyle}"
+                            Margin="0,0,0,0"
+                            Command="{Binding ChangeThemeCommand}"
+                            CommandParameter="slate"
+                            Content="Slate Pro"
+                            ToolTip="Theme: Slate Professional" />
+                </StackPanel>
+
+                                <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="0,0,6,0">
+                    <Button Style="{StaticResource ShellTitleBarButtonStyle}"
+                            Command="{Binding WindowMinimizeCommand}"
+                            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="Minimize">
+                        <materialDesign:PackIcon Kind="WindowMinimize" Width="14" Height="14" />
+                    </Button>
+
+                    <Button Style="{StaticResource ShellTitleBarButtonStyle}"
+                            Command="{Binding WindowMaximizeCommand}"
+                            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="Maximize">
+                        <materialDesign:PackIcon Kind="WindowMaximize" Width="14" Height="14" />
+                    </Button>
+
+                    <Button Style="{StaticResource ShellCloseButtonStyle}"
+                            Command="{Binding WindowCloseCommand}"
+                            CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="Close">
+                        <materialDesign:PackIcon Kind="Close" Width="14" Height="14" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid DockPanel.Dock="Bottom"
+                  Height="28"
+                  Background="{DynamicResource ShellStatusBarBackgroundBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Margin="12,0,0,0" Style="{StaticResource ShellStatusTextStyle}" Text="{Binding ConnectionStatus, StringFormat=DB: {0}}" />
+                <TextBlock Grid.Column="1" Margin="10,0,10,0" Style="{StaticResource ShellStatusTextStyle}" Foreground="{DynamicResource ShellStatusBarSeparatorBrush}" Text="|" />
+                <TextBlock Grid.Column="2" Style="{StaticResource ShellStatusTextStyle}" Text="{Binding CacheStatus, StringFormat=Cache: {0}}" />
+                <TextBlock Grid.Column="3" Margin="10,0,10,0" Style="{StaticResource ShellStatusTextStyle}" Foreground="{DynamicResource ShellStatusBarSeparatorBrush}" Text="|" />
+                <TextBlock Grid.Column="4" Style="{StaticResource ShellStatusTextStyle}" Text="{Binding TenantName, StringFormat=Tenant: {0}}" />
+                <TextBlock Grid.Column="5" Margin="0,0,12,0" Style="{StaticResource ShellStatusTextStyle}" Text="{Binding AppVersion}" />
+                <TextBlock Grid.Column="6" Margin="0,0,12,0" Style="{StaticResource ShellStatusTextStyle}" Text="Ready" />
+            </Grid>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Background="{DynamicResource ShellSidebarBackgroundBrush}">
+                    <Border.Style>
+                        <Style TargetType="{x:Type Border}">
+                            <Setter Property="Width" Value="240" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Width"
+                                                                 To="48"
+                                                                 Duration="0:0:0.2" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsSidebarCollapsed}" Value="False">
+                                    <DataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Width"
+                                                                 To="240"
+                                                                 Duration="0:0:0.2" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.EnterActions>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+
+                    <TreeView ItemsSource="{Binding NavigationItems}"
+                              Style="{StaticResource ShellSidebarTreeViewStyle}"
+                              ItemContainerStyle="{StaticResource ShellSidebarTreeViewItemStyle}">
+                        <TreeView.Resources>
+                            <HierarchicalDataTemplate DataType="{x:Type models:NavigationItem}"
+                                                      ItemsSource="{Binding Children}">
+                                <Grid Margin="{Binding Level, Converter={StaticResource LevelToIndentConverter}}">
+                                    <Border x:Name="DividerLine"
+                                            Margin="10,8,10,8"
+                                            Height="1"
+                                            Background="{DynamicResource ShellSidebarDividerBrush}"
+                                            Visibility="Collapsed" />
+
+                                    <Border x:Name="ItemCard"
+                                            Style="{StaticResource NavigationItemCardStyle}"
+                                            ToolTip="{Binding Title}">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                          Command="{Binding DataContext.NavigateCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="3" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border x:Name="SelectedBar"
+                                                    Grid.Column="0"
+                                                    Visibility="Collapsed"
+                                                    Background="{DynamicResource ShellSidebarSelectionBorderBrush}" />
+
+                                            <materialDesign:PackIcon Grid.Column="1"
+                                                                     Width="18"
+                                                                     Height="18"
+                                                                     Margin="11,0,8,0"
+                                                                     VerticalAlignment="Center"
+                                                                     Foreground="{DynamicResource ShellSidebarIconBrush}"
+                                                                     Kind="{Binding Icon}" />
+
+                                            <TextBlock x:Name="ItemText"
+                                                       Grid.Column="2"
+                                                       Margin="0,0,12,0"
+                                                       Style="{StaticResource NavigationItemTextStyle}"
+                                                       Text="{Binding Title}" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <HierarchicalDataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsDivider}" Value="True">
+                                        <Setter TargetName="DividerLine" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="ItemCard" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                        <Setter TargetName="ItemCard" Property="Background" Value="{DynamicResource ShellSidebarSelectedBackgroundBrush}" />
+                                        <Setter TargetName="SelectedBar" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+
+                                    <DataTrigger Binding="{Binding DataContext.IsSidebarCollapsed, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                        <Setter TargetName="ItemText" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+
+                                    <DataTrigger Binding="{Binding Level}" Value="1">
+                                        <Setter TargetName="ItemText" Property="FontSize" Value="13" />
+                                    </DataTrigger>
+                                </HierarchicalDataTemplate.Triggers>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+                    </TreeView>
+                </Border>
+
+                <Grid Grid.Column="1" Margin="14">
+                    <Border CornerRadius="16"
+                            Background="{DynamicResource ShellContentBackgroundBrush}" />
+
+                    <Canvas IsHitTestVisible="False">
+                        <Ellipse Width="280"
+                                 Height="280"
+                                 Canvas.Left="-70"
+                                 Canvas.Top="-90">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#66BAE6FD" Offset="0" />
+                                    <GradientStop Color="#00BAE6FD" Offset="1" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+
+                        <Ellipse Width="220"
+                                 Height="220"
+                                 HorizontalAlignment="Right"
+                                 VerticalAlignment="Bottom"
+                                 Canvas.Right="-40"
+                                 Canvas.Bottom="-60">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#55C7D2FE" Offset="0" />
+                                    <GradientStop Color="#00C7D2FE" Offset="1" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+                    </Canvas>
+
+                    <Border Margin="14"
+                            Padding="6"
+                            CornerRadius="12"
+                            Background="#AAFFFFFF"
+                            BorderThickness="1"
+                            BorderBrush="#E0ECFB">
+                        <ContentControl prism:RegionManager.RegionName="{x:Static core:RegionNames.Content}" />
+                    </Border>
+                </Grid>
+            </Grid>
+        </DockPanel>
+    </Border>
+</Window>
+

@@ -1,0 +1,142 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <FontFamily x:Key="ShellFontFamily">Bahnschrift</FontFamily>
+
+    <SolidColorBrush x:Key="ShellWindowBackgroundBrush" Color="#F4F8FF" />
+    <SolidColorBrush x:Key="ShellWindowBorderBrush" Color="#D6E2F3" />
+
+    <LinearGradientBrush x:Key="ShellContentBackgroundBrush"
+                         StartPoint="0,0"
+                         EndPoint="1,1">
+        <GradientStop Color="#F8FBFF" Offset="0" />
+        <GradientStop Color="#EEF5FF" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ShellTitleBarBackgroundBrush"
+                         StartPoint="0,0"
+                         EndPoint="1,0">
+        <GradientStop Color="#2563EB" Offset="0" />
+        <GradientStop Color="#0891B2" Offset="1" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="ShellStatusBarBackgroundBrush" Color="#E6F0FF" />
+
+    <LinearGradientBrush x:Key="ShellSidebarBackgroundBrush"
+                         StartPoint="0,0"
+                         EndPoint="0,1">
+        <GradientStop Color="#F3F8FF" Offset="0" />
+        <GradientStop Color="#EAF2FF" Offset="1" />
+    </LinearGradientBrush>
+
+    <SolidColorBrush x:Key="ShellTitleBarTextBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ShellStatusBarTextBrush" Color="#334155" />
+    <SolidColorBrush x:Key="ShellStatusBarSeparatorBrush" Color="#94A3B8" />
+
+    <SolidColorBrush x:Key="ShellTenantBadgeBackgroundBrush" Color="#DBEAFE" />
+    <SolidColorBrush x:Key="ShellTenantBadgeBorderBrush" Color="#93C5FD" />
+    <SolidColorBrush x:Key="ShellTenantBadgeTextBrush" Color="#1E40AF" />
+
+    <SolidColorBrush x:Key="ShellTitleBarButtonHoverBrush" Color="#33FFFFFF" />
+    <SolidColorBrush x:Key="ShellTitleBarCloseHoverBrush" Color="#EF4444" />
+
+    <SolidColorBrush x:Key="ShellSidebarItemTextBrush" Color="#1E293B" />
+    <SolidColorBrush x:Key="ShellSidebarIconBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="ShellSidebarHoverBackgroundBrush" Color="#E1ECFF" />
+    <SolidColorBrush x:Key="ShellSidebarSelectedBackgroundBrush" Color="#D8E8FF" />
+    <SolidColorBrush x:Key="ShellSidebarSelectionBorderBrush" Color="#0284C7" />
+    <SolidColorBrush x:Key="ShellSidebarDividerBrush" Color="#C7D7F2" />
+
+    <SolidColorBrush x:Key="ShellThemeSwitchBackgroundBrush" Color="#EEFFFFFF" />
+    <SolidColorBrush x:Key="ShellThemeSwitchForegroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="ShellThemeSwitchBorderBrush" Color="#BFDBFE" />
+    <SolidColorBrush x:Key="ShellThemeSwitchHoverBackgroundBrush" Color="#DBEAFE" />
+
+    <DropShadowEffect x:Key="ShellCardShadowEffect"
+                      BlurRadius="16"
+                      ShadowDepth="0"
+                      Color="#406B8FC2"
+                      Opacity="0.22" />
+
+    <Style x:Key="ShellTitleBarButtonStyle" TargetType="{x:Type Button}">
+        <Setter Property="Width" Value="36" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Margin" Value="2,0,0,0" />
+        <Setter Property="Foreground" Value="{DynamicResource ShellTitleBarTextBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ShellTitleBarButtonHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.8" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="ShellCloseButtonStyle"
+           TargetType="{x:Type Button}"
+           BasedOn="{StaticResource ShellTitleBarButtonStyle}">
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ShellTitleBarCloseHoverBrush}" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="ShellStatusTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource ShellStatusBarTextBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="ShellThemeSwitchButtonStyle"
+           TargetType="{x:Type Button}">
+        <Setter Property="Padding" Value="10,4" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Background" Value="{DynamicResource ShellThemeSwitchBackgroundBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ShellThemeSwitchForegroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ShellThemeSwitchBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="10">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ShellThemeSwitchHoverBackgroundBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.85" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

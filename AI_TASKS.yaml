@@ -1,0 +1,137 @@
+version: 1
+project: ICare247_Core
+last_updated: "2026-03-03"
+owners:
+  - claude
+  - codex
+
+workflow_rules:
+  - "Only one owner can be in_progress for a task."
+  - "Update AI_HANDOFF.md when status changes."
+  - "If scope changes, update AI_DECISIONS.md."
+  - "Do not edit files outside files_allowed without a decision record."
+
+tasks:
+  - id: CORE-001
+    title: "Define shared cache key helper"
+    goal: "Create CacheKeys.cs and replace hardcoded cache key usage."
+    owner: codex
+    status: todo
+    priority: P0
+    in_scope:
+      - "Add CacheKeys class in Application or Core shared location."
+      - "Use tenant-aware key format."
+    out_of_scope:
+      - "Redis performance tuning."
+    files_allowed:
+      - "src/backend/src/ICare247.Application/**"
+      - "src/backend/src/ICare247.Infrastructure/**"
+    constraints:
+      - "No hardcoded cache key string in consuming code."
+      - "Tenant must be embedded in key."
+    acceptance_criteria:
+      - "All new cache key creation goes through CacheKeys helper."
+      - "Build passes for modified projects."
+    dependencies: []
+    notes: ""
+
+  - id: APP-001
+    title: "Add repository and db abstractions"
+    goal: "Create interfaces: IDbConnectionFactory, IFormRepository, IFieldRepository."
+    owner: codex
+    status: todo
+    priority: P0
+    in_scope:
+      - "Define interfaces and method signatures with async + cancellation token."
+    out_of_scope:
+      - "Full repository implementation."
+    files_allowed:
+      - "src/backend/src/ICare247.Application/**"
+    constraints:
+      - "No sync-over-async."
+    acceptance_criteria:
+      - "Interfaces compile and match naming conventions."
+    dependencies: []
+    notes: ""
+
+  - id: INF-001
+    title: "Implement SqlConnectionFactory"
+    goal: "Add concrete SQL connection factory and DI registration."
+    owner: codex
+    status: todo
+    priority: P0
+    in_scope:
+      - "Implement SqlConnectionFactory."
+      - "Register via Infrastructure DependencyInjection."
+    out_of_scope:
+      - "Connection resiliency policy."
+    files_allowed:
+      - "src/backend/src/ICare247.Infrastructure/**"
+    constraints:
+      - "Do not instantiate infrastructure classes in Api directly."
+    acceptance_criteria:
+      - "Factory resolves from DI and app starts."
+    dependencies:
+      - APP-001
+    notes: ""
+
+  - id: API-001
+    title: "Add global exception handling middleware"
+    goal: "Centralize RFC7807 error responses and avoid swallowed exceptions."
+    owner: claude
+    status: todo
+    priority: P0
+    in_scope:
+      - "Create ExceptionHandlingMiddleware."
+      - "Wire middleware in Program.cs."
+    out_of_scope:
+      - "Custom domain-specific error catalog."
+    files_allowed:
+      - "src/backend/src/ICare247.Api/**"
+    constraints:
+      - "Preserve exception bubbling from engine/application."
+    acceptance_criteria:
+      - "Unhandled exceptions return ProblemDetails format."
+    dependencies: []
+    notes: ""
+
+  - id: UXP0-001
+    title: "Convert P0 UX plan into implementation-ready stories"
+    goal: "Create technical stories per module from UX P0 backlog."
+    owner: claude
+    status: done
+    priority: P0
+    in_scope:
+      - "Break down UX-01..UX-04 into module tasks."
+    out_of_scope:
+      - "Actual WPF implementation."
+    files_allowed:
+      - "docs/ICare247 Config Studio/**"
+    constraints:
+      - "Keep mapping to screens 01-11."
+    acceptance_criteria:
+      - "Dedicated tech-task document exists and is reviewable."
+    dependencies: []
+    notes: "Output file: docs/ICare247 Config Studio/UX_P0_TECH_TASKS_BY_MODULE.md"
+
+  - id: GOV-001
+    title: "Set up dual-agent governance files"
+    goal: "Provide shared project brief, task board, handoff log, and decision log."
+    owner: codex
+    status: done
+    priority: P0
+    in_scope:
+      - "Create AI_PROJECT_BRIEF.md, AI_TASKS.yaml, AI_HANDOFF.md, AI_DECISIONS.md."
+    out_of_scope:
+      - "Automation scripts for synchronization."
+    files_allowed:
+      - "./AI_PROJECT_BRIEF.md"
+      - "./AI_TASKS.yaml"
+      - "./AI_HANDOFF.md"
+      - "./AI_DECISIONS.md"
+    constraints:
+      - "Files must be immediately usable as templates."
+    acceptance_criteria:
+      - "All four files exist with clear structure."
+    dependencies: []
+    notes: ""
