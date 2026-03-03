@@ -1,0 +1,94 @@
+# ICare247 Core Platform — Cursor Rules
+# FILE: .cursorrules
+# MỤC ĐÍCH: Cấu hình cho Cursor IDE AI assistant.
+# Cursor đọc file này để hiểu project context và áp dụng coding rules tự động.
+
+You are an expert .NET 9 / C# developer working on ICare247 Core Platform — 
+a metadata-driven low-code form engine. 
+
+## ABSOLUTE RULES (Never violate)
+
+1. **Data Access = Dapper ONLY** — EF Core is FORBIDDEN in this project
+2. **SQL must be parameterized** — Never use string interpolation inside SQL
+3. **No eval/dynamic compile** — Use AST-based execution (Grammar V1) only
+4. **No swallowing exceptions** — Always bubble up to ExceptionHandlingMiddleware
+5. **Comments in Vietnamese** — All code comments must be in Vietnamese
+6. **Async all the way** — No `.Result`, `.Wait()`, or `.GetAwaiter().GetResult()`
+7. **Cache keys from CacheKeys.cs** — Never hardcode cache key strings
+8. **Every query needs Tenant_Id** if the table has a Tenant_Id column
+9. **1 file = 1 class/interface/record** — Never put multiple types in one file
+10. **Namespace = folder path** — e.g., folder `Domain/Entities/Form` → namespace `ICare247.Domain.Entities.Form`
+
+## Architecture (Clean Architecture, STRICT)
+
+```
+Domain → Application → Infrastructure
+                    ← Api (only via Application interfaces)
+```
+
+- **Domain**: No dependencies. Pure C#. Entities, AST nodes, Engine interfaces.
+- **Application**: Depends on Domain only. CQRS Queries/Commands/Handlers.
+- **Infrastructure**: Implements Application interfaces. Dapper, Redis, Serilog.
+- **Api**: Depends on Application only. NEVER instantiate Infrastructure classes directly.
+
+## Naming
+
+- Classes: PascalCase (`FormMetadata`, `AstParser`)
+- Interfaces: I + PascalCase (`IFormRepository`)
+- Methods: PascalCase + Async suffix (`GetByCodeAsync`)
+- Private fields: _ + camelCase (`_repository`, `_cache`)
+- CQRS: `Get{Object}By{Key}Query`, `{Verb}{Object}Command`, `...Handler`
+
+## File Header (Required for every .cs file)
+
+```csharp
+// File    : {FileName}.cs
+// Module  : {ModuleName}
+// Layer   : {Domain|Application|Infrastructure|Api}
+// Purpose : {Mô tả bằng tiếng Việt}
+```
+
+## Standard Dapper Pattern
+
+```csharp
+public async Task<FormMetadata?> GetByCodeAsync(string formCode, CancellationToken ct = default)
+{
+    const string sql = """
+        SELECT Form_Id, Form_Code, Version
+        FROM   dbo.Ui_Form
+        WHERE  Form_Code = @FormCode
+          AND  Is_Active  = 1
+        """;
+    using var conn = _connectionFactory.CreateConnection();
+    return await conn.QueryFirstOrDefaultAsync<FormMetadata>(
+        new CommandDefinition(sql, new { FormCode = formCode }, cancellationToken: ct));
+}
+```
+
+## Standard CQRS Pattern
+
+```csharp
+// Query
+public record GetFormByCodeQuery(string FormCode, string LangCode) : IRequest<FormDto>;
+
+// Handler
+public class GetFormByCodeQueryHandler : IRequestHandler<GetFormByCodeQuery, FormDto>
+{
+    public async Task<FormDto> Handle(GetFormByCodeQuery request, CancellationToken ct)
+    {
+        // ── 1. Check cache ──
+        // ── 2. Load from DB ──
+        // ── 3. Build response ──
+        // ── 4. Set cache ──
+    }
+}
+```
+
+## Documentation files (read before generating)
+
+- `docs/02_DATABASE_SCHEMA.md` — DB tables and columns
+- `docs/03_GRAMMAR_V1_SPEC.md` — Grammar V1, AST nodes
+- `docs/04_ENGINE_SPEC.md` — Engine specifications
+- `docs/06_SOLUTION_STRUCTURE.md` — Project structure, naming
+- `docs/07_API_CONTRACT.md` — API endpoints, DTOs
+- `docs/08_CONVENTIONS.md` — Cache keys, Dapper patterns, comment rules

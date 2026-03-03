@@ -1,0 +1,144 @@
+# FILE: .gitignore
+# MỤC ĐÍCH: Loại trừ các file không cần thiết khỏi git repository ICare247.
+# Các file này thường là build output, cấu hình local, hoặc sensitive data.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# .NET / Visual Studio Build Output
+# ─────────────────────────────────────────────────────────────────────────────
+
+# bin/ — thư mục chứa binary đã compile
+# Không commit binary vì chúng được build lại từ source code
+bin/
+
+# obj/ — thư mục chứa intermediate build files (.dll, .pdb, generated code)
+# Không commit vì chúng được tạo ra trong quá trình build
+obj/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Visual Studio Files
+# ─────────────────────────────────────────────────────────────────────────────
+
+# .vs/ — thư mục cấu hình Visual Studio cục bộ (settings, breakpoints, v.v.)
+# Mỗi developer có cấu hình khác nhau → không commit
+.vs/
+
+# *.user — cấu hình project-level của từng user (build configuration, startup project)
+*.user
+
+# *.suo — Solution User Options — cài đặt IDE của từng user
+*.suo
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JetBrains Rider
+# ─────────────────────────────────────────────────────────────────────────────
+
+# .idea/ — thư mục cấu hình Rider/IntelliJ
+.idea/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NuGet Packages
+# ─────────────────────────────────────────────────────────────────────────────
+
+# packages/ — thư mục NuGet packages (legacy packages.config style)
+# Không commit packages vì chúng được restore từ .csproj
+packages/
+
+# *.nupkg — NuGet package files
+*.nupkg
+
+# project.lock.json — lockfile cũ (không dùng từ .NET Core)
+project.lock.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build & Publish Artifacts
+# ─────────────────────────────────────────────────────────────────────────────
+
+# publish/ — thư mục dotnet publish output
+publish/
+
+# artifacts/ — build artifacts
+artifacts/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test Results
+# ─────────────────────────────────────────────────────────────────────────────
+
+# TestResults/ — kết quả chạy unit test
+TestResults/
+
+# coverage/ — code coverage reports
+coverage/
+
+# *.trx — test result file format của Visual Studio
+*.trx
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Configuration Files chứa Sensitive Data
+# ─────────────────────────────────────────────────────────────────────────────
+
+# appsettings.Development.json — cấu hình development (có thể chứa connection string thật)
+# Mỗi developer giữ file này local, KHÔNG commit lên Git
+appsettings.Development.json
+
+# appsettings.Production.json — cấu hình production (connection string, JWT secret)
+# TUYỆT ĐỐI không commit file này
+appsettings.Production.json
+
+# *.local.json — mọi file config có hậu tố .local
+*.local.json
+
+# .env — environment variables (chứa API keys, passwords)
+.env
+.env.*
+
+# secrets.json — user secrets (dotnet user-secrets)
+secrets.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Logs
+# ─────────────────────────────────────────────────────────────────────────────
+
+# logs/ — thư mục chứa Serilog log files
+logs/
+
+# *.log — file log
+*.log
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Database Files (Local)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# *.mdf — SQL Server database file (local attach)
+*.mdf
+
+# *.ldf — SQL Server log file
+*.ldf
+
+# ─────────────────────────────────────────────────────────────────────────────
+# OS Files
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Thumbs.db — Windows thumbnail cache
+Thumbs.db
+
+# .DS_Store — macOS folder metadata
+.DS_Store
+
+# desktop.ini — Windows folder customization
+desktop.ini
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Blazor WASM Specific
+# ─────────────────────────────────────────────────────────────────────────────
+
+# wwwroot/_framework/ — Blazor WASM compiled .dll và .wasm files
+# Được tạo ra khi build/publish — không commit
+wwwroot/_framework/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker (nếu có dùng sau này)
+# ─────────────────────────────────────────────────────────────────────────────
+
+# .dockerignore đã xử lý phần lớn, nhưng giữ lại để an toàn
+# docker-compose.override.yml — cấu hình Docker Compose local override
+docker-compose.override.yml

@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ICare247.Api/ICare247.Api.csproj" />
+    <Project Path="src/ICare247.Application/ICare247.Application.csproj" />
+    <Project Path="src/ICare247.Domain/ICare247.Domain.csproj" />
+    <Project Path="src/ICare247.Infrastructure/ICare247.Infrastructure.csproj" />
+  </Folder>
+</Solution>

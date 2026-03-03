@@ -1,0 +1,199 @@
+# FILE: .editorconfig
+# MỤC ĐÍCH: Định nghĩa code style cho toàn bộ project ICare247.
+# Editor (VS, VS Code, Rider) và các AI tool sẽ đọc file này để áp dụng formatting.
+# Tham khảo: https://editorconfig.org | https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/code-style-rule-options
+
+root = true
+# root = true → báo cho editor biết đây là file .editorconfig cao nhất, không tìm tiếp lên thư mục cha
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ * ] — Rules áp dụng cho MỌI loại file
+# ─────────────────────────────────────────────────────────────────────────────
+[*]
+# indent_style = space → dùng space (không dùng tab) để indent
+indent_style = space
+
+# indent_size = 4 → mỗi level indent = 4 spaces
+indent_size = 4
+
+# end_of_line = crlf → dùng Windows line ending (CRLF) vì team dùng Windows + SQL Server
+end_of_line = crlf
+
+# charset = utf-8-bom → UTF-8 với BOM cho compatibility với Visual Studio + SQL Server
+charset = utf-8-bom
+
+# trim_trailing_whitespace = true → tự xóa khoảng trắng cuối dòng
+trim_trailing_whitespace = true
+
+# insert_final_newline = true → luôn có newline ở cuối file (Unix convention)
+insert_final_newline = true
+
+# max_line_length = 120 → cảnh báo khi dòng > 120 ký tự
+max_line_length = 120
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.cs ] — C# specific rules
+# ─────────────────────────────────────────────────────────────────────────────
+[*.cs]
+
+# ── Namespace ──────────────────────────────────────────────────────────────
+
+# csharp_style_namespace_declarations = file_scoped → dùng `namespace Foo;` (file-scoped)
+# thay vì `namespace Foo { }` (block-scoped) — ít indent hơn, C# 10+
+csharp_style_namespace_declarations = file_scoped:warning
+
+# ── Using Directives ────────────────────────────────────────────────────────
+
+# dotnet_sort_system_directives_first = true → using System.* luôn lên đầu
+dotnet_sort_system_directives_first = true
+
+# csharp_using_directive_placement = outside_namespace → using nằm ngoài namespace
+csharp_using_directive_placement = outside_namespace:warning
+
+# ── This. Qualifier ─────────────────────────────────────────────────────────
+
+# dotnet_style_qualification_for_field/property/method/event = false
+# → Không dùng `this.` prefix khi không cần thiết (this._repo → _repo)
+dotnet_style_qualification_for_field    = false:suggestion
+dotnet_style_qualification_for_property = false:suggestion
+dotnet_style_qualification_for_method   = false:suggestion
+dotnet_style_qualification_for_event    = false:suggestion
+
+# ── var keyword ────────────────────────────────────────────────────────────
+
+# csharp_style_var_for_built_in_types → prefer explicit type cho built-in (int, string, bool)
+# VD: int count = 0; (không phải var count = 0;)
+csharp_style_var_for_built_in_types = false:suggestion
+
+# csharp_style_var_when_type_is_apparent → dùng var khi type rõ ràng từ right side
+# VD: var form = new FormMetadata(); (var được vì type rõ ràng)
+csharp_style_var_when_type_is_apparent = true:suggestion
+
+# csharp_style_var_elsewhere → nơi khác, prefer var
+csharp_style_var_elsewhere = true:suggestion
+
+# ── Expression-bodied members ───────────────────────────────────────────────
+
+# csharp_style_expression_bodied_methods = false → không dùng expression body cho method
+# VD: dùng { return ...; } thay vì => ...
+csharp_style_expression_bodied_methods     = false:suggestion
+
+# Expression body OK cho properties và constructors đơn giản
+csharp_style_expression_bodied_properties  = true:suggestion
+csharp_style_expression_bodied_constructors = false:suggestion
+
+# ── Pattern Matching ────────────────────────────────────────────────────────
+
+# csharp_style_pattern_matching_over_is_with_cast_check
+# → Dùng `obj is Type t` thay vì `obj is Type && (Type)obj`
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+
+# csharp_style_pattern_matching_over_as_with_null_check
+# → Dùng `obj is Type t` thay vì `obj as Type != null`
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+
+# ── Null Handling ────────────────────────────────────────────────────────────
+
+# csharp_style_conditional_delegate_invocation = true
+# → Dùng `handler?.Invoke()` thay vì `if (handler != null) handler()`
+csharp_style_conditional_delegate_invocation = true:suggestion
+
+# dotnet_style_null_propagation = true → dùng ?. thay vì if-null check
+dotnet_style_null_propagation = true:suggestion
+
+# dotnet_style_coalesce_expression = true → dùng ?? thay vì ternary null check
+dotnet_style_coalesce_expression = true:suggestion
+
+# csharp_style_throw_expression = true → dùng `throw expression` trong null-coalesce
+# VD: _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+csharp_style_throw_expression = true:suggestion
+
+# ── Brace Style ─────────────────────────────────────────────────────────────
+
+# csharp_new_line_before_open_brace = all → dấu { luôn xuống dòng mới (Allman style)
+csharp_new_line_before_open_brace = all
+
+# csharp_new_line_before_else = true → else xuống dòng mới
+csharp_new_line_before_else = true
+
+# csharp_new_line_before_catch = true → catch xuống dòng mới
+csharp_new_line_before_catch = true
+
+# csharp_new_line_before_finally = true → finally xuống dòng mới
+csharp_new_line_before_finally = true
+
+# ── Space Rules ─────────────────────────────────────────────────────────────
+
+# csharp_space_after_cast = false → không space sau cast: (int)value (không phải (int) value)
+csharp_space_after_cast = false
+
+# csharp_space_before_colon_in_inheritance_clause = true → space trước : trong inheritance
+csharp_space_before_colon_in_inheritance_clause = true
+
+# csharp_space_after_colon_in_inheritance_clause = true → space sau : trong inheritance
+csharp_space_after_colon_in_inheritance_clause = true
+
+# ── Modifier Order ───────────────────────────────────────────────────────────
+
+# dotnet_style_require_accessibility_modifiers = always
+# → Luôn viết access modifier (không bỏ qua `private`)
+dotnet_style_require_accessibility_modifiers = always:warning
+
+# csharp_preferred_modifier_order → thứ tự modifier chuẩn
+csharp_preferred_modifier_order = public,private,protected,internal,static,extern,new,virtual,abstract,sealed,override,readonly,unsafe,volatile,async:suggestion
+
+# ── String Literals ──────────────────────────────────────────────────────────
+
+# dotnet_style_prefer_interpolated_string → prefer $"..." thay vì string.Format(...)
+# Chú ý: KHÔNG dùng interpolation trong SQL query (security risk)
+dotnet_style_prefer_interpolated_string = true:suggestion
+
+# ── Object Initialization ────────────────────────────────────────────────────
+
+# dotnet_style_object_initializer = true → dùng object initializer khi có thể
+dotnet_style_object_initializer = true:suggestion
+
+# dotnet_style_collection_initializer = true → dùng collection initializer
+dotnet_style_collection_initializer = true:suggestion
+
+# ── Async ────────────────────────────────────────────────────────────────────
+
+# Enforce async method naming (suffix Async) — handled via code review, not editorconfig
+# Reminder: Mọi method async PHẢI có suffix Async
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.sql ] — SQL files (seeds, migrations)
+# ─────────────────────────────────────────────────────────────────────────────
+[*.sql]
+indent_size = 4
+# SQL files: indent 4 spaces, CRLF (SQL Server convention)
+end_of_line = crlf
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.json ] — appsettings, launchSettings, etc.
+# ─────────────────────────────────────────────────────────────────────────────
+[*.json]
+indent_size = 2
+# JSON: indent 2 spaces (standard cho JSON files)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.md ] — Documentation files
+# ─────────────────────────────────────────────────────────────────────────────
+[*.md]
+trim_trailing_whitespace = false
+# Markdown: không trim trailing whitespace vì 2 spaces cuối dòng = line break trong Markdown
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.razor ] — Blazor component files
+# ─────────────────────────────────────────────────────────────────────────────
+[*.razor]
+indent_size = 4
+# Razor/Blazor files: indent 4 spaces (consistent với C#)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [ *.csproj / *.props / *.targets ] — MSBuild files
+# ─────────────────────────────────────────────────────────────────────────────
+[*.{csproj,props,targets}]
+indent_size = 2
+# XML MSBuild files: indent 2 spaces (Visual Studio default)
