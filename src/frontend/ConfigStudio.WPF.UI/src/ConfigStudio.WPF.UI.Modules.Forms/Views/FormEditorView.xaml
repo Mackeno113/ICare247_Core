@@ -3,14 +3,443 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
+             xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Models"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="450"
-             d:DesignWidth="800"
+             d:DesignHeight="700"
+             d:DesignWidth="1200"
              mc:Ignorable="d">
-    <Grid Margin="24">
-        <TextBlock Text="{Binding Title}"
-                   FontSize="28"
-                   FontWeight="SemiBold" />
+
+    <UserControl.Resources>
+        <!-- Converter: bool → Visibility -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header + Toolbar -->
+            <RowDefinition Height="Auto" />
+            <!-- Content: TreeView + Property Panel -->
+            <RowDefinition Height="*" />
+            <!-- Status bar -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 0: Header + Toolbar
+             ═══════════════════════════════════════════════════════════ -->
+        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                 md:ElevationAssist.Elevation="Dp2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Form info -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding BackToListCommand}"
+                            ToolTip="Quay lại danh sách form">
+                        <md:PackIcon Kind="ArrowLeft" />
+                    </Button>
+                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FormName}"
+                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                            <TextBlock Text="{Binding FormCode}"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.6" />
+                            <TextBlock Text=" · v"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.6" />
+                            <TextBlock Text="{Binding Version}"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.6" />
+                            <TextBlock Text=" · "
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.6" />
+                            <TextBlock Text="{Binding Platform}"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.6" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Dirty indicator -->
+                    <md:PackIcon Kind="CircleSmall" Foreground="Orange"
+                                 Margin="12,0,0,0" VerticalAlignment="Center"
+                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
+                                 ToolTip="Có thay đổi chưa lưu" />
+                </StackPanel>
+
+                <!-- Toolbar -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <!-- Add Section -->
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding AddSectionCommand}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="FolderPlusOutline" VerticalAlignment="Center" />
+                            <TextBlock Text="Thêm Section" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Add Field -->
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding AddFieldCommand}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="FormTextbox" VerticalAlignment="Center" />
+                            <TextBlock Text="Thêm Field" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Margin="4,4" />
+
+                    <!-- Move Up -->
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding MoveUpCommand}"
+                            ToolTip="Di chuyển lên">
+                        <md:PackIcon Kind="ArrowUp" />
+                    </Button>
+
+                    <!-- Move Down -->
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding MoveDownCommand}"
+                            ToolTip="Di chuyển xuống">
+                        <md:PackIcon Kind="ArrowDown" />
+                    </Button>
+
+                    <!-- Delete -->
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding DeleteNodeCommand}"
+                            Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                            ToolTip="Xóa node đang chọn">
+                        <md:PackIcon Kind="DeleteOutline" />
+                    </Button>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Margin="4,4" />
+
+                    <!-- Expand/Collapse -->
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding ExpandAllCommand}"
+                            ToolTip="Mở rộng tất cả">
+                        <md:PackIcon Kind="UnfoldMoreHorizontal" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding CollapseAllCommand}"
+                            ToolTip="Thu gọn tất cả">
+                        <md:PackIcon Kind="UnfoldLessHorizontal" />
+                    </Button>
+
+                    <!-- Spacer -->
+                    <Border Width="1" />
+
+                    <!-- Right-aligned actions -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Margin="16,0,0,0">
+                        <!-- Save -->
+                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding SaveFormCommand}"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="ContentSave" VerticalAlignment="Center" />
+                                <TextBlock Text="Lưu" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Dependencies -->
+                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                Command="{Binding ViewDependenciesCommand}"
+                                Margin="0,0,8,0"
+                                ToolTip="Xem biểu đồ phụ thuộc">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="GraphOutline" VerticalAlignment="Center" />
+                                <TextBlock Text="Dependencies" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Publish -->
+                        <Button Style="{StaticResource MaterialDesignRaisedAccentButton}"
+                                Command="{Binding PublishCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="Publish" VerticalAlignment="Center" />
+                                <TextBlock Text="Publish" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </md:Card>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 1: Content — TreeView (left) + Property Panel (right)
+             ═══════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1" Margin="16,8,16,0">
+            <Grid.ColumnDefinitions>
+                <!-- TreeView -->
+                <ColumnDefinition Width="350" MinWidth="250" />
+                <!-- Splitter -->
+                <ColumnDefinition Width="Auto" />
+                <!-- Property Panel -->
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ── Left: TreeView ─────────────────────────────── -->
+            <md:Card Grid.Column="0" Padding="0"
+                     md:ElevationAssist.Elevation="Dp1">
+                <DockPanel>
+                    <!-- Search box -->
+                    <TextBox DockPanel.Dock="Top" Margin="12,12,12,8"
+                             md:HintAssist.Hint="Tìm kiếm section / field..."
+                             md:TextFieldAssist.HasClearButton="True"
+                             md:HintAssist.IsFloating="False"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Escape"
+                                        Command="{Binding DataContext.ClearSearchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                        </TextBox.InputBindings>
+                    </TextBox>
+
+                    <!-- TreeView -->
+                    <TreeView ItemsSource="{Binding Sections}"
+                              SelectedItemChanged="OnTreeSelectedItemChanged"
+                              BorderThickness="0"
+                              Padding="4">
+                        <TreeView.Resources>
+                            <!-- Section template (root) -->
+                            <HierarchicalDataTemplate DataType="{x:Type models:FormTreeNode}"
+                                                       ItemsSource="{Binding Children}">
+                                <Grid Margin="4,4"
+                                      Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Icon -->
+                                    <md:PackIcon Grid.Column="0"
+                                                 Kind="{Binding IconKind}"
+                                                 VerticalAlignment="Center"
+                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"
+                                                 Width="20" Height="20" />
+
+                                    <!-- Name + SubText -->
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontWeight="Medium" />
+                                        <TextBlock Text="{Binding SubText}"
+                                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                                   Opacity="0.5" />
+                                    </StackPanel>
+
+                                    <!-- Required badge -->
+                                    <md:PackIcon Grid.Column="2"
+                                                 Kind="Asterisk"
+                                                 Foreground="OrangeRed"
+                                                 Width="12" Height="12"
+                                                 VerticalAlignment="Center"
+                                                 Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}"
+                                                 ToolTip="Bắt buộc" />
+                                </Grid>
+                            </HierarchicalDataTemplate>
+                        </TreeView.Resources>
+
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                                <Setter Property="Visibility" Value="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                    </TreeView>
+                </DockPanel>
+            </md:Card>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="4"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Stretch"
+                          Background="Transparent" />
+
+            <!-- ── Right: Property Panel ──────────────────────── -->
+            <md:Card Grid.Column="2" Padding="0"
+                     md:ElevationAssist.Elevation="Dp1">
+                <Grid>
+                <!-- Property panel content wrapper -->
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Margin="24">
+
+                    <!-- Khi chưa chọn node nào -->
+                    <StackPanel HorizontalAlignment="Center"
+                                Visibility="{Binding IsNodeSelected, Converter={StaticResource InvBoolToVis}}">
+                        <md:PackIcon Kind="CursorDefaultClickOutline"
+                                     Width="64" Height="64"
+                                     HorizontalAlignment="Center"
+                                     Opacity="0.3" />
+                        <TextBlock Text="Chọn một Section hoặc Field từ cây bên trái"
+                                   Style="{StaticResource MaterialDesignBody1TextBlock}"
+                                   Opacity="0.5"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,12,0,0" />
+                        <TextBlock Text="để xem và chỉnh sửa thuộc tính"
+                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.4"
+                                   HorizontalAlignment="Center" />
+                    </StackPanel>
+
+                    <!-- Khi đã chọn node: hiện property panel -->
+                    <StackPanel Visibility="{Binding IsNodeSelected, Converter={StaticResource BoolToVis}}"
+                                Width="500">
+
+                        <!-- Section properties -->
+                        <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Thuộc tính Section"
+                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                                       Margin="0,0,0,16" />
+
+                            <TextBox md:HintAssist.Hint="Section Code"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <TextBox md:HintAssist.Hint="Tên hiển thị"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <TextBox md:HintAssist.Hint="Thứ tự sắp xếp"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <TextBlock Text="{Binding SelectedNode.SubText}"
+                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                       Opacity="0.5"
+                                       Margin="0,8,0,0" />
+                        </StackPanel>
+
+                        <!-- Field properties -->
+                        <StackPanel Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="Thuộc tính Field"
+                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                                        Command="{Binding OpenFieldConfigCommand}"
+                                        Margin="16,0,0,0"
+                                        Height="28" Padding="12,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <md:PackIcon Kind="CogOutline" Width="14" Height="14"
+                                                     VerticalAlignment="Center" />
+                                        <TextBlock Text="Chi tiết" Margin="4,0,0,0"
+                                                   FontSize="12" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <TextBox md:HintAssist.Hint="Field Code"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <TextBox md:HintAssist.Hint="Tên hiển thị"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <Grid Margin="0,0,0,12">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Grid.Column="0"
+                                         md:HintAssist.Hint="Field Type"
+                                         md:HintAssist.IsFloating="True"
+                                         Text="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+
+                                <TextBox Grid.Column="2"
+                                         md:HintAssist.Hint="Editor Type"
+                                         md:HintAssist.IsFloating="True"
+                                         Text="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                            </Grid>
+
+                            <TextBox md:HintAssist.Hint="Thứ tự sắp xếp"
+                                     md:HintAssist.IsFloating="True"
+                                     Text="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                                     Margin="0,0,0,12" />
+
+                            <CheckBox Content="Bắt buộc (Required)"
+                                      IsChecked="{Binding SelectedNode.IsRequired}"
+                                      Margin="0,4,0,12"
+                                      Style="{StaticResource MaterialDesignCheckBox}" />
+
+                            <!-- Hint -->
+                            <Border Background="{DynamicResource MaterialDesignToolBarBackground}"
+                                    CornerRadius="4" Padding="12" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Mở Chi tiết để cấu hình:"
+                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                               FontWeight="Medium" />
+                                    <TextBlock Text="  - Control Properties (min, max, format...)"
+                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                               Opacity="0.7" />
+                                    <TextBlock Text="  - Validation Rules (required, range...)"
+                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                               Opacity="0.7" />
+                                    <TextBlock Text="  - Events (onChange, onBlur...)"
+                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                               Opacity="0.7" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+                </Grid>
+            </md:Card>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 2: Status bar
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
+                Background="{DynamicResource MaterialDesignToolBarBackground}"
+                CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <md:PackIcon Kind="InformationOutline" Width="14" Height="14"
+                             VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Opacity="0.6" Margin="6,0,16,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} sections · {1} fields">
+                            <Binding Path="TotalSections" />
+                            <Binding Path="TotalFields" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                <TextBlock Text="Form_Id:"
+                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Opacity="0.4" />
+                <TextBlock Text="{Binding FormId}"
+                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Opacity="0.4" Margin="4,0,0,0" />
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

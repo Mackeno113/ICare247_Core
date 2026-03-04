@@ -69,12 +69,12 @@
 
 ### ConfigStudio.WPF.UI — Triển khai UI thật (thứ tự ưu tiên)
 
-- [ ] Screen 03: Form Editor — TreeView sections/fields, toolbar, property panel, navigate FieldConfig
-- [ ] Screen 02: Form Manager — DataGrid danh sách form, search/filter, Add/Edit/Delete, navigate FormEditor
-- [ ] Screen 05: Validation Rule Editor — DataGrid rules, add/edit/delete, link Expression Builder
-- [ ] Screen 06: Event Editor — DataGrid events, trigger config, action config
-- [ ] Screen 09: Grammar Library — 2 tab Functions/Operators, DataGrid whitelist, add/edit
-- [ ] Screen 10: i18n Manager — DataGrid key/language matrix, filter, import/export
+- [x] Screen 03: Form Editor — TreeView sections/fields, toolbar, property panel, navigate FieldConfig
+- [x] Screen 02: Form Manager — DataGrid danh sách form, search/filter, Add/Edit/Delete, navigate FormEditor
+- [x] Screen 05: Validation Rule Editor — DataGrid rules, add/edit/delete, link Expression Builder
+- [x] Screen 06: Event Editor — DataGrid events, trigger config, action config
+- [x] Screen 09: Grammar Library — 2 tab Functions/Operators, DataGrid whitelist, add/edit
+- [x] Screen 10: i18n Manager — DataGrid key/language matrix, filter, import/export
 
 ### ConfigStudio.WPF.UI — P0 UX Features (sau khi UI thật hoàn thành)
 
@@ -101,6 +101,7 @@
 - [x] ConfigStudio Screen 08 — DependencyViewer: 2 models, ViewModel (graph + auto-layout), Canvas-based XAML
 - [x] ConfigStudio Screen 11 — PublishChecklist: ChecklistItem model, ViewModel (async checks), XAML checklist
 - [x] **Toàn bộ 11 screens ConfigStudio.WPF.UI đã có skeleton** — sẵn sàng P0 UX features
+- [x] **Toàn bộ 6 placeholder screens đã có UI thật** — DataGrid, TreeView, mock data, filter, CRUD, navigation
 
 ---
 
@@ -121,3 +122,6 @@
 | 2026-03-03 | Prism 9 dùng `Prism.Navigation.Regions` thay `Prism.Regions`              | Breaking change trong Prism 9.x — áp dụng cho tất cả module cần IRegionManager |
 | 2026-03-03 | Screen 08 (DependencyViewer) đặt trong Grammar module                     | Gần với AST services, tránh tạo thêm module mới cho 1 screen                   |
 | 2026-03-03 | Screen 11 (PublishChecklist) đặt trong Forms module                        | Launch từ FormEditor, là phần cuối của form lifecycle                           |
+| 2026-03-04 | Prism 9 dùng `Prism.Dialogs` thay `Prism.Services.Dialogs`                | Breaking change trong Prism 9.x — áp dụng cho Rules, Events modules            |
+| 2026-03-04 | Rules, Events, I18n modules thêm PackageReference MaterialDesignThemes     | Giống Forms module — cần reference trực tiếp cho XAML attached properties       |
+| 2026-03-04 | InverseBoolToVisConverter đặt trong Forms module (không phải Core)          | Core project dùng net9.0 (không net9.0-windows) — không có WPF types           |

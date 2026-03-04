@@ -3,14 +3,261 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="450"
-             d:DesignWidth="800"
+             d:DesignHeight="600"
+             d:DesignWidth="1000"
              mc:Ignorable="d">
-    <Grid Margin="24">
-        <TextBlock Text="{Binding Title}"
-                   FontSize="28"
-                   FontWeight="SemiBold" />
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 0: Header + Toolbar
+             ═══════════════════════════════════════════════════════════ -->
+        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                 md:ElevationAssist.Elevation="Dp2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Title -->
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding BackCommand}"
+                            ToolTip="Quay lại Field Config">
+                        <md:PackIcon Kind="ArrowLeft" />
+                    </Button>
+                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource MaterialDesignHeadline6TextBlock}">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Validation Rules — {0}">
+                                    <Binding Path="FieldCode" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.6">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="Field #{0} · Form #{1} · {2} rules">
+                                    <Binding Path="FieldId" />
+                                    <Binding Path="FormId" />
+                                    <Binding Path="Rules.Count" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Dirty indicator -->
+                    <md:PackIcon Kind="CircleSmall" Foreground="Orange"
+                                 Margin="12,0,0,0" VerticalAlignment="Center"
+                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
+                                 ToolTip="Có thay đổi chưa lưu" />
+                </StackPanel>
+
+                <!-- Toolbar -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding AddRuleCommand}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                            <TextBlock Text="Thêm Rule" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên">
+                        <md:PackIcon Kind="ArrowUp" />
+                    </Button>
+                    <Button Style="{StaticResource MaterialDesignIconButton}"
+                            Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống">
+                        <md:PackIcon Kind="ArrowDown" />
+                    </Button>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Margin="4,4" />
+
+                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Command="{Binding OpenExpressionBuilderCommand}"
+                            Margin="0,0,8,0">
+                        <StackPanel Orientation="Horizontal">
+                            <md:PackIcon Kind="CodeBraces" VerticalAlignment="Center" />
+                            <TextBlock Text="Expression Builder" Margin="6,0,0,0" />
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Right: Save All -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                Margin="16,0,0,0">
+                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding SaveAllCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="ContentSave" VerticalAlignment="Center" />
+                                <TextBlock Text="Lưu tất cả" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </md:Card>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 1: DataGrid + Edit Panel
+             ═══════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="1" Margin="16,8,16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- DataGrid -->
+            <md:Card Grid.Column="0" Padding="0"
+                     md:ElevationAssist.Elevation="Dp1">
+                <DataGrid ItemsSource="{Binding Rules}"
+                          SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="False"
+                          CanUserDeleteRows="False"
+                          IsReadOnly="True"
+                          SelectionMode="Single"
+                          HeadersVisibility="Column"
+                          GridLinesVisibility="Horizontal"
+                          BorderThickness="0"
+                          Style="{StaticResource MaterialDesignDataGrid}">
+
+                    <DataGrid.InputBindings>
+                        <MouseBinding MouseAction="LeftDoubleClick"
+                                      Command="{Binding EditRuleCommand}" />
+                    </DataGrid.InputBindings>
+
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="#"
+                                            Binding="{Binding OrderNo}"
+                                            Width="40" />
+
+                        <DataGridTextColumn Header="Loại Rule"
+                                            Binding="{Binding RuleTypeCode}"
+                                            Width="120" />
+
+                        <DataGridTextColumn Header="Expression"
+                                            Binding="{Binding ExpressionPreview}"
+                                            Width="*" />
+
+                        <DataGridTextColumn Header="Error Key"
+                                            Binding="{Binding ErrorKey}"
+                                            Width="150" />
+
+                        <DataGridTextColumn Header="Severity"
+                                            Binding="{Binding Severity}"
+                                            Width="90" />
+
+                        <DataGridCheckBoxColumn Header="Active"
+                                                Binding="{Binding IsActive}"
+                                                Width="65" />
+
+                        <!-- Actions -->
+                        <DataGridTemplateColumn Header="" Width="90">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                Command="{Binding DataContext.EditRuleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                ToolTip="Sửa rule" Width="30" Height="30">
+                                            <md:PackIcon Kind="PencilOutline" Width="16" Height="16" />
+                                        </Button>
+                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                                Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                                ToolTip="Xóa rule" Width="30" Height="30">
+                                            <md:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </md:Card>
+
+            <!-- Edit Panel (hiện khi IsEditPanelOpen = true) -->
+            <md:Card Grid.Column="1" Width="320" Padding="16" Margin="8,0,0,0"
+                     md:ElevationAssist.Elevation="Dp2"
+                     Visibility="{Binding IsEditPanelOpen, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <TextBlock Text="Chi tiết Rule"
+                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               Margin="0,0,0,16" />
+
+                    <ComboBox md:HintAssist.Hint="Loại Rule"
+                              md:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding RuleTypeOptions}"
+                              SelectedItem="{Binding EditRuleType}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              Margin="0,0,0,12" />
+
+                    <ComboBox md:HintAssist.Hint="Severity"
+                              md:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding SeverityOptions}"
+                              SelectedItem="{Binding EditSeverity}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              Margin="0,0,0,12" />
+
+                    <TextBox md:HintAssist.Hint="Error Key (i18n)"
+                             md:HintAssist.IsFloating="True"
+                             Text="{Binding EditErrorKey, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,0,12" />
+
+                    <TextBox md:HintAssist.Hint="Expression Preview"
+                             md:HintAssist.IsFloating="True"
+                             Text="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             IsReadOnly="True"
+                             Margin="0,0,0,16" />
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Style="{StaticResource MaterialDesignFlatButton}"
+                                Command="{Binding CancelEditCommand}"
+                                Content="Hủy" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding SaveRuleCommand}"
+                                Content="Áp dụng" />
+                    </StackPanel>
+                </StackPanel>
+            </md:Card>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 2: Status bar
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
+                Background="{DynamicResource MaterialDesignToolBarBackground}"
+                CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <md:PackIcon Kind="ShieldCheckOutline" Width="14" Height="14"
+                             VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Opacity="0.6" Margin="6,0,0,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{}{0} rules · Field: {1}">
+                            <Binding Path="Rules.Count" />
+                            <Binding Path="FieldCode" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

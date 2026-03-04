@@ -3,14 +3,219 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="450"
-             d:DesignWidth="800"
+             d:DesignHeight="600"
+             d:DesignWidth="1000"
              mc:Ignorable="d">
-    <Grid Margin="24">
-        <TextBlock Text="{Binding Title}"
-                   FontSize="28"
-                   FontWeight="SemiBold" />
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <!-- Header + Filter -->
+            <RowDefinition Height="Auto" />
+            <!-- DataGrid -->
+            <RowDefinition Height="*" />
+            <!-- Status bar -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 0: Header + Filter bar
+             ═══════════════════════════════════════════════════════════ -->
+        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                 md:ElevationAssist.Elevation="Dp2">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Title + Create button -->
+                <DockPanel Grid.Row="0">
+                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock Text="Quản Lý Form"
+                                   Style="{StaticResource MaterialDesignHeadline5TextBlock}" />
+                        <TextBlock Text="Danh sách tất cả form trong hệ thống"
+                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                                   Opacity="0.6" Margin="0,2,0,0" />
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <!-- Refresh -->
+                        <Button Style="{StaticResource MaterialDesignIconButton}"
+                                Command="{Binding RefreshCommand}"
+                                ToolTip="Làm mới danh sách"
+                                Margin="0,0,8,0">
+                            <md:PackIcon Kind="Refresh" />
+                        </Button>
+
+                        <!-- Create -->
+                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
+                                Command="{Binding CreateFormCommand}">
+                            <StackPanel Orientation="Horizontal">
+                                <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                                <TextBlock Text="Tạo Form Mới" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Filter bar -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <!-- Search -->
+                    <TextBox Width="280"
+                             md:HintAssist.Hint="Tìm theo mã hoặc tên form..."
+                             md:HintAssist.IsFloating="False"
+                             md:TextFieldAssist.HasClearButton="True"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                             Margin="0,0,12,0" />
+
+                    <!-- Platform filter -->
+                    <ComboBox Width="140"
+                              md:HintAssist.Hint="Platform"
+                              md:HintAssist.IsFloating="True"
+                              ItemsSource="{Binding PlatformOptions}"
+                              SelectedItem="{Binding PlatformFilter}"
+                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
+                              Margin="0,0,12,0" />
+
+                    <!-- Show inactive toggle -->
+                    <CheckBox Content="Hiện form đã ẩn"
+                              IsChecked="{Binding ShowInactiveOnly}"
+                              VerticalAlignment="Center"
+                              Style="{StaticResource MaterialDesignCheckBox}" />
+                </StackPanel>
+            </Grid>
+        </md:Card>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 1: DataGrid
+             ═══════════════════════════════════════════════════════════ -->
+        <md:Card Grid.Row="1" Margin="16,8,16,0" Padding="0"
+                 md:ElevationAssist.Elevation="Dp1">
+            <DataGrid ItemsSource="{Binding FormsView}"
+                      SelectedItem="{Binding SelectedForm, Mode=TwoWay}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      BorderThickness="0"
+                      Style="{StaticResource MaterialDesignDataGrid}">
+
+                <!-- Double-click mở Form Editor -->
+                <DataGrid.InputBindings>
+                    <MouseBinding MouseAction="LeftDoubleClick"
+                                  Command="{Binding EditFormCommand}" />
+                </DataGrid.InputBindings>
+
+                <DataGrid.Columns>
+                    <!-- Form Code -->
+                    <DataGridTextColumn Header="Mã Form"
+                                        Binding="{Binding FormCode}"
+                                        Width="150" />
+
+                    <!-- Form Name -->
+                    <DataGridTextColumn Header="Tên Form"
+                                        Binding="{Binding FormName}"
+                                        Width="*" />
+
+                    <!-- Version -->
+                    <DataGridTextColumn Header="Version"
+                                        Binding="{Binding Version, StringFormat=v{0}}"
+                                        Width="80" />
+
+                    <!-- Platform -->
+                    <DataGridTextColumn Header="Platform"
+                                        Binding="{Binding Platform}"
+                                        Width="90" />
+
+                    <!-- Sections -->
+                    <DataGridTextColumn Header="Sections"
+                                        Binding="{Binding SectionCount}"
+                                        Width="80" />
+
+                    <!-- Fields -->
+                    <DataGridTextColumn Header="Fields"
+                                        Binding="{Binding FieldCount}"
+                                        Width="70" />
+
+                    <!-- Status -->
+                    <DataGridTextColumn Header="Trạng thái"
+                                        Binding="{Binding StatusText}"
+                                        Width="100" />
+
+                    <!-- Updated -->
+                    <DataGridTextColumn Header="Cập nhật"
+                                        Binding="{Binding UpdatedAt, StringFormat=dd/MM/yyyy HH:mm}"
+                                        Width="140" />
+
+                    <!-- Updated By -->
+                    <DataGridTextColumn Header="Người sửa"
+                                        Binding="{Binding UpdatedBy}"
+                                        Width="100" />
+
+                    <!-- Actions -->
+                    <DataGridTemplateColumn Header="" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                            Command="{Binding DataContext.OpenFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="Mở Form Editor"
+                                            Width="30" Height="30">
+                                        <md:PackIcon Kind="PencilOutline" Width="16" Height="16" />
+                                    </Button>
+                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                            Command="{Binding DataContext.DuplicateFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            ToolTip="Nhân bản form"
+                                            Width="30" Height="30">
+                                        <md:PackIcon Kind="ContentDuplicate" Width="16" Height="16" />
+                                    </Button>
+                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
+                                            Command="{Binding DataContext.DeleteFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                            ToolTip="Ẩn form"
+                                            Width="30" Height="30">
+                                        <md:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                                    </Button>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </md:Card>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 2: Status bar
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
+                Background="{DynamicResource MaterialDesignToolBarBackground}"
+                CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <md:PackIcon Kind="InformationOutline" Width="14" Height="14"
+                             VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
+                           Opacity="0.6" Margin="6,0,16,0">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="Hiển thị {0} / {1} form">
+                            <Binding Path="FilteredCount" />
+                            <Binding Path="TotalForms" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </StackPanel>
+        </Border>
     </Grid>
 </UserControl>

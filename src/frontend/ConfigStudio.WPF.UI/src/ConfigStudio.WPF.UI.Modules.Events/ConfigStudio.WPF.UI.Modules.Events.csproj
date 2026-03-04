@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="Prism.Wpf" Version="9.*" />
+    <PackageReference Include="MaterialDesignThemes" Version="5.*" />
   </ItemGroup>
 
   <ItemGroup>
