@@ -33,6 +33,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <!-- Title + Create button -->
@@ -73,6 +74,20 @@
                                    IsChecked="{Binding ShowInactiveOnly}"
                                    VerticalAlignment="Center" />
                 </StackPanel>
+
+                <Border Grid.Row="2"
+                        Margin="0,10,0,0"
+                        Padding="10,8"
+                        Background="#FEE2E2"
+                        BorderBrush="#FCA5A5"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding LoadErrorMessage}"
+                               Foreground="#991B1B"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                </Border>
             </Grid>
         </Border>
 

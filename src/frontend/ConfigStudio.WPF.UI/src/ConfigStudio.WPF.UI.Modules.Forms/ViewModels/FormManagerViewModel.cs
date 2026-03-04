@@ -1,10 +1,11 @@
-// File    : FormManagerViewModel.cs
+﻿// File    : FormManagerViewModel.cs
 // Module  : Forms
 // Layer   : Presentation
 // Purpose : ViewModel cho màn hình Form Manager (Screen 02) — danh sách form, search/filter, CRUD.
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
@@ -24,6 +25,9 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private readonly IRegionManager _regionManager;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
+    private static readonly string ErrorLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "ICare247", "ConfigStudio", "logs", "form-manager-errors.log");
 
     // ── Data ──────────────────────────────────────────────────
     public ObservableCollection<FormSummaryDto> Forms { get; } = [];
@@ -103,6 +107,23 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         private set => SetProperty(ref _isLoading, value);
     }
 
+    private string _loadErrorMessage = "";
+    /// <summary>
+    /// Message lỗi khi load danh sách form thất bại.
+    /// </summary>
+    public string LoadErrorMessage
+    {
+        get => _loadErrorMessage;
+        private set
+        {
+            if (SetProperty(ref _loadErrorMessage, value))
+                RaisePropertyChanged(nameof(HasLoadError));
+        }
+    }
+
+    /// <summary>True khi có lỗi tải dữ liệu để hiển thị banner.</summary>
+    public bool HasLoadError => !string.IsNullOrWhiteSpace(_loadErrorMessage);
+
     // ── Commands ──────────────────────────────────────────────
     public DelegateCommand CreateFormCommand { get; }
     public DelegateCommand EditFormCommand { get; }
@@ -151,8 +172,12 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private async Task LoadDataAsync()
     {
         IsLoading = true;
+        LoadErrorMessage = "";
+
         try
         {
+            await EnsureAppConfigLoadedAsync();
+
             // ── 1. Thử load từ DB ──────────────────────────────────
             if (_formDataService is not null && _appConfig is not null && _appConfig.IsConfigured)
             {
@@ -185,6 +210,15 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
             // ── 2. Fallback: mock data khi chưa có DB ──────────────
             LoadMockData();
+        }
+        catch (Exception ex)
+        {
+            Forms.Clear();
+            RaisePropertyChanged(nameof(TotalForms));
+            RaisePropertyChanged(nameof(FilteredCount));
+
+            LoadErrorMessage = $"Không thể tải danh sách form: {ex.Message}";
+            LogLoadError(ex);
         }
         finally
         {
@@ -312,5 +346,43 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     {
         var p = new NavigationParameters { { "formId", formId } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
+    }
+
+    /// <summary>
+    /// Ghi lỗi load dữ liệu ra file local để dễ truy vết sự cố production.
+    /// </summary>
+    private static void LogLoadError(Exception ex)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(ErrorLogPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+
+            var log = $"""
+                [{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] LoadFormsError
+                Message: {ex.Message}
+                StackTrace:
+                {ex.StackTrace}
+                ----------------------------------------
+                """;
+
+            File.AppendAllText(ErrorLogPath, log + Environment.NewLine);
+        }
+        catch
+        {
+            // NOTE: Không để logging failure làm sập luồng UI.
+        }
+    }
+
+    /// <summary>
+    /// Đảm bảo đã load appsettings trước khi kiểm tra IsConfigured/TenantId.
+    /// </summary>
+    private async Task EnsureAppConfigLoadedAsync()
+    {
+        if (_appConfig is null || _appConfig.IsConfigured)
+            return;
+
+        await _appConfig.LoadAsync();
     }
 }

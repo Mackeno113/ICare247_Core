@@ -1,0 +1,282 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.SysTableManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="680"
+             d:DesignWidth="1200"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0">
+                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock Text="Quản Trị Sys_Table"
+                                   FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                        <TextBlock Text="Nhập liệu và cập nhật metadata bảng theo tenant"
+                                   FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <dx:SimpleButton Command="{Binding RefreshCommand}"
+                                         ToolTip="Làm mới dữ liệu"
+                                         Margin="0,0,8,0" Width="32" Height="32"
+                                         Content="↻" FontSize="16" />
+                        <dx:SimpleButton Command="{Binding NewCommand}" Content="+ Bản ghi mới" />
+                    </StackPanel>
+                </DockPanel>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <dxe:TextEdit Width="340"
+                                  NullText="Tìm theo Table_Code, Table_Name, Schema_Name..."
+                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="0,0,12,0" />
+
+                    <dxe:CheckEdit Content="Hiện cả bản ghi inactive"
+                                   IsChecked="{Binding ShowInactive}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+
+                    <Border Background="#EEF5FF"
+                            BorderBrush="#DCEAFE"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="10,5">
+                        <TextBlock FontSize="12"
+                                   Foreground="#1E3A8A"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding TenantId, Mode=OneWay, StringFormat=Tenant_Id: {0}}" />
+                    </Border>
+                </StackPanel>
+
+                <Border Grid.Row="2"
+                        Margin="0,10,0,0"
+                        Padding="10,8"
+                        Background="#FEE2E2"
+                        BorderBrush="#FCA5A5"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding LoadErrorMessage}"
+                               Foreground="#991B1B"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
+                </Border>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="16,8,16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.2*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="0.9*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                <dxg:GridControl ItemsSource="{Binding TablesView}"
+                                 SelectedItem="{Binding SelectedTable, Mode=TwoWay}"
+                                 AutoPopulateColumns="False">
+                    <dxg:GridControl.View>
+                        <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                       AllowPerPixelScrolling="True" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn Header="Table_Id" FieldName="TableId" Width="80" AllowEditing="False" />
+                        <dxg:GridColumn Header="Table_Code" FieldName="TableCode" Width="150" AllowEditing="False" />
+                        <dxg:GridColumn Header="Table_Name" FieldName="TableName" Width="*" AllowEditing="False" />
+                        <dxg:GridColumn Header="Schema" FieldName="SchemaName" Width="90" AllowEditing="False" />
+                        <dxg:GridColumn Header="Is_Tenant" FieldName="IsTenant" Width="85" AllowEditing="False" />
+                        <dxg:GridColumn Header="Active" FieldName="IsActive" Width="70" AllowEditing="False" />
+                        <dxg:GridColumn Header="Updated_At" FieldName="UpdatedAt" Width="130" AllowEditing="False">
+                            <dxg:GridColumn.EditSettings>
+                                <dxe:TextEditSettings DisplayFormat="dd/MM/yyyy HH:mm" />
+                            </dxg:GridColumn.EditSettings>
+                        </dxg:GridColumn>
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </Border>
+
+            <Border Grid.Column="2"
+                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
+                    Background="#FCFDFF" Padding="16">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="Tạo mới Sys_Table" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsEditMode}" Value="True">
+                                        <Setter Property="Text" Value="Cập nhật Sys_Table" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Grid.Row="1"
+                               FontSize="12"
+                               Opacity="0.6"
+                               Margin="0,2,0,12"
+                               Text="{Binding EditTableId, StringFormat='Đang chỉnh sửa Table_Id={0}', TargetNullValue='Nhập thông tin và bấm Tạo mới để lưu.'}" />
+
+                    <TextBlock Grid.Row="2" Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                    <dxe:TextEdit Grid.Row="3"
+                                  EditValue="{Binding EditTableCode, UpdateSourceTrigger=PropertyChanged}"
+                                  NullText="VD: UI_CUSTOMER, UI_INVOICE"
+                                  Height="34"
+                                  Margin="0,0,0,10" />
+
+                    <TextBlock Grid.Row="4" Text="Table_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                    <dxe:TextEdit Grid.Row="5"
+                                  EditValue="{Binding EditTableName, UpdateSourceTrigger=PropertyChanged}"
+                                  NullText="VD: Danh mục khách hàng"
+                                  Height="34"
+                                  Margin="0,0,0,10" />
+
+                    <Grid Grid.Row="6" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Schema_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                            <dxe:TextEdit EditValue="{Binding EditSchemaName, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="34"
+                                          NullText="dbo" />
+                        </StackPanel>
+
+                        <dxe:CheckEdit Grid.Column="2"
+                                       Content="Is_Tenant"
+                                       IsChecked="{Binding EditIsTenant}"
+                                       VerticalAlignment="Bottom"
+                                       Margin="0,0,0,6" />
+
+                        <dxe:CheckEdit Grid.Column="4"
+                                       Content="Is_Active"
+                                       IsChecked="{Binding EditIsActive}"
+                                       VerticalAlignment="Bottom"
+                                       Margin="0,0,0,6" />
+                    </Grid>
+
+                    <StackPanel Grid.Row="7">
+                        <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                        <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 MinHeight="120"
+                                 Padding="8"
+                                 BorderBrush="#D5DEED"
+                                 BorderThickness="1" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="8" Orientation="Horizontal" Margin="0,12,0,0">
+                        <dx:SimpleButton Command="{Binding SaveCommand}" Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="💾" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding SaveButtonText}" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </dx:SimpleButton>
+
+                        <dx:SimpleButton Command="{Binding NewCommand}" Content="Làm mới form nhập" />
+                    </StackPanel>
+
+                    <Border Grid.Row="9"
+                            Margin="0,12,0,0"
+                            Padding="10,8"
+                            CornerRadius="6"
+                            Visibility="{Binding HasSaveStatus, Converter={StaticResource BoolToVis}}">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#DCFCE7" />
+                                <Setter Property="BorderBrush" Value="#86EFAC" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
+                                        <Setter Property="Background" Value="#FEE2E2" />
+                                        <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding SaveStatusMessage}" FontSize="12">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#166534" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
+                                            <Setter Property="Foreground" Value="#991B1B" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
+                Background="#EEF5FF" CornerRadius="4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="Hiển thị {0} / {1} bản ghi Sys_Table">
+                            <Binding Path="FilteredCount" />
+                            <Binding Path="TotalTables" />
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

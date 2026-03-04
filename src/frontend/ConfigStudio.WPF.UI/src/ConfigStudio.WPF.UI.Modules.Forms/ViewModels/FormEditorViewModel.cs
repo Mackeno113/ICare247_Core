@@ -4,6 +4,7 @@
 // Purpose : ViewModel cho màn hình Form Editor (Screen 03) — quản lý cấu trúc form: sections, fields, toolbar.
 
 using System.Collections.ObjectModel;
+using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
@@ -23,6 +24,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private readonly IRegionManager  _regionManager;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource? _formCodeValidationCts;
 
     // ── Form info ─────────────────────────────────────────────
     private int _formId;
@@ -89,14 +91,25 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public string NewFormCode
     {
         get => _newFormCode;
-        set => SetProperty(ref _newFormCode, value);
+        set
+        {
+            if (SetProperty(ref _newFormCode, value))
+            {
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+                _ = ValidateFormCodeRealtimeAsync();
+            }
+        }
     }
 
     private string _newFormName = "";
     public string NewFormName
     {
         get => _newFormName;
-        set => SetProperty(ref _newFormName, value);
+        set
+        {
+            if (SetProperty(ref _newFormName, value))
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+        }
     }
 
     private string _newFormPlatform = "web";
@@ -106,7 +119,75 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         set => SetProperty(ref _newFormPlatform, value);
     }
 
+    private int? _newTableId;
+    /// <summary>
+    /// Table_Id được chọn khi tạo form mới.
+    /// </summary>
+    public int? NewTableId
+    {
+        get => _newTableId;
+        set
+        {
+            if (SetProperty(ref _newTableId, value))
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+        }
+    }
+
+    /// <summary>Danh sách bảng Sys_Table dùng cho lookup chọn Table_Id.</summary>
+    public ObservableCollection<TableLookupRecord> TableLookupItems { get; } = [];
+
     public List<string> PlatformOptions { get; } = ["web", "mobile"];
+
+    private bool _isCheckingFormCode;
+    /// <summary>True khi đang debounce hoặc đang query kiểm tra trùng mã form.</summary>
+    public bool IsCheckingFormCode
+    {
+        get => _isCheckingFormCode;
+        private set
+        {
+            if (SetProperty(ref _isCheckingFormCode, value))
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+        }
+    }
+
+    private bool _isFormCodeDuplicate;
+    /// <summary>True khi <see cref="NewFormCode"/> đã tồn tại trong tenant hiện tại.</summary>
+    public bool IsFormCodeDuplicate
+    {
+        get => _isFormCodeDuplicate;
+        private set
+        {
+            if (SetProperty(ref _isFormCodeDuplicate, value))
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+        }
+    }
+
+    private string _formCodeValidationMessage = "";
+    /// <summary>Thông điệp trạng thái kiểm tra mã form realtime hiển thị dưới ô nhập.</summary>
+    public string FormCodeValidationMessage
+    {
+        get => _formCodeValidationMessage;
+        private set
+        {
+            if (SetProperty(ref _formCodeValidationMessage, value))
+                RaisePropertyChanged(nameof(HasFormCodeValidationMessage));
+        }
+    }
+
+    /// <summary>True khi có nội dung để hiển thị trạng thái kiểm tra mã form.</summary>
+    public bool HasFormCodeValidationMessage => !string.IsNullOrWhiteSpace(_formCodeValidationMessage);
+
+    /// <summary>
+    /// Cho phép tạo mới khi không loading, không trùng mã và đủ input bắt buộc.
+    /// </summary>
+    public bool CanCreateNewForm =>
+        IsNotLoading
+        && !IsCheckingFormCode
+        && !IsFormCodeDuplicate
+        && !string.IsNullOrWhiteSpace(NewFormCode)
+        && !string.IsNullOrWhiteSpace(NewFormName)
+        && NewTableId.HasValue
+        && NewTableId.Value > 0;
 
     private string _createErrorMessage = "";
     public string CreateErrorMessage
@@ -133,7 +214,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _isLoading, value))
+            {
                 RaisePropertyChanged(nameof(IsNotLoading));
+                RaisePropertyChanged(nameof(CanCreateNewForm));
+            }
         }
     }
 
@@ -210,7 +294,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             NewFormCode      = "";
             NewFormName      = "";
             NewFormPlatform  = "web";
+            NewTableId       = null;
             CreateErrorMessage = "";
+            IsCheckingFormCode = false;
+            IsFormCodeDuplicate = false;
+            FormCodeValidationMessage = "";
+            _ = LoadTableLookupAsync();
         }
         else
         {
@@ -221,7 +310,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
 
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _formCodeValidationCts?.Cancel();
+        _formCodeValidationCts?.Dispose();
+        _formCodeValidationCts = null;
+    }
 
     // ── Load mock data ───────────────────────────────────────
 
@@ -506,20 +600,111 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     // ── New Form creation ─────────────────────────────────────
 
     /// <summary>
+    /// Kiểm tra trùng <see cref="NewFormCode"/> theo tenant theo thời gian thực.
+    /// Dùng debounce để tránh query DB liên tục khi người dùng đang gõ.
+    /// </summary>
+    private async Task ValidateFormCodeRealtimeAsync()
+    {
+        _formCodeValidationCts?.Cancel();
+        _formCodeValidationCts?.Dispose();
+        _formCodeValidationCts = null;
+
+        var normalizedCode = NewFormCode.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedCode))
+        {
+            IsCheckingFormCode = false;
+            IsFormCodeDuplicate = false;
+            FormCodeValidationMessage = "";
+            return;
+        }
+
+        await EnsureAppConfigLoadedAsync();
+
+        if (_formDataService is null || (_appConfig?.IsConfigured ?? false) is false)
+        {
+            IsCheckingFormCode = false;
+            IsFormCodeDuplicate = false;
+            FormCodeValidationMessage = "Chưa cấu hình DB nên chưa thể kiểm tra trùng mã realtime.";
+            return;
+        }
+
+        var cts = new CancellationTokenSource();
+        _formCodeValidationCts = cts;
+
+        try
+        {
+            IsCheckingFormCode = true;
+            FormCodeValidationMessage = "Đang kiểm tra trùng mã form...";
+
+            await Task.Delay(350, cts.Token);
+
+            var exists = await _formDataService.ExistsFormCodeAsync(
+                normalizedCode,
+                _appConfig.TenantId,
+                cts.Token);
+
+            if (cts.IsCancellationRequested)
+                return;
+
+            IsFormCodeDuplicate = exists;
+            FormCodeValidationMessage = exists
+                ? $"Mã form '{normalizedCode}' đã tồn tại trong tenant {_appConfig.TenantId}."
+                : $"Mã form '{normalizedCode}' có thể sử dụng.";
+        }
+        catch (OperationCanceledException)
+        {
+            // NOTE: Người dùng gõ tiếp nên request cũ bị hủy — bỏ qua.
+        }
+        catch (Exception ex)
+        {
+            if (cts.IsCancellationRequested)
+                return;
+
+            IsFormCodeDuplicate = false;
+            FormCodeValidationMessage = $"Không thể kiểm tra trùng mã: {ex.Message}";
+        }
+        finally
+        {
+            if (ReferenceEquals(_formCodeValidationCts, cts))
+                IsCheckingFormCode = false;
+        }
+    }
+
+    /// <summary>
     /// Validate input, gọi IFormDataService.CreateFormAsync, navigate sang editor với formId mới.
     /// Fallback: nếu không có DB → vẫn navigate với formId=-1 (mock mode).
     /// </summary>
     private async Task ExecuteCreateNewFormAsync()
     {
         // ── 1. Validate ──────────────────────────────────────
-        if (string.IsNullOrWhiteSpace(NewFormCode))
+        var normalizedCode = NewFormCode.Trim();
+        var normalizedName = NewFormName.Trim();
+
+        await EnsureAppConfigLoadedAsync();
+
+        if (string.IsNullOrWhiteSpace(normalizedCode))
         {
             CreateErrorMessage = "Mã Form không được để trống.";
             return;
         }
-        if (string.IsNullOrWhiteSpace(NewFormName))
+        if (string.IsNullOrWhiteSpace(normalizedName))
         {
             CreateErrorMessage = "Tên Form không được để trống.";
+            return;
+        }
+        if (!NewTableId.HasValue || NewTableId.Value <= 0)
+        {
+            CreateErrorMessage = "Vui lòng chọn Table_Id hợp lệ.";
+            return;
+        }
+        if (IsCheckingFormCode)
+        {
+            CreateErrorMessage = "Đang kiểm tra trùng mã form, vui lòng chờ trong giây lát.";
+            return;
+        }
+        if (IsFormCodeDuplicate)
+        {
+            CreateErrorMessage = $"Mã form '{normalizedCode}' đã tồn tại trong tenant hiện tại.";
             return;
         }
 
@@ -533,11 +718,24 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             if (_formDataService is not null && (_appConfig?.IsConfigured ?? false))
             {
                 // ── 2a. Có DB → insert thật ──────────────────
-                newFormId = await _formDataService.CreateFormAsync(
-                    NewFormCode.Trim(),
-                    NewFormName.Trim(),
-                    NewFormPlatform,
+                // NOTE: Re-check trước khi insert để tránh race condition.
+                var exists = await _formDataService.ExistsFormCodeAsync(
+                    normalizedCode,
                     _appConfig.TenantId);
+                if (exists)
+                {
+                    IsFormCodeDuplicate = true;
+                    FormCodeValidationMessage = $"Mã form '{normalizedCode}' đã tồn tại trong tenant {_appConfig.TenantId}.";
+                    CreateErrorMessage = "Không thể tạo mới vì mã form bị trùng.";
+                    return;
+                }
+
+                newFormId = await _formDataService.CreateFormAsync(
+                    normalizedCode,
+                    normalizedName,
+                    NewFormPlatform,
+                    _appConfig.TenantId,
+                    NewTableId.Value);
             }
             else
             {
@@ -625,5 +823,39 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         foreach (var section in Sections)
             section.IsExpanded = expanded;
+    }
+
+    /// <summary>
+    /// Đảm bảo đã load appsettings trước khi dùng ConnectionString/Tenant_Id.
+    /// </summary>
+    private async Task EnsureAppConfigLoadedAsync()
+    {
+        if (_appConfig is null || _appConfig.IsConfigured)
+            return;
+
+        await _appConfig.LoadAsync();
+    }
+
+    /// <summary>
+    /// Load danh sách Sys_Table để chọn FK Table_Id.
+    /// </summary>
+    private async Task LoadTableLookupAsync()
+    {
+        TableLookupItems.Clear();
+
+        try
+        {
+            await EnsureAppConfigLoadedAsync();
+            if (_formDataService is null || _appConfig is null || !_appConfig.IsConfigured)
+                return;
+
+            var tables = await _formDataService.GetTablesByTenantAsync(_appConfig.TenantId);
+            foreach (var table in tables)
+                TableLookupItems.Add(table);
+        }
+        catch (Exception ex)
+        {
+            CreateErrorMessage = $"Không thể tải danh sách Sys_Table: {ex.Message}";
+        }
     }
 }

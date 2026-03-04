@@ -131,6 +131,13 @@ public class ShellViewModel : ViewModelBase
                     {
                         { "mode", "new" }
                     }
+                },
+                new NavigationItem
+                {
+                    Title = "Sys Table",
+                    Icon = "⌗",
+                    NavigateTo = ViewNames.SysTableManager,
+                    Level = 1
                 }
             ]
         });

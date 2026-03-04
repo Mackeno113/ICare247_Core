@@ -4,6 +4,7 @@
 // Purpose : Khoi tao Prism application, shell va module catalog.
 
 using System.Windows;
+using System.IO;
 using DevExpress.Xpf.Core;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
@@ -25,6 +26,10 @@ namespace ConfigStudio.WPF.UI;
 
 public partial class App : PrismApplication
 {
+    private static readonly string StartupLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "ICare247", "ConfigStudio", "logs", "startup.log");
+
     public App()
     {
         // Đặt theme DevExpress TRƯỚC InitializeComponent
@@ -60,5 +65,50 @@ public partial class App : PrismApplication
         moduleCatalog.AddModule<EventsModule>();
         moduleCatalog.AddModule<GrammarModule>();
         moduleCatalog.AddModule<I18nModule>();
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        // NOTE: Preload cấu hình DB ngay lúc startup để các màn hình đầu tiên
+        // có thể dùng ConnectionString/Tenant_Id mà không cần mở Settings trước.
+        var appConfig = Container.Resolve<IAppConfigService>();
+        _ = PreloadAppConfigAsync(appConfig);
+    }
+
+    /// <summary>
+    /// Nạp appsettings từ %APPDATA% khi app khởi động.
+    /// Nếu lỗi thì ghi log local, không làm crash ứng dụng.
+    /// </summary>
+    private static async Task PreloadAppConfigAsync(IAppConfigService appConfig)
+    {
+        try
+        {
+            await appConfig.LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                var dir = Path.GetDirectoryName(StartupLogPath);
+                if (!string.IsNullOrWhiteSpace(dir))
+                    Directory.CreateDirectory(dir);
+
+                var log = $"""
+                    [{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] AppConfig preload failed
+                    Message: {ex.Message}
+                    StackTrace:
+                    {ex.StackTrace}
+                    ----------------------------------------
+                    """;
+
+                await File.AppendAllTextAsync(StartupLogPath, log + Environment.NewLine);
+            }
+            catch
+            {
+                // NOTE: Không để lỗi ghi log ảnh hưởng luồng startup.
+            }
+        }
     }
 }
