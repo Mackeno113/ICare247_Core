@@ -4,12 +4,14 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MaterialDesignThemes" Version="5.*" />
     <PackageReference Include="Prism.Wpf" Version="9.*" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.4" />
   </ItemGroup>
 
   <ItemGroup>

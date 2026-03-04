@@ -4,7 +4,6 @@
 // Purpose : Mo ta item dieu huong cho sidebar tree.
 
 using System.Collections.ObjectModel;
-using MaterialDesignThemes.Wpf;
 using Prism.Mvvm;
 using Prism.Navigation;
 
@@ -17,7 +16,7 @@ public sealed class NavigationItem : BindableBase
 
     public string Title { get; init; } = string.Empty;
 
-    public PackIconKind Icon { get; init; }
+    public string Icon { get; init; } = string.Empty;
 
     public string? NavigateTo { get; init; }
 

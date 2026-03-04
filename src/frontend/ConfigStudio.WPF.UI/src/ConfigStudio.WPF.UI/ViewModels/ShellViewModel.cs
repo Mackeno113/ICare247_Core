@@ -10,7 +10,6 @@ using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Models;
 using ConfigStudio.WPF.UI.Services;
-using MaterialDesignThemes.Wpf;
 using Prism.Commands;
 using Prism.Navigation;
 using Prism.Navigation.Regions;
@@ -46,11 +45,14 @@ public class ShellViewModel : ViewModelBase
         ChangeThemeCommand = new DelegateCommand<string?>(ChangeTheme);
 
         InitNavigationItems();
+        BuildSidebarEntries();
         InitThemeDisplay();
         Navigate(NavigationItems.FirstOrDefault(i => i.NavigateTo == ViewNames.Dashboard));
     }
 
     public ObservableCollection<NavigationItem> NavigationItems { get; }
+
+    public List<SidebarEntry> SidebarEntries { get; } = [];
 
     public NavigationItem? SelectedItem
     {
@@ -99,7 +101,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Dashboard",
-            Icon = PackIconKind.Home,
+            Icon = "⌂",
             NavigateTo = ViewNames.Dashboard,
             Level = 0
         });
@@ -107,7 +109,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Forms",
-            Icon = PackIconKind.FileDocumentOutline,
+            Icon = "📄",
             Level = 0,
             IsExpanded = true,
             Children =
@@ -115,14 +117,14 @@ public class ShellViewModel : ViewModelBase
                 new NavigationItem
                 {
                     Title = "Form List",
-                    Icon = PackIconKind.FormatListBulleted,
+                    Icon = "≡",
                     NavigateTo = ViewNames.FormManager,
                     Level = 1
                 },
                 new NavigationItem
                 {
                     Title = "New Form",
-                    Icon = PackIconKind.AddBox,
+                    Icon = "+",
                     NavigateTo = ViewNames.FormEditor,
                     Level = 1,
                     Parameters = new NavigationParameters
@@ -136,7 +138,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Validation Rules",
-            Icon = PackIconKind.CheckCircle,
+            Icon = "✓",
             NavigateTo = ViewNames.ValidationRuleEditor,
             Level = 0
         });
@@ -144,7 +146,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Events",
-            Icon = PackIconKind.Flash,
+            Icon = "⚡",
             NavigateTo = ViewNames.EventEditor,
             Level = 0
         });
@@ -152,7 +154,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Grammar",
-            Icon = PackIconKind.FunctionVariant,
+            Icon = "f()",
             Level = 0,
             IsExpanded = true,
             Children =
@@ -160,14 +162,14 @@ public class ShellViewModel : ViewModelBase
                 new NavigationItem
                 {
                     Title = "Functions",
-                    Icon = PackIconKind.CodeTags,
+                    Icon = "f()",
                     NavigateTo = ViewNames.GrammarLibrary,
                     Level = 1
                 },
                 new NavigationItem
                 {
                     Title = "Operators",
-                    Icon = PackIconKind.Calculator,
+                    Icon = "±",
                     NavigateTo = ViewNames.GrammarLibrary,
                     Level = 1,
                     Parameters = new NavigationParameters
@@ -181,7 +183,7 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "i18n Keys",
-            Icon = PackIconKind.Translate,
+            Icon = "🌐",
             NavigateTo = ViewNames.I18nManager,
             Level = 0
         });
@@ -194,10 +196,33 @@ public class ShellViewModel : ViewModelBase
         NavigationItems.Add(new NavigationItem
         {
             Title = "Settings",
-            Icon = PackIconKind.Cog,
+            Icon = "⚙",
             NavigateTo = ViewNames.Settings,
             Level = 0
         });
+    }
+
+    private void BuildSidebarEntries()
+    {
+        SidebarEntries.Clear();
+        foreach (var item in NavigationItems)
+        {
+            if (item.IsDivider)
+            {
+                SidebarEntries.Add(new SidebarEntry { IsDivider = true });
+                continue;
+            }
+            if (item.Children.Count > 0)
+            {
+                SidebarEntries.Add(new SidebarEntry { IsHeader = true, Title = item.Title, Icon = item.Icon });
+                foreach (var child in item.Children)
+                    SidebarEntries.Add(new SidebarEntry { Title = child.Title, Icon = child.Icon, NavItem = child });
+            }
+            else
+            {
+                SidebarEntries.Add(new SidebarEntry { Title = item.Title, Icon = item.Icon, NavItem = item });
+            }
+        }
     }
 
     private void Navigate(NavigationItem? item)

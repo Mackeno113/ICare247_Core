@@ -5,6 +5,7 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -15,10 +16,13 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình Form Editor (Screen 03).
 /// Hiển thị TreeView sections/fields, toolbar thao tác, property panel cho node được chọn.
+/// Khi formId=0 → chế độ tạo form mới (IsNewForm=true).
 /// </summary>
 public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 {
-    private readonly IRegionManager _regionManager;
+    private readonly IRegionManager  _regionManager;
+    private readonly IFormDataService? _formDataService;
+    private readonly IAppConfigService? _appConfig;
 
     // ── Form info ─────────────────────────────────────────────
     private int _formId;
@@ -64,12 +68,77 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public bool IsFieldSelected => SelectedNode?.NodeType == FormNodeType.Field;
     public bool IsSectionSelected => SelectedNode?.NodeType == FormNodeType.Section;
 
+    // ── New Form mode ─────────────────────────────────────────
+    private bool _isNewForm;
+    /// <summary>True khi formId=0 — hiện panel tạo form mới thay vì tree editor.</summary>
+    public bool IsNewForm
+    {
+        get => _isNewForm;
+        private set
+        {
+            if (SetProperty(ref _isNewForm, value))
+                RaisePropertyChanged(nameof(IsEditorVisible));
+        }
+    }
+
+    /// <summary>True khi đang ở chế độ edit form có sẵn (không phải tạo mới).</summary>
+    public bool IsEditorVisible => !_isNewForm;
+
+    // Input fields cho "tạo form mới"
+    private string _newFormCode = "";
+    public string NewFormCode
+    {
+        get => _newFormCode;
+        set => SetProperty(ref _newFormCode, value);
+    }
+
+    private string _newFormName = "";
+    public string NewFormName
+    {
+        get => _newFormName;
+        set => SetProperty(ref _newFormName, value);
+    }
+
+    private string _newFormPlatform = "web";
+    public string NewFormPlatform
+    {
+        get => _newFormPlatform;
+        set => SetProperty(ref _newFormPlatform, value);
+    }
+
+    public List<string> PlatformOptions { get; } = ["web", "mobile"];
+
+    private string _createErrorMessage = "";
+    public string CreateErrorMessage
+    {
+        get => _createErrorMessage;
+        set
+        {
+            if (SetProperty(ref _createErrorMessage, value))
+                RaisePropertyChanged(nameof(HasCreateError));
+        }
+    }
+
+    /// <summary>True khi có lỗi tạo form — bind trực tiếp vào Visibility error border.</summary>
+    public bool HasCreateError => !string.IsNullOrEmpty(_createErrorMessage);
+
     // ── State ─────────────────────────────────────────────────
     private bool _isDirty;
     public bool IsDirty { get => _isDirty; set => SetProperty(ref _isDirty, value); }
 
     private bool _isLoading;
-    public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set
+        {
+            if (SetProperty(ref _isLoading, value))
+                RaisePropertyChanged(nameof(IsNotLoading));
+        }
+    }
+
+    /// <summary>Nghịch đảo IsLoading — dùng cho IsEnabled của nút Tạo Form.</summary>
+    public bool IsNotLoading => !_isLoading;
 
     private string _searchText = "";
     /// <summary>Text tìm kiếm để filter tree.</summary>
@@ -100,10 +169,16 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand BackToListCommand { get; }
     public DelegateCommand ExpandAllCommand { get; }
     public DelegateCommand CollapseAllCommand { get; }
+    public DelegateCommand CreateNewFormCommand { get; }
 
-    public FormEditorViewModel(IRegionManager regionManager)
+    public FormEditorViewModel(
+        IRegionManager regionManager,
+        IFormDataService? formDataService = null,
+        IAppConfigService? appConfig = null)
     {
-        _regionManager = regionManager;
+        _regionManager   = regionManager;
+        _formDataService = formDataService;
+        _appConfig       = appConfig;
 
         AddSectionCommand = new DelegateCommand(ExecuteAddSection);
         AddFieldCommand = new DelegateCommand(ExecuteAddField);
@@ -118,6 +193,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         BackToListCommand = new DelegateCommand(ExecuteBackToList);
         ExpandAllCommand = new DelegateCommand(() => SetExpandAll(true));
         CollapseAllCommand = new DelegateCommand(() => SetExpandAll(false));
+        CreateNewFormCommand = new DelegateCommand(async () => await ExecuteCreateNewFormAsync());
     }
 
     // ── INavigationAware ─────────────────────────────────────
@@ -126,9 +202,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         FormId = navigationContext.Parameters.GetValue<int>("formId");
 
-        // NOTE: Nếu formId = 0 thì tạo form mới, ngược lại load từ mock
-        if (FormId == 0) FormId = 1;
-        LoadMockData();
+        // ── Phân nhánh: tạo mới hay edit ────────────────────
+        if (FormId == 0)
+        {
+            // Chế độ tạo form mới — reset input fields
+            IsNewForm        = true;
+            NewFormCode      = "";
+            NewFormName      = "";
+            NewFormPlatform  = "web";
+            CreateErrorMessage = "";
+        }
+        else
+        {
+            IsNewForm = false;
+            LoadMockData();
+        }
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
@@ -413,6 +501,63 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             { "mode", "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
+    }
+
+    // ── New Form creation ─────────────────────────────────────
+
+    /// <summary>
+    /// Validate input, gọi IFormDataService.CreateFormAsync, navigate sang editor với formId mới.
+    /// Fallback: nếu không có DB → vẫn navigate với formId=-1 (mock mode).
+    /// </summary>
+    private async Task ExecuteCreateNewFormAsync()
+    {
+        // ── 1. Validate ──────────────────────────────────────
+        if (string.IsNullOrWhiteSpace(NewFormCode))
+        {
+            CreateErrorMessage = "Mã Form không được để trống.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(NewFormName))
+        {
+            CreateErrorMessage = "Tên Form không được để trống.";
+            return;
+        }
+
+        CreateErrorMessage = "";
+        IsLoading = true;
+
+        try
+        {
+            int newFormId;
+
+            if (_formDataService is not null && (_appConfig?.IsConfigured ?? false))
+            {
+                // ── 2a. Có DB → insert thật ──────────────────
+                newFormId = await _formDataService.CreateFormAsync(
+                    NewFormCode.Trim(),
+                    NewFormName.Trim(),
+                    NewFormPlatform,
+                    _appConfig.TenantId);
+            }
+            else
+            {
+                // ── 2b. Không có DB → mock với id tạm ────────
+                // NOTE: -1 là sentinel "form mới chưa lưu DB"
+                newFormId = -1;
+            }
+
+            // ── 3. Navigate sang editor với formId vừa tạo ──
+            var p = new NavigationParameters { { "formId", newFormId } };
+            _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
+        }
+        catch (Exception ex)
+        {
+            CreateErrorMessage = $"Lỗi tạo form: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     // ── Navigation commands ──────────────────────────────────

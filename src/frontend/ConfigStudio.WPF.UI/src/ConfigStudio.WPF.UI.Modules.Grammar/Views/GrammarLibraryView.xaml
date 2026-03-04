@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -17,159 +19,134 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                     <TextBlock Text="Grammar Library"
-                               Style="{StaticResource MaterialDesignHeadline5TextBlock}" />
+                               FontSize="24" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                     <TextBlock Text="Whitelist functions và operators cho AST engine"
-                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                               Opacity="0.6" Margin="0,2,0,0" />
+                               FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                 </StackPanel>
-                <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
-                        Style="{StaticResource MaterialDesignIconButton}"
-                        Command="{Binding RefreshCommand}" ToolTip="Làm mới">
-                    <md:PackIcon Kind="Refresh" />
-                </Button>
+                <dx:SimpleButton DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                 Command="{Binding RefreshCommand}" ToolTip="Làm mới"
+                                 Width="32" Height="32" Content="↻" FontSize="16" />
             </DockPanel>
-        </md:Card>
+        </Border>
 
         <!-- TabControl: Functions + Operators -->
-        <md:Card Grid.Row="1" Margin="16,8,16,16" Padding="0"
-                 md:ElevationAssist.Elevation="Dp1">
-            <TabControl SelectedIndex="{Binding SelectedTabIndex}"
-                        Style="{StaticResource MaterialDesignNavigationRailTabControl}">
+        <Border Grid.Row="1" Margin="16,8,16,16"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <TabControl SelectedIndex="{Binding SelectedTabIndex}">
 
                 <!-- Tab 1: Functions -->
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="Function" VerticalAlignment="Center" />
-                            <TextBlock Text="Functions" Margin="6,0,0,0" />
-                        </StackPanel>
-                    </TabItem.Header>
-
+                <TabItem Header="f() Functions">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
                                     Margin="12,12,12,8">
-                            <TextBox Width="250"
-                                     md:HintAssist.Hint="Tìm function..."
-                                     md:HintAssist.IsFloating="False"
-                                     md:TextFieldAssist.HasClearButton="True"
-                                     Text="{Binding FunctionSearch, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,12,0" />
+                            <dxe:TextEdit Width="250"
+                                          NullText="Tìm function..."
+                                          EditValue="{Binding FunctionSearch, UpdateSourceTrigger=PropertyChanged}"
+                                          Margin="0,0,12,0" />
 
-                            <ComboBox Width="140"
-                                      md:HintAssist.Hint="Category"
-                                      md:HintAssist.IsFloating="True"
-                                      ItemsSource="{Binding FunctionCategories}"
-                                      SelectedItem="{Binding FunctionCategoryFilter}"
-                                      Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                                      Margin="0,0,12,0" />
+                            <dxe:ComboBoxEdit Width="140"
+                                              NullText="Category"
+                                              ItemsSource="{Binding FunctionCategories}"
+                                              EditValue="{Binding FunctionCategoryFilter}"
+                                              Margin="0,0,12,0" />
 
-                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Command="{Binding AddFunctionCommand}" Height="36">
+                            <dx:SimpleButton Command="{Binding AddFunctionCommand}" Height="36">
                                 <StackPanel Orientation="Horizontal">
-                                    <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                                    <TextBlock Text="+" VerticalAlignment="Center" />
                                     <TextBlock Text="Thêm" Margin="4,0,0,0" />
                                 </StackPanel>
-                            </Button>
+                            </dx:SimpleButton>
                         </StackPanel>
 
-                        <DataGrid ItemsSource="{Binding FunctionsView}"
-                                  SelectedItem="{Binding SelectedFunction, Mode=TwoWay}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False" CanUserDeleteRows="False"
-                                  IsReadOnly="True" SelectionMode="Single"
-                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                                  BorderThickness="0"
-                                  Style="{StaticResource MaterialDesignDataGrid}">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Tên" Binding="{Binding FunctionName}" Width="120" />
-                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="100" />
-                                <DataGridTextColumn Header="Params" Binding="{Binding ParamText}" Width="70" />
-                                <DataGridTextColumn Header="Return" Binding="{Binding ReturnType}" Width="80" />
-                                <DataGridTextColumn Header="Mô tả" Binding="{Binding Description}" Width="*" />
-                                <DataGridTextColumn Header="Ví dụ" Binding="{Binding Example}" Width="180" />
-                                <DataGridTemplateColumn Header="" Width="40">
-                                    <DataGridTemplateColumn.CellTemplate>
+                        <dxg:GridControl ItemsSource="{Binding FunctionsView}"
+                                         SelectedItem="{Binding SelectedFunction, Mode=TwoWay}"
+                                         AutoPopulateColumns="False">
+                            <dxg:GridControl.View>
+                                <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                               AllowPerPixelScrolling="True" />
+                            </dxg:GridControl.View>
+                            <dxg:GridControl.Columns>
+                                <dxg:GridColumn Header="Tên" FieldName="FunctionName" Width="120" />
+                                <dxg:GridColumn Header="Category" FieldName="Category" Width="100" />
+                                <dxg:GridColumn Header="Params" FieldName="ParamText" Width="70" />
+                                <dxg:GridColumn Header="Return" FieldName="ReturnType" Width="80" />
+                                <dxg:GridColumn Header="Mô tả" FieldName="Description" Width="*" />
+                                <dxg:GridColumn Header="Ví dụ" FieldName="Example" Width="180" />
+                                <dxg:GridColumn Header="" Width="40" AllowEditing="False" AllowSorting="False">
+                                    <dxg:GridColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    Command="{Binding DataContext.DeleteFunctionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                    ToolTip="Xóa" Width="28" Height="28">
-                                                <md:PackIcon Kind="DeleteOutline" Width="14" Height="14" />
+                                            <Button Command="{Binding DataContext.DeleteFunctionCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    Foreground="#EF4444"
+                                                    ToolTip="Xóa" Width="28" Height="28"
+                                                    Background="Transparent" BorderBrush="Transparent">
+                                                <TextBlock Text="🗑" />
                                             </Button>
                                         </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                                    </dxg:GridColumn.CellTemplate>
+                                </dxg:GridColumn>
+                            </dxg:GridControl.Columns>
+                        </dxg:GridControl>
                     </DockPanel>
                 </TabItem>
 
                 <!-- Tab 2: Operators -->
-                <TabItem>
-                    <TabItem.Header>
-                        <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="CodeBraces" VerticalAlignment="Center" />
-                            <TextBlock Text="Operators" Margin="6,0,0,0" />
-                        </StackPanel>
-                    </TabItem.Header>
-
+                <TabItem Header="{}{ } Operators">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal"
                                     Margin="12,12,12,8">
-                            <TextBox Width="250"
-                                     md:HintAssist.Hint="Tìm operator..."
-                                     md:HintAssist.IsFloating="False"
-                                     md:TextFieldAssist.HasClearButton="True"
-                                     Text="{Binding OperatorSearch, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,12,0" />
+                            <dxe:TextEdit Width="250"
+                                          NullText="Tìm operator..."
+                                          EditValue="{Binding OperatorSearch, UpdateSourceTrigger=PropertyChanged}"
+                                          Margin="0,0,12,0" />
 
-                            <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                    Command="{Binding AddOperatorCommand}" Height="36">
+                            <dx:SimpleButton Command="{Binding AddOperatorCommand}" Height="36">
                                 <StackPanel Orientation="Horizontal">
-                                    <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                                    <TextBlock Text="+" VerticalAlignment="Center" />
                                     <TextBlock Text="Thêm" Margin="4,0,0,0" />
                                 </StackPanel>
-                            </Button>
+                            </dx:SimpleButton>
                         </StackPanel>
 
-                        <DataGrid ItemsSource="{Binding OperatorsView}"
-                                  SelectedItem="{Binding SelectedOperator, Mode=TwoWay}"
-                                  AutoGenerateColumns="False"
-                                  CanUserAddRows="False" CanUserDeleteRows="False"
-                                  IsReadOnly="True" SelectionMode="Single"
-                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                                  BorderThickness="0"
-                                  Style="{StaticResource MaterialDesignDataGrid}">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Symbol" Binding="{Binding Symbol}" Width="80" />
-                                <DataGridTextColumn Header="Tên" Binding="{Binding OperatorName}" Width="140" />
-                                <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="110" />
-                                <DataGridTextColumn Header="Precedence" Binding="{Binding Precedence}" Width="90" />
-                                <DataGridTextColumn Header="Mô tả" Binding="{Binding Description}" Width="*" />
-                                <DataGridTemplateColumn Header="" Width="40">
-                                    <DataGridTemplateColumn.CellTemplate>
+                        <dxg:GridControl ItemsSource="{Binding OperatorsView}"
+                                         SelectedItem="{Binding SelectedOperator, Mode=TwoWay}"
+                                         AutoPopulateColumns="False">
+                            <dxg:GridControl.View>
+                                <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                               AllowPerPixelScrolling="True" />
+                            </dxg:GridControl.View>
+                            <dxg:GridControl.Columns>
+                                <dxg:GridColumn Header="Symbol" FieldName="Symbol" Width="80" />
+                                <dxg:GridColumn Header="Tên" FieldName="OperatorName" Width="140" />
+                                <dxg:GridColumn Header="Category" FieldName="Category" Width="110" />
+                                <dxg:GridColumn Header="Precedence" FieldName="Precedence" Width="90" />
+                                <dxg:GridColumn Header="Mô tả" FieldName="Description" Width="*" />
+                                <dxg:GridColumn Header="" Width="40" AllowEditing="False" AllowSorting="False">
+                                    <dxg:GridColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    Command="{Binding DataContext.DeleteOperatorCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                    ToolTip="Xóa" Width="28" Height="28">
-                                                <md:PackIcon Kind="DeleteOutline" Width="14" Height="14" />
+                                            <Button Command="{Binding DataContext.DeleteOperatorCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    Foreground="#EF4444"
+                                                    ToolTip="Xóa" Width="28" Height="28"
+                                                    Background="Transparent" BorderBrush="Transparent">
+                                                <TextBlock Text="🗑" />
                                             </Button>
                                         </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                                    </dxg:GridColumn.CellTemplate>
+                                </dxg:GridColumn>
+                            </dxg:GridControl.Columns>
+                        </dxg:GridControl>
                     </DockPanel>
                 </TabItem>
             </TabControl>
-        </md:Card>
+        </Border>
     </Grid>
 </UserControl>

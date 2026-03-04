@@ -5,13 +5,348 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="450"
-             d:DesignWidth="800"
+             d:DesignHeight="680" d:DesignWidth="720"
              mc:Ignorable="d">
-    <Grid Margin="24">
-        <TextBlock Text="{Binding Title}"
-                   FontSize="28"
-                   FontWeight="SemiBold"
-                   Foreground="White" />
-    </Grid>
+
+    <UserControl.Resources>
+
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- ── Input label style ───────────────────────────── -->
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"     Value="12" />
+            <Setter Property="FontWeight"   Value="SemiBold" />
+            <Setter Property="Foreground"   Value="#475569" />
+            <Setter Property="Margin"       Value="0,0,0,5" />
+        </Style>
+
+        <!-- ── Text input style ────────────────────────────── -->
+        <Style x:Key="FieldInputStyle" TargetType="TextBox">
+            <Setter Property="Height"           Value="36" />
+            <Setter Property="Padding"          Value="10,0" />
+            <Setter Property="FontSize"         Value="13" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background"       Value="White" />
+            <Setter Property="BorderBrush"      Value="#CBD5E1" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="Foreground"       Value="#1E293B" />
+            <Setter Property="CaretBrush"       Value="#2563EB" />
+            <Style.Triggers>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#2563EB" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- ── Password box style ──────────────────────────── -->
+        <Style x:Key="FieldPasswordStyle" TargetType="PasswordBox">
+            <Setter Property="Height"           Value="36" />
+            <Setter Property="Padding"          Value="10,0" />
+            <Setter Property="FontSize"         Value="13" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background"       Value="White" />
+            <Setter Property="BorderBrush"      Value="#CBD5E1" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="Foreground"       Value="#1E293B" />
+        </Style>
+
+        <!-- ── Action button base ──────────────────────────── -->
+        <Style x:Key="ActionButtonStyle" TargetType="Button">
+            <Setter Property="Height"       Value="38" />
+            <Setter Property="Padding"      Value="20,0" />
+            <Setter Property="FontSize"     Value="13" />
+            <Setter Property="FontWeight"   Value="SemiBold" />
+            <Setter Property="Cursor"       Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Test button: outlined blue ──────────────────── -->
+        <Style x:Key="TestButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+            <Setter Property="Background"   Value="White" />
+            <Setter Property="Foreground"   Value="#2563EB" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="White"
+                                CornerRadius="6"
+                                BorderBrush="#2563EB"
+                                BorderThickness="1.5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#EFF6FF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#DBEAFE" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Section card ────────────────────────────────── -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="Background"       Value="White" />
+            <Setter Property="CornerRadius"     Value="8" />
+            <Setter Property="BorderBrush"      Value="#E2E8F0" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="Padding"          Value="24" />
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="0"
+                                      Color="#406B8FC2" Opacity="0.10" />
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </UserControl.Resources>
+
+    <!-- ── Root scroll ──────────────────────────────────────── -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="32,28,32,28" MaxWidth="660">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />   <!-- Header     -->
+                <RowDefinition Height="24"  />   <!-- Spacer     -->
+                <RowDefinition Height="Auto" />   <!-- DB Card    -->
+                <RowDefinition Height="16"  />   <!-- Spacer     -->
+                <RowDefinition Height="Auto" />   <!-- Tenant     -->
+                <RowDefinition Height="24"  />   <!-- Spacer     -->
+                <RowDefinition Height="Auto" />   <!-- Buttons    -->
+                <RowDefinition Height="*"   />   <!-- Push down  -->
+                <RowDefinition Height="Auto" />   <!-- Footer     -->
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- HEADER                                          -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                <Border Background="#EFF6FF" CornerRadius="10" Width="44" Height="44"
+                        Margin="0,0,14,0" VerticalAlignment="Center">
+                    <TextBlock Text="⚙" FontSize="22" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" Foreground="#2563EB" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Cài Đặt Kết Nối"
+                               FontSize="22" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    <TextBlock Text="Thiết lập kết nối SQL Server cho ConfigStudio"
+                               FontSize="13" Foreground="#64748B" Margin="0,3,0,0" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- DB CONNECTION CARD                              -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+                <StackPanel>
+
+                    <!-- Section title -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                        <TextBlock Text="Kết nối SQL Server"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="#1E293B" />
+                    </StackPanel>
+
+                    <!-- Server -->
+                    <TextBlock Text="Server" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding Server, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FieldInputStyle}"
+                             Margin="0,0,0,14" />
+
+                    <!-- Database -->
+                    <TextBlock Text="Database" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FieldInputStyle}"
+                             Margin="0,0,0,14" />
+
+                    <!-- Username + Password (2 columns) -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Username -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding UserId, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource FieldInputStyle}" />
+                        </StackPanel>
+
+                        <!-- Password -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Mật khẩu" Style="{StaticResource FieldLabelStyle}" />
+                            <PasswordBox x:Name="DbPasswordBox"
+                                         Style="{StaticResource FieldPasswordStyle}"
+                                         PasswordChanged="DbPasswordBox_PasswordChanged" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Trust Server Certificate -->
+                    <CheckBox IsChecked="{Binding TrustServerCertificate}"
+                              Margin="0,4,0,0">
+                        <TextBlock Text="Trust Server Certificate  (bỏ qua kiểm tra SSL — dùng cho môi trường dev)"
+                                   FontSize="12" Foreground="#475569" />
+                    </CheckBox>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- TENANT CARD                                     -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Border Grid.Row="4" Style="{StaticResource CardStyle}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Tenant ID"
+                                   FontSize="14" FontWeight="SemiBold" Foreground="#1E293B" />
+                        <TextBlock Text="Định danh tenant mặc định cho phiên làm việc này"
+                                   FontSize="12" Foreground="#64748B" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <TextBox Grid.Column="1"
+                             Text="{Binding TenantId, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FieldInputStyle}"
+                             Width="90" VerticalAlignment="Center"
+                             TextAlignment="Center" />
+                </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- BUTTONS + STATUS                                -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Grid Grid.Row="6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="12"   />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*"    />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Test button -->
+                <Button Grid.Column="0"
+                        Content="🔌  Test Kết Nối"
+                        Command="{Binding TestConnectionCommand}"
+                        Style="{StaticResource TestButtonStyle}"
+                        Foreground="#2563EB" />
+
+                <!-- Save button -->
+                <Button Grid.Column="2"
+                        Content="💾  Lưu Cài Đặt"
+                        Command="{Binding SaveCommand}"
+                        Style="{StaticResource ActionButtonStyle}"
+                        Background="#2563EB" Foreground="White" />
+
+                <!-- Busy spinner placeholder (visible when IsBusy) -->
+                <Border Grid.Column="4"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="..." FontSize="20" Foreground="#64748B"
+                               VerticalAlignment="Center" />
+                </Border>
+            </Grid>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- STATUS MESSAGE                                  -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Border Grid.Row="6"
+                    Margin="0,50,0,0"
+                    CornerRadius="6"
+                    Padding="14,10"
+                    Visibility="{Binding IsStatusVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <!-- Default: info/testing (xanh) -->
+                        <Setter Property="Background"   Value="#EFF6FF" />
+                        <Setter Property="BorderBrush"  Value="#93C5FD" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsStatusSuccess}" Value="True">
+                                <Setter Property="Background"   Value="#F0FDF4" />
+                                <Setter Property="BorderBrush"  Value="#86EFAC" />
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                <Setter Property="Background"   Value="#FEF2F2" />
+                                <Setter Property="BorderBrush"  Value="#FCA5A5" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+
+                <TextBlock Text="{Binding StatusMessage}"
+                           FontSize="13" TextWrapping="Wrap">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#1D4ED8" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsStatusSuccess}" Value="True">
+                                    <Setter Property="Foreground" Value="#16A34A" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                                    <Setter Property="Foreground" Value="#DC2626" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- FOOTER — config file path                       -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Border Grid.Row="8"
+                    BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
+                    Padding="0,12,0,0" Margin="0,16,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="📁 File cấu hình: "
+                               FontSize="11" Foreground="#94A3B8" />
+                    <TextBlock Text="{Binding ConfigFilePath}"
+                               FontSize="11" Foreground="#94A3B8"
+                               FontFamily="Consolas" />
+                </StackPanel>
+            </Border>
+
+        </Grid>
+    </ScrollViewer>
+
 </UserControl>

@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -16,19 +18,17 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header + Filter -->
             <RowDefinition Height="Auto" />
-            <!-- DataGrid -->
             <RowDefinition Height="*" />
-            <!-- Status bar -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 0: Header + Filter bar
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -39,175 +39,249 @@
                 <DockPanel Grid.Row="0">
                     <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                         <TextBlock Text="Quản Lý Form"
-                                   Style="{StaticResource MaterialDesignHeadline5TextBlock}" />
+                                   FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         <TextBlock Text="Danh sách tất cả form trong hệ thống"
-                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                   Opacity="0.6" Margin="0,2,0,0" />
+                                   FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <!-- Refresh -->
-                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                Command="{Binding RefreshCommand}"
-                                ToolTip="Làm mới danh sách"
-                                Margin="0,0,8,0">
-                            <md:PackIcon Kind="Refresh" />
-                        </Button>
-
-                        <!-- Create -->
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding CreateFormCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
-                                <TextBlock Text="Tạo Form Mới" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </Button>
+                        <dx:SimpleButton Command="{Binding RefreshCommand}"
+                                         ToolTip="Làm mới danh sách"
+                                         Margin="0,0,8,0" Width="32" Height="32"
+                                         Content="↻" FontSize="16" />
+                        <dx:SimpleButton Command="{Binding CreateFormCommand}" Content="+ Tạo Form Mới" />
                     </StackPanel>
                 </DockPanel>
 
                 <!-- Filter bar -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <!-- Search -->
-                    <TextBox Width="280"
-                             md:HintAssist.Hint="Tìm theo mã hoặc tên form..."
-                             md:HintAssist.IsFloating="False"
-                             md:TextFieldAssist.HasClearButton="True"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             Margin="0,0,12,0" />
+                    <dxe:TextEdit Width="280"
+                                  NullText="Tìm theo mã hoặc tên form..."
+                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="0,0,12,0" />
 
-                    <!-- Platform filter -->
-                    <ComboBox Width="140"
-                              md:HintAssist.Hint="Platform"
-                              md:HintAssist.IsFloating="True"
-                              ItemsSource="{Binding PlatformOptions}"
-                              SelectedItem="{Binding PlatformFilter}"
-                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                              Margin="0,0,12,0" />
+                    <dxe:ComboBoxEdit Width="140"
+                                      NullText="Platform"
+                                      ItemsSource="{Binding PlatformOptions}"
+                                      EditValue="{Binding PlatformFilter}"
+                                      Margin="0,0,12,0" />
 
-                    <!-- Show inactive toggle -->
-                    <CheckBox Content="Hiện form đã ẩn"
-                              IsChecked="{Binding ShowInactiveOnly}"
-                              VerticalAlignment="Center"
-                              Style="{StaticResource MaterialDesignCheckBox}" />
+                    <dxe:CheckEdit Content="Hiện form đã ẩn"
+                                   IsChecked="{Binding ShowInactiveOnly}"
+                                   VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
-        </md:Card>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: DataGrid
+             ROW 1: GridControl
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="1" Margin="16,8,16,0" Padding="0"
-                 md:ElevationAssist.Elevation="Dp1">
-            <DataGrid ItemsSource="{Binding FormsView}"
-                      SelectedItem="{Binding SelectedForm, Mode=TwoWay}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False"
-                      CanUserDeleteRows="False"
-                      IsReadOnly="True"
-                      SelectionMode="Single"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="Horizontal"
-                      BorderThickness="0"
-                      Style="{StaticResource MaterialDesignDataGrid}">
+        <Border Grid.Row="1" Margin="16,8,16,0"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border.Resources>
+                <!-- Style dùng chung cho action button trong cell -->
+                <Style x:Key="CellActionButtonStyle" TargetType="Button">
+                    <Setter Property="Width"           Value="30" />
+                    <Setter Property="Height"          Value="28" />
+                    <Setter Property="Margin"          Value="2,0" />
+                    <Setter Property="Cursor"          Value="Hand" />
+                    <Setter Property="FontSize"        Value="14" />
+                    <Setter Property="Foreground"      Value="#475569" />
+                    <Setter Property="Background"      Value="Transparent" />
+                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" CornerRadius="5"
+                                        Background="{TemplateBinding Background}">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#E1ECFF" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#C7D7F2" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
 
-                <!-- Double-click mở Form Editor -->
-                <DataGrid.InputBindings>
-                    <MouseBinding MouseAction="LeftDoubleClick"
-                                  Command="{Binding EditFormCommand}" />
-                </DataGrid.InputBindings>
+                <!-- Style riêng cho nút Delete (đỏ khi hover) -->
+                <Style x:Key="CellDeleteButtonStyle" TargetType="Button"
+                       BasedOn="{StaticResource CellActionButtonStyle}">
+                    <Setter Property="Foreground" Value="#EF4444" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="Button">
+                                <Border x:Name="Bd" CornerRadius="5"
+                                        Background="{TemplateBinding Background}">
+                                    <ContentPresenter HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center" />
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#FEE2E2" />
+                                    </Trigger>
+                                    <Trigger Property="IsPressed" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#FECACA" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Border.Resources>
 
-                <DataGrid.Columns>
-                    <!-- Form Code -->
-                    <DataGridTextColumn Header="Mã Form"
-                                        Binding="{Binding FormCode}"
-                                        Width="150" />
+            <dxg:GridControl ItemsSource="{Binding FormsView}"
+                             SelectedItem="{Binding SelectedForm, Mode=TwoWay}"
+                             AutoPopulateColumns="False">
+                <dxg:GridControl.View>
+                    <dxg:TableView NavigationStyle="Row"
+                                   ShowGroupPanel="False"
+                                   AllowPerPixelScrolling="True" />
+                </dxg:GridControl.View>
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn Header="Mã Form"   FieldName="FormCode"    Width="150" />
+                    <dxg:GridColumn Header="Tên Form"  FieldName="FormName"    Width="*" />
+                    <dxg:GridColumn Header="Version"   FieldName="Version"     Width="70" />
 
-                    <!-- Form Name -->
-                    <DataGridTextColumn Header="Tên Form"
-                                        Binding="{Binding FormName}"
-                                        Width="*" />
+                    <!-- Platform — badge màu -->
+                    <dxg:GridColumn Header="Platform"  FieldName="Platform"    Width="90"
+                                    AllowEditing="False">
+                        <dxg:GridColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="10" Padding="8,3"
+                                        HorizontalAlignment="Left" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#F1F5F9" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Row.Platform}" Value="web">
+                                                    <Setter Property="Background" Value="#DBEAFE" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Row.Platform}" Value="mobile">
+                                                    <Setter Property="Background" Value="#EDE9FE" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="11" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text"       Value="{Binding Row.Platform}" />
+                                                <Setter Property="Foreground" Value="#64748B" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Row.Platform}" Value="web">
+                                                        <Setter Property="Foreground" Value="#1D4ED8" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Row.Platform}" Value="mobile">
+                                                        <Setter Property="Foreground" Value="#7C3AED" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
 
-                    <!-- Version -->
-                    <DataGridTextColumn Header="Version"
-                                        Binding="{Binding Version, StringFormat=v{0}}"
-                                        Width="80" />
+                    <dxg:GridColumn Header="Sections"  FieldName="SectionCount" Width="75" />
+                    <dxg:GridColumn Header="Fields"    FieldName="FieldCount"   Width="65" />
 
-                    <!-- Platform -->
-                    <DataGridTextColumn Header="Platform"
-                                        Binding="{Binding Platform}"
-                                        Width="90" />
+                    <!-- Trạng thái — badge màu Published / Draft -->
+                    <dxg:GridColumn Header="Trạng thái" FieldName="IsActive"   Width="110"
+                                    AllowEditing="False">
+                        <dxg:GridColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="10" Padding="8,3"
+                                        HorizontalAlignment="Left" VerticalAlignment="Center">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#F1F5F9" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Row.IsActive}" Value="True">
+                                                    <Setter Property="Background" Value="#DCFCE7" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="11" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text"       Value="Draft" />
+                                                <Setter Property="Foreground" Value="#64748B" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Row.IsActive}" Value="True">
+                                                        <Setter Property="Text"       Value="Published" />
+                                                        <Setter Property="Foreground" Value="#16A34A" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                            </DataTemplate>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
 
-                    <!-- Sections -->
-                    <DataGridTextColumn Header="Sections"
-                                        Binding="{Binding SectionCount}"
-                                        Width="80" />
+                    <!-- Cập nhật — format ngày giờ -->
+                    <dxg:GridColumn Header="Cập nhật"  FieldName="UpdatedAt"   Width="130"
+                                    AllowEditing="False">
+                        <dxg:GridColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Row.UpdatedAt, StringFormat='dd/MM/yyyy HH:mm'}"
+                                           VerticalAlignment="Center" FontSize="12" Opacity="0.7" />
+                            </DataTemplate>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
 
-                    <!-- Fields -->
-                    <DataGridTextColumn Header="Fields"
-                                        Binding="{Binding FieldCount}"
-                                        Width="70" />
-
-                    <!-- Status -->
-                    <DataGridTextColumn Header="Trạng thái"
-                                        Binding="{Binding StatusText}"
-                                        Width="100" />
-
-                    <!-- Updated -->
-                    <DataGridTextColumn Header="Cập nhật"
-                                        Binding="{Binding UpdatedAt, StringFormat=dd/MM/yyyy HH:mm}"
-                                        Width="140" />
-
-                    <!-- Updated By -->
-                    <DataGridTextColumn Header="Người sửa"
-                                        Binding="{Binding UpdatedBy}"
-                                        Width="100" />
+                    <dxg:GridColumn Header="Người sửa" FieldName="UpdatedBy"   Width="100" />
 
                     <!-- Actions -->
-                    <DataGridTemplateColumn Header="" Width="120">
-                        <DataGridTemplateColumn.CellTemplate>
+                    <dxg:GridColumn Header="" Width="110" AllowEditing="False" AllowSorting="False">
+                        <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                            Command="{Binding DataContext.OpenFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                            CommandParameter="{Binding}"
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                            Margin="4,0">
+                                    <Button Style="{StaticResource CellActionButtonStyle}"
+                                            Command="{Binding DataContext.OpenFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
                                             ToolTip="Mở Form Editor"
-                                            Width="30" Height="30">
-                                        <md:PackIcon Kind="PencilOutline" Width="16" Height="16" />
-                                    </Button>
-                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                            Command="{Binding DataContext.DuplicateFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            Content="✎" />
+                                    <Button Style="{StaticResource CellActionButtonStyle}"
+                                            Command="{Binding DataContext.DuplicateFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
                                             ToolTip="Nhân bản form"
-                                            Width="30" Height="30">
-                                        <md:PackIcon Kind="ContentDuplicate" Width="16" Height="16" />
-                                    </Button>
-                                    <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                            Command="{Binding DataContext.DeleteFormCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                            Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
+                                            Content="⧉" />
+                                    <Button Style="{StaticResource CellDeleteButtonStyle}"
+                                            Command="{Binding DataContext.DeleteFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
                                             ToolTip="Ẩn form"
-                                            Width="30" Height="30">
-                                        <md:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
-                                    </Button>
+                                            Content="🗑" />
                                 </StackPanel>
                             </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
-        </md:Card>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
+                </dxg:GridControl.Columns>
+            </dxg:GridControl>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="{DynamicResource MaterialDesignToolBarBackground}"
-                CornerRadius="4">
+                Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <md:PackIcon Kind="InformationOutline" Width="14" Height="14"
-                             VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.6" Margin="6,0,16,0">
+                <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="Hiển thị {0} / {1} form">
                             <Binding Path="FilteredCount" />

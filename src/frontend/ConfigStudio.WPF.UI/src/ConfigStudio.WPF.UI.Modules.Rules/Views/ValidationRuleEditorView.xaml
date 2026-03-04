@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -24,8 +26,9 @@
         <!-- ═══════════════════════════════════════════════════════════
              ROW 0: Header + Toolbar
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -34,21 +37,21 @@
 
                 <!-- Title -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding BackCommand}"
-                            ToolTip="Quay lại Field Config">
-                        <md:PackIcon Kind="ArrowLeft" />
+                    <Button Command="{Binding BackCommand}" ToolTip="Quay lại Field Config"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="←" FontSize="16" VerticalAlignment="Center" />
                     </Button>
                     <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource MaterialDesignHeadline6TextBlock}">
+                        <TextBlock FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="Validation Rules — {0}">
                                     <Binding Path="FieldCode" />
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
-                        <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                   Opacity="0.6">
+                        <TextBlock FontSize="12" Opacity="0.6"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="Field #{0} · Form #{1} · {2} rules">
                                     <Binding Path="FieldId" />
@@ -60,61 +63,56 @@
                     </StackPanel>
 
                     <!-- Dirty indicator -->
-                    <md:PackIcon Kind="CircleSmall" Foreground="Orange"
-                                 Margin="12,0,0,0" VerticalAlignment="Center"
-                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
-                                 ToolTip="Có thay đổi chưa lưu" />
+                    <TextBlock Text="•" Foreground="Orange" FontSize="20"
+                               Margin="12,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
+                               ToolTip="Có thay đổi chưa lưu" />
                 </StackPanel>
 
                 <!-- Toolbar -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding AddRuleCommand}"
-                            Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding AddRuleCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                            <TextBlock Text="+" VerticalAlignment="Center" />
                             <TextBlock Text="Thêm Rule" Margin="6,0,0,0" />
                         </StackPanel>
-                    </Button>
+                    </dx:SimpleButton>
 
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên">
-                        <md:PackIcon Kind="ArrowUp" />
+                    <Button Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="↑" FontSize="14" VerticalAlignment="Center" />
                     </Button>
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống">
-                        <md:PackIcon Kind="ArrowDown" />
+                    <Button Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="↓" FontSize="14" VerticalAlignment="Center" />
                     </Button>
 
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
                                Margin="4,4" />
 
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding OpenExpressionBuilderCommand}"
-                            Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding OpenExpressionBuilderCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="CodeBraces" VerticalAlignment="Center" />
+                            <TextBlock Text="{}{ }" VerticalAlignment="Center" />
                             <TextBlock Text="Expression Builder" Margin="6,0,0,0" />
                         </StackPanel>
-                    </Button>
+                    </dx:SimpleButton>
 
                     <!-- Right: Save All -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                                 Margin="16,0,0,0">
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding SaveAllCommand}">
+                        <dx:SimpleButton Command="{Binding SaveAllCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="ContentSave" VerticalAlignment="Center" />
+                                <TextBlock Text="💾" VerticalAlignment="Center" />
                                 <TextBlock Text="Lưu tất cả" Margin="6,0,0,0" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
                     </StackPanel>
                 </StackPanel>
             </Grid>
-        </md:Card>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: DataGrid + Edit Panel
+             ROW 1: GridControl + Edit Panel
              ═══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
@@ -122,134 +120,96 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- DataGrid -->
-            <md:Card Grid.Column="0" Padding="0"
-                     md:ElevationAssist.Elevation="Dp1">
-                <DataGrid ItemsSource="{Binding Rules}"
-                          SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
-                          AutoGenerateColumns="False"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          IsReadOnly="True"
-                          SelectionMode="Single"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          BorderThickness="0"
-                          Style="{StaticResource MaterialDesignDataGrid}">
-
-                    <DataGrid.InputBindings>
-                        <MouseBinding MouseAction="LeftDoubleClick"
-                                      Command="{Binding EditRuleCommand}" />
-                    </DataGrid.InputBindings>
-
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="#"
-                                            Binding="{Binding OrderNo}"
-                                            Width="40" />
-
-                        <DataGridTextColumn Header="Loại Rule"
-                                            Binding="{Binding RuleTypeCode}"
-                                            Width="120" />
-
-                        <DataGridTextColumn Header="Expression"
-                                            Binding="{Binding ExpressionPreview}"
-                                            Width="*" />
-
-                        <DataGridTextColumn Header="Error Key"
-                                            Binding="{Binding ErrorKey}"
-                                            Width="150" />
-
-                        <DataGridTextColumn Header="Severity"
-                                            Binding="{Binding Severity}"
-                                            Width="90" />
-
-                        <DataGridCheckBoxColumn Header="Active"
-                                                Binding="{Binding IsActive}"
-                                                Width="65" />
-
-                        <!-- Actions -->
-                        <DataGridTemplateColumn Header="" Width="90">
-                            <DataGridTemplateColumn.CellTemplate>
+            <!-- GridControl -->
+            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                <dxg:GridControl ItemsSource="{Binding Rules}"
+                                 SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                                 AutoPopulateColumns="False">
+                    <dxg:GridControl.View>
+                        <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                       AllowPerPixelScrolling="True" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn Header="#" FieldName="OrderNo" Width="40" />
+                        <dxg:GridColumn Header="Loại Rule" FieldName="RuleTypeCode" Width="120" />
+                        <dxg:GridColumn Header="Expression" FieldName="ExpressionPreview" Width="*" />
+                        <dxg:GridColumn Header="Error Key" FieldName="ErrorKey" Width="150" />
+                        <dxg:GridColumn Header="Severity" FieldName="Severity" Width="90" />
+                        <dxg:GridColumn Header="Active" FieldName="IsActive" Width="65" />
+                        <dxg:GridColumn Header="" Width="90" AllowEditing="False" AllowSorting="False">
+                            <dxg:GridColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal">
-                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                Command="{Binding DataContext.EditRuleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                ToolTip="Sửa rule" Width="30" Height="30">
-                                            <md:PackIcon Kind="PencilOutline" Width="16" Height="16" />
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding DataContext.EditRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                CommandParameter="{Binding Row}"
+                                                ToolTip="Sửa rule" Width="30" Height="30"
+                                                Background="Transparent" BorderBrush="Transparent">
+                                            <TextBlock Text="✎" />
                                         </Button>
-                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                ToolTip="Xóa rule" Width="30" Height="30">
-                                            <md:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                                        <Button Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                CommandParameter="{Binding Row}"
+                                                Foreground="#EF4444"
+                                                ToolTip="Xóa rule" Width="30" Height="30"
+                                                Background="Transparent" BorderBrush="Transparent">
+                                            <TextBlock Text="🗑" />
                                         </Button>
                                     </StackPanel>
                                 </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </md:Card>
+                            </dxg:GridColumn.CellTemplate>
+                        </dxg:GridColumn>
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </Border>
 
-            <!-- Edit Panel (hiện khi IsEditPanelOpen = true) -->
-            <md:Card Grid.Column="1" Width="320" Padding="16" Margin="8,0,0,0"
-                     md:ElevationAssist.Elevation="Dp2"
-                     Visibility="{Binding IsEditPanelOpen, Converter={StaticResource BoolToVis}}">
+            <!-- Edit Panel -->
+            <Border Grid.Column="1" Width="320" Margin="8,0,0,0"
+                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
+                    Padding="16"
+                    Visibility="{Binding IsEditPanelOpen, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Text="Chi tiết Rule"
-                               Style="{StaticResource MaterialDesignHeadline6TextBlock}"
+                               FontSize="20" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
                                Margin="0,0,0,16" />
 
-                    <ComboBox md:HintAssist.Hint="Loại Rule"
-                              md:HintAssist.IsFloating="True"
-                              ItemsSource="{Binding RuleTypeOptions}"
-                              SelectedItem="{Binding EditRuleType}"
-                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                              Margin="0,0,0,12" />
+                    <dxe:ComboBoxEdit NullText="Loại Rule"
+                                      ItemsSource="{Binding RuleTypeOptions}"
+                                      EditValue="{Binding EditRuleType}"
+                                      Margin="0,0,0,12" />
 
-                    <ComboBox md:HintAssist.Hint="Severity"
-                              md:HintAssist.IsFloating="True"
-                              ItemsSource="{Binding SeverityOptions}"
-                              SelectedItem="{Binding EditSeverity}"
-                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                              Margin="0,0,0,12" />
+                    <dxe:ComboBoxEdit NullText="Severity"
+                                      ItemsSource="{Binding SeverityOptions}"
+                                      EditValue="{Binding EditSeverity}"
+                                      Margin="0,0,0,12" />
 
-                    <TextBox md:HintAssist.Hint="Error Key (i18n)"
-                             md:HintAssist.IsFloating="True"
-                             Text="{Binding EditErrorKey, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             Margin="0,0,0,12" />
+                    <dxe:TextEdit NullText="Error Key (i18n)"
+                                  EditValue="{Binding EditErrorKey, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="0,0,0,12" />
 
-                    <TextBox md:HintAssist.Hint="Expression Preview"
-                             md:HintAssist.IsFloating="True"
-                             Text="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             IsReadOnly="True"
-                             Margin="0,0,0,16" />
+                    <dxe:TextEdit NullText="Expression Preview"
+                                  EditValue="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
+                                  IsReadOnly="True"
+                                  Margin="0,0,0,16" />
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Style="{StaticResource MaterialDesignFlatButton}"
-                                Command="{Binding CancelEditCommand}"
-                                Content="Hủy" Margin="0,0,8,0" />
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding SaveRuleCommand}"
-                                Content="Áp dụng" />
+                        <Button Command="{Binding CancelEditCommand}"
+                                Content="Hủy" Margin="0,0,8,0"
+                                Background="Transparent" BorderBrush="Transparent" />
+                        <dx:SimpleButton Command="{Binding SaveRuleCommand}"
+                                         Content="Áp dụng" />
                     </StackPanel>
                 </StackPanel>
-            </md:Card>
+            </Border>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="{DynamicResource MaterialDesignToolBarBackground}"
-                CornerRadius="4">
+                Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <md:PackIcon Kind="ShieldCheckOutline" Width="14" Height="14"
-                             VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.6" Margin="6,0,0,0">
+                <TextBlock Text="🛡" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0} rules · Field: {1}">
                             <Binding Path="Rules.Count" />

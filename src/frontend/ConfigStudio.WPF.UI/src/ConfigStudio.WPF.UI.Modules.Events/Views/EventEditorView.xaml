@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -24,23 +25,26 @@
         <!-- ═══════════════════════════════════════════════════════════
              ROW 0: Header + Toolbar
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding BackCommand}" ToolTip="Quay lại Field Config">
-                        <md:PackIcon Kind="ArrowLeft" />
+                    <Button Command="{Binding BackCommand}" ToolTip="Quay lại Field Config"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="←" FontSize="16" VerticalAlignment="Center" />
                     </Button>
                     <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource MaterialDesignHeadline6TextBlock}">
+                        <TextBlock FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="Events — {0}">
                                     <Binding Path="FieldCode" />
                                 </MultiBinding>
                             </TextBlock.Text>
                         </TextBlock>
-                        <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}" Opacity="0.6">
+                        <TextBlock FontSize="12" Opacity="0.6"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
                             <TextBlock.Text>
                                 <MultiBinding StringFormat="Field #{0} · {1} events">
                                     <Binding Path="FieldId" />
@@ -49,33 +53,31 @@
                             </TextBlock.Text>
                         </TextBlock>
                     </StackPanel>
-                    <md:PackIcon Kind="CircleSmall" Foreground="Orange" Margin="12,0,0,0"
-                                 VerticalAlignment="Center"
-                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
+                    <TextBlock Text="•" Foreground="Orange" FontSize="20"
+                               Margin="12,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding AddEventCommand}" Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding AddEventCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                            <TextBlock Text="+" VerticalAlignment="Center" />
                             <TextBlock Text="Thêm Event" Margin="6,0,0,0" />
                         </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                            Command="{Binding SaveAllCommand}">
+                    </dx:SimpleButton>
+                    <dx:SimpleButton Command="{Binding SaveAllCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="ContentSave" VerticalAlignment="Center" />
+                            <TextBlock Text="💾" VerticalAlignment="Center" />
                             <TextBlock Text="Lưu" Margin="6,0,0,0" />
                         </StackPanel>
-                    </Button>
+                    </dx:SimpleButton>
                 </StackPanel>
             </DockPanel>
-        </md:Card>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: Events DataGrid (left) + Actions panel (right)
+             ROW 1: Events GridControl (left) + Actions panel (right)
              ═══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
@@ -84,111 +86,111 @@
                 <ColumnDefinition Width="350" />
             </Grid.ColumnDefinitions>
 
-            <!-- Events DataGrid -->
-            <md:Card Grid.Column="0" Padding="0" md:ElevationAssist.Elevation="Dp1">
+            <!-- Events GridControl -->
+            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Events" Margin="12,12,12,8"
-                               Style="{StaticResource MaterialDesignSubtitle1TextBlock}" />
-                    <DataGrid ItemsSource="{Binding Events}"
-                              SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False" CanUserDeleteRows="False"
-                              IsReadOnly="True" SelectionMode="Single"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              BorderThickness="0"
-                              Style="{StaticResource MaterialDesignDataGrid}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="#" Binding="{Binding OrderNo}" Width="40" />
-                            <DataGridTextColumn Header="Trigger" Binding="{Binding TriggerCode}" Width="100" />
-                            <DataGridTextColumn Header="Condition" Binding="{Binding ConditionPreview}" Width="*" />
-                            <DataGridTextColumn Header="Actions" Binding="{Binding ActionsCount}" Width="70" />
-                            <DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="60" />
-                            <DataGridTemplateColumn Header="" Width="70">
-                                <DataGridTemplateColumn.CellTemplate>
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    <dxg:GridControl ItemsSource="{Binding Events}"
+                                     SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                           AllowPerPixelScrolling="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#" FieldName="OrderNo" Width="40" />
+                            <dxg:GridColumn Header="Trigger" FieldName="TriggerCode" Width="100" />
+                            <dxg:GridColumn Header="Condition" FieldName="ConditionPreview" Width="*" />
+                            <dxg:GridColumn Header="Actions" FieldName="ActionsCount" Width="70" />
+                            <dxg:GridColumn Header="Active" FieldName="IsActive" Width="60" />
+                            <dxg:GridColumn Header="" Width="70" AllowEditing="False" AllowSorting="False">
+                                <dxg:GridColumn.CellTemplate>
                                     <DataTemplate>
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    Command="{Binding DataContext.EditConditionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    ToolTip="Sửa condition" Width="30" Height="30">
-                                                <md:PackIcon Kind="CodeBraces" Width="16" Height="16" />
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Button Command="{Binding DataContext.EditConditionCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    ToolTip="Sửa condition" Width="30" Height="30"
+                                                    Background="Transparent" BorderBrush="Transparent">
+                                                <TextBlock Text="{}{ }" />
                                             </Button>
-                                            <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                    Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                    Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                    ToolTip="Xóa event" Width="30" Height="30">
-                                                <md:PackIcon Kind="DeleteOutline" Width="16" Height="16" />
+                                            <Button Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    Foreground="#EF4444"
+                                                    ToolTip="Xóa event" Width="30" Height="30"
+                                                    Background="Transparent" BorderBrush="Transparent">
+                                                <TextBlock Text="🗑" />
                                             </Button>
                                         </StackPanel>
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
                 </DockPanel>
-            </md:Card>
+            </Border>
 
             <GridSplitter Grid.Column="1" Width="4" Background="Transparent"
                           HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
             <!-- Actions panel -->
-            <md:Card Grid.Column="2" Padding="0" md:ElevationAssist.Elevation="Dp1">
+            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="12,12,12,8">
                         <TextBlock Text="Actions" DockPanel.Dock="Left"
-                                   Style="{StaticResource MaterialDesignSubtitle1TextBlock}"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}"
                                    VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
-                                Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{Binding AddActionCommand}"
-                                Height="28" Padding="8,0">
+                        <dx:SimpleButton DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                         Command="{Binding AddActionCommand}"
+                                         Height="28" Padding="8,0">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Plus" Width="14" Height="14" VerticalAlignment="Center" />
+                                <TextBlock Text="+" Width="14" Height="14" VerticalAlignment="Center" />
                                 <TextBlock Text="Thêm" Margin="4,0,0,0" FontSize="12" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
                     </DockPanel>
 
-                    <!-- Actions list -->
-                    <DataGrid ItemsSource="{Binding Actions}"
-                              SelectedItem="{Binding SelectedAction, Mode=TwoWay}"
-                              AutoGenerateColumns="False"
-                              CanUserAddRows="False" CanUserDeleteRows="False"
-                              IsReadOnly="True" SelectionMode="Single"
-                              HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                              BorderThickness="0"
-                              Style="{StaticResource MaterialDesignDataGrid}">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="#" Binding="{Binding OrderNo}" Width="35" />
-                            <DataGridTextColumn Header="Action" Binding="{Binding ActionType}" Width="110" />
-                            <DataGridTextColumn Header="Target" Binding="{Binding TargetField}" Width="*" />
-                            <DataGridTemplateColumn Header="" Width="35">
-                                <DataGridTemplateColumn.CellTemplate>
+                    <!-- Actions GridControl -->
+                    <dxg:GridControl ItemsSource="{Binding Actions}"
+                                     SelectedItem="{Binding SelectedAction, Mode=TwoWay}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                           AllowPerPixelScrolling="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#" FieldName="OrderNo" Width="35" />
+                            <dxg:GridColumn Header="Action" FieldName="ActionType" Width="110" />
+                            <dxg:GridColumn Header="Target" FieldName="TargetField" Width="*" />
+                            <dxg:GridColumn Header="" Width="35" AllowEditing="False" AllowSorting="False">
+                                <dxg:GridColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                                Command="{Binding DataContext.DeleteActionCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                                Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                                ToolTip="Xóa action" Width="28" Height="28">
-                                            <md:PackIcon Kind="Close" Width="14" Height="14" />
+                                        <Button Command="{Binding DataContext.DeleteActionCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                CommandParameter="{Binding Row}"
+                                                Foreground="#EF4444"
+                                                ToolTip="Xóa action" Width="28" Height="28"
+                                                Background="Transparent" BorderBrush="Transparent">
+                                            <TextBlock Text="✕" />
                                         </Button>
                                     </DataTemplate>
-                                </DataGridTemplateColumn.CellTemplate>
-                            </DataGridTemplateColumn>
-                        </DataGrid.Columns>
-                    </DataGrid>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
                 </DockPanel>
-            </md:Card>
+            </Border>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="{DynamicResource MaterialDesignToolBarBackground}" CornerRadius="4">
+                Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <md:PackIcon Kind="LightningBolt" Width="14" Height="14"
-                             VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.6" Margin="6,0,0,0">
+                <TextBlock Text="⚡" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0} events · Field: {1}">
                             <Binding Path="Events.Count" />

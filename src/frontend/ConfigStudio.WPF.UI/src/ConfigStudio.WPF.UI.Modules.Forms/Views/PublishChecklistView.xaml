@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:prism="http://prismlibrary.com/"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Models"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -14,21 +14,22 @@
     <DockPanel>
         <!-- ── Header ─────────────────────────────────────────── -->
         <Border DockPanel.Dock="Top" Height="52"
-                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                Background="{DynamicResource ShellTitleBarBackgroundBrush}"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
                 <Button DockPanel.Dock="Left"
                         Command="{Binding BackCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
-                        Foreground="White" ToolTip="Quay lại Form Editor">
+                        ToolTip="Quay lại Form Editor"
+                        Background="Transparent" BorderBrush="Transparent"
+                        Foreground="White">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeft" VerticalAlignment="Center" />
-                        <TextBlock Text="Back" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="←" FontSize="16" Foreground="White" VerticalAlignment="Center" />
+                        <TextBlock Text="Back" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="White" />
                     </StackPanel>
                 </Button>
 
-                <materialDesign:PackIcon Kind="CheckboxMarkedCircleOutline" Width="24" Height="24"
-                                         Foreground="White" VerticalAlignment="Center" Margin="12,0,0,0" />
+                <TextBlock Text="✅" FontSize="18" Foreground="White"
+                           VerticalAlignment="Center" Margin="12,0,0,0" />
                 <TextBlock Margin="8,0,0,0" Foreground="White" FontSize="16"
                            FontWeight="SemiBold" VerticalAlignment="Center">
                     <Run Text="Publish Checklist — " />
@@ -37,11 +38,12 @@
 
                 <Button DockPanel.Dock="Right"
                         Command="{Binding RunAllChecksCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
+                        Background="Transparent" BorderBrush="Transparent"
                         Foreground="White" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="PlayCircleOutline" VerticalAlignment="Center" />
-                        <TextBlock Text="Run All Checks" Margin="6,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="▶" Foreground="White" VerticalAlignment="Center" />
+                        <TextBlock Text="Run All Checks" Margin="6,0,0,0"
+                                   VerticalAlignment="Center" Foreground="White" />
                     </StackPanel>
                 </Button>
             </DockPanel>
@@ -49,30 +51,25 @@
 
         <!-- ── Footer ─────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom" Height="60"
-                Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
-                BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
-                BorderThickness="0,1,0,0"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
-                <!-- Summary -->
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Summary}" FontSize="14"
-                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
                                VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- Actions -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Command="{Binding BackCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Content="Back to Form Editor" Margin="0,0,8,0" />
-                    <Button Command="{Binding PublishCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}">
+                    <dx:SimpleButton Command="{Binding BackCommand}"
+                                     Content="Back to Form Editor" Margin="0,0,8,0" />
+                    <dx:SimpleButton Command="{Binding PublishCommand}">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Publish" VerticalAlignment="Center" />
+                            <TextBlock Text="▶" VerticalAlignment="Center" />
                             <TextBlock Text="Publish" Margin="6,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
-                    </Button>
+                    </dx:SimpleButton>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -82,45 +79,39 @@
             <ItemsControl ItemsSource="{Binding ChecklistItems}" Margin="24,16">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ChecklistItem}">
-                        <materialDesign:Card Padding="12,10" Margin="0,0,0,6">
+                        <Border Padding="12,10" Margin="0,0,0,6"
+                                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="4"
+                                Background="{DynamicResource ShellContentBackgroundBrush}">
                             <DockPanel>
-                                <!-- Jump To button (hiện nếu failed + có JumpToView) -->
+                                <!-- Jump To button -->
                                 <Button DockPanel.Dock="Right"
                                         Command="{Binding DataContext.JumpToCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}"
-                                        Style="{StaticResource MaterialDesignFlatButton}"
                                         Content="Jump To"
                                         Padding="8,4" FontSize="12"
-                                        ToolTip="Navigate đến editor để sửa lỗi">
-                                    <Button.Visibility>
-                                        <MultiBinding FallbackValue="Collapsed">
-                                            <MultiBinding.Converter>
-                                                <StaticResource ResourceKey="BooleanToVisibilityConverter" />
-                                            </MultiBinding.Converter>
-                                            <Binding Path="IsFailed" />
-                                        </MultiBinding>
-                                    </Button.Visibility>
-                                </Button>
+                                        ToolTip="Navigate đến editor để sửa lỗi"
+                                        Background="Transparent" BorderBrush="Transparent"
+                                        Visibility="{Binding IsFailed, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}" />
 
                                 <!-- Status icon -->
-                                <materialDesign:PackIcon DockPanel.Dock="Left"
-                                                         Kind="{Binding StatusIcon}"
-                                                         Width="24" Height="24"
-                                                         Foreground="{Binding StatusColor}"
-                                                         VerticalAlignment="Center"
-                                                         Margin="0,0,12,0" />
+                                <TextBlock DockPanel.Dock="Left"
+                                           Text="{Binding StatusIcon}"
+                                           FontSize="18"
+                                           Foreground="{Binding StatusColor}"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,12,0" />
 
                                 <!-- Description + Detail -->
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Text="{Binding Description}" FontSize="14"
-                                               Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                                     <TextBlock Text="{Binding Detail}" FontSize="12"
                                                Foreground="#EF5350" TextWrapping="Wrap"
                                                Margin="0,2,0,0"
                                                Visibility="{Binding Detail, Converter={StaticResource NullableToVisibilityConverter}, FallbackValue=Collapsed}" />
                                 </StackPanel>
                             </DockPanel>
-                        </materialDesign:Card>
+                        </Border>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

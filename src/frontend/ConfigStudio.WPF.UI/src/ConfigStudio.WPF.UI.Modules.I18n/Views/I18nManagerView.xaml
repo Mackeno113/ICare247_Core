@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -24,8 +26,9 @@
         <!-- ═══════════════════════════════════════════════════════════
              ROW 0: Header + Filter
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -36,153 +39,112 @@
                 <DockPanel Grid.Row="0">
                     <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                         <TextBlock Text="i18n Manager"
-                                   Style="{StaticResource MaterialDesignHeadline5TextBlock}" />
+                                   FontSize="24" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         <TextBlock Text="Quản lý resource key đa ngôn ngữ"
-                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                   Opacity="0.6" Margin="0,2,0,0" />
+                                   FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{Binding ImportCommand}"
-                                Margin="0,0,8,0" Height="34">
+                        <dx:SimpleButton Command="{Binding ImportCommand}"
+                                         Margin="0,0,8,0" Height="34">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Import" VerticalAlignment="Center" />
-                                <TextBlock Text="Import" Margin="4,0,0,0" />
+                                <TextBlock Text="Import" VerticalAlignment="Center" />
                             </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{Binding ExportCommand}"
-                                Margin="0,0,8,0" Height="34">
+                        </dx:SimpleButton>
+                        <dx:SimpleButton Command="{Binding ExportCommand}"
+                                         Margin="0,0,8,0" Height="34">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Export" VerticalAlignment="Center" />
-                                <TextBlock Text="Export" Margin="4,0,0,0" />
+                                <TextBlock Text="Export" VerticalAlignment="Center" />
                             </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignIconButton}"
-                                Command="{Binding RefreshCommand}" ToolTip="Làm mới">
-                            <md:PackIcon Kind="Refresh" />
-                        </Button>
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding AddEntryCommand}" Margin="8,0,0,0">
+                        </dx:SimpleButton>
+                        <dx:SimpleButton Command="{Binding RefreshCommand}" ToolTip="Làm mới"
+                                         Width="32" Height="32" Content="↻" FontSize="16"
+                                         Margin="0,0,8,0" />
+                        <dx:SimpleButton Command="{Binding AddEntryCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Plus" VerticalAlignment="Center" />
+                                <TextBlock Text="+" VerticalAlignment="Center" />
                                 <TextBlock Text="Thêm Key" Margin="6,0,0,0" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
                     </StackPanel>
                 </DockPanel>
 
                 <!-- Filter bar -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <TextBox Width="280"
-                             md:HintAssist.Hint="Tìm key, giá trị vi-VN hoặc en-US..."
-                             md:HintAssist.IsFloating="False"
-                             md:TextFieldAssist.HasClearButton="True"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             Margin="0,0,12,0" />
+                    <dxe:TextEdit Width="280"
+                                  NullText="Tìm key, giá trị vi-VN hoặc en-US..."
+                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                  Margin="0,0,12,0" />
 
-                    <ComboBox Width="130"
-                              md:HintAssist.Hint="Module"
-                              md:HintAssist.IsFloating="True"
-                              ItemsSource="{Binding ModuleOptions}"
-                              SelectedItem="{Binding ModuleFilter}"
-                              Style="{StaticResource MaterialDesignOutlinedComboBox}"
-                              Margin="0,0,12,0" />
+                    <dxe:ComboBoxEdit Width="130"
+                                      NullText="Module"
+                                      ItemsSource="{Binding ModuleOptions}"
+                                      EditValue="{Binding ModuleFilter}"
+                                      Margin="0,0,12,0" />
 
-                    <CheckBox Content="Chỉ hiện thiếu bản dịch"
-                              IsChecked="{Binding ShowMissingOnly}"
-                              VerticalAlignment="Center"
-                              Style="{StaticResource MaterialDesignCheckBox}" />
+                    <dxe:CheckEdit Content="Chỉ hiện thiếu bản dịch"
+                                   IsChecked="{Binding ShowMissingOnly}"
+                                   VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
-        </md:Card>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: DataGrid — key/language matrix (editable)
+             ROW 1: GridControl — key/language matrix (editable)
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="1" Margin="16,8,16,0" Padding="0"
-                 md:ElevationAssist.Elevation="Dp1">
-            <DataGrid ItemsSource="{Binding EntriesView}"
-                      SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                      AutoGenerateColumns="False"
-                      CanUserAddRows="False" CanUserDeleteRows="False"
-                      SelectionMode="Single"
-                      HeadersVisibility="Column"
-                      GridLinesVisibility="All"
-                      BorderThickness="0"
-                      Style="{StaticResource MaterialDesignDataGrid}">
-
-                <DataGrid.Columns>
-                    <!-- Key (read-only display) -->
-                    <DataGridTextColumn Header="Resource Key"
-                                        Binding="{Binding ResourceKey}"
-                                        Width="180"
-                                        IsReadOnly="True" />
-
-                    <!-- Module -->
-                    <DataGridTextColumn Header="Module"
-                                        Binding="{Binding Module}"
-                                        Width="80"
-                                        IsReadOnly="True" />
-
-                    <!-- vi-VN (editable) -->
-                    <DataGridTextColumn Header="vi-VN"
-                                        Binding="{Binding ViVn, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="*" />
-
-                    <!-- en-US (editable) -->
-                    <DataGridTextColumn Header="en-US"
-                                        Binding="{Binding EnUs, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="*" />
-
-                    <!-- ja-JP (editable) -->
-                    <DataGridTextColumn Header="ja-JP"
-                                        Binding="{Binding JaJp, UpdateSourceTrigger=PropertyChanged}"
-                                        Width="*" />
-
-                    <!-- Missing indicator -->
-                    <DataGridTemplateColumn Header="" Width="35">
-                        <DataGridTemplateColumn.CellTemplate>
+        <Border Grid.Row="1" Margin="16,8,16,0"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <dxg:GridControl ItemsSource="{Binding EntriesView}"
+                             SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                             AutoPopulateColumns="False">
+                <dxg:GridControl.View>
+                    <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                   AllowPerPixelScrolling="True" />
+                </dxg:GridControl.View>
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn Header="Resource Key" FieldName="ResourceKey" Width="180" AllowEditing="False" />
+                    <dxg:GridColumn Header="Module" FieldName="Module" Width="80" AllowEditing="False" />
+                    <dxg:GridColumn Header="vi-VN" FieldName="ViVn" Width="*" />
+                    <dxg:GridColumn Header="en-US" FieldName="EnUs" Width="*" />
+                    <dxg:GridColumn Header="ja-JP" FieldName="JaJp" Width="*" />
+                    <dxg:GridColumn Header="" Width="35" AllowEditing="False" AllowSorting="False">
+                        <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
-                                <md:PackIcon Kind="AlertOutline"
-                                             Foreground="Orange" Width="16" Height="16"
-                                             VerticalAlignment="Center" HorizontalAlignment="Center"
-                                             Visibility="{Binding HasMissing, Converter={StaticResource BoolToVis}}"
-                                             ToolTip="Thiếu bản dịch" />
+                                <TextBlock Text="⚠" FontSize="14" Foreground="Orange"
+                                           VerticalAlignment="Center" HorizontalAlignment="Center"
+                                           Visibility="{Binding Row.HasMissing, Converter={StaticResource BoolToVis}}"
+                                           ToolTip="Thiếu bản dịch" />
                             </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-
-                    <!-- Delete -->
-                    <DataGridTemplateColumn Header="" Width="40">
-                        <DataGridTemplateColumn.CellTemplate>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn Header="" Width="40" AllowEditing="False" AllowSorting="False">
+                        <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Style="{StaticResource MaterialDesignIconForegroundButton}"
-                                        Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                        Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                                        ToolTip="Xóa key" Width="28" Height="28">
-                                    <md:PackIcon Kind="DeleteOutline" Width="14" Height="14" />
+                                <Button Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                        CommandParameter="{Binding Row}"
+                                        Foreground="#EF4444"
+                                        ToolTip="Xóa key" Width="28" Height="28"
+                                        Background="Transparent" BorderBrush="Transparent">
+                                    <TextBlock Text="🗑" />
                                 </Button>
                             </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
-        </md:Card>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
+                </dxg:GridControl.Columns>
+            </dxg:GridControl>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="{DynamicResource MaterialDesignToolBarBackground}" CornerRadius="4">
+                Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <md:PackIcon Kind="Translate" Width="14" Height="14"
-                             VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.6" Margin="6,0,16,0">
+                <TextBlock Text="🌐" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,16,0" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="Hiển thị {0} / {1} keys · {2} thiếu bản dịch">
                             <Binding Path="FilteredCount" />

@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:prism="http://prismlibrary.com/"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
              prism:ViewModelLocator.AutoWireViewModel="True"
              MinWidth="800" MinHeight="600"
@@ -23,11 +24,11 @@
     <DockPanel>
         <!-- ── TitleBar / Context ─────────────────────────────── -->
         <Border DockPanel.Dock="Top" Height="44"
-                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                Background="{DynamicResource ShellTitleBarBackgroundBrush}"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
-                <materialDesign:PackIcon Kind="Function" Width="24" Height="24"
-                                         Foreground="White" VerticalAlignment="Center" />
+                <TextBlock Text="f()" FontSize="18" Foreground="White"
+                           VerticalAlignment="Center" />
                 <TextBlock Text="Expression Builder" Margin="8,0,0,0"
                            Foreground="White" FontSize="16" FontWeight="SemiBold"
                            VerticalAlignment="Center" />
@@ -43,45 +44,41 @@
 
         <!-- ── Footer ─────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom" Height="52"
-                Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
-                BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
-                BorderThickness="0,1,0,0"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
-                    <Button Command="{Binding ApplyCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding ApplyCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Check" VerticalAlignment="Center" />
+                            <TextBlock Text="✓" VerticalAlignment="Center" />
                             <TextBlock Text="Apply Expression" Margin="6,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
-                    </Button>
-                    <Button Command="{Binding CancelCommand}"
-                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Content="Cancel" Margin="0,0,8,0" />
+                    </dx:SimpleButton>
+                    <dx:SimpleButton Command="{Binding CancelCommand}"
+                                     Content="Cancel" Margin="0,0,8,0" />
                     <Button Command="{Binding ResetCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            ToolTip="Xóa toàn bộ expression">
+                            ToolTip="Xóa toàn bộ expression"
+                            Background="Transparent" BorderBrush="Transparent">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Refresh" VerticalAlignment="Center" />
+                            <TextBlock Text="↻" VerticalAlignment="Center" />
                             <TextBlock Text="Reset" Margin="4,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
 
                 <Button DockPanel.Dock="Right" Command="{Binding CopyJsonCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
-                        ToolTip="Copy JSON to clipboard">
+                        ToolTip="Copy JSON to clipboard"
+                        Background="Transparent" BorderBrush="Transparent">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ContentCopy" VerticalAlignment="Center" />
+                        <TextBlock Text="⧉" VerticalAlignment="Center" />
                         <TextBlock Text="Copy JSON" Margin="4,0,0,0" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </DockPanel>
         </Border>
 
-        <!-- ── Main: 3 Columns ────────────────────────────────── -->
+        <!-- ── Main: 2 Columns ────────────────────────────────── -->
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="220" />
@@ -91,15 +88,14 @@
 
             <!-- ═══ COL 1: Palette ═════════════════════════════ -->
             <Border Grid.Column="0"
-                    Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
-                    BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
-                    BorderThickness="0,0,1,0">
+                    Background="{DynamicResource ShellContentBackgroundBrush}"
+                    BorderBrush="#D0E4FF" BorderThickness="0,0,1,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
 
                         <!-- Operators -->
                         <TextBlock Text="TOÁN TỬ" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
                                    Margin="4,8,0,8" />
                         <ItemsControl ItemsSource="{Binding OperatorItems}">
                             <ItemsControl.ItemsPanel>
@@ -109,14 +105,13 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:PaletteItem}">
-                                    <Button Content="{Binding DisplayName}"
-                                            Command="{Binding DataContext.InsertOperatorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            ToolTip="{Binding Description}"
-                                            Style="{StaticResource MaterialDesignOutlinedButton}"
-                                            Padding="8,4" Margin="2"
-                                            FontFamily="Consolas" FontSize="13"
-                                            MinWidth="36" Height="32" />
+                                    <dx:SimpleButton Content="{Binding DisplayName}"
+                                                     Command="{Binding DataContext.InsertOperatorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                     CommandParameter="{Binding}"
+                                                     ToolTip="{Binding Description}"
+                                                     Padding="8,4" Margin="2"
+                                                     FontFamily="Consolas" FontSize="13"
+                                                     MinWidth="36" Height="32" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
@@ -125,17 +120,13 @@
 
                         <!-- Functions -->
                         <TextBlock Text="HÀM" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
                                    Margin="4,0,0,8" />
-                        <TextBox Text="{Binding FunctionSearch, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 materialDesign:HintAssist.Hint="Tìm hàm..."
-                                 materialDesign:TextFieldAssist.HasLeadingIcon="True"
-                                 materialDesign:TextFieldAssist.LeadingIcon="Magnify"
-                                 Margin="0,0,0,8" FontSize="12" />
+                        <dxe:TextEdit EditValue="{Binding FunctionSearch, UpdateSourceTrigger=PropertyChanged}"
+                                      NullText="Tìm hàm..."
+                                      Margin="0,0,0,8" FontSize="12" />
                         <ListBox ItemsSource="{Binding FilteredFunctions}"
-                                 MaxHeight="200"
-                                 Style="{StaticResource MaterialDesignListBox}">
+                                 MaxHeight="200">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:PaletteItem}">
                                     <Border Padding="4,2" Cursor="Hand"
@@ -147,9 +138,9 @@
                                                           CommandParameter="{Binding}" />
                                         </Border.InputBindings>
                                         <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="Function" Width="14" Height="14"
-                                                                     Foreground="{DynamicResource MaterialDesign.Brush.Secondary}"
-                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="f()" Width="14" FontSize="11"
+                                                       Foreground="#0891B2"
+                                                       VerticalAlignment="Center" Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding DisplayName}" FontFamily="Consolas" FontSize="12" />
                                         </StackPanel>
                                     </Border>
@@ -161,11 +152,10 @@
 
                         <!-- Fields -->
                         <TextBlock Text="FIELD (Form Context)" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
                                    Margin="4,0,0,8" />
                         <ListBox ItemsSource="{Binding FieldItems}"
-                                 MaxHeight="200"
-                                 Style="{StaticResource MaterialDesignListBox}">
+                                 MaxHeight="200">
                             <ListBox.ItemTemplate>
                                 <DataTemplate DataType="{x:Type models:PaletteItem}">
                                     <Border Padding="4,2" Cursor="Hand"
@@ -177,12 +167,12 @@
                                                           CommandParameter="{Binding}" />
                                         </Border.InputBindings>
                                         <StackPanel Orientation="Horizontal">
-                                            <materialDesign:PackIcon Kind="MapMarker" Width="14" Height="14"
-                                                                     Foreground="#66BB6A"
-                                                                     VerticalAlignment="Center" Margin="0,0,6,0" />
+                                            <TextBlock Text="●" Width="14" FontSize="11"
+                                                       Foreground="#66BB6A"
+                                                       VerticalAlignment="Center" Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding Code}" FontWeight="SemiBold" FontSize="12" />
                                             <TextBlock Text="{Binding NetType, StringFormat=' ({0})'}"
-                                                       FontSize="11" Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                                                       FontSize="11" Opacity="0.6" />
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -195,7 +185,7 @@
 
             <!-- GridSplitter -->
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-                          Background="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}" />
+                          Background="#D0E4FF" />
 
             <!-- ═══ COL 3: Right Panel ═════════════════════════ -->
             <Grid Grid.Column="2" Margin="8">
@@ -206,32 +196,33 @@
                 </Grid.RowDefinitions>
 
                 <!-- AST Tree -->
-                <materialDesign:Card Grid.Row="0" Padding="8" Margin="0,0,0,8">
+                <Border Grid.Row="0" Padding="8" Margin="0,0,0,8"
+                        BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="AST Tree" FontSize="14" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                       Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
                                        VerticalAlignment="Center" />
                             <Button Command="{Binding DeleteSelectedNodeCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    ToolTip="Delete selected node" Padding="4" Margin="12,0,0,0">
-                                <materialDesign:PackIcon Kind="Delete" Width="18" Height="18" />
+                                    ToolTip="Delete selected node" Padding="4" Margin="12,0,0,0"
+                                    Background="Transparent" BorderBrush="Transparent">
+                                <TextBlock Text="🗑" FontSize="14" />
                             </Button>
                             <Button Command="{Binding WrapInBinaryCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    ToolTip="Wrap in Binary (&amp;&amp;)" Padding="4">
-                                <materialDesign:PackIcon Kind="CodeBrackets" Width="18" Height="18" />
+                                    ToolTip="Wrap in Binary (&amp;&amp;)" Padding="4"
+                                    Background="Transparent" BorderBrush="Transparent">
+                                <TextBlock Text="[ ]" FontSize="14" />
                             </Button>
                             <Button Command="{Binding WrapInUnaryCommand}"
-                                    Style="{StaticResource MaterialDesignFlatButton}"
-                                    ToolTip="Wrap in Unary (!)" Padding="4">
-                                <materialDesign:PackIcon Kind="ExclamationThick" Width="18" Height="18" />
+                                    ToolTip="Wrap in Unary (!)" Padding="4"
+                                    Background="Transparent" BorderBrush="Transparent">
+                                <TextBlock Text="!" FontSize="14" />
                             </Button>
                         </StackPanel>
 
                         <TreeView ItemsSource="{Binding RootNodes}">
                             <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                                <Style TargetType="TreeViewItem">
                                     <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                     <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                 </Style>
@@ -240,10 +231,10 @@
                                 <HierarchicalDataTemplate DataType="{x:Type models:AstNodeViewModel}"
                                                           ItemsSource="{Binding Children}">
                                     <StackPanel Orientation="Horizontal" Margin="2">
-                                        <materialDesign:PackIcon Kind="{Binding IconKind}"
-                                                                 Width="18" Height="18"
-                                                                 VerticalAlignment="Center"
-                                                                 Foreground="{DynamicResource MaterialDesign.Brush.Secondary}" />
+                                        <TextBlock Text="{Binding IconText}"
+                                                   Width="18" FontSize="13"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#0891B2" />
                                         <TextBlock Text="{Binding DisplayText}" Margin="6,0,0,0"
                                                    FontSize="13" VerticalAlignment="Center" />
                                     </StackPanel>
@@ -251,20 +242,20 @@
                             </TreeView.ItemTemplate>
                         </TreeView>
                     </DockPanel>
-                </materialDesign:Card>
+                </Border>
 
                 <!-- Preview & Validation -->
-                <materialDesign:Card Grid.Row="1" Padding="12" Margin="0,0,0,8">
+                <Border Grid.Row="1" Padding="12" Margin="0,0,0,8"
+                        BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                     <StackPanel>
                         <TextBlock Text="Preview &amp; Validation" FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Primary}"
+                                   Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
                                    Margin="0,0,0,8" />
 
                         <!-- Natural Language -->
                         <DockPanel Margin="0,0,0,4">
-                            <materialDesign:PackIcon Kind="Translate" Width="16" Height="16"
-                                                     VerticalAlignment="Center" Margin="0,0,6,0"
-                                                     Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                            <TextBlock Text="🌐" Width="16"
+                                       VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.6" />
                             <TextBlock Text="{Binding NaturalLanguagePreview}"
                                        TextWrapping="Wrap" FontSize="13" />
                         </DockPanel>
@@ -273,7 +264,7 @@
                         <WrapPanel Margin="0,4,0,0">
                             <!-- Return type -->
                             <Border CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
-                                    Background="{DynamicResource MaterialDesign.Brush.Primary.Light}">
+                                    Background="{DynamicResource ShellTitleBarBackgroundBrush}">
                                 <TextBlock FontSize="11" Foreground="White">
                                     <Run Text="Return: " />
                                     <Run Text="{Binding ValidationResult.ActualReturnType, Mode=OneWay, FallbackValue='?'}" />
@@ -281,7 +272,7 @@
                             </Border>
                             <!-- Depth -->
                             <Border CornerRadius="4" Padding="6,2" Margin="0,0,8,4"
-                                    Background="{DynamicResource MaterialDesign.Brush.Primary.Light}">
+                                    Background="{DynamicResource ShellTitleBarBackgroundBrush}">
                                 <TextBlock FontSize="11" Foreground="White">
                                     <Run Text="Depth: " />
                                     <Run Text="{Binding ValidationResult.Depth, Mode=OneWay, FallbackValue='0'}" />
@@ -301,27 +292,13 @@
                                     </Style>
                                 </Border.Style>
                                 <StackPanel Orientation="Horizontal">
-                                    <materialDesign:PackIcon Width="14" Height="14" Foreground="White"
-                                                             VerticalAlignment="Center">
-                                        <materialDesign:PackIcon.Style>
-                                            <Style TargetType="materialDesign:PackIcon">
-                                                <Setter Property="Kind" Value="CloseCircle" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsValid}" Value="True">
-                                                        <Setter Property="Kind" Value="CheckCircle" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </materialDesign:PackIcon.Style>
-                                    </materialDesign:PackIcon>
-                                    <TextBlock FontSize="11" Foreground="White" Margin="4,0,0,0"
-                                               VerticalAlignment="Center">
+                                    <TextBlock FontSize="11" Foreground="White" VerticalAlignment="Center">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="Invalid" />
+                                                <Setter Property="Text" Value="✕ Invalid" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsValid}" Value="True">
-                                                        <Setter Property="Text" Value="Valid" />
+                                                        <Setter Property="Text" Value="✓ Valid" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -336,8 +313,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Margin="0,2">
-                                        <materialDesign:PackIcon Kind="AlertCircle" Width="14" Height="14"
-                                                                 Foreground="#EF5350" VerticalAlignment="Center" />
+                                        <TextBlock Text="⚠" Width="14" FontSize="11"
+                                                   Foreground="#EF5350" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding}" Margin="6,0,0,0" FontSize="12"
                                                    Foreground="#EF5350" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -345,7 +322,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </StackPanel>
-                </materialDesign:Card>
+                </Border>
 
                 <!-- JSON Output (collapsed) -->
                 <Expander Grid.Row="2" Header="JSON Output" IsExpanded="False">
@@ -353,8 +330,7 @@
                              IsReadOnly="True"
                              FontFamily="Consolas" FontSize="12"
                              AcceptsReturn="True" TextWrapping="Wrap"
-                             MaxHeight="150"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}" />
+                             MaxHeight="150" />
                 </Expander>
             </Grid>
         </Grid>

@@ -6,12 +6,21 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MaterialDesignColors" Version="5.*" />
-    <PackageReference Include="MaterialDesignThemes" Version="5.*" />
     <PackageReference Include="Prism.Unity" Version="9.*" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.Controls" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.NavBar" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.LayoutControl" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Colorful" Version="25.2.4" />
+    <PackageReference Include="DevExpress.Wpf.PrismAdapters" Version="25.2.4" />
+    <!-- DB access — Dapper + SqlClient cho Infrastructure layer -->
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.*" />
   </ItemGroup>
 
   <ItemGroup>

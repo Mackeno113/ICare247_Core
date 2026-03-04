@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -21,6 +22,8 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IFormDataService? _formDataService;
+    private readonly IAppConfigService? _appConfig;
 
     // ── Data ──────────────────────────────────────────────────
     public ObservableCollection<FormSummaryDto> Forms { get; } = [];
@@ -92,6 +95,14 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     public int TotalForms => Forms.Count;
     public int FilteredCount => FormsView.Cast<object>().Count();
 
+    // ── Loading state ──────────────────────────────────────────
+    private bool _isLoading;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        private set => SetProperty(ref _isLoading, value);
+    }
+
     // ── Commands ──────────────────────────────────────────────
     public DelegateCommand CreateFormCommand { get; }
     public DelegateCommand EditFormCommand { get; }
@@ -100,9 +111,14 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand<FormSummaryDto> OpenFormCommand { get; }
 
-    public FormManagerViewModel(IRegionManager regionManager)
+    public FormManagerViewModel(
+        IRegionManager regionManager,
+        IFormDataService? formDataService = null,
+        IAppConfigService? appConfig = null)
     {
         _regionManager = regionManager;
+        _formDataService = formDataService;
+        _appConfig = appConfig;
 
         FormsView = CollectionViewSource.GetDefaultView(Forms);
         FormsView.Filter = ApplyFilter;
@@ -111,7 +127,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         EditFormCommand = new DelegateCommand(ExecuteEditForm, () => SelectedForm is not null);
         DeleteFormCommand = new DelegateCommand(ExecuteDeleteForm, () => SelectedForm is not null);
         DuplicateFormCommand = new DelegateCommand(ExecuteDuplicateForm, () => SelectedForm is not null);
-        RefreshCommand = new DelegateCommand(LoadMockData);
+        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
         OpenFormCommand = new DelegateCommand<FormSummaryDto>(ExecuteOpenForm);
     }
 
@@ -119,17 +135,65 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
-        LoadMockData();
+        // NOTE: fire-and-forget — WPF không hỗ trợ async navigation callback
+        _ = LoadDataAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
 
     public void OnNavigatedFrom(NavigationContext navigationContext) { }
 
-    // ── Load mock data ───────────────────────────────────────
+    // ── Load data ────────────────────────────────────────────
 
     /// <summary>
-    /// Load mock data cho demo. Sau này sẽ gọi API load danh sách form.
+    /// Load danh sách form từ DB (nếu đã cấu hình), fallback sang mock data.
+    /// </summary>
+    private async Task LoadDataAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            // ── 1. Thử load từ DB ──────────────────────────────────
+            if (_formDataService is not null && _appConfig is not null && _appConfig.IsConfigured)
+            {
+                var records = await _formDataService.GetAllFormsAsync(
+                    _appConfig.TenantId,
+                    includeInactive: true);
+
+                Forms.Clear();
+                foreach (var r in records)
+                {
+                    Forms.Add(new FormSummaryDto
+                    {
+                        FormId       = r.FormId,
+                        FormCode     = r.FormCode,
+                        FormName     = r.FormName,
+                        Version      = r.Version,
+                        Platform     = r.Platform,
+                        SectionCount = r.SectionCount,
+                        FieldCount   = r.FieldCount,
+                        IsActive     = r.IsActive,
+                        UpdatedAt    = r.UpdatedAt,
+                        UpdatedBy    = r.UpdatedBy,
+                    });
+                }
+
+                RaisePropertyChanged(nameof(TotalForms));
+                RaisePropertyChanged(nameof(FilteredCount));
+                return;
+            }
+
+            // ── 2. Fallback: mock data khi chưa có DB ──────────────
+            LoadMockData();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Mock data dùng khi chưa cấu hình DB (dev / demo).
     /// </summary>
     private void LoadMockData()
     {

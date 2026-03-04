@@ -12,6 +12,6 @@
         <TextBlock Text="{Binding Title}"
                    FontSize="28"
                    FontWeight="SemiBold"
-                   Foreground="White" />
+                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
     </Grid>
 </UserControl>

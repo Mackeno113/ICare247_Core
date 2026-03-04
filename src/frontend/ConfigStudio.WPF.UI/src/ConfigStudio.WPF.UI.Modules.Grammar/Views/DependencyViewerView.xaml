@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:prism="http://prismlibrary.com/"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
@@ -14,16 +15,17 @@
     <DockPanel>
         <!-- ── Toolbar ────────────────────────────────────────── -->
         <Border DockPanel.Dock="Top" Height="52"
-                Background="{DynamicResource MaterialDesign.Brush.Primary}"
+                Background="{DynamicResource ShellTitleBarBackgroundBrush}"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
                 <Button DockPanel.Dock="Left"
                         Command="{Binding BackCommand}"
-                        Style="{StaticResource MaterialDesignFlatButton}"
-                        Foreground="White" ToolTip="Quay lại Form Editor">
+                        ToolTip="Quay lại Form Editor"
+                        Background="Transparent" BorderBrush="Transparent"
+                        Foreground="White">
                     <StackPanel Orientation="Horizontal">
-                        <materialDesign:PackIcon Kind="ArrowLeft" VerticalAlignment="Center" />
-                        <TextBlock Text="Back" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock Text="←" FontSize="16" Foreground="White" VerticalAlignment="Center" />
+                        <TextBlock Text="Back" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="White" />
                     </StackPanel>
                 </Button>
 
@@ -34,48 +36,47 @@
                     <Run Text="{Binding FormCode, Mode=OneWay}" />
                 </TextBlock>
 
+                <!-- Toggles -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,16,0">
+                    <dxe:CheckEdit IsChecked="{Binding ShowRules}" Content="Rules"
+                                   Foreground="White" Margin="0,0,12,0" VerticalAlignment="Center" />
+                    <dxe:CheckEdit IsChecked="{Binding ShowEvents}" Content="Events"
+                                   Foreground="White" VerticalAlignment="Center" />
+                </StackPanel>
+
                 <!-- Filter controls -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Command="{Binding AutoLayoutCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Foreground="White" ToolTip="Sắp xếp tự động">
+                            ToolTip="Sắp xếp tự động"
+                            Background="Transparent" BorderBrush="Transparent"
+                            Foreground="White">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="AutoFix" VerticalAlignment="Center" />
-                            <TextBlock Text="Auto-layout" Margin="4,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Auto-layout" VerticalAlignment="Center" Foreground="White" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding RegenerateCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            Foreground="White" ToolTip="Tạo lại dependency từ expressions" Margin="8,0,0,0">
+                            ToolTip="Tạo lại dependency từ expressions" Margin="8,0,0,0"
+                            Background="Transparent" BorderBrush="Transparent"
+                            Foreground="White">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="Refresh" VerticalAlignment="Center" />
-                            <TextBlock Text="Regenerate" Margin="4,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="↻" VerticalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Regenerate" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="White" />
                         </StackPanel>
                     </Button>
-                </StackPanel>
-
-                <!-- Toggles -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="0,0,16,0">
-                    <CheckBox IsChecked="{Binding ShowRules}" Content="Rules"
-                              Foreground="White" Margin="0,0,12,0" VerticalAlignment="Center" />
-                    <CheckBox IsChecked="{Binding ShowEvents}" Content="Events"
-                              Foreground="White" VerticalAlignment="Center" />
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <!-- ── Detail Panel (Bottom) ──────────────────────────── -->
         <Border DockPanel.Dock="Bottom" MinHeight="80"
-                Background="{DynamicResource MaterialDesign.Brush.Card.Background}"
-                BorderBrush="{DynamicResource MaterialDesign.Brush.TextBox.HoverBackground}"
-                BorderThickness="0,1,0,0"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
                 Padding="16,8">
             <DockPanel>
                 <!-- Circular dependency warning -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
                             Visibility="{Binding HasCircularDependencies, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
-                    <materialDesign:PackIcon Kind="AlertCircle" Width="20" Height="20"
-                                             Foreground="#EF5350" VerticalAlignment="Center" />
+                    <TextBlock Text="⚠" FontSize="16" Foreground="#EF5350" VerticalAlignment="Center" />
                     <TextBlock Foreground="#EF5350" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold">
                         <Run Text="{Binding CircularDependencyCount, Mode=OneWay}" />
                         <Run Text=" circular dependencies detected" />
@@ -109,16 +110,16 @@
                         </Border>
                         <TextBlock Text="{Binding SelectedNode.Label}" FontSize="16" FontWeight="SemiBold"
                                    VerticalAlignment="Center"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground}" />
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         <TextBlock Text="{Binding SelectedNode.SubLabel, StringFormat=' ({0})'}"
                                    FontSize="13" VerticalAlignment="Center" Margin="4,0,0,0"
-                                   Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}" />
+                                   Opacity="0.6" />
                     </StackPanel>
                     <Button Command="{Binding OpenNodeEditorCommand}"
-                            Style="{StaticResource MaterialDesignFlatButton}"
-                            HorizontalAlignment="Left" Margin="0,4,0,0">
+                            HorizontalAlignment="Left" Margin="0,4,0,0"
+                            Background="Transparent" BorderBrush="Transparent">
                         <StackPanel Orientation="Horizontal">
-                            <materialDesign:PackIcon Kind="OpenInNew" VerticalAlignment="Center" />
+                            <TextBlock Text="↗" VerticalAlignment="Center" />
                             <TextBlock Text="Open Editor" Margin="4,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
@@ -127,7 +128,7 @@
                 <!-- Empty state -->
                 <TextBlock Text="Click vào node trên graph để xem chi tiết"
                            FontSize="13" FontStyle="Italic"
-                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}"
+                           Opacity="0.5"
                            VerticalAlignment="Center">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
@@ -162,7 +163,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- Edges (lines) — render trước nodes để nằm phía dưới -->
+                <!-- Edges (lines) -->
                 <ItemsControl ItemsSource="{Binding Edges}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -176,10 +177,9 @@
                                       X2="{Binding X2}" Y2="{Binding Y2}"
                                       Stroke="{Binding EdgeColor}"
                                       StrokeThickness="2" />
-                                <!-- Edge label -->
                                 <TextBlock Text="{Binding Label}"
                                            FontSize="10" FontStyle="Italic"
-                                           Foreground="{DynamicResource MaterialDesign.Brush.Foreground.Light}">
+                                           Opacity="0.5">
                                     <Canvas.Left>
                                         <MultiBinding StringFormat="{}{0}">
                                             <Binding Path="X1" />

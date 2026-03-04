@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Models"
              xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
@@ -13,26 +14,116 @@
              mc:Ignorable="d">
 
     <UserControl.Resources>
-        <!-- Converter: bool → Visibility -->
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Header + Toolbar -->
             <RowDefinition Height="Auto" />
-            <!-- Content: TreeView + Property Panel -->
             <RowDefinition Height="*" />
-            <!-- Status bar -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════
+             NEW FORM PANEL — hiện khi IsNewForm = True
+             Che toàn bộ màn hình, người dùng nhập thông tin rồi bấm Tạo
+             ═══════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="0" Grid.RowSpan="3"
+              Panel.ZIndex="10"
+              Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}">
+
+            <!-- Nền mờ overlay -->
+            <Border Background="{DynamicResource ShellContentBackgroundBrush}" Opacity="0.97" />
+
+            <!-- Card trung tâm -->
+            <Border MaxWidth="480"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="White"
+                    BorderBrush="#D0E4FF"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="40,36">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="20" ShadowDepth="0"
+                                      Color="#406B8FC2" Opacity="0.18" />
+                </Border.Effect>
+
+                <StackPanel>
+                    <!-- Title -->
+                    <TextBlock Text="Tạo Form Mới"
+                               FontSize="22" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
+                               Margin="0,0,0,6" />
+                    <TextBlock Text="Nhập thông tin cơ bản. Có thể chỉnh sửa chi tiết sau khi tạo."
+                               FontSize="12" Opacity="0.55"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
+                               Margin="0,0,0,28" />
+
+                    <!-- Form Code -->
+                    <TextBlock Text="Mã Form *"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.7"
+                               Margin="0,0,0,6" />
+                    <dxe:TextEdit EditValue="{Binding NewFormCode, UpdateSourceTrigger=PropertyChanged}"
+                                  NullText="VD: PO_ORDER, HR_LEAVE..."
+                                  Height="36" Margin="0,0,0,16" />
+
+                    <!-- Form Name -->
+                    <TextBlock Text="Tên Form *"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.7"
+                               Margin="0,0,0,6" />
+                    <dxe:TextEdit EditValue="{Binding NewFormName, UpdateSourceTrigger=PropertyChanged}"
+                                  NullText="VD: Đơn Đặt Hàng, Phiếu Nhập Kho..."
+                                  Height="36" Margin="0,0,0,16" />
+
+                    <!-- Platform -->
+                    <TextBlock Text="Platform"
+                               FontSize="12" FontWeight="SemiBold" Opacity="0.7"
+                               Margin="0,0,0,6" />
+                    <dxe:ComboBoxEdit EditValue="{Binding NewFormPlatform}"
+                                      ItemsSource="{Binding PlatformOptions}"
+                                      Height="36" Margin="0,0,0,24" />
+
+                    <!-- Error message -->
+                    <Border Background="#FEE2E2" CornerRadius="6" Padding="12,8"
+                            Margin="0,0,0,16"
+                            Visibility="{Binding HasCreateError, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding CreateErrorMessage}"
+                                   Foreground="#DC2626" FontSize="12" TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Command="{Binding BackToListCommand}"
+                                Content="Hủy"
+                                Margin="0,0,12,0"
+                                Padding="20,8"
+                                Background="Transparent"
+                                BorderBrush="#D0E4FF"
+                                Cursor="Hand" />
+
+                        <dx:SimpleButton Command="{Binding CreateNewFormCommand}"
+                                         Content="Tạo Form"
+                                         Padding="24,8"
+                                         IsEnabled="{Binding IsNotLoading}" />
+                    </StackPanel>
+
+                    <!-- Loading indicator -->
+                    <TextBlock Text="Đang tạo form..."
+                               FontSize="12" Opacity="0.5"
+                               HorizontalAlignment="Center" Margin="0,16,0,0"
+                               Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ═══════════════════════════════════════════════════════════
              ROW 0: Header + Toolbar
              ═══════════════════════════════════════════════════════════ -->
-        <md:Card Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                 md:ElevationAssist.Elevation="Dp2">
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -41,171 +132,135 @@
 
                 <!-- Form info -->
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding BackToListCommand}"
-                            ToolTip="Quay lại danh sách form">
-                        <md:PackIcon Kind="ArrowLeft" />
+                    <Button Command="{Binding BackToListCommand}"
+                            ToolTip="Quay lại danh sách form"
+                            Width="30" Height="30"
+                            Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="←" FontSize="16" VerticalAlignment="Center" />
                     </Button>
                     <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding FormName}"
-                                   Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
+                                   FontSize="20" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                            <TextBlock Text="{Binding FormCode}"
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.6" />
-                            <TextBlock Text=" · v"
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.6" />
-                            <TextBlock Text="{Binding Version}"
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.6" />
-                            <TextBlock Text=" · "
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.6" />
-                            <TextBlock Text="{Binding Platform}"
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.6" />
+                            <TextBlock Text="{Binding FormCode}" FontSize="12" Opacity="0.6"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <TextBlock Text=" · v" FontSize="12" Opacity="0.6"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.6"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <TextBlock Text=" · " FontSize="12" Opacity="0.6"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <TextBlock Text="{Binding Platform}" FontSize="12" Opacity="0.6"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Dirty indicator -->
-                    <md:PackIcon Kind="CircleSmall" Foreground="Orange"
-                                 Margin="12,0,0,0" VerticalAlignment="Center"
-                                 Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
-                                 ToolTip="Có thay đổi chưa lưu" />
+                    <TextBlock Text="•" Foreground="Orange" FontSize="20"
+                               Margin="12,0,0,0" VerticalAlignment="Center"
+                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
+                               ToolTip="Có thay đổi chưa lưu" />
                 </StackPanel>
 
                 <!-- Toolbar -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <!-- Add Section -->
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding AddSectionCommand}"
-                            Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding AddSectionCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="FolderPlusOutline" VerticalAlignment="Center" />
+                            <TextBlock Text="📁" VerticalAlignment="Center" />
                             <TextBlock Text="Thêm Section" Margin="6,0,0,0" />
                         </StackPanel>
-                    </Button>
+                    </dx:SimpleButton>
 
-                    <!-- Add Field -->
-                    <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                            Command="{Binding AddFieldCommand}"
-                            Margin="0,0,8,0">
+                    <dx:SimpleButton Command="{Binding AddFieldCommand}" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <md:PackIcon Kind="FormTextbox" VerticalAlignment="Center" />
+                            <TextBlock Text="+" VerticalAlignment="Center" />
                             <TextBlock Text="Thêm Field" Margin="6,0,0,0" />
                         </StackPanel>
+                    </dx:SimpleButton>
+
+                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
+                               Margin="4,4" />
+
+                    <Button Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="↑" FontSize="14" VerticalAlignment="Center" />
+                    </Button>
+
+                    <Button Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="↓" FontSize="14" VerticalAlignment="Center" />
+                    </Button>
+
+                    <Button Command="{Binding DeleteNodeCommand}" Foreground="#EF4444"
+                            ToolTip="Xóa node đang chọn"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="🗑" FontSize="14" VerticalAlignment="Center" />
                     </Button>
 
                     <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
                                Margin="4,4" />
 
-                    <!-- Move Up -->
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding MoveUpCommand}"
-                            ToolTip="Di chuyển lên">
-                        <md:PackIcon Kind="ArrowUp" />
+                    <Button Command="{Binding ExpandAllCommand}" ToolTip="Mở rộng tất cả"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="↕" FontSize="14" VerticalAlignment="Center" />
                     </Button>
-
-                    <!-- Move Down -->
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding MoveDownCommand}"
-                            ToolTip="Di chuyển xuống">
-                        <md:PackIcon Kind="ArrowDown" />
+                    <Button Command="{Binding CollapseAllCommand}" ToolTip="Thu gọn tất cả"
+                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
+                        <TextBlock Text="⇕" FontSize="14" VerticalAlignment="Center" />
                     </Button>
-
-                    <!-- Delete -->
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding DeleteNodeCommand}"
-                            Foreground="{DynamicResource MaterialDesignValidationErrorBrush}"
-                            ToolTip="Xóa node đang chọn">
-                        <md:PackIcon Kind="DeleteOutline" />
-                    </Button>
-
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="4,4" />
-
-                    <!-- Expand/Collapse -->
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding ExpandAllCommand}"
-                            ToolTip="Mở rộng tất cả">
-                        <md:PackIcon Kind="UnfoldMoreHorizontal" />
-                    </Button>
-                    <Button Style="{StaticResource MaterialDesignIconButton}"
-                            Command="{Binding CollapseAllCommand}"
-                            ToolTip="Thu gọn tất cả">
-                        <md:PackIcon Kind="UnfoldLessHorizontal" />
-                    </Button>
-
-                    <!-- Spacer -->
-                    <Border Width="1" />
 
                     <!-- Right-aligned actions -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                                 Margin="16,0,0,0">
-                        <!-- Save -->
-                        <Button Style="{StaticResource MaterialDesignRaisedButton}"
-                                Command="{Binding SaveFormCommand}"
-                                Margin="0,0,8,0">
+                        <dx:SimpleButton Command="{Binding SaveFormCommand}" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="ContentSave" VerticalAlignment="Center" />
+                                <TextBlock Text="💾" VerticalAlignment="Center" />
                                 <TextBlock Text="Lưu" Margin="6,0,0,0" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
 
-                        <!-- Dependencies -->
-                        <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                Command="{Binding ViewDependenciesCommand}"
-                                Margin="0,0,8,0"
-                                ToolTip="Xem biểu đồ phụ thuộc">
+                        <dx:SimpleButton Command="{Binding ViewDependenciesCommand}"
+                                         Margin="0,0,8,0" ToolTip="Xem biểu đồ phụ thuộc">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="GraphOutline" VerticalAlignment="Center" />
+                                <TextBlock Text="⬡" VerticalAlignment="Center" />
                                 <TextBlock Text="Dependencies" Margin="6,0,0,0" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
 
-                        <!-- Publish -->
-                        <Button Style="{StaticResource MaterialDesignRaisedAccentButton}"
-                                Command="{Binding PublishCommand}">
+                        <dx:SimpleButton Command="{Binding PublishCommand}">
                             <StackPanel Orientation="Horizontal">
-                                <md:PackIcon Kind="Publish" VerticalAlignment="Center" />
+                                <TextBlock Text="▶" VerticalAlignment="Center" />
                                 <TextBlock Text="Publish" Margin="6,0,0,0" />
                             </StackPanel>
-                        </Button>
+                        </dx:SimpleButton>
                     </StackPanel>
                 </StackPanel>
             </Grid>
-        </md:Card>
+        </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 1: Content — TreeView (left) + Property Panel (right)
              ═══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
-                <!-- TreeView -->
                 <ColumnDefinition Width="350" MinWidth="250" />
-                <!-- Splitter -->
                 <ColumnDefinition Width="Auto" />
-                <!-- Property Panel -->
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- ── Left: TreeView ─────────────────────────────── -->
-            <md:Card Grid.Column="0" Padding="0"
-                     md:ElevationAssist.Elevation="Dp1">
+            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                 <DockPanel>
                     <!-- Search box -->
-                    <TextBox DockPanel.Dock="Top" Margin="12,12,12,8"
-                             md:HintAssist.Hint="Tìm kiếm section / field..."
-                             md:TextFieldAssist.HasClearButton="True"
-                             md:HintAssist.IsFloating="False"
-                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}">
-                        <TextBox.InputBindings>
+                    <dxe:TextEdit DockPanel.Dock="Top" Margin="12,12,12,8"
+                                  NullText="Tìm kiếm section / field..."
+                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                        <dxe:TextEdit.InputBindings>
                             <KeyBinding Key="Escape"
                                         Command="{Binding DataContext.ClearSearchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                        </TextBox.InputBindings>
-                    </TextBox>
+                        </dxe:TextEdit.InputBindings>
+                    </dxe:TextEdit>
 
                     <!-- TreeView -->
                     <TreeView ItemsSource="{Binding Sections}"
@@ -213,7 +268,6 @@
                               BorderThickness="0"
                               Padding="4">
                         <TreeView.Resources>
-                            <!-- Section template (root) -->
                             <HierarchicalDataTemplate DataType="{x:Type models:FormTreeNode}"
                                                        ItemsSource="{Binding Children}">
                                 <Grid Margin="4,4"
@@ -225,35 +279,33 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Icon -->
-                                    <md:PackIcon Grid.Column="0"
-                                                 Kind="{Binding IconKind}"
-                                                 VerticalAlignment="Center"
-                                                 Foreground="{DynamicResource PrimaryHueMidBrush}"
-                                                 Width="20" Height="20" />
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding IconText}"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
+                                               Width="20" />
 
                                     <!-- Name + SubText -->
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                         <TextBlock Text="{Binding DisplayName}"
                                                    FontWeight="Medium" />
                                         <TextBlock Text="{Binding SubText}"
-                                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                                   Opacity="0.5" />
+                                                   FontSize="11" Opacity="0.5" />
                                     </StackPanel>
 
                                     <!-- Required badge -->
-                                    <md:PackIcon Grid.Column="2"
-                                                 Kind="Asterisk"
-                                                 Foreground="OrangeRed"
-                                                 Width="12" Height="12"
-                                                 VerticalAlignment="Center"
-                                                 Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}"
-                                                 ToolTip="Bắt buộc" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="*" Foreground="OrangeRed"
+                                               FontSize="12" FontWeight="Bold"
+                                               VerticalAlignment="Center"
+                                               Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}"
+                                               ToolTip="Bắt buộc" />
                                 </Grid>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
 
                         <TreeView.ItemContainerStyle>
-                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource MaterialDesignTreeViewItem}">
+                            <Style TargetType="TreeViewItem">
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                 <Setter Property="Visibility" Value="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
@@ -261,7 +313,7 @@
                         </TreeView.ItemContainerStyle>
                     </TreeView>
                 </DockPanel>
-            </md:Card>
+            </Border>
 
             <!-- Splitter -->
             <GridSplitter Grid.Column="1" Width="4"
@@ -270,162 +322,131 @@
                           Background="Transparent" />
 
             <!-- ── Right: Property Panel ──────────────────────── -->
-            <md:Card Grid.Column="2" Padding="0"
-                     md:ElevationAssist.Elevation="Dp1">
+            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                 <Grid>
-                <!-- Property panel content wrapper -->
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Margin="24">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Margin="24">
 
-                    <!-- Khi chưa chọn node nào -->
-                    <StackPanel HorizontalAlignment="Center"
-                                Visibility="{Binding IsNodeSelected, Converter={StaticResource InvBoolToVis}}">
-                        <md:PackIcon Kind="CursorDefaultClickOutline"
-                                     Width="64" Height="64"
-                                     HorizontalAlignment="Center"
-                                     Opacity="0.3" />
-                        <TextBlock Text="Chọn một Section hoặc Field từ cây bên trái"
-                                   Style="{StaticResource MaterialDesignBody1TextBlock}"
-                                   Opacity="0.5"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,12,0,0" />
-                        <TextBlock Text="để xem và chỉnh sửa thuộc tính"
-                                   Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                   Opacity="0.4"
-                                   HorizontalAlignment="Center" />
-                    </StackPanel>
-
-                    <!-- Khi đã chọn node: hiện property panel -->
-                    <StackPanel Visibility="{Binding IsNodeSelected, Converter={StaticResource BoolToVis}}"
-                                Width="500">
-
-                        <!-- Section properties -->
-                        <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="Thuộc tính Section"
-                                       Style="{StaticResource MaterialDesignHeadline6TextBlock}"
-                                       Margin="0,0,0,16" />
-
-                            <TextBox md:HintAssist.Hint="Section Code"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <TextBox md:HintAssist.Hint="Tên hiển thị"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <TextBox md:HintAssist.Hint="Thứ tự sắp xếp"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <TextBlock Text="{Binding SelectedNode.SubText}"
-                                       Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                       Opacity="0.5"
-                                       Margin="0,8,0,0" />
+                        <!-- Khi chưa chọn node nào -->
+                        <StackPanel HorizontalAlignment="Center"
+                                    Visibility="{Binding IsNodeSelected, Converter={StaticResource InvBoolToVis}}">
+                            <TextBlock Text="☝" FontSize="48"
+                                       HorizontalAlignment="Center"
+                                       Opacity="0.3" />
+                            <TextBlock Text="Chọn một Section hoặc Field từ cây bên trái"
+                                       FontSize="14" Opacity="0.5"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,12,0,0" />
+                            <TextBlock Text="để xem và chỉnh sửa thuộc tính"
+                                       FontSize="12" Opacity="0.4"
+                                       HorizontalAlignment="Center" />
                         </StackPanel>
 
-                        <!-- Field properties -->
-                        <StackPanel Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                <TextBlock Text="Thuộc tính Field"
-                                           Style="{StaticResource MaterialDesignHeadline6TextBlock}" />
-                                <Button Style="{StaticResource MaterialDesignOutlinedButton}"
-                                        Command="{Binding OpenFieldConfigCommand}"
-                                        Margin="16,0,0,0"
-                                        Height="28" Padding="12,0">
-                                    <StackPanel Orientation="Horizontal">
-                                        <md:PackIcon Kind="CogOutline" Width="14" Height="14"
-                                                     VerticalAlignment="Center" />
-                                        <TextBlock Text="Chi tiết" Margin="4,0,0,0"
-                                                   FontSize="12" />
-                                    </StackPanel>
-                                </Button>
+                        <!-- Khi đã chọn node: hiện property panel -->
+                        <StackPanel Visibility="{Binding IsNodeSelected, Converter={StaticResource BoolToVis}}"
+                                    Width="500">
+
+                            <!-- Section properties -->
+                            <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Thuộc tính Section"
+                                           FontSize="20" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource ShellSidebarItemTextBrush}"
+                                           Margin="0,0,0,16" />
+
+                                <dxe:TextEdit NullText="Section Code"
+                                              EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <dxe:TextEdit NullText="Tên hiển thị"
+                                              EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <dxe:TextEdit NullText="Thứ tự sắp xếp"
+                                              EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <TextBlock Text="{Binding SelectedNode.SubText}"
+                                           FontSize="12" Opacity="0.5"
+                                           Margin="0,8,0,0" />
                             </StackPanel>
 
-                            <TextBox md:HintAssist.Hint="Field Code"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <TextBox md:HintAssist.Hint="Tên hiển thị"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="8" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <TextBox Grid.Column="0"
-                                         md:HintAssist.Hint="Field Type"
-                                         md:HintAssist.IsFloating="True"
-                                         Text="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
-
-                                <TextBox Grid.Column="2"
-                                         md:HintAssist.Hint="Editor Type"
-                                         md:HintAssist.IsFloating="True"
-                                         Text="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource MaterialDesignOutlinedTextBox}" />
-                            </Grid>
-
-                            <TextBox md:HintAssist.Hint="Thứ tự sắp xếp"
-                                     md:HintAssist.IsFloating="True"
-                                     Text="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                     Margin="0,0,0,12" />
-
-                            <CheckBox Content="Bắt buộc (Required)"
-                                      IsChecked="{Binding SelectedNode.IsRequired}"
-                                      Margin="0,4,0,12"
-                                      Style="{StaticResource MaterialDesignCheckBox}" />
-
-                            <!-- Hint -->
-                            <Border Background="{DynamicResource MaterialDesignToolBarBackground}"
-                                    CornerRadius="4" Padding="12" Margin="0,8,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Mở Chi tiết để cấu hình:"
-                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                               FontWeight="Medium" />
-                                    <TextBlock Text="  - Control Properties (min, max, format...)"
-                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                               Opacity="0.7" />
-                                    <TextBlock Text="  - Validation Rules (required, range...)"
-                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                               Opacity="0.7" />
-                                    <TextBlock Text="  - Events (onChange, onBlur...)"
-                                               Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                                               Opacity="0.7" />
+                            <!-- Field properties -->
+                            <StackPanel Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                    <TextBlock Text="Thuộc tính Field"
+                                               FontSize="20" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                                    <dx:SimpleButton Command="{Binding OpenFieldConfigCommand}"
+                                                     Margin="16,0,0,0"
+                                                     Height="28" Padding="12,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⚙" Width="14" Height="14"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="Chi tiết" Margin="4,0,0,0"
+                                                       FontSize="12" />
+                                        </StackPanel>
+                                    </dx:SimpleButton>
                                 </StackPanel>
-                            </Border>
+
+                                <dxe:TextEdit NullText="Field Code"
+                                              EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <dxe:TextEdit NullText="Tên hiển thị"
+                                              EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <dxe:TextEdit Grid.Column="0" NullText="Field Type"
+                                                  EditValue="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}" />
+
+                                    <dxe:TextEdit Grid.Column="2" NullText="Editor Type"
+                                                  EditValue="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}" />
+                                </Grid>
+
+                                <dxe:TextEdit NullText="Thứ tự sắp xếp"
+                                              EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                              Margin="0,0,0,12" />
+
+                                <dxe:CheckEdit Content="Bắt buộc (Required)"
+                                               IsChecked="{Binding SelectedNode.IsRequired}"
+                                               Margin="0,4,0,12" />
+
+                                <!-- Hint -->
+                                <Border Background="#EEF5FF"
+                                        CornerRadius="4" Padding="12" Margin="0,8,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Mở Chi tiết để cấu hình:"
+                                                   FontSize="12" FontWeight="Medium" />
+                                        <TextBlock Text="  - Control Properties (min, max, format...)"
+                                                   FontSize="12" Opacity="0.7" />
+                                        <TextBlock Text="  - Validation Rules (required, range...)"
+                                                   FontSize="12" Opacity="0.7" />
+                                        <TextBlock Text="  - Events (onChange, onBlur...)"
+                                                   FontSize="12" Opacity="0.7" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                         </StackPanel>
                     </StackPanel>
-                </StackPanel>
                 </Grid>
-            </md:Card>
+            </Border>
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="{DynamicResource MaterialDesignToolBarBackground}"
-                CornerRadius="4">
+                Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
-                <md:PackIcon Kind="InformationOutline" Width="14" Height="14"
-                             VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.6" Margin="6,0,16,0">
+                <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,16,0" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="{}{0} sections · {1} fields">
                             <Binding Path="TotalSections" />
@@ -433,12 +454,9 @@
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
-                <TextBlock Text="Form_Id:"
-                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.4" />
-                <TextBlock Text="{Binding FormId}"
-                           Style="{StaticResource MaterialDesignCaptionTextBlock}"
-                           Opacity="0.4" Margin="4,0,0,0" />
+                <TextBlock Text="Form_Id:" FontSize="12" Opacity="0.4" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding FormId}" FontSize="12" Opacity="0.4"
+                           Margin="4,0,0,0" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
     </Grid>
