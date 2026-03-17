@@ -1,323 +1,118 @@
-# ICare247 Core Platform — AI Agent Configuration (Claude Code)
+# ICare247 Core Platform — AI Agent Configuration
 
 <!--
   FILE: CLAUDE.md
-  MỤC ĐÍCH: Cấu hình hành vi cho Claude Code khi làm việc trong repo ICare247.
-  Claude Code tự động đọc file này khi khởi động session trong thư mục project.
-  Tất cả quy tắc dưới đây là BẮT BUỘC — không được bỏ qua.
+  MỤC ĐÍCH: Router cấu hình cho Claude Code — chỉ chứa tổng quan + pointer.
+  Agent đọc thêm file chi tiết trong .claude-rules/ và docs/spec/ KHI CẦN.
+
+  ĐỒNG BỘ: Mọi config nằm trong repo → git sync qua nhiều máy.
+  - .claude/settings.json     → team settings (git-tracked)
+  - .claude/settings.local.json → per-machine (gitignored qua *.local.json)
+  - .claude/commands/          → slash commands (git-tracked)
+  - .claude/memory/            → agent memory (git-tracked)
+  - .claude-rules/             → coding rules (git-tracked)
 -->
 
 ## Project Identity
 
-- **Tên dự án:** ICare247 Core Platform
-- **Loại:** Enterprise metadata-driven low-code form engine
-- **Ngôn ngữ code:** C# (.NET 9)
-- **Ngôn ngữ comment:** Tiếng Việt (bắt buộc)
-- **Pattern chính:** Clean Architecture + CQRS + Metadata-driven
+- **Dự án:** ICare247 Core Platform — Enterprise metadata-driven low-code form engine
+- **Code:** C# (.NET 9) | **Comment:** Tiếng Việt (bắt buộc) | **Pattern:** Clean Architecture + CQRS + Metadata-driven
 
----
+## Tech Stack
 
-## Tech Stack — Bắt Buộc Dùng
-
-| Thành phần  | Công nghệ                       | KHÔNG dùng                  |
+| Thành phần  | Dùng                            | KHÔNG dùng                  |
 | ----------- | ------------------------------- | --------------------------- |
 | Backend     | .NET 9 / ASP.NET Core 9         | -                           |
-| Frontend    | Blazor WebAssembly + DevExpress | -                           |
-| Database    | MS SQL Server                   | MySQL, PostgreSQL           |
+| Frontend    | Blazor WASM + DevExpress        | -                           |
+| DB          | MS SQL Server                   | MySQL, PostgreSQL           |
 | Data Access | **Dapper**                      | **EF Core (cấm tuyệt đối)** |
 | Cache       | MemoryCache + Redis             | -                           |
 | Logging     | Serilog + OpenTelemetry         | Console.WriteLine           |
 | Auth        | JWT + Policy-based              | -                           |
 
----
+## Luật bất biến (KHÔNG ngoại lệ)
 
-## Architecture Rules — Luật Bất Biến
+1. Domain layer = pure C#, không import gì
+2. Application chỉ import Domain
+3. Infrastructure import Application
+4. Api KHÔNG import Infrastructure trực tiếp (trừ composition root)
+5. KHÔNG dùng EF Core — chỉ Dapper
+6. Mọi SQL = parameterized (không string interpolation)
+7. Mọi query/cache key phải có Tenant_Id
+8. Async/await xuyên suốt — không .Result, không .Wait()
+9. CancellationToken truyền xuyên suốt tất cả async method
+10. Không eval / dynamic compile — chỉ AST-based execution
 
-### Layer Dependency (Clean Architecture)
+## Quy tắc chi tiết → đọc file tương ứng khi cần
 
-```
-Domain          ← KHÔNG import gì (pure C#, no ORM)
-Application     ← chỉ import Domain
-Infrastructure  ← import Application (để implement interfaces)
-Api             ← chỉ import Application (KHÔNG import Infrastructure trực tiếp)
-```
+| File | Nội dung |
+|---|---|
+| `.claude-rules/architecture.md` | Layer dependency, DI registration, CQRS pattern |
+| `.claude-rules/csharp-naming.md` | Naming conventions, CQRS/Repository naming |
+| `.claude-rules/dapper-patterns.md` | SQL patterns, connection factory, async methods |
+| `.claude-rules/caching.md` | CacheKeys.cs, L1/L2 TTL, hybrid strategy |
+| `.claude-rules/ast-grammar.md` | AST nodes, operators, functions, null rules |
+| `.claude-rules/api-response.md` | Response format, ProblemDetails, RFC 7807 |
+| `.claude-rules/comment-rules.md` | File header, class/method/logic block comments |
+| `.claude-rules/wpf-configstudio.md` | Prism 9, MaterialDesign, MVVM, navigation |
 
-### Quy tắc khi generate code
+## Specification → đọc khi cần tra cứu
 
-- `Api` layer **không bao giờ** `new` trực tiếp bất kỳ class nào từ `Infrastructure`
-- DI registration chỉ trong `DependencyInjection.cs` của từng project
-- `Program.cs` chỉ gọi:
-    ```csharp
-    builder.Services.AddApplication();
-    builder.Services.AddInfrastructure();
-    ```
+| File | Nội dung |
+|---|---|
+| `docs/spec/00_PROJECT_OVERVIEW.md` | Tổng quan, mục tiêu, tech stack |
+| `docs/spec/01_ARCHITECTURE.md` | Clean Architecture, caching, security |
+| `docs/spec/02_DATABASE_SCHEMA.md` | Toàn bộ bảng DB, columns, constraints |
+| `docs/spec/03_GRAMMAR_V1_SPEC.md` | Grammar V1, AST node types, null logic |
+| `docs/spec/04_ENGINE_SPEC.md` | 4 engines: Metadata, AST, Validation, Event |
+| `docs/spec/05_ACTION_RULE_PARAM_SCHEMA.md` | Action/Rule param schema JSON |
+| `docs/spec/06_SOLUTION_STRUCTURE.md` | Folder structure, naming conventions |
+| `docs/spec/07_API_CONTRACT.md` | API endpoints, request/response schemas |
+| `docs/spec/08_CONVENTIONS.md` | Cache keys, Dapper patterns, comment rules |
 
----
+> **Khi có câu hỏi về spec** → tra cứu docs/spec/ trước khi tự suy luận.
 
-## Coding Rules — Checklist Bắt Buộc Trước Khi Output
+## Memory (Git-tracked — đồng bộ qua nhiều máy)
 
-```
-✅ Namespace phải match folder path (ICare247.Domain.Entities.Form)
-✅ Mỗi file = đúng 1 class / interface / record (không gộp)
-✅ Repository method suffix = Async (GetByCodeAsync, không GetByCode)
-✅ Query = IRequest<TResponse>, Command = IRequest<TResponse>
-✅ Handler = IRequestHandler<TRequest, TResponse>
-✅ KHÔNG new Infrastructure class trong Api layer
-✅ KHÔNG dùng EF Core — chỉ Dapper
-✅ Mọi Dapper query = parameterized (không string interpolation vào SQL)
-✅ Cache key lấy từ CacheKeys.cs (không hardcode string rải rác)
-✅ Exception bubble lên — không swallow trong engine
-✅ Async/await xuyên suốt — không .Result hay .Wait()
-✅ CancellationToken truyền xuyên suốt tất cả async method
-✅ Multi-tenant: mọi query/cache key phải có Tenant_Id
-✅ Không eval / dynamic compile — chỉ AST-based execution
-✅ Grammar: chỉ function/operator whitelist từ Gram_Function, Gram_Operator
-```
+| File | Mục đích |
+|---|---|
+| `.claude/memory/MEMORY.md` | Index tất cả memory files |
+| `.claude/memory/last_session.md` | Session trước làm gì → đọc ĐẦU TIÊN mỗi session |
+| `.claude/memory/project_current_phase.md` | Phase hiện tại, priorities |
+| `.claude/memory/architecture_decisions.md` | ADR — quyết định kiến trúc |
+| `.claude/memory/coding_style_feedback.md` | User corrections |
+| `.claude/memory/user_profile.md` | Preferences của user |
 
----
+> **Quy tắc memory:** Khi có quyết định quan trọng hoặc feedback → ghi vào file tương ứng.
+> Khi kết thúc session → cập nhật `last_session.md`.
 
-## Naming Conventions
+## Slash Commands (dùng `/command-name` trong chat)
 
-### C# General
-
-| Loại           | Convention       | Ví dụ                           |
-| -------------- | ---------------- | ------------------------------- |
-| Class          | PascalCase       | `FormMetadata`, `AstParser`     |
-| Interface      | `I` + PascalCase | `IFormRepository`, `IAstEngine` |
-| Method         | PascalCase       | `GetByCodeAsync`, `Evaluate`    |
-| Property       | PascalCase       | `FormCode`, `IsActive`          |
-| Private field  | `_` + camelCase  | `_repository`, `_cache`         |
-| Local variable | camelCase        | `formMetadata`, `ruleList`      |
-| Constant       | PascalCase       | `MaxAstDepth`, `DefaultTimeout` |
-| Async method   | suffix `Async`   | `GetFormByCodeAsync`            |
-
-### CQRS Pattern
-
-```csharp
-// Query (đọc dữ liệu)
-public record GetFormByCodeQuery(string FormCode, string LangCode) : IRequest<FormDto>;
-
-// Query Handler
-public class GetFormByCodeQueryHandler : IRequestHandler<GetFormByCodeQuery, FormDto>
-{
-    public async Task<FormDto> Handle(GetFormByCodeQuery request, CancellationToken ct) { }
-}
-
-// Command (ghi/thực thi)
-public record ValidateFieldCommand(int FormId, string FieldCode, object Value)
-    : IRequest<ValidateFieldResponse>;
-```
-
-### Repository Pattern
-
-- Interface: `I{Entity}Repository` (VD: `IFormRepository`)
-- Implementation: `{Entity}Repository` (VD: `FormRepository`)
-- Method: `GetByCodeAsync`, `GetByIdAsync`, `GetByFormIdAsync`
-
----
-
-## File Header — Bắt Buộc Cho Mọi File .cs
-
-```csharp
-// File    : {FileName}.cs
-// Module  : {ModuleName}
-// Layer   : {Domain | Application | Infrastructure | Api}
-// Purpose : {Mô tả ngắn bằng tiếng Việt}
-```
-
----
-
-## Comment Rules (Tiếng Việt)
-
-### Class/Interface
-
-```csharp
-/// <summary>
-/// Repository truy vấn metadata form từ bảng <c>Ui_Form</c> qua Dapper.
-/// Tất cả query phải parameterized, filter <c>Is_Active = 1</c>.
-/// </summary>
-public class FormRepository : IFormRepository
-```
-
-### Public Method
-
-```csharp
-/// <summary>
-/// Load metadata form theo Form_Code. Trả về <c>null</c> nếu không tìm thấy.
-/// </summary>
-/// <param name="formCode">Ui_Form.Form_Code — unique identifier của form.</param>
-/// <param name="ct">Cancellation token để hủy query nếu request bị cancel.</param>
-/// <returns><see cref="FormMetadata"/> nếu tìm thấy; <c>null</c> nếu không tồn tại.</returns>
-/// <exception cref="SqlException">Throw khi DB lỗi — không swallow.</exception>
-public async Task<FormMetadata?> GetByCodeAsync(string formCode, CancellationToken ct = default)
-```
-
-### Logic Block trong Method
-
-```csharp
-// ── 1. Check cache ───────────────────────────────────────
-// ── 2. Load from DB ─────────────────────────────────────
-// ── 3. Build response ────────────────────────────────────
-```
-
-### Edge Case / Null Check
-
-```csharp
-// NULL-SAFE: Identifier không tồn tại trong context → trả null, không throw.
-// Lý do: form có thể chưa có giá trị khi mới load → không phải lỗi.
-if (!context.TryGetValue(node.Name, out var value))
-    return null;
-```
-
-### TODO Tags
-
-```csharp
-// TODO(phase2): Hỗ trợ array index trong dot-notation path
-// FIXME: Race condition nếu 2 request cùng compile cùng 1 expression
-// NOTE: Dùng OrdinalIgnoreCase vì Column_Code là technical name
-// HACK: Workaround tạm thời, cần refactor
-```
-
----
-
-## Dapper Query Rules
-
-```csharp
-// ✅ ĐÚNG — Parameterized
-const string sql = """
-    SELECT Form_Id, Form_Code, Version
-    FROM   dbo.Ui_Form
-    WHERE  Form_Code = @FormCode   -- luôn dùng named parameter
-      AND  Is_Active = 1           -- luôn filter active
-    """;
-await conn.QueryFirstOrDefaultAsync<FormMetadata>(
-    new CommandDefinition(sql, new { FormCode = formCode }, cancellationToken: ct));
-
-// ❌ SAI — String interpolation (SQL injection risk)
-string sql = $"SELECT * FROM Ui_Form WHERE Form_Code = '{formCode}'";
-
-// ❌ SAI — SELECT * (không rõ ràng, tốn băng thông)
-SELECT * FROM dbo.Ui_Form
-```
-
-**Quy tắc bổ sung:**
-
-- Luôn dùng `async`: `QueryAsync`, `QueryFirstOrDefaultAsync`, `ExecuteAsync`
-- Connection từ `IDbConnectionFactory` — không `new SqlConnection()` trực tiếp
-- Bảng có `Tenant_Id` → **bắt buộc** có `AND Tenant_Id = @TenantId` trong WHERE
-- Tránh `SELECT * ` — chỉ SELECT cột cần thiết
-
----
-
-## Cache Key Rules
-
-```csharp
-// Tất cả key lấy từ CacheKeys.cs — không hardcode string
-var key = CacheKeys.Form(formCode, version, langCode, platform);
-// → "icare:form:{formCode}:v{version}:lang:{langCode}:plat:{platform}"
-
-// ❌ SAI — hardcode string rải rác
-var key = $"form_{formCode}_{version}";
-```
-
----
-
-## AST / Grammar Rules
-
-- Expression lưu dạng JSON trong DB (`Expression_Json`)
-- Parse: `Expression_Json` → `IExpressionNode` (AST)
-- Compile: `IExpressionNode` → `Func<EvaluationContext, object>` (delegate)
-- Execute: delegate với `Dictionary<string, object>` context
-- **Max depth = 20** (configurable `appsettings.Grammar.MaxAstDepth`)
-- **Null propagation**: phép toán với null → trả null (không throw)
-- **Divide by zero**: trả null (không throw)
-- Không `eval()`, không `Roslyn.Compile`, không `dynamic` SQL
-
----
-
-## API Response Format
-
-**Thành công:** Trả data trực tiếp (không wrap envelope)
-
-```json
-HTTP 200 OK
-{ ...data object... }
-```
-
-**Lỗi:** RFC 7807 ProblemDetails
-
-```json
-HTTP 4xx/5xx
-{
-  "type": "https://icare247.vn/errors/{error-code}",
-  "title": "Mô tả ngắn",
-  "status": 400,
-  "detail": "Mô tả chi tiết",
-  "correlationId": "abc-123"
-}
-```
-
----
-
-## Solution Structure Tham Khảo
-
-```
-ICare247/
-├── src/
-│   ├── backend/
-│   │   ├── ICare247.Domain/          ← Entities, AST nodes, Engine interfaces
-│   │   ├── ICare247.Application/     ← CQRS Queries/Commands/Handlers, Interfaces
-│   │   ├── ICare247.Infrastructure/  ← Dapper repos, Cache, AST engine impl
-│   │   └── ICare247.Api/             ← Controllers, Middleware, Extensions
-│   └── frontend/
-│       └── ICare247.Client/          ← Blazor WASM
-├── db/
-│   ├── ICare247_Config.sql
-│   └── ICare247_SeedData.sql
-└── docs/                             ← Toàn bộ specs .md
-```
-
----
-
-## Docs Reference
-
-| File                                  | Nội dung                                     |
-| ------------------------------------- | -------------------------------------------- |
-| `docs/00_PROJECT_OVERVIEW.md`         | Tổng quan, mục tiêu, tech stack              |
-| `docs/01_ARCHITECTURE.md`             | Clean Architecture, caching, security        |
-| `docs/02_DATABASE_SCHEMA.md`          | Toàn bộ bảng DB, columns, constraints        |
-| `docs/03_GRAMMAR_V1_SPEC.md`          | Grammar V1, AST node types, null logic       |
-| `docs/04_ENGINE_SPEC.md`              | Các engine: Metadata, AST, Validation, Event |
-| `docs/05_ACTION_RULE_PARAM_SCHEMA.md` | Action/Rule param schema JSON                |
-| `docs/06_SOLUTION_STRUCTURE.md`       | Folder structure, naming conventions         |
-| `docs/07_API_CONTRACT.md`             | API endpoints, request/response schemas      |
-| `docs/08_CONVENTIONS.md`              | Cache keys, Dapper patterns, comment rules   |
-
-> **Khi có câu hỏi về spec** → tra cứu docs/ trước khi tự suy luận.
+| Command | Mô tả |
+|---|---|
+| `/start-session` | Đọc memory + TASKS.md → tóm tắt → hỏi user làm gì |
+| `/pick-task` | Liệt kê top 5 task → user chọn → bắt đầu code |
+| `/finish-task` | Build verify → cập nhật TASKS.md + memory → commit |
+| `/review-changes` | Review `git diff` theo checklist ICare247 rules |
+| `/save-memory` | Lưu quyết định/feedback vào memory |
 
 ## Task Tracking
 
-- File tracking: `TASKS.md` (git root)
-- Khi bắt đầu task mới → move từ 🟡 Todo sang 🔴 In Progress
+- **Backend tasks:** `TASKS.md` (git root)
+- **ConfigStudio WPF tasks:** `docs/ICare247 Config Studio/TASKS_WPF.md`
+- Khi bắt đầu task → move sang 🔴 In Progress
 - Khi hoàn thành → move sang ✅ Done + commit
-- Mọi quyết định thiết kế quan trọng → ghi vào "Decisions Log"
+- Mọi quyết định thiết kế quan trọng → ghi vào Decisions Log + memory
 - Commit sau mỗi task hoàn chỉnh (không commit code dở)
 
-```
+## Session Protocol
 
----
-
-## Tóm tắt Flow
-```
-
-Mở terminal
-↓
-cd D:/ICare247_Core && claude
-↓
-"Đọc TASKS.md, hôm nay làm [task X]"
-↓
-Claude code → bạn review
-↓
-"Xong rồi, cập nhật TASKS.md và commit"
-↓
-git push
+1. Đọc `.claude/memory/last_session.md` — biết session trước làm gì
+2. Đọc `.claude/memory/project_current_phase.md` — biết đang ở đâu
+3. Đọc `TASKS.md` — biết việc cần làm
+4. Tóm tắt cho user + hỏi: "Hôm nay làm task nào?"
+5. Đọc `.claude-rules/` liên quan đến task
+6. Đọc `docs/spec/` nếu cần tra cứu schema/API
+7. Code → build verify → commit
+8. Cập nhật TASKS.md + `.claude/memory/last_session.md`
+9. Nếu có quyết định quan trọng → `/save-memory`
