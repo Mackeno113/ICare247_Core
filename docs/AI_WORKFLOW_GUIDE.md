@@ -412,6 +412,40 @@ Máy B (chiều):
 | `.claude/commands/*` | ✅ Sync | Workflow giống nhau mọi nơi |
 | `.claude-rules/*` | ✅ Sync | Quy tắc code là duy nhất |
 | `docs/spec/*` | ✅ Sync | Spec là source of truth |
+| `~/.claude/projects/*/memory/` | ❌ Local | CHỈ redirect file, không dùng cho memory chính |
+
+### 4.5. Xử lý conflict memory khi merge
+
+**Tình huống:** 2 máy cùng sửa `last_session.md` → git conflict.
+
+**Giải pháp:** Luôn `git pull` TRƯỚC khi bắt đầu session. `/start-session` đã tích hợp `git fetch` tự động.
+
+Nếu vẫn conflict:
+```bash
+# Memory files dùng append-only → giữ cả 2 phiên bản
+# Mở file, xóa conflict markers, giữ cả 2 nội dung (mới nhất lên trên)
+git add .claude/memory/
+git commit -m "Resolve memory merge conflict"
+```
+
+**Quy tắc ngón tay cái:**
+- `last_session.md`: Luôn overwrite (chỉ giữ session gần nhất)
+- `architecture_decisions.md`: Append-only → giữ cả 2
+- `project_current_phase.md`: Overwrite bằng version mới hơn
+- `coding_style_feedback.md`: Append-only → giữ cả 2
+
+### 4.6. Memory local (`~/.claude/projects/`) vs repo
+
+Claude Code có auto-memory riêng ở `~/.claude/projects/D--ICare247-Core/memory/`.
+File này là **local, không sync**, và chứa redirect notice:
+
+```
+⚠️ REDIRECT — Memory đã chuyển vào repo
+→ Khi cần đọc/ghi memory, luôn dùng path trong repo: .claude/memory/
+```
+
+**KHÔNG xóa thư mục này** — Claude Code quản lý nó tự động.
+Chỉ cần đảm bảo CLAUDE.md trỏ đúng vào `.claude/memory/` (repo).
 
 ---
 

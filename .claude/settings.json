@@ -10,8 +10,15 @@
       "Bash(git log*)",
       "Bash(git add*)",
       "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git pull*)",
+      "Bash(git branch*)",
+      "Bash(git checkout*)",
+      "Bash(git stash*)",
       "Bash(ls*)",
-      "Bash(xargs ls*)"
+      "Bash(xargs ls*)",
+      "Bash(find*)",
+      "Bash(cat*)"
     ]
   }
 }

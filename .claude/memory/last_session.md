@@ -3,15 +3,19 @@
 > Cập nhật: 2026-03-17
 
 ## Đã làm
-- Nâng cấp cấu trúc tài liệu AI agent
-- Tạo `.claude-rules/` (8 file quy tắc chi tiết)
-- Tạo `.claude/memory/` (git-tracked memory system)
-- Tạo `.claude/commands/` (slash commands cho workflow)
-- Viết lại CLAUDE.md thành router
+- **Bước 1:** Tách CLAUDE.md thành router + 8 file `.claude-rules/`
+- **Bước 1:** Tạo `.claude/memory/` (6 file git-tracked memory)
+- **Bước 1:** Tạo `.claude/commands/` (5 slash commands)
+- **Bước 1:** Viết `docs/AI_WORKFLOW_GUIDE.md` (tài liệu ~600 dòng)
+- **Bước 2:** Nâng cấp commands cho multi-machine (git fetch/pull/push awareness)
+- **Bước 2:** Nâng cấp settings.json (thêm git push/pull/branch/stash permissions)
+- **Bước 2:** Redirect local memory (`~/.claude/projects/`) về repo
+- **Bước 2:** Thêm conflict resolution + troubleshooting vào Guide
+- Commit + push thành công: `3660215`
 
 ## Đang làm
-- Bước 2: Hooks + Commands + TASKS.md upgrade
+- Hoàn tất Bước 2 — đang commit
 
 ## Task tiếp theo (gợi ý)
-- Hoàn thành bước 2 → bước 3 (kiểm tra toàn bộ)
-- Hoặc: Bắt đầu Backend Phase 1 — Application interfaces
+- Bắt đầu Backend Phase 1: Tạo Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
+- Hoặc: Tạo CacheKeys.cs
