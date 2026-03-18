@@ -111,10 +111,10 @@
 - [x] `FormEditDialogView.xaml` + `FormEditDialogViewModel` — IDialogAware (Prism Dialog)
 - [x] Tab 1 — Thông tin cơ bản: TextBox Form_Code (regex validate `^[A-Z0-9_]+$`, unique check), ComboBox Platform, ComboBox Table, ComboBox Layout_Engine, TextBox Description, ToggleButton Is_Active, readonly Version/Checksum
 - [x] Tab 2 — Sections & Fields: ListBox sections trái, DataGrid fields phải (navigate sang FieldConfig)
-- [ ] Tab 3 — Events: DataGrid (Trigger, Field_Target, Condition snippet, Actions count), navigate sang EventEditor
-- [ ] Tab 4 — Permissions: DataGrid roles × CheckBox (Can_Read, Can_Write, Can_Submit)
+- [x] Tab 3 — Events: DataGrid (Trigger, Field_Target, Condition snippet, Actions count), navigate sang EventEditor
+- [x] Tab 4 — Permissions: DataGrid roles × CheckBox (Can_Read, Can_Write, Can_Submit)
 - [x] ValidationSummary TextBlock hiện lỗi khi submit
-- [ ] Dirty check: hiện ConfirmDialog khi đóng mà chưa lưu (TODO phase2)
+- [x] Dirty check: hiện ConfirmDialog khi đóng mà chưa lưu
 
 **Dialogs**
 - [ ] `DeactivateFormDialog.xaml` + VM — MaterialDesign Dialog: tên form, impact (X fields, Y events), nút Xác nhận/Hủy

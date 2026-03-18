@@ -405,6 +405,202 @@
                 </Grid>
             </TabItem>
 
+            <!-- ── TAB 3: Events ────────────────────────────── -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Events" FontSize="12" FontWeight="Medium" />
+                        <Border Style="{StaticResource TabBadgeStyle}">
+                            <TextBlock FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold"
+                                       Text="{Binding Events.Count}" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Events toolbar -->
+                    <Border Grid.Row="0" Padding="8,6" BorderBrush="#E2EAFF" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <TextBlock Text="Danh sách Events" FontSize="12" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                        HorizontalAlignment="Right">
+                                <Button Style="{StaticResource InlineBtnStyle}"
+                                        Command="{Binding AddEventCommand}"
+                                        ToolTip="Thêm Event mới" Content="＋" FontSize="15" />
+                                <Button Style="{StaticResource InlineBtnStyle}"
+                                        Command="{Binding EditEventCommand}"
+                                        ToolTip="Mở Event Editor" Content="✎" FontSize="14" />
+                                <Button Style="{StaticResource InlineDeleteBtnStyle}"
+                                        Command="{Binding RemoveEventCommand}"
+                                        ToolTip="Xóa Event đang chọn" Content="✕" FontSize="12" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Events DataGrid -->
+                    <dxg:GridControl Grid.Row="1"
+                                     ItemsSource="{Binding Events}"
+                                     SelectedItem="{Binding SelectedEvent, Mode=TwoWay}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row">
+                                <dxg:TableView.RowStyle>
+                                    <Style TargetType="dxg:RowControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Row.IsActive}" Value="False">
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </dxg:TableView.RowStyle>
+                            </dxg:TableView>
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#"         FieldName="OrderNo"          Width="45" />
+                            <dxg:GridColumn Header="Trigger"   FieldName="TriggerCode"      Width="110" />
+                            <dxg:GridColumn Header="Field Target" FieldName="FieldTarget"   Width="130" />
+                            <dxg:GridColumn Header="Condition" FieldName="ConditionPreview" Width="*">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Row.ConditionPreview, FallbackValue='—'}"
+                                                   VerticalAlignment="Center" Margin="4,0"
+                                                   FontFamily="Consolas" FontSize="11" Opacity="0.75" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                            <dxg:GridColumn Header="Actions"   FieldName="ActionsCount"     Width="70" />
+                            <dxg:GridColumn Header="Active"    FieldName="IsActive"         Width="60">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <dxe:CheckEdit IsChecked="{Binding Row.IsActive, Mode=OneWay}"
+                                                       IsReadOnly="True"
+                                                       HorizontalAlignment="Center" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- Actions column -->
+                            <dxg:GridColumn Header="" Width="70" AllowSorting="False" AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                                    Margin="4,0">
+                                            <Button Style="{StaticResource InlineBtnStyle}"
+                                                    Command="{Binding DataContext.EditEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    ToolTip="Mở Event Editor" Content="✎" FontSize="13" />
+                                            <Button Style="{StaticResource InlineDeleteBtnStyle}"
+                                                    Command="{Binding DataContext.RemoveEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                    CommandParameter="{Binding Row}"
+                                                    ToolTip="Xóa event" Content="✕" FontSize="11" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </Grid>
+            </TabItem>
+
+            <!-- ── TAB 4: Permissions ───────────────────────── -->
+            <TabItem>
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Permissions" FontSize="12" FontWeight="Medium" />
+                        <Border Style="{StaticResource TabBadgeStyle}">
+                            <TextBlock FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold"
+                                       Text="{Binding Permissions.Count}" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <!-- Permissions info bar -->
+                    <Border Grid.Row="0" Padding="10,6" Background="#EFF6FF" BorderBrush="#BFDBFE"
+                            BorderThickness="0,0,0,1">
+                        <TextBlock Text="Cấu hình quyền truy cập form theo từng role. Thay đổi được lưu khi nhấn Lưu."
+                                   FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                    </Border>
+
+                    <!-- Permissions DataGrid — inline checkbox editing -->
+                    <dxg:GridControl Grid.Row="1"
+                                     ItemsSource="{Binding Permissions}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="True"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Cell" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="Role" FieldName="RoleName" Width="130"
+                                            AllowEditing="False" />
+                            <dxg:GridColumn Header="Mô tả" FieldName="RoleDescription" Width="*"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Row.RoleDescription}"
+                                                   VerticalAlignment="Center" Margin="4,0"
+                                                   FontSize="11" Opacity="0.6" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- Can Read -->
+                            <dxg:GridColumn Header="Xem" FieldName="CanRead" Width="65"
+                                            AllowSorting="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <dxe:CheckEdit IsChecked="{Binding Row.CanRead, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                       HorizontalAlignment="Center"
+                                                       Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- Can Write -->
+                            <dxg:GridColumn Header="Nhập" FieldName="CanWrite" Width="65"
+                                            AllowSorting="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <dxe:CheckEdit IsChecked="{Binding Row.CanWrite, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                       HorizontalAlignment="Center"
+                                                       Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- Can Submit -->
+                            <dxg:GridColumn Header="Gửi" FieldName="CanSubmit" Width="65"
+                                            AllowSorting="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <dxe:CheckEdit IsChecked="{Binding Row.CanSubmit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                       HorizontalAlignment="Center"
+                                                       Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </Grid>
+            </TabItem>
+
         </TabControl>
 
         <!-- ═══════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 // File    : FormEditDialogViewModel.cs
 // Module  : Forms
 // Layer   : Presentation
-// Purpose : ViewModel cho FormEditDialog — tạo mới / chỉnh sửa metadata form (4 tabs, Session 7.3 = Tab 1+2).
+// Purpose : ViewModel cho FormEditDialog — tạo mới / chỉnh sửa metadata form (4 tabs: Info, Sections, Events, Permissions).
 
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
@@ -18,8 +18,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// <summary>
 /// ViewModel cho FormEditDialog (IDialogAware).
 /// Hỗ trợ 2 mode: Tạo mới (formId=0) và Chỉnh sửa (formId>0).
-/// Tab 1: Thông tin cơ bản — Tab 2: Sections &amp; Fields.
-/// Tab 3 (Events) và Tab 4 (Permissions) sẽ triển khai ở Session 7.4.
+/// Tab 1: Thông tin cơ bản — Tab 2: Sections &amp; Fields — Tab 3: Events — Tab 4: Permissions.
 /// </summary>
 public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
 {
@@ -209,6 +208,25 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
 
     // ── Tab 2 — Sections & Fields ─────────────────────────────
     public ObservableCollection<FormTreeNode> Sections { get; } = [];
+    // ── Tab 3 — Events ────────────────────────────────────────
+    public ObservableCollection<EventSummaryDto> Events { get; } = [];
+
+    private EventSummaryDto? _selectedEvent;
+    public EventSummaryDto? SelectedEvent
+    {
+        get => _selectedEvent;
+        set
+        {
+            if (SetProperty(ref _selectedEvent, value))
+            {
+                RemoveEventCommand.RaiseCanExecuteChanged();
+                EditEventCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    // ── Tab 4 — Permissions ───────────────────────────────────
+    public ObservableCollection<FormPermissionRow> Permissions { get; } = [];
 
     private FormTreeNode? _selectedSection;
     public FormTreeNode? SelectedSection
@@ -261,6 +279,14 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
     public DelegateCommand MoveFieldDownCommand   { get; }
     public DelegateCommand OpenFieldConfigCommand { get; }
 
+    // Tab 3 commands
+    public DelegateCommand AddEventCommand    { get; }
+    public DelegateCommand RemoveEventCommand { get; }
+    public DelegateCommand EditEventCommand   { get; }
+
+    // Tab 4 — dùng để đánh dấu IsDirty khi checkbox thay đổi
+    public DelegateCommand DirtyCommand { get; }
+
     public FormEditDialogViewModel(IRegionManager regionManager)
     {
         _regionManager = regionManager;
@@ -275,6 +301,12 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
         MoveFieldUpCommand   = new DelegateCommand(ExecuteMoveFieldUp,   () => CanMoveField(-1));
         MoveFieldDownCommand = new DelegateCommand(ExecuteMoveFieldDown, () => CanMoveField(1));
         OpenFieldConfigCommand = new DelegateCommand(ExecuteOpenFieldConfig, () => SelectedField is not null);
+
+        AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
+        RemoveEventCommand = new DelegateCommand(ExecuteRemoveEvent, () => SelectedEvent is not null);
+        EditEventCommand   = new DelegateCommand(ExecuteEditEvent,   () => SelectedEvent is not null);
+
+        DirtyCommand = new DelegateCommand(() => IsDirty = true);
     }
 
     // ── Init / Load ──────────────────────────────────────────
@@ -291,6 +323,8 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
         Version      = 1;
         Checksum     = "";
         Sections.Clear();
+        Events.Clear();
+        LoadDefaultPermissions();
         IsDirty      = false;
         ValidationSummary = "";
         FormCodeError     = "";
@@ -332,7 +366,31 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
         Sections.Add(sec2);
 
         SelectedSection = Sections.FirstOrDefault();
+
+        // ── Events mock ──────────────────────────────────────
+        Events.Clear();
+        Events.Add(new EventSummaryDto { EventId = 1, OrderNo = 1, TriggerCode = "OnLoad",   FieldTarget = "",          ConditionPreview = "",                             ActionsCount = 2, IsActive = true  });
+        Events.Add(new EventSummaryDto { EventId = 2, OrderNo = 2, TriggerCode = "OnChange", FieldTarget = "Gender",    ConditionPreview = "Gender == 'Female'",           ActionsCount = 1, IsActive = true  });
+        Events.Add(new EventSummaryDto { EventId = 3, OrderNo = 3, TriggerCode = "OnChange", FieldTarget = "DateOfBirth", ConditionPreview = "today() - DateOfBirth > 60", ActionsCount = 3, IsActive = false });
+        Events.Add(new EventSummaryDto { EventId = 4, OrderNo = 4, TriggerCode = "OnSubmit", FieldTarget = "",          ConditionPreview = "",                             ActionsCount = 1, IsActive = true  });
+
+        // ── Permissions mock ─────────────────────────────────
+        LoadDefaultPermissions();
+
         IsDirty = false;
+    }
+
+    /// <summary>Load danh sách roles mặc định với quyền form.</summary>
+    private void LoadDefaultPermissions()
+    {
+        Permissions.Clear();
+        // TODO(phase2): gọi API GetRoleLookup() để lấy danh sách roles thực từ Sys_Role
+        Permissions.Add(new FormPermissionRow { RoleId = 1, RoleName = "Admin",    RoleDescription = "Quản trị hệ thống",           CanRead = true,  CanWrite = true,  CanSubmit = true  });
+        Permissions.Add(new FormPermissionRow { RoleId = 2, RoleName = "Manager",  RoleDescription = "Quản lý nghiệp vụ",            CanRead = true,  CanWrite = true,  CanSubmit = true  });
+        Permissions.Add(new FormPermissionRow { RoleId = 3, RoleName = "Staff",    RoleDescription = "Nhân viên nhập liệu",          CanRead = true,  CanWrite = true,  CanSubmit = false });
+        Permissions.Add(new FormPermissionRow { RoleId = 4, RoleName = "Viewer",   RoleDescription = "Chỉ xem báo cáo",             CanRead = true,  CanWrite = false, CanSubmit = false });
+        Permissions.Add(new FormPermissionRow { RoleId = 5, RoleName = "Auditor",  RoleDescription = "Kiểm toán — readonly",        CanRead = true,  CanWrite = false, CanSubmit = false });
+        Permissions.Add(new FormPermissionRow { RoleId = 6, RoleName = "External", RoleDescription = "Đối tác / khách hàng ngoài",  CanRead = false, CanWrite = false, CanSubmit = false });
     }
 
     /// <summary>Load danh sách table từ DB (fallback sang mock).</summary>
@@ -448,7 +506,19 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
 
     private void ExecuteCancel()
     {
-        // TODO(phase2): nếu IsDirty → hiện DeactivateConfirmDialog qua IDialogService
+        // Nếu có thay đổi chưa lưu → hỏi xác nhận trước khi đóng
+        if (IsDirty)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Bạn có thay đổi chưa lưu. Bạn có chắc muốn thoát không?",
+                "Xác nhận thoát",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+
+            if (answer != System.Windows.MessageBoxResult.Yes)
+                return;
+        }
+
         RequestClose.Invoke(new DialogParameters(), ButtonResult.Cancel);
     }
 
@@ -549,5 +619,47 @@ public sealed class FormEditDialogViewModel : ViewModelBase, IDialogAware
 
         var navP = new NavigationParameters { { "fieldId", SelectedField.Id } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, navP);
+    }
+
+    // ── Tab 3 — Events command handlers ──────────────────────
+
+    private void ExecuteAddEvent()
+    {
+        var orderNo = Events.Count + 1;
+        var ev = new EventSummaryDto
+        {
+            EventId          = Events.Count > 0 ? Events.Max(e => e.EventId) + 1 : 1,
+            OrderNo          = orderNo,
+            TriggerCode      = "OnChange",
+            FieldTarget      = "",
+            ConditionPreview = "",
+            ActionsCount     = 0,
+            IsActive         = true
+        };
+        Events.Add(ev);
+        SelectedEvent = ev;
+        IsDirty = true;
+    }
+
+    private void ExecuteRemoveEvent()
+    {
+        if (SelectedEvent is null) return;
+        Events.Remove(SelectedEvent);
+        SelectedEvent = Events.FirstOrDefault();
+        IsDirty = true;
+    }
+
+    /// <summary>
+    /// Đóng dialog và navigate sang EventEditor cho event được chọn.
+    /// </summary>
+    private void ExecuteEditEvent()
+    {
+        if (SelectedEvent is null) return;
+        // NOTE: đóng dialog trước, navigate về EventEditor
+        var p = new DialogParameters { { "eventId", SelectedEvent.EventId } };
+        RequestClose.Invoke(p, ButtonResult.None);
+
+        var navP = new NavigationParameters { { "eventId", SelectedEvent.EventId } };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, navP);
     }
 }
