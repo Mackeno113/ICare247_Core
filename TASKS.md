@@ -53,6 +53,73 @@
 - [ ] Setup appsettings.json + appsettings.Development.json
 - [ ] Database seed script (db/ folder)
 
+### Phase 6 — Form Management CRUD (Backend API)
+
+> Dựa trên phân tích DB + wireframe Ui_Form (2026-03-18)
+
+**Application Layer — Queries**
+- [ ] `GetFormsListQuery` + Handler — phân trang, filter theo Platform/Table_Id/Is_Active, search theo Form_Code
+- [ ] `GetFormByIdQuery` + Handler — lấy form metadata + related counts (sections, fields, events, rules)
+- [ ] `GetFormAuditLogQuery` + Handler — lấy từ Sys_Audit_Log WHERE Object_Type='Form'
+
+**Application Layer — Commands**
+- [ ] `CreateFormCommand` + Handler — validate Form_Code unique, set Version=1, Checksum, insert Sys_Audit_Log
+- [ ] `UpdateFormCommand` + Handler — Version++, recalc Checksum, insert Sys_Cache_Invalidation + Sys_Audit_Log
+- [ ] `DeactivateFormCommand` + Handler — set Is_Active=0, invalidate cache, insert Sys_Audit_Log
+- [ ] `RestoreFormCommand` + Handler — set Is_Active=1, insert Sys_Audit_Log
+- [ ] `CloneFormCommand` + Handler — sao chép Form + Sections + Fields + Events sang Form_Code mới
+
+**Infrastructure Layer**
+- [ ] `FormRepository.GetListAsync` — Dapper query với paging, multi-filter, ORDER BY Form_Code
+- [ ] `FormRepository.GetByIdAsync` — JOIN Sys_Table để lấy Table_Name, Tenant context
+- [ ] `FormRepository.CreateAsync` — INSERT Ui_Form, trả về Form_Id mới
+- [ ] `FormRepository.UpdateAsync` — UPDATE Ui_Form + Version++ + Checksum
+- [ ] `FormRepository.SetActiveAsync` — UPDATE Is_Active (dùng chung cho Deactivate + Restore)
+- [ ] `FormRepository.ExistsCodeAsync` — CHECK Form_Code unique (dùng trong validation)
+- [ ] `FormRepository.CloneAsync` — transaction: copy Form → Sections → Fields → Events
+
+**API Layer**
+- [ ] `GET  /api/v1/config/forms` — list + filter + paging
+- [ ] `GET  /api/v1/config/forms/{code}` — detail by Form_Code
+- [ ] `POST /api/v1/config/forms` — tạo form mới
+- [ ] `PUT  /api/v1/config/forms/{code}` — cập nhật form
+- [ ] `POST /api/v1/config/forms/{code}/deactivate` — vô hiệu hóa
+- [ ] `POST /api/v1/config/forms/{code}/restore` — khôi phục
+- [ ] `POST /api/v1/config/forms/{code}/clone` — nhân bản
+
+### Phase 7 — Form Management CRUD (ConfigStudio WPF)
+
+> Màn hình quản lý Ui_Form theo wireframe đã thiết kế (2026-03-18)
+> Stack: Prism 9 + MaterialDesign + MVVM — đặt trong module Forms
+
+**Screen 02 nâng cấp — FormManagerView (List + Filter)**
+- [x] `FormManagerViewModel` — thêm ObservableCollection, filter properties (Platform, TableId, SearchText), paging support
+- [x] Filter toolbar: ComboBox Platform (`Tất cả/web/mobile/wpf`), ComboBox Table (load mock/API), SearchBox debounce
+- [x] DataGrid nâng cấp: thêm cột Version, Is_Active (toggle chip), row style mờ khi inactive
+- [x] Actions per row: Edit, Clone, Preview, Deactivate/Restore (ẩn/hiện theo Is_Active)
+- [x] Summary bar footer: tổng / active / inactive count
+- [x] Navigate sang FormDetailView khi click vào Form_Code link
+
+**Screen mới — FormDetailView (readonly)**
+- [x] `FormDetailView.xaml` + `FormDetailViewModel` — Prism navigation, nhận param `FormCode`
+- [x] Header metadata: Form_Code, Platform, Table, Version, Is_Active chip, Checksum, Updated
+- [x] TabControl: Sections (count) | Fields (count) | Events (count) | Rules (count) | Audit Log
+- [x] Sub-DataGrid cho từng tab (readonly, không edit inline)
+- [x] Tab Audit Log: DataGrid Thời gian / Action / User / Correlation_Id
+
+**Screen 02 nâng cấp — FormEditDialog (Create/Edit)**
+- [x] `FormEditDialogView.xaml` + `FormEditDialogViewModel` — IDialogAware (Prism Dialog)
+- [x] Tab 1 — Thông tin cơ bản: TextBox Form_Code (regex validate `^[A-Z0-9_]+$`, unique check), ComboBox Platform, ComboBox Table, ComboBox Layout_Engine, TextBox Description, ToggleButton Is_Active, readonly Version/Checksum
+- [x] Tab 2 — Sections & Fields: ListBox sections trái, DataGrid fields phải (navigate sang FieldConfig)
+- [ ] Tab 3 — Events: DataGrid (Trigger, Field_Target, Condition snippet, Actions count), navigate sang EventEditor
+- [ ] Tab 4 — Permissions: DataGrid roles × CheckBox (Can_Read, Can_Write, Can_Submit)
+- [x] ValidationSummary TextBlock hiện lỗi khi submit
+- [ ] Dirty check: hiện ConfirmDialog khi đóng mà chưa lưu (TODO phase2)
+
+**Dialogs**
+- [ ] `DeactivateFormDialog.xaml` + VM — MaterialDesign Dialog: tên form, impact (X fields, Y events), nút Xác nhận/Hủy
+- [ ] `CloneFormDialog.xaml` + VM — TextBox Form_Code mới (validate unique), nút Clone/Hủy
+
 ### ConfigStudio.WPF.UI — Skeleton Screens
 
 - [x] Screen 01: Shell + Navigation
@@ -125,3 +192,6 @@
 | 2026-03-04 | Prism 9 dùng `Prism.Dialogs` thay `Prism.Services.Dialogs`                | Breaking change trong Prism 9.x — áp dụng cho Rules, Events modules            |
 | 2026-03-04 | Rules, Events, I18n modules thêm PackageReference MaterialDesignThemes     | Giống Forms module — cần reference trực tiếp cho XAML attached properties       |
 | 2026-03-04 | InverseBoolToVisConverter đặt trong Forms module (không phải Core)          | Core project dùng net9.0 (không net9.0-windows) — không có WPF types           |
+| 2026-03-18 | Form delete = soft delete (Is_Active=0), không xóa vật lý                  | Child records (Section, Field, Event) phải giữ lại cho audit/rollback           |
+| 2026-03-18 | Form_Code là natural key trong toàn bộ API — không dùng Form_Id             | API contract dùng Form_Code, cache key cũng dùng Form_Code                     |
+| 2026-03-18 | Chưa có cột Status (Draft/Published) trong Ui_Form schema                   | Nếu cần workflow phức tạp hơn, phải thêm cột Status vào schema trước           |

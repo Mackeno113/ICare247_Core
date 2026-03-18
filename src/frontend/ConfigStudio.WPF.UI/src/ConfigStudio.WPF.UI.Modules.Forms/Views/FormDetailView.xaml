@@ -1,0 +1,470 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.FormDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="700"
+             d:DesignWidth="1100"
+             mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
+
+        <!-- Style label metadata (readonly key) -->
+        <Style x:Key="MetaLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="11" />
+            <Setter Property="Opacity"    Value="0.55" />
+            <Setter Property="Margin"     Value="0,0,0,2" />
+            <Setter Property="FontWeight" Value="Medium" />
+        </Style>
+
+        <!-- Style value metadata (readonly value) -->
+        <Style x:Key="MetaValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"  Value="13" />
+            <Setter Property="Margin"    Value="0,0,0,12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <!-- Style tab header text -->
+        <Style x:Key="TabHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Margin"     Value="2,0" />
+        </Style>
+
+        <!-- Style count badge trong tab header -->
+        <Style x:Key="TabBadgeStyle" TargetType="Border">
+            <Setter Property="Background"   Value="#DBEAFE" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding"      Value="6,1" />
+            <Setter Property="Margin"       Value="5,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- Style toolbar button -->
+        <Style x:Key="ToolbarButtonStyle" TargetType="dx:SimpleButton">
+            <Setter Property="Margin"  Value="0,0,8,0" />
+            <Setter Property="Height"  Value="32" />
+            <Setter Property="Padding" Value="12,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- Header card + toolbar -->
+            <RowDefinition Height="*"    />  <!-- TabControl -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 0: Header card
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />   <!-- Breadcrumb + toolbar -->
+                    <RowDefinition Height="Auto" />   <!-- Separator -->
+                    <RowDefinition Height="Auto" />   <!-- Metadata grid -->
+                </Grid.RowDefinitions>
+
+                <!-- Toolbar -->
+                <DockPanel Grid.Row="0">
+                    <!-- Back link + form code title -->
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <dx:SimpleButton Content="← Quay lại"
+                                         Command="{Binding BackCommand}"
+                                         Style="{StaticResource ToolbarButtonStyle}"
+                                         Margin="0,0,12,0" />
+                        <TextBlock FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}"
+                                   Text="{Binding FormCode}" />
+                        <!-- Is_Active badge -->
+                        <Border Margin="10,0,0,0" CornerRadius="10" Padding="10,3"
+                                VerticalAlignment="Center">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#F1F5F9" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Background" Value="#DCFCE7" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontSize="11" FontWeight="SemiBold"
+                                       Text="{Binding StatusText}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#64748B" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                <Setter Property="Foreground" Value="#16A34A" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Action buttons -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <dx:SimpleButton Content="✎ Chỉnh sửa"
+                                         Command="{Binding EditCommand}"
+                                         Style="{StaticResource ToolbarButtonStyle}" />
+                        <dx:SimpleButton Content="👁 Xem trước"
+                                         Command="{Binding PreviewCommand}"
+                                         Style="{StaticResource ToolbarButtonStyle}" />
+                        <!-- Deactivate — chỉ hiện khi IsActive=true -->
+                        <dx:SimpleButton Content="🔒 Vô hiệu hóa"
+                                         Command="{Binding DeactivateCommand}"
+                                         Style="{StaticResource ToolbarButtonStyle}"
+                                         Margin="0"
+                                         Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
+                        <!-- Restore — chỉ hiện khi IsActive=false -->
+                        <dx:SimpleButton Content="🔓 Khôi phục"
+                                         Command="{Binding RestoreCommand}"
+                                         Style="{StaticResource ToolbarButtonStyle}"
+                                         Margin="0"
+                                         Visibility="{Binding IsActive, Converter={StaticResource InvBoolToVis}}" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Separator -->
+                <Border Grid.Row="1" Height="1" Background="#E2EAFF" Margin="0,12" />
+
+                <!-- Metadata grid — 3 cột, mỗi cột có label + value -->
+                <Grid Grid.Row="2">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Cột 1 -->
+                    <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                        <TextBlock Text="Form Code" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding FormCode}" Style="{StaticResource MetaValueStyle}"
+                                   FontWeight="SemiBold" FontFamily="Consolas" />
+
+                        <TextBlock Text="Business Table" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding TableName}" Style="{StaticResource MetaValueStyle}" />
+
+                        <TextBlock Text="Mô tả" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding Description}" Style="{StaticResource MetaValueStyle}"
+                                   Opacity="0.75" />
+                    </StackPanel>
+
+                    <!-- Cột 2 -->
+                    <StackPanel Grid.Column="1" Margin="0,0,24,0">
+                        <TextBlock Text="Platform" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding Platform}" Style="{StaticResource MetaValueStyle}" />
+
+                        <TextBlock Text="Layout Engine" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding LayoutEngine}" Style="{StaticResource MetaValueStyle}" />
+
+                        <TextBlock Text="Version" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding Version}" Style="{StaticResource MetaValueStyle}" />
+                    </StackPanel>
+
+                    <!-- Cột 3 -->
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Checksum" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding Checksum}" Style="{StaticResource MetaValueStyle}"
+                                   FontFamily="Consolas" FontSize="11" Opacity="0.7" />
+
+                        <TextBlock Text="Cập nhật lúc" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding UpdatedAt, StringFormat='dd/MM/yyyy HH:mm'}"
+                                   Style="{StaticResource MetaValueStyle}" />
+
+                        <TextBlock Text="Người sửa" Style="{StaticResource MetaLabelStyle}" />
+                        <TextBlock Text="{Binding UpdatedBy}" Style="{StaticResource MetaValueStyle}" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 1: TabControl — Sections | Fields | Events | Rules | Audit Log
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Margin="16,8,16,16"
+                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <TabControl BorderThickness="0" Background="Transparent">
+
+                <!-- ── TAB: Sections ─────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Sections" Style="{StaticResource TabHeaderStyle}" />
+                            <Border Style="{StaticResource TabBadgeStyle}">
+                                <TextBlock Text="{Binding SectionCount}" FontSize="11"
+                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <dxg:GridControl ItemsSource="{Binding Sections}"
+                                     AutoPopulateColumns="False"
+                                     Margin="0">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#"            FieldName="OrderNo"     Width="45" />
+                            <dxg:GridColumn Header="Section Code" FieldName="SectionCode" Width="200" />
+                            <dxg:GridColumn Header="Title Key"    FieldName="TitleKey"    Width="*" />
+                            <dxg:GridColumn Header="Fields"       FieldName="FieldCount"  Width="70" />
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </TabItem>
+
+                <!-- ── TAB: Fields ───────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Fields" Style="{StaticResource TabHeaderStyle}" />
+                            <Border Style="{StaticResource TabBadgeStyle}">
+                                <TextBlock Text="{Binding FieldCount}" FontSize="11"
+                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <dxg:GridControl ItemsSource="{Binding Fields}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#"          FieldName="OrderNo"     Width="45" />
+                            <dxg:GridColumn Header="Column"     FieldName="ColumnName"  Width="160" />
+                            <dxg:GridColumn Header="Section"    FieldName="SectionCode" Width="160" />
+                            <dxg:GridColumn Header="Editor"     FieldName="EditorType"  Width="110" />
+                            <dxg:GridColumn Header="Rules"      FieldName="RuleCount"   Width="60" />
+
+                            <!-- Visible — checkbox readonly -->
+                            <dxg:GridColumn Header="Visible" FieldName="IsVisible" Width="70"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   FontSize="14">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text"       Value="○" />
+                                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Row.IsVisible}" Value="True">
+                                                            <Setter Property="Text"       Value="●" />
+                                                            <Setter Property="Foreground" Value="#16A34A" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- ReadOnly — checkbox readonly -->
+                            <dxg:GridColumn Header="ReadOnly" FieldName="IsReadOnly" Width="80"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                   FontSize="14">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text"       Value="○" />
+                                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Row.IsReadOnly}" Value="True">
+                                                            <Setter Property="Text"       Value="🔒" />
+                                                            <Setter Property="Foreground" Value="#D97706" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </TabItem>
+
+                <!-- ── TAB: Events ───────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Events" Style="{StaticResource TabHeaderStyle}" />
+                            <Border Style="{StaticResource TabBadgeStyle}">
+                                <TextBlock Text="{Binding EventCount}" FontSize="11"
+                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <dxg:GridControl ItemsSource="{Binding Events}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row">
+                                <dxg:TableView.RowStyle>
+                                    <Style TargetType="dxg:RowControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Row.IsActive}" Value="False">
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </dxg:TableView.RowStyle>
+                            </dxg:TableView>
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#"           FieldName="OrderNo"          Width="45" />
+                            <dxg:GridColumn Header="Trigger"     FieldName="TriggerCode"      Width="110" />
+                            <dxg:GridColumn Header="Field"       FieldName="FieldTarget"      Width="130" />
+                            <dxg:GridColumn Header="Điều kiện"   FieldName="ConditionPreview" Width="*" />
+                            <dxg:GridColumn Header="Actions"     FieldName="ActionsCount"     Width="75" />
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </TabItem>
+
+                <!-- ── TAB: Rules ────────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Rules" Style="{StaticResource TabHeaderStyle}" />
+                            <Border Style="{StaticResource TabBadgeStyle}">
+                                <TextBlock Text="{Binding RuleCount}" FontSize="11"
+                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <dxg:GridControl ItemsSource="{Binding Rules}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row">
+                                <dxg:TableView.RowStyle>
+                                    <Style TargetType="dxg:RowControl">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Row.IsActive}" Value="False">
+                                                <Setter Property="Opacity" Value="0.4" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </dxg:TableView.RowStyle>
+                            </dxg:TableView>
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="#"           FieldName="OrderNo"           Width="45" />
+                            <dxg:GridColumn Header="Rule Type"   FieldName="RuleTypeCode"      Width="120" />
+                            <dxg:GridColumn Header="Expression"  FieldName="ExpressionPreview" Width="*" />
+                            <dxg:GridColumn Header="Error Key"   FieldName="ErrorKey"          Width="170" />
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </TabItem>
+
+                <!-- ── TAB: Audit Log ────────────────────────────── -->
+                <TabItem>
+                    <TabItem.Header>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Audit Log" Style="{StaticResource TabHeaderStyle}" />
+                            <Border Style="{StaticResource TabBadgeStyle}">
+                                <TextBlock Text="{Binding AuditCount}" FontSize="11"
+                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                            </Border>
+                        </StackPanel>
+                    </TabItem.Header>
+                    <dxg:GridControl ItemsSource="{Binding AuditLogs}"
+                                     AutoPopulateColumns="False">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False"
+                                           AllowEditing="False"
+                                           AllowPerPixelScrolling="True"
+                                           NavigationStyle="Row" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn Header="Thời gian"    FieldName="ChangedAt"     Width="140"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Row.ChangedAt, StringFormat='dd/MM/yyyy HH:mm:ss'}"
+                                                   VerticalAlignment="Center" FontSize="12" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <!-- Action badge INSERT/UPDATE -->
+                            <dxg:GridColumn Header="Action" FieldName="ActionType" Width="90"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="8,2"
+                                                HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="#FEF3C7" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Row.ActionType}" Value="INSERT">
+                                                            <Setter Property="Background" Value="#DCFCE7" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="11" FontWeight="SemiBold"
+                                                       Text="{Binding Row.ActionType}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="#92400E" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Row.ActionType}" Value="INSERT">
+                                                                <Setter Property="Foreground" Value="#15803D" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+
+                            <dxg:GridColumn Header="Người sửa"   FieldName="ChangedBy"     Width="120" />
+                            <dxg:GridColumn Header="Thay đổi"    FieldName="ChangeSummary" Width="*" />
+                            <dxg:GridColumn Header="Correlation"  FieldName="CorrelationId" Width="130"
+                                            AllowEditing="False">
+                                <dxg:GridColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Row.CorrelationId}"
+                                                   VerticalAlignment="Center" FontSize="11"
+                                                   FontFamily="Consolas" Opacity="0.6" />
+                                    </DataTemplate>
+                                </dxg:GridColumn.CellTemplate>
+                            </dxg:GridColumn>
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                </TabItem>
+
+            </TabControl>
+        </Border>
+    </Grid>
+</UserControl>

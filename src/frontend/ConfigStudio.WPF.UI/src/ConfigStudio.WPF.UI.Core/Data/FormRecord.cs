@@ -16,6 +16,7 @@ public sealed class FormRecord
     public string   FormName    { get; init; } = "";
     public int      Version     { get; init; }
     public string   Platform    { get; init; } = "web";
+    public string   TableName   { get; init; } = "";
     public bool     IsActive    { get; init; }
     public DateTime UpdatedAt   { get; init; }
     public string   UpdatedBy   { get; init; } = "";

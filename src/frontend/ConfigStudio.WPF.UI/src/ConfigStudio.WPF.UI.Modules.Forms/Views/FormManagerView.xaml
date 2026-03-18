@@ -7,13 +7,96 @@
              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
-             d:DesignWidth="1000"
+             d:DesignWidth="1100"
              mc:Ignorable="d">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
+
+        <!-- Style dùng chung cho action button trong cell -->
+        <Style x:Key="CellActionButtonStyle" TargetType="Button">
+            <Setter Property="Width"           Value="30" />
+            <Setter Property="Height"          Value="28" />
+            <Setter Property="Margin"          Value="2,0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="14" />
+            <Setter Property="Foreground"      Value="#475569" />
+            <Setter Property="Background"      Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="5"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E1ECFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#C7D7F2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style nút Deactivate (cam khi hover) -->
+        <Style x:Key="CellDeactivateButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource CellActionButtonStyle}">
+            <Setter Property="Foreground" Value="#D97706" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="5"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FEF3C7" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#FDE68A" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Style nút Restore (xanh lá khi hover) -->
+        <Style x:Key="CellRestoreButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource CellActionButtonStyle}">
+            <Setter Property="Foreground" Value="#16A34A" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="5"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#DCFCE7" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#BBF7D0" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -58,23 +141,34 @@
                 </DockPanel>
 
                 <!-- Filter bar -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <dxe:TextEdit Width="280"
+                <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <!-- Search box -->
+                    <dxe:TextEdit Width="260"
                                   NullText="Tìm theo mã hoặc tên form..."
                                   EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                  Margin="0,0,12,0" />
+                                  Margin="0,0,10,0" />
 
-                    <dxe:ComboBoxEdit Width="140"
+                    <!-- Filter Platform -->
+                    <dxe:ComboBoxEdit Width="130"
                                       NullText="Platform"
                                       ItemsSource="{Binding PlatformOptions}"
                                       EditValue="{Binding PlatformFilter}"
-                                      Margin="0,0,12,0" />
+                                      Margin="0,0,10,0" />
 
+                    <!-- Filter Table -->
+                    <dxe:ComboBoxEdit Width="160"
+                                      NullText="Business Table"
+                                      ItemsSource="{Binding TableOptions}"
+                                      EditValue="{Binding TableFilter}"
+                                      Margin="0,0,10,0" />
+
+                    <!-- Show inactive toggle -->
                     <dxe:CheckEdit Content="Hiện form đã ẩn"
-                                   IsChecked="{Binding ShowInactiveOnly}"
+                                   IsChecked="{Binding ShowInactive}"
                                    VerticalAlignment="Center" />
-                </StackPanel>
+                </WrapPanel>
 
+                <!-- Error banner -->
                 <Border Grid.Row="2"
                         Margin="0,10,0,0"
                         Padding="10,8"
@@ -96,63 +190,6 @@
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Margin="16,8,16,0"
                 BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-            <Border.Resources>
-                <!-- Style dùng chung cho action button trong cell -->
-                <Style x:Key="CellActionButtonStyle" TargetType="Button">
-                    <Setter Property="Width"           Value="30" />
-                    <Setter Property="Height"          Value="28" />
-                    <Setter Property="Margin"          Value="2,0" />
-                    <Setter Property="Cursor"          Value="Hand" />
-                    <Setter Property="FontSize"        Value="14" />
-                    <Setter Property="Foreground"      Value="#475569" />
-                    <Setter Property="Background"      Value="Transparent" />
-                    <Setter Property="BorderThickness" Value="0" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bd" CornerRadius="5"
-                                        Background="{TemplateBinding Background}">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#E1ECFF" />
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#C7D7F2" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-
-                <!-- Style riêng cho nút Delete (đỏ khi hover) -->
-                <Style x:Key="CellDeleteButtonStyle" TargetType="Button"
-                       BasedOn="{StaticResource CellActionButtonStyle}">
-                    <Setter Property="Foreground" Value="#EF4444" />
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="Button">
-                                <Border x:Name="Bd" CornerRadius="5"
-                                        Background="{TemplateBinding Background}">
-                                    <ContentPresenter HorizontalAlignment="Center"
-                                                      VerticalAlignment="Center" />
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#FEE2E2" />
-                                    </Trigger>
-                                    <Trigger Property="IsPressed" Value="True">
-                                        <Setter TargetName="Bd" Property="Background" Value="#FECACA" />
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </Border.Resources>
 
             <dxg:GridControl ItemsSource="{Binding FormsView}"
                              SelectedItem="{Binding SelectedForm, Mode=TwoWay}"
@@ -160,15 +197,50 @@
                 <dxg:GridControl.View>
                     <dxg:TableView NavigationStyle="Row"
                                    ShowGroupPanel="False"
-                                   AllowPerPixelScrolling="True" />
+                                   AllowPerPixelScrolling="True">
+                        <!-- NOTE: Row mờ khi IsActive = false -->
+                        <dxg:TableView.RowStyle>
+                            <Style TargetType="dxg:RowControl">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Row.IsActive}" Value="False">
+                                        <Setter Property="Opacity" Value="0.45" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </dxg:TableView.RowStyle>
+                    </dxg:TableView>
                 </dxg:GridControl.View>
+
                 <dxg:GridControl.Columns>
-                    <dxg:GridColumn Header="Mã Form"   FieldName="FormCode"    Width="150" />
-                    <dxg:GridColumn Header="Tên Form"  FieldName="FormName"    Width="*" />
-                    <dxg:GridColumn Header="Version"   FieldName="Version"     Width="70" />
+
+                    <!-- Mã Form — click → navigate FormDetail -->
+                    <dxg:GridColumn Header="Mã Form" FieldName="FormCode" Width="160"
+                                    AllowEditing="False">
+                        <dxg:GridColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock VerticalAlignment="Center" Cursor="Hand"
+                                           FontWeight="Medium" Foreground="#1D4ED8"
+                                           TextDecorations="Underline">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Text" Value="{Binding Row.FormCode}" />
+                                        </Style>
+                                    </TextBlock.Style>
+                                    <TextBlock.InputBindings>
+                                        <MouseBinding MouseAction="LeftClick"
+                                                      Command="{Binding DataContext.ViewDetailCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                      CommandParameter="{Binding Row}" />
+                                    </TextBlock.InputBindings>
+                                </TextBlock>
+                            </DataTemplate>
+                        </dxg:GridColumn.CellTemplate>
+                    </dxg:GridColumn>
+
+                    <dxg:GridColumn Header="Tên Form"  FieldName="FormName"  Width="*" />
+                    <dxg:GridColumn Header="Table"     FieldName="TableName" Width="120" />
 
                     <!-- Platform — badge màu -->
-                    <dxg:GridColumn Header="Platform"  FieldName="Platform"    Width="90"
+                    <dxg:GridColumn Header="Platform" FieldName="Platform" Width="90"
                                     AllowEditing="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
@@ -183,6 +255,9 @@
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding Row.Platform}" Value="mobile">
                                                     <Setter Property="Background" Value="#EDE9FE" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Row.Platform}" Value="wpf">
+                                                    <Setter Property="Background" Value="#FEF3C7" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -199,6 +274,9 @@
                                                     <DataTrigger Binding="{Binding Row.Platform}" Value="mobile">
                                                         <Setter Property="Foreground" Value="#7C3AED" />
                                                     </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Row.Platform}" Value="wpf">
+                                                        <Setter Property="Foreground" Value="#92400E" />
+                                                    </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </TextBlock.Style>
@@ -208,11 +286,12 @@
                         </dxg:GridColumn.CellTemplate>
                     </dxg:GridColumn>
 
-                    <dxg:GridColumn Header="Sections"  FieldName="SectionCount" Width="75" />
-                    <dxg:GridColumn Header="Fields"    FieldName="FieldCount"   Width="65" />
+                    <dxg:GridColumn Header="Ver"      FieldName="Version"     Width="50" />
+                    <dxg:GridColumn Header="Sections" FieldName="SectionCount" Width="70" />
+                    <dxg:GridColumn Header="Fields"   FieldName="FieldCount"   Width="60" />
 
-                    <!-- Trạng thái — badge màu Published / Draft -->
-                    <dxg:GridColumn Header="Trạng thái" FieldName="IsActive"   Width="110"
+                    <!-- Trạng thái — badge Active / Inactive -->
+                    <dxg:GridColumn Header="Trạng thái" FieldName="IsActive" Width="100"
                                     AllowEditing="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
@@ -231,11 +310,11 @@
                                     <TextBlock FontSize="11" FontWeight="SemiBold">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
-                                                <Setter Property="Text"       Value="Draft" />
+                                                <Setter Property="Text"       Value="Inactive" />
                                                 <Setter Property="Foreground" Value="#64748B" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Row.IsActive}" Value="True">
-                                                        <Setter Property="Text"       Value="Published" />
+                                                        <Setter Property="Text"       Value="Active" />
                                                         <Setter Property="Foreground" Value="#16A34A" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -247,8 +326,8 @@
                         </dxg:GridColumn.CellTemplate>
                     </dxg:GridColumn>
 
-                    <!-- Cập nhật — format ngày giờ -->
-                    <dxg:GridColumn Header="Cập nhật"  FieldName="UpdatedAt"   Width="130"
+                    <!-- Cập nhật -->
+                    <dxg:GridColumn Header="Cập nhật" FieldName="UpdatedAt" Width="120"
                                     AllowEditing="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
@@ -258,53 +337,111 @@
                         </dxg:GridColumn.CellTemplate>
                     </dxg:GridColumn>
 
-                    <dxg:GridColumn Header="Người sửa" FieldName="UpdatedBy"   Width="100" />
-
-                    <!-- Actions -->
-                    <dxg:GridColumn Header="" Width="110" AllowEditing="False" AllowSorting="False">
+                    <!-- Actions: Edit | Preview | Clone | Deactivate-or-Restore -->
+                    <dxg:GridColumn Header="" Width="136" AllowEditing="False" AllowSorting="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                             Margin="4,0">
+
+                                    <!-- Edit — mở Form Editor -->
                                     <Button Style="{StaticResource CellActionButtonStyle}"
                                             Command="{Binding DataContext.OpenFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                             CommandParameter="{Binding Row}"
                                             ToolTip="Mở Form Editor"
                                             Content="✎" />
+
+                                    <!-- Preview — render form từ metadata -->
+                                    <Button Style="{StaticResource CellActionButtonStyle}"
+                                            Command="{Binding DataContext.PreviewFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
+                                            ToolTip="Xem trước form"
+                                            Content="👁" />
+
+                                    <!-- Clone — nhân bản -->
                                     <Button Style="{StaticResource CellActionButtonStyle}"
                                             Command="{Binding DataContext.DuplicateFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                             CommandParameter="{Binding Row}"
                                             ToolTip="Nhân bản form"
                                             Content="⧉" />
-                                    <Button Style="{StaticResource CellDeleteButtonStyle}"
-                                            Command="{Binding DataContext.DeleteFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+
+                                    <!-- Deactivate — chỉ hiện khi IsActive=true -->
+                                    <Button Style="{StaticResource CellDeactivateButtonStyle}"
+                                            Command="{Binding DataContext.DeactivateFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                             CommandParameter="{Binding Row}"
-                                            ToolTip="Ẩn form"
-                                            Content="🗑" />
+                                            ToolTip="Vô hiệu hóa form"
+                                            Content="🔒"
+                                            Visibility="{Binding Row.IsActive, Converter={StaticResource BoolToVis}}" />
+
+                                    <!-- Restore — chỉ hiện khi IsActive=false -->
+                                    <Button Style="{StaticResource CellRestoreButtonStyle}"
+                                            Command="{Binding DataContext.RestoreFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
+                                            ToolTip="Khôi phục form"
+                                            Content="🔓"
+                                            Visibility="{Binding Row.IsActive, Converter={StaticResource InvBoolToVis}}" />
+
                                 </StackPanel>
                             </DataTemplate>
                         </dxg:GridColumn.CellTemplate>
                     </dxg:GridColumn>
+
                 </dxg:GridControl.Columns>
             </dxg:GridControl>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 2: Status bar
+             ROW 2: Summary bar
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,7"
                 Background="#EEF5FF" CornerRadius="4">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="Hiển thị {0} / {1} form">
-                            <Binding Path="FilteredCount" />
-                            <Binding Path="TotalForms" />
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-            </StackPanel>
+            <DockPanel>
+                <!-- Số liệu thống kê -->
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
+
+                    <TextBlock FontSize="12" Opacity="0.7" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="Hiển thị {0} / Tổng {1}">
+                                <Binding Path="FilteredCount" />
+                                <Binding Path="TotalForms" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+
+                    <Border Width="1" Height="14" Background="#94A3B8" Margin="12,0" Opacity="0.4" />
+
+                    <!-- Active count -->
+                    <Ellipse Width="8" Height="8" Fill="#16A34A" Margin="0,0,5,0"
+                             VerticalAlignment="Center" />
+                    <TextBlock FontSize="12" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="Active: {0}">
+                                <Binding Path="ActiveCount" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+
+                    <Border Width="1" Height="14" Background="#94A3B8" Margin="12,0" Opacity="0.4" />
+
+                    <!-- Inactive count -->
+                    <Ellipse Width="8" Height="8" Fill="#94A3B8" Margin="0,0,5,0"
+                             VerticalAlignment="Center" />
+                    <TextBlock FontSize="12" Opacity="0.7" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="Inactive: {0}">
+                                <Binding Path="InactiveCount" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- Loading indicator -->
+                <TextBlock DockPanel.Dock="Right" Text="⏳ Đang tải..."
+                           FontSize="12" Opacity="0.6" VerticalAlignment="Center"
+                           HorizontalAlignment="Right"
+                           Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}" />
+            </DockPanel>
         </Border>
     </Grid>
 </UserControl>

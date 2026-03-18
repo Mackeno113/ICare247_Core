@@ -11,7 +11,10 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.Models;
 public sealed class EventSummaryDto
 {
     public int EventId { get; set; }
+    public int OrderNo { get; set; }
     public string TriggerCode { get; set; } = "";
+    /// <summary>Tên field kích hoạt event. Null = form-level event (OnLoad, OnSubmit).</summary>
+    public string FieldTarget { get; set; } = "";
     public string ConditionPreview { get; set; } = "";
     public int ActionsCount { get; set; }
     public bool IsActive { get; set; } = true;

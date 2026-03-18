@@ -55,13 +55,24 @@ public interface IAstEngine
 
 ```
 ValidateFieldAsync(formId, fieldCode, value, context, tenantId)
-    → Load rules của field từ Sys_Rule
+    → Load Field_Id từ fieldCode + formId
+    → Load rules của field từ Val_Rule_Field JOIN Val_Rule
+          (Val_Rule_Field.Field_Id = Field_Id, ORDER BY Val_Rule_Field.Order_No)
     → Resolve dependencies qua Sys_Dependency
     → Sort rules theo dependency graph (topological sort)
-    → Evaluate từng rule (AstEngine.Evaluate)
+    → Evaluate từng rule:
+          - Nếu Val_Rule.Condition_Expr != NULL → evaluate điều kiện trước
+          - Nếu điều kiện = false → skip rule
+          - Nếu Rule_Type_Code = 'Required' → kiểm tra not null/empty
+          - Còn lại → AstEngine.Evaluate(Expression_Json)
+    → Resolve error text: Val_Rule.Error_Key → Sys_Resource
     → Collect ValidationResult list
     → Return ValidationResponse
 ```
+
+> **Quan hệ DB:** `Val_Rule_Field` là bảng trung gian nhiều-nhiều giữa `Ui_Field` và `Val_Rule`.
+> Một field có thể có nhiều rules; một rule có thể dùng lại cho nhiều fields.
+> `Val_Rule_Field.Order_No` quyết định thứ tự evaluate trong trường hợp không có dependency.
 
 **Interface:**
 ```csharp

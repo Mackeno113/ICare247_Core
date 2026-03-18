@@ -18,12 +18,13 @@ public class FormSummaryDto : BindableBase
     public string FormName { get; set; } = "";
     public int Version { get; set; }
     public string Platform { get; set; } = "web";
+    public string TableName { get; set; } = "";
     public int SectionCount { get; set; }
     public int FieldCount { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
     public string UpdatedBy { get; set; } = "";
 
-    /// <summary>Trạng thái hiển thị (Published / Draft).</summary>
-    public string StatusText => IsActive ? "Published" : "Draft";
+    /// <summary>Trạng thái hiển thị (Active / Inactive).</summary>
+    public string StatusText => IsActive ? "Active" : "Inactive";
 }

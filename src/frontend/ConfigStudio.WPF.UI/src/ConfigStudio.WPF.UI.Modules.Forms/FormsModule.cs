@@ -15,11 +15,14 @@ public sealed class FormsModule : IModule
 {
     public void RegisterTypes(IContainerRegistry containerRegistry)
     {
-        containerRegistry.RegisterForNavigation<FormManagerView, FormManagerViewModel>(ViewNames.FormManager);
-        containerRegistry.RegisterForNavigation<FormEditorView, FormEditorViewModel>(ViewNames.FormEditor);
-        containerRegistry.RegisterForNavigation<SysTableManagerView, SysTableManagerViewModel>(ViewNames.SysTableManager);
-        containerRegistry.RegisterForNavigation<FieldConfigView, FieldConfigViewModel>(ViewNames.FieldConfig);
-        containerRegistry.RegisterForNavigation<PublishChecklistView, PublishChecklistViewModel>(ViewNames.PublishChecklist);
+        containerRegistry.RegisterForNavigation<FormManagerView,    FormManagerViewModel>    (ViewNames.FormManager);
+        containerRegistry.RegisterForNavigation<FormDetailView,     FormDetailViewModel>     (ViewNames.FormDetail);
+        containerRegistry.RegisterForNavigation<FormEditorView,     FormEditorViewModel>     (ViewNames.FormEditor);
+        containerRegistry.RegisterForNavigation<SysTableManagerView,SysTableManagerViewModel>(ViewNames.SysTableManager);
+        containerRegistry.RegisterForNavigation<FieldConfigView,    FieldConfigViewModel>    (ViewNames.FieldConfig);
+        containerRegistry.RegisterForNavigation<PublishChecklistView,PublishChecklistViewModel>(ViewNames.PublishChecklist);
+        // NOTE: RegisterDialog — FormEditDialog mở qua IDialogService (không phải navigation)
+        containerRegistry.RegisterDialog<FormEditDialogView, FormEditDialogViewModel>(ViewNames.FormEditDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

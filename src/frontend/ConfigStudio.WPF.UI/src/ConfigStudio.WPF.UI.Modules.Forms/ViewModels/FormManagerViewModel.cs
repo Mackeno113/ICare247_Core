@@ -1,4 +1,4 @@
-﻿// File    : FormManagerViewModel.cs
+// File    : FormManagerViewModel.cs
 // Module  : Forms
 // Layer   : Presentation
 // Purpose : ViewModel cho màn hình Form Manager (Screen 02) — danh sách form, search/filter, CRUD.
@@ -12,17 +12,19 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 
 /// <summary>
 /// ViewModel cho màn hình Form Manager (Screen 02).
-/// Hiển thị DataGrid danh sách form, search/filter, navigate đến Form Editor.
+/// Hiển thị DataGrid danh sách form, search/filter, navigate đến Form Detail và Form Editor.
 /// </summary>
 public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IDialogService _dialogService;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
     private static readonly string ErrorLogPath = Path.Combine(
@@ -46,6 +48,8 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
                 EditFormCommand.RaiseCanExecuteChanged();
                 DeleteFormCommand.RaiseCanExecuteChanged();
                 DuplicateFormCommand.RaiseCanExecuteChanged();
+                DeactivateFormCommand.RaiseCanExecuteChanged();
+                RestoreFormCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -58,10 +62,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _searchText, value))
-            {
-                FormsView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+                RefreshFilter();
         }
     }
 
@@ -72,31 +73,50 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _platformFilter, value))
-            {
-                FormsView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+                RefreshFilter();
         }
     }
 
-    public List<string> PlatformOptions { get; } = ["Tất cả", "web", "mobile"];
-
-    private bool _showInactiveOnly;
-    public bool ShowInactiveOnly
+    private string _tableFilter = "Tất cả";
+    public string TableFilter
     {
-        get => _showInactiveOnly;
+        get => _tableFilter;
         set
         {
-            if (SetProperty(ref _showInactiveOnly, value))
-            {
-                FormsView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+            if (SetProperty(ref _tableFilter, value))
+                RefreshFilter();
         }
+    }
+
+    /// <summary>
+    /// Khi false (mặc định): chỉ hiển thị form đang active.
+    /// Khi true: hiển thị tất cả kể cả form đã ẩn.
+    /// </summary>
+    private bool _showInactive;
+    public bool ShowInactive
+    {
+        get => _showInactive;
+        set
+        {
+            if (SetProperty(ref _showInactive, value))
+                RefreshFilter();
+        }
+    }
+
+    public List<string> PlatformOptions { get; } = ["Tất cả", "web", "mobile", "wpf"];
+
+    // NOTE: TableOptions load từ Sys_Table — hiện dùng mock, phase 2 sẽ call API
+    private List<string> _tableOptions = ["Tất cả"];
+    public List<string> TableOptions
+    {
+        get => _tableOptions;
+        private set => SetProperty(ref _tableOptions, value);
     }
 
     // ── Statistics ─────────────────────────────────────────────
     public int TotalForms => Forms.Count;
+    public int ActiveCount => Forms.Count(f => f.IsActive);
+    public int InactiveCount => Forms.Count(f => !f.IsActive);
     public int FilteredCount => FormsView.Cast<object>().Count();
 
     // ── Loading state ──────────────────────────────────────────
@@ -108,9 +128,6 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     }
 
     private string _loadErrorMessage = "";
-    /// <summary>
-    /// Message lỗi khi load danh sách form thất bại.
-    /// </summary>
     public string LoadErrorMessage
     {
         get => _loadErrorMessage;
@@ -131,25 +148,35 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     public DelegateCommand DuplicateFormCommand { get; }
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand<FormSummaryDto> OpenFormCommand { get; }
+    public DelegateCommand<FormSummaryDto> ViewDetailCommand { get; }
+    public DelegateCommand<FormSummaryDto> PreviewFormCommand { get; }
+    public DelegateCommand<FormSummaryDto> DeactivateFormCommand { get; }
+    public DelegateCommand<FormSummaryDto> RestoreFormCommand { get; }
 
     public FormManagerViewModel(
         IRegionManager regionManager,
+        IDialogService dialogService,
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null)
     {
-        _regionManager = regionManager;
+        _regionManager   = regionManager;
+        _dialogService   = dialogService;
         _formDataService = formDataService;
-        _appConfig = appConfig;
+        _appConfig       = appConfig;
 
         FormsView = CollectionViewSource.GetDefaultView(Forms);
         FormsView.Filter = ApplyFilter;
 
-        CreateFormCommand = new DelegateCommand(ExecuteCreateForm);
-        EditFormCommand = new DelegateCommand(ExecuteEditForm, () => SelectedForm is not null);
-        DeleteFormCommand = new DelegateCommand(ExecuteDeleteForm, () => SelectedForm is not null);
+        CreateFormCommand    = new DelegateCommand(ExecuteCreateForm);
+        EditFormCommand      = new DelegateCommand(ExecuteEditForm, () => SelectedForm is not null);
+        DeleteFormCommand    = new DelegateCommand(ExecuteDeleteSelected, () => SelectedForm is not null);
         DuplicateFormCommand = new DelegateCommand(ExecuteDuplicateForm, () => SelectedForm is not null);
-        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
-        OpenFormCommand = new DelegateCommand<FormSummaryDto>(ExecuteOpenForm);
+        RefreshCommand       = new DelegateCommand(async () => await LoadDataAsync());
+        OpenFormCommand      = new DelegateCommand<FormSummaryDto>(ExecuteOpenForm);
+        ViewDetailCommand    = new DelegateCommand<FormSummaryDto>(ExecuteViewDetail);
+        PreviewFormCommand   = new DelegateCommand<FormSummaryDto>(ExecutePreviewForm);
+        DeactivateFormCommand = new DelegateCommand<FormSummaryDto>(ExecuteDeactivate);
+        RestoreFormCommand   = new DelegateCommand<FormSummaryDto>(ExecuteRestore);
     }
 
     // ── INavigationAware ─────────────────────────────────────
@@ -195,6 +222,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
                         FormName     = r.FormName,
                         Version      = r.Version,
                         Platform     = r.Platform,
+                        TableName    = r.TableName,
                         SectionCount = r.SectionCount,
                         FieldCount   = r.FieldCount,
                         IsActive     = r.IsActive,
@@ -203,8 +231,8 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
                     });
                 }
 
-                RaisePropertyChanged(nameof(TotalForms));
-                RaisePropertyChanged(nameof(FilteredCount));
+                RebuildTableOptions();
+                RaiseStatistics();
                 return;
             }
 
@@ -214,9 +242,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         catch (Exception ex)
         {
             Forms.Clear();
-            RaisePropertyChanged(nameof(TotalForms));
-            RaisePropertyChanged(nameof(FilteredCount));
-
+            RaiseStatistics();
             LoadErrorMessage = $"Không thể tải danh sách form: {ex.Message}";
             LogLoadError(ex);
         }
@@ -236,36 +262,63 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         Forms.Add(new FormSummaryDto
         {
             FormId = 1, FormCode = "PO_ORDER", FormName = "Đơn Đặt Hàng",
-            Version = 3, Platform = "web", SectionCount = 3, FieldCount = 8,
+            Version = 3, Platform = "web", TableName = "PurchaseOrder",
+            SectionCount = 3, FieldCount = 8,
             IsActive = true, UpdatedAt = DateTime.Now.AddHours(-2), UpdatedBy = "admin"
         });
         Forms.Add(new FormSummaryDto
         {
             FormId = 2, FormCode = "HR_LEAVE", FormName = "Đơn Xin Nghỉ Phép",
-            Version = 1, Platform = "web", SectionCount = 2, FieldCount = 6,
+            Version = 1, Platform = "web", TableName = "HrLeave",
+            SectionCount = 2, FieldCount = 6,
             IsActive = true, UpdatedAt = DateTime.Now.AddDays(-1), UpdatedBy = "hr_admin"
         });
         Forms.Add(new FormSummaryDto
         {
             FormId = 3, FormCode = "INV_RECEIPT", FormName = "Phiếu Nhập Kho",
-            Version = 5, Platform = "web", SectionCount = 4, FieldCount = 12,
+            Version = 5, Platform = "web", TableName = "Inventory",
+            SectionCount = 4, FieldCount = 12,
             IsActive = true, UpdatedAt = DateTime.Now.AddDays(-3), UpdatedBy = "admin"
         });
         Forms.Add(new FormSummaryDto
         {
             FormId = 4, FormCode = "MOBILE_CHECK", FormName = "Kiểm Tra Hiện Trường",
-            Version = 2, Platform = "mobile", SectionCount = 5, FieldCount = 15,
+            Version = 2, Platform = "mobile", TableName = "Inspection",
+            SectionCount = 5, FieldCount = 15,
             IsActive = true, UpdatedAt = DateTime.Now.AddDays(-5), UpdatedBy = "field_admin"
         });
         Forms.Add(new FormSummaryDto
         {
-            FormId = 5, FormCode = "OLD_FORM", FormName = "Form Cũ (Inactive)",
-            Version = 1, Platform = "web", SectionCount = 1, FieldCount = 3,
+            FormId = 5, FormCode = "WPF_REPORT", FormName = "Báo Cáo Desktop",
+            Version = 1, Platform = "wpf", TableName = "Report",
+            SectionCount = 2, FieldCount = 7,
+            IsActive = true, UpdatedAt = DateTime.Now.AddDays(-7), UpdatedBy = "admin"
+        });
+        Forms.Add(new FormSummaryDto
+        {
+            FormId = 6, FormCode = "OLD_FORM", FormName = "Form Cũ (Inactive)",
+            Version = 1, Platform = "web", TableName = "PurchaseOrder",
+            SectionCount = 1, FieldCount = 3,
             IsActive = false, UpdatedAt = DateTime.Now.AddMonths(-2), UpdatedBy = "admin"
         });
 
-        RaisePropertyChanged(nameof(TotalForms));
-        RaisePropertyChanged(nameof(FilteredCount));
+        RebuildTableOptions();
+        RaiseStatistics();
+    }
+
+    /// <summary>
+    /// Xây dựng lại danh sách TableOptions từ dữ liệu hiện tại trong Forms.
+    /// </summary>
+    private void RebuildTableOptions()
+    {
+        var tables = Forms
+            .Select(f => f.TableName)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        TableOptions = ["Tất cả", .. tables];
     }
 
     // ── Filter logic ─────────────────────────────────────────
@@ -274,14 +327,16 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     {
         if (obj is not FormSummaryDto form) return false;
 
-        // NOTE: Filter active/inactive
-        if (ShowInactiveOnly && form.IsActive) return false;
-        if (!ShowInactiveOnly && !form.IsActive) return false;
+        // NOTE: Khi chưa bật ShowInactive → chỉ hiện form active
+        if (!ShowInactive && !form.IsActive) return false;
 
         // NOTE: Filter platform
         if (PlatformFilter != "Tất cả" && form.Platform != PlatformFilter) return false;
 
-        // NOTE: Filter search text
+        // NOTE: Filter table
+        if (TableFilter != "Tất cả" && form.TableName != TableFilter) return false;
+
+        // NOTE: Filter search text — tìm theo FormCode hoặc FormName
         if (!string.IsNullOrWhiteSpace(SearchText))
         {
             var q = SearchText.Trim();
@@ -292,18 +347,38 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         return true;
     }
 
+    private void RefreshFilter()
+    {
+        FormsView.Refresh();
+        RaisePropertyChanged(nameof(FilteredCount));
+    }
+
     // ── Command handlers ─────────────────────────────────────
 
     private void ExecuteCreateForm()
     {
-        var p = new NavigationParameters { { "formId", 0 } };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
+        var p = new DialogParameters { { "formId", 0 } };
+        _dialogService.ShowDialog(ViewNames.FormEditDialog, p, result =>
+        {
+            // NOTE: refresh danh sách sau khi tạo thành công
+            if (result.Result == ButtonResult.OK)
+                _ = LoadDataAsync();
+        });
     }
 
     private void ExecuteEditForm()
     {
         if (SelectedForm is null) return;
-        NavigateToEditor(SelectedForm.FormId);
+        var p = new DialogParameters
+        {
+            { "formId",   SelectedForm.FormId },
+            { "formCode", SelectedForm.FormCode }
+        };
+        _dialogService.ShowDialog(ViewNames.FormEditDialog, p, result =>
+        {
+            if (result.Result == ButtonResult.OK)
+                _ = LoadDataAsync();
+        });
     }
 
     private void ExecuteOpenForm(FormSummaryDto? form)
@@ -312,13 +387,55 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         NavigateToEditor(form.FormId);
     }
 
-    private void ExecuteDeleteForm()
+    /// <summary>
+    /// Navigate sang FormDetailView (readonly) khi click vào FormCode.
+    /// </summary>
+    private void ExecuteViewDetail(FormSummaryDto? form)
     {
-        // TODO(phase2): Confirm dialog trước khi soft-delete
+        if (form is null) return;
+        var p = new NavigationParameters { { "formCode", form.FormCode } };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormDetail, p);
+    }
+
+    /// <summary>
+    /// Mở preview form — render metadata thành form thực (TODO: phase 2).
+    /// </summary>
+    private void ExecutePreviewForm(FormSummaryDto? form)
+    {
+        if (form is null) return;
+        // TODO(phase2): mở preview dialog render form từ metadata
+    }
+
+    /// <summary>
+    /// Vô hiệu hóa form (soft-delete: Is_Active = false).
+    /// </summary>
+    private void ExecuteDeactivate(FormSummaryDto? form)
+    {
+        if (form is null || !form.IsActive) return;
+        // TODO(phase2): Gọi DeactivateFormDialog để confirm trước khi deactivate
+        form.IsActive = false;
+        RefreshFilter();
+        RaiseStatistics();
+    }
+
+    /// <summary>
+    /// Khôi phục form đã bị vô hiệu hóa.
+    /// </summary>
+    private void ExecuteRestore(FormSummaryDto? form)
+    {
+        if (form is null || form.IsActive) return;
+        form.IsActive = true;
+        RefreshFilter();
+        RaiseStatistics();
+    }
+
+    /// <summary>
+    /// Xóa (deactivate) form đang được chọn trong DataGrid.
+    /// </summary>
+    private void ExecuteDeleteSelected()
+    {
         if (SelectedForm is null) return;
-        SelectedForm.IsActive = false;
-        FormsView.Refresh();
-        RaisePropertyChanged(nameof(FilteredCount));
+        ExecuteDeactivate(SelectedForm);
     }
 
     private void ExecuteDuplicateForm()
@@ -326,26 +443,36 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         if (SelectedForm is null) return;
         var clone = new FormSummaryDto
         {
-            FormId = Forms.Max(f => f.FormId) + 1,
-            FormCode = SelectedForm.FormCode + "_COPY",
-            FormName = SelectedForm.FormName + " (Bản sao)",
-            Version = 1,
-            Platform = SelectedForm.Platform,
+            FormId       = Forms.Max(f => f.FormId) + 1,
+            FormCode     = SelectedForm.FormCode + "_COPY",
+            FormName     = SelectedForm.FormName + " (Bản sao)",
+            Version      = 1,
+            Platform     = SelectedForm.Platform,
+            TableName    = SelectedForm.TableName,
             SectionCount = SelectedForm.SectionCount,
-            FieldCount = SelectedForm.FieldCount,
-            IsActive = true,
-            UpdatedAt = DateTime.Now,
-            UpdatedBy = "admin"
+            FieldCount   = SelectedForm.FieldCount,
+            IsActive     = true,
+            UpdatedAt    = DateTime.Now,
+            UpdatedBy    = "admin"
         };
         Forms.Add(clone);
-        RaisePropertyChanged(nameof(TotalForms));
-        RaisePropertyChanged(nameof(FilteredCount));
+        RaiseStatistics();
     }
 
     private void NavigateToEditor(int formId)
     {
         var p = new NavigationParameters { { "formId", formId } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    private void RaiseStatistics()
+    {
+        RaisePropertyChanged(nameof(TotalForms));
+        RaisePropertyChanged(nameof(ActiveCount));
+        RaisePropertyChanged(nameof(InactiveCount));
+        RaisePropertyChanged(nameof(FilteredCount));
     }
 
     /// <summary>
