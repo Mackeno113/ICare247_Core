@@ -344,6 +344,13 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                             Margin="4,0">
 
+                                    <!-- EditInfo — sửa thông tin Ui_Form (tên, code, version...) -->
+                                    <Button Style="{StaticResource CellActionButtonStyle}"
+                                            Command="{Binding DataContext.EditFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                            CommandParameter="{Binding Row}"
+                                            ToolTip="Sửa thông tin form"
+                                            Content="⚙" />
+
                                     <!-- Edit — mở Form Editor -->
                                     <Button Style="{StaticResource CellActionButtonStyle}"
                                             Command="{Binding DataContext.OpenFormCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
