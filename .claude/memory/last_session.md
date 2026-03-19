@@ -1,21 +1,36 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-17
+> Cập nhật: 2026-03-19
 
-## Đã làm
-- **Bước 1:** Tách CLAUDE.md thành router + 8 file `.claude-rules/`
-- **Bước 1:** Tạo `.claude/memory/` (6 file git-tracked memory)
-- **Bước 1:** Tạo `.claude/commands/` (5 slash commands)
-- **Bước 1:** Viết `docs/AI_WORKFLOW_GUIDE.md` (tài liệu ~600 dòng)
-- **Bước 2:** Nâng cấp commands cho multi-machine (git fetch/pull/push awareness)
-- **Bước 2:** Nâng cấp settings.json (thêm git push/pull/branch/stash permissions)
-- **Bước 2:** Redirect local memory (`~/.claude/projects/`) về repo
-- **Bước 2:** Thêm conflict resolution + troubleshooting vào Guide
-- Commit + push thành công: `3660215`
+## Đã làm (tổng hợp từ 17/03 → 19/03)
+
+### Bước 2 (17/03) — AI Workflow Setup
+- Nâng cấp commands + settings cho multi-machine sync
+- Redirect local memory (`~/.claude/projects/`) về repo
+- Commit `3660215` — **HOÀN TẤT**
+
+### ConfigStudio.WPF.UI (19/03)
+
+#### Commit `5953cc3` — Form Manager + Detail + Edit Dialog
+- **FormDetailViewModel** (284 dòng mới) — xem chi tiết form: fields, sections, events, rules, audit log
+- **FormEditDialogViewModel** (553 dòng mới) — dialog tạo/sửa form
+- **FormManagerViewModel** cải tiến lớn — search, filter, pagination
+- Models mới: `AuditLogEntryDto`, `FieldDetailDto`, `SectionDetailDto`, `EventSummaryDto`
+- XAML: `FormDetailView` (470 dòng), `FormEditDialogView` (449 dòng), `FormManagerView` cải tiến
+
+#### Commit `9997257` — Form Permission Tab
+- **FormPermissionRow** model (53 dòng) — role-based permission per form
+- **FormEditDialogViewModel** thêm permission tab logic
+- **FormEditDialogView** XAML thêm tab Permissions
+
+#### Commit `32b66f3` — FormEditor + Shell navigation
+- **FormEditorViewModel** thêm logic (27 dòng)
+- **ShellViewModel** navigation điều chỉnh
 
 ## Đang làm
-- Hoàn tất Bước 2 — đang commit
+- Không có task dở dang
 
 ## Task tiếp theo (gợi ý)
-- Bắt đầu Backend Phase 1: Tạo Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
-- Hoặc: Tạo CacheKeys.cs
+- **ConfigStudio:** FieldConfigView/ViewModel đầy đủ (hiện chỉ là stub), ValidationRuleEditor, EventEditor
+- **Backend:** Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
+- **Backend:** CacheKeys.cs
