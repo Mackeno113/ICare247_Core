@@ -52,6 +52,15 @@
             <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
+        <!-- ── Help Text dưới mỗi field ─────────────────────── -->
+        <Style x:Key="HelpTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"    Value="11" />
+            <Setter Property="Foreground"  Value="{StaticResource MutedBrush}" />
+            <Setter Property="Opacity"     Value="0.75" />
+            <Setter Property="Margin"      Value="0,4,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
         <!-- ── Field Group ──────────────────────────────────── -->
         <Style x:Key="FieldGroupStyle" TargetType="StackPanel">
             <Setter Property="Margin" Value="0,0,0,18" />
@@ -463,6 +472,33 @@
                                       HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="24,20,24,24">
 
+                                <!-- ── Intro Panel: Giới thiệu màn hình ── -->
+                                <Border Background="#F0F9FF" CornerRadius="8"
+                                        Padding="16,14" Margin="0,0,0,16"
+                                        BorderBrush="#BAE6FD" BorderThickness="1">
+                                    <DockPanel>
+                                        <Border DockPanel.Dock="Left" Width="36" Height="36"
+                                                CornerRadius="18" Background="{StaticResource AccentLightBrush}"
+                                                Margin="0,0,14,0" VerticalAlignment="Top">
+                                            <TextBlock Text="📋" FontSize="16"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel>
+                                            <TextBlock Text="Cấu hình metadata của Form"
+                                                       FontSize="14" FontWeight="SemiBold"
+                                                       Foreground="#0C4A6E" Margin="0,0,0,4" />
+                                            <TextBlock TextWrapping="Wrap" FontSize="12"
+                                                       Foreground="#0369A1" LineHeight="18">
+                                                Màn hình này dùng để thiết lập thông tin cơ bản cho một Form trong hệ thống.
+                                                Mỗi Form đại diện cho một giao diện nhập liệu (ví dụ: Đơn đặt hàng, Nghỉ phép, Nhập kho...)
+                                                và được gắn với một bảng dữ liệu (Business Table) để xác định nguồn dữ liệu mà form sẽ đọc/ghi.
+                                                Các trường có dấu (*) là bắt buộc.
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
+
                                 <!-- ── Card: Thông tin cơ bản ──────── -->
                                 <Border Style="{StaticResource SectionCardStyle}">
                                     <StackPanel>
@@ -492,12 +528,15 @@
                                                     </DockPanel>
                                                     <dxe:TextEdit EditValue="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"
                                                                   NullText="VD: PO_ORDER"
-                                                                  CharacterCasing="Upper" />
+                                                                  CharacterCasing="Upper"
+                                                                  ToolTip="Mã định danh duy nhất của form, dùng để tra cứu và tham chiếu trong hệ thống. Chỉ chấp nhận chữ IN HOA, số và dấu gạch dưới." />
                                                     <TextBlock Text="{Binding FormCodeError}"
                                                                FontSize="11" Margin="0,4,0,0"
                                                                Foreground="{StaticResource DangerBrush}"
                                                                TextWrapping="Wrap"
                                                                Visibility="{Binding HasFormCodeError, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Mã duy nhất trong tenant. Chỉ gồm A-Z, 0-9, dấu _ (VD: PO_ORDER, HR_LEAVE). Không trùng với form khác." />
                                                 </StackPanel>
 
                                                 <!-- Tên Form -->
@@ -505,7 +544,10 @@
                                                     <TextBlock Text="Tên Form *"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:TextEdit EditValue="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="Nhập tên hiển thị..." />
+                                                                  NullText="VD: Đơn Đặt Hàng"
+                                                                  ToolTip="Tên hiển thị của form cho người dùng cuối." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Tên thân thiện hiển thị trên giao diện. Nên đặt ngắn gọn, dễ hiểu (VD: Đơn Đặt Hàng, Phiếu Nghỉ Phép)." />
                                                 </StackPanel>
 
                                                 <!-- Platform -->
@@ -513,7 +555,10 @@
                                                     <TextBlock Text="Platform *"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:ComboBoxEdit ItemsSource="{Binding PlatformOptions}"
-                                                                      EditValue="{Binding Platform}" />
+                                                                      EditValue="{Binding Platform}"
+                                                                      ToolTip="Nền tảng mà form này sẽ hiển thị: web, mobile hoặc wpf." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Nền tảng đích để render form. Mỗi platform có bộ control riêng (VD: web dùng HTML, mobile dùng native component)." />
                                                 </StackPanel>
                                             </StackPanel>
 
@@ -526,7 +571,10 @@
                                                     <dxe:ComboBoxEdit ItemsSource="{Binding TableLookupItems}"
                                                                       EditValue="{Binding SelectedTable, Mode=TwoWay}"
                                                                       DisplayMember="DisplayText"
-                                                                      NullText="Chọn bảng dữ liệu..." />
+                                                                      NullText="Chọn bảng dữ liệu..."
+                                                                      ToolTip="Bảng dữ liệu chính (Sys_Table) mà form này sẽ đọc/ghi dữ liệu. Xác định tenant và cấu trúc cột." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Bảng nguồn dữ liệu từ Sys_Table. Form sẽ đọc/ghi vào bảng này. Đồng thời xác định tenant (phân quyền dữ liệu theo đơn vị)." />
                                                 </StackPanel>
 
                                                 <!-- Layout Engine -->
@@ -534,7 +582,10 @@
                                                     <TextBlock Text="Layout Engine"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:ComboBoxEdit ItemsSource="{Binding LayoutEngineOptions}"
-                                                                      EditValue="{Binding LayoutEngine}" />
+                                                                      EditValue="{Binding LayoutEngine}"
+                                                                      ToolTip="Kiểu bố cục để render form: Grid (dạng lưới), Stack (xếp chồng), hoặc Flex." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Cách sắp xếp các field trên giao diện. Grid = dạng lưới (mặc định), thích hợp cho form nhập liệu nhiều cột." />
                                                 </StackPanel>
 
                                                 <!-- Is Active -->
@@ -542,7 +593,10 @@
                                                             Margin="0,8,0,0">
                                                     <dxe:CheckEdit IsChecked="{Binding IsFormActive}"
                                                                    Content="Kích hoạt (Is Active)"
-                                                                   FontSize="13" />
+                                                                   FontSize="13"
+                                                                   ToolTip="Bật/tắt form. Form bị tắt sẽ không hiển thị cho người dùng cuối nhưng vẫn lưu trong hệ thống." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Tắt để ẩn form khỏi người dùng cuối mà không cần xóa. Dữ liệu cấu hình vẫn được giữ nguyên." />
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
@@ -555,8 +609,11 @@
                                         <TextBlock Text="MÔ TẢ"
                                                    Style="{StaticResource SectionTitleStyle}" />
                                         <dxe:MemoEdit EditValue="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="Nhập mô tả form..."
-                                                      Height="90" AcceptsReturn="True" />
+                                                      NullText="VD: Form nhập đơn đặt hàng cho bộ phận mua hàng, hỗ trợ duyệt nhiều cấp..."
+                                                      Height="90" AcceptsReturn="True"
+                                                      ToolTip="Ghi chú nội bộ về mục đích, phạm vi sử dụng của form. Không hiển thị cho end-user." />
+                                        <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                   Text="Ghi chú nội bộ cho quản trị viên. Mô tả mục đích, phạm vi sử dụng, hoặc lưu ý đặc biệt. Trường này không hiển thị cho người dùng cuối." />
                                     </StackPanel>
                                 </Border>
 
@@ -566,6 +623,9 @@
                                     <StackPanel>
                                         <TextBlock Text="PHIÊN BẢN"
                                                    Style="{StaticResource SectionTitleStyle}" />
+                                        <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                   Margin="0,0,0,12"
+                                                   Text="Thông tin phiên bản do hệ thống tự quản lý. Version tăng mỗi khi Publish. Checksum dùng để phát hiện thay đổi giữa các lần deploy." />
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
@@ -577,7 +637,8 @@
                                                 <TextBlock Text="Version"
                                                            Style="{StaticResource FieldLabelStyle}" />
                                                 <Border Background="#F8FAFC" CornerRadius="6"
-                                                        Padding="14,8" MinWidth="80">
+                                                        Padding="14,8" MinWidth="80"
+                                                        ToolTip="Số phiên bản hiện tại. Tự tăng mỗi lần Publish thành công.">
                                                     <TextBlock FontSize="20" FontWeight="Bold"
                                                                Foreground="{StaticResource AccentDarkBrush}">
                                                         <TextBlock.Text>
@@ -591,7 +652,8 @@
                                                 <TextBlock Text="Checksum"
                                                            Style="{StaticResource FieldLabelStyle}" />
                                                 <TextBlock Text="{Binding Checksum}"
-                                                           Style="{StaticResource ReadonlyValueStyle}" />
+                                                           Style="{StaticResource ReadonlyValueStyle}"
+                                                           ToolTip="Mã hash (SHA-256) của toàn bộ cấu hình form. Dùng để so sánh xem form có thay đổi so với bản đã deploy hay không." />
                                             </StackPanel>
                                         </Grid>
                                     </StackPanel>
