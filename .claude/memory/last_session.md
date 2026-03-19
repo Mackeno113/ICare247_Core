@@ -4,33 +4,43 @@
 
 ## Đã làm (tổng hợp từ 17/03 → 19/03)
 
-### Bước 2 (17/03) — AI Workflow Setup
-- Nâng cấp commands + settings cho multi-machine sync
-- Redirect local memory (`~/.claude/projects/`) về repo
-- Commit `3660215` — **HOÀN TẤT**
+### ConfigStudio.WPF.UI — Form Editor Refactor (19/03)
 
-### ConfigStudio.WPF.UI (19/03)
+#### Gộp FormEditDialog vào FormEditorView
+- **Xóa** `FormEditDialogView.xaml` (645 dòng) + `FormEditDialogViewModel.cs` (665 dòng)
+- Merge logic vào **FormEditorViewModel** — tạo mới và sửa dùng chung View
+- Phân biệt mode bằng `IsNewForm` flag, không mở Dialog riêng
+- `FormManagerViewModel` bỏ `IDialogService`, navigate thẳng tới FormEditor
 
-#### Commit `5953cc3` — Form Manager + Detail + Edit Dialog
-- **FormDetailViewModel** (284 dòng mới) — xem chi tiết form: fields, sections, events, rules, audit log
-- **FormEditDialogViewModel** (553 dòng mới) — dialog tạo/sửa form
-- **FormManagerViewModel** cải tiến lớn — search, filter, pagination
-- Models mới: `AuditLogEntryDto`, `FieldDetailDto`, `SectionDetailDto`, `EventSummaryDto`
-- XAML: `FormDetailView` (470 dòng), `FormEditDialogView` (449 dòng), `FormManagerView` cải tiến
+#### Redesign FormEditorView UI
+- Card-based layout với shadow, Tailwind CSS color palette
+- Intro panel mô tả ý nghĩa màn hình + từng field (hướng dẫn enduser)
+- Header bar: accent bar + platform badge + dirty indicator
+- Form field pattern: Label + Input + Help text 3 phần
 
-#### Commit `9997257` — Form Permission Tab
-- **FormPermissionRow** model (53 dòng) — role-based permission per form
-- **FormEditDialogViewModel** thêm permission tab logic
-- **FormEditDialogView** XAML thêm tab Permissions
+#### Business Table luôn lấy từ DB
+- Xóa `LoadTableOptions()` mock data hardcode
+- Cả create/edit mode gọi `IFormDataService.GetTablesByTenantAsync()` từ DB
 
-#### Commit `32b66f3` — FormEditor + Shell navigation
-- **FormEditorViewModel** thêm logic (27 dòng)
-- **ShellViewModel** navigation điều chỉnh
+#### Design Guidelines
+- Thêm 10 nguyên tắc thiết kế UI vào `.claude-rules/wpf-configstudio.md`
+- Áp dụng cho toàn bộ project ConfigStudio WPF
+
+### Branches — Đã dọn
+- 3 branches (`strange-cray`, `tender-goldwasser`, `zen-bhabha`) đã merge hết vào master
+- Worktrees bị process lock → cần xóa manual khi chuyển máy:
+  ```bash
+  cd D:\ICare247_Core
+  git worktree remove --force .claude/worktrees/tender-goldwasser
+  git worktree remove --force .claude/worktrees/zen-bhabha
+  git branch -d claude/strange-cray claude/tender-goldwasser claude/zen-bhabha
+  ```
 
 ## Đang làm
 - Không có task dở dang
 
 ## Task tiếp theo (gợi ý)
 - **ConfigStudio:** FieldConfigView/ViewModel đầy đủ (hiện chỉ là stub), ValidationRuleEditor, EventEditor
+- **ConfigStudio:** LoadMockData() trong FormEditorViewModel vẫn dùng data giả cho sections/events/permissions → cần chuyển sang DB
 - **Backend:** Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
 - **Backend:** CacheKeys.cs
