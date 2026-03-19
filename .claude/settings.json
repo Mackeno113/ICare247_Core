@@ -20,5 +20,29 @@
       "Bash(find*)",
       "Bash(cat*)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/post_write_flag_memory.js",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/stop_remind_memory.js"
+          }
+        ]
+      }
+    ]
   }
 }

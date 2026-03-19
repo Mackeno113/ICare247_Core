@@ -154,3 +154,6 @@ docker-compose.override.yml
 *.tmp.*
 *conflict*
 *conflicted copy*
+
+# Claude Code hook flag files (local state, không sync qua git)
+.claude/.memory_needs_update
