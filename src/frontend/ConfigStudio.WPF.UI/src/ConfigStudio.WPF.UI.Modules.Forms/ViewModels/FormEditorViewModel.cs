@@ -417,7 +417,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsFormCodeDuplicate = false;
             Sections.Clear();
             Events.Clear();
-            LoadTableOptions();
             LoadDefaultPermissions();
             ActiveTabIndex     = 0; // Mở tab "Thông tin Form"
             IsDirty            = false;
@@ -471,10 +470,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         Checksum = "a1b2c3d4e5f6";
         _originalFormCode = "PO_ORDER";
 
-        // ── Table lookup ─────────────────────────────────────
-        LoadTableOptions();
-        SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableCode == "PurchaseOrder")
-                        ?? TableLookupItems.FirstOrDefault();
+        // ── Table lookup — luôn lấy từ DB ────────────────────
+        _ = LoadTableLookupAndSelectAsync("PurchaseOrder");
 
         // ── Section 1: Thông Tin Chung ──────────────────────
         var section1 = new FormTreeNode
@@ -579,16 +576,16 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         FormCodeError = "";
     }
 
-    /// <summary>Load danh sách table từ DB (fallback sang mock).</summary>
-    private void LoadTableOptions()
+    /// <summary>
+    /// Load danh sách table từ DB rồi chọn table theo <paramref name="selectTableCode"/>.
+    /// Dùng cho edit mode — load xong sẽ tự select đúng table đã gắn với form.
+    /// </summary>
+    private async Task LoadTableLookupAndSelectAsync(string? selectTableCode)
     {
-        TableLookupItems.Clear();
-        // TODO(phase2): gọi API GetSysTableLookup()
-        TableLookupItems.Add(new TableLookupRecord { TableId = 1, TableCode = "PurchaseOrder", TableName = "Đơn Đặt Hàng",  SchemaName = "dbo" });
-        TableLookupItems.Add(new TableLookupRecord { TableId = 2, TableCode = "HrLeave",       TableName = "Nghỉ Phép",      SchemaName = "dbo" });
-        TableLookupItems.Add(new TableLookupRecord { TableId = 3, TableCode = "Inventory",     TableName = "Nhập Kho",       SchemaName = "dbo" });
-        TableLookupItems.Add(new TableLookupRecord { TableId = 4, TableCode = "Inspection",    TableName = "Kiểm Tra",       SchemaName = "dbo" });
-        TableLookupItems.Add(new TableLookupRecord { TableId = 5, TableCode = "Report",        TableName = "Báo Cáo",        SchemaName = "dbo" });
+        await LoadTableLookupSafeAsync();
+        if (!string.IsNullOrEmpty(selectTableCode))
+            SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableCode == selectTableCode)
+                            ?? TableLookupItems.FirstOrDefault();
     }
 
     /// <summary>Load danh sách roles mặc định với quyền form.</summary>
