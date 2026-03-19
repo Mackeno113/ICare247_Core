@@ -1,32 +1,27 @@
 {
   // Terminal mặc định dùng PowerShell hoặc Git Bash
   "terminal.integrated.defaultProfile.windows": "Git Bash",
-
   // Font dễ đọc trong terminal
   "terminal.integrated.fontSize": 12,
-
   // Tự động save file khi Claude tạo/sửa
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 1000,
-
   // Highlight thay đổi của Claude rõ hơn
   "editor.renderLineHighlight": "all",
   "diffEditor.renderSideBySide": true,
-
   // ── Editor ────────────────────────────────────────────────
   "editor.formatOnSave": true,
   "editor.tabSize": 4,
   "editor.insertSpaces": true,
-  "editor.rulers": [120],
+  "editor.rulers": [
+    120
+  ],
   "editor.wordWrap": "on",
-
-
   // ── C# / OmniSharp ───────────────────────────────────────
   "omnisharp.enableEditorConfigSupport": true,
   "omnisharp.enableRoslynAnalyzers": true,
   "dotnet.inlayHints.enableInlayHintsForParameters": true,
   "dotnet.inlayHints.enableInlayHintsForLiteralParameters": true,
-
   // ── Files ─────────────────────────────────────────────────
   "files.encoding": "utf8bom",
   "files.eol": "\r\n",
@@ -38,18 +33,15 @@
     "**/.vs": true,
     "**/.idea": true
   },
-
   // ── Search ────────────────────────────────────────────────
   "search.exclude": {
     "**/bin": true,
     "**/obj": true,
     "**/node_modules": true
   },
-
   // ── Git ───────────────────────────────────────────────────
   "git.autofetch": true,
   "git.confirmSync": false,
-
   // ── Extensions ────────────────────────────────────────────
   "[sql]": {
     "editor.defaultFormatter": "ms-mssql.mssql"
@@ -60,5 +52,6 @@
   "[markdown]": {
     "editor.wordWrap": "on"
   },
-  "dotnet.formatting.organizeImportsOnFormat": true
+  "dotnet.formatting.organizeImportsOnFormat": true,
+  "claudeCode.useTerminal": true
 }

@@ -1,4 +1,4 @@
-// File    : ShellViewModel.cs
+﻿// File    : ShellViewModel.cs
 // Module  : Shell
 // Layer   : Presentation
 // Purpose : Quan ly navigation, trang thai shell, command cua title bar va doi theme.
@@ -114,6 +114,14 @@ public class ShellViewModel : ViewModelBase
             IsExpanded = true,
             Children =
             [
+                
+                new NavigationItem
+                {
+                    Title = "Sys Table",
+                    Icon = "⌗",
+                    NavigateTo = ViewNames.SysTableManager,
+                    Level = 1
+                },
                 new NavigationItem
                 {
                     Title = "Form List",
@@ -131,13 +139,6 @@ public class ShellViewModel : ViewModelBase
                     {
                         { "mode", "new" }
                     }
-                },
-                new NavigationItem
-                {
-                    Title = "Sys Table",
-                    Icon = "⌗",
-                    NavigateTo = ViewNames.SysTableManager,
-                    Level = 1
                 }
             ]
         });

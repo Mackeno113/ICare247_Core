@@ -53,8 +53,17 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         get => _selectedNode;
         set
         {
+            var old = _selectedNode;
             if (SetProperty(ref _selectedNode, value))
             {
+                // Hủy subscribe node cũ — tránh memory leak và IsDirty bị trigger sai
+                if (old is not null)
+                    old.PropertyChanged -= OnSelectedNodePropertyChanged;
+
+                // Subscribe node mới để detect khi user sửa property trực tiếp trong panel
+                if (_selectedNode is not null)
+                    _selectedNode.PropertyChanged += OnSelectedNodePropertyChanged;
+
                 RaisePropertyChanged(nameof(IsNodeSelected));
                 RaisePropertyChanged(nameof(IsFieldSelected));
                 RaisePropertyChanged(nameof(IsSectionSelected));
@@ -64,6 +73,20 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 OpenFieldConfigCommand.RaiseCanExecuteChanged();
             }
         }
+    }
+
+    /// <summary>
+    /// Khi property của node đang chọn thay đổi → đánh dấu form có thay đổi chưa lưu.
+    /// Bỏ qua IsExpanded / IsSelected / IsActive vì đây là trạng thái UI, không phải dữ liệu form.
+    /// </summary>
+    private void OnSelectedNodePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(FormTreeNode.IsExpanded)
+                            or nameof(FormTreeNode.IsSelected)
+                            or nameof(FormTreeNode.IsActive))
+            return;
+
+        IsDirty = true;
     }
 
     public bool IsNodeSelected => SelectedNode is not null;
@@ -312,6 +335,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
+        // Hủy subscribe node đang chọn để tránh memory leak khi navigate ra ngoài
+        if (_selectedNode is not null)
+            _selectedNode.PropertyChanged -= OnSelectedNodePropertyChanged;
+
         _formCodeValidationCts?.Cancel();
         _formCodeValidationCts?.Dispose();
         _formCodeValidationCts = null;
