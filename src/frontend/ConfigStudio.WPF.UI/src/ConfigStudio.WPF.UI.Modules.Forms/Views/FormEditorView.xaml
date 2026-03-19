@@ -12,75 +12,136 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="700"
              d:DesignWidth="1200"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             Background="#F1F5F9">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
 
-        <!-- Label trong form edit -->
+        <!-- ── Color Palette ────────────────────────────────── -->
+        <Color x:Key="AccentColor">#3B82F6</Color>
+        <Color x:Key="AccentDarkColor">#1D4ED8</Color>
+        <Color x:Key="AccentLightColor">#DBEAFE</Color>
+        <Color x:Key="SurfaceColor">#FFFFFF</Color>
+        <Color x:Key="MutedColor">#64748B</Color>
+        <Color x:Key="BorderColor">#E2E8F0</Color>
+        <Color x:Key="DangerColor">#EF4444</Color>
+        <Color x:Key="SuccessColor">#22C55E</Color>
+
+        <SolidColorBrush x:Key="AccentBrush"      Color="{StaticResource AccentColor}" />
+        <SolidColorBrush x:Key="AccentDarkBrush"   Color="{StaticResource AccentDarkColor}" />
+        <SolidColorBrush x:Key="AccentLightBrush"  Color="{StaticResource AccentLightColor}" />
+        <SolidColorBrush x:Key="SurfaceBrush"      Color="{StaticResource SurfaceColor}" />
+        <SolidColorBrush x:Key="MutedBrush"         Color="{StaticResource MutedColor}" />
+        <SolidColorBrush x:Key="BorderBrush"        Color="{StaticResource BorderColor}" />
+        <SolidColorBrush x:Key="DangerBrush"        Color="{StaticResource DangerColor}" />
+        <SolidColorBrush x:Key="SuccessBrush"       Color="{StaticResource SuccessColor}" />
+
+        <!-- ── Shadows ──────────────────────────────────────── -->
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="8" ShadowDepth="1"
+                          Direction="270" Opacity="0.08" Color="#000000" />
+        <DropShadowEffect x:Key="ElevatedShadow" BlurRadius="16" ShadowDepth="2"
+                          Direction="270" Opacity="0.12" Color="#000000" />
+
+        <!-- ── Form Label ───────────────────────────────────── -->
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize"   Value="12" />
-            <Setter Property="Opacity"    Value="0.65" />
-            <Setter Property="Margin"     Value="0,0,0,4" />
-            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+            <Setter Property="Margin"     Value="0,0,0,6" />
+            <Setter Property="FontWeight" Value="SemiBold" />
         </Style>
 
-        <!-- Container cho từng field (label + input) -->
+        <!-- ── Field Group ──────────────────────────────────── -->
         <Style x:Key="FieldGroupStyle" TargetType="StackPanel">
-            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Margin" Value="0,0,0,18" />
         </Style>
 
-        <!-- Readonly value display -->
+        <!-- ── Readonly Value ───────────────────────────────── -->
         <Style x:Key="ReadonlyValueStyle" TargetType="TextBlock">
             <Setter Property="FontSize"     Value="13" />
-            <Setter Property="FontFamily"   Value="Consolas" />
-            <Setter Property="Foreground"   Value="#64748B" />
+            <Setter Property="FontFamily"   Value="Cascadia Code, Consolas, monospace" />
+            <Setter Property="Foreground"   Value="{StaticResource MutedBrush}" />
             <Setter Property="Background"   Value="#F8FAFC" />
-            <Setter Property="Padding"      Value="8,6" />
+            <Setter Property="Padding"      Value="10,8" />
         </Style>
 
-        <!-- Tab header badge -->
+        <!-- ── Section Card ─────────────────────────────────── -->
+        <Style x:Key="SectionCardStyle" TargetType="Border">
+            <Setter Property="Background"      Value="{StaticResource SurfaceBrush}" />
+            <Setter Property="BorderBrush"      Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness"  Value="1" />
+            <Setter Property="CornerRadius"     Value="8" />
+            <Setter Property="Padding"          Value="20,16" />
+            <Setter Property="Margin"           Value="0,0,0,12" />
+            <Setter Property="Effect"           Value="{StaticResource CardShadow}" />
+        </Style>
+
+        <!-- ── Section Title ────────────────────────────────── -->
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#1E293B" />
+            <Setter Property="Margin"     Value="0,0,0,14" />
+        </Style>
+
+        <!-- ── Tab Badge ────────────────────────────────────── -->
         <Style x:Key="TabBadgeStyle" TargetType="Border">
-            <Setter Property="Background"   Value="#DBEAFE" />
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Padding"      Value="6,1" />
-            <Setter Property="Margin"       Value="5,0,0,0" />
+            <Setter Property="Background"    Value="{StaticResource AccentLightBrush}" />
+            <Setter Property="CornerRadius"  Value="10" />
+            <Setter Property="Padding"       Value="7,2" />
+            <Setter Property="Margin"        Value="6,0,0,0" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
-        <!-- Action button inline -->
-        <Style x:Key="InlineBtnStyle" TargetType="Button">
-            <Setter Property="Width"           Value="28" />
-            <Setter Property="Height"          Value="26" />
-            <Setter Property="Margin"          Value="2,0" />
+        <!-- ── Icon Button (toolbar) ────────────────────────── -->
+        <Style x:Key="IconBtnStyle" TargetType="Button">
+            <Setter Property="Width"           Value="32" />
+            <Setter Property="Height"          Value="32" />
+            <Setter Property="Margin"          Value="1,0" />
             <Setter Property="Cursor"          Value="Hand" />
-            <Setter Property="FontSize"        Value="13" />
+            <Setter Property="FontSize"        Value="14" />
             <Setter Property="Foreground"      Value="#475569" />
             <Setter Property="Background"      Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" CornerRadius="4" Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border x:Name="Bd" CornerRadius="6"
+                                Background="{TemplateBinding Background}"
+                                ToolTip="{TemplateBinding ToolTip}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E1ECFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="#E2E8F0" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ── Inline Action Button ─────────────────────────── -->
+        <Style x:Key="InlineBtnStyle" TargetType="Button" BasedOn="{StaticResource IconBtnStyle}">
+            <Setter Property="Width"    Value="28" />
+            <Setter Property="Height"   Value="28" />
+            <Setter Property="FontSize" Value="13" />
+        </Style>
+
+        <!-- ── Inline Delete Button ─────────────────────────── -->
         <Style x:Key="InlineDeleteBtnStyle" TargetType="Button" BasedOn="{StaticResource InlineBtnStyle}">
-            <Setter Property="Foreground" Value="#EF4444" />
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" CornerRadius="4" Background="{TemplateBinding Background}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border x:Name="Bd" CornerRadius="6" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -91,188 +152,236 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- ── Toolbar Separator ────────────────────────────── -->
+        <Style x:Key="ToolbarSeparatorStyle" TargetType="Border">
+            <Setter Property="Width"           Value="1" />
+            <Setter Property="Background"      Value="{StaticResource BorderBrush}" />
+            <Setter Property="Margin"          Value="6,6" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ═══════════════════════════════════════════════════════════
-             ROW 0: Header + Toolbar
-             ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <!-- ═══════════════════════════════════════════════════════════════
+             ROW 0: Header Bar — back + title + actions
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="0" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                Padding="20,14">
+            <DockPanel>
+                <!-- ← Back button -->
+                <Button DockPanel.Dock="Left" Command="{Binding BackToListCommand}"
+                        ToolTip="Quay lại danh sách form"
+                        Style="{StaticResource IconBtnStyle}"
+                        Width="36" Height="36">
+                    <TextBlock Text="←" FontSize="18" FontWeight="Bold"
+                               Foreground="{StaticResource MutedBrush}" />
+                </Button>
 
-                <!-- Form info -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <Button Command="{Binding BackToListCommand}"
-                            ToolTip="Quay lại danh sách form"
-                            Width="30" Height="30"
-                            Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="←" FontSize="16" VerticalAlignment="Center" />
-                    </Button>
-                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                        <!-- Tạo mới: hiện "Tạo Form Mới" -->
-                        <TextBlock Text="Tạo Form Mới"
-                                   FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}"
-                                   Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}" />
-                        <!-- Edit: hiện tên form -->
-                        <TextBlock Text="{Binding FormName}"
-                                   FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}"
-                                   Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
-                                    Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
-                            <TextBlock Text="{Binding FormCode}" FontSize="12" Opacity="0.6"
-                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                            <TextBlock Text=" · v" FontSize="12" Opacity="0.6"
-                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                            <TextBlock Text="{Binding Version}" FontSize="12" Opacity="0.6"
-                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                            <TextBlock Text=" · " FontSize="12" Opacity="0.6"
-                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                            <TextBlock Text="{Binding Platform}" FontSize="12" Opacity="0.6"
-                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                        </StackPanel>
+                <!-- Accent divider bar -->
+                <Border DockPanel.Dock="Left" Width="3" Height="28"
+                        Background="{StaticResource AccentBrush}" CornerRadius="2"
+                        Margin="12,0,14,0" VerticalAlignment="Center" />
+
+                <!-- Title area -->
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <!-- Create mode -->
+                    <TextBlock Text="Tạo Form Mới"
+                               FontSize="18" FontWeight="Bold" Foreground="#0F172A"
+                               Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}" />
+                    <!-- Edit mode -->
+                    <TextBlock Text="{Binding FormName}"
+                               FontSize="18" FontWeight="Bold" Foreground="#0F172A"
+                               Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
+                        <TextBlock Text="{Binding FormCode}"
+                                   FontSize="12" FontFamily="Cascadia Code, Consolas"
+                                   Foreground="{StaticResource AccentBrush}" />
+                        <TextBlock Text="  ·  v" FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="{Binding Version}" FontSize="12"
+                                   Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="  ·  " FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                        <Border Background="#F0FDF4" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Platform}" FontSize="11"
+                                       Foreground="#16A34A" FontWeight="SemiBold" />
+                        </Border>
                     </StackPanel>
-
-                    <!-- Dirty indicator -->
-                    <TextBlock Text="•" Foreground="Orange" FontSize="20"
-                               Margin="12,0,0,0" VerticalAlignment="Center"
-                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
-                               ToolTip="Có thay đổi chưa lưu" />
                 </StackPanel>
 
-                <!-- Toolbar -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <dx:SimpleButton Command="{Binding AddSectionCommand}" Margin="0,0,8,0">
+                <!-- Dirty indicator -->
+                <Border DockPanel.Dock="Left" Margin="12,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}">
+                    <Border Background="#FEF3C7" CornerRadius="10" Padding="8,3">
+                        <TextBlock Text="Chưa lưu" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#D97706" />
+                    </Border>
+                </Border>
+
+                <!-- Right-aligned action buttons -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <!-- Create button (create mode only) -->
+                    <dx:SimpleButton Command="{Binding CreateNewFormCommand}" Margin="0,0,8,0"
+                                     Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}"
+                                     IsEnabled="{Binding CanCreateNewForm}"
+                                     Height="34" Padding="16,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="📁" VerticalAlignment="Center" />
-                            <TextBlock Text="Thêm Section" Margin="6,0,0,0" />
+                            <TextBlock Text="＋" VerticalAlignment="Center"
+                                       FontWeight="Bold" FontSize="14" />
+                            <TextBlock Text="Tạo Form" Margin="6,0,0,0"
+                                       FontWeight="SemiBold" />
                         </StackPanel>
                     </dx:SimpleButton>
 
-                    <dx:SimpleButton Command="{Binding AddFieldCommand}" Margin="0,0,8,0">
+                    <!-- Save button (edit mode only) -->
+                    <dx:SimpleButton Command="{Binding SaveFormCommand}" Margin="0,0,8,0"
+                                     Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}"
+                                     Height="34" Padding="16,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="+" VerticalAlignment="Center" />
-                            <TextBlock Text="Thêm Field" Margin="6,0,0,0" />
+                            <TextBlock Text="💾" VerticalAlignment="Center" FontSize="13" />
+                            <TextBlock Text="Lưu thay đổi" Margin="6,0,0,0"
+                                       FontWeight="SemiBold" />
                         </StackPanel>
                     </dx:SimpleButton>
 
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="4,4" />
+                    <dx:SimpleButton Command="{Binding ViewDependenciesCommand}"
+                                     Margin="0,0,6,0" ToolTip="Xem biểu đồ phụ thuộc"
+                                     Height="34" Padding="12,0">
+                        <TextBlock Text="Dependencies" FontSize="12" />
+                    </dx:SimpleButton>
 
-                    <Button Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="↑" FontSize="14" VerticalAlignment="Center" />
-                    </Button>
-
-                    <Button Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="↓" FontSize="14" VerticalAlignment="Center" />
-                    </Button>
-
-                    <Button Command="{Binding DeleteNodeCommand}" Foreground="#EF4444"
-                            ToolTip="Xóa node đang chọn"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="🗑" FontSize="14" VerticalAlignment="Center" />
-                    </Button>
-
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="4,4" />
-
-                    <Button Command="{Binding ExpandAllCommand}" ToolTip="Mở rộng tất cả"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="↕" FontSize="14" VerticalAlignment="Center" />
-                    </Button>
-                    <Button Command="{Binding CollapseAllCommand}" ToolTip="Thu gọn tất cả"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="⇕" FontSize="14" VerticalAlignment="Center" />
-                    </Button>
-
-                    <!-- Right-aligned actions -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                                Margin="16,0,0,0">
-                        <!-- Tạo mới -->
-                        <dx:SimpleButton Command="{Binding CreateNewFormCommand}" Margin="0,0,8,0"
-                                         Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}"
-                                         IsEnabled="{Binding CanCreateNewForm}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="+" VerticalAlignment="Center" FontWeight="Bold" />
-                                <TextBlock Text="Tạo Form" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </dx:SimpleButton>
-
-                        <!-- Lưu (edit mode) -->
-                        <dx:SimpleButton Command="{Binding SaveFormCommand}" Margin="0,0,8,0"
-                                         Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="💾" VerticalAlignment="Center" />
-                                <TextBlock Text="Lưu" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </dx:SimpleButton>
-
-                        <dx:SimpleButton Command="{Binding ViewDependenciesCommand}"
-                                         Margin="0,0,8,0" ToolTip="Xem biểu đồ phụ thuộc">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="⬡" VerticalAlignment="Center" />
-                                <TextBlock Text="Dependencies" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </dx:SimpleButton>
-
-                        <dx:SimpleButton Command="{Binding PublishCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="▶" VerticalAlignment="Center" />
-                                <TextBlock Text="Publish" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </dx:SimpleButton>
-                    </StackPanel>
+                    <dx:SimpleButton Command="{Binding PublishCommand}"
+                                     Height="34" Padding="16,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="▶" VerticalAlignment="Center" FontSize="11" />
+                            <TextBlock Text="Publish" Margin="6,0,0,0" FontWeight="SemiBold" />
+                        </StackPanel>
+                    </dx:SimpleButton>
                 </StackPanel>
-            </Grid>
+            </DockPanel>
         </Border>
 
-        <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: Content — TreeView (left) + TabControl (right)
-             ═══════════════════════════════════════════════════════════ -->
-        <Grid Grid.Row="1" Margin="16,8,16,0">
+        <!-- ═══════════════════════════════════════════════════════════════
+             ROW 1: Toolbar — structure editing
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+                Padding="20,6">
+            <StackPanel Orientation="Horizontal">
+                <dx:SimpleButton Command="{Binding AddSectionCommand}" Height="28"
+                                 Padding="10,0" Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📁" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="Section" Margin="5,0,0,0" FontSize="12" />
+                    </StackPanel>
+                </dx:SimpleButton>
+
+                <dx:SimpleButton Command="{Binding AddFieldCommand}" Height="28"
+                                 Padding="10,0" Margin="0,0,4,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="＋" FontSize="13" VerticalAlignment="Center"
+                                   FontWeight="Bold" />
+                        <TextBlock Text="Field" Margin="5,0,0,0" FontSize="12" />
+                    </StackPanel>
+                </dx:SimpleButton>
+
+                <Border Style="{StaticResource ToolbarSeparatorStyle}" />
+
+                <Button Style="{StaticResource IconBtnStyle}"
+                        Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên">
+                    <TextBlock Text="↑" FontSize="15" />
+                </Button>
+                <Button Style="{StaticResource IconBtnStyle}"
+                        Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống">
+                    <TextBlock Text="↓" FontSize="15" />
+                </Button>
+
+                <Border Style="{StaticResource ToolbarSeparatorStyle}" />
+
+                <Button Style="{StaticResource IconBtnStyle}"
+                        Command="{Binding ExpandAllCommand}" ToolTip="Mở rộng tất cả">
+                    <TextBlock Text="⊞" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource IconBtnStyle}"
+                        Command="{Binding CollapseAllCommand}" ToolTip="Thu gọn tất cả">
+                    <TextBlock Text="⊟" FontSize="14" />
+                </Button>
+
+                <Border Style="{StaticResource ToolbarSeparatorStyle}" />
+
+                <Button Style="{StaticResource IconBtnStyle}"
+                        Command="{Binding DeleteNodeCommand}" ToolTip="Xóa node đang chọn"
+                        Foreground="{StaticResource DangerBrush}">
+                    <TextBlock Text="🗑" FontSize="13" />
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             ROW 2: Main Content — TreeView (left) + TabControl (right)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="2" Margin="16,12,16,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="350" MinWidth="250" />
+                <ColumnDefinition Width="320" MinWidth="240" MaxWidth="500" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ── Left: TreeView ─────────────────────────────── -->
-            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <!-- ── Left Panel: Structure TreeView ─────────────── -->
+            <Border Grid.Column="0" Style="{StaticResource SectionCardStyle}"
+                    Margin="0,0,0,0" Padding="0">
                 <DockPanel>
+                    <!-- Panel header -->
+                    <Border DockPanel.Dock="Top" Padding="14,10"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                            <TextBlock Text="Cấu trúc Form" FontSize="13" FontWeight="SemiBold"
+                                       Foreground="#1E293B" VerticalAlignment="Center" />
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                                        HorizontalAlignment="Right">
+                                <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                           VerticalAlignment="Center">
+                                    <TextBlock.Text>
+                                        <MultiBinding StringFormat="{}{0}S · {1}F">
+                                            <Binding Path="TotalSections" />
+                                            <Binding Path="TotalFields" />
+                                        </MultiBinding>
+                                    </TextBlock.Text>
+                                </TextBlock>
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
                     <!-- Search box -->
-                    <dxe:TextEdit DockPanel.Dock="Top" Margin="12,12,12,8"
-                                  NullText="Tìm kiếm section / field..."
-                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
-                        <dxe:TextEdit.InputBindings>
-                            <KeyBinding Key="Escape"
-                                        Command="{Binding DataContext.ClearSearchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
-                        </dxe:TextEdit.InputBindings>
-                    </dxe:TextEdit>
+                    <Border DockPanel.Dock="Top" Padding="10,8">
+                        <dxe:TextEdit NullText="🔍  Tìm section / field..."
+                                      EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}">
+                            <dxe:TextEdit.InputBindings>
+                                <KeyBinding Key="Escape"
+                                            Command="{Binding DataContext.ClearSearchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                            </dxe:TextEdit.InputBindings>
+                        </dxe:TextEdit>
+                    </Border>
 
                     <!-- TreeView -->
                     <TreeView ItemsSource="{Binding Sections}"
                               SelectedItemChanged="OnTreeSelectedItemChanged"
-                              BorderThickness="0"
-                              Padding="4">
+                              BorderThickness="0" Padding="6,4"
+                              Background="Transparent">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type models:FormTreeNode}"
                                                        ItemsSource="{Binding Children}">
-                                <Grid Margin="4,4"
+                                <Grid Margin="2,4"
                                       Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -281,27 +390,36 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Icon -->
-                                    <TextBlock Grid.Column="0"
-                                               Text="{Binding IconText}"
-                                               VerticalAlignment="Center"
-                                               Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
-                                               Width="20" />
+                                    <Border Grid.Column="0" Width="24" Height="24"
+                                            CornerRadius="5"
+                                            Background="{StaticResource AccentLightBrush}"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding IconText}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource AccentDarkBrush}" />
+                                    </Border>
 
                                     <!-- Name + SubText -->
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0"
+                                                VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}"
-                                                   FontWeight="Medium" />
+                                                   FontSize="13" FontWeight="Medium"
+                                                   Foreground="#1E293B" />
                                         <TextBlock Text="{Binding SubText}"
-                                                   FontSize="11" Opacity="0.5" />
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}" />
                                     </StackPanel>
 
                                     <!-- Required badge -->
-                                    <TextBlock Grid.Column="2"
-                                               Text="*" Foreground="OrangeRed"
-                                               FontSize="12" FontWeight="Bold"
-                                               VerticalAlignment="Center"
-                                               Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}"
-                                               ToolTip="Bắt buộc" />
+                                    <Border Grid.Column="2" Background="#FEE2E2"
+                                            CornerRadius="4" Padding="4,1"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="*" Foreground="{StaticResource DangerBrush}"
+                                                   FontSize="11" FontWeight="Bold" />
+                                    </Border>
                                 </Grid>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
@@ -311,6 +429,7 @@
                                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
                                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
                                 <Setter Property="Visibility" Value="{Binding IsActive, Converter={StaticResource BoolToVis}}" />
+                                <Setter Property="Padding" Value="2,1" />
                             </Style>
                         </TreeView.ItemContainerStyle>
                     </TreeView>
@@ -318,241 +437,355 @@
             </Border>
 
             <!-- Splitter -->
-            <GridSplitter Grid.Column="1" Width="4"
+            <GridSplitter Grid.Column="1" Width="6"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Stretch"
                           Background="Transparent" />
 
-            <!-- ── Right: TabControl — Form Info / Properties / Events / Permissions ── -->
-            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-                <TabControl BorderThickness="0" Background="Transparent" Padding="8,4,8,0"
+            <!-- ── Right Panel: TabControl ────────────────────── -->
+            <Border Grid.Column="2" Style="{StaticResource SectionCardStyle}"
+                    Margin="0,0,0,0" Padding="0">
+                <TabControl BorderThickness="0" Background="Transparent"
+                            Padding="0"
                             SelectedIndex="{Binding ActiveTabIndex, Mode=TwoWay}">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Padding" Value="14,8" />
+                            <Setter Property="FontSize" Value="13" />
+                        </Style>
+                    </TabControl.Resources>
 
-                    <!-- ══ TAB 1: Thông tin Form (metadata Ui_Form) ══ -->
+                    <!-- ══════════════════════════════════════════════
+                         TAB 1: Thông tin Form (metadata Ui_Form)
+                         ══════════════════════════════════════════════ -->
                     <TabItem Header="Thông tin Form">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8,12,8,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="24" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel Margin="24,20,24,24">
 
-                                <!-- Cột trái -->
-                                <StackPanel Grid.Column="0">
-                                    <!-- Form Code -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <DockPanel>
-                                            <TextBlock Text="Form Code *" Style="{StaticResource FieldLabelStyle}"
-                                                       DockPanel.Dock="Left" />
-                                            <TextBlock DockPanel.Dock="Right" Text="⏳ Đang kiểm tra..."
-                                                       FontSize="11" Opacity="0.5" VerticalAlignment="Center"
-                                                       Visibility="{Binding IsCheckingFormCode, Converter={StaticResource BoolToVis}}" />
-                                        </DockPanel>
-                                        <dxe:TextEdit EditValue="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="VD: PO_ORDER"
-                                                      CharacterCasing="Upper" />
-                                        <TextBlock Text="{Binding FormCodeError}" FontSize="11"
-                                                   Foreground="#EF4444" Margin="0,3,0,0"
-                                                   Visibility="{Binding HasFormCodeError, Converter={StaticResource BoolToVis}}" />
+                                <!-- ── Card: Thông tin cơ bản ──────── -->
+                                <Border Style="{StaticResource SectionCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="THÔNG TIN CƠ BẢN"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="20" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Left column -->
+                                            <StackPanel Grid.Column="0">
+                                                <!-- Form Code -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <DockPanel>
+                                                        <TextBlock Text="Form Code *"
+                                                                   Style="{StaticResource FieldLabelStyle}"
+                                                                   DockPanel.Dock="Left" />
+                                                        <TextBlock DockPanel.Dock="Right"
+                                                                   Text="Đang kiểm tra..."
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource AccentBrush}"
+                                                                   VerticalAlignment="Center"
+                                                                   Visibility="{Binding IsCheckingFormCode, Converter={StaticResource BoolToVis}}" />
+                                                    </DockPanel>
+                                                    <dxe:TextEdit EditValue="{Binding FormCode, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="VD: PO_ORDER"
+                                                                  CharacterCasing="Upper" />
+                                                    <TextBlock Text="{Binding FormCodeError}"
+                                                               FontSize="11" Margin="0,4,0,0"
+                                                               Foreground="{StaticResource DangerBrush}"
+                                                               TextWrapping="Wrap"
+                                                               Visibility="{Binding HasFormCodeError, Converter={StaticResource BoolToVis}}" />
+                                                </StackPanel>
+
+                                                <!-- Tên Form -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tên Form *"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="Nhập tên hiển thị..." />
+                                                </StackPanel>
+
+                                                <!-- Platform -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Platform *"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:ComboBoxEdit ItemsSource="{Binding PlatformOptions}"
+                                                                      EditValue="{Binding Platform}" />
+                                                </StackPanel>
+                                            </StackPanel>
+
+                                            <!-- Right column -->
+                                            <StackPanel Grid.Column="2">
+                                                <!-- Business Table -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Business Table *"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:ComboBoxEdit ItemsSource="{Binding TableLookupItems}"
+                                                                      EditValue="{Binding SelectedTable, Mode=TwoWay}"
+                                                                      DisplayMember="DisplayText"
+                                                                      NullText="Chọn bảng dữ liệu..." />
+                                                </StackPanel>
+
+                                                <!-- Layout Engine -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Layout Engine"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:ComboBoxEdit ItemsSource="{Binding LayoutEngineOptions}"
+                                                                      EditValue="{Binding LayoutEngine}" />
+                                                </StackPanel>
+
+                                                <!-- Is Active -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}"
+                                                            Margin="0,8,0,0">
+                                                    <dxe:CheckEdit IsChecked="{Binding IsFormActive}"
+                                                                   Content="Kích hoạt (Is Active)"
+                                                                   FontSize="13" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
                                     </StackPanel>
+                                </Border>
 
-                                    <!-- Tên Form -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <TextBlock Text="Tên Form *" Style="{StaticResource FieldLabelStyle}" />
-                                        <dxe:TextEdit EditValue="{Binding FormName, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="Nhập tên hiển thị..." />
-                                    </StackPanel>
-
-                                    <!-- Platform -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <TextBlock Text="Platform *" Style="{StaticResource FieldLabelStyle}" />
-                                        <dxe:ComboBoxEdit ItemsSource="{Binding PlatformOptions}"
-                                                          EditValue="{Binding Platform}" />
-                                    </StackPanel>
-
-                                    <!-- Layout Engine -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <TextBlock Text="Layout Engine" Style="{StaticResource FieldLabelStyle}" />
-                                        <dxe:ComboBoxEdit ItemsSource="{Binding LayoutEngineOptions}"
-                                                          EditValue="{Binding LayoutEngine}" />
-                                    </StackPanel>
-
-                                    <!-- Is Active -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}" Orientation="Horizontal">
-                                        <dxe:CheckEdit IsChecked="{Binding IsFormActive}"
-                                                       Content="Kích hoạt (Is Active)" />
-                                    </StackPanel>
-                                </StackPanel>
-
-                                <!-- Cột phải -->
-                                <StackPanel Grid.Column="2">
-                                    <!-- Business Table -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <TextBlock Text="Business Table *" Style="{StaticResource FieldLabelStyle}" />
-                                        <dxe:ComboBoxEdit ItemsSource="{Binding TableLookupItems}"
-                                                          EditValue="{Binding SelectedTable, Mode=TwoWay}"
-                                                          DisplayMember="DisplayText"
-                                                          NullText="Chọn bảng dữ liệu..." />
-                                    </StackPanel>
-
-                                    <!-- Description -->
-                                    <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                        <TextBlock Text="Mô tả" Style="{StaticResource FieldLabelStyle}" />
+                                <!-- ── Card: Mô tả ─────────────────── -->
+                                <Border Style="{StaticResource SectionCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="MÔ TẢ"
+                                                   Style="{StaticResource SectionTitleStyle}" />
                                         <dxe:MemoEdit EditValue="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
                                                       NullText="Nhập mô tả form..."
-                                                      Height="80" AcceptsReturn="True" />
+                                                      Height="90" AcceptsReturn="True" />
                                     </StackPanel>
+                                </Border>
 
-                                    <!-- Version + Checksum — readonly, chỉ hiện khi edit -->
-                                    <Grid Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Style="{StaticResource FieldGroupStyle}">
-                                            <TextBlock Text="Version" Style="{StaticResource FieldLabelStyle}" />
-                                            <TextBlock Text="{Binding Version}" Style="{StaticResource ReadonlyValueStyle}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2" Style="{StaticResource FieldGroupStyle}">
-                                            <TextBlock Text="Checksum" Style="{StaticResource FieldLabelStyle}" />
-                                            <TextBlock Text="{Binding Checksum}" Style="{StaticResource ReadonlyValueStyle}"
-                                                       FontSize="11" />
-                                        </StackPanel>
-                                    </Grid>
+                                <!-- ── Card: Version & Checksum (edit only) ── -->
+                                <Border Style="{StaticResource SectionCardStyle}"
+                                        Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Text="PHIÊN BẢN"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="40" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
 
-                                    <!-- Error message — hiện khi tạo form bị lỗi -->
-                                    <Border Background="#FEE2E2" CornerRadius="6" Padding="12,8"
-                                            Visibility="{Binding HasCreateError, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Version"
+                                                           Style="{StaticResource FieldLabelStyle}" />
+                                                <Border Background="#F8FAFC" CornerRadius="6"
+                                                        Padding="14,8" MinWidth="80">
+                                                    <TextBlock FontSize="20" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentDarkBrush}">
+                                                        <TextBlock.Text>
+                                                            <Binding Path="Version" StringFormat="v{0}" />
+                                                        </TextBlock.Text>
+                                                    </TextBlock>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Checksum"
+                                                           Style="{StaticResource FieldLabelStyle}" />
+                                                <TextBlock Text="{Binding Checksum}"
+                                                           Style="{StaticResource ReadonlyValueStyle}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ── Error Message (create mode) ──── -->
+                                <Border Background="#FEF2F2" CornerRadius="8" Padding="14,10"
+                                        BorderBrush="#FECACA" BorderThickness="1"
+                                        Margin="0,0,0,12"
+                                        Visibility="{Binding HasCreateError, Converter={StaticResource BoolToVis}}">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Left" Text="⚠"
+                                                   FontSize="16" Margin="0,0,10,0"
+                                                   VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding CreateErrorMessage}"
-                                                   Foreground="#DC2626" FontSize="12" TextWrapping="Wrap" />
-                                    </Border>
-                                </StackPanel>
-                            </Grid>
+                                                   Foreground="#DC2626" FontSize="12"
+                                                   TextWrapping="Wrap"
+                                                   VerticalAlignment="Center" />
+                                    </DockPanel>
+                                </Border>
+
+                            </StackPanel>
                         </ScrollViewer>
                     </TabItem>
 
-                    <!-- ══ TAB 2: Thuộc tính node (Section / Field) ══ -->
+                    <!-- ══════════════════════════════════════════════
+                         TAB 2: Thuộc tính node (Section / Field)
+                         ══════════════════════════════════════════════ -->
                     <TabItem Header="Thuộc tính">
-                        <Grid Margin="24">
-                            <!-- Khi chưa chọn node nào -->
+                        <Grid>
+                            <!-- Empty state -->
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Visibility="{Binding IsNodeSelected, Converter={StaticResource InvBoolToVis}}">
-                                <TextBlock Text="☝" FontSize="48"
-                                           HorizontalAlignment="Center"
-                                           Opacity="0.3" />
-                                <TextBlock Text="Chọn một Section hoặc Field từ cây bên trái"
-                                           FontSize="14" Opacity="0.5"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,12,0,0" />
-                                <TextBlock Text="để xem và chỉnh sửa thuộc tính"
-                                           FontSize="12" Opacity="0.4"
+                                <Border Width="64" Height="64" CornerRadius="32"
+                                        Background="#F1F5F9"
+                                        HorizontalAlignment="Center" Margin="0,0,0,16">
+                                    <TextBlock Text="☝" FontSize="28"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="{StaticResource MutedBrush}" />
+                                </Border>
+                                <TextBlock Text="Chọn một node từ cây bên trái"
+                                           FontSize="14" Foreground="{StaticResource MutedBrush}"
                                            HorizontalAlignment="Center" />
+                                <TextBlock Text="để xem và chỉnh sửa thuộc tính"
+                                           FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                           Opacity="0.7"
+                                           HorizontalAlignment="Center" Margin="0,4,0,0" />
                             </StackPanel>
 
-                            <!-- Khi đã chọn node: hiện property panel -->
-                            <StackPanel Visibility="{Binding IsNodeSelected, Converter={StaticResource BoolToVis}}"
-                                        Width="500" VerticalAlignment="Top">
+                            <!-- Property editor -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          Visibility="{Binding IsNodeSelected, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Margin="24,20,24,24" MaxWidth="560">
 
-                                <!-- Section properties -->
-                                <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="Thuộc tính Section"
-                                               FontSize="20" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
-                                               Margin="0,0,0,16" />
+                                    <!-- ── Section Properties ──────── -->
+                                    <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
+                                        <Border Style="{StaticResource SectionCardStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="THUỘC TÍNH SECTION"
+                                                           Style="{StaticResource SectionTitleStyle}" />
 
-                                    <dxe:TextEdit NullText="Section Code"
-                                                  EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Section Code"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="Section Code" />
+                                                </StackPanel>
 
-                                    <dxe:TextEdit NullText="Tên hiển thị"
-                                                  EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tên hiển thị"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="Tên hiển thị" />
+                                                </StackPanel>
 
-                                    <dxe:TextEdit NullText="Thứ tự sắp xếp"
-                                                  EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Thứ tự sắp xếp"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="0" />
+                                                </StackPanel>
 
-                                    <TextBlock Text="{Binding SelectedNode.SubText}"
-                                               FontSize="12" Opacity="0.5"
-                                               Margin="0,8,0,0" />
-                                </StackPanel>
-
-                                <!-- Field properties -->
-                                <StackPanel Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-                                        <TextBlock Text="Thuộc tính Field"
-                                                   FontSize="20" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                                        <dx:SimpleButton Command="{Binding OpenFieldConfigCommand}"
-                                                         Margin="16,0,0,0"
-                                                         Height="28" Padding="12,0">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="⚙" Width="14" Height="14"
-                                                           VerticalAlignment="Center" />
-                                                <TextBlock Text="Chi tiết" Margin="4,0,0,0"
-                                                           FontSize="12" />
+                                                <TextBlock Text="{Binding SelectedNode.SubText}"
+                                                           FontSize="11"
+                                                           Foreground="{StaticResource MutedBrush}"
+                                                           Margin="0,4,0,0" />
                                             </StackPanel>
-                                        </dx:SimpleButton>
+                                        </Border>
                                     </StackPanel>
 
-                                    <dxe:TextEdit NullText="Field Code"
-                                                  EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                    <!-- ── Field Properties ────────── -->
+                                    <StackPanel Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
+                                        <Border Style="{StaticResource SectionCardStyle}">
+                                            <StackPanel>
+                                                <DockPanel Margin="0,0,0,14">
+                                                    <TextBlock Text="THUỘC TÍNH FIELD"
+                                                               Style="{StaticResource SectionTitleStyle}"
+                                                               Margin="0" VerticalAlignment="Center" />
+                                                    <dx:SimpleButton DockPanel.Dock="Right"
+                                                                     Command="{Binding OpenFieldConfigCommand}"
+                                                                     HorizontalAlignment="Right"
+                                                                     Height="28" Padding="10,0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="⚙" FontSize="12"
+                                                                       VerticalAlignment="Center" />
+                                                            <TextBlock Text="Chi tiết" Margin="5,0,0,0"
+                                                                       FontSize="12" />
+                                                        </StackPanel>
+                                                    </dx:SimpleButton>
+                                                </DockPanel>
 
-                                    <dxe:TextEdit NullText="Tên hiển thị"
-                                                  EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Field Code"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="Field Code" />
+                                                </StackPanel>
 
-                                    <Grid Margin="0,0,0,12">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="8" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tên hiển thị"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="Tên hiển thị" />
+                                                </StackPanel>
 
-                                        <dxe:TextEdit Grid.Column="0" NullText="Field Type"
-                                                      EditValue="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Grid Margin="0,0,0,18">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="12" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Field Type"
+                                                                   Style="{StaticResource FieldLabelStyle}" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}"
+                                                                      NullText="Field Type" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Editor Type"
+                                                                   Style="{StaticResource FieldLabelStyle}" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}"
+                                                                      NullText="Editor Type" />
+                                                    </StackPanel>
+                                                </Grid>
 
-                                        <dxe:TextEdit Grid.Column="2" NullText="Editor Type"
-                                                      EditValue="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}" />
-                                    </Grid>
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Thứ tự sắp xếp"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="0" />
+                                                </StackPanel>
 
-                                    <dxe:TextEdit NullText="Thứ tự sắp xếp"
-                                                  EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                                  Margin="0,0,0,12" />
+                                                <dxe:CheckEdit Content="Bắt buộc (Required)"
+                                                               IsChecked="{Binding SelectedNode.IsRequired}"
+                                                               FontSize="13"
+                                                               Margin="0,4,0,0" />
+                                            </StackPanel>
+                                        </Border>
 
-                                    <dxe:CheckEdit Content="Bắt buộc (Required)"
-                                                   IsChecked="{Binding SelectedNode.IsRequired}"
-                                                   Margin="0,4,0,12" />
+                                        <!-- Hint card -->
+                                        <Border Background="#F0F9FF" CornerRadius="8"
+                                                Padding="14,12"
+                                                BorderBrush="#BAE6FD" BorderThickness="1">
+                                            <StackPanel>
+                                                <TextBlock Text="💡  Mở Chi tiết để cấu hình:"
+                                                           FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="#0369A1"
+                                                           Margin="0,0,0,6" />
+                                                <TextBlock Text="  •  Control Properties (min, max, format...)"
+                                                           FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="  •  Validation Rules (required, range...)"
+                                                           FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                                                <TextBlock Text="  •  Events (onChange, onBlur...)"
+                                                           FontSize="12" Foreground="{StaticResource MutedBrush}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
 
-                                    <!-- Hint -->
-                                    <Border Background="#EEF5FF"
-                                            CornerRadius="4" Padding="12" Margin="0,8,0,0">
-                                        <StackPanel>
-                                            <TextBlock Text="Mở Chi tiết để cấu hình:"
-                                                       FontSize="12" FontWeight="Medium" />
-                                            <TextBlock Text="  - Control Properties (min, max, format...)"
-                                                       FontSize="12" Opacity="0.7" />
-                                            <TextBlock Text="  - Validation Rules (required, range...)"
-                                                       FontSize="12" Opacity="0.7" />
-                                            <TextBlock Text="  - Events (onChange, onBlur...)"
-                                                       FontSize="12" Opacity="0.7" />
-                                        </StackPanel>
-                                    </Border>
                                 </StackPanel>
-                            </StackPanel>
+                            </ScrollViewer>
                         </Grid>
                     </TabItem>
 
-                    <!-- ══ TAB 3: Events ══ -->
+                    <!-- ══════════════════════════════════════════════
+                         TAB 3: Events
+                         ══════════════════════════════════════════════ -->
                     <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Events" FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="Events" FontSize="13" FontWeight="Medium" />
                                 <Border Style="{StaticResource TabBadgeStyle}">
-                                    <TextBlock FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold"
+                                    <TextBlock FontSize="11" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentDarkBrush}"
                                                Text="{Binding Events.Count}" />
                                 </Border>
                             </StackPanel>
@@ -565,22 +798,29 @@
                             </Grid.RowDefinitions>
 
                             <!-- Events toolbar -->
-                            <Border Grid.Row="0" Padding="8,6" BorderBrush="#E2EAFF" BorderThickness="0,0,0,1">
+                            <Border Grid.Row="0" Padding="12,8"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="0,0,0,1"
+                                    Background="#FAFBFC">
                                 <DockPanel>
-                                    <TextBlock Text="Danh sách Events" FontSize="12" FontWeight="SemiBold"
+                                    <TextBlock Text="Danh sách Events" FontSize="13"
+                                               FontWeight="SemiBold"
                                                VerticalAlignment="Center"
-                                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                                               Foreground="#1E293B" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                                 HorizontalAlignment="Right">
                                         <Button Style="{StaticResource InlineBtnStyle}"
                                                 Command="{Binding AddEventCommand}"
-                                                ToolTip="Thêm Event mới" Content="＋" FontSize="15" />
+                                                ToolTip="Thêm Event mới" Content="＋"
+                                                FontSize="15" />
                                         <Button Style="{StaticResource InlineBtnStyle}"
                                                 Command="{Binding EditEventCommand}"
-                                                ToolTip="Mở Event Editor" Content="✎" FontSize="14" />
+                                                ToolTip="Mở Event Editor" Content="✎"
+                                                FontSize="14" />
                                         <Button Style="{StaticResource InlineDeleteBtnStyle}"
                                                 Command="{Binding RemoveEventCommand}"
-                                                ToolTip="Xóa Event đang chọn" Content="✕" FontSize="12" />
+                                                ToolTip="Xóa Event đang chọn" Content="✕"
+                                                FontSize="12" />
                                     </StackPanel>
                                 </DockPanel>
                             </Border>
@@ -615,7 +855,8 @@
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Row.ConditionPreview, FallbackValue='—'}"
                                                            VerticalAlignment="Center" Margin="4,0"
-                                                           FontFamily="Consolas" FontSize="11" Opacity="0.75" />
+                                                           FontFamily="Cascadia Code, Consolas"
+                                                           FontSize="11" Foreground="{StaticResource MutedBrush}" />
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
                                     </dxg:GridColumn>
@@ -629,21 +870,23 @@
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
                                     </dxg:GridColumn>
-
                                     <!-- Actions column -->
-                                    <dxg:GridColumn Header="" Width="70" AllowSorting="False" AllowEditing="False">
+                                    <dxg:GridColumn Header="" Width="70" AllowSorting="False"
+                                                    AllowEditing="False">
                                         <dxg:GridColumn.CellTemplate>
                                             <DataTemplate>
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                                            Margin="4,0">
+                                                <StackPanel Orientation="Horizontal"
+                                                            VerticalAlignment="Center" Margin="4,0">
                                                     <Button Style="{StaticResource InlineBtnStyle}"
                                                             Command="{Binding DataContext.EditEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                             CommandParameter="{Binding Row}"
-                                                            ToolTip="Mở Event Editor" Content="✎" FontSize="13" />
+                                                            ToolTip="Mở Event Editor" Content="✎"
+                                                            FontSize="13" />
                                                     <Button Style="{StaticResource InlineDeleteBtnStyle}"
                                                             Command="{Binding DataContext.RemoveEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                             CommandParameter="{Binding Row}"
-                                                            ToolTip="Xóa event" Content="✕" FontSize="11" />
+                                                            ToolTip="Xóa event" Content="✕"
+                                                            FontSize="11" />
                                                 </StackPanel>
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
@@ -653,13 +896,16 @@
                         </Grid>
                     </TabItem>
 
-                    <!-- ══ TAB 4: Permissions ══ -->
+                    <!-- ══════════════════════════════════════════════
+                         TAB 4: Permissions
+                         ══════════════════════════════════════════════ -->
                     <TabItem>
                         <TabItem.Header>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Permissions" FontSize="12" FontWeight="Medium" />
+                                <TextBlock Text="Permissions" FontSize="13" FontWeight="Medium" />
                                 <Border Style="{StaticResource TabBadgeStyle}">
-                                    <TextBlock FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold"
+                                    <TextBlock FontSize="11" FontWeight="Bold"
+                                               Foreground="{StaticResource AccentDarkBrush}"
                                                Text="{Binding Permissions.Count}" />
                                 </Border>
                             </StackPanel>
@@ -671,14 +917,21 @@
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
 
-                            <!-- Permissions info bar -->
-                            <Border Grid.Row="0" Padding="10,6" Background="#EFF6FF" BorderBrush="#BFDBFE"
-                                    BorderThickness="0,0,0,1">
-                                <TextBlock Text="Cấu hình quyền truy cập form theo từng role. Thay đổi được lưu khi nhấn Lưu."
-                                           FontSize="11" Opacity="0.7" VerticalAlignment="Center" />
+                            <!-- Info bar -->
+                            <Border Grid.Row="0" Padding="12,8"
+                                    Background="#F0F9FF"
+                                    BorderBrush="#BAE6FD" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <TextBlock Text="💡" Margin="0,0,8,0" FontSize="13"
+                                               VerticalAlignment="Center" />
+                                    <TextBlock Text="Cấu hình quyền truy cập form theo từng role. Thay đổi được lưu khi nhấn Lưu."
+                                               FontSize="12"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               VerticalAlignment="Center" />
+                                </DockPanel>
                             </Border>
 
-                            <!-- Permissions DataGrid — inline checkbox editing -->
+                            <!-- Permissions DataGrid -->
                             <dxg:GridControl Grid.Row="1"
                                              ItemsSource="{Binding Permissions}"
                                              AutoPopulateColumns="False">
@@ -689,22 +942,21 @@
                                                    NavigationStyle="Cell" />
                                 </dxg:GridControl.View>
                                 <dxg:GridControl.Columns>
-                                    <dxg:GridColumn Header="Role" FieldName="RoleName" Width="130"
-                                                    AllowEditing="False" />
-                                    <dxg:GridColumn Header="Mô tả" FieldName="RoleDescription" Width="*"
-                                                    AllowEditing="False">
+                                    <dxg:GridColumn Header="Role" FieldName="RoleName"
+                                                    Width="130" AllowEditing="False" />
+                                    <dxg:GridColumn Header="Mô tả" FieldName="RoleDescription"
+                                                    Width="*" AllowEditing="False">
                                         <dxg:GridColumn.CellTemplate>
                                             <DataTemplate>
                                                 <TextBlock Text="{Binding Row.RoleDescription}"
                                                            VerticalAlignment="Center" Margin="4,0"
-                                                           FontSize="11" Opacity="0.6" />
+                                                           FontSize="12"
+                                                           Foreground="{StaticResource MutedBrush}" />
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
                                     </dxg:GridColumn>
-
-                                    <!-- Can Read -->
-                                    <dxg:GridColumn Header="Xem" FieldName="CanRead" Width="65"
-                                                    AllowSorting="False">
+                                    <dxg:GridColumn Header="Xem" FieldName="CanRead"
+                                                    Width="65" AllowSorting="False">
                                         <dxg:GridColumn.CellTemplate>
                                             <DataTemplate>
                                                 <dxe:CheckEdit IsChecked="{Binding Row.CanRead, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -713,10 +965,8 @@
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
                                     </dxg:GridColumn>
-
-                                    <!-- Can Write -->
-                                    <dxg:GridColumn Header="Nhập" FieldName="CanWrite" Width="65"
-                                                    AllowSorting="False">
+                                    <dxg:GridColumn Header="Nhập" FieldName="CanWrite"
+                                                    Width="65" AllowSorting="False">
                                         <dxg:GridColumn.CellTemplate>
                                             <DataTemplate>
                                                 <dxe:CheckEdit IsChecked="{Binding Row.CanWrite, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -725,10 +975,8 @@
                                             </DataTemplate>
                                         </dxg:GridColumn.CellTemplate>
                                     </dxg:GridColumn>
-
-                                    <!-- Can Submit -->
-                                    <dxg:GridColumn Header="Gửi" FieldName="CanSubmit" Width="65"
-                                                    AllowSorting="False">
+                                    <dxg:GridColumn Header="Gửi" FieldName="CanSubmit"
+                                                    Width="65" AllowSorting="False">
                                         <dxg:GridColumn.CellTemplate>
                                             <DataTemplate>
                                                 <dxe:CheckEdit IsChecked="{Binding Row.CanSubmit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -746,25 +994,37 @@
             </Border>
         </Grid>
 
-        <!-- ═══════════════════════════════════════════════════════════
-             ROW 2: Status bar
-             ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="#EEF5FF" CornerRadius="4">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,16,0" VerticalAlignment="Center">
-                    <TextBlock.Text>
-                        <MultiBinding StringFormat="{}{0} sections · {1} fields">
-                            <Binding Path="TotalSections" />
-                            <Binding Path="TotalFields" />
-                        </MultiBinding>
-                    </TextBlock.Text>
-                </TextBlock>
-                <TextBlock Text="Form_Id:" FontSize="12" Opacity="0.4" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding FormId}" FontSize="12" Opacity="0.4"
-                           Margin="4,0,0,0" VerticalAlignment="Center" />
-            </StackPanel>
+        <!-- ═══════════════════════════════════════════════════════════════
+             ROW 3: Status bar
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="3" Margin="16,8,16,12" Padding="14,8"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="8"
+                Effect="{StaticResource CardShadow}">
+            <DockPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Border Background="{StaticResource AccentLightBrush}"
+                            CornerRadius="4" Padding="8,3" Margin="0,0,12,0">
+                        <TextBlock FontSize="11" Foreground="{StaticResource AccentDarkBrush}"
+                                   FontWeight="SemiBold">
+                            <TextBlock.Text>
+                                <MultiBinding StringFormat="{}{0} sections · {1} fields">
+                                    <Binding Path="TotalSections" />
+                                    <Binding Path="TotalFields" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Text="Form_Id:" FontSize="11"
+                               Foreground="{StaticResource MutedBrush}"
+                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding FormId}" FontSize="11"
+                               FontFamily="Cascadia Code, Consolas"
+                               Foreground="{StaticResource MutedBrush}"
+                               Margin="4,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+            </DockPanel>
         </Border>
     </Grid>
 </UserControl>
