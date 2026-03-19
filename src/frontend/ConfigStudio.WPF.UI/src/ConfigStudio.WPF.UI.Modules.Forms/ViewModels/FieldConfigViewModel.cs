@@ -181,6 +181,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public ObservableCollection<EventSummaryDto> LinkedEvents { get; } = [];
 
     // ── State ────────────────────────────────────────────────
+    private bool _isRebuildingProps;
     private bool _isDirty;
     public bool IsDirty { get => _isDirty; set => SetProperty(ref _isDirty, value); }
 
@@ -331,7 +332,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 Definition = def,
                 Value = oldValues.TryGetValue(def.PropName, out var old) ? old : def.DefaultValue
             };
-            propValue.PropertyChanged += (_, _) => RebuildControlPropsJson();
+            // NOTE: Dùng flag _isRebuildingProps để tránh gọi RebuildControlPropsJson đệ quy
+            // khi PropertyChanged fire trong lúc đang build collection
+            propValue.PropertyChanged += (_, _) =>
+            {
+                if (!_isRebuildingProps)
+                    RebuildControlPropsJson();
+            };
             ControlProps.Add(propValue);
         }
 
@@ -343,16 +350,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// </summary>
     private void RebuildControlPropsJson()
     {
-        var dict = ControlProps.ToDictionary(
-            p => p.Definition.PropName,
-            p => p.Value);
-
-        ControlPropsJson = JsonSerializer.Serialize(dict, new JsonSerializerOptions
+        _isRebuildingProps = true;
+        try
         {
-            WriteIndented = true
-        });
+            var dict = ControlProps.ToDictionary(
+                p => p.Definition.PropName,
+                p => p.Value);
 
-        IsDirty = true;
+            ControlPropsJson = JsonSerializer.Serialize(dict, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            IsDirty = true;
+        }
+        finally
+        {
+            _isRebuildingProps = false;
+        }
     }
 
     /// <summary>

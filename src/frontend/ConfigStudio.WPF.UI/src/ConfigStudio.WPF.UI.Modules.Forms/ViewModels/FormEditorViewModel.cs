@@ -322,7 +322,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsCheckingFormCode = false;
             IsFormCodeDuplicate = false;
             FormCodeValidationMessage = "";
-            _ = LoadTableLookupAsync();
+            _ = LoadTableLookupSafeAsync();
         }
         else
         {
@@ -861,6 +861,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             return;
 
         await _appConfig.LoadAsync();
+    }
+
+    /// <summary>
+    /// Wrapper an toàn cho fire-and-forget — bắt mọi exception để tránh crash ứng dụng.
+    /// </summary>
+    private async Task LoadTableLookupSafeAsync()
+    {
+        try
+        {
+            await LoadTableLookupAsync();
+        }
+        catch (Exception ex)
+        {
+            CreateErrorMessage = $"Không thể tải danh sách Sys_Table: {ex.Message}";
+        }
     }
 
     /// <summary>

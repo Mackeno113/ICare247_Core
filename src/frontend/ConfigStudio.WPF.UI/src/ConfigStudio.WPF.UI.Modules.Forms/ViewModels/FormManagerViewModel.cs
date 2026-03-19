@@ -171,7 +171,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         EditFormCommand      = new DelegateCommand(ExecuteEditForm, () => SelectedForm is not null);
         DeleteFormCommand    = new DelegateCommand(ExecuteDeleteSelected, () => SelectedForm is not null);
         DuplicateFormCommand = new DelegateCommand(ExecuteDuplicateForm, () => SelectedForm is not null);
-        RefreshCommand       = new DelegateCommand(async () => await LoadDataAsync());
+        RefreshCommand       = new DelegateCommand(async () => await LoadDataSafeAsync());
         OpenFormCommand      = new DelegateCommand<FormSummaryDto>(ExecuteOpenForm);
         ViewDetailCommand    = new DelegateCommand<FormSummaryDto>(ExecuteViewDetail);
         PreviewFormCommand   = new DelegateCommand<FormSummaryDto>(ExecutePreviewForm);
@@ -184,7 +184,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
         // NOTE: fire-and-forget — WPF không hỗ trợ async navigation callback
-        _ = LoadDataAsync();
+        _ = LoadDataSafeAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
@@ -192,6 +192,22 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     public void OnNavigatedFrom(NavigationContext navigationContext) { }
 
     // ── Load data ────────────────────────────────────────────
+
+    /// <summary>
+    /// Wrapper an toàn cho fire-and-forget — bắt mọi exception để tránh crash ứng dụng.
+    /// </summary>
+    private async Task LoadDataSafeAsync()
+    {
+        try
+        {
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            LoadErrorMessage = $"Không thể tải danh sách form: {ex.Message}";
+            LogLoadError(ex);
+        }
+    }
 
     /// <summary>
     /// Load danh sách form từ DB (nếu đã cấu hình), fallback sang mock data.
@@ -362,7 +378,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         {
             // NOTE: refresh danh sách sau khi tạo thành công
             if (result.Result == ButtonResult.OK)
-                _ = LoadDataAsync();
+                _ = LoadDataSafeAsync();
         });
     }
 
@@ -377,7 +393,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         _dialogService.ShowDialog(ViewNames.FormEditDialog, p, result =>
         {
             if (result.Result == ButtonResult.OK)
-                _ = LoadDataAsync();
+                _ = LoadDataSafeAsync();
         });
     }
 
@@ -393,7 +409,11 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private void ExecuteViewDetail(FormSummaryDto? form)
     {
         if (form is null) return;
-        var p = new NavigationParameters { { "formCode", form.FormCode } };
+        var p = new NavigationParameters
+        {
+            { "formId", form.FormId },
+            { "formCode", form.FormCode }
+        };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormDetail, p);
     }
 
@@ -443,7 +463,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         if (SelectedForm is null) return;
         var clone = new FormSummaryDto
         {
-            FormId       = Forms.Max(f => f.FormId) + 1,
+            FormId       = Forms.DefaultIfEmpty().Max(f => f?.FormId ?? 0) + 1,
             FormCode     = SelectedForm.FormCode + "_COPY",
             FormName     = SelectedForm.FormName + " (Bản sao)",
             Version      = 1,

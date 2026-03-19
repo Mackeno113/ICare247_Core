@@ -67,7 +67,7 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
     {
         _regionManager = regionManager;
 
-        RunAllChecksCommand = new DelegateCommand(ExecuteRunAllChecks, () => !IsRunning)
+        RunAllChecksCommand = new DelegateCommand(async () => await ExecuteRunAllChecksAsync(), () => !IsRunning)
             .ObservesProperty(() => IsRunning);
         PublishCommand = new DelegateCommand(ExecutePublish, () => AllPassed)
             .ObservesProperty(() => AllPassed);
@@ -155,31 +155,42 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
     /// Chạy tất cả checks — mock kết quả cho demo.
     /// Sau này sẽ gọi API validate từng item.
     /// </summary>
-    private async void ExecuteRunAllChecks()
+    private async Task ExecuteRunAllChecksAsync()
     {
         IsRunning = true;
 
-        // ── Set tất cả = Running ─────────────────────────────
-        foreach (var item in ChecklistItems)
+        try
         {
-            item.Status = CheckStatus.Running;
-            item.Detail = null;
-        }
+            // ── Set tất cả = Running ─────────────────────────────
+            foreach (var item in ChecklistItems)
+            {
+                item.Status = CheckStatus.Running;
+                item.Detail = null;
+            }
 
-        // ── Simulate check từng item (mock delay) ────────────
-        foreach (var item in ChecklistItems)
+            // ── Simulate check từng item (mock delay) ────────────
+            foreach (var item in ChecklistItems)
+            {
+                await Task.Delay(200);
+                RunMockCheck(item);
+            }
+
+            // ── Tổng kết ────────────────────────────────────────
+            IssueCount = ChecklistItems.Count(i => i.Status is CheckStatus.Failed or CheckStatus.Warning);
+            AllPassed = IssueCount == 0;
+            Summary = AllPassed
+                ? "Tất cả kiểm tra đạt. Sẵn sàng Publish."
+                : $"{IssueCount} issue cần sửa trước khi Publish.";
+        }
+        catch (Exception ex)
         {
-            await Task.Delay(200);
-            RunMockCheck(item);
+            Summary = $"Lỗi khi chạy kiểm tra: {ex.Message}";
+            AllPassed = false;
         }
-
-        // ── Tổng kết ────────────────────────────────────────
-        IssueCount = ChecklistItems.Count(i => i.Status is CheckStatus.Failed or CheckStatus.Warning);
-        AllPassed = IssueCount == 0;
-        Summary = AllPassed
-            ? "Tất cả kiểm tra đạt. Sẵn sàng Publish."
-            : $"{IssueCount} issue cần sửa trước khi Publish.";
-        IsRunning = false;
+        finally
+        {
+            IsRunning = false;
+        }
     }
 
     /// <summary>

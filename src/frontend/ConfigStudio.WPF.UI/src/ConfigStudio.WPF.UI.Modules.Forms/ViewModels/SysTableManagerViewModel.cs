@@ -208,7 +208,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
         TablesView = CollectionViewSource.GetDefaultView(Tables);
         TablesView.Filter = ApplyFilter;
 
-        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
+        RefreshCommand = new DelegateCommand(async () => await LoadDataSafeAsync());
         NewCommand = new DelegateCommand(ExecuteNew, () => IsNotBusy);
         SaveCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), CanSave);
 
@@ -217,7 +217,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
-        _ = LoadDataAsync();
+        _ = LoadDataSafeAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
@@ -232,6 +232,21 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
             && !string.IsNullOrWhiteSpace(EditTableCode)
             && !string.IsNullOrWhiteSpace(EditTableName)
             && !string.IsNullOrWhiteSpace(EditSchemaName);
+    }
+
+    /// <summary>
+    /// Wrapper an toàn cho fire-and-forget — bắt mọi exception để tránh crash ứng dụng.
+    /// </summary>
+    private async Task LoadDataSafeAsync(int? selectedTableId = null)
+    {
+        try
+        {
+            await LoadDataAsync(selectedTableId);
+        }
+        catch (Exception ex)
+        {
+            LoadErrorMessage = $"Không thể tải dữ liệu Sys_Table: {ex.Message}";
+        }
     }
 
     private async Task LoadDataAsync(int? selectedTableId = null)
@@ -312,7 +327,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
         return table.TableCode.Contains(q, StringComparison.OrdinalIgnoreCase)
             || table.TableName.Contains(q, StringComparison.OrdinalIgnoreCase)
             || table.SchemaName.Contains(q, StringComparison.OrdinalIgnoreCase)
-            || table.Description.Contains(q, StringComparison.OrdinalIgnoreCase);
+            || (table.Description?.Contains(q, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
     private void ExecuteNew()

@@ -21,6 +21,13 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
     private readonly IRegionManager _regionManager;
 
     // ── Header metadata ───────────────────────────────────────
+    private int _formId;
+    public int FormId
+    {
+        get => _formId;
+        private set => SetProperty(ref _formId, value);
+    }
+
     private string _formCode = "";
     public string FormCode
     {
@@ -153,7 +160,8 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
-        // NOTE: nhận formCode từ FormManagerView qua ViewDetailCommand
+        // NOTE: nhận formId + formCode từ FormManagerView qua ViewDetailCommand
+        FormId = navigationContext.Parameters.GetValue<int>("formId");
         var code = navigationContext.Parameters.GetValue<string>("formCode");
         if (!string.IsNullOrWhiteSpace(code))
             _ = LoadDataAsync(code);
@@ -190,6 +198,19 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
     {
         // ── Header ──────────────────────────────────────────
         FormCode     = formCode;
+        // NOTE: Gán FormId mock nếu chưa có (navigate từ FormManager sẽ truyền formId thật)
+        if (FormId == 0)
+        {
+            FormId = formCode switch
+            {
+                "PO_ORDER"     => 1,
+                "HR_LEAVE"     => 2,
+                "INV_RECEIPT"  => 3,
+                "MOBILE_CHECK" => 4,
+                "WPF_REPORT"   => 5,
+                _              => 99
+            };
+        }
         FormName     = formCode switch
         {
             "PO_ORDER"      => "Đơn Đặt Hàng",
@@ -260,8 +281,8 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteEdit()
     {
-        // NOTE: truyền formCode để FormEditorView load đúng form
-        var p = new NavigationParameters { { "formCode", FormCode } };
+        // NOTE: truyền formId để FormEditorView nhận đúng — formId>0 = edit mode
+        var p = new NavigationParameters { { "formId", FormId } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
 
