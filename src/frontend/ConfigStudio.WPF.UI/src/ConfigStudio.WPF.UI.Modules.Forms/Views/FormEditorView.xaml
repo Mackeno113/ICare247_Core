@@ -656,7 +656,8 @@
 
             <!-- ── Right: TabControl — Form Info / Properties / Events / Permissions ── -->
             <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-                <TabControl BorderThickness="0" Background="Transparent" Padding="8,4,8,0">
+                <TabControl BorderThickness="0" Background="Transparent" Padding="8,4,8,0"
+                            SelectedIndex="{Binding ActiveTabIndex, Mode=TwoWay}">
 
                     <!-- ══ TAB 1: Thông tin Form (metadata Ui_Form) ══ -->
                     <TabItem Header="Thông tin Form">

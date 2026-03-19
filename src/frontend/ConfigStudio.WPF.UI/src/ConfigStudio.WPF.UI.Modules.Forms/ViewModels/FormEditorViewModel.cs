@@ -327,6 +327,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public bool HasCreateError => !string.IsNullOrEmpty(_createErrorMessage);
 
     // ── State ─────────────────────────────────────────────────
+    private int _activeTabIndex = 1;
+    /// <summary>Index tab đang chọn trong right panel: 0=Thông tin Form, 1=Thuộc tính, 2=Events, 3=Permissions.</summary>
+    public int ActiveTabIndex { get => _activeTabIndex; set => SetProperty(ref _activeTabIndex, value); }
+
     private bool _isDirty;
     public bool IsDirty { get => _isDirty; set => SetProperty(ref _isDirty, value); }
 
@@ -450,6 +454,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsNewForm = false;
             _originalFormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "";
             LoadMockData();
+
+            // NOTE: activeTab param cho phép mở đúng tab khi navigate từ EditFormCommand (tab 0 = Thông tin Form)
+            if (navigationContext.Parameters.ContainsKey("activeTab"))
+                ActiveTabIndex = navigationContext.Parameters.GetValue<int>("activeTab");
+            else
+                ActiveTabIndex = 1; // Mặc định tab "Thuộc tính"
         }
     }
 

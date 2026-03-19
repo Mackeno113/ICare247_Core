@@ -376,11 +376,12 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private void ExecuteEditForm()
     {
         if (SelectedForm is null) return;
-        // NOTE: Navigate sang FormEditor với formId + formCode → chế độ edit
+        // NOTE: Navigate sang FormEditor, activeTab=0 → mở tab "Thông tin Form" (metadata Ui_Form)
         var p = new NavigationParameters
         {
             { "formId",   SelectedForm.FormId },
-            { "formCode", SelectedForm.FormCode }
+            { "formCode", SelectedForm.FormCode },
+            { "activeTab", 0 }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
