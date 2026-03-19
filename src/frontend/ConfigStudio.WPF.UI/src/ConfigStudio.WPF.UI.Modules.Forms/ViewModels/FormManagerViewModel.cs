@@ -12,7 +12,6 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
-using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -24,7 +23,6 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
-    private readonly IDialogService _dialogService;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
     private static readonly string ErrorLogPath = Path.Combine(
@@ -155,12 +153,10 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
     public FormManagerViewModel(
         IRegionManager regionManager,
-        IDialogService dialogService,
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null)
     {
         _regionManager   = regionManager;
-        _dialogService   = dialogService;
         _formDataService = formDataService;
         _appConfig       = appConfig;
 
@@ -373,28 +369,20 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteCreateForm()
     {
-        var p = new DialogParameters { { "formId", 0 } };
-        _dialogService.ShowDialog(ViewNames.FormEditDialog, p, result =>
-        {
-            // NOTE: refresh danh sách sau khi tạo thành công
-            if (result.Result == ButtonResult.OK)
-                _ = LoadDataSafeAsync();
-        });
+        // NOTE: Navigate sang FormEditor với formId=0 → chế độ tạo form mới
+        NavigateToEditor(0);
     }
 
     private void ExecuteEditForm()
     {
         if (SelectedForm is null) return;
-        var p = new DialogParameters
+        // NOTE: Navigate sang FormEditor với formId + formCode → chế độ edit
+        var p = new NavigationParameters
         {
             { "formId",   SelectedForm.FormId },
             { "formCode", SelectedForm.FormCode }
         };
-        _dialogService.ShowDialog(ViewNames.FormEditDialog, p, result =>
-        {
-            if (result.Result == ButtonResult.OK)
-                _ = LoadDataSafeAsync();
-        });
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
 
     private void ExecuteOpenForm(FormSummaryDto? form)

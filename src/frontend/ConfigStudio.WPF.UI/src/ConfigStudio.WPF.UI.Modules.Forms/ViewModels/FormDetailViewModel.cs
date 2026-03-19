@@ -281,8 +281,12 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteEdit()
     {
-        // NOTE: truyền formId để FormEditorView nhận đúng — formId>0 = edit mode
-        var p = new NavigationParameters { { "formId", FormId } };
+        // NOTE: truyền formId + formCode để FormEditorView nhận đúng — formId>0 = edit mode
+        var p = new NavigationParameters
+        {
+            { "formId", FormId },
+            { "formCode", FormCode }
+        };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
 
