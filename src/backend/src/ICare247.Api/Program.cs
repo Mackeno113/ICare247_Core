@@ -3,6 +3,7 @@
 // Layer   : Api
 // Purpose : Composition root — khởi tạo host, đăng ký DI, cấu hình middleware pipeline.
 
+using ICare247.Api.Middleware;
 using ICare247.Application;
 using ICare247.Infrastructure;
 using Scalar.AspNetCore;
@@ -54,6 +55,7 @@ try
     var app = builder.Build();
 
     // ── Middleware pipeline ──────────────────────────────────────────────────
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
     app.UseSerilogRequestLogging();
 
     if (app.Environment.IsDevelopment())

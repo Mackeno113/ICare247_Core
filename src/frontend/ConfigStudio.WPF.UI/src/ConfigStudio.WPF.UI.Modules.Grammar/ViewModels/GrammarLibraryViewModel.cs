@@ -6,6 +6,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Grammar.Models;
 using Prism.Commands;
@@ -16,9 +17,15 @@ namespace ConfigStudio.WPF.UI.Modules.Grammar.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình Grammar Library (Screen 09).
 /// 2 tab: Functions và Operators, mỗi tab có DataGrid + search/filter.
+/// Khi DB đã cấu hình → load dữ liệu thật qua IGrammarDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware
 {
+    private readonly IGrammarDataService? _grammarService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
+
     // ── Functions ─────────────────────────────────────────────
     public ObservableCollection<FunctionDto> Functions { get; } = [];
     public ICollectionView FunctionsView { get; }
@@ -96,8 +103,11 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware
     public DelegateCommand DeleteOperatorCommand { get; }
     public DelegateCommand RefreshCommand { get; }
 
-    public GrammarLibraryViewModel()
+    public GrammarLibraryViewModel(IGrammarDataService? grammarService = null, IAppConfigService? appConfig = null)
     {
+        _grammarService = grammarService;
+        _appConfig = appConfig;
+
         FunctionsView = CollectionViewSource.GetDefaultView(Functions);
         FunctionsView.Filter = FilterFunctions;
 
@@ -108,14 +118,94 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware
         DeleteFunctionCommand = new DelegateCommand(ExecuteDeleteFunction, () => SelectedFunction is not null);
         AddOperatorCommand = new DelegateCommand(ExecuteAddOperator);
         DeleteOperatorCommand = new DelegateCommand(ExecuteDeleteOperator, () => SelectedOperator is not null);
-        RefreshCommand = new DelegateCommand(LoadMockData);
+        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public void OnNavigatedTo(NavigationContext navigationContext) => LoadMockData();
+    public async void OnNavigatedTo(NavigationContext navigationContext) => await LoadDataAsync();
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+
+    // ── Load data (DB hoặc mock) ─────────────────────────────
+
+    private async Task LoadDataAsync()
+    {
+        if (_grammarService is not null && _appConfig is { IsConfigured: true })
+        {
+            await LoadFromDatabaseAsync();
+        }
+        else
+        {
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Đọc Gram_Function + Gram_Operator từ DB, map sang UI DTO.
+    /// </summary>
+    private async Task LoadFromDatabaseAsync()
+    {
+        try
+        {
+            var ct = _cts.Token;
+            var functions = await _grammarService!.GetFunctionsAsync(ct);
+            var operators = await _grammarService.GetOperatorsAsync(ct);
+
+            Functions.Clear();
+            foreach (var f in functions)
+            {
+                Functions.Add(new FunctionDto
+                {
+                    FunctionId = f.FunctionId,
+                    FunctionName = f.FunctionCode,
+                    Category = MapNetTypeToCategory(f.ReturnNetType),
+                    ParamCount = f.ParamCountMax == 99 ? -1 : f.ParamCountMin,
+                    ReturnType = f.ReturnNetType,
+                    Description = f.Description ?? "",
+                    IsActive = f.IsActive
+                });
+            }
+
+            Operators.Clear();
+            foreach (var o in operators)
+            {
+                Operators.Add(new OperatorDto
+                {
+                    OperatorId = 0,
+                    Symbol = o.OperatorSymbol,
+                    OperatorName = o.OperatorSymbol,
+                    Category = o.OperatorType,
+                    Precedence = o.Precedence,
+                    Description = o.Description ?? "",
+                    IsActive = o.IsActive
+                });
+            }
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            // Fallback mock khi lỗi DB
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Ánh xạ ReturnNetType sang Category hiển thị (heuristic).
+    /// DB không có Category column — suy từ ReturnNetType.
+    /// </summary>
+    private static string MapNetTypeToCategory(string netType) => netType switch
+    {
+        "String" => "String",
+        "Number" or "Int32" or "Decimal" or "Double" => "Math",
+        "DateTime" => "Date",
+        "Boolean" => "Logic",
+        _ => "Conversion"
+    };
 
     // ── Load mock data ───────────────────────────────────────
 

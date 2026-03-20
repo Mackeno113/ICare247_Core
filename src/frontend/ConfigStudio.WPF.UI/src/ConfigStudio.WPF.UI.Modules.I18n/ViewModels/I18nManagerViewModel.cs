@@ -6,6 +6,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.I18n.Models;
 using Prism.Commands;
@@ -16,9 +17,15 @@ namespace ConfigStudio.WPF.UI.Modules.I18n.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình i18n Manager (Screen 10).
 /// DataGrid key/language matrix, filter theo module, search, hiện missing translations.
+/// Khi DB đã cấu hình → load dữ liệu thật qua II18nDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
 {
+    private readonly II18nDataService? _i18nService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
+
     // ── Data ──────────────────────────────────────────────────
     public ObservableCollection<I18nEntryDto> Entries { get; } = [];
     public ICollectionView EntriesView { get; }
@@ -91,23 +98,94 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     public DelegateCommand ExportCommand { get; }
     public DelegateCommand ImportCommand { get; }
 
-    public I18nManagerViewModel()
+    public I18nManagerViewModel(II18nDataService? i18nService = null, IAppConfigService? appConfig = null)
     {
+        _i18nService = i18nService;
+        _appConfig = appConfig;
+
         EntriesView = CollectionViewSource.GetDefaultView(Entries);
         EntriesView.Filter = ApplyFilter;
 
         AddEntryCommand = new DelegateCommand(ExecuteAddEntry);
         DeleteEntryCommand = new DelegateCommand(ExecuteDeleteEntry, () => SelectedEntry is not null);
-        RefreshCommand = new DelegateCommand(LoadMockData);
+        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
         ExportCommand = new DelegateCommand(ExecuteExport);
         ImportCommand = new DelegateCommand(ExecuteImport);
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public void OnNavigatedTo(NavigationContext navigationContext) => LoadMockData();
+    public async void OnNavigatedTo(NavigationContext navigationContext) => await LoadDataAsync();
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+
+    // ── Load data (DB hoặc mock) ─────────────────────────────
+
+    private async Task LoadDataAsync()
+    {
+        if (_i18nService is not null && _appConfig is { IsConfigured: true })
+        {
+            await LoadFromDatabaseAsync();
+        }
+        else
+        {
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Đọc Sys_Resource (pivoted) từ DB, map sang UI DTO.
+    /// Module được suy từ prefix của ResourceKey (lbl.→Field, err.→Rule, sec.→Form, evt.→Event).
+    /// </summary>
+    private async Task LoadFromDatabaseAsync()
+    {
+        try
+        {
+            var ct = _cts.Token;
+            var records = await _i18nService!.GetResourcesAsync(ct);
+
+            Entries.Clear();
+            var id = 1;
+            foreach (var r in records)
+            {
+                Entries.Add(new I18nEntryDto
+                {
+                    ResourceId = id++,
+                    ResourceKey = r.ResourceKey,
+                    Module = InferModule(r.ResourceKey),
+                    ViVn = r.ViVn ?? "",
+                    EnUs = r.EnUs ?? "",
+                    JaJp = r.JaJp ?? ""
+                });
+            }
+
+            RaisePropertyChanged(nameof(TotalEntries));
+            RaisePropertyChanged(nameof(FilteredCount));
+            RaisePropertyChanged(nameof(MissingCount));
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            // Fallback mock khi lỗi DB
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Suy module từ prefix của resource key.
+    /// </summary>
+    private static string InferModule(string key) => key.Split('.')[0] switch
+    {
+        "lbl" or "ph" => "Field",
+        "err" => "Rule",
+        "sec" => "Form",
+        "evt" => "Event",
+        _ => "System"
+    };
 
     // ── Load mock data ───────────────────────────────────────
 

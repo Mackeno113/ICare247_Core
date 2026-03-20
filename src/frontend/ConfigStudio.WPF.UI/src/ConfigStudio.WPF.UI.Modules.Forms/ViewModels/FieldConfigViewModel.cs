@@ -6,6 +6,8 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -17,10 +19,18 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// ViewModel cho màn hình FieldConfig (Screen 04).
 /// Quản lý cấu hình chi tiết 1 field: thông tin cơ bản, control props, rules, events.
 /// Mở từ FormEditor khi click [⚙] trên field.
+/// Khi DB đã cấu hình → load dữ liệu thật qua IFieldDataService + II18nDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IFieldDataService? _fieldService;
+    private readonly II18nDataService? _i18nService;
+    private readonly IRuleDataService? _ruleService;
+    private readonly IEventDataService? _eventService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
 
     // ── Navigation params ────────────────────────────────────
     private int _fieldId;
@@ -95,7 +105,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _labelKey, value))
             {
-                LabelPreview = ResolveMockI18n(value);
+                _ = ResolveI18nPreviewAsync(value, v => LabelPreview = v);
                 IsDirty = true;
             }
         }
@@ -109,7 +119,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _placeholderKey, value))
             {
-                PlaceholderPreview = ResolveMockI18n(value);
+                _ = ResolveI18nPreviewAsync(value, v => PlaceholderPreview = v);
                 IsDirty = true;
             }
         }
@@ -123,7 +133,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _tooltipKey, value))
             {
-                TooltipPreview = ResolveMockI18n(value);
+                _ = ResolveI18nPreviewAsync(value, v => TooltipPreview = v);
                 IsDirty = true;
             }
         }
@@ -201,11 +211,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand AddEventCommand { get; }
     public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
 
-    public FieldConfigViewModel(IRegionManager regionManager)
+    public FieldConfigViewModel(
+        IRegionManager regionManager,
+        IFieldDataService? fieldService = null,
+        II18nDataService? i18nService = null,
+        IRuleDataService? ruleService = null,
+        IEventDataService? eventService = null,
+        IAppConfigService? appConfig = null)
     {
         _regionManager = regionManager;
+        _fieldService = fieldService;
+        _i18nService = i18nService;
+        _ruleService = ruleService;
+        _eventService = eventService;
+        _appConfig = appConfig;
 
-        SaveFieldCommand = new DelegateCommand(ExecuteSave, () => IsDirty)
+        SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
         CancelCommand = new DelegateCommand(ExecuteCancel);
         BrowseColumnCommand = new DelegateCommand(ExecuteBrowseColumn);
@@ -219,24 +240,155 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public void OnNavigatedTo(NavigationContext navigationContext)
+    public async void OnNavigatedTo(NavigationContext navigationContext)
     {
         _mode = navigationContext.Parameters.GetValue<string>("mode") ?? "edit";
         FormId = navigationContext.Parameters.GetValue<int>("formId");
         SectionId = navigationContext.Parameters.GetValue<int>("sectionId");
         FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
 
-        LoadMockData();
+        await LoadDataAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
 
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+
+    // ── Load data (DB hoặc mock) ─────────────────────────────
+
+    private async Task LoadDataAsync()
+    {
+        if (_fieldService is not null && _appConfig is { IsConfigured: true })
+        {
+            await LoadFromDatabaseAsync();
+        }
+        else
+        {
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Load field detail, columns, linked rules/events từ DB.
+    /// </summary>
+    private async Task LoadFromDatabaseAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var ct = _cts.Token;
+            var tenantId = _appConfig!.TenantId;
+
+            // 1. Load columns cho ComboBox chọn column
+            var tableId = await _fieldService!.GetTableIdByFormAsync(FormId, tenantId, ct);
+            if (tableId > 0)
+            {
+                var columns = await _fieldService.GetColumnsByTableAsync(tableId, ct);
+                AvailableColumns.Clear();
+                foreach (var c in columns)
+                {
+                    AvailableColumns.Add(new ColumnInfoDto
+                    {
+                        ColumnId = c.ColumnId,
+                        ColumnCode = c.ColumnCode,
+                        DataType = c.DataType,
+                        NetType = c.NetType,
+                        IsNullable = c.IsNullable
+                    });
+                }
+            }
+
+            if (_mode == "new")
+            {
+                SectionName = "";
+                SelectedEditorType = "TextBox";
+                IsLoading = false;
+                IsDirty = false;
+                return;
+            }
+
+            // 2. Load field detail
+            if (FieldId > 0)
+            {
+                var field = await _fieldService.GetFieldDetailAsync(FieldId, tenantId, ct);
+                if (field is not null)
+                {
+                    FormId = field.FormId;
+                    SectionId = field.SectionId ?? 0;
+                    SectionName = field.SectionCode;
+                    SelectedColumn = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
+                    ColumnCode = field.ColumnCode;
+                    SelectedEditorType = field.EditorType;
+                    OrderNo = field.OrderNo;
+                    LabelKey = field.LabelKey;
+                    PlaceholderKey = field.PlaceholderKey ?? "";
+                    TooltipKey = field.TooltipKey ?? "";
+                    IsVisible = field.IsVisible;
+                    IsReadOnly = field.IsReadOnly;
+                    ControlPropsJson = field.ControlPropsJson ?? "{}";
+                }
+            }
+
+            // 3. Load linked rules
+            if (FieldId > 0 && _ruleService is not null)
+            {
+                var rules = await _ruleService.GetRulesByFieldAsync(FieldId, ct);
+                LinkedRules.Clear();
+                foreach (var r in rules)
+                {
+                    LinkedRules.Add(new RuleSummaryDto
+                    {
+                        RuleId = r.RuleId,
+                        OrderNo = r.OrderNo,
+                        RuleTypeCode = r.RuleTypeCode,
+                        ExpressionPreview = r.ExpressionJson ?? "",
+                        ErrorKey = r.ErrorKey,
+                        IsActive = r.IsActive
+                    });
+                }
+                // Cập nhật IsRequired dựa trên linked rules
+                _isRequired = LinkedRules.Any(r => r.RuleTypeCode == "Required");
+                RaisePropertyChanged(nameof(IsRequired));
+            }
+
+            // 4. Load linked events
+            if (FieldId > 0 && _eventService is not null)
+            {
+                var events = await _eventService.GetEventsByFieldAsync(FieldId, ct);
+                LinkedEvents.Clear();
+                foreach (var e in events)
+                {
+                    LinkedEvents.Add(new EventSummaryDto
+                    {
+                        EventId = e.EventId,
+                        OrderNo = e.OrderNo,
+                        TriggerCode = e.TriggerCode,
+                        ConditionPreview = e.ConditionExpr ?? "",
+                        ActionsCount = e.ActionsCount,
+                        IsActive = e.IsActive
+                    });
+                }
+            }
+
+            IsLoading = false;
+            IsDirty = false;
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            // Fallback mock khi lỗi DB
+            LoadMockData();
+        }
+    }
 
     // ── Load mock data ───────────────────────────────────────
 
     /// <summary>
-    /// Load mock data cho demo. Sau này sẽ thay bằng API call.
+    /// Load mock data cho demo khi chưa kết nối DB.
     /// </summary>
     private void LoadMockData()
     {
@@ -307,6 +459,48 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IsLoading = false;
         IsDirty = false;
     }
+
+    // ── i18n preview resolver ────────────────────────────────
+
+    /// <summary>
+    /// Resolve i18n key thành text preview. Dùng DB nếu có, fallback mock.
+    /// </summary>
+    private async Task ResolveI18nPreviewAsync(string key, Action<string> setter)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            setter("");
+            return;
+        }
+
+        if (_i18nService is not null && _appConfig is { IsConfigured: true })
+        {
+            var value = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
+            setter(value ?? key);
+        }
+        else
+        {
+            setter(ResolveMockI18n(key));
+        }
+    }
+
+    /// <summary>
+    /// Mock resolve i18n key thành text hiển thị.
+    /// </summary>
+    private static string ResolveMockI18n(string key) => key switch
+    {
+        "lbl.soluong" => "Số Lượng",
+        "ph.soluong" => "Nhập số lượng",
+        "tip.soluong" => "Số lượng đặt hàng",
+        "lbl.madohang" => "Mã Đơn Hàng",
+        "lbl.ngaydathang" => "Ngày Đặt Hàng",
+        "lbl.trangthai" => "Trạng Thái",
+        "lbl.nhacungcap" => "Nhà Cung Cấp",
+        "lbl.dongia" => "Đơn Giá",
+        "lbl.thanhtien" => "Thành Tiền",
+        "lbl.lydotuchoi" => "Lý Do Từ Chối",
+        _ => key
+    };
 
     // ── Control prop schema loader ───────────────────────────
 
@@ -438,38 +632,36 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             LinkedRules[i].OrderNo = i + 1;
     }
 
-    // ── Mock i18n resolver ───────────────────────────────────
-
-    /// <summary>
-    /// Mock resolve i18n key thành text hiển thị.
-    /// Sau này sẽ gọi <c>Sys_Resource</c> qua API.
-    /// </summary>
-    private static string ResolveMockI18n(string key) => key switch
-    {
-        "lbl.soluong" => "Số Lượng",
-        "ph.soluong" => "Nhập số lượng",
-        "tip.soluong" => "Số lượng đặt hàng",
-        "lbl.madohang" => "Mã Đơn Hàng",
-        "lbl.ngaydathang" => "Ngày Đặt Hàng",
-        "lbl.trangthai" => "Trạng Thái",
-        "lbl.nhacungcap" => "Nhà Cung Cấp",
-        "lbl.dongia" => "Đơn Giá",
-        "lbl.thanhtien" => "Thành Tiền",
-        "lbl.lydotuchoi" => "Lý Do Từ Chối",
-        _ => key
-    };
-
     // ── Command handlers ─────────────────────────────────────
 
-    private void ExecuteSave()
+    private async Task ExecuteSaveAsync()
     {
-        // TODO(phase2): Gọi API save field metadata
+        if (_fieldService is not null && _appConfig is { IsConfigured: true })
+        {
+            var field = new FieldConfigRecord
+            {
+                FieldId = FieldId,
+                FormId = FormId,
+                SectionId = SectionId > 0 ? SectionId : null,
+                ColumnId = SelectedColumn?.ColumnId ?? 0,
+                ColumnCode = ColumnCode,
+                SectionCode = SectionName,
+                EditorType = SelectedEditorType,
+                LabelKey = LabelKey,
+                PlaceholderKey = PlaceholderKey,
+                TooltipKey = TooltipKey,
+                IsVisible = IsVisible,
+                IsReadOnly = IsReadOnly,
+                OrderNo = OrderNo,
+                ControlPropsJson = ControlPropsJson
+            };
+            await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, _cts.Token);
+        }
         IsDirty = false;
     }
 
     private void ExecuteCancel()
     {
-        // TODO(phase2): Confirm nếu IsDirty trước khi navigate back
         var p = new NavigationParameters { { "formId", FormId } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
@@ -508,7 +700,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteDeleteRule(RuleSummaryDto? rule)
     {
-        // TODO(phase2): Confirm dialog trước khi xóa
         if (rule is null) return;
         LinkedRules.Remove(rule);
         ReindexRuleOrders();

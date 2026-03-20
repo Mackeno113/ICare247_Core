@@ -5,6 +5,8 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Rules.Models;
 using Prism.Commands;
@@ -16,11 +18,16 @@ namespace ConfigStudio.WPF.UI.Modules.Rules.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình Validation Rule Editor (Screen 05).
 /// Hiển thị DataGrid rules, thêm/sửa/xóa, mở Expression Builder dialog.
+/// Khi DB đã cấu hình → load/save dữ liệu thật qua IRuleDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
     private readonly IDialogService _dialogService;
+    private readonly IRuleDataService? _ruleService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
 
     // ── Navigation params ─────────────────────────────────────
     private int _fieldId;
@@ -101,10 +108,16 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
-    public ValidationRuleEditorViewModel(IRegionManager regionManager, IDialogService dialogService)
+    public ValidationRuleEditorViewModel(
+        IRegionManager regionManager,
+        IDialogService dialogService,
+        IRuleDataService? ruleService = null,
+        IAppConfigService? appConfig = null)
     {
         _regionManager = regionManager;
         _dialogService = dialogService;
+        _ruleService = ruleService;
+        _appConfig = appConfig;
 
         AddRuleCommand = new DelegateCommand(ExecuteAddRule);
         EditRuleCommand = new DelegateCommand(ExecuteEditRule, () => IsRuleSelected);
@@ -114,14 +127,14 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         OpenExpressionBuilderCommand = new DelegateCommand(ExecuteOpenExpressionBuilder, () => IsRuleSelected);
         SaveRuleCommand = new DelegateCommand(ExecuteSaveRule);
         CancelEditCommand = new DelegateCommand(() => IsEditPanelOpen = false);
-        SaveAllCommand = new DelegateCommand(ExecuteSaveAll, () => IsDirty)
+        SaveAllCommand = new DelegateCommand(async () => await ExecuteSaveAllAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
         BackCommand = new DelegateCommand(ExecuteBack);
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public void OnNavigatedTo(NavigationContext navigationContext)
+    public async void OnNavigatedTo(NavigationContext navigationContext)
     {
         FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
         FormId = navigationContext.Parameters.GetValue<int>("formId");
@@ -129,18 +142,69 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         if (FieldId == 0) FieldId = 5;
         if (FormId == 0) FormId = 1;
 
-        LoadMockData();
+        await LoadDataAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
 
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+
+    // ── Load data (DB hoặc mock) ─────────────────────────────
+
+    private async Task LoadDataAsync()
+    {
+        if (_ruleService is not null && _appConfig is { IsConfigured: true })
+        {
+            await LoadFromDatabaseAsync();
+        }
+        else
+        {
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Load rules từ DB qua IRuleDataService.
+    /// </summary>
+    private async Task LoadFromDatabaseAsync()
+    {
+        try
+        {
+            var ct = _cts.Token;
+            var rules = await _ruleService!.GetRulesByFieldAsync(FieldId, ct);
+
+            Rules.Clear();
+            foreach (var r in rules)
+            {
+                Rules.Add(new RuleItemDto
+                {
+                    RuleId = r.RuleId,
+                    FieldId = FieldId,
+                    FieldCode = FieldCode,
+                    RuleTypeCode = r.RuleTypeCode,
+                    OrderNo = r.OrderNo,
+                    ExpressionJson = r.ExpressionJson ?? "{}",
+                    ExpressionPreview = r.ExpressionJson ?? "",
+                    ErrorKey = r.ErrorKey,
+                    IsActive = r.IsActive
+                });
+            }
+
+            IsDirty = false;
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            LoadMockData();
+        }
+    }
 
     // ── Load mock data ───────────────────────────────────────
 
-    /// <summary>
-    /// Load mock data cho demo. Sau này sẽ gọi API load rules theo fieldId.
-    /// </summary>
     private void LoadMockData()
     {
         FieldCode = "SoLuong";
@@ -282,15 +346,33 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         IsDirty = true;
     }
 
-    private void ExecuteSaveAll()
+    /// <summary>
+    /// Save tất cả rules qua IRuleDataService (nếu DB configured).
+    /// </summary>
+    private async Task ExecuteSaveAllAsync()
     {
-        // TODO(phase2): Gọi API save tất cả rules
+        if (_ruleService is not null && _appConfig is { IsConfigured: true })
+        {
+            var ct = _cts.Token;
+            foreach (var rule in Rules)
+            {
+                var record = new RuleItemRecord
+                {
+                    RuleId = rule.RuleId,
+                    RuleTypeCode = rule.RuleTypeCode,
+                    OrderNo = rule.OrderNo,
+                    ExpressionJson = rule.ExpressionJson,
+                    ErrorKey = rule.ErrorKey,
+                    IsActive = rule.IsActive
+                };
+                await _ruleService.SaveRuleAsync(record, FieldId, ct);
+            }
+        }
         IsDirty = false;
     }
 
     private void ExecuteBack()
     {
-        // TODO(phase2): Confirm nếu IsDirty
         var p = new NavigationParameters
         {
             { "fieldId", FieldId },

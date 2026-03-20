@@ -5,6 +5,8 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Events.Models;
 using Prism.Commands;
@@ -16,11 +18,16 @@ namespace ConfigStudio.WPF.UI.Modules.Events.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình Event Editor (Screen 06).
 /// Hiển thị DataGrid events, danh sách actions, mở Expression Builder cho condition.
+/// Khi DB đã cấu hình → load/save dữ liệu thật qua IEventDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
     private readonly IDialogService _dialogService;
+    private readonly IEventDataService? _eventService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
 
     // ── Navigation params ─────────────────────────────────────
     private int _fieldId;
@@ -43,7 +50,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _selectedEvent, value))
             {
-                LoadActionsForEvent();
+                _ = LoadActionsForEventAsync();
                 RaisePropertyChanged(nameof(IsEventSelected));
                 DeleteEventCommand.RaiseCanExecuteChanged();
                 EditConditionCommand.RaiseCanExecuteChanged();
@@ -89,24 +96,30 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
-    public EventEditorViewModel(IRegionManager regionManager, IDialogService dialogService)
+    public EventEditorViewModel(
+        IRegionManager regionManager,
+        IDialogService dialogService,
+        IEventDataService? eventService = null,
+        IAppConfigService? appConfig = null)
     {
         _regionManager = regionManager;
         _dialogService = dialogService;
+        _eventService = eventService;
+        _appConfig = appConfig;
 
         AddEventCommand = new DelegateCommand(ExecuteAddEvent);
-        DeleteEventCommand = new DelegateCommand(ExecuteDeleteEvent, () => IsEventSelected);
+        DeleteEventCommand = new DelegateCommand(async () => await ExecuteDeleteEventAsync(), () => IsEventSelected);
         EditConditionCommand = new DelegateCommand(ExecuteEditCondition, () => IsEventSelected);
         AddActionCommand = new DelegateCommand(ExecuteAddAction, () => IsEventSelected);
         DeleteActionCommand = new DelegateCommand(ExecuteDeleteAction, () => SelectedAction is not null);
-        SaveAllCommand = new DelegateCommand(ExecuteSaveAll, () => IsDirty)
+        SaveAllCommand = new DelegateCommand(async () => await ExecuteSaveAllAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
         BackCommand = new DelegateCommand(ExecuteBack);
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public void OnNavigatedTo(NavigationContext navigationContext)
+    public async void OnNavigatedTo(NavigationContext navigationContext)
     {
         FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
         FormId = navigationContext.Parameters.GetValue<int>("formId");
@@ -114,11 +127,85 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         if (FieldId == 0) FieldId = 5;
         if (FormId == 0) FormId = 1;
 
-        LoadMockData();
+        await LoadDataAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
+
+    // ── Load data (DB hoặc mock) ─────────────────────────────
+
+    private async Task LoadDataAsync()
+    {
+        if (_eventService is not null && _appConfig is { IsConfigured: true })
+        {
+            await LoadFromDatabaseAsync();
+        }
+        else
+        {
+            LoadMockData();
+        }
+    }
+
+    /// <summary>
+    /// Load events từ DB qua IEventDataService.
+    /// </summary>
+    private async Task LoadFromDatabaseAsync()
+    {
+        try
+        {
+            var ct = _cts.Token;
+
+            // Load trigger types từ DB (nếu có) → cập nhật TriggerOptions
+            var triggerTypes = await _eventService!.GetTriggerTypesAsync(ct);
+            if (triggerTypes.Count > 0)
+            {
+                TriggerOptions.Clear();
+                foreach (var t in triggerTypes)
+                    TriggerOptions.Add(t);
+            }
+
+            // Load action types từ DB (nếu có) → cập nhật ActionTypeOptions
+            var actionTypes = await _eventService.GetActionTypesAsync(ct);
+            if (actionTypes.Count > 0)
+            {
+                ActionTypeOptions.Clear();
+                foreach (var a in actionTypes)
+                    ActionTypeOptions.Add(a.ActionCode);
+            }
+
+            // Load events cho field
+            var events = await _eventService.GetEventsByFieldAsync(FieldId, ct);
+            Events.Clear();
+            foreach (var e in events)
+            {
+                Events.Add(new EventItemDto
+                {
+                    EventId = e.EventId,
+                    FieldId = FieldId,
+                    FieldCode = FieldCode,
+                    TriggerCode = e.TriggerCode,
+                    OrderNo = e.OrderNo,
+                    ConditionPreview = e.ConditionExpr ?? "(luôn thực thi)",
+                    ConditionJson = e.ConditionExpr ?? "{}",
+                    ActionsCount = e.ActionsCount,
+                    IsActive = e.IsActive
+                });
+            }
+
+            IsDirty = false;
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            LoadMockData();
+        }
+    }
 
     // ── Load mock data ───────────────────────────────────────
 
@@ -162,14 +249,49 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     }
 
     /// <summary>
-    /// Load danh sách actions khi chọn event. Mock data.
+    /// Load danh sách actions khi chọn event. Dùng DB nếu có, fallback mock.
     /// </summary>
-    private void LoadActionsForEvent()
+    private async Task LoadActionsForEventAsync()
     {
         Actions.Clear();
         if (SelectedEvent is null) return;
 
-        // NOTE: Mock actions theo EventId
+        if (_eventService is not null && _appConfig is { IsConfigured: true })
+        {
+            try
+            {
+                var actions = await _eventService.GetActionsByEventAsync(SelectedEvent.EventId, _cts.Token);
+                foreach (var a in actions)
+                {
+                    Actions.Add(new ActionItemDto
+                    {
+                        ActionId = a.ActionId,
+                        EventId = a.EventId,
+                        ActionType = a.ActionCode,
+                        ParamJson = a.ParamJson ?? "{}",
+                        OrderNo = a.OrderNo
+                    });
+                }
+            }
+            catch (OperationCanceledException) { /* Navigation away */ }
+            catch
+            {
+                LoadMockActionsForEvent();
+            }
+        }
+        else
+        {
+            LoadMockActionsForEvent();
+        }
+    }
+
+    /// <summary>
+    /// Mock actions theo EventId.
+    /// </summary>
+    private void LoadMockActionsForEvent()
+    {
+        if (SelectedEvent is null) return;
+
         switch (SelectedEvent.EventId)
         {
             case 1:
@@ -204,9 +326,16 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         IsDirty = true;
     }
 
-    private void ExecuteDeleteEvent()
+    private async Task ExecuteDeleteEventAsync()
     {
         if (SelectedEvent is null) return;
+
+        // Xóa từ DB nếu có
+        if (_eventService is not null && _appConfig is { IsConfigured: true } && SelectedEvent.EventId > 0)
+        {
+            await _eventService.DeleteEventAsync(SelectedEvent.EventId, _cts.Token);
+        }
+
         Events.Remove(SelectedEvent);
         ReindexEvents();
         SelectedEvent = null;
@@ -262,9 +391,46 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         IsDirty = true;
     }
 
-    private void ExecuteSaveAll()
+    /// <summary>
+    /// Save tất cả events + actions qua IEventDataService (nếu DB configured).
+    /// </summary>
+    private async Task ExecuteSaveAllAsync()
     {
-        // TODO(phase2): Gọi API save events + actions
+        if (_eventService is not null && _appConfig is { IsConfigured: true })
+        {
+            var ct = _cts.Token;
+            foreach (var evt in Events)
+            {
+                var eventRecord = new EventItemRecord
+                {
+                    EventId = evt.EventId,
+                    FormId = FormId,
+                    FieldId = FieldId,
+                    TriggerCode = evt.TriggerCode,
+                    ConditionExpr = evt.ConditionJson,
+                    OrderNo = evt.OrderNo,
+                    IsActive = evt.IsActive
+                };
+                var savedId = await _eventService.SaveEventAsync(eventRecord, ct);
+
+                // Save actions nếu event đang được chọn
+                if (evt == SelectedEvent)
+                {
+                    foreach (var action in Actions)
+                    {
+                        var actionRecord = new ActionItemRecord
+                        {
+                            ActionId = action.ActionId,
+                            EventId = savedId,
+                            ActionCode = action.ActionType,
+                            ParamJson = action.ParamJson,
+                            OrderNo = action.OrderNo
+                        };
+                        await _eventService.SaveActionAsync(actionRecord, ct);
+                    }
+                }
+            }
+        }
         IsDirty = false;
     }
 

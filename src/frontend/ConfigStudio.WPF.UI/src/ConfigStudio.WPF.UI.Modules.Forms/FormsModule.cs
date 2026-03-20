@@ -21,6 +21,12 @@ public sealed class FormsModule : IModule
         containerRegistry.RegisterForNavigation<SysTableManagerView,SysTableManagerViewModel>(ViewNames.SysTableManager);
         containerRegistry.RegisterForNavigation<FieldConfigView,    FieldConfigViewModel>    (ViewNames.FieldConfig);
         containerRegistry.RegisterForNavigation<PublishChecklistView,PublishChecklistViewModel>(ViewNames.PublishChecklist);
+
+        // NOTE: Đăng ký dialog xác nhận vô hiệu hóa form (soft-delete)
+        containerRegistry.RegisterDialog<DeactivateFormDialog, DeactivateFormDialogViewModel>(ViewNames.DeactivateFormDialog);
+
+        // NOTE: Đăng ký dialog nhân bản form (clone với Form_Code mới)
+        containerRegistry.RegisterDialog<CloneFormDialog, CloneFormDialogViewModel>(ViewNames.CloneFormDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

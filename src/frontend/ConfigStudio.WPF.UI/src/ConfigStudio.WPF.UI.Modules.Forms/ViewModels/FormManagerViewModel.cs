@@ -12,6 +12,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -23,6 +24,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IDialogService _dialogService;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
     private static readonly string ErrorLogPath = Path.Combine(
@@ -153,10 +155,12 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
     public FormManagerViewModel(
         IRegionManager regionManager,
+        IDialogService dialogService,
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null)
     {
         _regionManager   = regionManager;
+        _dialogService   = dialogService;
         _formDataService = formDataService;
         _appConfig       = appConfig;
 
@@ -417,14 +421,31 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
 
     /// <summary>
     /// Vô hiệu hóa form (soft-delete: Is_Active = false).
+    /// Hiển thị DeactivateFormDialog để user xác nhận trước khi thực hiện.
     /// </summary>
     private void ExecuteDeactivate(FormSummaryDto? form)
     {
         if (form is null || !form.IsActive) return;
-        // TODO(phase2): Gọi DeactivateFormDialog để confirm trước khi deactivate
-        form.IsActive = false;
-        RefreshFilter();
-        RaiseStatistics();
+
+        // NOTE: Truyền thông tin form + impact counts vào dialog để user hiểu rõ ảnh hưởng
+        var p = new DialogParameters
+        {
+            { "formCode",     form.FormCode },
+            { "formName",     form.FormName },
+            { "sectionCount", form.SectionCount },
+            { "fieldCount",   form.FieldCount },
+            { "eventCount",   0 }  // NOTE: EventCount chưa có trong FormSummaryDto — truyền 0, phase2 bổ sung
+        };
+
+        _dialogService.ShowDialog(ViewNames.DeactivateFormDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+
+            // NOTE: User đã xác nhận → thực hiện soft-delete
+            form.IsActive = false;
+            RefreshFilter();
+            RaiseStatistics();
+        });
     }
 
     /// <summary>
@@ -450,22 +471,41 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private void ExecuteDuplicateForm()
     {
         if (SelectedForm is null) return;
-        var clone = new FormSummaryDto
+
+        // NOTE: Truyền source code + danh sách code hiện có để CloneFormDialog validate unique
+        var existingCodes = Forms.Select(f => f.FormCode);
+        var p = new DialogParameters
         {
-            FormId       = Forms.DefaultIfEmpty().Max(f => f?.FormId ?? 0) + 1,
-            FormCode     = SelectedForm.FormCode + "_COPY",
-            FormName     = SelectedForm.FormName + " (Bản sao)",
-            Version      = 1,
-            Platform     = SelectedForm.Platform,
-            TableName    = SelectedForm.TableName,
-            SectionCount = SelectedForm.SectionCount,
-            FieldCount   = SelectedForm.FieldCount,
-            IsActive     = true,
-            UpdatedAt    = DateTime.Now,
-            UpdatedBy    = "admin"
+            { "sourceFormCode", SelectedForm.FormCode },
+            { "existingCodes",  existingCodes }
         };
-        Forms.Add(clone);
-        RaiseStatistics();
+
+        _dialogService.ShowDialog(ViewNames.CloneFormDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+
+            var newCode = result.Parameters.GetValue<string>("newFormCode");
+            if (string.IsNullOrWhiteSpace(newCode)) return;
+
+            // NOTE: Tạo clone object với Form_Code mới, Version=1 — phase2 sẽ gọi API thật
+            var clone = new FormSummaryDto
+            {
+                FormId       = Forms.DefaultIfEmpty().Max(f => f?.FormId ?? 0) + 1,
+                FormCode     = newCode,
+                FormName     = SelectedForm.FormName + " (Bản sao)",
+                Version      = 1,
+                Platform     = SelectedForm.Platform,
+                TableName    = SelectedForm.TableName,
+                SectionCount = SelectedForm.SectionCount,
+                FieldCount   = SelectedForm.FieldCount,
+                IsActive     = true,
+                UpdatedAt    = DateTime.Now,
+                UpdatedBy    = "admin"
+            };
+            Forms.Add(clone);
+            RebuildTableOptions();
+            RaiseStatistics();
+        });
     }
 
     private void NavigateToEditor(int formId)

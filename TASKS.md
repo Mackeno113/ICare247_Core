@@ -14,15 +14,15 @@
 - [x] Tạo Domain AST nodes (IExpressionNode, LiteralNode, IdentifierNode, BinaryNode, ...)
 - [x] Tạo Domain Engine interfaces (IAstEngine, IValidationEngine, IEventEngine, IMetadataEngine)
 - [x] Tạo EvaluationContext value object
-- [ ] Tạo Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
-- [ ] Tạo CacheKeys.cs
-- [ ] Tạo GetFormByCodeQuery + Handler (skeleton)
-- [ ] Implement Infrastructure: SqlConnectionFactory
-- [ ] Implement Infrastructure: FormRepository (Dapper)
-- [ ] Implement Infrastructure: FieldRepository (Dapper)
-- [ ] Implement Infrastructure: HybridCacheService (Memory + Redis)
-- [ ] Tạo FormController (skeleton)
-- [ ] Tạo ExceptionHandlingMiddleware
+- [x] Tạo Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
+- [x] Tạo CacheKeys.cs
+- [x] Tạo GetFormByCodeQuery + Handler (skeleton)
+- [x] Implement Infrastructure: SqlConnectionFactory
+- [x] Implement Infrastructure: FormRepository (Dapper)
+- [x] Implement Infrastructure: FieldRepository (Dapper)
+- [x] Implement Infrastructure: HybridCacheService (Memory + Redis)
+- [x] Tạo FormController (skeleton)
+- [x] Tạo ExceptionHandlingMiddleware
 
 ### Phase 2 — Grammar V1 / AST Engine
 
@@ -58,34 +58,36 @@
 > Dựa trên phân tích DB + wireframe Ui_Form (2026-03-18)
 
 **Application Layer — Queries**
-- [ ] `GetFormsListQuery` + Handler — phân trang, filter theo Platform/Table_Id/Is_Active, search theo Form_Code
-- [ ] `GetFormByIdQuery` + Handler — lấy form metadata + related counts (sections, fields, events, rules)
-- [ ] `GetFormAuditLogQuery` + Handler — lấy từ Sys_Audit_Log WHERE Object_Type='Form'
+- [x] `GetFormsListQuery` + Handler — phân trang, filter theo Platform/Table_Id/Is_Active, search theo Form_Code
+- [x] `GetFormByIdQuery` + Handler — lấy form metadata + related counts (dùng chung GetByCodeAsync)
+- [x] `GetFormAuditLogQuery` + Handler — lấy từ Sys_Audit_Log WHERE Object_Type='Form'
 
 **Application Layer — Commands**
-- [ ] `CreateFormCommand` + Handler — validate Form_Code unique, set Version=1, Checksum, insert Sys_Audit_Log
-- [ ] `UpdateFormCommand` + Handler — Version++, recalc Checksum, insert Sys_Cache_Invalidation + Sys_Audit_Log
-- [ ] `DeactivateFormCommand` + Handler — set Is_Active=0, invalidate cache, insert Sys_Audit_Log
-- [ ] `RestoreFormCommand` + Handler — set Is_Active=1, insert Sys_Audit_Log
-- [ ] `CloneFormCommand` + Handler — sao chép Form + Sections + Fields + Events sang Form_Code mới
+- [x] `CreateFormCommand` + Handler — validate Form_Code unique, set Version=1, Checksum, insert Sys_Audit_Log
+- [x] `UpdateFormCommand` + Handler — Version++, recalc Checksum, invalidate cache + Sys_Audit_Log
+- [x] `DeactivateFormCommand` + Handler — set Is_Active=0, invalidate cache, insert Sys_Audit_Log
+- [x] `RestoreFormCommand` + Handler — set Is_Active=1, insert Sys_Audit_Log
+- [x] `CloneFormCommand` + Handler — sao chép Form + Sections + Fields sang Form_Code mới
 
 **Infrastructure Layer**
-- [ ] `FormRepository.GetListAsync` — Dapper query với paging, multi-filter, ORDER BY Form_Code
-- [ ] `FormRepository.GetByIdAsync` — JOIN Sys_Table để lấy Table_Name, Tenant context
-- [ ] `FormRepository.CreateAsync` — INSERT Ui_Form, trả về Form_Id mới
-- [ ] `FormRepository.UpdateAsync` — UPDATE Ui_Form + Version++ + Checksum
-- [ ] `FormRepository.SetActiveAsync` — UPDATE Is_Active (dùng chung cho Deactivate + Restore)
-- [ ] `FormRepository.ExistsCodeAsync` — CHECK Form_Code unique (dùng trong validation)
-- [ ] `FormRepository.CloneAsync` — transaction: copy Form → Sections → Fields → Events
+- [x] `FormRepository.GetListAsync` — Dapper query với paging, multi-filter, ORDER BY Form_Code
+- [x] `FormRepository.GetByIdAsync` — JOIN Sys_Table để lấy Table_Name, Tenant context
+- [x] `FormRepository.CreateAsync` — INSERT Ui_Form, trả về Form_Id mới
+- [x] `FormRepository.UpdateAsync` — UPDATE Ui_Form + Version++ + Checksum
+- [x] `FormRepository.SetActiveAsync` — UPDATE Is_Active (dùng chung cho Deactivate + Restore)
+- [x] `FormRepository.ExistsCodeAsync` — CHECK Form_Code unique (dùng trong validation)
+- [x] `FormRepository.CloneAsync` — transaction: copy Form → Sections → Fields → Events
+- [x] `AuditLogRepository` — INSERT + GetByObject (Dapper, phân trang)
 
 **API Layer**
-- [ ] `GET  /api/v1/config/forms` — list + filter + paging
-- [ ] `GET  /api/v1/config/forms/{code}` — detail by Form_Code
-- [ ] `POST /api/v1/config/forms` — tạo form mới
-- [ ] `PUT  /api/v1/config/forms/{code}` — cập nhật form
-- [ ] `POST /api/v1/config/forms/{code}/deactivate` — vô hiệu hóa
-- [ ] `POST /api/v1/config/forms/{code}/restore` — khôi phục
-- [ ] `POST /api/v1/config/forms/{code}/clone` — nhân bản
+- [x] `GET  /api/v1/config/forms` — list + filter + paging
+- [x] `GET  /api/v1/config/forms/{code}` — detail by Form_Code
+- [x] `POST /api/v1/config/forms` — tạo form mới
+- [x] `PUT  /api/v1/config/forms/{code}` — cập nhật form
+- [x] `POST /api/v1/config/forms/{code}/deactivate` — vô hiệu hóa
+- [x] `POST /api/v1/config/forms/{code}/restore` — khôi phục
+- [x] `POST /api/v1/config/forms/{code}/clone` — nhân bản
+- [x] `GET  /api/v1/config/forms/{code}/audit` — audit log
 
 ### Phase 7 — Form Management CRUD (ConfigStudio WPF)
 
@@ -117,8 +119,8 @@
 - [x] Dirty check: hiện ConfirmDialog khi đóng mà chưa lưu
 
 **Dialogs**
-- [ ] `DeactivateFormDialog.xaml` + VM — MaterialDesign Dialog: tên form, impact (X fields, Y events), nút Xác nhận/Hủy
-- [ ] `CloneFormDialog.xaml` + VM — TextBox Form_Code mới (validate unique), nút Clone/Hủy
+- [x] `DeactivateFormDialog.xaml` + VM — Dialog confirm: tên form, impact (sections/fields/events), nút Xác nhận/Hủy
+- [x] `CloneFormDialog.xaml` + VM — TextBox Form_Code mới (regex + unique validate realtime), nút Clone/Hủy
 
 ### ConfigStudio.WPF.UI — Skeleton Screens
 
@@ -143,7 +145,33 @@
 - [x] Screen 09: Grammar Library — 2 tab Functions/Operators, DataGrid whitelist, add/edit
 - [x] Screen 10: i18n Manager — DataGrid key/language matrix, filter, import/export
 
-### ConfigStudio.WPF.UI — P0 UX Features (sau khi UI thật hoàn thành)
+### ConfigStudio.WPF.UI — Direct DB (Hướng B: Dapper trực tiếp, không qua API)
+
+> WPF admin tool kết nối SQL Server trực tiếp. Backend API giữ nguyên cho Blazor runtime sau.
+
+**Wave 1 — Foundation + Standalone modules**
+- [x] Tạo 6 service interfaces (IFormDetailDataService, IFieldDataService, IRuleDataService, IEventDataService, IGrammarDataService, II18nDataService)
+- [x] Tạo 15 record DTOs (Core/Data/)
+- [x] Tạo 6 service implementations (Infrastructure/) — Dapper
+- [x] Register DI trong App.xaml.cs
+- [x] Migrate GrammarLibraryViewModel → IGrammarDataService
+- [x] Migrate I18nManagerViewModel → II18nDataService
+- [x] Build verify Wave 1
+
+**Wave 2 — FormDetail (read-only)**
+- [x] Migrate FormDetailViewModel → IFormDetailDataService (header, sections, fields, events, rules, audit)
+- [x] Build verify Wave 2
+
+**Wave 3 — FieldConfig**
+- [x] Migrate FieldConfigViewModel → IFieldDataService + II18nDataService + IRuleDataService + IEventDataService
+- [x] Build verify Wave 3
+
+**Wave 4 — Rule + Event editors**
+- [x] Migrate ValidationRuleEditorViewModel → IRuleDataService
+- [x] Migrate EventEditorViewModel → IEventDataService
+- [x] Build verify Wave 4
+
+### ConfigStudio.WPF.UI — P0 UX Features (sau khi Direct DB hoàn thành)
 
 - [ ] Auto-save (phụ thuộc Form Editor)
 - [ ] Undo/Redo (phụ thuộc Form Editor + Field Config)

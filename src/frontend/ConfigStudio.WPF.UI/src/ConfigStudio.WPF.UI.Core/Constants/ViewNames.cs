@@ -21,4 +21,6 @@ public static class ViewNames
     public const string I18nManager = nameof(I18nManager);
     public const string PublishChecklist = nameof(PublishChecklist);
     public const string Settings = nameof(Settings);
+    public const string DeactivateFormDialog = nameof(DeactivateFormDialog);
+    public const string CloneFormDialog      = nameof(CloneFormDialog);
 }

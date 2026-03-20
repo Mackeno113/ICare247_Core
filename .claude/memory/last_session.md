@@ -1,46 +1,42 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-19
+> Cập nhật: 2026-03-20
 
-## Đã làm (tổng hợp từ 17/03 → 19/03)
+## Đã làm (session 20/03 — tiếp)
 
-### ConfigStudio.WPF.UI — Form Editor Refactor (19/03)
+### Backend .NET 9 — Phase 1 + Phase 6 ✅
+- Phase 1 Foundation: Application interfaces, Infrastructure (SqlConnectionFactory, FormRepository, FieldRepository, AuditLogRepository, HybridCacheService), FormController + ExceptionHandlingMiddleware
+- Phase 6 Form Management CRUD: 3 Queries + 5 Commands (GetFormsList, GetFormByCode, GetFormAuditLog, CreateForm, UpdateForm, DeactivateForm, RestoreForm, CloneForm)
 
-#### Gộp FormEditDialog vào FormEditorView
-- **Xóa** `FormEditDialogView.xaml` (645 dòng) + `FormEditDialogViewModel.cs` (665 dòng)
-- Merge logic vào **FormEditorViewModel** — tạo mới và sửa dùng chung View
-- Phân biệt mode bằng `IsNewForm` flag, không mở Dialog riêng
-- `FormManagerViewModel` bỏ `IDialogService`, navigate thẳng tới FormEditor
+### ConfigStudio.WPF.UI — Direct DB (Hướng B) ✅ hoàn thành 4 wave
+- **Quyết định kiến trúc**: Chuyển từ WPF→API→DB sang WPF→Dapper→DB trực tiếp (admin tool 1-2 user, không cần API intermediary)
+- **Option C**: Multiple focused service interfaces (ISP), mỗi module 1 interface riêng
 
-#### Redesign FormEditorView UI
-- Card-based layout với shadow, Tailwind CSS color palette
-- Intro panel mô tả ý nghĩa màn hình + từng field (hướng dẫn enduser)
-- Header bar: accent bar + platform badge + dirty indicator
-- Form field pattern: Label + Input + Help text 3 phần
+**Wave 1 — Foundation + Standalone modules**
+- 6 interfaces: IFormDetailDataService, IFieldDataService, IRuleDataService, IEventDataService, IGrammarDataService, II18nDataService
+- 15 record DTOs trong Core/Data/
+- 6 Dapper implementations trong Infrastructure/
+- DI registration trong App.xaml.cs
+- GrammarLibraryViewModel + I18nManagerViewModel migrated (DB hoặc mock fallback)
 
-#### Business Table luôn lấy từ DB
-- Xóa `LoadTableOptions()` mock data hardcode
-- Cả create/edit mode gọi `IFormDataService.GetTablesByTenantAsync()` từ DB
+**Wave 2 — FormDetail (read-only)**
+- FormDetailViewModel: load header, sections, fields, events summary, rules summary, audit log từ DB
+- Deactivate/Restore gọi DB trực tiếp
 
-#### Design Guidelines
-- Thêm 10 nguyên tắc thiết kế UI vào `.claude-rules/wpf-configstudio.md`
-- Áp dụng cho toàn bộ project ConfigStudio WPF
+**Wave 3 — FieldConfig**
+- FieldConfigViewModel: inject 4 services (Field, I18n, Rule, Event), load columns, field detail, linked rules/events
+- i18n preview resolve từ DB khi có
+- Save field metadata qua IFieldDataService
 
-### Branches — Đã dọn
-- 3 branches (`strange-cray`, `tender-goldwasser`, `zen-bhabha`) đã merge hết vào master
-- Worktrees bị process lock → cần xóa manual khi chuyển máy:
-  ```bash
-  cd D:\ICare247_Core
-  git worktree remove --force .claude/worktrees/tender-goldwasser
-  git worktree remove --force .claude/worktrees/zen-bhabha
-  git branch -d claude/strange-cray claude/tender-goldwasser claude/zen-bhabha
-  ```
+**Wave 4 — Rule + Event editors**
+- ValidationRuleEditorViewModel: load/save rules qua IRuleDataService
+- EventEditorViewModel: load events, actions, trigger/action types qua IEventDataService
 
-## Đang làm
-- Không có task dở dang
+## Trạng thái
+- Build WPF thành công: 0 errors, 0 warnings
+- Tất cả 6 ViewModel đã migrated: mock fallback khi DB chưa cấu hình, load DB thật khi đã cấu hình
+- TASKS.md đã cập nhật
 
-## Task tiếp theo (gợi ý)
-- **ConfigStudio:** FieldConfigView/ViewModel đầy đủ (hiện chỉ là stub), ValidationRuleEditor, EventEditor
-- **ConfigStudio:** LoadMockData() trong FormEditorViewModel vẫn dùng data giả cho sections/events/permissions → cần chuyển sang DB
-- **Backend:** Application interfaces (IFormRepository, IFieldRepository, IDbConnectionFactory, ICacheService)
-- **Backend:** CacheKeys.cs
+## Task tiếp theo
+- P0 UX Features: Auto-save, Undo/Redo, Live Linting, Impact Preview
+- Hoặc Backend Phase 2 (Grammar V1 / AST Engine)

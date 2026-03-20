@@ -3,6 +3,10 @@
 // Layer   : Infrastructure
 // Purpose : Đăng ký tất cả services của Infrastructure layer: DB, Cache, Repositories.
 
+using ICare247.Application.Interfaces;
+using ICare247.Infrastructure.Caching;
+using ICare247.Infrastructure.Data;
+using ICare247.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,20 +23,31 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // ── Database ─────────────────────────────────────────────────────────
-        // TODO(phase1): Đăng ký IDbConnectionFactory → SqlConnectionFactory
-        // services.AddSingleton<IDbConnectionFactory>(
-        //     new SqlConnectionFactory(configuration.GetConnectionString("Default")!));
+        var defaultConn = configuration.GetConnectionString("Default");
+        if (!string.IsNullOrWhiteSpace(defaultConn))
+        {
+            services.AddSingleton<IDbConnectionFactory>(
+                new SqlConnectionFactory(defaultConn));
+        }
 
         // ── Cache ─────────────────────────────────────────────────────────────
         services.AddMemoryCache();
-        // TODO(phase1): Đăng ký Redis nếu config có ConnectionStrings:Redis
-        // services.AddStackExchangeRedisCache(opts =>
-        //     opts.Configuration = configuration.GetConnectionString("Redis"));
-        // TODO(phase1): Đăng ký IHybridCacheService → HybridCacheService
+
+        // Redis — chỉ đăng ký khi có connection string
+        var redisConn = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConn))
+        {
+            services.AddStackExchangeRedisCache(opts =>
+                opts.Configuration = redisConn);
+        }
+
+        // HybridCacheService — L1 Memory + L2 Redis (optional)
+        services.AddSingleton<ICacheService, HybridCacheService>();
 
         // ── Repositories ─────────────────────────────────────────────────────
-        // TODO(phase1): Đăng ký IFormRepository → FormRepository
-        // TODO(phase1): Đăng ký IFieldRepository → FieldRepository
+        services.AddScoped<IFormRepository, FormRepository>();
+        services.AddScoped<IFieldRepository, FieldRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         // ── Logging / Telemetry ───────────────────────────────────────────────
         // TODO(phase5): Đăng ký OpenTelemetry TracerProvider

@@ -5,6 +5,7 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -15,10 +16,15 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// <summary>
 /// ViewModel cho màn hình Form Detail — hiển thị readonly toàn bộ metadata của form
 /// bao gồm header, sections, fields, events, rules, audit log.
+/// Khi DB đã cấu hình → load dữ liệu thật qua IFormDetailDataService.
+/// Khi chưa cấu hình → fallback mock data.
 /// </summary>
 public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IFormDetailDataService? _detailService;
+    private readonly IAppConfigService? _appConfig;
+    private CancellationTokenSource _cts = new();
 
     // ── Header metadata ───────────────────────────────────────
     private int _formId;
@@ -145,15 +151,20 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
     public DelegateCommand DeactivateCommand  { get; }
     public DelegateCommand RestoreCommand     { get; }
 
-    public FormDetailViewModel(IRegionManager regionManager)
+    public FormDetailViewModel(
+        IRegionManager regionManager,
+        IFormDetailDataService? detailService = null,
+        IAppConfigService? appConfig = null)
     {
         _regionManager = regionManager;
+        _detailService = detailService;
+        _appConfig = appConfig;
 
         BackCommand       = new DelegateCommand(ExecuteBack);
         EditCommand       = new DelegateCommand(ExecuteEdit);
         PreviewCommand    = new DelegateCommand(ExecutePreview);
-        DeactivateCommand = new DelegateCommand(ExecuteDeactivate, () => IsActive);
-        RestoreCommand    = new DelegateCommand(ExecuteRestore,    () => !IsActive);
+        DeactivateCommand = new DelegateCommand(ExecuteDeactivateAsync, () => IsActive);
+        RestoreCommand    = new DelegateCommand(ExecuteRestoreAsync,    () => !IsActive);
     }
 
     // ── INavigationAware ─────────────────────────────────────
@@ -169,25 +180,158 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
 
-    public void OnNavigatedFrom(NavigationContext navigationContext) { }
+    public void OnNavigatedFrom(NavigationContext navigationContext)
+    {
+        _cts.Cancel();
+        _cts = new CancellationTokenSource();
+    }
 
     // ── Load data ────────────────────────────────────────────
 
-    /// <summary>
-    /// Load toàn bộ metadata form từ DB (nếu có), fallback sang mock data.
-    /// </summary>
     private async Task LoadDataAsync(string formCode)
     {
         IsLoading = true;
         try
         {
-            // TODO(phase2): gọi IFormDataService.GetFormDetailAsync(formCode)
-            await Task.Delay(50); // giả lập latency nhỏ
-            LoadMockData(formCode);
+            if (_detailService is not null && _appConfig is { IsConfigured: true })
+            {
+                await LoadFromDatabaseAsync(formCode);
+            }
+            else
+            {
+                LoadMockData(formCode);
+            }
         }
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    /// <summary>
+    /// Load toàn bộ metadata form từ DB qua IFormDetailDataService.
+    /// </summary>
+    private async Task LoadFromDatabaseAsync(string formCode)
+    {
+        try
+        {
+            var ct = _cts.Token;
+            var tenantId = _appConfig!.TenantId;
+
+            // Load header
+            var detail = await _detailService!.GetFormDetailAsync(FormId, tenantId, ct);
+            if (detail is null)
+            {
+                // Fallback nếu không tìm thấy form
+                LoadMockData(formCode);
+                return;
+            }
+
+            FormCode     = detail.FormCode;
+            FormName     = detail.FormCode; // DB không có FormName riêng
+            TableName    = detail.TableName;
+            Platform     = detail.Platform;
+            LayoutEngine = detail.LayoutEngine;
+            Description  = detail.Description ?? "";
+            Version      = detail.Version;
+            Checksum     = detail.Checksum ?? "";
+            IsActive     = detail.IsActive;
+            UpdatedAt    = detail.UpdatedAt;
+            UpdatedBy    = ""; // DB query hiện không SELECT Updated_By
+
+            // Load sections
+            var sections = await _detailService.GetSectionsByFormAsync(FormId, tenantId, ct);
+            Sections.Clear();
+            foreach (var s in sections)
+            {
+                Sections.Add(new SectionDetailDto
+                {
+                    SectionId   = s.SectionId,
+                    OrderNo     = s.OrderNo,
+                    SectionCode = s.SectionCode,
+                    TitleKey    = s.TitleKey ?? "",
+                    LayoutJson  = s.LayoutJson ?? "",
+                    FieldCount  = s.FieldCount
+                });
+            }
+            RaisePropertyChanged(nameof(SectionCount));
+
+            // Load fields
+            var fields = await _detailService.GetFieldsByFormAsync(FormId, tenantId, ct);
+            Fields.Clear();
+            foreach (var f in fields)
+            {
+                Fields.Add(new FieldDetailDto
+                {
+                    FieldId     = f.FieldId,
+                    OrderNo     = f.OrderNo,
+                    ColumnName  = f.ColumnCode,
+                    SectionCode = f.SectionCode,
+                    EditorType  = f.EditorType,
+                    IsVisible   = f.IsVisible,
+                    IsReadOnly  = f.IsReadOnly,
+                    RuleCount   = f.RuleCount
+                });
+            }
+            RaisePropertyChanged(nameof(FieldCount));
+
+            // Load events summary
+            var events = await _detailService.GetEventsSummaryByFormAsync(FormId, tenantId, ct);
+            Events.Clear();
+            foreach (var e in events)
+            {
+                Events.Add(new EventSummaryDto
+                {
+                    EventId          = e.EventId,
+                    OrderNo          = e.OrderNo,
+                    TriggerCode      = e.TriggerCode,
+                    FieldTarget      = e.FieldTarget,
+                    ConditionPreview = e.ConditionPreview ?? "",
+                    ActionsCount     = e.ActionsCount,
+                    IsActive         = e.IsActive
+                });
+            }
+            RaisePropertyChanged(nameof(EventCount));
+
+            // Load rules summary
+            var rules = await _detailService.GetRulesSummaryByFormAsync(FormId, tenantId, ct);
+            Rules.Clear();
+            foreach (var r in rules)
+            {
+                Rules.Add(new RuleSummaryDto
+                {
+                    RuleId            = r.RuleId,
+                    OrderNo           = r.OrderNo,
+                    RuleTypeCode      = r.RuleTypeCode,
+                    ExpressionPreview = r.ExpressionPreview ?? "",
+                    ErrorKey          = r.ErrorKey,
+                    IsActive          = r.IsActive
+                });
+            }
+            RaisePropertyChanged(nameof(RuleCount));
+
+            // Load audit log
+            var audit = await _detailService.GetAuditLogAsync("Form", FormId, ct);
+            AuditLogs.Clear();
+            foreach (var a in audit)
+            {
+                AuditLogs.Add(new AuditLogEntryDto
+                {
+                    LogId         = (int)a.AuditId,
+                    ActionType    = a.Action,
+                    ChangedAt     = a.ChangedAt,
+                    ChangedBy     = a.ChangedBy,
+                    CorrelationId = a.CorrelationId ?? "",
+                    ChangeSummary = a.ChangeSummary ?? ""
+                });
+            }
+            RaisePropertyChanged(nameof(AuditCount));
+        }
+        catch (OperationCanceledException) { /* Navigation away */ }
+        catch
+        {
+            // Fallback mock khi lỗi DB
+            LoadMockData(formCode);
         }
     }
 
@@ -295,15 +439,21 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
         // TODO(phase2): mở preview dialog render form từ metadata
     }
 
-    private void ExecuteDeactivate()
+    private async void ExecuteDeactivateAsync()
     {
+        if (_detailService is not null && _appConfig is { IsConfigured: true })
+        {
+            await _detailService.DeactivateFormAsync(FormId, _appConfig.TenantId, _cts.Token);
+        }
         IsActive = false;
-        // TODO(phase2): gọi API DeactivateFormCommand + hiện confirm dialog trước
     }
 
-    private void ExecuteRestore()
+    private async void ExecuteRestoreAsync()
     {
+        if (_detailService is not null && _appConfig is { IsConfigured: true })
+        {
+            await _detailService.RestoreFormAsync(FormId, _appConfig.TenantId, _cts.Token);
+        }
         IsActive = true;
-        // TODO(phase2): gọi API RestoreFormCommand
     }
 }

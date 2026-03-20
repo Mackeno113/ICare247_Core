@@ -53,6 +53,12 @@ public partial class App : PrismApplication
         // Singleton vì AppConfigService giữ trạng thái IsConfigured sau LoadAsync()
         containerRegistry.RegisterSingleton<IAppConfigService, AppConfigService>();
         containerRegistry.Register<IFormDataService, FormDataService>();
+        containerRegistry.Register<IFormDetailDataService, FormDetailDataService>();
+        containerRegistry.Register<IFieldDataService, FieldDataService>();
+        containerRegistry.Register<IRuleDataService, RuleDataService>();
+        containerRegistry.Register<IEventDataService, EventDataService>();
+        containerRegistry.Register<IGrammarDataService, GrammarDataService>();
+        containerRegistry.Register<II18nDataService, I18nDataService>();
 
         containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>(ViewNames.Dashboard);
         containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>(ViewNames.Settings);
