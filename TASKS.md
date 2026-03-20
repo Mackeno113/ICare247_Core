@@ -40,9 +40,12 @@
 
 ### Phase 4 — Event Engine
 
-- [ ] Implement EventEngine
-- [ ] Implement ActionExecutor
-- [ ] Implement UiDeltaBuilder
+- [x] Tạo Domain entities (EventDefinition, EventAction) — Entities/Event/
+- [x] Tạo IEventRepository interface — Application/Interfaces/
+- [x] Implement EventEngine (handle event → evaluate condition → execute actions → UiDelta)
+- [x] 6 action handlers: SET_VALUE, SET_VISIBLE, SET_REQUIRED, SET_READONLY, RELOAD_OPTIONS, TRIGGER_VALIDATION
+- [x] DI registration (scoped) trong DependencyInjection.cs
+- [x] Build verify — 0 errors, 0 warnings
 
 ### Phase 5 — API + Infrastructure bổ sung
 

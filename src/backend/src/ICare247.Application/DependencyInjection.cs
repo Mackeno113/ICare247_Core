@@ -44,6 +44,9 @@ public static class DependencyInjection
         // ── Validation Engine — scoped vì phụ thuộc scoped repositories ────────
         services.AddScoped<IValidationEngine, ValidationEngine>();
 
+        // ── Event Engine — scoped vì phụ thuộc scoped repositories + ValidationEngine ──
+        services.AddScoped<IEventEngine, EventEngine>();
+
         return services;
     }
 }
