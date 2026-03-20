@@ -9,7 +9,7 @@ namespace ICare247.Domain.Entities.Event;
 /// Metadata của một event handler — maps từ bảng <c>Evt_Definition</c>.
 /// EventEngine load event definitions theo (FormId, TriggerCode) rồi evaluate condition → execute actions.
 /// </summary>
-public sealed class EventDefinition
+public sealed record EventDefinition
 {
     /// <summary>Khóa chính — Evt_Definition.Event_Id.</summary>
     public int EventId { get; init; }

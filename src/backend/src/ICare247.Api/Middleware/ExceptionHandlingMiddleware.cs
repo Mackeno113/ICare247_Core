@@ -99,9 +99,20 @@ public sealed class ExceptionHandlingMiddleware
             JsonSerializer.Serialize(problem, JsonOpts));
     }
 
-    /// <summary>Lấy Correlation-Id từ header (nếu có).</summary>
+    /// <summary>
+    /// Lấy Correlation-Id — ưu tiên từ HttpContext.Items (set bởi CorrelationMiddleware),
+    /// fallback từ header nếu CorrelationMiddleware chưa chạy.
+    /// </summary>
     private static string? GetCorrelationId(HttpContext context)
     {
+        // Ưu tiên lấy từ Items (đã normalize bởi CorrelationMiddleware)
+        if (context.Items.TryGetValue("CorrelationId", out var itemValue)
+            && itemValue is string correlationId)
+        {
+            return correlationId;
+        }
+
+        // Fallback từ header
         return context.Request.Headers.TryGetValue("X-Correlation-Id", out var values)
             ? values.FirstOrDefault()
             : null;

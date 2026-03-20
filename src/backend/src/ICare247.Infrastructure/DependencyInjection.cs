@@ -1,7 +1,7 @@
 // File    : DependencyInjection.cs
 // Module  : Infrastructure
 // Layer   : Infrastructure
-// Purpose : Đăng ký tất cả services của Infrastructure layer: DB, Cache, Repositories.
+// Purpose : Đăng ký tất cả services của Infrastructure layer: DB, Cache, Repositories, Telemetry.
 
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure.Caching;
@@ -9,6 +9,8 @@ using ICare247.Infrastructure.Data;
 using ICare247.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace ICare247.Infrastructure;
 
@@ -50,9 +52,18 @@ public static class DependencyInjection
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IRuleRepository, RuleRepository>();
         services.AddScoped<IDependencyRepository, DependencyRepository>();
+        services.AddScoped<IEventRepository, EventRepository>();
 
-        // ── Logging / Telemetry ───────────────────────────────────────────────
-        // TODO(phase5): Đăng ký OpenTelemetry TracerProvider
+        // ── OpenTelemetry ─────────────────────────────────────────────────────
+        services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource
+                .AddService(
+                    serviceName: "ICare247.Api",
+                    serviceVersion: "1.0.0"))
+            .WithTracing(tracing => tracing
+                .AddAspNetCoreInstrumentation()
+                .AddHttpClientInstrumentation()
+                .AddSource("ICare247.*"));
 
         return services;
     }

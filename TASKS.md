@@ -49,13 +49,17 @@
 
 ### Phase 5 — API + Infrastructure bổ sung
 
-- [ ] Setup TenantMiddleware (extract X-Tenant-Id)
-- [ ] Setup CorrelationMiddleware
-- [ ] Setup JWT Auth (appsettings.json config)
-- [ ] Setup OpenTelemetry TracerProvider
-- [ ] Setup Swagger/Scalar UI
-- [ ] Setup appsettings.json + appsettings.Development.json
-- [ ] Database seed script (db/ folder)
+- [x] TenantMiddleware — extract X-Tenant-Id → ITenantContext (scoped)
+- [x] CorrelationMiddleware — extract/generate X-Correlation-Id → Serilog LogContext + response header
+- [x] JWT Auth — SymmetricSecurityKey, TokenValidationParameters từ appsettings.json
+- [x] OpenTelemetry TracerProvider — ASP.NET Core + HttpClient instrumentation
+- [x] Scalar UI (đã có sẵn) + Health Check endpoint /health
+- [x] appsettings.json + appsettings.Development.json — JWT, Serilog config
+- [x] Database seed script — db/001_seed_lookup_data.sql (triggers, actions, functions)
+- [x] ValidationBehavior — MediatR pipeline auto-validate trước handler
+- [x] EventRepository — Dapper multi-mapping (Evt_Definition + Evt_Action)
+- [x] RuntimeController — POST validate-field, validate, handle-event
+- [x] Build verify — 0 errors, 0 warnings
 
 ### Phase 6 — Form Management CRUD (Backend API)
 

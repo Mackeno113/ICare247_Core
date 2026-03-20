@@ -5,6 +5,7 @@
 
 using System.Reflection;
 using FluentValidation;
+using ICare247.Application.Behaviors;
 using ICare247.Application.Engines;
 using ICare247.Domain.Engine;
 using MediatR;
@@ -28,7 +29,8 @@ public static class DependencyInjection
         // ── FluentValidation — tự động scan toàn bộ Validators ───────────────
         services.AddValidatorsFromAssembly(assembly);
 
-        // TODO(phase3): Đăng ký ValidationBehavior pipeline (MediatR pipeline behavior)
+        // ── ValidationBehavior — tự động validate request trước khi tới handler ──
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         // ── AST Engine — singleton vì stateless (trừ compiled cache) ───────────
         services.AddSingleton<FunctionRegistry>(sp =>
