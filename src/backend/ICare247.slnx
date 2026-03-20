@@ -5,4 +5,7 @@
     <Project Path="src/ICare247.Domain/ICare247.Domain.csproj" />
     <Project Path="src/ICare247.Infrastructure/ICare247.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj" />
+  </Folder>
 </Solution>

@@ -5,6 +5,8 @@
 
 using System.Reflection;
 using FluentValidation;
+using ICare247.Application.Engines;
+using ICare247.Domain.Engine;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +28,18 @@ public static class DependencyInjection
         // ── FluentValidation — tự động scan toàn bộ Validators ───────────────
         services.AddValidatorsFromAssembly(assembly);
 
-        // TODO(phase2): Đăng ký ValidationBehavior pipeline (MediatR pipeline behavior)
+        // TODO(phase3): Đăng ký ValidationBehavior pipeline (MediatR pipeline behavior)
+
+        // ── AST Engine — singleton vì stateless (trừ compiled cache) ───────────
+        services.AddSingleton<FunctionRegistry>(sp =>
+        {
+            var registry = new FunctionRegistry();
+            BuiltinFunctions.RegisterAll(registry);
+            return registry;
+        });
+        services.AddSingleton<AstParser>();
+        services.AddSingleton<AstCompiler>();
+        services.AddSingleton<IAstEngine, AstEngine>();
 
         return services;
     }
