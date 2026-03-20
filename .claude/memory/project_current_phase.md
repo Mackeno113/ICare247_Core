@@ -1,39 +1,38 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-03-19
+> Cập nhật lần cuối: 2026-03-20
 
-## Backend (.NET 9) — Phase 1 Foundation
+## Backend (.NET 9) — Hoàn thành Phase 1-5
 
-| Task | Status |
+| Phase | Status |
 |---|---|
-| Domain entities + AST nodes + Engine interfaces | ✅ Done |
-| Application interfaces (IFormRepository, IFieldRepository, ...) | 🟡 Todo — **TIẾP THEO** |
-| CacheKeys.cs | 🟡 Todo |
-| GetFormByCodeQuery + Handler (skeleton) | 🟡 Todo |
-| Infrastructure: SqlConnectionFactory, Repositories | 🟡 Todo |
-| HybridCacheService (Memory + Redis) | 🟡 Todo |
-| FormController + ExceptionHandlingMiddleware | 🟡 Todo |
+| Phase 1 — Foundation (entities, repos, cache, controller) | ✅ Done |
+| Phase 2 — Grammar V1 / AST Engine (parser, compiler, 25 functions) | ✅ Done |
+| Phase 3 — Validation Engine (rules, dependencies, topological sort) | ✅ Done |
+| Phase 4 — Event Engine (6 action handlers, UiDelta) | ✅ Done |
+| Phase 5 — API Infrastructure (middleware, JWT, OpenTelemetry, RuntimeController) | ✅ Done |
+| Phase 6 — Form Management CRUD (Backend API) | ✅ Done |
+| DB Schema — 30 tables, 5 modules (000_create_schema.sql) | ✅ Done |
+| DB Seed — Lookup data (001_seed_lookup_data.sql) | ✅ Done |
 
-**Ưu tiên:** Hoàn thành Phase 1 Foundation trước → mở khóa Phase 2 (Grammar/AST).
+**Remaining backend tasks:**
+- MetadataEngine implementation (IMetadataEngine)
+- Integration tests
 
-## ConfigStudio (WPF) — Phase 1 UI
+## ConfigStudio (WPF) — Hoàn thành
 
-| Screen / Component | Status |
+| Component | Status |
 |---|---|
 | 11 skeleton screens | ✅ Done |
-| Shell + Navigation (ShellViewModel) | ✅ Done |
-| FormManagerView — search, filter, pagination | ✅ Done |
-| FormDetailView — fields, sections, events, rules, audit log | ✅ Done |
-| FormEditDialogView — tạo/sửa form + tab Permissions | ✅ Done |
-| SysTableManagerView — quản lý sys_table + lookup | ✅ Done |
-| FormEditorView — field editor cơ bản | ✅ Done |
-| FieldConfigView/ViewModel — config chi tiết 1 field | 🟡 Todo |
-| ValidationRuleEditorView/ViewModel | 🟡 Todo |
-| EventEditorView/ViewModel | 🟡 Todo |
-| GrammarLibrary, ExpressionBuilderDialog | 🟡 Stub |
-| DependencyViewerView | 🟡 Stub |
-| I18nManagerView | 🟡 Stub |
-| P0: Auto-save, Undo/Redo, Live Linting, Impact Preview | 🔴 Blocked — phụ thuộc Backend engine |
+| 6 screens UI thật (FormEditor, FormManager, RuleEditor, EventEditor, Grammar, I18n) | ✅ Done |
+| Direct DB Wave 1-4 (6 services, 15 DTOs, 6 implementations) | ✅ Done |
+| P0 UX: Auto-save, Undo/Redo, Live Linting, Impact Preview | ✅ Done |
+| Shell, Navigation, FormDetail, FormEditDialog, SysTableManager | ✅ Done |
 
-## Blockers
-- P0 UX Features (ConfigStudio) phụ thuộc Backend Phase 2+ engine hoạt động
+**Remaining WPF tasks:**
+- Wire Impact Preview vào DependencyViewer UI
+
+## Next Priorities
+1. MetadataEngine (IMetadataEngine) — backend
+2. Integration tests — backend
+3. Blazor runtime frontend
