@@ -181,10 +181,12 @@
 
 ### ConfigStudio.WPF.UI — P0 UX Features (sau khi Direct DB hoàn thành)
 
-- [ ] Auto-save (phụ thuộc Form Editor)
-- [ ] Undo/Redo (phụ thuộc Form Editor + Field Config)
-- [ ] Live Linting (phụ thuộc Expression Builder + Rule Editor)
-- [ ] Impact Preview (phụ thuộc Dependency Viewer + Form Editor)
+- [x] Auto-save — AutoSaveService: debounce 3s, status indicator (Idle/Pending/Saving/Saved/Error)
+- [x] Undo/Redo — UndoRedoService: stack-based (max 50), JSON snapshot, Ctrl+Z/Y commands
+- [x] Live Linting — LintingService: debounce 500ms, 8 lint rules (naming, duplicate, required, structure)
+- [x] Impact Preview — ImpactPreviewService: scan rules/events cho field references, expression analysis
+- [x] FormEditorViewModel integrated: all 4 services wired in OnNavigatedTo/OnNavigatedFrom
+- [x] Build verify — 0 errors, 0 warnings (backend + WPF 7 projects)
 
 ---
 

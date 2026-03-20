@@ -4,10 +4,12 @@
 // Purpose : ViewModel cho màn hình Form Editor (Screen 03) — quản lý toàn bộ form: metadata, sections, fields, events, permissions.
 
 using System.Collections.ObjectModel;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -32,6 +34,64 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private CancellationTokenSource? _formCodeValidationCts;
     private static readonly Regex FormCodeRegex = new(@"^[A-Z0-9_]+$", RegexOptions.Compiled);
     private string _originalFormCode = "";
+
+    // ── P0 UX Services ────────────────────────────────────────
+    private AutoSaveService? _autoSave;
+    private readonly UndoRedoService<string> _undoRedo = new();
+    private LintingService? _linting;
+
+    // ── Auto-save status ──────────────────────────────────────
+    private AutoSaveStatus _autoSaveStatus = AutoSaveStatus.Idle;
+    /// <summary>Trạng thái auto-save hiện tại.</summary>
+    public AutoSaveStatus AutoSaveStatus
+    {
+        get => _autoSaveStatus;
+        private set => SetProperty(ref _autoSaveStatus, value);
+    }
+
+    private DateTime? _lastSavedAt;
+    /// <summary>Thời gian auto-save gần nhất.</summary>
+    public DateTime? LastSavedAt
+    {
+        get => _lastSavedAt;
+        private set => SetProperty(ref _lastSavedAt, value);
+    }
+
+    private string? _autoSaveError;
+    /// <summary>Lỗi auto-save gần nhất (null nếu thành công).</summary>
+    public string? AutoSaveError
+    {
+        get => _autoSaveError;
+        private set => SetProperty(ref _autoSaveError, value);
+    }
+
+    // ── Undo/Redo state ───────────────────────────────────────
+    private bool _canUndo;
+    public bool CanUndoAction { get => _canUndo; private set => SetProperty(ref _canUndo, value); }
+
+    private bool _canRedo;
+    public bool CanRedoAction { get => _canRedo; private set => SetProperty(ref _canRedo, value); }
+
+    // ── Lint issues ───────────────────────────────────────────
+    private IReadOnlyList<LintIssue> _lintIssues = [];
+    /// <summary>Danh sách lint issues hiện tại.</summary>
+    public IReadOnlyList<LintIssue> LintIssues
+    {
+        get => _lintIssues;
+        private set
+        {
+            if (SetProperty(ref _lintIssues, value))
+            {
+                RaisePropertyChanged(nameof(LintErrorCount));
+                RaisePropertyChanged(nameof(LintWarningCount));
+                RaisePropertyChanged(nameof(HasLintErrors));
+            }
+        }
+    }
+
+    public int LintErrorCount => _lintIssues.Count(i => i.Severity == "error");
+    public int LintWarningCount => _lintIssues.Count(i => i.Severity == "warning");
+    public bool HasLintErrors => _lintIssues.Any(i => i.Severity == "error");
 
     // ── Form info ─────────────────────────────────────────────
     private int _formId;
@@ -225,7 +285,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                             or nameof(FormTreeNode.IsActive))
             return;
 
+        // Push undo state trước khi đánh dấu dirty
+        PushUndoState($"Sửa {e.PropertyName}");
         IsDirty = true;
+
+        // Notify auto-save + linting
+        _autoSave?.NotifyDirty();
+        _linting?.NotifyChanged();
     }
 
     public bool IsNodeSelected => SelectedNode is not null;
@@ -351,6 +417,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand RemoveEventCommand { get; }
     public DelegateCommand EditEventCommand { get; }
 
+    // Undo/Redo
+    public DelegateCommand UndoCommand { get; }
+    public DelegateCommand RedoCommand { get; }
+
     // Permissions — dùng để đánh dấu IsDirty khi checkbox thay đổi
     public DelegateCommand DirtyCommand { get; }
 
@@ -386,14 +456,28 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         RemoveEventCommand = new DelegateCommand(ExecuteRemoveEvent, () => SelectedEvent is not null);
         EditEventCommand = new DelegateCommand(ExecuteEditEvent, () => SelectedEvent is not null);
 
+        // Undo/Redo
+        UndoCommand = new DelegateCommand(ExecuteUndo, () => CanUndoAction)
+            .ObservesProperty(() => CanUndoAction);
+        RedoCommand = new DelegateCommand(ExecuteRedo, () => CanRedoAction)
+            .ObservesProperty(() => CanRedoAction);
+
         // Permissions
         DirtyCommand = new DelegateCommand(() => IsDirty = true);
+
+        // ── Wire undo/redo state changed ─────────────────────
+        _undoRedo.StateChanged += (_, _) =>
+        {
+            CanUndoAction = _undoRedo.CanUndo;
+            CanRedoAction = _undoRedo.CanRedo;
+        };
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
+        InitP0Services();
         FormId = navigationContext.Parameters.GetValue<int>("formId");
 
         // ── Phân nhánh: tạo mới hay edit ────────────────────
@@ -447,6 +531,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _formCodeValidationCts?.Cancel();
         _formCodeValidationCts?.Dispose();
         _formCodeValidationCts = null;
+
+        DisposeP0Services();
     }
 
     // ── Load mock data ───────────────────────────────────────
@@ -657,7 +743,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         };
         Sections.Add(section);
         SelectedNode = section;
+        PushUndoState("Thêm section");
         IsDirty = true;
+        _autoSave?.NotifyDirty();
+        _linting?.NotifyChanged();
         RaisePropertyChanged(nameof(TotalSections));
     }
 
@@ -694,7 +783,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         targetSection.Children.Add(field);
         targetSection.IsExpanded = true;
         SelectedNode = field;
+        PushUndoState("Thêm field");
         IsDirty = true;
+        _autoSave?.NotifyDirty();
+        _linting?.NotifyChanged();
         RaisePropertyChanged(nameof(TotalFields));
     }
 
@@ -717,7 +809,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
 
         SelectedNode = null;
+        PushUndoState("Xóa node");
         IsDirty = true;
+        _autoSave?.NotifyDirty();
+        _linting?.NotifyChanged();
     }
 
     private void ExecuteMoveUp()
@@ -968,6 +1063,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         // TODO(phase2): Gọi API save form metadata + sections + fields + events + permissions
         IsDirty = false;
+        _undoRedo.Clear();
     }
 
     private void ExecutePublish()
@@ -986,6 +1082,218 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         // TODO(phase2): Confirm nếu IsDirty trước khi navigate back
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormManager);
+    }
+
+    // ── P0: Undo/Redo ─────────────────────────────────────────
+
+    private void ExecuteUndo()
+    {
+        var currentSnapshot = CreateSnapshot();
+        var previous = _undoRedo.Undo(currentSnapshot);
+        if (previous is not null)
+            RestoreSnapshot(previous);
+    }
+
+    private void ExecuteRedo()
+    {
+        var currentSnapshot = CreateSnapshot();
+        var next = _undoRedo.Redo(currentSnapshot);
+        if (next is not null)
+            RestoreSnapshot(next);
+    }
+
+    /// <summary>Push trạng thái hiện tại vào undo stack.</summary>
+    private void PushUndoState(string description)
+    {
+        var snapshot = CreateSnapshot();
+        _undoRedo.PushState(snapshot, description);
+    }
+
+    /// <summary>Tạo JSON snapshot của form state hiện tại.</summary>
+    private string CreateSnapshot()
+    {
+        var state = new
+        {
+            FormCode,
+            FormName,
+            Platform,
+            LayoutEngine,
+            Description,
+            IsFormActive,
+            Sections = Sections.Select(s => new
+            {
+                s.Id, s.Code, s.DisplayName, s.SortOrder,
+                Children = s.Children.Select(f => new
+                {
+                    f.Id, f.Code, f.DisplayName, f.FieldType,
+                    f.EditorType, f.IsRequired, f.SortOrder
+                }).ToList()
+            }).ToList()
+        };
+        return JsonSerializer.Serialize(state);
+    }
+
+    /// <summary>Khôi phục form state từ JSON snapshot.</summary>
+    private void RestoreSnapshot(string snapshotJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(snapshotJson);
+            var root = doc.RootElement;
+
+            // Restore metadata (bypass setters' IsDirty)
+            _formCode = root.GetProperty("FormCode").GetString() ?? "";
+            RaisePropertyChanged(nameof(FormCode));
+
+            _formName = root.GetProperty("FormName").GetString() ?? "";
+            RaisePropertyChanged(nameof(FormName));
+
+            _platform = root.GetProperty("Platform").GetString() ?? "web";
+            RaisePropertyChanged(nameof(Platform));
+
+            _layoutEngine = root.GetProperty("LayoutEngine").GetString() ?? "Grid";
+            RaisePropertyChanged(nameof(LayoutEngine));
+
+            _description = root.GetProperty("Description").GetString() ?? "";
+            RaisePropertyChanged(nameof(Description));
+
+            _isFormActive = root.GetProperty("IsFormActive").GetBoolean();
+            RaisePropertyChanged(nameof(IsFormActive));
+
+            // Restore sections + fields
+            Sections.Clear();
+            foreach (var sectionEl in root.GetProperty("Sections").EnumerateArray())
+            {
+                var section = new FormTreeNode
+                {
+                    Id = sectionEl.GetProperty("Id").GetInt32(),
+                    NodeType = FormNodeType.Section,
+                    Code = sectionEl.GetProperty("Code").GetString() ?? "",
+                    DisplayName = sectionEl.GetProperty("DisplayName").GetString() ?? "",
+                    SortOrder = sectionEl.GetProperty("SortOrder").GetInt32(),
+                    IsExpanded = true
+                };
+
+                foreach (var fieldEl in sectionEl.GetProperty("Children").EnumerateArray())
+                {
+                    section.Children.Add(new FormTreeNode
+                    {
+                        Id = fieldEl.GetProperty("Id").GetInt32(),
+                        NodeType = FormNodeType.Field,
+                        Code = fieldEl.GetProperty("Code").GetString() ?? "",
+                        DisplayName = fieldEl.GetProperty("DisplayName").GetString() ?? "",
+                        FieldType = fieldEl.GetProperty("FieldType").GetString() ?? "text",
+                        EditorType = fieldEl.GetProperty("EditorType").GetString() ?? "TextBox",
+                        IsRequired = fieldEl.GetProperty("IsRequired").GetBoolean(),
+                        SortOrder = fieldEl.GetProperty("SortOrder").GetInt32()
+                    });
+                }
+
+                Sections.Add(section);
+            }
+
+            RaisePropertyChanged(nameof(TotalSections));
+            RaisePropertyChanged(nameof(TotalFields));
+        }
+        catch
+        {
+            // Snapshot bị lỗi → bỏ qua
+        }
+    }
+
+    // ── P0: Init services ───────────────────────────────────────
+
+    /// <summary>Khởi tạo Auto-save + Linting services khi navigate vào editor.</summary>
+    private void InitP0Services()
+    {
+        // Auto-save: debounce 3 giây
+        _autoSave = new AutoSaveService(async ct =>
+        {
+            // TODO(phase2): Thay bằng actual save qua data service
+            await Task.Delay(100, ct); // Simulate save
+        });
+        _autoSave.StatusChanged += (_, _) =>
+        {
+            AutoSaveStatus = _autoSave.Status;
+            LastSavedAt = _autoSave.LastSavedAt;
+            AutoSaveError = _autoSave.ErrorMessage;
+        };
+
+        // Linting: debounce 500ms, validate form metadata + structure
+        _linting = new LintingService(ct => Task.FromResult(RunFormLint()));
+        _linting.IssuesChanged += (_, _) =>
+        {
+            LintIssues = _linting.Issues;
+        };
+    }
+
+    /// <summary>Cleanup P0 services khi navigate ra.</summary>
+    private void DisposeP0Services()
+    {
+        _autoSave?.Dispose();
+        _autoSave = null;
+        _linting?.Dispose();
+        _linting = null;
+    }
+
+    /// <summary>
+    /// Chạy lint rules cho form hiện tại.
+    /// Trả về danh sách issues.
+    /// </summary>
+    private IReadOnlyList<LintIssue> RunFormLint()
+    {
+        var issues = new List<LintIssue>();
+
+        // LINT001: FormCode trống
+        if (string.IsNullOrWhiteSpace(FormCode))
+            issues.Add(new LintIssue("LINT001", "error", "Form Code không được để trống.", "FormCode", "naming"));
+
+        // LINT002: FormCode format
+        if (!string.IsNullOrWhiteSpace(FormCode) && !FormCodeRegex.IsMatch(FormCode))
+            issues.Add(new LintIssue("LINT002", "error", "Form Code chỉ chấp nhận A-Z, 0-9, _.", "FormCode", "naming"));
+
+        // LINT003: Không có section
+        if (Sections.Count == 0 && !IsNewForm)
+            issues.Add(new LintIssue("LINT003", "warning", "Form chưa có section nào.", "Sections", "required"));
+
+        // LINT004: Section trống (không có field)
+        foreach (var section in Sections)
+        {
+            if (section.Children.Count == 0)
+                issues.Add(new LintIssue("LINT004", "warning",
+                    $"Section \"{section.Code}\" chưa có field nào.", section.Code, "required"));
+        }
+
+        // LINT005: Duplicate field code
+        var fieldCodes = Sections
+            .SelectMany(s => s.Children)
+            .GroupBy(f => f.Code, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1);
+        foreach (var dup in fieldCodes)
+            issues.Add(new LintIssue("LINT005", "error",
+                $"Field Code \"{dup.Key}\" bị trùng ({dup.Count()} lần).", dup.Key, "naming"));
+
+        // LINT006: Duplicate section code
+        var sectionCodes = Sections
+            .GroupBy(s => s.Code, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1);
+        foreach (var dup in sectionCodes)
+            issues.Add(new LintIssue("LINT006", "error",
+                $"Section Code \"{dup.Key}\" bị trùng ({dup.Count()} lần).", dup.Key, "naming"));
+
+        // LINT007: Field code chứa ký tự không hợp lệ
+        foreach (var field in Sections.SelectMany(s => s.Children))
+        {
+            if (!string.IsNullOrWhiteSpace(field.Code) && !FormCodeRegex.IsMatch(field.Code))
+                issues.Add(new LintIssue("LINT007", "warning",
+                    $"Field Code \"{field.Code}\" nên dùng A-Z, 0-9, _.", field.Code, "naming"));
+        }
+
+        // LINT008: FormName trống
+        if (string.IsNullOrWhiteSpace(FormName) && !IsNewForm)
+            issues.Add(new LintIssue("LINT008", "warning", "Tên form chưa được đặt.", "FormName", "required"));
+
+        return issues;
     }
 
     // ── Helpers ──────────────────────────────────────────────
