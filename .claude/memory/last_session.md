@@ -2,41 +2,34 @@
 
 > Cập nhật: 2026-03-20
 
-## Đã làm (session 20/03 — tiếp)
+## Đã làm (session 20/03 — backend engines)
 
-### Backend .NET 9 — Phase 1 + Phase 6 ✅
-- Phase 1 Foundation: Application interfaces, Infrastructure (SqlConnectionFactory, FormRepository, FieldRepository, AuditLogRepository, HybridCacheService), FormController + ExceptionHandlingMiddleware
-- Phase 6 Form Management CRUD: 3 Queries + 5 Commands (GetFormsList, GetFormByCode, GetFormAuditLog, CreateForm, UpdateForm, DeactivateForm, RestoreForm, CloneForm)
+### Phase 2 — Grammar V1 / AST Engine ✅ (commit `070bbfe`)
+- AstParser: JSON → IExpressionNode (6 node types, max depth=20, max size=64KB)
+- AstCompiler: IExpressionNode → Func<EvaluationContext, object?> (null-safe, div/0→null)
+- FunctionRegistry + BuiltinFunctions: 25 built-in functions (string, math, logic, date, conversion)
+- AstEngine: orchestration + ConcurrentDictionary compiled cache (SHA256 key)
+- DI: FunctionRegistry, AstParser, AstCompiler, AstEngine — all singleton
+- Test project: ICare247.Application.Tests (xUnit) — 125 tests passing
 
-### ConfigStudio.WPF.UI — Direct DB (Hướng B) ✅ hoàn thành 4 wave
-- **Quyết định kiến trúc**: Chuyển từ WPF→API→DB sang WPF→Dapper→DB trực tiếp (admin tool 1-2 user, không cần API intermediary)
-- **Option C**: Multiple focused service interfaces (ISP), mỗi module 1 interface riêng
-
-**Wave 1 — Foundation + Standalone modules**
-- 6 interfaces: IFormDetailDataService, IFieldDataService, IRuleDataService, IEventDataService, IGrammarDataService, II18nDataService
-- 15 record DTOs trong Core/Data/
-- 6 Dapper implementations trong Infrastructure/
-- DI registration trong App.xaml.cs
-- GrammarLibraryViewModel + I18nManagerViewModel migrated (DB hoặc mock fallback)
-
-**Wave 2 — FormDetail (read-only)**
-- FormDetailViewModel: load header, sections, fields, events summary, rules summary, audit log từ DB
-- Deactivate/Restore gọi DB trực tiếp
-
-**Wave 3 — FieldConfig**
-- FieldConfigViewModel: inject 4 services (Field, I18n, Rule, Event), load columns, field detail, linked rules/events
-- i18n preview resolve từ DB khi có
-- Save field metadata qua IFieldDataService
-
-**Wave 4 — Rule + Event editors**
-- ValidationRuleEditorViewModel: load/save rules qua IRuleDataService
-- EventEditorViewModel: load events, actions, trigger/action types qua IEventDataService
+### Phase 3 — Validation Engine ✅ (commit `5ac85a5`)
+- ValidationEngine: validate field/form theo Val_Rule list
+  - Required built-in check (null/empty/whitespace)
+  - Custom/Regex/Range via AST evaluation
+  - Condition_Expr support (skip rule khi condition = false)
+  - Topological sort via Sys_Dependency (Kahn's algorithm)
+  - Warning severity không ảnh hưởng IsValid
+- IRuleRepository + RuleRepository (Dapper): load rules by field hoặc by form (1 query)
+- IDependencyRepository + DependencyRepository (Dapper): load field-to-field dependencies
+- RuleMetadata: thêm ConditionExpr property
+- DI: IValidationEngine (scoped), IRuleRepository, IDependencyRepository (scoped)
+- 16 unit tests — tổng 141 tests passing
 
 ## Trạng thái
-- Build WPF thành công: 0 errors, 0 warnings
-- Tất cả 6 ViewModel đã migrated: mock fallback khi DB chưa cấu hình, load DB thật khi đã cấu hình
-- TASKS.md đã cập nhật
+- Build backend: 0 errors, 0 warnings, 141 tests passing
+- Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4-5 pending
 
 ## Task tiếp theo
-- P0 UX Features: Auto-save, Undo/Redo, Live Linting, Impact Preview
-- Hoặc Backend Phase 2 (Grammar V1 / AST Engine)
+- Phase 4 — Event Engine (EventEngine, ActionExecutor, UiDeltaBuilder)
+- Phase 5 — API + Infrastructure (TenantMiddleware, JWT Auth, OpenTelemetry, Swagger)
+- P0 UX Features (Auto-save, Undo/Redo, Live Linting, Impact Preview)
