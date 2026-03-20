@@ -41,6 +41,9 @@ public static class DependencyInjection
         services.AddSingleton<AstCompiler>();
         services.AddSingleton<IAstEngine, AstEngine>();
 
+        // ── Validation Engine — scoped vì phụ thuộc scoped repositories ────────
+        services.AddScoped<IValidationEngine, ValidationEngine>();
+
         return services;
     }
 }

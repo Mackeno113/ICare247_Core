@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFieldRepository, FieldRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IRuleRepository, RuleRepository>();
+        services.AddScoped<IDependencyRepository, DependencyRepository>();
 
         // ── Logging / Telemetry ───────────────────────────────────────────────
         // TODO(phase5): Đăng ký OpenTelemetry TracerProvider

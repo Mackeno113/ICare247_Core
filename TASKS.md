@@ -26,16 +26,17 @@
 
 ### Phase 2 — Grammar V1 / AST Engine
 
-- [ ] Implement AstParser (Expression_Json → IExpressionNode)
-- [ ] Implement AstCompiler (IExpressionNode → Func<context, object?>)
-- [ ] Implement FunctionRegistry + BuiltinFunctions (len, trim, iif, toDate, today, ...)
-- [ ] Unit tests cho AstEngine
+- [x] Implement AstParser (Expression_Json → IExpressionNode)
+- [x] Implement AstCompiler (IExpressionNode → Func<context, object?>)
+- [x] Implement FunctionRegistry + BuiltinFunctions (len, trim, iif, toDate, today, ...)
+- [x] Unit tests cho AstEngine (125 tests)
 
 ### Phase 3 — Validation Engine
 
-- [ ] Implement ValidationEngine
-- [ ] Implement RuleEvaluator
-- [ ] Implement DependencyResolver (qua Sys_Dependency)
+- [x] Implement ValidationEngine (validate field/form, Required/Custom rules, condition check)
+- [x] Implement IRuleRepository + RuleRepository (Dapper, Val_Rule + Val_Rule_Field)
+- [x] Implement IDependencyRepository + DependencyRepository (Dapper, Sys_Dependency topological sort)
+- [x] Unit tests cho ValidationEngine (16 tests)
 
 ### Phase 4 — Event Engine
 

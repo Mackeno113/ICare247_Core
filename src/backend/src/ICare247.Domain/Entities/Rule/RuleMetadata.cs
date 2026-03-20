@@ -43,7 +43,13 @@ public sealed class RuleMetadata
     public string ExpressionJson { get; init; } = string.Empty;
 
     /// <summary>
-    /// Thông báo lỗi khi rule fail (Sys_Rule.Error_Message).
+    /// Condition expression dạng JSON string (Val_Rule.Condition_Expr).
+    /// Nếu không null, rule chỉ apply khi condition evaluate = true.
+    /// </summary>
+    public string? ConditionExpr { get; init; }
+
+    /// <summary>
+    /// Thông báo lỗi khi rule fail (Val_Rule.Error_Key hoặc resolved message).
     /// Có thể chứa placeholder như {FieldName}.
     /// </summary>
     public string ErrorMessage { get; init; } = string.Empty;
