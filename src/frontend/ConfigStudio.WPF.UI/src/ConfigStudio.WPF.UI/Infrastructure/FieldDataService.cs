@@ -146,4 +146,44 @@ public sealed class FieldDataService : IFieldDataService
             return field.FieldId;
         }
     }
+
+    /// <inheritdoc />
+    public async Task<int> EnsureColumnExistsAsync(int tableId, ColumnSchemaDto col, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || tableId <= 0) return 0;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+
+        // INSERT nếu chưa có (UNIQUE constraint Table_Id + Column_Code bảo vệ race condition)
+        const string sql = """
+            IF NOT EXISTS (
+                SELECT 1 FROM dbo.Sys_Column
+                WHERE  Table_Id = @TableId AND Column_Code = @ColumnCode
+            )
+            BEGIN
+                INSERT INTO dbo.Sys_Column
+                    (Table_Id, Column_Code, Data_Type, Net_Type, Max_Length,
+                     Is_Nullable, Is_PK, Is_Identity, Is_Active, Version, Updated_At)
+                VALUES
+                    (@TableId, @ColumnCode, @DataType, @NetType, @MaxLength,
+                     @IsNullable, @IsPK, @IsIdentity, 1, 1, GETDATE())
+            END
+
+            SELECT Column_Id FROM dbo.Sys_Column
+            WHERE  Table_Id = @TableId AND Column_Code = @ColumnCode
+            """;
+
+        return await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(sql, new
+            {
+                TableId    = tableId,
+                ColumnCode = col.ColumnName,
+                DataType   = col.DataType,
+                NetType    = col.NetType,
+                MaxLength  = col.MaxLength,
+                IsNullable = col.IsNullable ? 1 : 0,
+                IsPK       = col.IsPrimaryKey ? 1 : 0,
+                IsIdentity = col.IsIdentity ? 1 : 0,
+            }, cancellationToken: ct));
+    }
 }

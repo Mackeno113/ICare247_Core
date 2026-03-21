@@ -19,4 +19,10 @@ public interface IFieldDataService
     /// Lưu field: INSERT (FieldId=0) → trả về Field_Id mới, UPDATE → trả về FieldId truyền vào.
     /// </summary>
     Task<int> SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đảm bảo cột tồn tại trong Sys_Column (INSERT nếu chưa có), trả về Column_Id.
+    /// Dùng khi auto-generate field để đảm bảo FK Column_Id hợp lệ trước khi insert Ui_Field.
+    /// </summary>
+    Task<int> EnsureColumnExistsAsync(int tableId, ColumnSchemaDto col, CancellationToken ct = default);
 }
