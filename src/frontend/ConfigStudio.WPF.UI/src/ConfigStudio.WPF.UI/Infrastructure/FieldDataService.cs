@@ -101,9 +101,9 @@ public sealed class FieldDataService : IFieldDataService
     }
 
     /// <inheritdoc />
-    public async Task SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default)
+    public async Task<int> SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default)
     {
-        if (!_config.IsConfigured) return;
+        if (!_config.IsConfigured) return 0;
 
         if (field.FieldId == 0)
         {
@@ -112,13 +112,14 @@ public sealed class FieldDataService : IFieldDataService
                        (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key, Placeholder_Key,
                         Tooltip_Key, Is_Visible, Is_ReadOnly, Order_No, Control_Props_Json,
                         Version, Updated_At, Description)
+                OUTPUT INSERTED.Field_Id
                 VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey, @PlaceholderKey,
                         @TooltipKey, @IsVisible, @IsReadOnly, @OrderNo, @ControlPropsJson,
                         1, GETDATE(), @Description)
                 """;
 
             await using var conn = new SqlConnection(_config.ConnectionString);
-            await conn.ExecuteAsync(new CommandDefinition(sql, field, cancellationToken: ct));
+            return await conn.ExecuteScalarAsync<int>(new CommandDefinition(sql, field, cancellationToken: ct));
         }
         else
         {
@@ -142,6 +143,7 @@ public sealed class FieldDataService : IFieldDataService
 
             await using var conn = new SqlConnection(_config.ConnectionString);
             await conn.ExecuteAsync(new CommandDefinition(sql, field, cancellationToken: ct));
+            return field.FieldId;
         }
     }
 }

@@ -15,5 +15,8 @@ public interface IFieldDataService
     Task<FieldConfigRecord?> GetFieldDetailAsync(int fieldId, int tenantId, CancellationToken ct = default);
     Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(int tableId, CancellationToken ct = default);
     Task<int> GetTableIdByFormAsync(int formId, int tenantId, CancellationToken ct = default);
-    Task SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default);
+    /// <summary>
+    /// Lưu field: INSERT (FieldId=0) → trả về Field_Id mới, UPDATE → trả về FieldId truyền vào.
+    /// </summary>
+    Task<int> SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default);
 }
