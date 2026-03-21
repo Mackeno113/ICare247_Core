@@ -776,13 +776,22 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 {
                     foreach (var f in fields)
                     {
+                        // Resolve tên hiển thị từ Sys_Resource ưu tiên "vi", fallback về ColumnCode
+                        var fieldDisplay = f.ColumnCode;
+                        if (_i18nService is not null && !string.IsNullOrEmpty(f.LabelKey))
+                        {
+                            var vi = await _i18nService.ResolveKeyAsync(f.LabelKey, "vi", ct);
+                            fieldDisplay = !string.IsNullOrWhiteSpace(vi) ? vi : f.ColumnCode;
+                        }
+
                         sectionNode.Children.Add(new FormTreeNode
                         {
                             Id          = f.FieldId,
                             NodeType    = FormNodeType.Field,
                             Code        = f.ColumnCode,
-                            DisplayName = f.ColumnCode,    // DB chưa có Display_Name riêng
-                            FieldType   = "text",          // DB không lưu FieldType ở đây
+                            TitleKey    = f.LabelKey,
+                            DisplayName = fieldDisplay,
+                            FieldType   = "text",          // load chi tiết khi mở FieldConfig
                             EditorType  = f.EditorType,
                             IsRequired  = false,           // load chi tiết khi mở FieldConfig
                             SortOrder   = f.OrderNo

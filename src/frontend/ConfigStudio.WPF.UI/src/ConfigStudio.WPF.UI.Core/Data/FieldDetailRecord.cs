@@ -12,6 +12,7 @@ public sealed class FieldDetailRecord
     public string ColumnCode { get; init; } = "";
     public string SectionCode { get; init; } = "";
     public string EditorType { get; init; } = "";
+    public string LabelKey { get; init; } = "";
     public bool IsVisible { get; init; }
     public bool IsReadOnly { get; init; }
     public int RuleCount { get; init; }

@@ -85,6 +85,7 @@ public sealed class FormDetailDataService : IFormDetailDataService
                    sc.Column_Code  AS ColumnCode,
                    ISNULL(se.Section_Code, '') AS SectionCode,
                    fi.Editor_Type  AS EditorType,
+                   ISNULL(fi.Label_Key, '')    AS LabelKey,
                    fi.Is_Visible   AS IsVisible,
                    fi.Is_ReadOnly  AS IsReadOnly,
                    (SELECT COUNT(*) FROM dbo.Val_Rule_Field vrf WHERE vrf.Field_Id = fi.Field_Id) AS RuleCount
