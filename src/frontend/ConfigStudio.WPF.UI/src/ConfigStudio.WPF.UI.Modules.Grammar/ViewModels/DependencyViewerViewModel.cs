@@ -5,6 +5,8 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Grammar.Models;
 using Prism.Commands;
@@ -16,10 +18,16 @@ namespace ConfigStudio.WPF.UI.Modules.Grammar.ViewModels;
 /// ViewModel cho Dependency Graph Viewer (Screen 08).
 /// Hiển thị đồ thị phụ thuộc giữa Field, Rule, Event trong form.
 /// Hỗ trợ auto-layout, filter, và deep-link đến editor tương ứng.
+/// Load dữ liệu thật từ DB qua IFormDetailDataService, IRuleDataService, IEventDataService.
+/// Khi chọn Field node → phân tích impact qua IImpactPreviewService.
 /// </summary>
 public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IFormDetailDataService _formDetailService;
+    private readonly IRuleDataService _ruleService;
+    private readonly IEventDataService _eventService;
+    private readonly IImpactPreviewService _impactService;
 
     // ── Graph data ───────────────────────────────────────────
     public ObservableCollection<DependencyNode> Nodes { get; } = [];
@@ -37,11 +45,49 @@ public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
             {
                 if (value is not null) value.IsSelected = true;
                 RaisePropertyChanged(nameof(HasSelectedNode));
+                // Tính toán impact khi chọn node
+                _ = LoadNodeImpactAsync(value);
             }
         }
     }
 
     public bool HasSelectedNode => SelectedNode is not null;
+
+    // ── Impact analysis ──────────────────────────────────────
+    private ObservableCollection<ImpactItem> _selectedNodeImpact = [];
+    public ObservableCollection<ImpactItem> SelectedNodeImpact
+    {
+        get => _selectedNodeImpact;
+        private set => SetProperty(ref _selectedNodeImpact, value);
+    }
+
+    private bool _isLoadingImpact;
+    public bool IsLoadingImpact
+    {
+        get => _isLoadingImpact;
+        set => SetProperty(ref _isLoadingImpact, value);
+    }
+
+    // ── Loading state ────────────────────────────────────────
+    private bool _isLoading;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set => SetProperty(ref _isLoading, value);
+    }
+
+    private string _loadError = "";
+    public string LoadError
+    {
+        get => _loadError;
+        set
+        {
+            SetProperty(ref _loadError, value);
+            RaisePropertyChanged(nameof(HasLoadError));
+        }
+    }
+
+    public bool HasLoadError => !string.IsNullOrEmpty(_loadError);
 
     // ── Filter ───────────────────────────────────────────────
     private bool _showRules = true;
@@ -84,6 +130,7 @@ public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
 
     // ── Form context ─────────────────────────────────────────
     private int _formId;
+    private int _tenantId = 1; // NOTE: Admin tool dùng tenant mặc định 1
     private string _formCode = "";
     public string FormCode { get => _formCode; set => SetProperty(ref _formCode, value); }
 
@@ -98,9 +145,18 @@ public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
     private readonly List<DependencyNode> _allNodes = [];
     private readonly List<DependencyEdge> _allEdges = [];
 
-    public DependencyViewerViewModel(IRegionManager regionManager)
+    public DependencyViewerViewModel(
+        IRegionManager regionManager,
+        IFormDetailDataService formDetailService,
+        IRuleDataService ruleService,
+        IEventDataService eventService,
+        IImpactPreviewService impactService)
     {
         _regionManager = regionManager;
+        _formDetailService = formDetailService;
+        _ruleService = ruleService;
+        _eventService = eventService;
+        _impactService = impactService;
 
         AutoLayoutCommand = new DelegateCommand(ExecuteAutoLayout);
         RegenerateCommand = new DelegateCommand(ExecuteRegenerate);
@@ -115,61 +171,234 @@ public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
         _formId = navigationContext.Parameters.GetValue<int>("formId");
-        FormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "PURCHASE_ORDER";
+        FormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "";
 
-        LoadMockGraph();
+        _ = LoadRealGraphAsync();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
     public void OnNavigatedFrom(NavigationContext navigationContext) { }
 
-    // ── Mock data ────────────────────────────────────────────
+    // ── Load dữ liệu thật từ DB ──────────────────────────────
 
     /// <summary>
-    /// Load mock dependency graph cho demo. Sau này sẽ load từ Sys_Dependency qua API.
+    /// Tải đồ thị phụ thuộc từ DB: Field, Rule, Event nodes + edges từ Val_Rule_Field và Evt_Definition.
     /// </summary>
-    private void LoadMockGraph()
+    private async Task LoadRealGraphAsync(CancellationToken ct = default)
     {
+        IsLoading = true;
+        LoadError = "";
         _allNodes.Clear();
         _allEdges.Clear();
 
-        // ── Field nodes ──────────────────────────────────────
-        _allNodes.Add(new DependencyNode { Id = "Field_1", NodeType = "Field", Label = "MaDonHang", SubLabel = "String" });
-        _allNodes.Add(new DependencyNode { Id = "Field_2", NodeType = "Field", Label = "NgayDatHang", SubLabel = "DateTime" });
-        _allNodes.Add(new DependencyNode { Id = "Field_3", NodeType = "Field", Label = "TrangThai", SubLabel = "String" });
-        _allNodes.Add(new DependencyNode { Id = "Field_5", NodeType = "Field", Label = "SoLuong", SubLabel = "Int32" });
-        _allNodes.Add(new DependencyNode { Id = "Field_6", NodeType = "Field", Label = "DonGia", SubLabel = "Decimal" });
-        _allNodes.Add(new DependencyNode { Id = "Field_7", NodeType = "Field", Label = "ThanhTien", SubLabel = "Decimal" });
-        _allNodes.Add(new DependencyNode { Id = "Field_8", NodeType = "Field", Label = "LyDoTuChoi", SubLabel = "String" });
+        try
+        {
+            // ── Load fields của form ──────────────────────────────
+            var fields = await _formDetailService.GetFieldsByFormAsync(_formId, _tenantId, ct);
 
-        // ── Rule nodes ───────────────────────────────────────
-        _allNodes.Add(new DependencyNode { Id = "Rule_1", NodeType = "Rule", Label = "Required", SubLabel = "err.fld.req" });
-        _allNodes.Add(new DependencyNode { Id = "Rule_2", NodeType = "Rule", Label = "Numeric", SubLabel = "err.sl.range" });
-        _allNodes.Add(new DependencyNode { Id = "Rule_3", NodeType = "Rule", Label = "Numeric", SubLabel = "err.dg.range" });
+            foreach (var f in fields)
+            {
+                _allNodes.Add(new DependencyNode
+                {
+                    Id = $"Field_{f.FieldId}",
+                    NodeType = "Field",
+                    Label = f.ColumnCode,
+                    SubLabel = f.EditorType
+                });
+            }
 
-        // ── Event nodes ──────────────────────────────────────
-        _allNodes.Add(new DependencyNode { Id = "Event_1", NodeType = "Event", Label = "OnChange", SubLabel = "TrangThai" });
-        _allNodes.Add(new DependencyNode { Id = "Event_2", NodeType = "Event", Label = "OnChange", SubLabel = "SoLuong/DonGia" });
+            // ── Load rules summary để tạo Rule nodes ─────────────
+            var ruleSummaries = await _formDetailService.GetRulesSummaryByFormAsync(_formId, _tenantId, ct);
+            // Dùng dictionary để tránh duplicate Rule nodes
+            var ruleNodeIds = new HashSet<int>();
 
-        // ── Edges ────────────────────────────────────────────
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_5", TargetId = "Rule_1", Label = "validates" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_5", TargetId = "Rule_2", Label = "validates" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_6", TargetId = "Rule_3", Label = "validates" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_3", TargetId = "Event_1", Label = "triggers" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Event_1", TargetId = "Field_8", Label = "shows/hides" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_5", TargetId = "Event_2", Label = "triggers" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Field_6", TargetId = "Event_2", Label = "triggers" });
-        _allEdges.Add(new DependencyEdge { SourceId = "Event_2", TargetId = "Field_7", Label = "calculates" });
+            foreach (var r in ruleSummaries)
+            {
+                if (ruleNodeIds.Contains(r.RuleId)) continue;
+                ruleNodeIds.Add(r.RuleId);
+                _allNodes.Add(new DependencyNode
+                {
+                    Id = $"Rule_{r.RuleId}",
+                    NodeType = "Rule",
+                    Label = r.RuleTypeCode,
+                    SubLabel = r.ErrorKey
+                });
+            }
 
-        // ── Populate filter ──────────────────────────────────
-        AvailableFields.Clear();
-        AvailableFields.Add("All");
-        foreach (var n in _allNodes.Where(n => n.NodeType == "Field"))
-            AvailableFields.Add(n.Label);
+            // ── Load events summary để tạo Event nodes ────────────
+            var eventSummaries = await _formDetailService.GetEventsSummaryByFormAsync(_formId, _tenantId, ct);
 
-        ApplyFilter();
-        ExecuteAutoLayout();
-        DetectCircularDependencies();
+            foreach (var e in eventSummaries)
+            {
+                _allNodes.Add(new DependencyNode
+                {
+                    Id = $"Event_{e.EventId}",
+                    NodeType = "Event",
+                    Label = e.TriggerCode,
+                    SubLabel = e.FieldTarget
+                });
+            }
+
+            // ── Build edges: Field → Rule (Val_Rule_Field) ────────
+            foreach (var field in fields)
+            {
+                var fieldRules = await _ruleService.GetRulesByFieldAsync(field.FieldId, ct);
+                foreach (var rule in fieldRules)
+                {
+                    // Thêm Rule node nếu chưa có (rule không nằm trong summary — edge case)
+                    if (!ruleNodeIds.Contains(rule.RuleId))
+                    {
+                        ruleNodeIds.Add(rule.RuleId);
+                        _allNodes.Add(new DependencyNode
+                        {
+                            Id = $"Rule_{rule.RuleId}",
+                            NodeType = "Rule",
+                            Label = rule.RuleTypeCode,
+                            SubLabel = rule.ErrorKey
+                        });
+                    }
+
+                    _allEdges.Add(new DependencyEdge
+                    {
+                        SourceId = $"Field_{field.FieldId}",
+                        TargetId = $"Rule_{rule.RuleId}",
+                        Label = "validates"
+                    });
+                }
+
+                // ── Build edges: Field → Event (Evt_Definition.Field_Id) ─
+                var fieldEvents = await _eventService.GetEventsByFieldAsync(field.FieldId, ct);
+                foreach (var evt in fieldEvents)
+                {
+                    _allEdges.Add(new DependencyEdge
+                    {
+                        SourceId = $"Field_{field.FieldId}",
+                        TargetId = $"Event_{evt.EventId}",
+                        Label = "triggers"
+                    });
+                }
+            }
+
+            // ── Build edges: Event → Field target (FieldTarget) ───
+            // Tìm Field node theo ColumnCode từ EventSummaryRecord.FieldTarget
+            var fieldNodeByCode = _allNodes
+                .Where(n => n.NodeType == "Field")
+                .ToDictionary(n => n.Label, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var e in eventSummaries)
+            {
+                if (string.IsNullOrWhiteSpace(e.FieldTarget)) continue;
+                if (!fieldNodeByCode.TryGetValue(e.FieldTarget, out var targetFieldNode)) continue;
+
+                _allEdges.Add(new DependencyEdge
+                {
+                    SourceId = $"Event_{e.EventId}",
+                    TargetId = targetFieldNode.Id,
+                    Label = "sets/hides"
+                });
+            }
+
+            // ── Populate filter ───────────────────────────────────
+            AvailableFields.Clear();
+            AvailableFields.Add("All");
+            foreach (var n in _allNodes.Where(n => n.NodeType == "Field"))
+                AvailableFields.Add(n.Label);
+
+            ApplyFilter();
+            ExecuteAutoLayout();
+            DetectCircularDependencies();
+        }
+        catch (Exception ex)
+        {
+            LoadError = $"Không thể tải đồ thị: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    // ── Impact analysis khi chọn node ────────────────────────
+
+    /// <summary>
+    /// Khi chọn Field node → gọi IImpactPreviewService để phân tích ảnh hưởng.
+    /// Khi chọn Rule/Event node → hiển thị các Field kết nối từ graph edges.
+    /// </summary>
+    private async Task LoadNodeImpactAsync(DependencyNode? node, CancellationToken ct = default)
+    {
+        SelectedNodeImpact.Clear();
+
+        if (node is null) return;
+
+        IsLoadingImpact = true;
+
+        try
+        {
+            if (node.NodeType == "Field")
+            {
+                // Gọi ImpactPreviewService để phân tích expression-based impact
+                var analysis = await _impactService.AnalyzeFieldImpactAsync(
+                    node.Label, _formId, _tenantId, ct);
+
+                // Gộp kết quả từ ImpactPreviewService
+                foreach (var item in analysis.AffectedRules)
+                    SelectedNodeImpact.Add(item);
+                foreach (var item in analysis.AffectedEvents)
+                    SelectedNodeImpact.Add(item);
+                foreach (var item in analysis.AffectedFields)
+                    SelectedNodeImpact.Add(item);
+
+                // Nếu không có kết quả từ service, fallback dùng graph edges
+                if (SelectedNodeImpact.Count == 0)
+                    PopulateImpactFromEdges(node);
+
+                HasCircularDependencies = HasCircularDependencies || analysis.HasCircularDependency;
+            }
+            else
+            {
+                // Rule/Event node → lấy connected Fields từ graph edges
+                PopulateImpactFromEdges(node);
+            }
+        }
+        catch
+        {
+            // Fallback: dùng edges nếu service lỗi
+            PopulateImpactFromEdges(node);
+        }
+        finally
+        {
+            IsLoadingImpact = false;
+        }
+    }
+
+    /// <summary>
+    /// Lấy danh sách impact items từ các edges kết nối với node được chọn.
+    /// </summary>
+    private void PopulateImpactFromEdges(DependencyNode node)
+    {
+        var nodeMap = _allNodes.ToDictionary(n => n.Id);
+
+        // Outgoing edges (node → target)
+        foreach (var edge in _allEdges.Where(e => e.SourceId == node.Id))
+        {
+            if (!nodeMap.TryGetValue(edge.TargetId, out var target)) continue;
+            SelectedNodeImpact.Add(new ImpactItem(
+                target.Id,
+                target.Label,
+                target.NodeType.ToLower(),
+                edge.Label));
+        }
+
+        // Incoming edges (source → node)
+        foreach (var edge in _allEdges.Where(e => e.TargetId == node.Id))
+        {
+            if (!nodeMap.TryGetValue(edge.SourceId, out var source)) continue;
+            SelectedNodeImpact.Add(new ImpactItem(
+                source.Id,
+                source.Label,
+                source.NodeType.ToLower(),
+                $"← {edge.Label}"));
+        }
     }
 
     // ── Filter ───────────────────────────────────────────────
@@ -254,22 +483,72 @@ public sealed class DependencyViewerViewModel : ViewModelBase, INavigationAware
     // ── Circular dependency detection ────────────────────────
 
     /// <summary>
-    /// Phát hiện circular dependency đơn giản qua DFS.
-    /// TODO(phase2): Thuật toán chính xác hơn cho multi-path cycles.
+    /// Phát hiện circular dependency qua DFS trên toàn bộ _allEdges.
     /// </summary>
     private void DetectCircularDependencies()
     {
-        // NOTE: Mock — trong demo không có circular dep
-        HasCircularDependencies = false;
-        CircularDependencyCount = 0;
+        var adjacency = new Dictionary<string, List<string>>();
+        foreach (var edge in _allEdges)
+        {
+            if (!adjacency.ContainsKey(edge.SourceId))
+                adjacency[edge.SourceId] = [];
+            adjacency[edge.SourceId].Add(edge.TargetId);
+        }
+
+        var visited = new HashSet<string>();
+        var inStack = new HashSet<string>();
+        var circularNodes = new HashSet<string>();
+
+        foreach (var node in _allNodes)
+            DfsDetect(node.Id, adjacency, visited, inStack, circularNodes);
+
+        // Đánh dấu các nodes nằm trong cycle
+        foreach (var n in _allNodes)
+            n.HasWarning = circularNodes.Contains(n.Id);
+
+        foreach (var e in _allEdges)
+            e.IsCircular = circularNodes.Contains(e.SourceId) && circularNodes.Contains(e.TargetId);
+
+        CircularDependencyCount = circularNodes.Count;
+        HasCircularDependencies = circularNodes.Count > 0;
+    }
+
+    private static bool DfsDetect(
+        string nodeId,
+        Dictionary<string, List<string>> adj,
+        HashSet<string> visited,
+        HashSet<string> inStack,
+        HashSet<string> circularNodes)
+    {
+        if (inStack.Contains(nodeId))
+        {
+            circularNodes.Add(nodeId);
+            return true;
+        }
+
+        if (visited.Contains(nodeId)) return false;
+
+        visited.Add(nodeId);
+        inStack.Add(nodeId);
+
+        if (adj.TryGetValue(nodeId, out var neighbors))
+        {
+            foreach (var neighbor in neighbors)
+            {
+                if (DfsDetect(neighbor, adj, visited, inStack, circularNodes))
+                    circularNodes.Add(nodeId);
+            }
+        }
+
+        inStack.Remove(nodeId);
+        return false;
     }
 
     // ── Command handlers ─────────────────────────────────────
 
     private void ExecuteRegenerate()
     {
-        // TODO(phase2): Parse tất cả Expression_Json → extract references → rebuild Sys_Dependency
-        LoadMockGraph();
+        _ = LoadRealGraphAsync();
     }
 
     private void ExecuteOpenNodeEditor()

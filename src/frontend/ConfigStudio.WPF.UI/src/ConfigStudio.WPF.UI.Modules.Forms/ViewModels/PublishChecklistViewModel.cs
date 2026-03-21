@@ -5,6 +5,7 @@
 
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -14,14 +15,16 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 
 /// <summary>
 /// ViewModel cho Publish Checklist (Screen 11).
-/// Chạy danh sách checks trước khi publish form: label keys, expression, whitelist, depth, i18n...
+/// Chạy 11 checks thật qua IPublishCheckService trước khi publish form.
 /// </summary>
 public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
+    private readonly IPublishCheckService _checkService;
 
     // ── Form context ─────────────────────────────────────────
     private int _formId;
+    private int _tenantId = 1;
 
     private string _formCode = "";
     public string FormCode { get => _formCode; set => SetProperty(ref _formCode, value); }
@@ -63,9 +66,12 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
     public DelegateCommand<ChecklistItem> JumpToCommand { get; }
     public DelegateCommand BackCommand { get; }
 
-    public PublishChecklistViewModel(IRegionManager regionManager)
+    public PublishChecklistViewModel(
+        IRegionManager regionManager,
+        IPublishCheckService checkService)
     {
         _regionManager = regionManager;
+        _checkService  = checkService;
 
         RunAllChecksCommand = new DelegateCommand(async () => await ExecuteRunAllChecksAsync(), () => !IsRunning)
             .ObservesProperty(() => IsRunning);
@@ -80,7 +86,11 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
         _formId = navigationContext.Parameters.GetValue<int>("formId");
-        FormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "PURCHASE_ORDER";
+        FormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "";
+
+        // NOTE: TenantId có thể được pass qua nav params — mặc định 1
+        var tenantId = navigationContext.Parameters.GetValue<int>("tenantId");
+        if (tenantId > 0) _tenantId = tenantId;
 
         InitChecklist();
     }
@@ -90,6 +100,9 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
 
     // ── Init checklist items ─────────────────────────────────
 
+    /// <summary>
+    /// Khởi tạo 11 checklist items với trạng thái ban đầu.
+    /// </summary>
     private void InitChecklist()
     {
         ChecklistItems.Clear();
@@ -119,7 +132,7 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
         });
         ChecklistItems.Add(new ChecklistItem
         {
-            Description = "Return type của calculate = compatible với target field"
+            Description = "Return type của calculate compatible với target field"
         });
         ChecklistItems.Add(new ChecklistItem
         {
@@ -146,41 +159,70 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
         });
 
         AllPassed = false;
-        Summary = "Chưa chạy kiểm tra.";
+        IssueCount = 0;
+        Summary = "Nhấn 'Chạy kiểm tra' để bắt đầu.";
     }
 
-    // ── Run all checks (mock) ────────────────────────────────
+    // ── Run all checks ───────────────────────────────────────
 
     /// <summary>
-    /// Chạy tất cả checks — mock kết quả cho demo.
-    /// Sau này sẽ gọi API validate từng item.
+    /// Gọi từng check thật qua IPublishCheckService, cập nhật status từng item.
     /// </summary>
     private async Task ExecuteRunAllChecksAsync()
     {
         IsRunning = true;
+        AllPassed = false;
 
         try
         {
-            // ── Set tất cả = Running ─────────────────────────────
+            // ── Reset tất cả về Running ──────────────────────
             foreach (var item in ChecklistItems)
             {
                 item.Status = CheckStatus.Running;
                 item.Detail = null;
             }
 
-            // ── Simulate check từng item (mock delay) ────────────
-            foreach (var item in ChecklistItems)
+            // ── Thứ tự check tương ứng với InitChecklist() ──
+            Func<int, int, CancellationToken, Task<Core.Interfaces.CheckResult>>[] checks =
+            [
+                _checkService.CheckLabelKeysAsync,
+                _checkService.CheckExpressionsParseAsync,
+                _checkService.CheckFunctionWhitelistAsync,
+                _checkService.CheckOperatorWhitelistAsync,
+                _checkService.CheckRuleReturnTypeAsync,
+                _checkService.CheckCalculateReturnTypeAsync,
+                _checkService.CheckCircularDependencyAsync,
+                _checkService.CheckAstDepthAsync,
+                _checkService.CheckI18nCompletenessAsync,
+                _checkService.CheckCallApiUrlsAsync,
+                _checkService.CheckDependencyGraphAsync
+            ];
+
+            for (int i = 0; i < checks.Length && i < ChecklistItems.Count; i++)
             {
-                await Task.Delay(200);
-                RunMockCheck(item);
+                var item = ChecklistItems[i];
+                try
+                {
+                    var result = await checks[i](_formId, _tenantId, default);
+                    ApplyResult(item, result);
+                }
+                catch (Exception ex)
+                {
+                    item.Status = CheckStatus.Failed;
+                    item.Detail = $"Lỗi: {ex.Message}";
+                }
             }
 
-            // ── Tổng kết ────────────────────────────────────────
-            IssueCount = ChecklistItems.Count(i => i.Status is CheckStatus.Failed or CheckStatus.Warning);
+            // ── Tổng kết ────────────────────────────────────
+            IssueCount = ChecklistItems.Count(i => i.Status == CheckStatus.Failed);
+            var warningCount = ChecklistItems.Count(i => i.Status == CheckStatus.Warning);
             AllPassed = IssueCount == 0;
+
             Summary = AllPassed
-                ? "Tất cả kiểm tra đạt. Sẵn sàng Publish."
-                : $"{IssueCount} issue cần sửa trước khi Publish.";
+                ? warningCount > 0
+                    ? $"Không có lỗi. {warningCount} cảnh báo — có thể Publish."
+                    : "Tất cả kiểm tra đạt. Sẵn sàng Publish."
+                : $"{IssueCount} lỗi cần sửa trước khi Publish.{(warningCount > 0 ? $" ({warningCount} cảnh báo)" : "")}";
         }
         catch (Exception ex)
         {
@@ -193,20 +235,23 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
         }
     }
 
-    /// <summary>
-    /// Mock check result — 1 item fail (thiếu bản dịch EN) để demo.
-    /// </summary>
-    private static void RunMockCheck(ChecklistItem item)
+    /// <summary>Map CheckResult sang ChecklistItem.Status.</summary>
+    private static void ApplyResult(ChecklistItem item, Core.Interfaces.CheckResult result)
     {
-        // NOTE: Mock — hầu hết pass, 1 item fail để demo
-        if (item.Description.Contains("Error_Key"))
+        if (result.Passed && !result.IsWarning)
         {
-            item.Status = CheckStatus.Failed;
-            item.Detail = "Field SoLuong: Error_Key 'err.soluong.range' thiếu bản dịch EN";
+            item.Status = CheckStatus.Passed;
+            item.Detail = null;
+        }
+        else if (result.IsWarning)
+        {
+            item.Status = CheckStatus.Warning;
+            item.Detail = result.Detail;
         }
         else
         {
-            item.Status = CheckStatus.Passed;
+            item.Status = CheckStatus.Failed;
+            item.Detail = result.Detail;
         }
     }
 
@@ -214,8 +259,9 @@ public sealed class PublishChecklistViewModel : ViewModelBase, INavigationAware
 
     private void ExecutePublish()
     {
-        // TODO(phase2): Gọi publish service → invalidate cache → navigate về FormManager
-        var p = new NavigationParameters();
+        // NOTE: Publish = xác nhận form sẵn sàng → navigate về FormManager
+        // Nếu sau này có trạng thái Published riêng → gọi service ở đây
+        var p = new NavigationParameters { { "formId", _formId } };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormManager, p);
     }
 

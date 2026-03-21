@@ -8,6 +8,7 @@ using System.IO;
 using DevExpress.Xpf.Core;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Infrastructure;
 using ConfigStudio.WPF.UI.Modules.Events;
 using ConfigStudio.WPF.UI.Modules.Forms;
@@ -59,6 +60,8 @@ public partial class App : PrismApplication
         containerRegistry.Register<IEventDataService, EventDataService>();
         containerRegistry.Register<IGrammarDataService, GrammarDataService>();
         containerRegistry.Register<II18nDataService, I18nDataService>();
+        containerRegistry.Register<IPublishCheckService, PublishCheckService>();
+        containerRegistry.Register<IImpactPreviewService, ImpactPreviewService>();
 
         containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>(ViewNames.Dashboard);
         containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>(ViewNames.Settings);

@@ -1,47 +1,71 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-20
+> Cập nhật: 2026-03-21
 
-## Đã làm (session 20/03 — Phase 4 + 5 + P0 UX + DB Schema)
+## Đã làm (session 21/03 — ConfigStudio WPF: Real DB + User Manual)
 
-### Phase 4 — Event Engine ✅ (commit `1932de9`)
-- EventDefinition + EventAction domain entities (Evt_Definition, Evt_Action)
-- IEventRepository interface + EventRepository (Dapper, multi-mapping)
-- EventEngine: handle event → evaluate AST condition → execute actions → UiDelta
-- 6 action handlers: SET_VALUE, SET_VISIBLE, SET_REQUIRED, SET_READONLY, RELOAD_OPTIONS, TRIGGER_VALIDATION
-- Context propagation: SET_VALUE updates context cho subsequent actions
-- DI: IEventEngine (scoped), IEventRepository (scoped)
+### DependencyViewer — Real Dapper Data ✅
+- Thay `LoadMockGraph()` bằng `LoadRealGraphAsync()` dùng `IFormDetailDataService` + `IRuleDataService` + `IEventDataService`
+- Build node graph từ Fields/Rules/Events thực từ DB
+- Edge Field→Rule: `GetRulesByFieldAsync(fieldId)` per field
+- Edge Field→Event: `GetEventsByFieldAsync(fieldId)` per field
+- Edge Event→Field: `EventSummaryRecord.FieldTarget` → lookup node dict
+- `LoadNodeImpactAsync()`: gọi `IImpactPreviewService.AnalyzeFieldImpactAsync()` + fallback từ graph edges
+- Real DFS circular dependency detection
 
-### Phase 5 — API Infrastructure ✅ (commit `f9fc233`)
-- TenantMiddleware: extract X-Tenant-Id → ITenantContext (scoped)
-- CorrelationMiddleware: extract/generate X-Correlation-Id → Serilog LogContext
-- JWT Bearer Auth: SymmetricSecurityKey từ appsettings.json
-- OpenTelemetry TracerProvider: ASP.NET Core + HttpClient instrumentation
-- ValidationBehavior: MediatR pipeline auto-validate (FluentValidation)
-- EventRepository: Dapper multi-mapping (events + actions batch load)
-- RuntimeController: POST validate-field, validate, handle-event
-- Program.cs rewritten: full middleware pipeline
-- DB seed script: db/001_seed_lookup_data.sql
+### DependencyViewerView.xaml ✅
+- Thêm `UserControl.Resources`: `BoolToVis`, `InvBoolToVis` (fix lỗi StaticResource not found)
+- Loading overlay: `ProgressBar IsIndeterminate` thay `dx:LoadingIndicator`
+- Impact panel: WrapPanel chips màu theo type (field=Indigo, rule=Teal, event=Amber)
+- Fix tất cả `{StaticResource BooleanToVisibilityConverter}` → `{StaticResource BoolToVis}`
 
-### P0 UX Features ✅ (commit `fb5d9e6`)
-- AutoSaveService: debounce 3s, status lifecycle (Idle→Pending→Saving→Saved/Error)
-- UndoRedoService<T>: stack-based max 50, JSON snapshot
-- LintingService: debounce 500ms, 8 lint rules (LINT001-LINT008)
-- ImpactPreviewService: scan rules/events expression JSON cho field references
-- FormEditorViewModel integrated: all 4 P0 services wired in
+### InverseBoolToVisConverter (Grammar module) ✅ (ADR-005)
+- Tạo `Converters/InverseBoolToVisConverter.cs` trong Grammar module
+- Core là `net9.0` không có WPF types → converter phải ở module WPF
 
-### DB Schema Script ✅ (commit `a72253d`)
-- db/000_create_schema.sql: 30 tables, 5 modules, idempotent IF NOT EXISTS
-- Ordered by FK dependencies (lookup → parent → child)
+### ExpressionBuilderDialogViewModel ✅
+- Inject `IGrammarDataService`
+- `LoadPaletteFromDbAsync()`: gọi `GetOperatorsAsync()` + `GetFunctionsAsync()` từ DB
+- Fallback hardcode nếu DB empty
+- `_availableOperatorSymbols` populate từ DB
+- `IsLoadingPalette` property
+
+### PublishChecklistViewModel ✅
+- Inject `IPublishCheckService`
+- 11 real checks qua Dapper (thay `Task.Delay` mock)
+- `ApplyResult()`: map `CheckResult` → `ChecklistItem.Status` (Passed/Warning/Failed)
+- Summary count bao gồm warning riêng biệt
+- `tenantId` từ navigation parameters (default = 1)
+
+### IPublishCheckService + PublishCheckService ✅
+- 11 checks: Label_Key, JSON parse, function/operator whitelist, return type, circular dep (DFS), AST depth, i18n, CallAPI URL, Sys_Dependency
+- `PublishCheckService` injects `IAppConfigService`, dùng `SqlConnection` Dapper trực tiếp
+
+### FormEditorViewModel — Bỏ MockData → Real DB ✅
+- Bỏ `LoadMockData()` hoàn toàn
+- Edit mode: `_ = LoadFromDatabaseAsync()` dùng `FormId` (không dùng FormCode)
+- `LoadFromDatabaseAsync()`: load header → table lookup → sections → fields → events → permissions
+- Inject `IFormDetailDataService` thêm vào constructor
+- `_loadCts` CancellationTokenSource để cancel khi navigate away
+- `ErrorMessage` + `HasError` property hiển thị lỗi DB
+- **Dual Key principle**: `FormId` cho DB query/navigate nội bộ; `FormCode` chỉ cho display/log/cache
+
+### App.xaml.cs ✅
+- Register `IPublishCheckService`, `IImpactPreviewService`
+
+### User Manual ✅
+- `docs/generate_manual.py`: Python script tạo Word document
+- `docs/ICare247_ConfigStudio_UserManual.docx`: 14 chương, A4, Calibri
 
 ## Trạng thái
 - Build backend: 0 errors, 0 warnings
-- Phase 1 ✅ | Phase 2 ✅ | Phase 3 ✅ | Phase 4 ✅ | Phase 5 ✅
-- P0 UX ✅ | DB Schema ✅
-- ConfigStudio Direct DB (Wave 1-4) ✅
+- Phase 1-5 ✅ | P0 UX ✅ | DB Schema ✅
+- ConfigStudio Direct DB ✅: DependencyViewer, ExpressionBuilder, PublishChecklist, FormEditor — tất cả dùng real Dapper
 
 ## Task tiếp theo
+- `ExecuteSave()` trong FormEditorViewModel: gọi thực Dapper save sections + fields + events
+- `LoadDefaultPermissions()` → load từ `Sys_Role` thực
+- FormDetailView: đọc real data từ DB (hiện vẫn có mock ở một số chỗ)
 - MetadataEngine implementation (IMetadataEngine)
 - Integration tests
-- Wire Impact Preview vào DependencyViewer UI
 - Blazor runtime frontend

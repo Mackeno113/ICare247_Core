@@ -24,3 +24,9 @@
 
 ## ADR-006: DependencyViewer trong Grammar module (2026-03-03)
 - Gần với AST services, tránh tạo thêm module mới cho 1 screen
+
+## ADR-007: ConfigStudio.WPF.UI — Direct DB, KHÔNG qua backend API (2026-03-20)
+- **Decision:** WPF admin tool kết nối trực tiếp SQL Server qua Dapper + connection string
+- **KHÔNG** gọi HTTP API (backend API chỉ dành cho Blazor runtime)
+- **Áp dụng:** Tất cả service trong ConfigStudio phải implement Dapper trực tiếp (IDbConnectionFactory hoặc SqlConnection)
+- **Why:** Admin tool nội bộ, cần tốc độ + offline capability, không cần HTTP overhead

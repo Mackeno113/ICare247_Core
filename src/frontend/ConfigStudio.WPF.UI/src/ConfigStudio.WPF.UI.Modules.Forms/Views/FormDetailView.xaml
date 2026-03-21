@@ -57,14 +57,30 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- Error banner -->
             <RowDefinition Height="Auto" />  <!-- Header card + toolbar -->
             <RowDefinition Height="*"    />  <!-- TabControl -->
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 0: Header card
+             ROW 0: Error banner — hiện khi HasError=true
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+        <Border Grid.Row="0" Margin="16,12,16,0" Padding="14,10"
+                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="6"
+                Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⚠" FontSize="15" Foreground="#DC2626"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding ErrorMessage}" FontSize="13"
+                           Foreground="#DC2626" VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             ROW 1: Header card
+             ═══════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
                 BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <Grid>
@@ -194,9 +210,9 @@
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: TabControl — Sections | Fields | Events | Rules | Audit Log
+             ROW 2: TabControl — Sections | Fields | Events | Rules | Audit Log
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="1" Margin="16,8,16,16"
+        <Border Grid.Row="2" Margin="16,8,16,16"
                 BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
             <TabControl BorderThickness="0" Background="Transparent">
 

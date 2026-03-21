@@ -28,10 +28,12 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// </summary>
 public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 {
-    private readonly IRegionManager  _regionManager;
+    private readonly IRegionManager _regionManager;
     private readonly IFormDataService? _formDataService;
+    private readonly IFormDetailDataService? _detailService;
     private readonly IAppConfigService? _appConfig;
     private CancellationTokenSource? _formCodeValidationCts;
+    private CancellationTokenSource _loadCts = new();
     private static readonly Regex FormCodeRegex = new(@"^[A-Z0-9_]+$", RegexOptions.Compiled);
     private string _originalFormCode = "";
 
@@ -378,6 +380,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     public bool IsNotLoading => !_isLoading;
 
+    private string _errorMessage = "";
+    /// <summary>Thông báo lỗi khi load DB thất bại (edit mode). Rỗng = không có lỗi.</summary>
+    public string ErrorMessage
+    {
+        get => _errorMessage;
+        private set
+        {
+            if (SetProperty(ref _errorMessage, value))
+                RaisePropertyChanged(nameof(HasError));
+        }
+    }
+
+    public bool HasError => !string.IsNullOrEmpty(_errorMessage);
+
+
     private string _searchText = "";
     /// <summary>Text tìm kiếm để filter tree.</summary>
     public string SearchText
@@ -427,10 +444,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public FormEditorViewModel(
         IRegionManager regionManager,
         IFormDataService? formDataService = null,
+        IFormDetailDataService? detailService = null,
         IAppConfigService? appConfig = null)
     {
         _regionManager   = regionManager;
         _formDataService = formDataService;
+        _detailService   = detailService;
         _appConfig       = appConfig;
 
         // Tree manipulation
@@ -510,13 +529,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         {
             IsNewForm = false;
             _originalFormCode = navigationContext.Parameters.GetValue<string>("formCode") ?? "";
-            LoadMockData();
 
             // NOTE: activeTab param cho phép mở đúng tab khi navigate từ EditFormCommand (tab 0 = Thông tin Form)
-            if (navigationContext.Parameters.ContainsKey("activeTab"))
-                ActiveTabIndex = navigationContext.Parameters.GetValue<int>("activeTab");
-            else
-                ActiveTabIndex = 1; // Mặc định tab "Thuộc tính"
+            ActiveTabIndex = navigationContext.Parameters.ContainsKey("activeTab")
+                ? navigationContext.Parameters.GetValue<int>("activeTab")
+                : 1; // Mặc định tab "Thuộc tính"
+
+            _ = LoadFromDatabaseAsync();
         }
     }
 
@@ -532,146 +551,149 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _formCodeValidationCts?.Dispose();
         _formCodeValidationCts = null;
 
+        // Hủy load DB nếu đang chạy
+        _loadCts.Cancel();
+        _loadCts = new CancellationTokenSource();
+
         DisposeP0Services();
     }
 
-    // ── Load mock data ───────────────────────────────────────
+    // ── Load data from DB (edit mode) ────────────────────────
 
     /// <summary>
-    /// Load mock data cho demo. Sau này sẽ thay bằng API call tới backend.
-    /// Mock form: "Đơn Đặt Hàng" với 3 sections, 8 fields + events + permissions.
+    /// Load toàn bộ dữ liệu form từ DB theo FormId.
+    /// Dùng IFormDetailDataService cho header/sections/fields/events,
+    /// IFormDataService cho table lookup.
     /// </summary>
-    private void LoadMockData()
+    private async Task LoadFromDatabaseAsync()
     {
-        IsLoading = true;
+        IsLoading    = true;
+        ErrorMessage = "";
+        try
+        {
+            if (_detailService is null || _appConfig is not { IsConfigured: true })
+            {
+                ErrorMessage = "Chưa cấu hình kết nối DB. Vào Settings để nhập Connection String.";
+                return;
+            }
 
-        // ── Form info ────────────────────────────────────────
-        FormCode = "PO_ORDER";
-        FormName = "Đơn Đặt Hàng";
-        Version = 3;
-        Platform = "web";
-        LayoutEngine = "Grid";
-        Description = "Form nhập đơn đặt hàng cho web platform.";
-        IsFormActive = true;
-        Checksum = "a1b2c3d4e5f6";
-        _originalFormCode = "PO_ORDER";
+            await EnsureAppConfigLoadedAsync();
+            var ct        = _loadCts.Token;
+            var tenantId  = _appConfig.TenantId;
 
-        // ── Table lookup — luôn lấy từ DB ────────────────────
-        _ = LoadTableLookupAndSelectAsync("PurchaseOrder");
+            // ── 1. Header ────────────────────────────────────
+            var detail = await _detailService.GetFormDetailAsync(FormId, tenantId, ct);
+            if (detail is null)
+            {
+                ErrorMessage = $"Không tìm thấy form với Id={FormId} trong DB.";
+                return;
+            }
 
-        // ── Section 1: Thông Tin Chung ──────────────────────
-        var section1 = new FormTreeNode
-        {
-            Id = 1, NodeType = FormNodeType.Section,
-            Code = "SEC_GENERAL", DisplayName = "Thông Tin Chung",
-            SortOrder = 1
-        };
-        section1.Children.Add(new FormTreeNode
-        {
-            Id = 1, NodeType = FormNodeType.Field,
-            Code = "MaDonHang", DisplayName = "Mã Đơn Hàng",
-            FieldType = "text", EditorType = "TextBox",
-            IsRequired = true, SortOrder = 1
-        });
-        section1.Children.Add(new FormTreeNode
-        {
-            Id = 2, NodeType = FormNodeType.Field,
-            Code = "NgayDatHang", DisplayName = "Ngày Đặt Hàng",
-            FieldType = "date", EditorType = "DatePicker",
-            IsRequired = true, SortOrder = 2
-        });
-        section1.Children.Add(new FormTreeNode
-        {
-            Id = 3, NodeType = FormNodeType.Field,
-            Code = "TrangThai", DisplayName = "Trạng Thái",
-            FieldType = "text", EditorType = "ComboBox",
-            IsRequired = true, SortOrder = 3
-        });
+            FormCode     = detail.FormCode;
+            FormName     = detail.FormCode; // DB không có FormName riêng — dùng FormCode
+            Platform     = detail.Platform;
+            LayoutEngine = detail.LayoutEngine;
+            Description  = detail.Description ?? "";
+            Version      = detail.Version;
+            Checksum     = detail.Checksum ?? "";
+            IsFormActive = detail.IsActive;
+            _originalFormCode = detail.FormCode;
 
-        // ── Section 2: Chi Tiết ─────────────────────────────
-        var section2 = new FormTreeNode
-        {
-            Id = 2, NodeType = FormNodeType.Section,
-            Code = "SEC_DETAIL", DisplayName = "Chi Tiết",
-            SortOrder = 2
-        };
-        section2.Children.Add(new FormTreeNode
-        {
-            Id = 4, NodeType = FormNodeType.Field,
-            Code = "NhaCungCap", DisplayName = "Nhà Cung Cấp",
-            FieldType = "number", EditorType = "LookupBox",
-            IsRequired = false, SortOrder = 1
-        });
-        section2.Children.Add(new FormTreeNode
-        {
-            Id = 5, NodeType = FormNodeType.Field,
-            Code = "SoLuong", DisplayName = "Số Lượng",
-            FieldType = "number", EditorType = "NumericBox",
-            IsRequired = true, SortOrder = 2
-        });
-        section2.Children.Add(new FormTreeNode
-        {
-            Id = 6, NodeType = FormNodeType.Field,
-            Code = "DonGia", DisplayName = "Đơn Giá",
-            FieldType = "number", EditorType = "NumericBox",
-            IsRequired = true, SortOrder = 3
-        });
-        section2.Children.Add(new FormTreeNode
-        {
-            Id = 7, NodeType = FormNodeType.Field,
-            Code = "ThanhTien", DisplayName = "Thành Tiền",
-            FieldType = "number", EditorType = "NumericBox",
-            IsRequired = false, SortOrder = 4
-        });
+            // ── 2. Table lookup + chọn đúng table ────────────
+            await LoadTableLookupSafeAsync();
+            SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableId == detail.TableId)
+                            ?? TableLookupItems.FirstOrDefault();
 
-        // ── Section 3: Ghi Chú ──────────────────────────────
-        var section3 = new FormTreeNode
+            // ── 3. Sections + Fields → build tree ─────────────
+            var sectionRecords = await _detailService.GetSectionsByFormAsync(FormId, tenantId, ct);
+            var fieldRecords   = await _detailService.GetFieldsByFormAsync(FormId, tenantId, ct);
+
+            // Index fields theo SectionCode để group nhanh
+            var fieldsBySectionCode = fieldRecords
+                .GroupBy(f => f.SectionCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.OrderBy(f => f.OrderNo).ToList(),
+                              StringComparer.OrdinalIgnoreCase);
+
+            Sections.Clear();
+            foreach (var s in sectionRecords.OrderBy(s => s.OrderNo))
+            {
+                var sectionNode = new FormTreeNode
+                {
+                    Id          = s.SectionId,
+                    NodeType    = FormNodeType.Section,
+                    Code        = s.SectionCode,
+                    DisplayName = s.TitleKey ?? s.SectionCode, // TitleKey là i18n key — dùng làm label tạm
+                    SortOrder   = s.OrderNo,
+                    IsExpanded  = true
+                };
+
+                if (fieldsBySectionCode.TryGetValue(s.SectionCode, out var fields))
+                {
+                    foreach (var f in fields)
+                    {
+                        sectionNode.Children.Add(new FormTreeNode
+                        {
+                            Id          = f.FieldId,
+                            NodeType    = FormNodeType.Field,
+                            Code        = f.ColumnCode,
+                            DisplayName = f.ColumnCode,    // DB chưa có Display_Name riêng
+                            FieldType   = "text",          // DB không lưu FieldType ở đây
+                            EditorType  = f.EditorType,
+                            IsRequired  = false,           // load chi tiết khi mở FieldConfig
+                            SortOrder   = f.OrderNo
+                        });
+                    }
+                }
+
+                Sections.Add(sectionNode);
+            }
+
+            // ── 4. Events ─────────────────────────────────────
+            var eventRecords = await _detailService.GetEventsSummaryByFormAsync(FormId, tenantId, ct);
+            Events.Clear();
+            foreach (var e in eventRecords.OrderBy(e => e.OrderNo))
+            {
+                Events.Add(new EventSummaryDto
+                {
+                    EventId          = e.EventId,
+                    OrderNo          = e.OrderNo,
+                    TriggerCode      = e.TriggerCode,
+                    FieldTarget      = e.FieldTarget,
+                    ConditionPreview = e.ConditionPreview ?? "",
+                    ActionsCount     = e.ActionsCount,
+                    IsActive         = e.IsActive
+                });
+            }
+
+            // ── 5. Permissions — TODO(phase2): load từ Sys_Role ──
+            LoadDefaultPermissions();
+
+            RaisePropertyChanged(nameof(TotalSections));
+            RaisePropertyChanged(nameof(TotalFields));
+
+            IsDirty       = false;
+            FormCodeError = "";
+        }
+        catch (OperationCanceledException) { /* Navigate away — bỏ qua */ }
+        catch (Exception ex)
         {
-            Id = 3, NodeType = FormNodeType.Section,
-            Code = "SEC_NOTE", DisplayName = "Ghi Chú",
-            SortOrder = 3
-        };
-        section3.Children.Add(new FormTreeNode
+            ErrorMessage = $"Lỗi khi tải dữ liệu form: {ex.Message}";
+        }
+        finally
         {
-            Id = 8, NodeType = FormNodeType.Field,
-            Code = "LyDoTuChoi", DisplayName = "Lý Do Từ Chối",
-            FieldType = "text", EditorType = "TextArea",
-            IsRequired = false, SortOrder = 1
-        });
-
-        Sections.Clear();
-        Sections.Add(section1);
-        Sections.Add(section2);
-        Sections.Add(section3);
-
-        // ── Events mock ──────────────────────────────────────
-        Events.Clear();
-        Events.Add(new EventSummaryDto { EventId = 1, OrderNo = 1, TriggerCode = "OnLoad",   FieldTarget = "",            ConditionPreview = "",                             ActionsCount = 2, IsActive = true  });
-        Events.Add(new EventSummaryDto { EventId = 2, OrderNo = 2, TriggerCode = "OnChange", FieldTarget = "TrangThai",   ConditionPreview = "TrangThai == 'Approved'",      ActionsCount = 1, IsActive = true  });
-        Events.Add(new EventSummaryDto { EventId = 3, OrderNo = 3, TriggerCode = "OnChange", FieldTarget = "SoLuong",     ConditionPreview = "SoLuong * DonGia",             ActionsCount = 3, IsActive = false });
-        Events.Add(new EventSummaryDto { EventId = 4, OrderNo = 4, TriggerCode = "OnSubmit", FieldTarget = "",            ConditionPreview = "",                             ActionsCount = 1, IsActive = true  });
-
-        // ── Permissions mock ─────────────────────────────────
-        LoadDefaultPermissions();
-
-        RaisePropertyChanged(nameof(TotalSections));
-        RaisePropertyChanged(nameof(TotalFields));
-
-        IsLoading = false;
-        IsDirty = false;
-        FormCodeError = "";
+            IsLoading = false;
+        }
     }
 
     /// <summary>
-    /// Load danh sách table từ DB rồi chọn table theo <paramref name="selectTableCode"/>.
-    /// Dùng cho edit mode — load xong sẽ tự select đúng table đã gắn với form.
+    /// Load danh sách table từ DB rồi chọn theo TableId.
+    /// Dùng khi navigate vào edit mode sau khi đã có detail.TableId.
     /// </summary>
-    private async Task LoadTableLookupAndSelectAsync(string? selectTableCode)
+    private async Task LoadTableLookupAndSelectByIdAsync(int tableId)
     {
         await LoadTableLookupSafeAsync();
-        if (!string.IsNullOrEmpty(selectTableCode))
-            SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableCode == selectTableCode)
-                            ?? TableLookupItems.FirstOrDefault();
+        SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableId == tableId)
+                        ?? TableLookupItems.FirstOrDefault();
     }
 
     /// <summary>Load danh sách roles mặc định với quyền form.</summary>
@@ -945,14 +967,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             await Task.Delay(350, cts.Token);
             await EnsureAppConfigLoadedAsync();
 
-            if (_formDataService is null || (_appConfig?.IsConfigured ?? false) is false)
-            {
-                // NOTE: Không có DB — mock check
-                var isDuplicate = FormCode is "OLD_FORM" or "PO_ORDER";
-                if (isDuplicate && FormCode != _originalFormCode)
-                    FormCodeError = $"Mã form \"{FormCode}\" đã tồn tại trong hệ thống.";
-            }
-            else
+            // Chỉ kiểm tra trùng khi DB đã cấu hình — không mock
+            if (_formDataService is not null && (_appConfig?.IsConfigured ?? false))
             {
                 var exists = await _formDataService.ExistsFormCodeAsync(FormCode, _appConfig!.TenantId, cts.Token);
                 if (!cts.IsCancellationRequested && exists)
@@ -1015,36 +1031,37 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         try
         {
-            int newFormId;
-
-            if (_formDataService is not null && (_appConfig?.IsConfigured ?? false))
+            if (_formDataService is null || !(_appConfig?.IsConfigured ?? false))
             {
-                // ── 2a. Có DB → insert thật ──────────────────
-                var exists = await _formDataService.ExistsFormCodeAsync(
-                    normalizedCode,
-                    _appConfig.TenantId);
-                if (exists)
-                {
-                    FormCodeError = $"Mã form \"{normalizedCode}\" đã tồn tại trong tenant {_appConfig.TenantId}.";
-                    CreateErrorMessage = "Không thể tạo mới vì mã form bị trùng.";
-                    return;
-                }
-
-                newFormId = await _formDataService.CreateFormAsync(
-                    normalizedCode,
-                    normalizedName,
-                    Platform,
-                    _appConfig.TenantId,
-                    SelectedTable.TableId);
-            }
-            else
-            {
-                // ── 2b. Không có DB → mock với id tạm ────────
-                newFormId = -1;
+                CreateErrorMessage = "Chưa cấu hình kết nối DB. Vào Settings để nhập Connection String.";
+                return;
             }
 
-            // ── 3. Navigate sang editor với formId vừa tạo ──
-            var p = new NavigationParameters { { "formId", newFormId } };
+            // ── 2. Kiểm tra trùng lần cuối trước khi insert ──
+            var exists = await _formDataService.ExistsFormCodeAsync(
+                normalizedCode,
+                _appConfig.TenantId);
+            if (exists)
+            {
+                FormCodeError      = $"Mã form \"{normalizedCode}\" đã tồn tại trong tenant {_appConfig.TenantId}.";
+                CreateErrorMessage = "Không thể tạo mới vì mã form bị trùng.";
+                return;
+            }
+
+            // ── 3. Insert vào DB ──────────────────────────────
+            var newFormId = await _formDataService.CreateFormAsync(
+                normalizedCode,
+                normalizedName,
+                Platform,
+                _appConfig.TenantId,
+                SelectedTable.TableId);
+
+            // ── 4. Navigate sang editor với formId vừa tạo ───
+            var p = new NavigationParameters
+            {
+                { "formId",   newFormId },
+                { "formCode", normalizedCode }
+            };
             _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
         }
         catch (Exception ex)

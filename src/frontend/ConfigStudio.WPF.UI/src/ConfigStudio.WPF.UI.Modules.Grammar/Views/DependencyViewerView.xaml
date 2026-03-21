@@ -3,14 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Converters"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
              d:DesignWidth="900"
              mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
+    </UserControl.Resources>
 
     <DockPanel>
         <!-- ── Toolbar ────────────────────────────────────────── -->
@@ -50,17 +55,15 @@
                             ToolTip="Sắp xếp tự động"
                             Background="Transparent" BorderBrush="Transparent"
                             Foreground="White">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Auto-layout" VerticalAlignment="Center" Foreground="White" />
-                        </StackPanel>
+                        <TextBlock Text="Auto-layout" VerticalAlignment="Center" Foreground="White" />
                     </Button>
                     <Button Command="{Binding RegenerateCommand}"
-                            ToolTip="Tạo lại dependency từ expressions" Margin="8,0,0,0"
+                            ToolTip="Tải lại dependency từ DB" Margin="8,0,0,0"
                             Background="Transparent" BorderBrush="Transparent"
                             Foreground="White">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="↻" VerticalAlignment="Center" Foreground="White" />
-                            <TextBlock Text="Regenerate" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="White" />
+                            <TextBlock Text="Reload" Margin="4,0,0,0" VerticalAlignment="Center" Foreground="White" />
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -68,27 +71,33 @@
         </Border>
 
         <!-- ── Detail Panel (Bottom) ──────────────────────────── -->
-        <Border DockPanel.Dock="Bottom" MinHeight="80"
+        <Border DockPanel.Dock="Bottom"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
                 BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
                 Padding="16,8">
-            <DockPanel>
-                <!-- Circular dependency warning -->
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
-                            Visibility="{Binding HasCircularDependencies, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+            <DockPanel MinHeight="90">
+                <!-- Cột phải: Circular dependency warning -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,0,0,0"
+                            Visibility="{Binding HasCircularDependencies, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                     <TextBlock Text="⚠" FontSize="16" Foreground="#EF5350" VerticalAlignment="Center" />
                     <TextBlock Foreground="#EF5350" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold">
                         <Run Text="{Binding CircularDependencyCount, Mode=OneWay}" />
-                        <Run Text=" circular dependencies detected" />
+                        <Run Text=" circular dependencies" />
                     </TextBlock>
                 </StackPanel>
 
-                <!-- Selected node detail -->
-                <StackPanel Visibility="{Binding HasSelectedNode, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}">
+                <!-- Load error -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="{Binding LoadError}" Foreground="#EF5350" FontSize="12"
+                           Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                           Margin="0,0,0,4" />
+
+                <!-- Selected node info + impact -->
+                <StackPanel Visibility="{Binding HasSelectedNode, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                    <!-- Header node -->
                     <StackPanel Orientation="Horizontal">
                         <!-- Node type badge -->
-                        <Border CornerRadius="4" Padding="8,2" Margin="0,0,12,0"
-                                VerticalAlignment="Center">
+                        <Border CornerRadius="4" Padding="8,2" Margin="0,0,12,0" VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Background" Value="#757575" />
@@ -108,25 +117,108 @@
                             <TextBlock Text="{Binding SelectedNode.NodeType}" Foreground="White"
                                        FontSize="11" FontWeight="Bold" />
                         </Border>
-                        <TextBlock Text="{Binding SelectedNode.Label}" FontSize="16" FontWeight="SemiBold"
+                        <TextBlock Text="{Binding SelectedNode.Label}" FontSize="15" FontWeight="SemiBold"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                         <TextBlock Text="{Binding SelectedNode.SubLabel, StringFormat=' ({0})'}"
-                                   FontSize="13" VerticalAlignment="Center" Margin="4,0,0,0"
+                                   FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0"
                                    Opacity="0.6" />
+                        <Button Command="{Binding OpenNodeEditorCommand}"
+                                HorizontalAlignment="Left" Margin="12,0,0,0"
+                                Background="Transparent" BorderBrush="Transparent">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="↗" VerticalAlignment="Center" />
+                                <TextBlock Text="Open Editor" Margin="4,0,0,0" VerticalAlignment="Center" FontSize="12" />
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
-                    <Button Command="{Binding OpenNodeEditorCommand}"
-                            HorizontalAlignment="Left" Margin="0,4,0,0"
-                            Background="Transparent" BorderBrush="Transparent">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="↗" VerticalAlignment="Center" />
-                            <TextBlock Text="Open Editor" Margin="4,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </Button>
+
+                    <!-- Impact section -->
+                    <DockPanel Margin="0,6,0,0">
+                        <!-- Loading indicator -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="Đang phân tích..."
+                                   FontSize="11" FontStyle="Italic" Opacity="0.6"
+                                   VerticalAlignment="Center"
+                                   Visibility="{Binding IsLoadingImpact, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+
+                        <!-- Impact chips -->
+                        <ItemsControl ItemsSource="{Binding SelectedNodeImpact}"
+                                      Visibility="{Binding IsLoadingImpact, Converter={StaticResource InvBoolToVis}, FallbackValue=Visible}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="12" Margin="0,0,6,4" Padding="10,3">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#E8EAF6" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Type}" Value="rule">
+                                                        <Setter Property="Background" Value="#E0F2F1" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Type}" Value="event">
+                                                        <Setter Property="Background" Value="#FFF8E1" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Type}" Value="field">
+                                                        <Setter Property="Background" Value="#E8EAF6" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="10" FontWeight="Bold" Margin="0,0,4,0" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="●" />
+                                                        <Setter Property="Foreground" Value="#3F51B5" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Type}" Value="rule">
+                                                                <Setter Property="Foreground" Value="#009688" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding Type}" Value="event">
+                                                                <Setter Property="Foreground" Value="#FF8F00" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding Reason, StringFormat=' — {0}'}"
+                                                       FontSize="11" Opacity="0.55" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+
+                    <!-- Empty impact state -->
+                    <TextBlock Text="Không có kết nối nào được tìm thấy."
+                               FontSize="11" FontStyle="Italic" Opacity="0.5" Margin="0,4,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <!-- Hiện khi không loading và không có items -->
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsLoadingImpact}" Value="False" />
+                                            <Condition Binding="{Binding SelectedNodeImpact.Count}" Value="0" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                 </StackPanel>
 
-                <!-- Empty state -->
-                <TextBlock Text="Click vào node trên graph để xem chi tiết"
+                <!-- Empty state — chưa chọn node -->
+                <TextBlock Text="Click vào node trên graph để xem chi tiết và phân tích impact"
                            FontSize="13" FontStyle="Italic"
                            Opacity="0.5"
                            VerticalAlignment="Center">
@@ -144,107 +236,120 @@
             </DockPanel>
         </Border>
 
-        <!-- ── Graph Canvas ───────────────────────────────────── -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto">
-            <Canvas Width="750" Height="600" Background="Transparent"
-                    ClipToBounds="True">
+        <!-- ── Loading overlay ────────────────────────────────── -->
+        <Grid>
+            <!-- Graph Canvas -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto">
+                <Canvas Width="750" Height="600" Background="Transparent"
+                        ClipToBounds="True">
 
-                <!-- Legend -->
-                <StackPanel Canvas.Left="10" Canvas.Top="10" Orientation="Horizontal">
-                    <Border Background="#3F51B5" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
-                        <TextBlock Text="Field" Foreground="White" FontSize="11" />
-                    </Border>
-                    <Border Background="#009688" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
-                        <TextBlock Text="Rule" Foreground="White" FontSize="11" />
-                    </Border>
-                    <Border Background="#FF8F00" CornerRadius="3" Padding="8,2">
-                        <TextBlock Text="Event" Foreground="White" FontSize="11" />
-                    </Border>
+                    <!-- Legend -->
+                    <StackPanel Canvas.Left="10" Canvas.Top="10" Orientation="Horizontal">
+                        <Border Background="#3F51B5" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                            <TextBlock Text="Field" Foreground="White" FontSize="11" />
+                        </Border>
+                        <Border Background="#009688" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                            <TextBlock Text="Rule" Foreground="White" FontSize="11" />
+                        </Border>
+                        <Border Background="#FF8F00" CornerRadius="3" Padding="8,2">
+                            <TextBlock Text="Event" Foreground="White" FontSize="11" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Edges (lines) -->
+                    <ItemsControl ItemsSource="{Binding Edges}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:DependencyEdge}">
+                                <Canvas>
+                                    <Line X1="{Binding X1}" Y1="{Binding Y1}"
+                                          X2="{Binding X2}" Y2="{Binding Y2}"
+                                          Stroke="{Binding EdgeColor}"
+                                          StrokeThickness="2" />
+                                    <TextBlock Text="{Binding Label}"
+                                               FontSize="10" FontStyle="Italic"
+                                               Opacity="0.5">
+                                        <Canvas.Left>
+                                            <MultiBinding StringFormat="{}{0}">
+                                                <Binding Path="X1" />
+                                            </MultiBinding>
+                                        </Canvas.Left>
+                                        <Canvas.Top>
+                                            <MultiBinding StringFormat="{}{0}">
+                                                <Binding Path="Y1" />
+                                            </MultiBinding>
+                                        </Canvas.Top>
+                                    </TextBlock>
+                                </Canvas>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Nodes (boxes) -->
+                    <ItemsControl ItemsSource="{Binding Nodes}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <Canvas />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemContainerStyle>
+                            <Style TargetType="ContentPresenter">
+                                <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                            </Style>
+                        </ItemsControl.ItemContainerStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type models:DependencyNode}">
+                                <Border Width="{Binding Width}" Height="{Binding Height}"
+                                        CornerRadius="6" Cursor="Hand"
+                                        BorderThickness="2" Padding="8,4">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{Binding NodeColor}" />
+                                            <Setter Property="BorderBrush" Value="Transparent" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="White" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding HasWarning}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#EF5350" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Border.InputBindings>
+                                        <MouseBinding MouseAction="LeftClick"
+                                                      Command="{Binding DataContext.SelectNodeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                      CommandParameter="{Binding}" />
+                                    </Border.InputBindings>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Label}" Foreground="White"
+                                                   FontWeight="SemiBold" FontSize="13"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding SubLabel}" Foreground="#B0BEC5"
+                                                   FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Canvas>
+            </ScrollViewer>
+
+            <!-- Loading overlay -->
+            <Border Background="#80FFFFFF"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <ProgressBar IsIndeterminate="True" Width="120" Height="6" />
+                    <TextBlock Text="Đang tải dependency graph..." Margin="0,8,0,0"
+                               FontSize="13" HorizontalAlignment="Center" Opacity="0.7" />
                 </StackPanel>
-
-                <!-- Edges (lines) -->
-                <ItemsControl ItemsSource="{Binding Edges}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type models:DependencyEdge}">
-                            <Canvas>
-                                <Line X1="{Binding X1}" Y1="{Binding Y1}"
-                                      X2="{Binding X2}" Y2="{Binding Y2}"
-                                      Stroke="{Binding EdgeColor}"
-                                      StrokeThickness="2" />
-                                <TextBlock Text="{Binding Label}"
-                                           FontSize="10" FontStyle="Italic"
-                                           Opacity="0.5">
-                                    <Canvas.Left>
-                                        <MultiBinding StringFormat="{}{0}">
-                                            <Binding Path="X1" />
-                                        </MultiBinding>
-                                    </Canvas.Left>
-                                    <Canvas.Top>
-                                        <MultiBinding StringFormat="{}{0}">
-                                            <Binding Path="Y1" />
-                                        </MultiBinding>
-                                    </Canvas.Top>
-                                </TextBlock>
-                            </Canvas>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <!-- Nodes (boxes) -->
-                <ItemsControl ItemsSource="{Binding Nodes}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Canvas.Left" Value="{Binding X}" />
-                            <Setter Property="Canvas.Top" Value="{Binding Y}" />
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type models:DependencyNode}">
-                            <Border Width="{Binding Width}" Height="{Binding Height}"
-                                    CornerRadius="6" Cursor="Hand"
-                                    BorderThickness="2" Padding="8,4">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="{Binding NodeColor}" />
-                                        <Setter Property="BorderBrush" Value="Transparent" />
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                <Setter Property="BorderBrush" Value="White" />
-                                            </DataTrigger>
-                                            <DataTrigger Binding="{Binding HasWarning}" Value="True">
-                                                <Setter Property="BorderBrush" Value="#EF5350" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <Border.InputBindings>
-                                    <MouseBinding MouseAction="LeftClick"
-                                                  Command="{Binding DataContext.SelectNodeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                  CommandParameter="{Binding}" />
-                                </Border.InputBindings>
-                                <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding Label}" Foreground="White"
-                                               FontWeight="SemiBold" FontSize="13"
-                                               TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Text="{Binding SubLabel}" Foreground="#B0BEC5"
-                                               FontSize="11" TextTrimming="CharacterEllipsis" />
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Canvas>
-        </ScrollViewer>
+            </Border>
+        </Grid>
     </DockPanel>
 </UserControl>

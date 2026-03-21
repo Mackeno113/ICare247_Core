@@ -4,6 +4,7 @@
 // Purpose : ViewModel cho Expression Builder Dialog (Screen 07) — dùng chung từ Rule/Event Editor.
 
 using System.Collections.ObjectModel;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Grammar.Models;
 using ConfigStudio.WPF.UI.Modules.Grammar.Services;
@@ -15,10 +16,12 @@ namespace ConfigStudio.WPF.UI.Modules.Grammar.ViewModels;
 /// <summary>
 /// ViewModel cho Expression Builder Dialog (Screen 07).
 /// Cung cấp giao diện kéo-thả/click để xây dựng AST expression.
-/// Mở từ ValidationRuleEditor và EventEditor qua <c>IDialogService</c>.
+/// Mở từ ValidationRuleEditor và EventEditor qua IDialogService.
+/// Functions/Operators load từ Gram_Function/Gram_Operator qua IGrammarDataService.
 /// </summary>
 public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAware
 {
+    private readonly IGrammarDataService _grammarService;
     private readonly AstSerializer _serializer = new();
     private readonly AstDeserializer _deserializer = new();
     private readonly AstValidator _validator = new();
@@ -115,6 +118,14 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         set => SetProperty(ref _jsonOutput, value);
     }
 
+    // ── Loading state ────────────────────────────────────────
+    private bool _isLoadingPalette;
+    public bool IsLoadingPalette
+    {
+        get => _isLoadingPalette;
+        set => SetProperty(ref _isLoadingPalette, value);
+    }
+
     // ── Commands ─────────────────────────────────────────────
     public DelegateCommand<PaletteItem> InsertOperatorCommand { get; }
     public DelegateCommand<PaletteItem> InsertFunctionCommand { get; }
@@ -127,15 +138,15 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
     public DelegateCommand ResetCommand { get; }
     public DelegateCommand CopyJsonCommand { get; }
 
-    // ── Danh sách operator/function/field gốc (cho validation) ─
+    // ── Danh sách whitelist cho validator ───────────────────
     private List<string> _availableFunctionCodes = [];
     private List<string> _availableFieldCodes = [];
+    private List<string> _availableOperatorSymbols = [];
 
-    private static readonly List<string> AvailableOperators =
-        ["==", "!=", ">", ">=", "<", "<=", "&&", "||", "!", "+", "-", "*", "/", "%", "??"];
-
-    public ExpressionBuilderDialogViewModel()
+    public ExpressionBuilderDialogViewModel(IGrammarDataService grammarService)
     {
+        _grammarService = grammarService;
+
         InsertOperatorCommand = new DelegateCommand<PaletteItem>(ExecuteInsertOperator);
         InsertFunctionCommand = new DelegateCommand<PaletteItem>(ExecuteInsertFunction);
         InsertFieldCommand = new DelegateCommand<PaletteItem>(ExecuteInsertField);
@@ -165,7 +176,7 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         ExpectedReturnType = parameters.GetValue<string>("expectedReturnType") ?? "Boolean";
         ContextInfo = parameters.GetValue<string>("contextInfo") ?? "";
 
-        // ── Load fields ──────────────────────────────────────
+        // ── Load fields từ caller (form context) ─────────────
         var fields = parameters.GetValue<List<FieldInfo>>("formFields");
         if (fields is not null)
         {
@@ -185,80 +196,144 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
             }
         }
 
-        // ── Init operators palette ───────────────────────────
-        LoadOperatorPalette();
+        // ── Load operators/functions từ DB (async, fallback về hardcode) ─
+        _ = LoadPaletteFromDbAsync(json);
+    }
 
-        // ── Init functions palette (mock) ────────────────────
-        LoadFunctionPalette();
+    // ── Load palette từ DB ───────────────────────────────────
 
-        // ── Deserialize existing expression ──────────────────
-        RootNode = _deserializer.Deserialize(json);
+    /// <summary>
+    /// Tải operators và functions từ Gram_Operator + Gram_Function.
+    /// Fallback về hardcode nếu DB chưa cấu hình hoặc lỗi.
+    /// </summary>
+    private async Task LoadPaletteFromDbAsync(string? initialJson)
+    {
+        IsLoadingPalette = true;
+
+        try
+        {
+            // ── Load operators ────────────────────────────────
+            var operators = await _grammarService.GetOperatorsAsync();
+            if (operators.Count > 0)
+            {
+                OperatorItems.Clear();
+                _availableOperatorSymbols = [];
+                foreach (var op in operators.Where(o => o.IsActive))
+                {
+                    OperatorItems.Add(new PaletteItem
+                    {
+                        ItemType = PaletteItemType.Operator,
+                        DisplayName = op.OperatorSymbol,
+                        Code = op.OperatorSymbol,
+                        Description = op.Description ?? op.OperatorType
+                    });
+                    _availableOperatorSymbols.Add(op.OperatorSymbol);
+                }
+            }
+            else
+            {
+                // Fallback nếu Gram_Operator chưa có data
+                LoadFallbackOperators();
+            }
+
+            // ── Load functions ────────────────────────────────
+            var functions = await _grammarService.GetFunctionsAsync();
+            if (functions.Count > 0)
+            {
+                FunctionItems.Clear();
+                _availableFunctionCodes = [];
+                foreach (var fn in functions.Where(f => f.IsActive))
+                {
+                    FunctionItems.Add(new PaletteItem
+                    {
+                        ItemType = PaletteItemType.Function,
+                        DisplayName = $"{fn.FunctionCode}()",
+                        Code = fn.FunctionCode,
+                        Description = fn.Description ?? fn.FunctionCode,
+                        NetType = fn.ReturnNetType,
+                        ParamCountMin = fn.ParamCountMin,
+                        ParamCountMax = fn.ParamCountMax
+                    });
+                    _availableFunctionCodes.Add(fn.FunctionCode);
+                }
+            }
+            else
+            {
+                // Fallback nếu Gram_Function chưa có data
+                LoadFallbackFunctions();
+            }
+        }
+        catch
+        {
+            // NOTE: DB lỗi → dùng hardcode để dialog vẫn hoạt động
+            if (OperatorItems.Count == 0) LoadFallbackOperators();
+            if (FunctionItems.Count == 0) LoadFallbackFunctions();
+        }
+        finally
+        {
+            IsLoadingPalette = false;
+        }
+
+        FilterFunctions();
+
+        // ── Deserialize expression sau khi palette đã ready ──
+        RootNode = _deserializer.Deserialize(initialJson);
         SyncRootNodes();
         ValidateExpression();
     }
 
-    // ── Palette loaders ──────────────────────────────────────
+    // ── Fallback hardcode (khi DB chưa có data) ──────────────
 
-    private void LoadOperatorPalette()
+    private void LoadFallbackOperators()
     {
         OperatorItems.Clear();
-        AddOp("==", "Equal");
-        AddOp("!=", "Not equal");
-        AddOp(">", "Greater than");
-        AddOp(">=", "Greater than or equal");
-        AddOp("<", "Less than");
-        AddOp("<=", "Less than or equal");
-        AddOp("&&", "Logical AND");
-        AddOp("||", "Logical OR");
-        AddOp("!", "Logical NOT");
-        AddOp("+", "Add");
-        AddOp("-", "Subtract");
-        AddOp("*", "Multiply");
-        AddOp("/", "Divide");
-        AddOp("%", "Modulo");
-        AddOp("??", "Null coalesce");
-
-        void AddOp(string symbol, string desc) =>
+        _availableOperatorSymbols = [];
+        var ops = new[]
+        {
+            ("==", "Equal"), ("!=", "Not equal"), (">", "Greater than"),
+            (">=", "Greater than or equal"), ("<", "Less than"), ("<=", "Less than or equal"),
+            ("&&", "Logical AND"), ("||", "Logical OR"), ("!", "Logical NOT"),
+            ("+", "Add"), ("-", "Subtract"), ("*", "Multiply"),
+            ("/", "Divide"), ("%", "Modulo"), ("??", "Null coalesce")
+        };
+        foreach (var (symbol, desc) in ops)
+        {
             OperatorItems.Add(new PaletteItem
             {
                 ItemType = PaletteItemType.Operator,
-                DisplayName = symbol,
-                Code = symbol,
-                Description = desc
+                DisplayName = symbol, Code = symbol, Description = desc
             });
+            _availableOperatorSymbols.Add(symbol);
+        }
     }
 
-    /// <summary>
-    /// Load mock functions. Sau này sẽ load từ Gram_Function qua API.
-    /// </summary>
-    private void LoadFunctionPalette()
+    private void LoadFallbackFunctions()
     {
         FunctionItems.Clear();
-        AddFn("len", "len(str)", "Đếm số ký tự", "Int32", 1, 1);
-        AddFn("trim", "trim(str)", "Xóa khoảng trắng đầu/cuối", "String", 1, 1);
-        AddFn("regex", "regex(val, pat)", "Kiểm tra regex pattern", "Boolean", 2, 2);
-        AddFn("round", "round(val, dec)", "Làm tròn số", "Decimal", 2, 2);
-        AddFn("iif", "iif(cond, t, f)", "Điều kiện if-then-else", "", 3, 3);
-        AddFn("isNull", "isNull(val)", "Kiểm tra null", "Boolean", 1, 1);
-        AddFn("toDate", "toDate(str)", "Chuyển string thành DateTime", "DateTime", 1, 1);
-        AddFn("today", "today()", "Ngày hiện tại", "DateTime", 0, 0);
-        AddFn("dateDiff", "dateDiff(d1, d2, unit)", "Khoảng cách giữa 2 ngày", "Int32", 3, 3);
-        AddFn("concat", "concat(a, b)", "Nối chuỗi", "String", 2, 10);
-
-        _availableFunctionCodes = FunctionItems.Select(f => f.Code).ToList();
-        FilterFunctions();
-
-        void AddFn(string code, string display, string desc, string retType, int min, int max) =>
+        _availableFunctionCodes = [];
+        var fns = new[]
+        {
+            ("len", "len(str)", "Đếm số ký tự", "Int32", 1, 1),
+            ("trim", "trim(str)", "Xóa khoảng trắng đầu/cuối", "String", 1, 1),
+            ("regex", "regex(val, pat)", "Kiểm tra regex pattern", "Boolean", 2, 2),
+            ("round", "round(val, dec)", "Làm tròn số", "Decimal", 2, 2),
+            ("iif", "iif(cond, t, f)", "Điều kiện if-then-else", "", 3, 3),
+            ("isNull", "isNull(val)", "Kiểm tra null", "Boolean", 1, 1),
+            ("toDate", "toDate(str)", "Chuyển string thành DateTime", "DateTime", 1, 1),
+            ("today", "today()", "Ngày hiện tại", "DateTime", 0, 0),
+            ("dateDiff", "dateDiff(d1,d2,unit)", "Khoảng cách 2 ngày", "Int32", 3, 3),
+            ("concat", "concat(a, b)", "Nối chuỗi", "String", 2, 10)
+        };
+        foreach (var (code, display, desc, ret, min, max) in fns)
+        {
             FunctionItems.Add(new PaletteItem
             {
                 ItemType = PaletteItemType.Function,
-                DisplayName = display,
-                Code = code,
-                Description = desc,
-                NetType = retType,
-                ParamCountMin = min,
-                ParamCountMax = max
+                DisplayName = display, Code = code, Description = desc,
+                NetType = ret, ParamCountMin = min, ParamCountMax = max
             });
+            _availableFunctionCodes.Add(code);
+        }
     }
 
     private void FilterFunctions()
@@ -284,7 +359,7 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
             RootNode,
             ExpectedReturnType,
             _availableFunctionCodes,
-            AvailableOperators,
+            _availableOperatorSymbols.Count > 0 ? _availableOperatorSymbols : ["==","!=",">",">=","<","<=","&&","||","!","+","-","*","/","%","??"],
             _availableFieldCodes);
 
         NaturalLanguagePreview = _naturalLanguage.ToText(RootNode);
@@ -310,13 +385,11 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
 
         if (item.Code == "!")
         {
-            // NOTE: Unary operator — bọc selected node hoặc tạo mới
             var unaryNode = new AstNode { Type = AstNodeType.Unary, Operator = "!" };
             var unaryVm = new AstNodeViewModel { Node = unaryNode };
 
             if (SelectedNode is not null)
             {
-                // NOTE: Bọc selected node thành operand
                 unaryNode.Operand = SelectedNode.Node;
                 unaryVm.Children.Add(SelectedNode);
                 ReplaceNode(SelectedNode, unaryVm);
@@ -328,17 +401,13 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         }
         else
         {
-            // NOTE: Binary operator
             var binaryNode = new AstNode { Type = AstNodeType.Binary, Operator = item.Code };
             var binaryVm = new AstNodeViewModel { Node = binaryNode };
-
-            // Placeholder left/right
             var placeholderLeft = CreatePlaceholder();
             var placeholderRight = CreatePlaceholder();
 
             if (SelectedNode is not null)
             {
-                // NOTE: Replace selected → binary, selected thành left
                 binaryNode.Left = SelectedNode.Node;
                 binaryNode.Right = placeholderRight.Node;
                 binaryVm.Children.Add(SelectedNode);
@@ -362,14 +431,9 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
     {
         if (item is null) return;
 
-        var funcNode = new AstNode
-        {
-            Type = AstNodeType.Function,
-            FunctionName = item.Code
-        };
+        var funcNode = new AstNode { Type = AstNodeType.Function, FunctionName = item.Code };
         var funcVm = new AstNodeViewModel { Node = funcNode };
 
-        // NOTE: Tạo placeholder arguments theo ParamCountMin
         for (int i = 0; i < item.ParamCountMin; i++)
         {
             var placeholder = CreatePlaceholder();
@@ -502,15 +566,7 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
     }
 
     private static AstNodeViewModel CreatePlaceholder() =>
-        new()
-        {
-            Node = new AstNode
-            {
-                Type = AstNodeType.Literal,
-                Value = null,
-                NetType = ""
-            }
-        };
+        new() { Node = new AstNode { Type = AstNodeType.Literal, Value = null, NetType = "" } };
 
     // ── Dialog commands ──────────────────────────────────────
 
