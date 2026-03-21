@@ -143,12 +143,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public bool IsSavingSection { get => _isSavingSection; private set => SetProperty(ref _isSavingSection, value); }
 
     /// <summary>
-    /// Title_Key tự động ghép realtime: {form_code_lower}.section.{section_code_lower}.
-    /// Cập nhật mỗi khi FormCode hoặc SelectedNode.Code thay đổi.
+    /// Title_Key tự động ghép realtime: {table_code}.section.{section_code} (chữ thường).
+    /// Cập nhật mỗi khi SelectedTable.TableCode hoặc SelectedNode.Code thay đổi.
     /// </summary>
     public string SectionTitleKeyPreview =>
         SelectedNode?.NodeType == FormNodeType.Section && !string.IsNullOrEmpty(SelectedNode.Code)
-            ? $"{FormCode.ToLowerInvariant()}.section.{SelectedNode.Code.ToLowerInvariant()}"
+            && !string.IsNullOrEmpty(SelectedTable?.TableCode)
+            ? $"{SelectedTable!.TableCode.ToLowerInvariant()}.section.{SelectedNode.Code.ToLowerInvariant()}"
             : "";
 
     // ── Form info ─────────────────────────────────────────────
@@ -207,6 +208,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             {
                 IsDirty = true;
                 RaisePropertyChanged(nameof(CanCreateNewForm));
+                RaisePropertyChanged(nameof(SectionTitleKeyPreview));
             }
         }
     }
