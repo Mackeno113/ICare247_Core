@@ -1,4 +1,4 @@
-// File    : FormEditorViewModel.cs
+﻿// File    : FormEditorViewModel.cs
 // Module  : Forms
 // Layer   : Presentation
 // Purpose : ViewModel cho màn hình Form Editor (Screen 03) — quản lý toàn bộ form: metadata, sections, fields, events, permissions.
@@ -750,13 +750,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             Sections.Clear();
             foreach (var s in sectionRecords.OrderBy(s => s.OrderNo))
             {
+                // Resolve tên hiển thị từ Sys_Resource ưu tiên "vi", fallback về SectionCode
+                var resolvedTitle = s.SectionCode;
+                if (_i18nService is not null && !string.IsNullOrEmpty(s.TitleKey))
+                {
+                    var vi = await _i18nService.ResolveKeyAsync(s.TitleKey, "vi", ct);
+                    resolvedTitle = !string.IsNullOrWhiteSpace(vi) ? vi : s.SectionCode;
+                }
+
                 var sectionNode = new FormTreeNode
                 {
                     Id          = s.SectionId,
                     NodeType    = FormNodeType.Section,
                     Code        = s.SectionCode,
                     TitleKey    = s.TitleKey ?? "",
-                    DisplayName = s.TitleKey ?? s.SectionCode, // resolve i18n sau khi load
+                    DisplayName = resolvedTitle,
                     SortOrder   = s.OrderNo,
                     IsExpanded  = true
                 };
@@ -897,10 +905,16 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         if (HasSectionCodeError) return;
         if (_detailService is null) return;
 
+        var newTitleKey = SectionTitleKeyPreview;
+        if (string.IsNullOrEmpty(newTitleKey))
+        {
+            ErrorMessage = "Không thể lưu: Table chưa được chọn hoặc Section Code trống.";
+            return;
+        }
+
         IsSavingSection = true;
         try
         {
-            var newTitleKey = SectionTitleKeyPreview;
             var req = new SectionUpsertRequest(
                 FormId:      FormId,
                 SectionId:   node.Id,
@@ -1102,14 +1116,15 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteAddSection()
     {
-        var newId = Sections.Count > 0 ? Sections.Max(s => s.Id) + 1 : 1;
+        // Id = 0 → UpsertSectionAsync sẽ INSERT mới và trả về Section_Id thật từ DB
+        var seqNo = Sections.Count + 1;
         var section = new FormTreeNode
         {
-            Id = newId,
+            Id = 0,
             NodeType = FormNodeType.Section,
-            Code = $"SEC_NEW_{newId}",
-            DisplayName = $"Section Mới {newId}",
-            SortOrder = Sections.Count + 1,
+            Code = $"sec_{SelectedTable!.TableCode.ToLowerInvariant()}_{seqNo}",
+            DisplayName = $"Section Mới {seqNo}",
+            SortOrder = seqNo,
             IsExpanded = true
         };
         Sections.Add(section);
@@ -1319,7 +1334,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             // Chỉ kiểm tra trùng khi DB đã cấu hình — không mock
             if (_formDataService is not null && (_appConfig?.IsConfigured ?? false))
             {
-                var exists = await _formDataService.ExistsFormCodeAsync(FormCode, _appConfig!.TenantId, cts.Token);
+                var exists = await _formDataService.ExistsFormCodeAsync(FormCode, _appConfig!.TenantId, IsNewForm ? 0 : FormId, cts.Token);
                 if (!cts.IsCancellationRequested && exists)
                     FormCodeError = $"Mã form \"{FormCode}\" đã tồn tại trong tenant {_appConfig.TenantId}.";
             }

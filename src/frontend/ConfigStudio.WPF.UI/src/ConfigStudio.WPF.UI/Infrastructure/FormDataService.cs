@@ -626,6 +626,7 @@ public sealed class FormDataService : IFormDataService
     public async Task<bool> ExistsFormCodeAsync(
         string formCode,
         int tenantId,
+        int excludeFormId = 0,
         CancellationToken ct = default)
     {
         if (!_config.IsConfigured)
@@ -662,6 +663,10 @@ public sealed class FormDataService : IFormDataService
         if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
+        // Loại trừ chính form đang edit để không báo trùng với chính nó
+        if (excludeFormId > 0 && formCols.Contains("Form_Id"))
+            whereParts.Add("f.Form_Id <> @ExcludeFormId");
+
         var fromClause = useTenantFromSysTable
             ? "dbo.Ui_Form f INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
             : "dbo.Ui_Form f";
@@ -675,7 +680,7 @@ public sealed class FormDataService : IFormDataService
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, FormCode = formCode },
+                new { TenantId = tenantId, FormCode = formCode, ExcludeFormId = excludeFormId },
                 cancellationToken: ct));
 
         return exists.HasValue;

@@ -49,10 +49,12 @@ public interface IFormDataService
 
     /// <summary>
     /// Kiểm tra mã form đã tồn tại trong tenant hay chưa (chỉ tính record active).
+    /// Truyền <paramref name="excludeFormId"/> &gt; 0 khi edit để loại trừ chính form đang sửa.
     /// </summary>
     Task<bool> ExistsFormCodeAsync(
         string formCode,
         int tenantId,
+        int excludeFormId = 0,
         CancellationToken ct = default);
 
     /// <summary>
