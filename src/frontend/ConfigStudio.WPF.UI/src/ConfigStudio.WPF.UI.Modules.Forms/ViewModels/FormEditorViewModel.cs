@@ -157,6 +157,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private int _formId;
     public int FormId { get => _formId; set => SetProperty(ref _formId, value); }
 
+    // Field cần restore selection sau khi load (khi quay lại từ FieldConfigView)
+    private int _pendingSelectFieldId;
+
     private string _formCode = "";
     public string FormCode
     {
@@ -671,6 +674,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 ? navigationContext.Parameters.GetValue<int>("activeTab")
                 : 1; // Mặc định tab "Thuộc tính"
 
+            // Lưu fieldId cần restore selection sau khi load (quay lại từ FieldConfigView)
+            _pendingSelectFieldId = navigationContext.Parameters.ContainsKey("selectedFieldId")
+                ? navigationContext.Parameters.GetValue<int>("selectedFieldId")
+                : 0;
+
             _ = LoadFromDatabaseAsync();
         }
     }
@@ -828,7 +836,18 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsDirty       = false;
             FormCodeError = "";
 
-            // ── 6. Kiểm tra diff schema sau khi load xong ────
+            // ── 6. Restore selection nếu quay lại từ FieldConfigView ──
+            if (_pendingSelectFieldId > 0)
+            {
+                var targetNode = Sections
+                    .SelectMany(s => s.Children)
+                    .FirstOrDefault(f => f.Id == _pendingSelectFieldId);
+                if (targetNode is not null)
+                    SelectedNode = targetNode;
+                _pendingSelectFieldId = 0;
+            }
+
+            // ── 7. Kiểm tra diff schema sau khi load xong ────
             await CheckSchemaDiffAsync(ct);
         }
         catch (OperationCanceledException) { /* Navigate away — bỏ qua */ }

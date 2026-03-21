@@ -662,7 +662,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteCancel()
     {
-        var p = new NavigationParameters { { "formId", FormId } };
+        var p = new NavigationParameters
+        {
+            { "formId",          FormId  },
+            { "selectedFieldId", FieldId },
+        };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
 
