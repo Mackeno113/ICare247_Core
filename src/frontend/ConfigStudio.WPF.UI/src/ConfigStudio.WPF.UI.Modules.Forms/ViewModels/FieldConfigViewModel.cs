@@ -49,6 +49,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private string _sectionName = "";
     public string SectionName { get => _sectionName; set => SetProperty(ref _sectionName, value); }
 
+    private string _tableCode = "";
+    public string TableCode { get => _tableCode; set => SetProperty(ref _tableCode, value); }
+
     public ObservableCollection<ColumnInfoDto> AvailableColumns { get; } = [];
 
     private ColumnInfoDto? _selectedColumn;
@@ -198,6 +201,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; set => SetProperty(ref _isLoading, value); }
 
+    /// <summary>Lỗi load dữ liệu — hiển thị banner cảnh báo trên UI.</summary>
+    private string _loadError = "";
+    public string LoadError { get => _loadError; set => SetProperty(ref _loadError, value); }
+
+    public bool HasLoadError => !string.IsNullOrEmpty(LoadError);
+
     private string _mode = "edit";
 
     // ── Commands ─────────────────────────────────────────────
@@ -242,10 +251,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     public async void OnNavigatedTo(NavigationContext navigationContext)
     {
-        _mode = navigationContext.Parameters.GetValue<string>("mode") ?? "edit";
-        FormId = navigationContext.Parameters.GetValue<int>("formId");
+        _mode     = navigationContext.Parameters.GetValue<string>("mode")      ?? "edit";
+        FormId    = navigationContext.Parameters.GetValue<int>("formId");
         SectionId = navigationContext.Parameters.GetValue<int>("sectionId");
-        FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
+        FieldId   = navigationContext.Parameters.GetValue<int>("fieldId");
+        TableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
 
         await LoadDataAsync();
     }
@@ -274,16 +284,19 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>
     /// Load field detail, columns, linked rules/events từ DB.
+    /// Tách riêng từng bước — lỗi ở bước phụ (rules/events) không làm mất dữ liệu chính.
     /// </summary>
     private async Task LoadFromDatabaseAsync()
     {
-        IsLoading = true;
+        IsLoading  = true;
+        LoadError  = "";
+
+        var ct       = _cts.Token;
+        var tenantId = _appConfig!.TenantId;
+
         try
         {
-            var ct = _cts.Token;
-            var tenantId = _appConfig!.TenantId;
-
-            // 1. Load columns cho ComboBox chọn column
+            // ── 1. Columns (cần cho ComboBox chọn column) ─────────────────
             var tableId = await _fieldService!.GetTableIdByFormAsync(FormId, tenantId, ct);
             if (tableId > 0)
             {
@@ -293,10 +306,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 {
                     AvailableColumns.Add(new ColumnInfoDto
                     {
-                        ColumnId = c.ColumnId,
+                        ColumnId   = c.ColumnId,
                         ColumnCode = c.ColumnCode,
-                        DataType = c.DataType,
-                        NetType = c.NetType,
+                        DataType   = c.DataType,
+                        NetType    = c.NetType,
                         IsNullable = c.IsNullable
                     });
                 }
@@ -307,82 +320,101 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 SectionName = "";
                 SelectedEditorType = "TextBox";
                 IsLoading = false;
-                IsDirty = false;
+                IsDirty   = false;
                 return;
             }
 
-            // 2. Load field detail
+            // ── 2. Field detail (dữ liệu chính — không được sai) ──────────
             if (FieldId > 0)
             {
                 var field = await _fieldService.GetFieldDetailAsync(FieldId, tenantId, ct);
                 if (field is not null)
                 {
-                    FormId = field.FormId;
-                    SectionId = field.SectionId ?? 0;
-                    SectionName = field.SectionCode;
-                    SelectedColumn = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
-                    ColumnCode = field.ColumnCode;
+                    FormId             = field.FormId;
+                    SectionId          = field.SectionId ?? 0;
+                    SectionName        = field.SectionCode;
+                    SelectedColumn     = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
+                    ColumnCode         = field.ColumnCode;
                     SelectedEditorType = field.EditorType;
-                    OrderNo = field.OrderNo;
-                    LabelKey = field.LabelKey;
-                    PlaceholderKey = field.PlaceholderKey ?? "";
-                    TooltipKey = field.TooltipKey ?? "";
-                    IsVisible = field.IsVisible;
-                    IsReadOnly = field.IsReadOnly;
-                    ControlPropsJson = field.ControlPropsJson ?? "{}";
+                    OrderNo            = field.OrderNo;
+                    LabelKey           = field.LabelKey;
+                    PlaceholderKey     = field.PlaceholderKey ?? "";
+                    TooltipKey         = field.TooltipKey ?? "";
+                    IsVisible          = field.IsVisible;
+                    IsReadOnly         = field.IsReadOnly;
+                    ControlPropsJson   = field.ControlPropsJson ?? "{}";
                 }
             }
+        }
+        catch (OperationCanceledException) { return; }
+        catch (Exception ex)
+        {
+            // Lỗi load dữ liệu chính → báo lỗi rõ ràng, KHÔNG fallback mock
+            LoadError = $"Lỗi tải thông tin field #{FieldId}: {ex.Message}";
+            RaisePropertyChanged(nameof(HasLoadError));
+            IsLoading = false;
+            return;
+        }
 
-            // 3. Load linked rules
-            if (FieldId > 0 && _ruleService is not null)
+        // ── 3. Linked rules (phụ — lỗi chỉ cần warning, không crash) ──────
+        if (FieldId > 0 && _ruleService is not null)
+        {
+            try
             {
-                var rules = await _ruleService.GetRulesByFieldAsync(FieldId, ct);
+                var rules = await _ruleService.GetRulesByFieldAsync(FieldId, _cts.Token);
                 LinkedRules.Clear();
                 foreach (var r in rules)
                 {
                     LinkedRules.Add(new RuleSummaryDto
                     {
-                        RuleId = r.RuleId,
-                        OrderNo = r.OrderNo,
-                        RuleTypeCode = r.RuleTypeCode,
+                        RuleId            = r.RuleId,
+                        OrderNo           = r.OrderNo,
+                        RuleTypeCode      = r.RuleTypeCode,
                         ExpressionPreview = r.ExpressionJson ?? "",
-                        ErrorKey = r.ErrorKey,
-                        IsActive = r.IsActive
+                        ErrorKey          = r.ErrorKey,
+                        IsActive          = r.IsActive
                     });
                 }
-                // Cập nhật IsRequired dựa trên linked rules
                 _isRequired = LinkedRules.Any(r => r.RuleTypeCode == "Required");
                 RaisePropertyChanged(nameof(IsRequired));
             }
-
-            // 4. Load linked events
-            if (FieldId > 0 && _eventService is not null)
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex)
             {
-                var events = await _eventService.GetEventsByFieldAsync(FieldId, ct);
+                // Rules load thất bại (VD: chưa chạy migration 003) → warning nhỏ
+                LoadError = string.IsNullOrEmpty(LoadError)
+                    ? $"Không tải được validation rules: {ex.Message}"
+                    : LoadError;
+                RaisePropertyChanged(nameof(HasLoadError));
+            }
+        }
+
+        // ── 4. Linked events (phụ — lỗi chỉ cần warning) ─────────────────
+        if (FieldId > 0 && _eventService is not null)
+        {
+            try
+            {
+                var events = await _eventService.GetEventsByFieldAsync(FieldId, _cts.Token);
                 LinkedEvents.Clear();
                 foreach (var e in events)
                 {
                     LinkedEvents.Add(new EventSummaryDto
                     {
-                        EventId = e.EventId,
-                        OrderNo = e.OrderNo,
-                        TriggerCode = e.TriggerCode,
+                        EventId          = e.EventId,
+                        OrderNo          = e.OrderNo,
+                        TriggerCode      = e.TriggerCode,
                         ConditionPreview = e.ConditionExpr ?? "",
-                        ActionsCount = e.ActionsCount,
-                        IsActive = e.IsActive
+                        ActionsCount     = e.ActionsCount,
+                        IsActive         = e.IsActive
                     });
                 }
             }
+            catch (OperationCanceledException) { return; }
+            catch { /* Events load thất bại — bỏ qua, không hiện lỗi */ }
+        }
 
-            IsLoading = false;
-            IsDirty = false;
-        }
-        catch (OperationCanceledException) { /* Navigation away */ }
-        catch
-        {
-            // Fallback mock khi lỗi DB
-            LoadMockData();
-        }
+        IsLoading = false;
+        IsDirty   = false;
     }
 
     // ── Load mock data ───────────────────────────────────────
@@ -684,9 +716,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         var p = new NavigationParameters
         {
-            { "fieldId", FieldId },
-            { "formId", FormId },
-            { "mode", "new" }
+            { "fieldId",     FieldId     },
+            { "formId",      FormId      },
+            { "fieldCode",   ColumnCode  },
+            { "tableCode",   TableCode   },
+            { "sectionName", SectionName },
+            { "mode",        "new"       }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.ValidationRuleEditor, p);
     }
@@ -696,8 +731,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (rule is null) return;
         var p = new NavigationParameters
         {
-            { "ruleId", rule.RuleId },
-            { "fieldId", FieldId }
+            { "ruleId",      rule.RuleId },
+            { "fieldId",     FieldId     },
+            { "formId",      FormId      },
+            { "fieldCode",   ColumnCode  },
+            { "tableCode",   TableCode   },
+            { "sectionName", SectionName },
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.ValidationRuleEditor, p);
     }

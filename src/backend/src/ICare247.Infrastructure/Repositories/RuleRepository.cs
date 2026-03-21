@@ -1,7 +1,9 @@
 // File    : RuleRepository.cs
 // Module  : Validation
 // Layer   : Infrastructure
-// Purpose : Dapper implementation của IRuleRepository — đọc Val_Rule + Val_Rule_Field.
+// Purpose : Dapper implementation của IRuleRepository — đọc Val_Rule.
+//           Sau Migration 003: Field_Id nằm trực tiếp trong Val_Rule,
+//           không còn JOIN bảng junction Val_Rule_Field.
 
 using Dapper;
 using ICare247.Application.Interfaces;
@@ -10,8 +12,8 @@ using ICare247.Domain.Entities.Rule;
 namespace ICare247.Infrastructure.Repositories;
 
 /// <summary>
-/// Repository cho <c>Val_Rule</c> + <c>Val_Rule_Field</c>.
-/// Tenant resolve qua Form → Sys_Table.Tenant_Id.
+/// Repository cho <c>Val_Rule</c>.
+/// Tenant resolve qua Ui_Field → Ui_Form → Sys_Table.Tenant_Id.
 /// </summary>
 public sealed class RuleRepository : IRuleRepository
 {
@@ -27,6 +29,7 @@ public sealed class RuleRepository : IRuleRepository
         int formId, string fieldCode, int tenantId,
         CancellationToken ct = default)
     {
+        // Query thẳng Val_Rule theo Field_Id — không cần JOIN junction
         const string sql = """
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
@@ -37,17 +40,16 @@ public sealed class RuleRepository : IRuleRepository
                    r.Expression_Json  AS ExpressionJson,
                    r.Condition_Expr   AS ConditionExpr,
                    r.Error_Key        AS ErrorMessage,
-                   rf.Order_No        AS SortOrder
-            FROM   dbo.Val_Rule_Field rf
-            JOIN   dbo.Val_Rule r      ON r.Rule_Id = rf.Rule_Id
-            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = rf.Field_Id
-            JOIN   dbo.Ui_Form f       ON f.Form_Id = fi.Form_Id
-            JOIN   dbo.Sys_Table st    ON st.Table_Id = f.Table_Id
-            WHERE  fi.Form_Id = @FormId
+                   r.Order_No         AS SortOrder
+            FROM   dbo.Val_Rule r
+            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = r.Field_Id
+            JOIN   dbo.Ui_Form f       ON f.Form_Id   = fi.Form_Id
+            JOIN   dbo.Sys_Table st    ON st.Table_Id  = f.Table_Id
+            WHERE  fi.Form_Id    = @FormId
               AND  fi.Field_Code = @FieldCode
-              AND  st.Tenant_Id = @TenantId
-              AND  r.Is_Active = 1
-            ORDER BY rf.Order_No
+              AND  st.Tenant_Id  = @TenantId
+              AND  r.Is_Active   = 1
+            ORDER BY r.Order_No
             """;
 
         using var conn = _db.CreateConnection();
@@ -63,6 +65,7 @@ public sealed class RuleRepository : IRuleRepository
         int formId, int tenantId,
         CancellationToken ct = default)
     {
+        // Lấy toàn bộ rules của form — group theo FieldCode
         const string sql = """
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
@@ -73,16 +76,15 @@ public sealed class RuleRepository : IRuleRepository
                    r.Expression_Json  AS ExpressionJson,
                    r.Condition_Expr   AS ConditionExpr,
                    r.Error_Key        AS ErrorMessage,
-                   rf.Order_No        AS SortOrder
-            FROM   dbo.Val_Rule_Field rf
-            JOIN   dbo.Val_Rule r      ON r.Rule_Id = rf.Rule_Id
-            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = rf.Field_Id
-            JOIN   dbo.Ui_Form f       ON f.Form_Id = fi.Form_Id
-            JOIN   dbo.Sys_Table st    ON st.Table_Id = f.Table_Id
-            WHERE  fi.Form_Id = @FormId
+                   r.Order_No         AS SortOrder
+            FROM   dbo.Val_Rule r
+            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = r.Field_Id
+            JOIN   dbo.Ui_Form f       ON f.Form_Id   = fi.Form_Id
+            JOIN   dbo.Sys_Table st    ON st.Table_Id  = f.Table_Id
+            WHERE  fi.Form_Id   = @FormId
               AND  st.Tenant_Id = @TenantId
-              AND  r.Is_Active = 1
-            ORDER BY fi.Field_Code, rf.Order_No
+              AND  r.Is_Active  = 1
+            ORDER BY fi.Field_Code, r.Order_No
             """;
 
         using var conn = _db.CreateConnection();

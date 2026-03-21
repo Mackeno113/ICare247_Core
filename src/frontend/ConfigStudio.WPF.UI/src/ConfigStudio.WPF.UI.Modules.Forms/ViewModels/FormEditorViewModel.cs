@@ -1393,10 +1393,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         var parentSection = FindParentSection(SelectedNode);
         var p = new NavigationParameters
         {
-            { "fieldId", SelectedNode.Id },
-            { "formId", FormId },
+            { "fieldId",   SelectedNode.Id },
+            { "formId",    FormId },
             { "sectionId", parentSection?.Id ?? 0 },
-            { "mode", "edit" }
+            { "tableCode", SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
+            { "mode",      "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }

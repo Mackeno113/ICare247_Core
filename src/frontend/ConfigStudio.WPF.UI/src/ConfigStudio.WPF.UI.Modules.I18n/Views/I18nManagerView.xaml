@@ -9,7 +9,7 @@
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
-             d:DesignWidth="1000"
+             d:DesignWidth="1100"
              mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -35,7 +35,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <!-- Title -->
+                <!-- Title + actions -->
                 <DockPanel Grid.Row="0">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
                         <dx:SimpleButton Command="{Binding GoBackCommand}"
@@ -57,20 +57,16 @@
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
                         <dx:SimpleButton Command="{Binding ImportCommand}"
                                          Margin="0,0,8,0" Height="34">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Import" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock Text="Import" VerticalAlignment="Center" />
                         </dx:SimpleButton>
                         <dx:SimpleButton Command="{Binding ExportCommand}"
                                          Margin="0,0,8,0" Height="34">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Export" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock Text="Export" VerticalAlignment="Center" />
                         </dx:SimpleButton>
                         <dx:SimpleButton Command="{Binding RefreshCommand}" ToolTip="Làm mới"
                                          Width="32" Height="32" Content="↻" FontSize="16"
                                          Margin="0,0,8,0" />
-                        <dx:SimpleButton Command="{Binding AddEntryCommand}">
+                        <dx:SimpleButton Command="{Binding AddEntryCommand}" Height="34">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="+" VerticalAlignment="Center" />
                                 <TextBlock Text="Thêm Key" Margin="6,0,0,0" />
@@ -80,60 +76,76 @@
                 </DockPanel>
 
                 <!-- Filter bar -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <dxe:TextEdit Width="280"
+                <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <dxe:TextEdit Width="240"
                                   NullText="Tìm key, giá trị vi-VN hoặc en-US..."
                                   EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                  Margin="0,0,12,0" />
+                                  Margin="0,0,10,0" />
 
-                    <dxe:ComboBoxEdit Width="130"
+                    <!-- Filter theo Table/Prefix — chỉ hiện keys của table cụ thể -->
+                    <dxe:ComboBoxEdit Width="150"
+                                      NullText="Table"
+                                      ItemsSource="{Binding TableOptions}"
+                                      EditValue="{Binding TableFilter}"
+                                      Margin="0,0,10,0"
+                                      ToolTip="Lọc theo table (prefix của Resource Key)" />
+
+                    <dxe:ComboBoxEdit Width="120"
                                       NullText="Module"
                                       ItemsSource="{Binding ModuleOptions}"
                                       EditValue="{Binding ModuleFilter}"
-                                      Margin="0,0,12,0" />
+                                      Margin="0,0,10,0" />
 
                     <dxe:CheckEdit Content="Chỉ hiện thiếu bản dịch"
                                    IsChecked="{Binding ShowMissingOnly}"
                                    VerticalAlignment="Center" />
-                </StackPanel>
+                </WrapPanel>
             </Grid>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: GridControl — key/language matrix (editable)
+             ROW 1: GridControl — key/language matrix (inline editable)
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Margin="16,8,16,0"
                 BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-            <dxg:GridControl ItemsSource="{Binding EntriesView}"
+            <dxg:GridControl x:Name="ResourceGrid"
+                             ItemsSource="{Binding EntriesView}"
                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                              AutoPopulateColumns="False">
                 <dxg:GridControl.View>
-                    <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
-                                   AllowPerPixelScrolling="True" />
+                    <dxg:TableView x:Name="ResourceTableView"
+                                   NavigationStyle="Cell"
+                                   ShowGroupPanel="False"
+                                   AllowEditing="True"
+                                   AllowPerPixelScrolling="True"
+                                   CellValueChanged="OnCellValueChanged" />
                 </dxg:GridControl.View>
                 <dxg:GridControl.Columns>
-                    <dxg:GridColumn Header="Resource Key" FieldName="ResourceKey" Width="180" AllowEditing="False" />
-                    <dxg:GridColumn Header="Module" FieldName="Module" Width="80" AllowEditing="False" />
-                    <dxg:GridColumn Header="vi-VN" FieldName="ViVn" Width="*" />
-                    <dxg:GridColumn Header="en-US" FieldName="EnUs" Width="*" />
-                    <dxg:GridColumn Header="ja-JP" FieldName="JaJp" Width="*" />
-                    <dxg:GridColumn Header="" Width="35" AllowEditing="False" AllowSorting="False">
+                    <dxg:GridColumn Header="Resource Key"  FieldName="ResourceKey"  Width="220" AllowEditing="False" />
+                    <dxg:GridColumn Header="Table"         FieldName="TablePrefix"  Width="100" AllowEditing="False" />
+                    <dxg:GridColumn Header="Module"        FieldName="Module"        Width="70"  AllowEditing="False" />
+                    <dxg:GridColumn Header="vi-VN"         FieldName="ViVn"          Width="*" />
+                    <dxg:GridColumn Header="en-US"         FieldName="EnUs"          Width="*" />
+                    <dxg:GridColumn Header="ja-JP"         FieldName="JaJp"          Width="*" />
+                    <!-- Missing indicator -->
+                    <dxg:GridColumn Header="" Width="32" AllowEditing="False" AllowSorting="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="⚠" FontSize="14" Foreground="Orange"
+                                <TextBlock Text="⚠" FontSize="13" Foreground="Orange"
                                            VerticalAlignment="Center" HorizontalAlignment="Center"
                                            Visibility="{Binding Row.HasMissing, Converter={StaticResource BoolToVis}}"
                                            ToolTip="Thiếu bản dịch" />
                             </DataTemplate>
                         </dxg:GridColumn.CellTemplate>
                     </dxg:GridColumn>
-                    <dxg:GridColumn Header="" Width="40" AllowEditing="False" AllowSorting="False">
+                    <!-- Delete button -->
+                    <dxg:GridColumn Header="" Width="36" AllowEditing="False" AllowSorting="False">
                         <dxg:GridColumn.CellTemplate>
                             <DataTemplate>
                                 <Button Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                         CommandParameter="{Binding Row}"
                                         Foreground="#EF4444"
-                                        ToolTip="Xóa key" Width="28" Height="28"
+                                        ToolTip="Xóa key" Width="26" Height="26"
                                         Background="Transparent" BorderBrush="Transparent">
                                     <TextBlock Text="🗑" />
                                 </Button>
@@ -151,7 +163,7 @@
                 Background="#EEF5FF" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🌐" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
-                <TextBlock FontSize="12" Opacity="0.6" Margin="0,0,16,0" VerticalAlignment="Center">
+                <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                     <TextBlock.Text>
                         <MultiBinding StringFormat="Hiển thị {0} / {1} keys · {2} thiếu bản dịch">
                             <Binding Path="FilteredCount" />
@@ -160,6 +172,8 @@
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
+                <TextBlock FontSize="12" Opacity="0.5" Margin="16,0,0,0" VerticalAlignment="Center"
+                           Text="Click vào ô vi-VN / en-US / ja-JP để sửa — tự động lưu khi rời ô." />
             </StackPanel>
         </Border>
     </Grid>

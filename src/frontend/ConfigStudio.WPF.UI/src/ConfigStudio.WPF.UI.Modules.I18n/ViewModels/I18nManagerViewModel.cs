@@ -16,7 +16,7 @@ namespace ConfigStudio.WPF.UI.Modules.I18n.ViewModels;
 
 /// <summary>
 /// ViewModel cho màn hình i18n Manager (Screen 10).
-/// DataGrid key/language matrix, filter theo module, search, hiện missing translations.
+/// DataGrid key/language matrix, filter theo table prefix + module, inline edit + auto-save to DB.
 /// Khi DB đã cấu hình → load dữ liệu thật qua II18nDataService.
 /// Khi chưa cấu hình → fallback mock data.
 /// </summary>
@@ -28,6 +28,9 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
 
     // ── Data ──────────────────────────────────────────────────
     public ObservableCollection<I18nEntryDto> Entries { get; } = [];
+
+    private string _saveError = "";
+    public string SaveError { get => _saveError; private set => SetProperty(ref _saveError, value); }
     public ICollectionView EntriesView { get; }
 
     private I18nEntryDto? _selectedEntry;
@@ -49,14 +52,25 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _searchText, value))
-            {
-                EntriesView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+                RefreshFilter();
         }
     }
 
-    public List<string> ModuleOptions { get; } = ["Tất cả", "Form", "Field", "Rule", "Event", "System"];
+    // Danh sách table prefix (nhanvien, donhang...) lấy động từ keys đã load
+    public ObservableCollection<string> TableOptions { get; } = ["Tất cả"];
+
+    private string _tableFilter = "Tất cả";
+    public string TableFilter
+    {
+        get => _tableFilter;
+        set
+        {
+            if (SetProperty(ref _tableFilter, value))
+                RefreshFilter();
+        }
+    }
+
+    public List<string> ModuleOptions { get; } = ["Tất cả", "Field", "Form", "Rule", "Event", "System"];
 
     private string _moduleFilter = "Tất cả";
     public string ModuleFilter
@@ -65,10 +79,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _moduleFilter, value))
-            {
-                EntriesView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+                RefreshFilter();
         }
     }
 
@@ -79,10 +90,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         set
         {
             if (SetProperty(ref _showMissingOnly, value))
-            {
-                EntriesView.Refresh();
-                RaisePropertyChanged(nameof(FilteredCount));
-            }
+                RefreshFilter();
         }
     }
 
@@ -99,14 +107,17 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     public DelegateCommand ExportCommand { get; }
     public DelegateCommand ImportCommand { get; }
 
+    /// <summary>Gọi từ code-behind khi cell vi-VN/en-US/ja-JP commit — save ngay vào DB.</summary>
+    public DelegateCommand<CellSaveArgs> SaveCellCommand { get; }
+
     private IRegionNavigationJournal? _journal;
 
     public I18nManagerViewModel(II18nDataService? i18nService = null, IAppConfigService? appConfig = null)
     {
         _i18nService = i18nService;
-        _appConfig = appConfig;
+        _appConfig   = appConfig;
 
-        EntriesView = CollectionViewSource.GetDefaultView(Entries);
+        EntriesView        = CollectionViewSource.GetDefaultView(Entries);
         EntriesView.Filter = ApplyFilter;
 
         GoBackCommand      = new DelegateCommand(ExecuteGoBack, () => _journal?.CanGoBack == true)
@@ -116,6 +127,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         RefreshCommand     = new DelegateCommand(async () => await LoadDataAsync());
         ExportCommand      = new DelegateCommand(ExecuteExport);
         ImportCommand      = new DelegateCommand(ExecuteImport);
+        SaveCellCommand    = new DelegateCommand<CellSaveArgs>(async args => await ExecuteSaveCellAsync(args));
     }
 
     // Trigger RaiseCanExecuteChanged cho GoBackCommand
@@ -133,39 +145,44 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     {
         _journal = navigationContext.NavigationService.Journal;
         RaisePropertyChanged(nameof(CanGoBack));
+
+        // Nếu navigate từ FieldConfig/FormEditor kèm tableCode → auto-filter về table đó
+        var tableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
+        if (!string.IsNullOrWhiteSpace(tableCode))
+            _pendingTableFilter = tableCode.ToLowerInvariant();
+
         await LoadDataAsync();
     }
 
+    private string _pendingTableFilter = "";
+
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
+
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
         _cts.Cancel();
         _cts = new CancellationTokenSource();
     }
 
-    // ── Load data (DB hoặc mock) ─────────────────────────────
+    // ── Load data ────────────────────────────────────────────
 
     private async Task LoadDataAsync()
     {
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
-        {
             await LoadFromDatabaseAsync();
-        }
         else
-        {
             LoadMockData();
-        }
     }
 
     /// <summary>
-    /// Đọc Sys_Resource (pivoted) từ DB, map sang UI DTO.
-    /// Module được suy từ prefix của ResourceKey (lbl.→Field, err.→Rule, sec.→Form, evt.→Event).
+    /// Đọc Sys_Resource từ DB, map sang UI DTO.
+    /// Module suy từ segment thứ 2 của ResourceKey (tablecode.field.x → Field, tablecode.section.x → Form).
     /// </summary>
     private async Task LoadFromDatabaseAsync()
     {
         try
         {
-            var ct = _cts.Token;
+            var ct      = _cts.Token;
             var records = await _i18nService!.GetResourcesAsync(ct);
 
             Entries.Clear();
@@ -174,72 +191,123 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
             {
                 Entries.Add(new I18nEntryDto
                 {
-                    ResourceId = id++,
+                    ResourceId  = id++,
                     ResourceKey = r.ResourceKey,
-                    Module = InferModule(r.ResourceKey),
-                    ViVn = r.ViVn ?? "",
-                    EnUs = r.EnUs ?? "",
-                    JaJp = r.JaJp ?? ""
+                    Module      = InferModule(r.ResourceKey),
+                    TablePrefix = ExtractTablePrefix(r.ResourceKey),
+                    ViVn        = r.ViVn ?? "",
+                    EnUs        = r.EnUs ?? "",
+                    JaJp        = r.JaJp ?? ""
                 });
             }
 
-            RaisePropertyChanged(nameof(TotalEntries));
-            RaisePropertyChanged(nameof(FilteredCount));
-            RaisePropertyChanged(nameof(MissingCount));
+            RebuildTableOptions();
+            ApplyPendingFilter();
+            RefreshFilter();
         }
         catch (OperationCanceledException) { /* Navigation away */ }
         catch
         {
-            // Fallback mock khi lỗi DB
             LoadMockData();
         }
     }
 
-    /// <summary>
-    /// Suy module từ prefix của resource key.
-    /// </summary>
-    private static string InferModule(string key) => key.Split('.')[0] switch
+    // ── Table option helpers ─────────────────────────────────
+
+    /// <summary>Lấy prefix đầu tiên của key: "nhanvien.field.x" → "nhanvien".</summary>
+    private static string ExtractTablePrefix(string key)
     {
-        "lbl" or "ph" => "Field",
-        "err" => "Rule",
-        "sec" => "Form",
-        "evt" => "Event",
-        _ => "System"
-    };
+        var dot = key.IndexOf('.');
+        return dot > 0 ? key[..dot] : key;
+    }
+
+    /// <summary>
+    /// Suy module từ segment thứ 2 của key (tablecode.{segment}.fieldcode).
+    /// "nhanvien.field.x" → "Field", "nhanvien.section.x" → "Form".
+    /// </summary>
+    private static string InferModule(string key)
+    {
+        var parts = key.Split('.');
+        if (parts.Length < 2) return "System";
+        return parts[1].ToLowerInvariant() switch
+        {
+            "field"   => "Field",
+            "section" => "Form",
+            "rule"    => "Rule",
+            "event"   => "Event",
+            // Legacy prefix format
+            "lbl" or "ph" => "Field",
+            "err"         => "Rule",
+            "sec"         => "Form",
+            "evt"         => "Event",
+            _             => "System"
+        };
+    }
+
+    private void RebuildTableOptions()
+    {
+        var prefixes = Entries
+            .Select(e => e.TablePrefix)
+            .Where(p => !string.IsNullOrEmpty(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p)
+            .ToList();
+
+        TableOptions.Clear();
+        TableOptions.Add("Tất cả");
+        foreach (var p in prefixes)
+            TableOptions.Add(p);
+    }
+
+    private void ApplyPendingFilter()
+    {
+        if (string.IsNullOrEmpty(_pendingTableFilter)) return;
+        // Chọn đúng prefix nếu có trong list
+        var match = TableOptions.FirstOrDefault(o =>
+            o.Equals(_pendingTableFilter, StringComparison.OrdinalIgnoreCase));
+        if (match is not null)
+            TableFilter = match;
+        _pendingTableFilter = "";
+    }
+
+    private void RefreshFilter()
+    {
+        EntriesView.Refresh();
+        RaisePropertyChanged(nameof(FilteredCount));
+    }
+
+    // ── Inline edit → save DB ────────────────────────────────
+
+    /// <summary>
+    /// Gọi từ code-behind sau khi user commit cell.
+    /// Save ngay vào Sys_Resource với đúng lang.
+    /// </summary>
+    private async Task ExecuteSaveCellAsync(CellSaveArgs args)
+    {
+        if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
+        if (string.IsNullOrWhiteSpace(args.ResourceKey) || string.IsNullOrWhiteSpace(args.Lang)) return;
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await _i18nService.SaveResourceAsync(args.ResourceKey, args.Lang, args.Value ?? "", cts.Token);
+        }
+        catch (Exception ex)
+        {
+            SaveError = $"Lưu thất bại: {ex.Message}";
+        }
+    }
 
     // ── Load mock data ───────────────────────────────────────
 
     private void LoadMockData()
     {
         Entries.Clear();
-
-        // ── Label keys ───────────────────────────────────────
-        Entries.Add(new I18nEntryDto { ResourceId = 1, ResourceKey = "lbl.madonhang", Module = "Field", ViVn = "Mã Đơn Hàng", EnUs = "Order Code", JaJp = "注文コード" });
-        Entries.Add(new I18nEntryDto { ResourceId = 2, ResourceKey = "lbl.ngaydathang", Module = "Field", ViVn = "Ngày Đặt Hàng", EnUs = "Order Date", JaJp = "注文日" });
-        Entries.Add(new I18nEntryDto { ResourceId = 3, ResourceKey = "lbl.trangthai", Module = "Field", ViVn = "Trạng Thái", EnUs = "Status", JaJp = "ステータス" });
-        Entries.Add(new I18nEntryDto { ResourceId = 4, ResourceKey = "lbl.nhacungcap", Module = "Field", ViVn = "Nhà Cung Cấp", EnUs = "Supplier", JaJp = "サプライヤー" });
-        Entries.Add(new I18nEntryDto { ResourceId = 5, ResourceKey = "lbl.soluong", Module = "Field", ViVn = "Số Lượng", EnUs = "Quantity", JaJp = "数量" });
-        Entries.Add(new I18nEntryDto { ResourceId = 6, ResourceKey = "lbl.dongia", Module = "Field", ViVn = "Đơn Giá", EnUs = "Unit Price", JaJp = "単価" });
-        Entries.Add(new I18nEntryDto { ResourceId = 7, ResourceKey = "lbl.thanhtien", Module = "Field", ViVn = "Thành Tiền", EnUs = "Total", JaJp = "合計" });
-        Entries.Add(new I18nEntryDto { ResourceId = 8, ResourceKey = "lbl.lydotuchoi", Module = "Field", ViVn = "Lý Do Từ Chối", EnUs = "Rejection Reason", JaJp = "" });
-
-        // ── Placeholder keys ─────────────────────────────────
-        Entries.Add(new I18nEntryDto { ResourceId = 9, ResourceKey = "ph.soluong", Module = "Field", ViVn = "Nhập số lượng", EnUs = "Enter quantity", JaJp = "数量を入力" });
-        Entries.Add(new I18nEntryDto { ResourceId = 10, ResourceKey = "ph.search", Module = "System", ViVn = "Tìm kiếm...", EnUs = "Search...", JaJp = "検索..." });
-
-        // ── Error keys ───────────────────────────────────────
-        Entries.Add(new I18nEntryDto { ResourceId = 11, ResourceKey = "err.fld.req", Module = "Rule", ViVn = "Trường bắt buộc", EnUs = "Field is required", JaJp = "必須項目です" });
-        Entries.Add(new I18nEntryDto { ResourceId = 12, ResourceKey = "err.sl.range", Module = "Rule", ViVn = "Số lượng phải từ 1-9999", EnUs = "Quantity must be 1-9999", JaJp = "" });
-        Entries.Add(new I18nEntryDto { ResourceId = 13, ResourceKey = "err.sl.exceed", Module = "Rule", ViVn = "Số lượng vượt giới hạn", EnUs = "Quantity exceeds limit", JaJp = "数量が上限を超えています" });
-
-        // ── Section/Form keys ────────────────────────────────
-        Entries.Add(new I18nEntryDto { ResourceId = 14, ResourceKey = "sec.general", Module = "Form", ViVn = "Thông Tin Chung", EnUs = "General Info", JaJp = "一般情報" });
-        Entries.Add(new I18nEntryDto { ResourceId = 15, ResourceKey = "sec.detail", Module = "Form", ViVn = "Chi Tiết", EnUs = "Details", JaJp = "詳細" });
-        Entries.Add(new I18nEntryDto { ResourceId = 16, ResourceKey = "sec.note", Module = "Form", ViVn = "Ghi Chú", EnUs = "Notes", JaJp = "" });
-
-        // ── Event messages ───────────────────────────────────
-        Entries.Add(new I18nEntryDto { ResourceId = 17, ResourceKey = "evt.recalc.ok", Module = "Event", ViVn = "Đã tính lại thành tiền", EnUs = "Total recalculated", JaJp = "合計が再計算されました" });
-
+        Entries.Add(new I18nEntryDto { ResourceId = 1, ResourceKey = "nhanvien.field.manhanvien",  Module = "Field", TablePrefix = "nhanvien", ViVn = "Mã Nhân Viên",   EnUs = "Employee Code", JaJp = "" });
+        Entries.Add(new I18nEntryDto { ResourceId = 2, ResourceKey = "nhanvien.field.hoten",       Module = "Field", TablePrefix = "nhanvien", ViVn = "Họ Tên",          EnUs = "Full Name",     JaJp = "" });
+        Entries.Add(new I18nEntryDto { ResourceId = 3, ResourceKey = "nhanvien.section.thongtin",  Module = "Form",  TablePrefix = "nhanvien", ViVn = "Thông tin chung", EnUs = "General Info",  JaJp = "" });
+        RebuildTableOptions();
+        RefreshFilter();
         RaisePropertyChanged(nameof(TotalEntries));
         RaisePropertyChanged(nameof(FilteredCount));
         RaisePropertyChanged(nameof(MissingCount));
@@ -252,6 +320,10 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         if (obj is not I18nEntryDto entry) return false;
 
         if (ShowMissingOnly && !entry.HasMissing) return false;
+
+        if (TableFilter != "Tất cả"
+            && !entry.TablePrefix.Equals(TableFilter, StringComparison.OrdinalIgnoreCase))
+            return false;
 
         if (ModuleFilter != "Tất cả" && entry.Module != ModuleFilter) return false;
 
@@ -270,12 +342,14 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteAddEntry()
     {
-        var newId = Entries.Count > 0 ? Entries.Max(e => e.ResourceId) + 1 : 1;
-        var entry = new I18nEntryDto
+        var prefix = TableFilter != "Tất cả" ? TableFilter : "new";
+        var newId  = Entries.Count > 0 ? Entries.Max(e => e.ResourceId) + 1 : 1;
+        var entry  = new I18nEntryDto
         {
-            ResourceId = newId,
-            ResourceKey = $"new.key.{newId}",
-            Module = "Form",
+            ResourceId  = newId,
+            ResourceKey = $"{prefix}.field.key{newId}",
+            Module      = "Field",
+            TablePrefix = prefix,
             ViVn = "", EnUs = "", JaJp = ""
         };
         Entries.Add(entry);
@@ -290,17 +364,13 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         Entries.Remove(SelectedEntry);
         SelectedEntry = null;
         RaisePropertyChanged(nameof(TotalEntries));
-        RaisePropertyChanged(nameof(FilteredCount));
+        RefreshFilter();
         RaisePropertyChanged(nameof(MissingCount));
     }
 
-    private void ExecuteExport()
-    {
-        // TODO(phase2): Export sang CSV/JSON
-    }
-
-    private void ExecuteImport()
-    {
-        // TODO(phase2): Import từ CSV/JSON
-    }
+    private void ExecuteExport() { /* TODO(phase2): Export sang CSV/JSON */ }
+    private void ExecuteImport() { /* TODO(phase2): Import từ CSV/JSON   */ }
 }
+
+/// <summary>Args truyền từ code-behind khi cell commit.</summary>
+public sealed record CellSaveArgs(string ResourceKey, string Lang, string? Value);

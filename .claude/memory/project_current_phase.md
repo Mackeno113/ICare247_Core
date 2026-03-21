@@ -31,6 +31,9 @@
 
 **Remaining WPF tasks:**
 - Wire Impact Preview vào DependencyViewer UI
+- Move Required checkbox từ Behavior → Rules tab (FieldConfigView)
+- Pass `tableCode` khi navigate từ FieldConfig → I18nManager
+- **Chạy migration**: `docs/migrations/003_remove_val_rule_field.sql` trên DB thật
 
 ## Next Priorities
 1. MetadataEngine (IMetadataEngine) — backend

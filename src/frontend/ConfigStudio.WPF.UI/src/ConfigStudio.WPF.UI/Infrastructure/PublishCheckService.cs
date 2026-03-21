@@ -39,13 +39,12 @@ public sealed class PublishCheckService : IPublishCheckService
     private async Task<IReadOnlyList<(string Source, string? ExprJson)>> GetAllExpressionsAsync(
         int formId, int tenantId, SqlConnection conn, CancellationToken ct)
     {
-        // ── Expressions từ Val_Rule (qua Val_Rule_Field → Ui_Field) ─
+        // ── Expressions từ Val_Rule (Field_Id trực tiếp sau Migration 003) ─
         const string sqlRules = """
             SELECT CONCAT('Rule#', vr.Rule_Id) AS Source,
                    vr.Expression_Json           AS ExprJson
             FROM   dbo.Val_Rule vr
-            JOIN   dbo.Val_Rule_Field vrf ON vrf.Rule_Id = vr.Rule_Id
-            JOIN   dbo.Ui_Field uf        ON uf.Field_Id = vrf.Field_Id
+            JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
               AND  uf.Tenant_Id = @TenantId
               AND  vr.Is_Active = 1
@@ -218,8 +217,7 @@ public sealed class PublishCheckService : IPublishCheckService
                    vr.Expression_Json           AS ExprJson,
                    vr.Rule_Type_Code            AS RuleType
             FROM   dbo.Val_Rule vr
-            JOIN   dbo.Val_Rule_Field vrf ON vrf.Rule_Id = vr.Rule_Id
-            JOIN   dbo.Ui_Field uf        ON uf.Field_Id = vrf.Field_Id
+            JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
               AND  uf.Tenant_Id = @TenantId
               AND  vr.Rule_Type_Code = 'CUSTOM'
@@ -382,8 +380,7 @@ public sealed class PublishCheckService : IPublishCheckService
         const string sqlKeys = """
             SELECT DISTINCT vr.Error_Key
             FROM   dbo.Val_Rule vr
-            JOIN   dbo.Val_Rule_Field vrf ON vrf.Rule_Id = vr.Rule_Id
-            JOIN   dbo.Ui_Field uf        ON uf.Field_Id = vrf.Field_Id
+            JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
               AND  uf.Tenant_Id = @TenantId
               AND  vr.Is_Active = 1

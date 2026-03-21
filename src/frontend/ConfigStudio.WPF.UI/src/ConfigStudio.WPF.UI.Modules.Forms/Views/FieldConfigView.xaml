@@ -186,9 +186,10 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />  <!-- 0: Header bar -->
+            <RowDefinition Height="Auto" />  <!-- 1: Error banner (ẩn khi không có lỗi) -->
+            <RowDefinition Height="*" />     <!-- 2: TabControl -->
+            <RowDefinition Height="Auto" />  <!-- 3: Footer -->
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════════
@@ -251,9 +252,25 @@
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
+             BANNER: Lỗi load dữ liệu (chỉ hiện khi HasLoadError = true)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1"
+                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="0,0,0,1"
+                Padding="16,8"
+                Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⚠" FontSize="14" Foreground="#DC2626"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding LoadError, Mode=OneWay}"
+                           FontSize="12" Foreground="#DC2626"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
              ROW 1: TabControl — 4 tabs
              ═══════════════════════════════════════════════════════════════ -->
-        <TabControl Grid.Row="1" Margin="16,12,16,0"
+        <TabControl Grid.Row="2" Margin="16,12,16,0"
                     Background="Transparent" BorderThickness="0">
 
             <!-- ═══ TAB 1: Basic ═══════════════════════════════════ -->
@@ -681,7 +698,7 @@
         <!-- ═══════════════════════════════════════════════════════════════
              ROW 2: Footer — navigate links
              ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Background="{StaticResource SurfaceBrush}"
+        <Border Grid.Row="3" Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
                 Padding="20,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

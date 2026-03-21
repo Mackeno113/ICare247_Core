@@ -20,8 +20,12 @@ public class I18nEntryDto : BindableBase
     public string ResourceKey { get => _resourceKey; set => SetProperty(ref _resourceKey, value); }
 
     private string _module = "";
-    /// <summary>Module sở hữu key (Form, Grammar, System, ...).</summary>
+    /// <summary>Module sở hữu key (Form, Field, Rule, Event, System).</summary>
     public string Module { get => _module; set => SetProperty(ref _module, value); }
+
+    private string _tablePrefix = "";
+    /// <summary>Prefix table của key — segment đầu: "nhanvien.field.x" → "nhanvien".</summary>
+    public string TablePrefix { get => _tablePrefix; set => SetProperty(ref _tablePrefix, value); }
 
     private string _viVn = "";
     /// <summary>Giá trị tiếng Việt.</summary>

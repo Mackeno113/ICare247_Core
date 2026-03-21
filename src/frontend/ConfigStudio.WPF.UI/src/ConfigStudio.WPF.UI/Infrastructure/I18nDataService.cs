@@ -102,6 +102,29 @@ public sealed class I18nDataService : II18nDataService
     }
 
     /// <inheritdoc />
+    public async Task InitResourceIfMissingAsync(
+        string resourceKey, string langCode, string defaultValue, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return;
+
+        // Chỉ INSERT nếu chưa có — không ghi đè bản dịch người dùng đã sửa
+        const string sql = """
+            IF NOT EXISTS (
+                SELECT 1 FROM dbo.Sys_Resource
+                WHERE  Resource_Key = @Key AND Lang_Code = @Lang
+            )
+                INSERT INTO dbo.Sys_Resource (Resource_Key, Lang_Code, Resource_Value, Version, Updated_At)
+                VALUES (@Key, @Lang, @Value, 1, GETDATE())
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.ExecuteAsync(
+            new CommandDefinition(sql,
+                new { Key = resourceKey, Lang = langCode, Value = defaultValue },
+                cancellationToken: ct));
+    }
+
+    /// <inheritdoc />
     public async Task DeleteResourceAsync(string resourceKey, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return;

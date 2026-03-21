@@ -88,7 +88,7 @@ public sealed class FormDetailDataService : IFormDetailDataService
                    ISNULL(fi.Label_Key, '')    AS LabelKey,
                    fi.Is_Visible   AS IsVisible,
                    fi.Is_ReadOnly  AS IsReadOnly,
-                   (SELECT COUNT(*) FROM dbo.Val_Rule_Field vrf WHERE vrf.Field_Id = fi.Field_Id) AS RuleCount
+                   (SELECT COUNT(*) FROM dbo.Val_Rule vr WHERE vr.Field_Id = fi.Field_Id) AS RuleCount
             FROM   dbo.Ui_Field fi
             JOIN   dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             LEFT JOIN dbo.Ui_Section se ON se.Section_Id = fi.Section_Id
@@ -135,16 +135,15 @@ public sealed class FormDetailDataService : IFormDetailDataService
 
         const string sql = """
             SELECT vr.Rule_Id        AS RuleId,
-                   vrf.Order_No      AS OrderNo,
+                   vr.Order_No       AS OrderNo,
                    vr.Rule_Type_Code AS RuleTypeCode,
                    LEFT(ISNULL(vr.Expression_Json, ''), 100) AS ExpressionPreview,
                    vr.Error_Key      AS ErrorKey,
                    vr.Is_Active      AS IsActive
             FROM   dbo.Val_Rule vr
-            JOIN   dbo.Val_Rule_Field vrf ON vrf.Rule_Id = vr.Rule_Id
-            JOIN   dbo.Ui_Field fi ON fi.Field_Id = vrf.Field_Id
+            JOIN   dbo.Ui_Field fi ON fi.Field_Id = vr.Field_Id
             WHERE  fi.Form_Id = @FormId
-            ORDER BY vrf.Order_No
+            ORDER BY vr.Order_No
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);

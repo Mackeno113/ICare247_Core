@@ -232,6 +232,43 @@
 - [x] `ViewNames.cs` + `FormsModule.cs` — register `SyncSchemaDialog`
 - [x] Build verify — 0 errors, 0 warnings
 
+### Phase 9 — Bug fixes + Refactor Val_Rule (2026-03-22)
+
+**Bugs đã fix:**
+- [x] `SectionTitleKeyPreview` dùng `TableCode` thay `FormCode` (lowercase)
+- [x] `ExistsFormCodeAsync` báo trùng sai khi edit — thêm `excludeFormId` loại chính nó
+- [x] Auto-generate fields: FK violation `ColumnId=0` → thêm `EnsureColumnExistsAsync`
+- [x] Auto-generate fields: section chưa persist trước khi insert fields
+- [x] Auto-generate fields: `DisplayName` hiển thị tên cột thô → PascalCase split
+- [x] Field summary panel cho sửa nhầm → set `IsReadOnly=True` + `Mode=OneWay`
+- [x] Field `DisplayName` trong TreeView load từ `Sys_Resource` (ngôn ngữ vi)
+- [x] Nút back từ `FieldConfig` restore đúng field đang chọn trên `FormEditor`
+- [x] Bug "MaNhanVien → SoLuong": `catch` nuốt lỗi → fallback mock sai — tách catch, show error banner
+
+**i18n Manager nâng cấp:**
+- [x] Thêm nút Back (GoBackCommand qua IRegionNavigationJournal)
+- [x] Thêm bộ lọc Table/Form động
+- [x] Cho sửa inline trên lưới (`AllowEditing=True`, `CellValueChanged`)
+- [x] Auto-save khi commit cell qua `SaveCellCommand`
+
+**Validation Rules Editor redesign:**
+- [x] Breadcrumb `← Cấu hình Field › Section › FieldCode`
+- [x] Grid: badge style RuleType, color Severity, ẩn Expression khi Required
+- [x] Auto-generate `ErrorKey` theo pattern `{table}.val.{column}.{ruletype}` (readonly)
+- [x] Auto-init `Sys_Resource` vi/en khi save rule (IF NOT EXISTS)
+- [x] Xác nhận trước khi xóa rule — default No
+
+**Refactor Val_Rule — bỏ bảng junction Val_Rule_Field:**
+- [x] Tạo `docs/migrations/003_remove_val_rule_field.sql` — migration trong transaction
+- [x] `Val_Rule` thêm `Field_Id` (FK→Ui_Field), `Severity`, `Order_No` trực tiếp
+- [x] Cập nhật `RuleDataService` — query thẳng Val_Rule, không JOIN junction
+- [x] Cập nhật `RuleRepository` (backend) — bỏ JOIN Val_Rule_Field
+- [x] Fix tất cả 5 chỗ còn reference `Val_Rule_Field` trong SQL: `FormDetailDataService`, `PublishCheckService`
+- [x] Thêm `InitResourceIfMissingAsync` vào `II18nDataService` + implement
+- [x] Build verify — 0 errors, 0 warnings (backend + frontend)
+
+> ⚠️ **Chưa thực hiện**: Chạy `003_remove_val_rule_field.sql` trên DB thật
+
 ---
 
 ## ✅ Đã xong (Done)
@@ -280,3 +317,8 @@
 | 2026-03-21 | TitleKey = `{form_code_lower}.section.{section_code_lower}` — ghép auto    | Convention rõ ràng, không hardcode, dễ trace; user chỉ nhập phần section_code  |
 | 2026-03-21 | Section Code enforce lowercase [a-z0-9_] tại ViewModel layer                | Tránh TitleKey bị mixed-case; enforce ngay khi gõ không cần converter XAML     |
 | 2026-03-21 | UpsertSectionAsync dùng transaction: rename Resource_Key trước, sau đó UPDATE Section | Đảm bảo atomic — nếu rename fail thì Section không update, tránh dangling key  |
+| 2026-03-22 | Bỏ bảng junction `Val_Rule_Field` — Field_Id gộp trực tiếp vào `Val_Rule`   | ErrorKey pattern `{table}.val.{column}.{type}` đã unique per field → quan hệ thực tế là 1-N, không cần N-N |
+| 2026-03-22 | ErrorKey pattern: `{table}.val.{column}.{ruletype}` — auto-generate, readonly | Enforces naming convention, không để người dùng nhập tùy ý, tránh trùng lặp   |
+| 2026-03-22 | `InitResourceIfMissingAsync` — IF NOT EXISTS INSERT cho Sys_Resource          | Khi save rule tự động tạo bản dịch mặc định nhưng không overwrite bản dịch người dùng đã nhập |
+| 2026-03-22 | Mọi thao tác xóa dữ liệu DB phải confirm dialog, default = No                | Xóa không thể hoàn tác — user cần cơ hội từ chối nếu nhấn nhầm               |
+| 2026-03-22 | `LoadFromDatabaseAsync` tách catch: lỗi bước chính → error banner, KHÔNG fallback mock | Fallback mock với data sai (SoLuong) gây hiểu nhầm nghiêm trọng — lỗi phải hiện rõ |

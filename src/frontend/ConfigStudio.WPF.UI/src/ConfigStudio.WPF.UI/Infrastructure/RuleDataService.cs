@@ -1,7 +1,9 @@
 // File    : RuleDataService.cs
 // Module  : Infrastructure
 // Layer   : Presentation
-// Purpose : Dapper implementation cho IRuleDataService — Val_Rule + Val_Rule_Field.
+// Purpose : Dapper implementation cho IRuleDataService — Val_Rule.
+//           Sau Migration 003: Field_Id nằm trực tiếp trong Val_Rule,
+//           không còn bảng junction Val_Rule_Field.
 
 using Dapper;
 using Microsoft.Data.SqlClient;
@@ -11,7 +13,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 namespace ConfigStudio.WPF.UI.Infrastructure;
 
 /// <summary>
-/// CRUD validation rules. Delete chỉ unlink (Val_Rule_Field), không xóa Val_Rule.
+/// CRUD validation rules trực tiếp trên dbo.Val_Rule.
 /// </summary>
 public sealed class RuleDataService : IRuleDataService
 {
@@ -23,21 +25,24 @@ public sealed class RuleDataService : IRuleDataService
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RuleItemRecord>> GetRulesByFieldAsync(int fieldId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<RuleItemRecord>> GetRulesByFieldAsync(
+        int fieldId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return [];
 
+        // Query thẳng Val_Rule theo Field_Id — không cần JOIN junction nữa
         const string sql = """
-            SELECT vr.Rule_Id        AS RuleId,
-                   vr.Rule_Type_Code AS RuleTypeCode,
-                   vrf.Order_No      AS OrderNo,
-                   vr.Expression_Json AS ExpressionJson,
-                   vr.Error_Key      AS ErrorKey,
-                   vr.Is_Active      AS IsActive
-            FROM   dbo.Val_Rule vr
-            JOIN   dbo.Val_Rule_Field vrf ON vrf.Rule_Id = vr.Rule_Id
-            WHERE  vrf.Field_Id = @FieldId
-            ORDER BY vrf.Order_No
+            SELECT Rule_Id         AS RuleId,
+                   Field_Id        AS FieldId,
+                   Rule_Type_Code  AS RuleTypeCode,
+                   Order_No        AS OrderNo,
+                   Expression_Json AS ExpressionJson,
+                   Error_Key       AS ErrorKey,
+                   Severity,
+                   Is_Active       AS IsActive
+            FROM   dbo.Val_Rule
+            WHERE  Field_Id = @FieldId
+            ORDER BY Order_No
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
@@ -64,67 +69,59 @@ public sealed class RuleDataService : IRuleDataService
     }
 
     /// <inheritdoc />
-    public async Task<int> SaveRuleAsync(RuleItemRecord rule, int fieldId, CancellationToken ct = default)
+    public async Task<int> SaveRuleAsync(RuleItemRecord rule, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return 0;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
-        conn.Open();
-
-        int ruleId;
+        await conn.OpenAsync(ct);
 
         if (rule.RuleId == 0)
         {
-            // Tạo rule mới
+            // Thêm mới — INSERT INTO Val_Rule
             const string sqlInsert = """
                 INSERT INTO dbo.Val_Rule
-                       (Rule_Type_Code, Error_Key, Expression_Json, Is_Active, Updated_At)
+                       (Field_Id, Rule_Type_Code, Error_Key, Severity,
+                        Expression_Json, Order_No, Is_Active, Updated_At)
                 OUTPUT INSERTED.Rule_Id
-                VALUES (@RuleTypeCode, @ErrorKey, @ExpressionJson, 1, GETDATE())
+                VALUES (@FieldId, @RuleTypeCode, @ErrorKey, @Severity,
+                        @ExpressionJson, @OrderNo, 1, GETDATE())
                 """;
 
-            ruleId = await conn.QuerySingleAsync<int>(
+            return await conn.QuerySingleAsync<int>(
                 new CommandDefinition(sqlInsert, rule, cancellationToken: ct));
-
-            // Liên kết với field
-            const string sqlLink = """
-                INSERT INTO dbo.Val_Rule_Field (Field_Id, Rule_Id, Order_No)
-                VALUES (@FieldId, @RuleId, @OrderNo)
-                """;
-
-            await conn.ExecuteAsync(
-                new CommandDefinition(sqlLink, new { FieldId = fieldId, RuleId = ruleId, rule.OrderNo }, cancellationToken: ct));
         }
         else
         {
-            ruleId = rule.RuleId;
-
+            // Cập nhật — UPDATE theo Rule_Id + Field_Id (safety check)
             const string sqlUpdate = """
                 UPDATE dbo.Val_Rule
                 SET    Rule_Type_Code  = @RuleTypeCode,
                        Error_Key       = @ErrorKey,
+                       Severity        = @Severity,
                        Expression_Json = @ExpressionJson,
+                       Order_No        = @OrderNo,
                        Updated_At      = GETDATE()
-                WHERE  Rule_Id = @RuleId
+                WHERE  Rule_Id  = @RuleId
+                  AND  Field_Id = @FieldId
                 """;
 
             await conn.ExecuteAsync(
                 new CommandDefinition(sqlUpdate, rule, cancellationToken: ct));
+            return rule.RuleId;
         }
-
-        return ruleId;
     }
 
     /// <inheritdoc />
-    public async Task DeleteRuleFieldAsync(int fieldId, int ruleId, CancellationToken ct = default)
+    public async Task DeleteRuleAsync(int ruleId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return;
 
-        // Chỉ unlink — không xóa Val_Rule (rule có thể dùng chung nhiều fields)
-        const string sql = "DELETE FROM dbo.Val_Rule_Field WHERE Field_Id = @FieldId AND Rule_Id = @RuleId";
+        // Xóa trực tiếp Val_Rule — không còn junction table
+        const string sql = "DELETE FROM dbo.Val_Rule WHERE Rule_Id = @RuleId";
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         await conn.ExecuteAsync(
-            new CommandDefinition(sql, new { FieldId = fieldId, RuleId = ruleId }, cancellationToken: ct));
+            new CommandDefinition(sql, new { RuleId = ruleId }, cancellationToken: ct));
     }
 }

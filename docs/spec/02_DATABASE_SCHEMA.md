@@ -395,36 +395,31 @@
 ---
 
 ### Val_Rule
-> Định nghĩa một validation rule cụ thể. Có thể dùng lại cho nhiều field.
+> Định nghĩa một validation rule thuộc về một field cụ thể.
+> `Error_Key` theo pattern `{table}.val.{column}.{ruletype}` — unique toàn bảng, phản ánh rule luôn gắn với đúng 1 field.
+> *(Migration: 003_remove_val_rule_field.sql — bỏ bảng junction Val_Rule_Field, gộp Field_Id vào đây)*
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Rule_Id | int | PK IDENTITY | |
-| Rule_Type_Code | nvarchar(50) | NOT NULL FK→Val_Rule_Type | |
-| Error_Key | nvarchar(150) | NOT NULL | Resource key → Sys_Resource |
+| Field_Id | int | NOT NULL FK→Ui_Field | Field sở hữu rule này |
+| Rule_Type_Code | nvarchar(50) | NOT NULL FK→Val_Rule_Type | VD: 'Required', 'Range', 'Regex', 'Custom' |
+| Error_Key | nvarchar(150) | NOT NULL UNIQUE | Pattern: `{table}.val.{column}.{type}` → Sys_Resource |
+| Severity | nvarchar(20) | NOT NULL DEFAULT 'Error' | 'Error' / 'Warning' / 'Info' |
 | Expression_Json | nvarchar(max) | NULL | AST expression (bắt buộc trừ Required) |
 | Condition_Expr | nvarchar(max) | NULL | Điều kiện áp dụng rule (AST) |
+| Order_No | int | NOT NULL DEFAULT 0 | Thứ tự evaluate trong field |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 | Updated_At | datetime | DEFAULT getdate() | |
 
-**Constraints:** `CHK_Val_Rule_HasExpression`: `Expression_Json IS NOT NULL OR Rule_Type_Code = 'Required'`
-*(Rule Required không cần Expression — engine tự hiểu là kiểm tra not null/empty)*
+**Constraints:**
+- `CHK_Val_Rule_HasExpression`: `Expression_Json IS NOT NULL OR Rule_Type_Code = 'Required'`
+  *(Rule Required không cần Expression — engine tự hiểu là kiểm tra not null/empty)*
+- `UX_Val_Rule_ErrorKey`: UNIQUE `(Error_Key)`
 
----
+**Indexes:** `IX_Val_Rule_Field_Id (Field_Id, Order_No)`
 
-### Val_Rule_Field
-> Liên kết nhiều-nhiều giữa field và rule. Một field có thể có nhiều rules, một rule có thể áp dụng cho nhiều fields.
-
-| Column | Type | Constraint | Mô tả |
-|---|---|---|---|
-| Rule_Field_Id | int | PK IDENTITY | |
-| Field_Id | int | NOT NULL FK→Ui_Field | |
-| Rule_Id | int | NOT NULL FK→Val_Rule | |
-| Order_No | int | NOT NULL DEFAULT 0 | Thứ tự evaluate |
-
-**Constraints:** UNIQUE `(Field_Id, Rule_Id)`
-
-**Indexes:** `IX_Val_Rule_Field (Field_Id)`
+> **Thiết kế:** Quan hệ là **1 field → nhiều rules** (1-N). Mỗi rule có `Error_Key` riêng nên không thể dùng chung giữa các field. Bảng junction `Val_Rule_Field` đã bị loại bỏ trong Migration 003.
 
 ---
 
@@ -568,7 +563,7 @@
 Sys_Tenant
     └── Sys_Table (Tenant_Id nullable)
             ├── Sys_Column
-            │       └── Ui_Field ──────────────────── Val_Rule_Field ── Val_Rule ── Val_Rule_Type
+            │       └── Ui_Field ──────────────────── Val_Rule (Field_Id FK) ── Val_Rule_Type
             └── Ui_Form (Table_Id)
                     ├── Ui_Section
                     │       └── Ui_Field (Section_Id nullable)

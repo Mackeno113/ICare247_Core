@@ -16,6 +16,15 @@ public interface II18nDataService
     Task<IReadOnlyList<I18nRecord>> GetResourcesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<LanguageRecord>> GetLanguagesAsync(CancellationToken ct = default);
     Task<string?> ResolveKeyAsync(string resourceKey, string langCode, CancellationToken ct = default);
+
+    /// <summary>Upsert — ghi đè nếu key đã tồn tại.</summary>
     Task SaveResourceAsync(string resourceKey, string langCode, string value, CancellationToken ct = default);
+
+    /// <summary>
+    /// Chỉ INSERT nếu key+lang chưa có — không ghi đè bản dịch cũ.
+    /// Dùng để tạo giá trị mặc định khi auto-generate rule.
+    /// </summary>
+    Task InitResourceIfMissingAsync(string resourceKey, string langCode, string defaultValue, CancellationToken ct = default);
+
     Task DeleteResourceAsync(string resourceKey, CancellationToken ct = default);
 }

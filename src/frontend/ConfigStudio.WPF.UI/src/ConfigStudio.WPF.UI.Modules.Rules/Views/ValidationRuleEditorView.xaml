@@ -1,4 +1,4 @@
-<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Rules.Views.ValidationRuleEditorView"
+﻿<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Rules.Views.ValidationRuleEditorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -8,12 +8,27 @@
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="600"
-             d:DesignWidth="1000"
+             d:DesignHeight="640"
+             d:DesignWidth="1100"
              mc:Ignorable="d">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="HelpText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Foreground" Value="#64748B" />
+            <Setter Property="Margin" Value="0,3,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#374151" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="FieldGroup" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -24,95 +39,75 @@
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 0: Header + Toolbar
+             ROW 0: Header — breadcrumb + toolbar
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16,14"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
                 BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <!-- Title -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal">
-                    <Button Command="{Binding BackCommand}" ToolTip="Quay lại Field Config"
-                            Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="←" FontSize="16" VerticalAlignment="Center" />
-                    </Button>
-                    <StackPanel Margin="8,0,0,0" VerticalAlignment="Center">
-                        <TextBlock FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="Validation Rules — {0}">
-                                    <Binding Path="FieldCode" />
-                                </MultiBinding>
-                            </TextBlock.Text>
+            <DockPanel>
+                <!-- Left: back + context -->
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <!-- Breadcrumb -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Command="{Binding BackCommand}"
+                                Background="Transparent" BorderBrush="Transparent"
+                                Padding="0" Cursor="Hand"
+                                ToolTip="Quay lại Cấu hình Field">
+                            <TextBlock Text="← Cấu hình Field" FontSize="12"
+                                       Foreground="#3B82F6" TextDecorations="Underline" />
+                        </Button>
+                        <TextBlock Text=" › " FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" />
+                        <TextBlock FontSize="12" Foreground="#64748B" VerticalAlignment="Center">
+                            <Run Text="{Binding SectionName, Mode=OneWay}" />
                         </TextBlock>
-                        <TextBlock FontSize="12" Opacity="0.6"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}">
-                            <TextBlock.Text>
-                                <MultiBinding StringFormat="Field #{0} · Form #{1} · {2} rules">
-                                    <Binding Path="FieldId" />
-                                    <Binding Path="FormId" />
-                                    <Binding Path="Rules.Count" />
-                                </MultiBinding>
-                            </TextBlock.Text>
+                        <TextBlock Text=" › " FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" />
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#1E293B" VerticalAlignment="Center">
+                            <Run Text="{Binding FieldCode, Mode=OneWay}" />
                         </TextBlock>
                     </StackPanel>
 
-                    <!-- Dirty indicator -->
-                    <TextBlock Text="•" Foreground="Orange" FontSize="20"
-                               Margin="12,0,0,0" VerticalAlignment="Center"
-                               Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}"
-                               ToolTip="Có thay đổi chưa lưu" />
+                    <!-- Title -->
+                    <TextBlock Text="Validation Rules"
+                               FontSize="22" FontWeight="Bold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+
+                    <!-- Summary -->
+                    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                        <TextBlock FontSize="12" Foreground="#64748B">
+                            <Run Text="{Binding Rules.Count, Mode=OneWay}" />
+                            <Run Text="rule(s) — " />
+                            <Run Text="Field Id: " />
+                            <Run Text="{Binding FieldId, Mode=OneWay}" />
+                        </TextBlock>
+                        <TextBlock Text=" • Có thay đổi chưa lưu" FontSize="12"
+                                   Foreground="#F59E0B" FontWeight="SemiBold"
+                                   Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
                 </StackPanel>
 
-                <!-- Toolbar -->
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <dx:SimpleButton Command="{Binding AddRuleCommand}" Margin="0,0,8,0">
+                <!-- Right: Toolbar -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <dx:SimpleButton Command="{Binding AddRuleCommand}" Height="34" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="+" VerticalAlignment="Center" />
+                            <TextBlock Text="+" FontSize="16" VerticalAlignment="Center" />
                             <TextBlock Text="Thêm Rule" Margin="6,0,0,0" />
                         </StackPanel>
                     </dx:SimpleButton>
-
                     <Button Command="{Binding MoveUpCommand}" ToolTip="Di chuyển lên"
                             Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="↑" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="↑" FontSize="14" />
                     </Button>
                     <Button Command="{Binding MoveDownCommand}" ToolTip="Di chuyển xuống"
                             Width="30" Height="30" Background="Transparent" BorderBrush="Transparent">
-                        <TextBlock Text="↓" FontSize="14" VerticalAlignment="Center" />
+                        <TextBlock Text="↓" FontSize="14" />
                     </Button>
-
-                    <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}"
-                               Margin="4,4" />
-
-                    <dx:SimpleButton Command="{Binding OpenExpressionBuilderCommand}" Margin="0,0,8,0">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{}{ }" VerticalAlignment="Center" />
-                            <TextBlock Text="Expression Builder" Margin="6,0,0,0" />
-                        </StackPanel>
-                    </dx:SimpleButton>
-
-                    <!-- Right: Save All -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                                Margin="16,0,0,0">
-                        <dx:SimpleButton Command="{Binding SaveAllCommand}">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="💾" VerticalAlignment="Center" />
-                                <TextBlock Text="Lưu tất cả" Margin="6,0,0,0" />
-                            </StackPanel>
-                        </dx:SimpleButton>
-                    </StackPanel>
                 </StackPanel>
-            </Grid>
+            </DockPanel>
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 1: GridControl + Edit Panel
+             ROW 1: Grid + Edit Panel
              ═══════════════════════════════════════════════════════════ -->
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
@@ -120,36 +115,92 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- GridControl -->
+            <!-- Rules Grid -->
             <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                 <dxg:GridControl ItemsSource="{Binding Rules}"
                                  SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
                                  AutoPopulateColumns="False">
                     <dxg:GridControl.View>
                         <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
-                                       AllowPerPixelScrolling="True" />
+                                       AllowEditing="False" AllowPerPixelScrolling="True" />
                     </dxg:GridControl.View>
                     <dxg:GridControl.Columns>
                         <dxg:GridColumn Header="#" FieldName="OrderNo" Width="40" />
-                        <dxg:GridColumn Header="Loại Rule" FieldName="RuleTypeCode" Width="120" />
-                        <dxg:GridColumn Header="Expression" FieldName="ExpressionPreview" Width="*" />
-                        <dxg:GridColumn Header="Error Key" FieldName="ErrorKey" Width="150" />
-                        <dxg:GridColumn Header="Severity" FieldName="Severity" Width="90" />
-                        <dxg:GridColumn Header="Active" FieldName="IsActive" Width="65" />
-                        <dxg:GridColumn Header="" Width="90" AllowEditing="False" AllowSorting="False">
+
+                        <dxg:GridColumn Header="Loại Rule" FieldName="RuleTypeCode" Width="100">
+                            <dxg:GridColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#EFF6FF" CornerRadius="3" Padding="6,2"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Row.RuleTypeCode}"
+                                                   FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#2563EB" />
+                                    </Border>
+                                </DataTemplate>
+                            </dxg:GridColumn.CellTemplate>
+                        </dxg:GridColumn>
+
+                        <dxg:GridColumn Header="Điều kiện" FieldName="ExpressionPreview" Width="*">
+                            <dxg:GridColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Row.ExpressionPreview}"
+                                               FontFamily="Consolas" FontSize="12"
+                                               Foreground="#374151" VerticalAlignment="Center"
+                                               Margin="4,0" />
+                                </DataTemplate>
+                            </dxg:GridColumn.CellTemplate>
+                        </dxg:GridColumn>
+
+                        <dxg:GridColumn Header="Thông báo lỗi (key)" FieldName="ErrorKey" Width="160" />
+
+                        <dxg:GridColumn Header="Mức độ" FieldName="Severity" Width="90">
+                            <dxg:GridColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock VerticalAlignment="Center" Margin="4,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Row.Severity}" Value="Error">
+                                                        <Setter Property="Foreground" Value="#EF4444" />
+                                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Row.Severity}" Value="Warning">
+                                                        <Setter Property="Foreground" Value="#F59E0B" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Row.Severity}" Value="Info">
+                                                        <Setter Property="Foreground" Value="#3B82F6" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                        <Run Text="{Binding Row.Severity, Mode=OneWay}" />
+                                    </TextBlock>
+                                </DataTemplate>
+                            </dxg:GridColumn.CellTemplate>
+                        </dxg:GridColumn>
+
+                        <dxg:GridColumn Header="Bật" FieldName="IsActive" Width="50">
+                            <dxg:GridColumn.CellTemplate>
+                                <DataTemplate>
+                                    <dxe:CheckEdit IsChecked="{Binding Row.IsActive, Mode=OneWay}"
+                                                   IsReadOnly="True" HorizontalAlignment="Center" />
+                                </DataTemplate>
+                            </dxg:GridColumn.CellTemplate>
+                        </dxg:GridColumn>
+
+                        <dxg:GridColumn Header="" Width="90" AllowSorting="False">
                             <dxg:GridColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Button Command="{Binding DataContext.EditRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
-                                                CommandParameter="{Binding Row}"
-                                                ToolTip="Sửa rule" Width="30" Height="30"
+                                                ToolTip="Sửa rule" Width="40" Height="28"
                                                 Background="Transparent" BorderBrush="Transparent">
-                                            <TextBlock Text="✎" />
+                                            <TextBlock Text="✎" FontSize="14" />
                                         </Button>
                                         <Button Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                 CommandParameter="{Binding Row}"
+                                                ToolTip="Xóa rule" Width="40" Height="28"
                                                 Foreground="#EF4444"
-                                                ToolTip="Xóa rule" Width="30" Height="30"
                                                 Background="Transparent" BorderBrush="Transparent">
                                             <TextBlock Text="🗑" />
                                         </Button>
@@ -162,43 +213,75 @@
             </Border>
 
             <!-- Edit Panel -->
-            <Border Grid.Column="1" Width="320" Margin="8,0,0,0"
+            <Border Grid.Column="1" Width="340" Margin="10,0,0,0"
                     BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
-                    Padding="16"
+                    Padding="18,16"
                     Visibility="{Binding IsEditPanelOpen, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <TextBlock Text="Chi tiết Rule"
-                               FontSize="20" FontWeight="SemiBold"
-                               Foreground="{DynamicResource ShellSidebarItemTextBrush}"
-                               Margin="0,0,0,16" />
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="Chi tiết Rule"
+                                   FontSize="16" FontWeight="Bold"
+                                   Foreground="#1E293B"
+                                   Margin="0,0,0,16" />
 
-                    <dxe:ComboBoxEdit NullText="Loại Rule"
-                                      ItemsSource="{Binding RuleTypeOptions}"
-                                      EditValue="{Binding EditRuleType}"
-                                      Margin="0,0,0,12" />
+                        <!-- Loại Rule -->
+                        <StackPanel Style="{StaticResource FieldGroup}">
+                            <TextBlock Text="Loại Rule" Style="{StaticResource FieldLabel}" />
+                            <dxe:ComboBoxEdit ItemsSource="{Binding RuleTypeOptions}"
+                                              EditValue="{Binding EditRuleType}" />
+                            <TextBlock Text="{Binding EditRuleTypeDescription}"
+                                       Style="{StaticResource HelpText}"
+                                       Foreground="#2563EB" />
+                        </StackPanel>
 
-                    <dxe:ComboBoxEdit NullText="Severity"
-                                      ItemsSource="{Binding SeverityOptions}"
-                                      EditValue="{Binding EditSeverity}"
-                                      Margin="0,0,0,12" />
+                        <!-- Thông báo lỗi (auto-generated, readonly) -->
+                        <StackPanel Style="{StaticResource FieldGroup}">
+                            <TextBlock Text="Thông báo lỗi (i18n Key)" Style="{StaticResource FieldLabel}" />
+                            <dxe:TextEdit EditValue="{Binding AutoErrorKey, Mode=OneWay}"
+                                          IsReadOnly="True"
+                                          Foreground="#2563EB"
+                                          FontFamily="Consolas" />
+                            <TextBlock Style="{StaticResource HelpText}"
+                                       Text="Auto-generated: {table}.val.{field}.{type} — lưu vào Sys_Resource." />
+                        </StackPanel>
 
-                    <dxe:TextEdit NullText="Error Key (i18n)"
-                                  EditValue="{Binding EditErrorKey, UpdateSourceTrigger=PropertyChanged}"
-                                  Margin="0,0,0,12" />
+                        <!-- Mức độ nghiêm trọng -->
+                        <StackPanel Style="{StaticResource FieldGroup}">
+                            <TextBlock Text="Mức độ nghiêm trọng" Style="{StaticResource FieldLabel}" />
+                            <dxe:ComboBoxEdit ItemsSource="{Binding SeverityOptions}"
+                                              EditValue="{Binding EditSeverity}" />
+                            <TextBlock Text="{Binding EditSeverityDescription}"
+                                       Style="{StaticResource HelpText}" />
+                        </StackPanel>
 
-                    <dxe:TextEdit NullText="Expression Preview"
-                                  EditValue="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
-                                  IsReadOnly="True"
-                                  Margin="0,0,0,16" />
+                        <!-- Điều kiện (ẩn khi Required) -->
+                        <StackPanel Style="{StaticResource FieldGroup}"
+                                    Visibility="{Binding IsExpressionNeeded, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Điều kiện validate" Style="{StaticResource FieldLabel}" />
+                            <dxe:TextEdit EditValue="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: value >= 1 &amp;&amp; value &lt;= 9999"
+                                          IsReadOnly="True" />
+                            <TextBlock Style="{StaticResource HelpText}"
+                                       Text="Dùng Expression Builder để xây dựng điều kiện." />
+                            <dx:SimpleButton Command="{Binding OpenExpressionBuilderCommand}"
+                                             Margin="0,6,0,0" Height="30">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{}{}" FontFamily="Consolas" VerticalAlignment="Center" />
+                                    <TextBlock Text="  Expression Builder" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </dx:SimpleButton>
+                        </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Command="{Binding CancelEditCommand}"
-                                Content="Hủy" Margin="0,0,8,0"
-                                Background="Transparent" BorderBrush="Transparent" />
-                        <dx:SimpleButton Command="{Binding SaveRuleCommand}"
-                                         Content="Áp dụng" />
+                        <!-- Buttons -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                            <Button Command="{Binding CancelEditCommand}"
+                                    Content="Hủy" Margin="0,0,10,0" Height="32" Padding="14,0"
+                                    Background="Transparent" BorderBrush="#CBD5E1" />
+                            <dx:SimpleButton Command="{Binding SaveRuleCommand}"
+                                             Content="Áp dụng &amp; Lưu" Height="32" Padding="14,0" />
+                        </StackPanel>
                     </StackPanel>
-                </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 
@@ -211,9 +294,10 @@
                 <TextBlock Text="🛡" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">
                     <TextBlock.Text>
-                        <MultiBinding StringFormat="{}{0} rules · Field: {1}">
+                        <MultiBinding StringFormat="{}{0} rules · Field: {1} · Section: {2}">
                             <Binding Path="Rules.Count" />
                             <Binding Path="FieldCode" />
+                            <Binding Path="SectionName" />
                         </MultiBinding>
                     </TextBlock.Text>
                 </TextBlock>
