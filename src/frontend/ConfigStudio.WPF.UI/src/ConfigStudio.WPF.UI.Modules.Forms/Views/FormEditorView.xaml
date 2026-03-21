@@ -893,15 +893,17 @@
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Field Code"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="Field Code" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.Code, Mode=OneWay}"
+                                                                  NullText="Field Code"
+                                                                  IsReadOnly="True" />
                                                 </StackPanel>
 
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Tên hiển thị"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="Tên hiển thị" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.DisplayName, Mode=OneWay}"
+                                                                  NullText="Tên hiển thị"
+                                                                  IsReadOnly="True" />
                                                 </StackPanel>
 
                                                 <Grid Margin="0,0,0,18">
@@ -913,26 +915,30 @@
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock Text="Field Type"
                                                                    Style="{StaticResource FieldLabelStyle}" />
-                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.FieldType, UpdateSourceTrigger=PropertyChanged}"
-                                                                      NullText="Field Type" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.FieldType, Mode=OneWay}"
+                                                                      NullText="Field Type"
+                                                                      IsReadOnly="True" />
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Text="Editor Type"
                                                                    Style="{StaticResource FieldLabelStyle}" />
-                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}"
-                                                                      NullText="Editor Type" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.EditorType, Mode=OneWay}"
+                                                                      NullText="Editor Type"
+                                                                      IsReadOnly="True" />
                                                     </StackPanel>
                                                 </Grid>
 
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Thứ tự sắp xếp"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="0" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, Mode=OneWay}"
+                                                                  NullText="0"
+                                                                  IsReadOnly="True" />
                                                 </StackPanel>
 
                                                 <dxe:CheckEdit Content="Bắt buộc (Required)"
-                                                               IsChecked="{Binding SelectedNode.IsRequired}"
+                                                               IsChecked="{Binding SelectedNode.IsRequired, Mode=OneWay}"
+                                                               IsReadOnly="True"
                                                                FontSize="13"
                                                                Margin="0,4,0,0" />
                                             </StackPanel>
