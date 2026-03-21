@@ -20,7 +20,7 @@ public partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// Người dùng nhập password → cập nhật ViewModel (PasswordBox không bind được).
+    /// Người dùng nhập password Config DB → cập nhật ViewModel (PasswordBox không bind được).
     /// </summary>
     private void DbPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
     {
@@ -29,11 +29,23 @@ public partial class SettingsView : UserControl
     }
 
     /// <summary>
-    /// ViewModel đổi (Prism navigate) → nạp lại Password vào PasswordBox.
+    /// Người dùng nhập password Target DB → cập nhật ViewModel.
+    /// </summary>
+    private void TargetPasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm && sender is PasswordBox pb)
+            vm.TargetPassword = pb.Password;
+    }
+
+    /// <summary>
+    /// ViewModel đổi (Prism navigate) → nạp lại cả 2 Password vào PasswordBox tương ứng.
     /// </summary>
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if (e.NewValue is SettingsViewModel vm)
-            DbPasswordBox.Password = vm.Password;
+        {
+            DbPasswordBox.Password     = vm.Password;
+            TargetPasswordBox.Password = vm.TargetPassword;
+        }
     }
 }

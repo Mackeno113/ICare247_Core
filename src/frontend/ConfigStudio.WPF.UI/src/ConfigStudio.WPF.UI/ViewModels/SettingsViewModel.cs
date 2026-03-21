@@ -105,11 +105,73 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    // ── Target DB Connection fields ───────────────────────────
+    private string _targetServer = "localhost";
+    public string TargetServer
+    {
+        get => _targetServer;
+        set { if (SetProperty(ref _targetServer, value)) ClearTargetStatus(); }
+    }
+
+    private string _targetDatabase = "";
+    public string TargetDatabase
+    {
+        get => _targetDatabase;
+        set { if (SetProperty(ref _targetDatabase, value)) ClearTargetStatus(); }
+    }
+
+    private string _targetUserId = "sa";
+    public string TargetUserId
+    {
+        get => _targetUserId;
+        set { if (SetProperty(ref _targetUserId, value)) ClearTargetStatus(); }
+    }
+
+    /// <summary>Password của Target DB — cập nhật từ code-behind (PasswordBox).</summary>
+    public string TargetPassword { get; set; } = "";
+
+    private bool _targetTrustServerCertificate = true;
+    public bool TargetTrustServerCertificate
+    {
+        get => _targetTrustServerCertificate;
+        set { if (SetProperty(ref _targetTrustServerCertificate, value)) ClearTargetStatus(); }
+    }
+
+    // ── Target Status ─────────────────────────────────────────
+    private string _targetStatusMessage = "";
+    public string TargetStatusMessage
+    {
+        get => _targetStatusMessage;
+        private set => SetProperty(ref _targetStatusMessage, value);
+    }
+
+    private bool _isTargetStatusSuccess;
+    public bool IsTargetStatusSuccess
+    {
+        get => _isTargetStatusSuccess;
+        private set => SetProperty(ref _isTargetStatusSuccess, value);
+    }
+
+    private bool _isTargetStatusError;
+    public bool IsTargetStatusError
+    {
+        get => _isTargetStatusError;
+        private set => SetProperty(ref _isTargetStatusError, value);
+    }
+
+    private bool _isTargetStatusVisible;
+    public bool IsTargetStatusVisible
+    {
+        get => _isTargetStatusVisible;
+        private set => SetProperty(ref _isTargetStatusVisible, value);
+    }
+
     // ── Info ─────────────────────────────────────────────────
     public string ConfigFilePath => _appConfig.ConfigFilePath;
 
     // ── Commands ─────────────────────────────────────────────
     public DelegateCommand TestConnectionCommand { get; }
+    public DelegateCommand TestTargetConnectionCommand { get; }
     public DelegateCommand SaveCommand { get; }
 
     public SettingsViewModel(IAppConfigService appConfig)
@@ -118,6 +180,9 @@ public sealed class SettingsViewModel : ViewModelBase
 
         TestConnectionCommand = new DelegateCommand(
             async () => await ExecuteTestAsync(), () => !IsBusy);
+
+        TestTargetConnectionCommand = new DelegateCommand(
+            async () => await ExecuteTestTargetAsync(), () => !IsBusy);
 
         SaveCommand = new DelegateCommand(
             async () => await ExecuteSaveAsync(), () => !IsBusy);
@@ -135,26 +200,45 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         TenantId = _appConfig.TenantId;
 
-        if (!_appConfig.IsConfigured
-         || string.IsNullOrWhiteSpace(_appConfig.ConnectionString))
-            return;
-
-        try
+        if (_appConfig.IsConfigured
+         && !string.IsNullOrWhiteSpace(_appConfig.ConnectionString))
         {
-            var builder = new SqlConnectionStringBuilder(_appConfig.ConnectionString);
-            Server                 = builder.DataSource;
-            Database               = builder.InitialCatalog;
-            UserId                 = builder.UserID;
-            Password               = builder.Password;
-            TrustServerCertificate = builder.TrustServerCertificate;
+            try
+            {
+                var builder = new SqlConnectionStringBuilder(_appConfig.ConnectionString);
+                Server                 = builder.DataSource;
+                Database               = builder.InitialCatalog;
+                UserId                 = builder.UserID;
+                Password               = builder.Password;
+                TrustServerCertificate = builder.TrustServerCertificate;
+            }
+            catch
+            {
+                // NOTE: Connection string format lạ → giữ giá trị mặc định
+            }
         }
-        catch
+
+        // ── Load Target DB nếu đã cấu hình ──────────────────
+        if (_appConfig.IsTargetConfigured
+         && !string.IsNullOrWhiteSpace(_appConfig.TargetConnectionString))
         {
-            // NOTE: Connection string format lạ → giữ giá trị mặc định
+            try
+            {
+                var tb = new SqlConnectionStringBuilder(_appConfig.TargetConnectionString);
+                TargetServer                 = tb.DataSource;
+                TargetDatabase               = tb.InitialCatalog;
+                TargetUserId                 = tb.UserID;
+                TargetPassword               = tb.Password;
+                TargetTrustServerCertificate = tb.TrustServerCertificate;
+            }
+            catch
+            {
+                // NOTE: Target connection string format lạ → giữ mặc định
+            }
         }
     }
 
-    /// <summary>Build connection string từ các trường riêng lẻ.</summary>
+    /// <summary>Build connection string Config DB từ các trường riêng lẻ.</summary>
     private string BuildConnectionString()
     {
         var builder = new SqlConnectionStringBuilder
@@ -168,6 +252,20 @@ public sealed class SettingsViewModel : ViewModelBase
         return builder.ConnectionString;
     }
 
+    /// <summary>Build connection string Target DB từ các trường riêng lẻ.</summary>
+    private string BuildTargetConnectionString()
+    {
+        var builder = new SqlConnectionStringBuilder
+        {
+            DataSource             = TargetServer,
+            InitialCatalog         = TargetDatabase,
+            UserID                 = TargetUserId,
+            Password               = TargetPassword,
+            TrustServerCertificate = TargetTrustServerCertificate,
+        };
+        return builder.ConnectionString;
+    }
+
     private async Task ExecuteTestAsync()
     {
         IsBusy = true;
@@ -177,7 +275,7 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             var error = await _appConfig.TestConnectionAsync(BuildConnectionString());
             if (error is null)
-                SetStatus(success: true, "✓  Kết nối thành công!", visible: true, isError: false);
+                SetStatus(success: true, "✓  Kết nối Config DB thành công!", visible: true, isError: false);
             else
                 SetStatus(success: false, error, visible: true, isError: true);
         }
@@ -187,24 +285,49 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
+    private async Task ExecuteTestTargetAsync()
+    {
+        IsBusy = true;
+        SetTargetStatus(success: false, "Đang kiểm tra kết nối Target DB...", visible: true, isError: false);
+
+        try
+        {
+            var error = await _appConfig.TestConnectionAsync(BuildTargetConnectionString());
+            if (error is null)
+                SetTargetStatus(success: true, "✓  Kết nối Target DB thành công!", visible: true, isError: false);
+            else
+                SetTargetStatus(success: false, error, visible: true, isError: true);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private async Task ExecuteSaveAsync()
     {
-        // ── 1. Test trước khi lưu ────────────────────────────
+        // ── 1. Test Config DB trước khi lưu ─────────────────
         IsBusy = true;
-        SetStatus(success: false, "Đang kiểm tra kết nối...", visible: true, isError: false);
+        SetStatus(success: false, "Đang kiểm tra kết nối Config DB...", visible: true, isError: false);
 
         try
         {
             var error = await _appConfig.TestConnectionAsync(BuildConnectionString());
             if (error is not null)
             {
-                SetStatus(success: false, $"Lỗi kết nối — chưa lưu:\n{error}", visible: true, isError: true);
+                SetStatus(success: false, $"Lỗi kết nối Config DB — chưa lưu:\n{error}", visible: true, isError: true);
                 return;
             }
 
-            // ── 2. Ghi vào file ──────────────────────────────
+            // ── 2. Ghi vào file (kèm Target DB nếu đã nhập) ─
             SetStatus(success: false, "Đang lưu...", visible: true, isError: false);
-            await _appConfig.SaveAsync(BuildConnectionString(), TenantId);
+
+            // Chỉ lưu Target CS khi user đã nhập Database (tránh lưu CS rỗng)
+            string? targetCs = string.IsNullOrWhiteSpace(TargetDatabase)
+                ? null
+                : BuildTargetConnectionString();
+
+            await _appConfig.SaveAsync(BuildConnectionString(), TenantId, targetCs);
             SetStatus(success: true, "✓  Đã lưu cài đặt thành công!", visible: true, isError: false);
         }
         finally
@@ -221,5 +344,14 @@ public sealed class SettingsViewModel : ViewModelBase
         IsStatusVisible  = visible;
     }
 
-    private void ClearStatus() => SetStatus(false, "", false, false);
+    private void SetTargetStatus(bool success, string message, bool visible, bool isError)
+    {
+        TargetStatusMessage    = message;
+        IsTargetStatusSuccess  = success;
+        IsTargetStatusError    = isError;
+        IsTargetStatusVisible  = visible;
+    }
+
+    private void ClearStatus()       => SetStatus(false, "", false, false);
+    private void ClearTargetStatus() => SetTargetStatus(false, "", false, false);
 }

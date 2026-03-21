@@ -2,70 +2,63 @@
 
 > Cập nhật: 2026-03-21
 
-## Đã làm (session 21/03 — ConfigStudio WPF: Real DB + User Manual)
+## Đã làm (session 21/03 — Section Properties Panel: TitleKey + Sys_Resource)
 
-### DependencyViewer — Real Dapper Data ✅
-- Thay `LoadMockGraph()` bằng `LoadRealGraphAsync()` dùng `IFormDetailDataService` + `IRuleDataService` + `IEventDataService`
-- Build node graph từ Fields/Rules/Events thực từ DB
-- Edge Field→Rule: `GetRulesByFieldAsync(fieldId)` per field
-- Edge Field→Event: `GetEventsByFieldAsync(fieldId)` per field
-- Edge Event→Field: `EventSummaryRecord.FieldTarget` → lookup node dict
-- `LoadNodeImpactAsync()`: gọi `IImpactPreviewService.AnalyzeFieldImpactAsync()` + fallback từ graph edges
-- Real DFS circular dependency detection
+### Section Properties Panel — Redesign hoàn toàn ✅
 
-### DependencyViewerView.xaml ✅
-- Thêm `UserControl.Resources`: `BoolToVis`, `InvBoolToVis` (fix lỗi StaticResource not found)
-- Loading overlay: `ProgressBar IsIndeterminate` thay `dx:LoadingIndicator`
-- Impact panel: WrapPanel chips màu theo type (field=Indigo, rule=Teal, event=Amber)
-- Fix tất cả `{StaticResource BooleanToVisibilityConverter}` → `{StaticResource BoolToVis}`
+**Vấn đề:** Panel "Thuộc tính" Section hiện tại bind `DisplayName` trực tiếp — không phản ánh đúng cách `Title_Key → Sys_Resource` hoạt động trong DB.
 
-### InverseBoolToVisConverter (Grammar module) ✅ (ADR-005)
-- Tạo `Converters/InverseBoolToVisConverter.cs` trong Grammar module
-- Core là `net9.0` không có WPF types → converter phải ở module WPF
+**Giải pháp đã implement:**
 
-### ExpressionBuilderDialogViewModel ✅
-- Inject `IGrammarDataService`
-- `LoadPaletteFromDbAsync()`: gọi `GetOperatorsAsync()` + `GetFunctionsAsync()` từ DB
-- Fallback hardcode nếu DB empty
-- `_availableOperatorSymbols` populate từ DB
-- `IsLoadingPalette` property
+#### `SectionUpsertRequest.cs` (Core.Data — mới)
+- Record với: FormId, SectionId, SectionCode, TitleKey, OrderNo, IsActive, OldTitleKey
+- `OldTitleKey` dùng để detect rename khi user đổi Section Code
 
-### PublishChecklistViewModel ✅
-- Inject `IPublishCheckService`
-- 11 real checks qua Dapper (thay `Task.Delay` mock)
-- `ApplyResult()`: map `CheckResult` → `ChecklistItem.Status` (Passed/Warning/Failed)
-- Summary count bao gồm warning riêng biệt
-- `tenantId` từ navigation parameters (default = 1)
+#### `FormTreeNode.cs` (thêm 3 properties)
+- `TitleKey` — Resource_Key tham chiếu Sys_Resource
+- `ResourceVi` — Sys_Resource[key, 'vi']
+- `ResourceEn` — Sys_Resource[key, 'en']
 
-### IPublishCheckService + PublishCheckService ✅
-- 11 checks: Label_Key, JSON parse, function/operator whitelist, return type, circular dep (DFS), AST depth, i18n, CallAPI URL, Sys_Dependency
-- `PublishCheckService` injects `IAppConfigService`, dùng `SqlConnection` Dapper trực tiếp
+#### `IFormDetailDataService` + `FormDetailDataService`
+- Thêm `UpsertSectionAsync(SectionUpsertRequest, ct)`
+- **Transaction**: rename `Resource_Key` trong Sys_Resource (nếu TitleKey đổi) → rồi INSERT hoặc UPDATE `Ui_Section`
 
-### FormEditorViewModel — Bỏ MockData → Real DB ✅
-- Bỏ `LoadMockData()` hoàn toàn
-- Edit mode: `_ = LoadFromDatabaseAsync()` dùng `FormId` (không dùng FormCode)
-- `LoadFromDatabaseAsync()`: load header → table lookup → sections → fields → events → permissions
-- Inject `IFormDetailDataService` thêm vào constructor
-- `_loadCts` CancellationTokenSource để cancel khi navigate away
-- `ErrorMessage` + `HasError` property hiển thị lỗi DB
-- **Dual Key principle**: `FormId` cho DB query/navigate nội bộ; `FormCode` chỉ cho display/log/cache
+#### `FormEditorViewModel.cs`
+- Inject `II18nDataService`
+- `SectionTitleKeyPreview` (computed): `{form_code_lower}.section.{section_code_lower}`
+- `ValidateSectionCode()` — enforce `[a-z0-9_]`
+- Auto-lowercase trong `OnSelectedNodePropertyChanged` khi Code thay đổi (unsubscribe/resubscribe tránh loop)
+- `LoadSectionResourcesAsync()` — load ResourceVi/En khi select section node
+- `ExecuteSaveSectionAsync()` — upsert Ui_Section → save Sys_Resource vi/en
+- `SaveSectionCommand`, `CancelSectionCommand`
+- `_originalTitleKey` — track TitleKey trước khi edit để detect rename
 
-### App.xaml.cs ✅
-- Register `IPublishCheckService`, `IImpactPreviewService`
+#### `FormEditorView.xaml` — Section Properties Panel mới
+```
+THUỘC TÍNH SECTION
+  Section Code *    [thong_tin_co_ban]    ← validate [a-z0-9_]
+  ⚠ error inline (nếu sai)
+  Title Key (tự động) [sys_ui_design.section.thong_tin_co_ban]  ← readonly
+  Thứ tự [1]    [x] Hiển thị (Is Active)
 
-### User Manual ✅
-- `docs/generate_manual.py`: Python script tạo Word document
-- `docs/ICare247_ConfigStudio_UserManual.docx`: 14 chương, A4, Calibri
+TÊN HIỂN THỊ (SYS_RESOURCE)
+  Tiếng Việt * [Thông tin cơ bản]
+  Tiếng Anh    [Basic Information]
+
+[  Lưu Section  ]   [Hủy]
+```
+
+### Convention đã quyết định
+- TitleKey pattern: `{form_code_lower}.section.{section_code_lower}`
+- Section Code: **luôn lowercase**, enforce tại ViewModel
+- Lưu 1 lần: Section + ResourceVi + ResourceEn trong 1 command
 
 ## Trạng thái
-- Build backend: 0 errors, 0 warnings
-- Phase 1-5 ✅ | P0 UX ✅ | DB Schema ✅
-- ConfigStudio Direct DB ✅: DependencyViewer, ExpressionBuilder, PublishChecklist, FormEditor — tất cả dùng real Dapper
+- Build: 0 errors, 0 warnings
+- Phase 8 Bước 5 ✅
 
-## Task tiếp theo
-- `ExecuteSave()` trong FormEditorViewModel: gọi thực Dapper save sections + fields + events
-- `LoadDefaultPermissions()` → load từ `Sys_Role` thực
-- FormDetailView: đọc real data từ DB (hiện vẫn có mock ở một số chỗ)
-- MetadataEngine implementation (IMetadataEngine)
-- Integration tests
-- Blazor runtime frontend
+## Task tiếp theo (gợi ý)
+1. `ExecuteSave()` toàn form — gọi thực Dapper save sections + fields thay vì chỉ update in-memory
+2. Field Properties panel — tương tự Section, cần Label_Key → Sys_Resource
+3. `LoadDefaultPermissions()` → load từ Sys_Role thực
+4. MetadataEngine implementation

@@ -20,4 +20,12 @@ public interface IFormDetailDataService
     Task<IReadOnlyList<AuditLogRecord>> GetAuditLogAsync(string objectType, int objectId, CancellationToken ct = default);
     Task DeactivateFormAsync(int formId, int tenantId, CancellationToken ct = default);
     Task RestoreFormAsync(int formId, int tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Upsert một Section vào Ui_Section.
+    /// Khi SectionId=0 → INSERT và trả về Section_Id mới sinh.
+    /// Khi SectionId>0 → UPDATE và trả về SectionId truyền vào.
+    /// Khi OldTitleKey khác TitleKey → rename Resource_Key trong Sys_Resource.
+    /// </summary>
+    Task<int> UpsertSectionAsync(SectionUpsertRequest req, CancellationToken ct = default);
 }

@@ -13,6 +13,7 @@ using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -32,9 +33,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private readonly IFormDataService? _formDataService;
     private readonly IFormDetailDataService? _detailService;
     private readonly IAppConfigService? _appConfig;
+    private readonly ISchemaInspectorService? _schemaInspector;
+    private readonly IDialogService? _dialogService;
+    private readonly II18nDataService? _i18nService;
+
+    // ── Schema diff state ─────────────────────────────────────
+    private SchemaDiffResult _lastDiff = SchemaDiffResult.Empty;
     private CancellationTokenSource? _formCodeValidationCts;
     private CancellationTokenSource _loadCts = new();
-    private static readonly Regex FormCodeRegex = new(@"^[A-Z0-9_]+$", RegexOptions.Compiled);
+    private static readonly Regex FormCodeRegex    = new(@"^[A-Z0-9_]+$", RegexOptions.Compiled);
+    private static readonly Regex SectionCodeRegex = new(@"^[a-z0-9_]+$", RegexOptions.Compiled);
+
+    // TitleKey gốc của section đang chọn — dùng để detect rename khi user đổi Section Code
+    private string _originalTitleKey = "";
     private string _originalFormCode = "";
 
     // ── P0 UX Services ────────────────────────────────────────
@@ -94,6 +105,51 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public int LintErrorCount => _lintIssues.Count(i => i.Severity == "error");
     public int LintWarningCount => _lintIssues.Count(i => i.Severity == "warning");
     public bool HasLintErrors => _lintIssues.Any(i => i.Severity == "error");
+
+    // ── Schema sync badge ─────────────────────────────────────
+    private int _schemaSyncBadgeCount;
+    /// <summary>Số issues schema cần chú ý (orphan + mismatch). 0 = không cần sync.</summary>
+    public int SchemaSyncBadgeCount
+    {
+        get => _schemaSyncBadgeCount;
+        private set
+        {
+            if (SetProperty(ref _schemaSyncBadgeCount, value))
+                RaisePropertyChanged(nameof(HasSchemaSyncIssues));
+        }
+    }
+
+    /// <summary>True khi có ít nhất 1 issue schema cần chú ý.</summary>
+    public bool HasSchemaSyncIssues => _schemaSyncBadgeCount > 0;
+
+    // ── Section inline editing ────────────────────────────────
+
+    private string _sectionCodeError = "";
+    /// <summary>Thông báo lỗi định dạng Section Code ([a-z0-9_]). Rỗng = hợp lệ.</summary>
+    public string SectionCodeError
+    {
+        get => _sectionCodeError;
+        private set
+        {
+            if (SetProperty(ref _sectionCodeError, value))
+                RaisePropertyChanged(nameof(HasSectionCodeError));
+        }
+    }
+
+    public bool HasSectionCodeError => !string.IsNullOrEmpty(_sectionCodeError);
+
+    private bool _isSavingSection;
+    /// <summary>True khi đang gọi UpsertSectionAsync — khoá nút Lưu tránh double-click.</summary>
+    public bool IsSavingSection { get => _isSavingSection; private set => SetProperty(ref _isSavingSection, value); }
+
+    /// <summary>
+    /// Title_Key tự động ghép realtime: {form_code_lower}.section.{section_code_lower}.
+    /// Cập nhật mỗi khi FormCode hoặc SelectedNode.Code thay đổi.
+    /// </summary>
+    public string SectionTitleKeyPreview =>
+        SelectedNode?.NodeType == FormNodeType.Section && !string.IsNullOrEmpty(SelectedNode.Code)
+            ? $"{FormCode.ToLowerInvariant()}.section.{SelectedNode.Code.ToLowerInvariant()}"
+            : "";
 
     // ── Form info ─────────────────────────────────────────────
     private int _formId;
@@ -272,6 +328,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 MoveUpCommand.RaiseCanExecuteChanged();
                 MoveDownCommand.RaiseCanExecuteChanged();
                 OpenFieldConfigCommand.RaiseCanExecuteChanged();
+
+                // Khi chọn Section: load resource values + cập nhật TitleKey preview
+                if (_selectedNode?.NodeType == FormNodeType.Section)
+                {
+                    _originalTitleKey = _selectedNode.TitleKey;
+                    RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+                    ValidateSectionCode();
+                    _ = LoadSectionResourcesAsync(_selectedNode);
+                }
+                else
+                {
+                    _originalTitleKey = "";
+                    SectionCodeError  = "";
+                    RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+                }
             }
         }
     }
@@ -284,8 +355,27 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         if (e.PropertyName is nameof(FormTreeNode.IsExpanded)
                             or nameof(FormTreeNode.IsSelected)
-                            or nameof(FormTreeNode.IsActive))
+                            or nameof(FormTreeNode.IsActive)
+                            or nameof(FormTreeNode.ResourceVi)
+                            or nameof(FormTreeNode.ResourceEn))
             return;
+
+        // Khi Section Code thay đổi → enforce lowercase + cập nhật TitleKey preview
+        if (e.PropertyName == nameof(FormTreeNode.Code)
+            && sender is FormTreeNode { NodeType: FormNodeType.Section } sectionNode)
+        {
+            var lower = sectionNode.Code.ToLowerInvariant();
+            if (sectionNode.Code != lower)
+            {
+                // Bỏ subscribe tạm để tránh vòng lặp vô hạn khi set lại Code
+                sectionNode.PropertyChanged -= OnSelectedNodePropertyChanged;
+                sectionNode.Code = lower;
+                sectionNode.PropertyChanged += OnSelectedNodePropertyChanged;
+            }
+            RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+            ValidateSectionCode();
+            SaveSectionCommand.RaiseCanExecuteChanged();
+        }
 
         // Push undo state trước khi đánh dấu dirty
         PushUndoState($"Sửa {e.PropertyName}");
@@ -441,16 +531,32 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     // Permissions — dùng để đánh dấu IsDirty khi checkbox thay đổi
     public DelegateCommand DirtyCommand { get; }
 
+    // Auto-generate fields
+    public DelegateCommand AutoGenerateFieldsCommand { get; }
+
+    // Schema sync
+    public DelegateCommand SyncSchemaCommand { get; }
+
+    // Section inline save/cancel
+    public DelegateCommand SaveSectionCommand { get; }
+    public DelegateCommand CancelSectionCommand { get; }
+
     public FormEditorViewModel(
         IRegionManager regionManager,
         IFormDataService? formDataService = null,
         IFormDetailDataService? detailService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        ISchemaInspectorService? schemaInspector = null,
+        IDialogService? dialogService = null,
+        II18nDataService? i18nService = null)
     {
         _regionManager   = regionManager;
         _formDataService = formDataService;
         _detailService   = detailService;
         _appConfig       = appConfig;
+        _schemaInspector = schemaInspector;
+        _dialogService   = dialogService;
+        _i18nService     = i18nService;
 
         // Tree manipulation
         AddSectionCommand = new DelegateCommand(ExecuteAddSection);
@@ -483,6 +589,31 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         // Permissions
         DirtyCommand = new DelegateCommand(() => IsDirty = true);
+
+        // Auto-generate fields từ Target DB schema
+        AutoGenerateFieldsCommand = new DelegateCommand(
+            async () => await ExecuteAutoGenerateFieldsAsync(),
+            CanAutoGenerateFields)
+            .ObservesProperty(() => IsNewForm)
+            .ObservesProperty(() => SelectedTable);
+
+        // Schema sync — mở dialog diff
+        SyncSchemaCommand = new DelegateCommand(
+            async () => await ExecuteSyncSchemaAsync(),
+            () => !IsNewForm && _lastDiff.HasAnyDiff)
+            .ObservesProperty(() => IsNewForm)
+            .ObservesProperty(() => HasSchemaSyncIssues);
+
+        // Section inline save/cancel
+        SaveSectionCommand = new DelegateCommand(
+            async () => await ExecuteSaveSectionAsync(),
+            () => !IsSavingSection && IsSectionSelected && !HasSectionCodeError)
+            .ObservesProperty(() => IsSavingSection)
+            .ObservesProperty(() => IsSectionSelected)
+            .ObservesProperty(() => HasSectionCodeError);
+        CancelSectionCommand = new DelegateCommand(ExecuteCancelSection,
+            () => IsSectionSelected)
+            .ObservesProperty(() => IsSectionSelected);
 
         // ── Wire undo/redo state changed ─────────────────────
         _undoRedo.StateChanged += (_, _) =>
@@ -622,7 +753,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     Id          = s.SectionId,
                     NodeType    = FormNodeType.Section,
                     Code        = s.SectionCode,
-                    DisplayName = s.TitleKey ?? s.SectionCode, // TitleKey là i18n key — dùng làm label tạm
+                    TitleKey    = s.TitleKey ?? "",
+                    DisplayName = s.TitleKey ?? s.SectionCode, // resolve i18n sau khi load
                     SortOrder   = s.OrderNo,
                     IsExpanded  = true
                 };
@@ -673,6 +805,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
             IsDirty       = false;
             FormCodeError = "";
+
+            // ── 6. Kiểm tra diff schema sau khi load xong ────
+            await CheckSchemaDiffAsync(ct);
         }
         catch (OperationCanceledException) { /* Navigate away — bỏ qua */ }
         catch (Exception ex)
@@ -707,6 +842,112 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         Permissions.Add(new FormPermissionRow { RoleId = 4, RoleName = "Viewer",   RoleDescription = "Chỉ xem báo cáo",             CanRead = true,  CanWrite = false, CanSubmit = false });
         Permissions.Add(new FormPermissionRow { RoleId = 5, RoleName = "Auditor",  RoleDescription = "Kiểm toán — readonly",        CanRead = true,  CanWrite = false, CanSubmit = false });
         Permissions.Add(new FormPermissionRow { RoleId = 6, RoleName = "External", RoleDescription = "Đối tác / khách hàng ngoài",  CanRead = false, CanWrite = false, CanSubmit = false });
+    }
+
+    // ── Section inline editing ───────────────────────────────
+
+    /// <summary>
+    /// Validate Section Code theo pattern [a-z0-9_].
+    /// Ghi kết quả vào <see cref="SectionCodeError"/>.
+    /// </summary>
+    private void ValidateSectionCode()
+    {
+        if (SelectedNode?.NodeType != FormNodeType.Section)
+        {
+            SectionCodeError = "";
+            return;
+        }
+        var code = SelectedNode.Code ?? "";
+        SectionCodeError = code.Length == 0           ? "Section Code không được để trống"
+                         : !SectionCodeRegex.IsMatch(code) ? "Chỉ dùng chữ thường, số và dấu gạch dưới (_)"
+                         : "";
+    }
+
+    /// <summary>
+    /// Load ResourceVi / ResourceEn từ Sys_Resource theo TitleKey của section.
+    /// Gán trực tiếp vào node — không trigger IsDirty.
+    /// </summary>
+    private async Task LoadSectionResourcesAsync(FormTreeNode node)
+    {
+        if (_i18nService is null || string.IsNullOrEmpty(node.TitleKey)) return;
+
+        // Bỏ subscribe tạm để gán resource không trigger IsDirty
+        node.PropertyChanged -= OnSelectedNodePropertyChanged;
+        try
+        {
+            node.ResourceVi = await _i18nService.ResolveKeyAsync(node.TitleKey, "vi") ?? "";
+            node.ResourceEn = await _i18nService.ResolveKeyAsync(node.TitleKey, "en") ?? "";
+        }
+        finally
+        {
+            node.PropertyChanged += OnSelectedNodePropertyChanged;
+        }
+    }
+
+    /// <summary>
+    /// Lưu Section: validate → upsert Ui_Section → upsert Sys_Resource vi/en.
+    /// Nếu Section Code đổi → TitleKey thay đổi → rename Resource_Key trong DB.
+    /// </summary>
+    private async Task ExecuteSaveSectionAsync()
+    {
+        if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
+        ValidateSectionCode();
+        if (HasSectionCodeError) return;
+        if (_detailService is null) return;
+
+        IsSavingSection = true;
+        try
+        {
+            var newTitleKey = SectionTitleKeyPreview;
+            var req = new SectionUpsertRequest(
+                FormId:      FormId,
+                SectionId:   node.Id,
+                SectionCode: node.Code,
+                TitleKey:    newTitleKey,
+                OrderNo:     node.SortOrder,
+                IsActive:    node.IsActive,
+                OldTitleKey: _originalTitleKey
+            );
+
+            var savedId = await _detailService.UpsertSectionAsync(req, _loadCts.Token);
+
+            // Cập nhật node với dữ liệu đã lưu
+            node.Id       = savedId;
+            node.TitleKey = newTitleKey;
+            _originalTitleKey = newTitleKey;
+
+            // Lưu Resource_Value vào Sys_Resource cho từng ngôn ngữ
+            if (_i18nService is not null)
+            {
+                if (!string.IsNullOrWhiteSpace(node.ResourceVi))
+                    await _i18nService.SaveResourceAsync(newTitleKey, "vi", node.ResourceVi, _loadCts.Token);
+                if (!string.IsNullOrWhiteSpace(node.ResourceEn))
+                    await _i18nService.SaveResourceAsync(newTitleKey, "en", node.ResourceEn, _loadCts.Token);
+            }
+
+            // Cập nhật DisplayName hiển thị trên TreeView
+            node.DisplayName = string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi;
+
+            RaisePropertyChanged(nameof(TotalSections));
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Lưu Section thất bại: {ex.Message}";
+        }
+        finally
+        {
+            IsSavingSection = false;
+        }
+    }
+
+    /// <summary>
+    /// Hủy thay đổi Section: load lại resource values từ DB, restore TitleKey preview.
+    /// </summary>
+    private void ExecuteCancelSection()
+    {
+        if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
+        _ = LoadSectionResourcesAsync(node);
+        RaisePropertyChanged(nameof(SectionTitleKeyPreview));
     }
 
     // ── Filter / Search ──────────────────────────────────────
@@ -747,6 +988,112 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 if (section.IsActive) section.IsExpanded = true;
             }
         }
+    }
+
+    // ── Auto-generate Fields từ Target DB ────────────────────
+
+    /// <summary>
+    /// Chỉ cho phép auto-generate khi đang ở edit mode và đã chọn bảng.
+    /// Target DB có thể chưa cấu hình — dialog sẽ hiện lỗi rõ ràng.
+    /// </summary>
+    private bool CanAutoGenerateFields()
+        => !IsNewForm && SelectedTable is not null;
+
+    /// <summary>
+    /// Mở dialog Auto-generate Fields:
+    /// 1. Truyền schema/table từ SelectedTable, danh sách sections hiện có.
+    /// 2. Dialog tự đọc columns từ Target DB.
+    /// 3. Nhận kết quả → thêm FormTreeNode vào section đích.
+    /// </summary>
+    private async Task ExecuteAutoGenerateFieldsAsync()
+    {
+        if (_dialogService is null || SelectedTable is null) return;
+
+        // ── Chuẩn bị danh sách section để user chọn đích ──────
+        var sectionOptions = Sections
+            .Select(s => new SectionOptionItem(s.Code, s.DisplayName))
+            .ToList();
+
+        // Nếu chưa có section nào → tạo một default section
+        if (sectionOptions.Count == 0)
+        {
+            ExecuteAddSection();
+            sectionOptions = Sections
+                .Select(s => new SectionOptionItem(s.Code, s.DisplayName))
+                .ToList();
+        }
+
+        var parameters = new DialogParameters
+        {
+            { "schemaName", SelectedTable.SchemaName },
+            { "tableName",  SelectedTable.TableCode  },
+            { "sections",   (IReadOnlyList<SectionOptionItem>)sectionOptions }
+        };
+
+        // ── Mở dialog và đợi kết quả ─────────────────────────
+        _dialogService.ShowDialog(
+            ViewNames.AutoGenerateFieldsDialog,
+            parameters,
+            result =>
+            {
+                if (result.Result != ButtonResult.OK) return;
+
+                var selectedColumns = result.Parameters
+                    .GetValue<IReadOnlyList<ColumnSchemaDto>>("selectedColumns");
+                var targetSectionCode = result.Parameters
+                    .GetValue<string>("targetSectionCode") ?? "";
+
+                if (selectedColumns is null || selectedColumns.Count == 0) return;
+
+                // ── Tìm section đích ──────────────────────────
+                var targetSection = Sections
+                    .FirstOrDefault(s => s.Code.Equals(targetSectionCode,
+                                                        StringComparison.OrdinalIgnoreCase))
+                    ?? Sections.LastOrDefault();
+
+                if (targetSection is null) return;
+
+                // ── Thêm FormTreeNode cho từng cột đã chọn ───
+                var nextOrder = targetSection.Children.Count > 0
+                    ? targetSection.Children.Max(f => f.SortOrder) + 1
+                    : 1;
+
+                // Dùng Id âm làm marker "field mới chưa persist" (temp id)
+                var tempIdBase = -(Sections.SelectMany(s => s.Children)
+                    .Where(f => f.Id < 0).Select(f => f.Id)
+                    .DefaultIfEmpty(0).Min() + 1);
+
+                foreach (var col in selectedColumns)
+                {
+                    // NOTE: Bỏ qua nếu cột đã có field trong section (tránh trùng)
+                    bool alreadyExists = Sections
+                        .SelectMany(s => s.Children)
+                        .Any(f => f.Code.Equals(col.ColumnName,
+                                                StringComparison.OrdinalIgnoreCase));
+                    if (alreadyExists) continue;
+
+                    targetSection.Children.Add(new FormTreeNode
+                    {
+                        Id          = --tempIdBase,
+                        NodeType    = FormNodeType.Field,
+                        Code        = col.ColumnName,
+                        DisplayName = col.ColumnName,
+                        FieldType   = col.NetType,
+                        EditorType  = col.DefaultEditorType,
+                        IsRequired  = !col.IsNullable,
+                        SortOrder   = nextOrder++,
+                        IsActive    = true
+                    });
+                }
+
+                PushUndoState($"Auto-generate {selectedColumns.Count} fields từ {SelectedTable.TableCode}");
+                IsDirty = true;
+                _autoSave?.NotifyDirty();
+                _linting?.NotifyChanged();
+                RaisePropertyChanged(nameof(TotalFields));
+            });
+
+        await Task.CompletedTask; // Giữ async signature để DelegateCommand hoạt động
     }
 
     // ── Tree manipulation ────────────────────────────────────
@@ -1383,5 +1730,232 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         {
             CreateErrorMessage = $"Không thể tải danh sách Sys_Table: {ex.Message}";
         }
+    }
+
+    // ── Schema Sync / Diff ────────────────────────────────────
+
+    /// <summary>
+    /// So sánh cấu trúc Target DB với các field đang có trong form.
+    /// Chỉ chạy khi Target DB đã cấu hình và form đang ở edit mode với SelectedTable.
+    /// Kết quả ghi vào <see cref="_lastDiff"/> và cập nhật badge count.
+    /// </summary>
+    private async Task CheckSchemaDiffAsync(CancellationToken ct = default)
+    {
+        if (_schemaInspector is null
+            || _appConfig is null
+            || !_appConfig.IsTargetConfigured
+            || SelectedTable is null
+            || IsNewForm)
+        {
+            _lastDiff = SchemaDiffResult.Empty;
+            SchemaSyncBadgeCount = 0;
+            SyncSchemaCommand.RaiseCanExecuteChanged();
+            return;
+        }
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(15));
+
+            // ── Lấy danh sách cột từ Target DB ───────────────
+            var targetColumns = await _schemaInspector.GetColumnsAsync(
+                _appConfig.TargetConnectionString!,
+                SelectedTable.SchemaName,
+                SelectedTable.TableCode,
+                cts.Token);
+
+            // Index theo tên cột (case-insensitive)
+            var targetColMap = targetColumns.ToDictionary(
+                c => c.ColumnName, c => c, StringComparer.OrdinalIgnoreCase);
+
+            // ── Danh sách field hiện có trong form ────────────
+            var existingFields = Sections
+                .SelectMany(s => s.Children)
+                .Where(f => f.NodeType == FormNodeType.Field)
+                .ToList();
+
+            var existingFieldCodes = existingFields
+                .Select(f => f.Code)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // ── Tab 1: Cột có trong Target DB nhưng chưa có field ──
+            var columnsToAdd = targetColumns
+                .Where(c => !c.ShouldSkip && !existingFieldCodes.Contains(c.ColumnName))
+                .ToList();
+
+            // ── Tab 2: Field tham chiếu cột không còn tồn tại ──
+            var orphanedFields = new List<FormTreeNode>();
+            var orphanedFieldItems = new List<FormTreeNode>();
+
+            foreach (var field in existingFields)
+            {
+                if (!targetColMap.ContainsKey(field.Code))
+                    orphanedFieldItems.Add(field);
+            }
+
+            // ── Tab 3: Type Mismatch ──────────────────────────
+            var typeMismatches = new List<TypeMismatchItem>();
+            foreach (var field in existingFields)
+            {
+                if (!targetColMap.TryGetValue(field.Code, out var targetCol)) continue;
+
+                var suggestedEditorType = targetCol.DefaultEditorType;
+                if (!string.Equals(field.EditorType, suggestedEditorType,
+                                    StringComparison.OrdinalIgnoreCase))
+                {
+                    typeMismatches.Add(new TypeMismatchItem(field, targetCol, suggestedEditorType));
+                }
+            }
+
+            _lastDiff = new SchemaDiffResult
+            {
+                ColumnsToAdd  = columnsToAdd,
+                OrphanedFields = orphanedFieldItems,
+                TypeMismatches = typeMismatches
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            // Timeout hoặc cancel — giữ trạng thái cũ, không báo lỗi
+            _lastDiff = SchemaDiffResult.Empty;
+        }
+        catch
+        {
+            // Lỗi kết nối Target DB — không chặn người dùng
+            _lastDiff = SchemaDiffResult.Empty;
+        }
+
+        SchemaSyncBadgeCount = _lastDiff.IssueCount;
+        SyncSchemaCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// Mở SyncSchemaDialog với diff đã tính.
+    /// Sau khi user confirm → thêm fields mới + xóa field mồ côi.
+    /// </summary>
+    private async Task ExecuteSyncSchemaAsync()
+    {
+        if (_dialogService is null || !_lastDiff.HasAnyDiff || SelectedTable is null) return;
+
+        // ── Chuẩn bị sections để user chọn đích ───────────────
+        var sectionOptions = Sections
+            .Select(s => new SectionOptionItem(s.Code, s.DisplayName))
+            .ToList();
+
+        if (sectionOptions.Count == 0)
+        {
+            ExecuteAddSection();
+            sectionOptions = Sections
+                .Select(s => new SectionOptionItem(s.Code, s.DisplayName))
+                .ToList();
+        }
+
+        // ── Bọc orphaned fields thành ObservableItems có SectionName ──
+        var orphanedItems = _lastDiff.OrphanedFields.Select(field =>
+        {
+            var sectionName = Sections
+                .FirstOrDefault(s => s.Children.Any(f => f.Id == field.Id))
+                ?.DisplayName ?? "";
+            return new OrphanedFieldItem(field) { SectionName = sectionName };
+        }).ToList();
+
+        // ── Bọc columnsToAdd thành AutoGenerateColumnItem ─────
+        var columnItems = _lastDiff.ColumnsToAdd
+            .Select(c => new AutoGenerateColumnItem(c))
+            .ToList();
+
+        var parameters = new DialogParameters
+        {
+            { "diffResult", new SchemaDiffResult
+                {
+                    ColumnsToAdd   = _lastDiff.ColumnsToAdd,
+                    OrphanedFields = _lastDiff.OrphanedFields,
+                    TypeMismatches = _lastDiff.TypeMismatches
+                }
+            },
+            { "sections", (IReadOnlyList<SectionOptionItem>)sectionOptions }
+        };
+
+        _dialogService.ShowDialog(ViewNames.SyncSchemaDialog, parameters, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+
+            var columnsToAdd = result.Parameters
+                .GetValue<IReadOnlyList<ColumnSchemaDto>>("columnsToAdd");
+            var fieldsToRemove = result.Parameters
+                .GetValue<IReadOnlyList<FormTreeNode>>("fieldsToRemove");
+            var targetSectionCode = result.Parameters
+                .GetValue<string>("targetSectionCode") ?? "";
+
+            // ── Thêm fields mới ───────────────────────────────
+            if (columnsToAdd?.Count > 0)
+            {
+                var targetSection = Sections
+                    .FirstOrDefault(s => s.Code.Equals(targetSectionCode,
+                                                        StringComparison.OrdinalIgnoreCase))
+                    ?? Sections.LastOrDefault();
+
+                if (targetSection is not null)
+                {
+                    var nextOrder = targetSection.Children.Count > 0
+                        ? targetSection.Children.Max(f => f.SortOrder) + 1
+                        : 1;
+
+                    var tempIdBase = -(Sections.SelectMany(s => s.Children)
+                        .Where(f => f.Id < 0).Select(f => f.Id)
+                        .DefaultIfEmpty(0).Min() + 1);
+
+                    foreach (var col in columnsToAdd)
+                    {
+                        bool alreadyExists = Sections
+                            .SelectMany(s => s.Children)
+                            .Any(f => f.Code.Equals(col.ColumnName,
+                                                     StringComparison.OrdinalIgnoreCase));
+                        if (alreadyExists) continue;
+
+                        targetSection.Children.Add(new FormTreeNode
+                        {
+                            Id          = --tempIdBase,
+                            NodeType    = FormNodeType.Field,
+                            Code        = col.ColumnName,
+                            DisplayName = col.ColumnName,
+                            FieldType   = col.NetType,
+                            EditorType  = col.DefaultEditorType,
+                            IsRequired  = !col.IsNullable,
+                            SortOrder   = nextOrder++,
+                            IsActive    = true
+                        });
+                    }
+                }
+            }
+
+            // ── Xóa field mồ côi ──────────────────────────────
+            if (fieldsToRemove?.Count > 0)
+            {
+                var removeIds = fieldsToRemove.Select(f => f.Id).ToHashSet();
+                foreach (var section in Sections)
+                {
+                    var toRemove = section.Children
+                        .Where(f => removeIds.Contains(f.Id))
+                        .ToList();
+                    foreach (var f in toRemove)
+                        section.Children.Remove(f);
+                }
+            }
+
+            // ── Reset diff sau khi áp dụng ────────────────────
+            _lastDiff = SchemaDiffResult.Empty;
+            SchemaSyncBadgeCount = 0;
+            SyncSchemaCommand.RaiseCanExecuteChanged();
+
+            PushUndoState("Đồng bộ schema DB");
+            IsDirty = true;
+            _autoSave?.NotifyDirty();
+            _linting?.NotifyChanged();
+            RaisePropertyChanged(nameof(TotalFields));
+        });
+
+        await Task.CompletedTask;
     }
 }

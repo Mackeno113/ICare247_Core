@@ -27,6 +27,12 @@ public sealed class FormsModule : IModule
 
         // NOTE: Đăng ký dialog nhân bản form (clone với Form_Code mới)
         containerRegistry.RegisterDialog<CloneFormDialog, CloneFormDialogViewModel>(ViewNames.CloneFormDialog);
+
+        // NOTE: Đăng ký dialog auto-generate fields từ Target DB schema
+        containerRegistry.RegisterDialog<AutoGenerateFieldsDialog, AutoGenerateFieldsDialogViewModel>(ViewNames.AutoGenerateFieldsDialog);
+
+        // NOTE: Đăng ký dialog đồng bộ schema — hiện diff giữa Target DB và form hiện tại
+        containerRegistry.RegisterDialog<SyncSchemaDialog, SyncSchemaDialogViewModel>(ViewNames.SyncSchemaDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

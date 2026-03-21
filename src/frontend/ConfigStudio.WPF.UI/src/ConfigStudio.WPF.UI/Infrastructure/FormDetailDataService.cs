@@ -176,6 +176,73 @@ public sealed class FormDetailDataService : IFormDetailDataService
     }
 
     /// <inheritdoc />
+    public async Task<int> UpsertSectionAsync(SectionUpsertRequest req, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return 0;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // ── Rename Resource_Key nếu Title_Key thay đổi (user đổi Section Code) ──
+            if (!string.IsNullOrEmpty(req.OldTitleKey) && req.OldTitleKey != req.TitleKey)
+            {
+                const string renameSql = """
+                    UPDATE dbo.Sys_Resource
+                    SET    Resource_Key = @NewKey, Updated_At = GETDATE()
+                    WHERE  Resource_Key = @OldKey
+                    """;
+                await conn.ExecuteAsync(
+                    new CommandDefinition(renameSql, new { OldKey = req.OldTitleKey, NewKey = req.TitleKey },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+            }
+
+            int resultId;
+
+            if (req.SectionId == 0)
+            {
+                // ── INSERT mới ──────────────────────────────────────────────────────
+                const string insertSql = """
+                    INSERT INTO dbo.Ui_Section (Form_Id, Section_Code, Title_Key, Order_No, Is_Active)
+                    OUTPUT INSERTED.Section_Id
+                    VALUES (@FormId, @SectionCode, @TitleKey, @OrderNo, @IsActive)
+                    """;
+                resultId = await conn.QuerySingleAsync<int>(
+                    new CommandDefinition(insertSql,
+                        new { req.FormId, req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+            }
+            else
+            {
+                // ── UPDATE bản ghi hiện có ──────────────────────────────────────────
+                const string updateSql = """
+                    UPDATE dbo.Ui_Section
+                    SET    Section_Code = @SectionCode,
+                           Title_Key    = @TitleKey,
+                           Order_No     = @OrderNo,
+                           Is_Active    = @IsActive
+                    WHERE  Section_Id   = @SectionId
+                    """;
+                await conn.ExecuteAsync(
+                    new CommandDefinition(updateSql,
+                        new { req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive, req.SectionId },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+                resultId = req.SectionId;
+            }
+
+            await tx.CommitAsync(ct);
+            return resultId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task DeactivateFormAsync(int formId, int tenantId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return;

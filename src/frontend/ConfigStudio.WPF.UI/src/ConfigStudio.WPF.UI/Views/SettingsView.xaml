@@ -84,7 +84,7 @@
             </Setter>
         </Style>
 
-        <!-- ── Test button: outlined blue ──────────────────── -->
+        <!-- ── Test button: outlined blue (Config DB) ─────── -->
         <Style x:Key="TestButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
             <Setter Property="Background"   Value="White" />
             <Setter Property="Foreground"   Value="#2563EB" />
@@ -106,6 +106,38 @@
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter TargetName="Bd" Property="Background" Value="#DBEAFE" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ── Test button: outlined green (Target DB) ─────── -->
+        <Style x:Key="TargetTestButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
+            <Setter Property="Background"   Value="White" />
+            <Setter Property="Foreground"   Value="#059669" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="White"
+                                CornerRadius="6"
+                                BorderBrush="#059669"
+                                BorderThickness="1.5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#ECFDF5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#D1FAE5" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
@@ -138,15 +170,17 @@
                   HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="32,28,32,28" MaxWidth="660">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />   <!-- Header     -->
-                <RowDefinition Height="24"  />   <!-- Spacer     -->
-                <RowDefinition Height="Auto" />   <!-- DB Card    -->
-                <RowDefinition Height="16"  />   <!-- Spacer     -->
-                <RowDefinition Height="Auto" />   <!-- Tenant     -->
-                <RowDefinition Height="24"  />   <!-- Spacer     -->
-                <RowDefinition Height="Auto" />   <!-- Buttons    -->
-                <RowDefinition Height="*"   />   <!-- Push down  -->
-                <RowDefinition Height="Auto" />   <!-- Footer     -->
+                <RowDefinition Height="Auto" />   <!-- 0  Header          -->
+                <RowDefinition Height="24"  />   <!-- 1  Spacer          -->
+                <RowDefinition Height="Auto" />   <!-- 2  Config DB Card  -->
+                <RowDefinition Height="16"  />   <!-- 3  Spacer          -->
+                <RowDefinition Height="Auto" />   <!-- 4  Target DB Card  -->
+                <RowDefinition Height="16"  />   <!-- 5  Spacer          -->
+                <RowDefinition Height="Auto" />   <!-- 6  Tenant          -->
+                <RowDefinition Height="24"  />   <!-- 7  Spacer          -->
+                <RowDefinition Height="Auto" />   <!-- 8  Buttons         -->
+                <RowDefinition Height="*"   />   <!-- 9  Push down       -->
+                <RowDefinition Height="Auto" />   <!-- 10 Footer          -->
             </Grid.RowDefinitions>
 
             <!-- ═══════════════════════════════════════════════ -->
@@ -227,9 +261,121 @@
             </Border>
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- TENANT CARD                                     -->
+            <!-- TARGET DB CARD                                  -->
             <!-- ═══════════════════════════════════════════════ -->
             <Border Grid.Row="4" Style="{StaticResource CardStyle}">
+                <StackPanel>
+
+                    <!-- Section title + badge -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
+                        <TextBlock Text="Target Database"
+                                   FontSize="14" FontWeight="SemiBold"
+                                   Foreground="#1E293B" />
+                        <Border Background="#FEF3C7" CornerRadius="4" Padding="6,2"
+                                Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="DB ứng dụng thực sự — dùng để đọc cấu trúc cột"
+                                       FontSize="11" Foreground="#92400E" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Server -->
+                    <TextBlock Text="Server" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding TargetServer, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FieldInputStyle}"
+                             Margin="0,0,0,14" />
+
+                    <!-- Database -->
+                    <TextBlock Text="Database" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBox Text="{Binding TargetDatabase, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource FieldInputStyle}"
+                             Margin="0,0,0,14" />
+
+                    <!-- Username + Password (2 columns) -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Username -->
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBox Text="{Binding TargetUserId, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource FieldInputStyle}" />
+                        </StackPanel>
+
+                        <!-- Password -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Mật khẩu" Style="{StaticResource FieldLabelStyle}" />
+                            <PasswordBox x:Name="TargetPasswordBox"
+                                         Style="{StaticResource FieldPasswordStyle}"
+                                         PasswordChanged="TargetPasswordBox_PasswordChanged" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Trust Server Certificate -->
+                    <CheckBox IsChecked="{Binding TargetTrustServerCertificate}"
+                              Margin="0,4,0,14">
+                        <TextBlock Text="Trust Server Certificate  (bỏ qua kiểm tra SSL — dùng cho môi trường dev)"
+                                   FontSize="12" Foreground="#475569" />
+                    </CheckBox>
+
+                    <!-- Test button + inline status -->
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="🔌  Test Target DB"
+                                Command="{Binding TestTargetConnectionCommand}"
+                                Style="{StaticResource TargetTestButtonStyle}"
+                                Foreground="#059669" />
+
+                        <!-- Inline status cho Target DB -->
+                        <Border Margin="14,0,0,0"
+                                CornerRadius="6" Padding="12,6"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding IsTargetStatusVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background"  Value="#EFF6FF" />
+                                    <Setter Property="BorderBrush" Value="#93C5FD" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTargetStatusSuccess}" Value="True">
+                                            <Setter Property="Background"  Value="#F0FDF4" />
+                                            <Setter Property="BorderBrush" Value="#86EFAC" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsTargetStatusError}" Value="True">
+                                            <Setter Property="Background"  Value="#FEF2F2" />
+                                            <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding TargetStatusMessage}"
+                                       FontSize="12" TextWrapping="Wrap" MaxWidth="360">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="#1D4ED8" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTargetStatusSuccess}" Value="True">
+                                                <Setter Property="Foreground" Value="#16A34A" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsTargetStatusError}" Value="True">
+                                                <Setter Property="Foreground" Value="#DC2626" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+                    </StackPanel>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- TENANT CARD                                     -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <Border Grid.Row="6" Style="{StaticResource CardStyle}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -254,7 +400,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- BUTTONS + STATUS                                -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Grid Grid.Row="6">
+            <Grid Grid.Row="8">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="12"   />
@@ -289,7 +435,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- STATUS MESSAGE                                  -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Border Grid.Row="6"
+            <Border Grid.Row="8"
                     Margin="0,50,0,0"
                     CornerRadius="6"
                     Padding="14,10"
@@ -334,7 +480,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- FOOTER — config file path                       -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Border Grid.Row="8"
+            <Border Grid.Row="10"
                     BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
                     Padding="0,12,0,0" Margin="0,16,0,0">
                 <StackPanel Orientation="Horizontal">

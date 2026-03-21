@@ -55,6 +55,21 @@ public class FormTreeNode : BindableBase
     private int _sortOrder;
     public int SortOrder { get => _sortOrder; set => SetProperty(ref _sortOrder, value); }
 
+    private string _titleKey = "";
+    /// <summary>
+    /// Title_Key trong Ui_Section — resource key tham chiếu Sys_Resource.
+    /// VD: "sys_ui_design.section.thong_tin_co_ban". Chỉ có ý nghĩa khi NodeType = Section.
+    /// </summary>
+    public string TitleKey { get => _titleKey; set => SetProperty(ref _titleKey, value); }
+
+    private string _resourceVi = "";
+    /// <summary>Giá trị Sys_Resource[TitleKey, 'vi'] — tên hiển thị tiếng Việt.</summary>
+    public string ResourceVi { get => _resourceVi; set => SetProperty(ref _resourceVi, value); }
+
+    private string _resourceEn = "";
+    /// <summary>Giá trị Sys_Resource[TitleKey, 'en'] — tên hiển thị tiếng Anh.</summary>
+    public string ResourceEn { get => _resourceEn; set => SetProperty(ref _resourceEn, value); }
+
     private bool _isExpanded = true;
     /// <summary>Trạng thái expand/collapse trong TreeView (chỉ Section).</summary>
     public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }

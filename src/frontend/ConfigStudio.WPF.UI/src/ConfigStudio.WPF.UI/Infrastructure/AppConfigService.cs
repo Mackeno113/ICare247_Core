@@ -25,10 +25,12 @@ public sealed class AppConfigService : IAppConfigService
     private static readonly string ConfigPath = Path.Combine(ConfigDir, "appsettings.json");
 
     // ── IAppConfigService ────────────────────────────────────
-    public string? ConnectionString { get; private set; }
-    public int     TenantId        { get; private set; } = 1;
-    public bool    IsConfigured    => !string.IsNullOrWhiteSpace(ConnectionString);
-    public string  ConfigFilePath  => ConfigPath;
+    public string? ConnectionString       { get; private set; }
+    public string? TargetConnectionString { get; private set; }
+    public int     TenantId              { get; private set; } = 1;
+    public bool    IsConfigured          => !string.IsNullOrWhiteSpace(ConnectionString);
+    public bool    IsTargetConfigured    => !string.IsNullOrWhiteSpace(TargetConnectionString);
+    public string  ConfigFilePath        => ConfigPath;
 
     /// <summary>
     /// Đọc file JSON. Nếu chưa có → tạo template → trả false.
@@ -83,25 +85,34 @@ public sealed class AppConfigService : IAppConfigService
     }
 
     /// <summary>
-    /// Ghi connection string và tenantId vào file, cập nhật state ngay lập tức.
+    /// Ghi toàn bộ cấu hình vào file và cập nhật state ngay lập tức.
+    /// targetConnectionString là optional — nếu null thì giữ nguyên giá trị cũ.
     /// </summary>
-    public async Task SaveAsync(string connectionString, int tenantId)
+    public async Task SaveAsync(string connectionString, int tenantId, string? targetConnectionString = null)
     {
         Directory.CreateDirectory(ConfigDir);
+
+        // ── Dùng giá trị mới nếu có, giữ cũ nếu null ───────
+        var targetCs = targetConnectionString ?? TargetConnectionString;
 
         // ── Serialize JSON đẹp ──────────────────────────────
         var obj = new
         {
-            ConnectionStrings = new { ConfigStudio = connectionString },
-            TenantId          = tenantId
+            ConnectionStrings = new
+            {
+                ConfigStudio = connectionString,
+                TargetDb     = targetCs ?? ""
+            },
+            TenantId = tenantId
         };
 
         var json = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(ConfigPath, json);
 
         // ── Cập nhật state không cần đọc lại file ───────────
-        ConnectionString = connectionString;
-        TenantId         = tenantId;
+        ConnectionString       = connectionString;
+        TargetConnectionString = string.IsNullOrWhiteSpace(targetCs) ? null : targetCs;
+        TenantId               = tenantId;
     }
 
     // ── Helpers ──────────────────────────────────────────────
@@ -112,10 +123,17 @@ public sealed class AppConfigService : IAppConfigService
         using var doc  = JsonDocument.Parse(json);
         var root = doc.RootElement;
 
-        if (root.TryGetProperty("ConnectionStrings", out var cs)
-         && cs.TryGetProperty("ConfigStudio", out var connEl))
+        if (root.TryGetProperty("ConnectionStrings", out var cs))
         {
-            ConnectionString = connEl.GetString();
+            if (cs.TryGetProperty("ConfigStudio", out var connEl))
+                ConnectionString = connEl.GetString();
+
+            // ── Target DB — optional, có thể chưa có trong file cũ ──
+            if (cs.TryGetProperty("TargetDb", out var targetEl))
+            {
+                var val = targetEl.GetString();
+                TargetConnectionString = string.IsNullOrWhiteSpace(val) ? null : val;
+            }
         }
 
         if (root.TryGetProperty("TenantId", out var tenantEl))
@@ -132,7 +150,8 @@ public sealed class AppConfigService : IAppConfigService
         const string template = """
             {
               "ConnectionStrings": {
-                "ConfigStudio": "Server=localhost;Database=ICare247_Config;User Id=sa;Password=YourPassword;TrustServerCertificate=true"
+                "ConfigStudio": "Server=localhost;Database=ICare247_Config;User Id=sa;Password=YourPassword;TrustServerCertificate=true",
+                "TargetDb": ""
               },
               "TenantId": 1
             }

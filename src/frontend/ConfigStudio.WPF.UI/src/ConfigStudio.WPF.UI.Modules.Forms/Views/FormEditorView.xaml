@@ -333,6 +333,39 @@
                         Foreground="{StaticResource DangerBrush}">
                     <TextBlock Text="🗑" FontSize="13" />
                 </Button>
+
+                <Border Style="{StaticResource ToolbarSeparatorStyle}" />
+
+                <!-- Auto-generate fields từ Target DB schema -->
+                <dx:SimpleButton Command="{Binding AutoGenerateFieldsCommand}"
+                                 Height="28" Padding="10,0"
+                                 ToolTip="Tạo fields tự động từ cấu trúc cột Target DB">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✨" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="Tạo Fields tự động" Margin="5,0,0,0" FontSize="12" />
+                    </StackPanel>
+                </dx:SimpleButton>
+
+                <Border Style="{StaticResource ToolbarSeparatorStyle}" />
+
+                <!-- Đồng bộ Schema — hiện khi có diff -->
+                <dx:SimpleButton Command="{Binding SyncSchemaCommand}"
+                                 Height="28" Padding="10,0"
+                                 ToolTip="Đồng bộ cấu trúc cột Target DB với form hiện tại">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🔄" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Text="Đồng bộ Schema" Margin="5,0,0,0" FontSize="12" />
+                        <!-- Badge số issues — chỉ hiện khi HasSchemaSyncIssues -->
+                        <Border Margin="5,0,0,0" CornerRadius="8" Padding="5,1"
+                                Background="#F59E0B" VerticalAlignment="Center"
+                                Visibility="{Binding HasSchemaSyncIssues,
+                                             Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding SchemaSyncBadgeCount}"
+                                       FontSize="10" FontWeight="SemiBold"
+                                       Foreground="White" />
+                        </Border>
+                    </StackPanel>
+                </dx:SimpleButton>
             </StackPanel>
         </Border>
 
@@ -711,38 +744,129 @@
 
                                     <!-- ── Section Properties ──────── -->
                                     <StackPanel Visibility="{Binding IsSectionSelected, Converter={StaticResource BoolToVis}}">
+
+                                        <!-- Card: Thông tin cơ bản -->
                                         <Border Style="{StaticResource SectionCardStyle}">
                                             <StackPanel>
                                                 <TextBlock Text="THUỘC TÍNH SECTION"
                                                            Style="{StaticResource SectionTitleStyle}" />
 
+                                                <!-- Section Code -->
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Section Code"
+                                                    <TextBlock Text="Section Code *"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:TextEdit EditValue="{Binding SelectedNode.Code, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="Section Code" />
+                                                                  NullText="VD: thong_tin_co_ban"
+                                                                  ToolTip="Mã định danh duy nhất trong form. Dùng chữ thường, số và dấu _. Không thay đổi được sau khi các rule/event tham chiếu." />
+                                                    <!-- Lỗi validation -->
+                                                    <Border Background="#FEF2F2" CornerRadius="4" Padding="8,4"
+                                                            Margin="0,4,0,0"
+                                                            Visibility="{Binding HasSectionCodeError, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="{Binding SectionCodeError}"
+                                                                   Foreground="#DC2626" FontSize="11" />
+                                                    </Border>
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Chỉ dùng chữ thường (a-z), số (0-9), dấu gạch dưới (_). VD: ho_ten, dia_chi" />
                                                 </StackPanel>
 
+                                                <!-- Title Key (readonly, auto-generated) -->
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Tên hiển thị"
+                                                    <TextBlock Text="Title Key (tự động)"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.DisplayName, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="Tên hiển thị" />
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Grid.Column="0"
+                                                                Background="#F8FAFC" CornerRadius="6"
+                                                                BorderBrush="{StaticResource BorderBrush}"
+                                                                BorderThickness="1" Padding="10,7">
+                                                            <TextBlock Text="{Binding SectionTitleKeyPreview}"
+                                                                       FontFamily="Cascadia Code, Consolas, monospace"
+                                                                       FontSize="11"
+                                                                       Foreground="{StaticResource MutedBrush}"
+                                                                       TextTrimming="CharacterEllipsis"
+                                                                       ToolTip="{Binding SectionTitleKeyPreview}" />
+                                                        </Border>
+                                                    </Grid>
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Tự sinh từ Form Code + section + Section Code. Dùng để tra Sys_Resource." />
                                                 </StackPanel>
 
-                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Thứ tự sắp xếp"
-                                                               Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="0" />
-                                                </StackPanel>
-
-                                                <TextBlock Text="{Binding SelectedNode.SubText}"
-                                                           FontSize="11"
-                                                           Foreground="{StaticResource MutedBrush}"
-                                                           Margin="0,4,0,0" />
+                                                <!-- Thứ tự + Is Active -->
+                                                <Grid Margin="0,0,0,18">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Thứ tự"
+                                                                   Style="{StaticResource FieldLabelStyle}" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedNode.SortOrder, UpdateSourceTrigger=PropertyChanged}"
+                                                                      NullText="0"
+                                                                      ToolTip="Thứ tự hiển thị section trong form (số nhỏ hiển thị trước)." />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom"
+                                                                Margin="0,0,0,2">
+                                                        <dxe:CheckEdit IsChecked="{Binding SelectedNode.IsActive}"
+                                                                       Content="Hiển thị (Is Active)"
+                                                                       FontSize="13"
+                                                                       ToolTip="Bật/tắt section. Section bị tắt sẽ không render cho người dùng cuối." />
+                                                    </StackPanel>
+                                                </Grid>
                                             </StackPanel>
                                         </Border>
+
+                                        <!-- Card: Tên hiển thị (Sys_Resource) -->
+                                        <Border Style="{StaticResource SectionCardStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="TÊN HIỂN THỊ (SYS_RESOURCE)"
+                                                           Style="{StaticResource SectionTitleStyle}" />
+                                                <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                           Margin="0,0,0,12"
+                                                           Text="Nhập tên hiển thị cho từng ngôn ngữ. Lưu cùng lúc với Section khi nhấn Lưu Section bên dưới." />
+
+                                                <!-- Tiếng Việt (bắt buộc) -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tiếng Việt (vi) *"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.ResourceVi, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="VD: Thông tin cơ bản"
+                                                                  ToolTip="Tên hiển thị tiếng Việt — bắt buộc phải có." />
+                                                </StackPanel>
+
+                                                <!-- Tiếng Anh (tuỳ chọn) -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tiếng Anh (en)"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.ResourceEn, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="VD: Basic Information"
+                                                                  ToolTip="Tên hiển thị tiếng Anh — tuỳ chọn." />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Nút Lưu / Hủy -->
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <dx:SimpleButton Grid.Column="0"
+                                                             Command="{Binding SaveSectionCommand}"
+                                                             Content="Lưu Section"
+                                                             Height="34"
+                                                             ToolTip="Lưu Section Code + Tên hiển thị vào DB trong 1 lần." />
+                                            <dx:SimpleButton Grid.Column="2"
+                                                             Command="{Binding CancelSectionCommand}"
+                                                             Content="Hủy"
+                                                             Height="34" Padding="16,0"
+                                                             ToolTip="Tải lại giá trị từ DB, hủy bỏ thay đổi chưa lưu." />
+                                        </Grid>
+
                                     </StackPanel>
 
                                     <!-- ── Field Properties ────────── -->

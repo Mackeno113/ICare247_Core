@@ -12,14 +12,23 @@ namespace ConfigStudio.WPF.UI.Core.Interfaces;
 /// </summary>
 public interface IAppConfigService
 {
-    /// <summary>Connection string tới SQL Server. Null nếu chưa cấu hình.</summary>
+    /// <summary>Connection string tới Config DB (Ui_Form, Ui_Field, ...). Null nếu chưa cấu hình.</summary>
     string? ConnectionString { get; }
+
+    /// <summary>
+    /// Connection string tới Target DB (DB thực sự của ứng dụng — dùng để đọc cấu trúc cột).
+    /// Null nếu chưa cấu hình.
+    /// </summary>
+    string? TargetConnectionString { get; }
 
     /// <summary>Tenant_Id mặc định cho phiên làm việc này.</summary>
     int TenantId { get; }
 
     /// <summary>True nếu ConnectionString đã được load và không rỗng.</summary>
     bool IsConfigured { get; }
+
+    /// <summary>True nếu TargetConnectionString đã được cấu hình.</summary>
+    bool IsTargetConfigured { get; }
 
     /// <summary>Đường dẫn đầy đủ tới file cấu hình trên máy.</summary>
     string ConfigFilePath { get; }
@@ -36,7 +45,7 @@ public interface IAppConfigService
     Task<string?> TestConnectionAsync(string connectionString);
 
     /// <summary>
-    /// Ghi connection string và tenantId vào file cấu hình, cập nhật state hiện tại.
+    /// Ghi toàn bộ cấu hình vào file và cập nhật state hiện tại.
     /// </summary>
-    Task SaveAsync(string connectionString, int tenantId);
+    Task SaveAsync(string connectionString, int tenantId, string? targetConnectionString = null);
 }
