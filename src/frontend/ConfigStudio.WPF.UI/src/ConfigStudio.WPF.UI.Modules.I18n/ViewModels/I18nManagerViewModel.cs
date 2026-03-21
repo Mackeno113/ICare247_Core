@@ -92,11 +92,14 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     public int MissingCount => Entries.Count(e => e.HasMissing);
 
     // ── Commands ──────────────────────────────────────────────
+    public DelegateCommand GoBackCommand { get; }
     public DelegateCommand AddEntryCommand { get; }
     public DelegateCommand DeleteEntryCommand { get; }
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand ExportCommand { get; }
     public DelegateCommand ImportCommand { get; }
+
+    private IRegionNavigationJournal? _journal;
 
     public I18nManagerViewModel(II18nDataService? i18nService = null, IAppConfigService? appConfig = null)
     {
@@ -106,16 +109,33 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         EntriesView = CollectionViewSource.GetDefaultView(Entries);
         EntriesView.Filter = ApplyFilter;
 
-        AddEntryCommand = new DelegateCommand(ExecuteAddEntry);
+        GoBackCommand      = new DelegateCommand(ExecuteGoBack, () => _journal?.CanGoBack == true)
+                                 .ObservesProperty(() => CanGoBack);
+        AddEntryCommand    = new DelegateCommand(ExecuteAddEntry);
         DeleteEntryCommand = new DelegateCommand(ExecuteDeleteEntry, () => SelectedEntry is not null);
-        RefreshCommand = new DelegateCommand(async () => await LoadDataAsync());
-        ExportCommand = new DelegateCommand(ExecuteExport);
-        ImportCommand = new DelegateCommand(ExecuteImport);
+        RefreshCommand     = new DelegateCommand(async () => await LoadDataAsync());
+        ExportCommand      = new DelegateCommand(ExecuteExport);
+        ImportCommand      = new DelegateCommand(ExecuteImport);
+    }
+
+    // Trigger RaiseCanExecuteChanged cho GoBackCommand
+    public bool CanGoBack => _journal?.CanGoBack == true;
+
+    private void ExecuteGoBack()
+    {
+        if (_journal?.CanGoBack == true)
+            _journal.GoBack();
     }
 
     // ── INavigationAware ─────────────────────────────────────
 
-    public async void OnNavigatedTo(NavigationContext navigationContext) => await LoadDataAsync();
+    public async void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        _journal = navigationContext.NavigationService.Journal;
+        RaisePropertyChanged(nameof(CanGoBack));
+        await LoadDataAsync();
+    }
+
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {

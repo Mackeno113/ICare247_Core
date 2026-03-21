@@ -37,13 +37,20 @@
 
                 <!-- Title -->
                 <DockPanel Grid.Row="0">
-                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
-                        <TextBlock Text="i18n Manager"
-                                   FontSize="24" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                        <TextBlock Text="Quản lý resource key đa ngôn ngữ"
-                                   FontSize="12" Opacity="0.6" Margin="0,2,0,0"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+                        <dx:SimpleButton Command="{Binding GoBackCommand}"
+                                         Width="32" Height="32" Content="←" FontSize="16"
+                                         Margin="0,0,10,0"
+                                         ToolTip="Quay lại màn hình trước"
+                                         Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVis}}" />
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="i18n Manager"
+                                       FontSize="24" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                            <TextBlock Text="Quản lý resource key đa ngôn ngữ"
+                                       FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
