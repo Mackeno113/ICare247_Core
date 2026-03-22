@@ -1,70 +1,66 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-22
+> Cập nhật: 2026-03-22 (session 2)
 
-## Đã làm (session 22/03 — Bug fixes + Val_Rule Refactor + UX polish)
+## Đã làm (session 22/03 — LookupBox Config + Data Design + UX fixes)
 
-### 1. Bug fixes FormEditor + FieldConfig
+### 1. Sys_Lookup + thiết kế dữ liệu tham chiếu
 
-| Bug | Fix |
+| Quyết định | Chi tiết |
 |---|---|
-| `SectionTitleKeyPreview` dùng `FormCode` | Sửa → dùng `TableCode` (lowercase) |
-| `ExistsFormCodeAsync` báo trùng sai khi edit | Thêm `excludeFormId` → WHERE `Form_Id <> @ExcludeFormId` |
-| Auto-generate: `ColumnId=0` FK violation | Thêm `EnsureColumnExistsAsync` — IF NOT EXISTS INSERT Sys_Column |
-| Auto-generate: section chưa persist trước field | Persist section trước bằng `UpsertSectionAsync` |
-| Auto-generate: DisplayName tên cột thô | PascalCase split → "MaNhanVien" → "Ma Nhan Vien" |
-| Field summary panel cho sửa nhầm | Set `IsReadOnly=True` + `Mode=OneWay` toàn bộ |
-| Field DisplayName hiển thị tên cột thô | Load từ `Sys_Resource` qua `_i18nService.ResolveKeyAsync` |
-| Back từ FieldConfig không restore field | Thêm `_pendingSelectFieldId` + restore sau LoadFromDatabase |
-| "MaNhanVien → SoLuong": catch nuốt lỗi | Tách catch: lỗi chính → error banner đỏ, KHÔNG fallback mock |
+| Bỏ tinyint cho lookup | Dùng `nvarchar` lưu `Item_Code` (VD: `'NAM'`, `'NU'`) thay số |
+| Tạo `Sys_Lookup` | `Lookup_Code` + `Item_Code` + `Label_Key` → resolve i18n qua Sys_Resource |
+| Migration 004 | `docs/migrations/004_add_sys_lookup.sql` — tạo bảng + seed GENDER |
+| Quy tắc Unicode SQL | Mọi string literal SQL phải có `N'...'` prefix |
 
-### 2. i18n Manager nâng cấp
+### 2. Control Props — LookupBox / RadioGroup nâng cấp
 
-- Thêm nút Back (GoBackCommand / IRegionNavigationJournal)
-- Bộ lọc Table/Form động theo key prefix
-- Inline editing (`AllowEditing=True`, `CellValueChanged`)
-- Auto-save khi commit cell (`SaveCellCommand` → `SaveResourceAsync`)
+**queryMode 3 chế độ:**
+- `table` — bảng hoặc view, filter qua WHERE
+- `function` — Table-Valued Function, params vào thẳng hàm
+- `sql` — full SELECT tùy ý
 
-### 3. Validation Rules Editor redesign
+**filterParams:** map `@Alias` trong SQL → `FieldCode` trong form (dynamic, reload khi field thay đổi)
 
-- Breadcrumb: `← Cấu hình Field › SectionName › FieldCode`
-- Grid: badge RuleType, color-coded Severity, Consolas font cho Expression
-- **Auto-generate ErrorKey**: `{table}.val.{column}.{ruletype}` (readonly, computed)
-- **Auto-init Sys_Resource**: khi save rule → `InitResourceIfMissingAsync` vi+en
-- Xác nhận xóa rule — `MessageBox.Show(default=No)`
+**dataSourceConditions:** đổi hẳn bảng nguồn theo điều kiện field khác
 
-### 4. Refactor Val_Rule — bỏ bảng junction Val_Rule_Field
+**reloadOnChange:** list FieldCode khi thay đổi → reload lookup
 
-**Lý do**: ErrorKey pattern đã unique per field → quan hệ thực tế 1-N, junction table dư thừa và gây duplicate data.
+### 3. UI FieldConfigView — Control Props nâng cấp
 
-**Thay đổi:**
-- `docs/migrations/003_remove_val_rule_field.sql` — migration trong transaction (migrate data → add FK/Index → DROP Val_Rule_Field)
-- `Val_Rule` thêm cột: `Field_Id` (FK→Ui_Field NOT NULL), `Severity` (DEFAULT 'Error'), `Order_No`
-- `UNIQUE INDEX` trên `Error_Key`
-- Cập nhật: `RuleDataService`, `RuleRepository`, `FormDetailDataService`, `PublishCheckService` (5 SQL chỗ)
-- `II18nDataService.InitResourceIfMissingAsync` — method mới
+- RadioButton chọn `queryMode`: `[Bảng/View] [Function] [SQL]`
+- Panel `filterParams` inline: Alias + FieldRef + Kiểu + nút xóa
+- Panel `reloadOnChange`: nhập FieldCode + Thêm/Xóa
+- Panel `dataSourceConditions`: cấu hình điều kiện đổi datasource
+- Panel `functionParams`: tham số TVF (param + nguồn: field/system)
+- `FkFilterParam.cs` model mới
+- Fix: `IsChecked="{Binding ..., Mode=OneWay}"` cho RadioButton
 
-### 5. Coding rules mới đã ghi vào memory
+### 4. Behavior section xóa khỏi FieldConfigView
 
-- Xóa DB phải confirm dialog, default No
-- `LoadFromDatabaseAsync` không fallback mock khi lỗi — show error banner
+Visible/ReadOnly/Required static toggles → xóa (useless, nên dùng Rules)
+
+### 5. Coding rules cập nhật
+
+- `N'...'` bắt buộc cho mọi string SQL literal
+- `Mode=OneWay` bắt buộc cho `IsChecked` binding vào computed property
 
 ## Trạng thái
 
 - Build: **0 errors, 0 warnings** (backend + frontend)
-- Phase 9 bugs + refactor ✅
 
 ## ⚠️ Việc còn lại QUAN TRỌNG
 
 1. **Chạy migration trên DB**: `docs/migrations/003_remove_val_rule_field.sql`
-   - Chưa chạy → app sẽ lỗi "Invalid column name 'Field_Id'" khi load rules
-2. Move Required từ Behavior → Rules tab trong FieldConfigView (đã thảo luận, chưa implement)
-3. `ExecuteManageI18n` trong FieldConfigViewModel pass `tableCode` khi navigate
+2. **Chạy migration 004**: `docs/migrations/004_add_sys_lookup.sql`
+3. Test LookupBox end-to-end: cấu hình field GioiTinh + PhongBanID, lưu JSON, load lại
+4. `ExecuteManageI18n` trong FieldConfigViewModel pass `tableCode`
+5. Move Required checkbox từ Behavior → Rules tab (Behavior section đã xóa)
 
 ## Task tiếp theo (gợi ý)
 
-1. **Chạy migration 003** trên DB — bắt buộc trước khi test tiếp
-2. Test end-to-end: tạo form NhanVien → thêm field → thêm rule Required → verify Sys_Resource có entry
-3. MetadataEngine (IMetadataEngine) — backend còn thiếu
-4. Integration tests — backend
+1. Chạy 2 migrations trên DB thật
+2. Test LookupBox — chọn GENDER, lưu, mở lại xem JSON đúng không
+3. Diễn giải cấu hình đã setup (feature hiển thị ý nghĩa JSON bằng tiếng Việt)
+4. MetadataEngine backend
 5. Blazor runtime frontend

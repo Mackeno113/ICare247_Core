@@ -296,6 +296,39 @@
 
 **Indexes:** `IX_Sys_Error_Log_Created (Created_At)`
 
+### Sys_Lookup
+> Danh mục dùng chung cho các list nhỏ cố định: Gender, MaritalStatus, BloodType,...
+> **Cột nghiệp vụ lưu `Item_Code` (nvarchar)** thay vì số nguyên → SQL query tự mô tả.
+> Label hiển thị resolve qua `Label_Key → Sys_Resource` theo ngôn ngữ người dùng.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Lookup_Id | int | PK IDENTITY | |
+| Tenant_Id | int | NOT NULL DEFAULT 0 | 0 = global (dùng chung mọi tenant) |
+| Lookup_Code | nvarchar(50) | NOT NULL | VD: 'GENDER', 'MARITAL_STATUS', 'BLOOD_TYPE' |
+| Item_Code | nvarchar(50) | NOT NULL | Giá trị lưu vào cột nghiệp vụ. VD: 'NAM', 'NU', 'KXD' |
+| Label_Key | nvarchar(200) | NOT NULL | Key trong Sys_Resource → resolve theo ngôn ngữ |
+| Sort_Order | int | NOT NULL DEFAULT 0 | Thứ tự hiển thị trong dropdown |
+| Is_Active | bit | NOT NULL DEFAULT 1 | |
+
+**Constraints:**
+- `UQ_Sys_Lookup (Tenant_Id, Lookup_Code, Item_Code)` — không trùng code trong cùng tenant
+- `IX_Sys_Lookup_Code (Tenant_Id, Lookup_Code, Is_Active)` — query nhanh theo code
+
+**Quy tắc sử dụng:**
+- Cột nghiệp vụ kiểu `nvarchar` lưu `Item_Code`: `NhanVien.GioiTinh = 'NAM'`
+- Khi render UI: load `Sys_Lookup WHERE Lookup_Code='GENDER'` → resolve `Label_Key` → hiển thị
+- `Control_Props_Json`: `{ "dataSource": "lookup", "lookupCode": "GENDER" }`
+- `EditorType`: dùng `RadioGroup` (≤4 options) hoặc `LookupComboBox` (nhiều options)
+
+**Seed data mẫu (GENDER):**
+
+| Lookup_Code | Item_Code | Label_Key | vi | en |
+|---|---|---|---|---|
+| GENDER | NAM | common.gender.male | Nam | Male |
+| GENDER | NU | common.gender.female | Nữ | Female |
+| GENDER | KXD | common.gender.unknown | Không xác định | Unknown |
+
 ---
 
 ## Module: UI Form Engine (`Ui_*`)
@@ -375,10 +408,17 @@
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
-| Editor_Type | nvarchar(50) | PK | VD: 'TextBox', 'DateEdit' |
+| Editor_Type | nvarchar(50) | PK | VD: 'TextBox', 'DateEdit', 'RadioGroup' |
 | Platform | nvarchar(50) | PK | 'web', 'mobile', 'wpf' |
 | Control_Name | nvarchar(100) | NOT NULL | VD: 'DxTextBox', 'MauiEntry' |
 | Default_Props_Json | nvarchar(max) | NULL | Props mặc định cho component |
+
+**Editor_Type chuẩn cho Sys_Lookup:**
+
+| Editor_Type | Khi dùng | Control_Props_Json mẫu |
+|---|---|---|
+| `RadioGroup` | ≤ 4 options, hiển thị tất cả | `{"dataSource":"lookup","lookupCode":"GENDER","layout":"horizontal"}` |
+| `LookupComboBox` | Nhiều options, có search | `{"dataSource":"lookup","lookupCode":"PROVINCE","searchEnabled":true}` |
 
 ---
 
@@ -599,9 +639,9 @@ Evt_Execution_Log
 
 | Module | Số bảng |
 |---|---|
-| System (`Sys_*`) | 15 |
+| System (`Sys_*`) | 16 |
 | UI Form Engine (`Ui_*`) | 4 |
 | Validation (`Val_*`) | 3 |
 | Grammar / AST (`Gram_*`) | 3 |
 | Event Engine (`Evt_*`) | 5 |
-| **Tổng** | **30** |
+| **Tổng** | **31** |

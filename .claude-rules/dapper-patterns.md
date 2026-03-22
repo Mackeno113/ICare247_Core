@@ -9,6 +9,26 @@
 5. LUÔN có `AND Tenant_Id = @TenantId` cho bảng có Tenant_Id
 6. LUÔN có `AND Is_Active = 1` cho soft-delete tables
 7. KHÔNG `SELECT *` — chỉ SELECT cột cần thiết
+8. **LUÔN dùng `N'...'` (Unicode prefix) cho mọi string literal trong SQL** — đặc biệt dữ liệu tiếng Việt
+
+## Quy tắc Unicode trong SQL
+
+Mọi string literal trong SQL (migration, seed data, stored procedure, ad-hoc query) **phải** có prefix `N`:
+
+```sql
+-- ✅ Đúng
+WHERE Resource_Key = N'common.gender.male'
+INSERT INTO Sys_Resource VALUES (N'vi', N'Nữ', 1)
+UPDATE Sys_Lookup SET Label_Key = N'common.gender.female'
+
+-- ❌ Sai — mất dấu tiếng Việt khi collation không phải UTF-8
+WHERE Resource_Key = 'common.gender.male'
+INSERT INTO Sys_Resource VALUES ('vi', 'Nữ', 1)   -- 'Nữ' có thể bị lưu sai
+```
+
+**Lý do:** SQL Server lưu `nvarchar` dưới dạng UTF-16. Nếu dùng `'Nữ'` (không có N) thì
+SQL Server dùng collation của database để interpret — có thể mất dấu hoặc lỗi ký tự.
+Prefix `N` ép SQL Server treat literal như Unicode string, đảm bảo đúng với mọi collation.
 
 ## Template: Query single
 
@@ -55,4 +75,8 @@ new SqlConnection(connectionString)  // → dùng IDbConnectionFactory
 
 // ❌ .Result hay .Wait()
 repository.GetAsync().Result
+
+// ❌ String literal không có N prefix trong SQL (mất dấu tiếng Việt)
+INSERT INTO Sys_Resource VALUES ('vi', 'Nữ', 1)  // → N'Nữ'
+WHERE Name = 'Không xác định'                     // → N'Không xác định'
 ```

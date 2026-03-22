@@ -196,12 +196,17 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         FieldCode   = navigationContext.Parameters.GetValue<string>("fieldCode")   ?? "";
         TableCode   = navigationContext.Parameters.GetValue<string>("tableCode")   ?? "";
         SectionName = navigationContext.Parameters.GetValue<string>("sectionName") ?? "";
+        var mode    = navigationContext.Parameters.GetValue<string>("mode")        ?? "";
         RaisePropertyChanged(nameof(AutoErrorKey));
 
         if (FieldId == 0) FieldId = 5;
         if (FormId == 0) FormId = 1;
 
         await LoadDataAsync();
+
+        // Nếu navigate từ AddRuleCommand → tự mở edit panel luôn
+        if (mode == "new")
+            ExecuteAddRule();
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
