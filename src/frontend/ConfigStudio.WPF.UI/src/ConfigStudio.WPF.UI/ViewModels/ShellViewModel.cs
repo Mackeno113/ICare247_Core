@@ -124,6 +124,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = "Sys Lookup",
+                    Icon = "📋",
+                    NavigateTo = ViewNames.SysLookupManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "Form List",
                     Icon = "≡",
                     NavigateTo = ViewNames.FormManager,

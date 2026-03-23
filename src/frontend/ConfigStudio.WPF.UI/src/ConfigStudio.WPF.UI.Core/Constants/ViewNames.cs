@@ -11,7 +11,8 @@ public static class ViewNames
     public const string FormManager    = nameof(FormManager);
     public const string FormDetail     = nameof(FormDetail);
     public const string FormEditor     = nameof(FormEditor);
-    public const string SysTableManager = nameof(SysTableManager);
+    public const string SysTableManager      = nameof(SysTableManager);
+    public const string SysLookupManager     = nameof(SysLookupManager);
     public const string FieldConfig = nameof(FieldConfig);
     public const string ValidationRuleEditor = nameof(ValidationRuleEditor);
     public const string EventEditor = nameof(EventEditor);

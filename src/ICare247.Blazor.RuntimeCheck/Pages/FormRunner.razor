@@ -1,0 +1,334 @@
+@* File    : FormRunner.razor
+   Purpose : Render và chạy thử một form theo Form_Code.
+             Flow: Load metadata → FORM_LOAD event → render fields →
+             FIELD_CHANGED → apply UiDelta → submit → validate. *@
+
+@page "/form/{FormCode}"
+@inject FormApiService FormApi
+@inject RuntimeApiService RuntimeApi
+@inject NavigationManager Nav
+
+<PageTitle>@(FormCode) — RuntimeCheck</PageTitle>
+
+@if (_loading)
+{
+    <div class="page-container">
+        <div class="loading-center">
+            <div class="spinner"></div>
+            <p>Đang tải form <strong>@FormCode</strong>...</p>
+        </div>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="page-container">
+        <div class="error-banner">
+            <strong>⚠ Lỗi:</strong> @_error
+        </div>
+        <button class="btn btn-secondary" @onclick="GoBack">← Quay lại</button>
+    </div>
+}
+else if (_form is not null)
+{
+    <div class="page-container">
+        @* Header *@
+        <div class="form-header">
+            <button class="btn-back" @onclick="GoBack">← Danh sách</button>
+            <div>
+                <h2>@(_form.FormName.Length > 0 ? _form.FormName : _form.FormCode)</h2>
+                <span class="meta-text">
+                    Code: <strong>@_form.FormCode</strong> |
+                    v@(_form.Version) |
+                    Platform: @_form.Platform |
+                    @(_fieldStates.Count) fields
+                </span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" @onclick="ResetForm">↺ Reset</button>
+                <button class="btn btn-primary" @onclick="SubmitForm" disabled="@_submitting">
+                    @(_submitting ? "Đang kiểm tra..." : "✓ Submit & Validate")
+                </button>
+            </div>
+        </div>
+
+        @* Submit result *@
+        @if (_submitResult is not null)
+        {
+            @* NOTE: dùng biến cục bộ để tránh lồng dấu " bên trong attribute *@
+            var resultCss = _submitResult.IsValid ? "submit-result result-valid" : "submit-result result-invalid";
+            <div class="@resultCss">
+                @if (_submitResult.IsValid)
+                {
+                    <strong>✅ Form hợp lệ — tất cả rules đã pass.</strong>
+                }
+                else
+                {
+                    <strong>❌ Form có lỗi:</strong>
+                    <ul>
+                        @foreach (var pair in _submitResult.Fields)
+                        {
+                            foreach (var err in pair.Value)
+                            {
+                                @* NOTE: không dùng biến tên 'code' vì @code là Razor directive *@
+                                <li><strong>@(pair.Key)</strong>: @err.Message</li>
+                            }
+                        }
+                    </ul>
+                }
+            </div>
+        }
+
+        @* Context snapshot (debug) *@
+        @if (_showDebug)
+        {
+            <div class="debug-panel">
+                <div class="debug-header">
+                    <span>📊 Context Snapshot</span>
+                    <button class="btn-icon" @onclick="HideDebug">✕</button>
+                </div>
+                <pre class="debug-json">@GetContextJson()</pre>
+            </div>
+        }
+
+        @* Form body — sections *@
+        <div class="form-body">
+            @foreach (var sec in _form.Sections)
+            {
+                @* NOTE: không dùng biến tên 'section' vì @section là Razor directive *@
+                var secFields = _fieldStates
+                    .Where(fs => sec.Fields.Any(f => f.FieldCode == fs.FieldCode))
+                    .ToList();
+
+                if (secFields.Count == 0) continue;
+
+                <div class="section-card">
+                    @if (!string.IsNullOrWhiteSpace(sec.SectionName))
+                    {
+                        <div class="section-title">@(sec.SectionName)</div>
+                    }
+                    <div class="fields-grid">
+                        @foreach (var fs in secFields)
+                        {
+                            <FieldRenderer State="fs"
+                                           OnChange="OnFieldChanged"
+                                           OnBlur="OnFieldBlur" />
+                        }
+                    </div>
+                </div>
+            }
+
+            @* Fields không có section *@
+            @{
+                var orphanFields = _fieldStates
+                    .Where(fs => !_form.Sections.Any(s =>
+                        s.Fields.Any(f => f.FieldCode == fs.FieldCode)))
+                    .ToList();
+            }
+            @if (orphanFields.Count > 0)
+            {
+                <div class="section-card">
+                    <div class="section-title">Các field khác</div>
+                    <div class="fields-grid">
+                        @foreach (var fs in orphanFields)
+                        {
+                            <FieldRenderer State="fs"
+                                           OnChange="OnFieldChanged"
+                                           OnBlur="OnFieldBlur" />
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @* Footer debug *@
+        <div class="form-footer">
+            <button class="btn-link" @onclick="ToggleDebug">
+                @(_showDebug ? "Ẩn" : "Hiện") context snapshot
+            </button>
+            @if (_lastDeltaCount > 0)
+            {
+                <span class="delta-badge">⚡ @_lastDeltaCount delta(s) applied</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string FormCode { get; set; } = "";
+
+    private FormMetadataDto?            _form;
+    private List<FieldState>            _fieldStates    = [];
+    private bool                        _loading        = true;
+    private string?                     _error;
+    private bool                        _submitting;
+    private FormValidationResponseDto?  _submitResult;
+    private bool                        _showDebug;
+    private int                         _lastDeltaCount;
+
+    protected override async Task OnInitializedAsync()
+        => await LoadFormAsync();
+
+    private async Task LoadFormAsync()
+    {
+        _loading      = true;
+        _error        = null;
+        _submitResult = null;
+        try
+        {
+            _form = await FormApi.GetFormAsync(FormCode);
+            if (_form is null)
+            {
+                _error = $"Form '{FormCode}' không tồn tại hoặc không tìm thấy trong tenant.";
+                return;
+            }
+
+            // Build field states từ metadata
+            _fieldStates = _form.Fields.Select(f => new FieldState
+            {
+                FieldCode  = f.FieldCode,
+                FieldType  = f.FieldType,
+                Label      = f.Label.Length > 0 ? f.Label : f.FieldCode,
+                IsRequired = f.IsRequired,
+                Value      = ParseDefaultValue(f.DefaultValueJson),
+            }).ToList();
+
+            // Gửi FORM_LOAD event
+            await FireEventAsync("FORM_LOAD", null);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task OnFieldChanged((string Code, object? Value) args)
+    {
+        var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == args.Code);
+        if (fs is not null)
+        {
+            fs.Value = args.Value;
+            fs.Errors.Clear();
+        }
+        await FireEventAsync("FIELD_CHANGED", args.Code);
+        StateHasChanged();
+    }
+
+    private async Task OnFieldBlur(string fieldCode)
+    {
+        var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
+        if (fs is null) return;
+
+        var result = await RuntimeApi.ValidateFieldAsync(
+            FormCode, fieldCode, fs.Value, BuildContext());
+
+        fs.Errors = result.Errors.Select(e => e.Message).ToList();
+        StateHasChanged();
+    }
+
+    private async Task SubmitForm()
+    {
+        _submitting   = true;
+        _submitResult = null;
+        try
+        {
+            await FireEventAsync("FORM_SUBMIT", null);
+            _submitResult = await RuntimeApi.ValidateFormAsync(FormCode, BuildContext());
+
+            foreach (var fs in _fieldStates)
+            {
+                fs.Errors = _submitResult.Fields.TryGetValue(fs.FieldCode, out var errs)
+                    ? errs.Select(e => e.Message).ToList()
+                    : [];
+            }
+        }
+        catch (Exception ex)
+        {
+            _submitResult = new FormValidationResponseDto
+            {
+                IsValid = false,
+                Fields  = new() { ["_error"] = [new ValidationItemDto { Message = ex.Message }] }
+            };
+        }
+        finally { _submitting = false; }
+    }
+
+    private async Task ResetForm() => await LoadFormAsync();
+
+    private void GoBack()     => Nav.NavigateTo("/");
+    private void ToggleDebug() => _showDebug = !_showDebug;
+    private void HideDebug()  => _showDebug = false;
+
+    private string GetContextJson()
+        => System.Text.Json.JsonSerializer.Serialize(
+               BuildContext(),
+               new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    private async Task FireEventAsync(string eventType, string? sourceField)
+    {
+        try
+        {
+            var response = await RuntimeApi.HandleEventAsync(
+                FormCode, eventType, sourceField, BuildContext());
+            _lastDeltaCount = response.Delta.Count;
+            ApplyDeltas(response.Delta);
+        }
+        catch
+        {
+            _lastDeltaCount = 0;
+        }
+    }
+
+    private void ApplyDeltas(IEnumerable<UiDeltaDto> deltas)
+    {
+        foreach (var delta in deltas)
+        {
+            if (string.IsNullOrWhiteSpace(delta.FieldCode)) continue;
+
+            var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == delta.FieldCode);
+            if (fs is null) continue;
+
+            switch (delta.Action.ToUpper())
+            {
+                case "SET_VALUE":
+                    if (delta.Data.TryGetValue("value", out var v))
+                        fs.Value = v;
+                    break;
+
+                case "SET_VISIBLE":
+                    if (delta.Data.TryGetValue("visible", out var vis))
+                        fs.IsVisible = ToBool(vis);
+                    break;
+
+                case "SET_REQUIRED":
+                    if (delta.Data.TryGetValue("required", out var req))
+                        fs.IsRequired = ToBool(req);
+                    break;
+
+                case "SET_READONLY":
+                    if (delta.Data.TryGetValue("readOnly", out var ro))
+                        fs.IsReadOnly = ToBool(ro);
+                    break;
+            }
+        }
+    }
+
+    private static bool ToBool(object? v)
+        => v is bool b ? b : bool.TryParse(v?.ToString(), out var r) && r;
+
+    private Dictionary<string, object?> BuildContext()
+        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+
+    private static object? ParseDefaultValue(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        var trimmed = json.Trim();
+        if (trimmed.StartsWith('"') && trimmed.EndsWith('"'))
+            return trimmed[1..^1];
+        if (bool.TryParse(trimmed, out var b)) return b;
+        if (double.TryParse(trimmed, out var d)) return d;
+        return trimmed;
+    }
+}

@@ -18,7 +18,8 @@ public sealed class FormsModule : IModule
         containerRegistry.RegisterForNavigation<FormManagerView,    FormManagerViewModel>    (ViewNames.FormManager);
         containerRegistry.RegisterForNavigation<FormDetailView,     FormDetailViewModel>     (ViewNames.FormDetail);
         containerRegistry.RegisterForNavigation<FormEditorView,     FormEditorViewModel>     (ViewNames.FormEditor);
-        containerRegistry.RegisterForNavigation<SysTableManagerView,SysTableManagerViewModel>(ViewNames.SysTableManager);
+        containerRegistry.RegisterForNavigation<SysTableManagerView,  SysTableManagerViewModel>  (ViewNames.SysTableManager);
+        containerRegistry.RegisterForNavigation<SysLookupManagerView, SysLookupManagerViewModel> (ViewNames.SysLookupManager);
         containerRegistry.RegisterForNavigation<FieldConfigView,    FieldConfigViewModel>    (ViewNames.FieldConfig);
         containerRegistry.RegisterForNavigation<PublishChecklistView,PublishChecklistViewModel>(ViewNames.PublishChecklist);
 

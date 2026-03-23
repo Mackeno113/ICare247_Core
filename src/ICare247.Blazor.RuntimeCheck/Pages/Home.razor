@@ -1,0 +1,141 @@
+@* File    : Home.razor
+   Purpose : Landing page — danh sách form có thể chạy thử, hoặc nhập Form_Code thủ công. *@
+
+@page "/"
+@inject FormApiService FormApi
+@inject ApiSettings Settings
+@inject NavigationManager Nav
+
+<PageTitle>ICare247 RuntimeCheck</PageTitle>
+
+<div class="page-container">
+    <div class="page-header">
+        <h1>🚀 ICare247 — Runtime Check</h1>
+        <p class="subtitle">Test cấu hình UI form trực tiếp từ metadata</p>
+        <div class="api-badge">
+            API: <strong>@Settings.BaseUrl</strong>
+            &nbsp;|&nbsp; Tenant: <strong>@Settings.TenantId</strong>
+            &nbsp;|&nbsp; Lang: <strong>@Settings.LangCode</strong>
+        </div>
+    </div>
+
+    @* ── Nhập Form Code thủ công ──────────────────── *@
+    <div class="card">
+        <h3>Chạy form theo mã</h3>
+        <div class="input-row">
+            <input type="text" class="code-input"
+                   placeholder="Nhập Form_Code (VD: NHAN_VIEN_CREATE)"
+                   @bind="_manualCode"
+                   @onkeydown="OnKeyDown" />
+            <button class="btn btn-primary" @onclick="RunManual"
+                    disabled="@string.IsNullOrWhiteSpace(_manualCode)">
+                ▶ Chạy
+            </button>
+        </div>
+        @if (_manualError is not null)
+        {
+            <p class="error-text">@_manualError</p>
+        }
+    </div>
+
+    @* ── Danh sách form từ API ─────────────────────── *@
+    <div class="card">
+        <div class="card-header-row">
+            <h3>Danh sách form</h3>
+            <button class="btn btn-secondary" @onclick="LoadForms" disabled="@_loading">
+                @(_loading ? "Đang tải..." : "⟳ Tải lại")
+            </button>
+        </div>
+
+        @if (_loadError is not null)
+        {
+            <div class="error-banner">
+                ⚠ Không tải được danh sách: @_loadError
+                <br /><small>Kiểm tra backend đang chạy tại <code>@Settings.BaseUrl</code></small>
+            </div>
+        }
+        else if (_loading)
+        {
+            <div class="loading">Đang kết nối API...</div>
+        }
+        else if (_forms.Count == 0)
+        {
+            <div class="empty-state">Không có form nào. Thêm form qua ConfigStudio WPF trước.</div>
+        }
+        else
+        {
+            <table class="forms-table">
+                <thead>
+                    <tr>
+                        <th>Form Code</th>
+                        <th>Platform</th>
+                        <th>Bảng</th>
+                        <th>Fields</th>
+                        <th>Version</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in _forms)
+                    {
+                        <tr>
+                            <td><code>@f.FormCode</code></td>
+                            <td><span class="badge">@f.Platform</span></td>
+                            <td>@f.TableName</td>
+                            <td>@f.FieldCount</td>
+                            <td>v@f.Version</td>
+                            <td>
+                                <button class="btn btn-sm"
+                                        @onclick="() => RunForm(f.FormCode)">
+                                    ▶ Chạy
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private List<FormListItemDto> _forms      = [];
+    private bool                  _loading    = true;
+    private string?               _loadError;
+    private string                _manualCode = "";
+    private string?               _manualError = null;
+
+    protected override async Task OnInitializedAsync()
+        => await LoadForms();
+
+    private async Task LoadForms()
+    {
+        _loading   = true;
+        _loadError = null;
+        try
+        {
+            _forms = await FormApi.GetFormsListAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            _forms     = [];
+        }
+        finally { _loading = false; }
+    }
+
+    private void RunForm(string code)
+        => Nav.NavigateTo($"/form/{Uri.EscapeDataString(code)}");
+
+    private void RunManual()
+    {
+        var code = _manualCode.Trim();
+        if (string.IsNullOrWhiteSpace(code)) return;
+        Nav.NavigateTo($"/form/{Uri.EscapeDataString(code)}");
+    }
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") RunManual();
+    }
+}
