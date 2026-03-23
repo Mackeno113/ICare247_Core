@@ -1,66 +1,52 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-22 (session 2)
+> Cập nhật: 2026-03-23 (session 3)
 
-## Đã làm (session 22/03 — LookupBox Config + Data Design + UX fixes)
+## Đã làm (session 23/03)
 
-### 1. Sys_Lookup + thiết kế dữ liệu tham chiếu
+### 1. Sys_Lookup Manager (WPF ConfigStudio)
 
-| Quyết định | Chi tiết |
+| Thành phần | Chi tiết |
 |---|---|
-| Bỏ tinyint cho lookup | Dùng `nvarchar` lưu `Item_Code` (VD: `'NAM'`, `'NU'`) thay số |
-| Tạo `Sys_Lookup` | `Lookup_Code` + `Item_Code` + `Label_Key` → resolve i18n qua Sys_Resource |
-| Migration 004 | `docs/migrations/004_add_sys_lookup.sql` — tạo bảng + seed GENDER |
-| Quy tắc Unicode SQL | Mọi string literal SQL phải có `N'...'` prefix |
+| `ISysLookupDataService` mở rộng | Thêm CRUD: GetItemsForEditAsync, AddItemAsync, UpdateItemAsync, DeleteItemAsync, AddLookupCodeAsync, ItemCodeExistsAsync |
+| `LookupItemEditRecord` DTO | Bao gồm LabelVi + LabelEn để edit inline |
+| `SysLookupDataService` | Implement đầy đủ CRUD — transaction khi write, upsert Sys_Resource vi/en theo pattern `{lookup_code_lower}.{item_code_lower}` |
+| `SysLookupManagerViewModel` | Left panel: code list + thêm code mới; Right panel: items DataGrid + editor form |
+| `SysLookupManagerView.xaml` | Layout 2 cột (ListBox codes | DataGrid items + editor panel), `IsNotBusy` / `HasNewCodeError` / `HasEditorError` để tránh converter phức tạp |
+| Navigation | ViewNames.SysLookupManager, FormsModule, ShellViewModel nav item "Sys Lookup" |
 
-### 2. Control Props — LookupBox / RadioGroup nâng cấp
+**Lưu ý Razor gotchas:**
+- Biến `@code` trong HTML bị parse nhầm là Razor directive → dùng `@(code)` hoặc đổi tên biến
+- Biến `@section` trong HTML → dùng `@(section.Property)` hoặc đổi tên biến thành `sec`
+- Lồng `"..."` trong HTML attribute + Razor expr → dùng biến cục bộ trước
 
-**queryMode 3 chế độ:**
-- `table` — bảng hoặc view, filter qua WHERE
-- `function` — Table-Valued Function, params vào thẳng hàm
-- `sql` — full SELECT tùy ý
+### 2. ICare247.Blazor.RuntimeCheck (Blazor WASM)
 
-**filterParams:** map `@Alias` trong SQL → `FieldCode` trong form (dynamic, reload khi field thay đổi)
+| Thành phần | Chi tiết |
+|---|---|
+| Project tại | `src/ICare247.Blazor.RuntimeCheck/` — net9.0 BlazorWebAssembly |
+| `Program.cs` | HttpClient với BaseAddress + header `X-Tenant-Id` từ `ApiSettings` (appsettings.json) |
+| `FormApiService` | GET `/api/v1/config/forms/{code}` + danh sách form |
+| `RuntimeApiService` | POST validate-field, validate, handle-event |
+| `FormRunner.razor` | Load metadata → FORM_LOAD event → render → FIELD_CHANGED → UiDelta → submit validate |
+| `FieldRenderer.razor` | Render text/number/date/datetime/bool/textarea |
+| `Home.razor` | Landing page: danh sách form từ API + nhập thủ công Form_Code |
+| CSS | Custom CSS không dùng Bootstrap class, responsive grid fields |
 
-**dataSourceConditions:** đổi hẳn bảng nguồn theo điều kiện field khác
-
-**reloadOnChange:** list FieldCode khi thay đổi → reload lookup
-
-### 3. UI FieldConfigView — Control Props nâng cấp
-
-- RadioButton chọn `queryMode`: `[Bảng/View] [Function] [SQL]`
-- Panel `filterParams` inline: Alias + FieldRef + Kiểu + nút xóa
-- Panel `reloadOnChange`: nhập FieldCode + Thêm/Xóa
-- Panel `dataSourceConditions`: cấu hình điều kiện đổi datasource
-- Panel `functionParams`: tham số TVF (param + nguồn: field/system)
-- `FkFilterParam.cs` model mới
-- Fix: `IsChecked="{Binding ..., Mode=OneWay}"` cho RadioButton
-
-### 4. Behavior section xóa khỏi FieldConfigView
-
-Visible/ReadOnly/Required static toggles → xóa (useless, nên dùng Rules)
-
-### 5. Coding rules cập nhật
-
-- `N'...'` bắt buộc cho mọi string SQL literal
-- `Mode=OneWay` bắt buộc cho `IsChecked` binding vào computed property
+**Cấu hình:**
+- API URL: `wwwroot/appsettings.json` → `ApiSettings.BaseUrl` = `https://localhost:7001`
+- TenantId mặc định = 1
 
 ## Trạng thái
 
-- Build: **0 errors, 0 warnings** (backend + frontend)
+- Build WPF: **0 errors, 0 warnings**
+- Build Blazor: **0 errors, 0 warnings**
+- Commit: `15d6ab4`
 
-## ⚠️ Việc còn lại QUAN TRỌNG
+## Việc còn lại
 
-1. **Chạy migration trên DB**: `docs/migrations/003_remove_val_rule_field.sql`
-2. **Chạy migration 004**: `docs/migrations/004_add_sys_lookup.sql`
-3. Test LookupBox end-to-end: cấu hình field GioiTinh + PhongBanID, lưu JSON, load lại
-4. `ExecuteManageI18n` trong FieldConfigViewModel pass `tableCode`
-5. Move Required checkbox từ Behavior → Rules tab (Behavior section đã xóa)
-
-## Task tiếp theo (gợi ý)
-
-1. Chạy 2 migrations trên DB thật
-2. Test LookupBox — chọn GENDER, lưu, mở lại xem JSON đúng không
-3. Diễn giải cấu hình đã setup (feature hiển thị ý nghĩa JSON bằng tiếng Việt)
-4. MetadataEngine backend
-5. Blazor runtime frontend
+1. **Test trực tiếp:** Chạy backend API + Blazor WASM, nhập Form_Code, verify events/validation
+2. Cấu hình backend API `appsettings.json` nếu port khác `7001`
+3. MetadataEngine (IMetadataEngine) — backend
+4. Blazor: thêm support FieldType `select` (LookupBox — gọi GET Sys_Lookup)
+5. Integration tests backend
