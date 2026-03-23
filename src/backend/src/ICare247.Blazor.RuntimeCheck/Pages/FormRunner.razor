@@ -7,6 +7,7 @@
 @inject FormApiService FormApi
 @inject RuntimeApiService RuntimeApi
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>@(FormCode) — RuntimeCheck</PageTitle>
 
@@ -111,7 +112,8 @@ else if (_form is not null)
                         {
                             <FieldRenderer State="fs"
                                            OnChange="OnFieldChanged"
-                                           OnBlur="OnFieldBlur" />
+                                           OnBlur="OnFieldBlur"
+                                           DebugMode="DebugMode" />
                         }
                     </div>
                 </div>
@@ -133,7 +135,8 @@ else if (_form is not null)
                         {
                             <FieldRenderer State="fs"
                                            OnChange="OnFieldChanged"
-                                           OnBlur="OnFieldBlur" />
+                                           OnBlur="OnFieldBlur"
+                                           DebugMode="DebugMode" />
                         }
                     </div>
                 </div>
@@ -154,7 +157,9 @@ else if (_form is not null)
 }
 
 @code {
-    [Parameter] public string FormCode { get; set; } = "";
+    [Parameter] public string FormCode  { get; set; } = "";
+    [SupplyParameterFromQuery(Name = "debug")]
+    [Parameter] public bool   DebugMode { get; set; }
 
     private FormMetadataDto?            _form;
     private List<FieldState>            _fieldStates    = [];
@@ -194,6 +199,14 @@ else if (_form is not null)
                 IsRequired = f.IsRequired,
                 Value      = ParseDefaultValue(f.DefaultValueJson),
             }).ToList();
+
+            // DEBUG: log ra console browser (F12) — xóa sau khi verify xong
+            if (DebugMode)
+            {
+                foreach (var fs in _fieldStates)
+                    await JS.InvokeVoidAsync("console.log",
+                        $"[FieldState] {fs.FieldCode} | type={fs.FieldType} | label={fs.Label} | visible={fs.IsVisible} | value={fs.Value}");
+            }
 
             // Gửi FORM_LOAD event
             await FireEventAsync("FORM_LOAD", null);
