@@ -1,0 +1,28 @@
+{
+  "_README": "Copy file này thành appsettings.Development.json rồi điền thông tin thật. File appsettings.Development.json KHÔNG được commit.",
+
+  "ConnectionStrings": {
+    "Config": "Server=localhost;Database=ICare247_Config;Trusted_Connection=True;TrustServerCertificate=True;",
+    "_Config_SqlExpress": "Server=localhost\\SQLEXPRESS;Database=ICare247_Config;Trusted_Connection=True;TrustServerCertificate=True;",
+    "Data": "",
+    "Redis": ""
+  },
+
+  "Jwt": {
+    "Issuer": "https://icare247.vn",
+    "Audience": "icare247-api",
+    "SecretKey": "DEV_SECRET_KEY_CHANGE_THIS_32CHARS_MIN",
+    "ExpirationMinutes": 480
+  },
+
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Debug",
+      "Override": {
+        "Microsoft.AspNetCore": "Information",
+        "Dapper": "Warning",
+        "System": "Warning"
+      }
+    }
+  }
+}

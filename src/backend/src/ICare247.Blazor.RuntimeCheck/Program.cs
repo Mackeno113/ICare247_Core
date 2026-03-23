@@ -12,6 +12,13 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
+// ── Logging — Blazor WASM ghi ra browser console (F12 → Console tab) ──────
+// Development: Debug level để thấy tất cả request/response log
+builder.Logging.SetMinimumLevel(
+    builder.HostEnvironment.IsDevelopment()
+        ? Microsoft.Extensions.Logging.LogLevel.Debug
+        : Microsoft.Extensions.Logging.LogLevel.Warning);
+
 // ── Đọc cấu hình ApiSettings từ wwwroot/appsettings.json ──────────────────
 var apiSettings = new ApiSettings();
 builder.Configuration.GetSection("ApiSettings").Bind(apiSettings);

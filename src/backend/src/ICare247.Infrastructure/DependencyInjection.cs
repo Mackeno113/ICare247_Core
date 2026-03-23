@@ -24,12 +24,41 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // ── Database ─────────────────────────────────────────────────────────
-        var defaultConn = configuration.GetConnectionString("Default");
-        if (!string.IsNullOrWhiteSpace(defaultConn))
+        // ── Database — 2 connection string riêng biệt ────────────────────────
+        //
+        //   Config DB ("Config"): ICare247_Config — metadata form engine
+        //     Ui_Form, Ui_Field, Sys_*, Val_*, Evt_*, Gram_*
+        //     → IDbConnectionFactory
+        //
+        //   Data DB  ("Data"):   DB nghiệp vụ thực tế — bệnh nhân, hồ sơ,...
+        //     → IDataDbConnectionFactory
+        //
+        //   Cả 2 được cấu hình trong:
+        //     %APPDATA%\ICare247\Api\appsettings.local.json
+        //     mục ConnectionStrings: { "Config": "...", "Data": "..." }
+        //
+        // ── Config DB (IDbConnectionFactory) ─────────────────────────────────
+        var configConn = configuration.GetConnectionString("Config")
+                      ?? configuration.GetConnectionString("Default"); // backward compat
+        if (!string.IsNullOrWhiteSpace(configConn))
         {
             services.AddSingleton<IDbConnectionFactory>(
-                new SqlConnectionFactory(defaultConn));
+                new SqlConnectionFactory(configConn));
+        }
+
+        // ── Data DB (IDataDbConnectionFactory) ───────────────────────────────
+        // Nếu chưa cấu hình Data DB → fallback về Config DB (môi trường dev đơn giản).
+        var dataConn = configuration.GetConnectionString("Data");
+        if (!string.IsNullOrWhiteSpace(dataConn))
+        {
+            services.AddSingleton<IDataDbConnectionFactory>(
+                new SqlConnectionFactory(dataConn));
+        }
+        else if (!string.IsNullOrWhiteSpace(configConn))
+        {
+            // Dev fallback: chưa có Data DB riêng → dùng chung Config DB
+            services.AddSingleton<IDataDbConnectionFactory>(
+                new SqlConnectionFactory(configConn));
         }
 
         // ── Cache ─────────────────────────────────────────────────────────────

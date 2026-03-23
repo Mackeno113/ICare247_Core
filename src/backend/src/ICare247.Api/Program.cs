@@ -4,6 +4,7 @@
 // Purpose : Composition root — khởi tạo host, đăng ký DI, cấu hình middleware pipeline.
 
 using System.Text;
+using ICare247.Api;
 using ICare247.Api.Middleware;
 using ICare247.Application;
 using ICare247.Application.Interfaces;
@@ -23,6 +24,17 @@ try
     Log.Information("Khởi động ICare247 API...");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    // ── Local config file — nạp từ %APPDATA%\ICare247\Api\appsettings.local.json ──
+    // Giống WPF ConfigStudio: file nằm ngoài repo, mỗi máy có file riêng.
+    // Nếu chưa tồn tại → tự tạo template, in hướng dẫn ra console.
+    // Thứ tự ưu tiên: appsettings.json < appsettings.Development.json
+    //                 < appsettings.local.json < Environment Variables
+    builder.AddLocalConfig();
+
+    // ── DebugLogger — cấu hình từ section "DebugLog" trong local config ──────
+    // Sau lệnh này DebugLogger.Enabled / WriteToFile được đọc từ appsettings.local.json
+    DebugLogger.Configure(builder.Configuration);
 
     // ── Serilog ─────────────────────────────────────────────────────────────
     builder.Host.UseSerilog((ctx, services, cfg) => cfg

@@ -6,7 +6,7 @@
     <Project Path="src/ICare247.Infrastructure/ICare247.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/web/">
-    <Project Path="../ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj" />
+    <Project Path="src/ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj" />
