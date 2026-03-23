@@ -158,8 +158,11 @@ else if (_form is not null)
 
 @code {
     [Parameter] public string FormCode  { get; set; } = "";
+    // Nhận ?debug=1 hoặc ?debug=true — Blazor router không parse bool từ "1"
+    // nên dùng string? và tự convert
     [SupplyParameterFromQuery(Name = "debug")]
-    [Parameter] public bool   DebugMode { get; set; }
+    [Parameter] public string? DebugParam { get; set; }
+    private bool DebugMode => DebugParam is "1" or "true" or "True";
 
     private FormMetadataDto?            _form;
     private List<FieldState>            _fieldStates    = [];
