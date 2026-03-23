@@ -1,6 +1,6 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-03-20
+> Cập nhật lần cuối: 2026-03-23
 
 ## Backend (.NET 9) — Hoàn thành Phase 1-5
 
@@ -38,7 +38,21 @@
 - Feature "Diễn giải cấu hình" — hiển thị ý nghĩa JSON bằng tiếng Việt
 - Màn hình quản lý Sys_Lookup trong ConfigStudio (thêm/sửa/xóa lookup code)
 
+## Blazor RuntimeCheck — Đang hoàn thiện
+
+| Component | Status |
+|---|---|
+| Project structure, FormRunner, FieldRenderer, Home | ✅ Done |
+| API infra: LocalConfigLoader, DebugLogger, ConnectionChecker | ✅ Done |
+| 2 connection strings (Config DB + Data DB) | ✅ Done |
+| Fix 3 SQL bugs FormRepository sqlFields | ✅ Done (session 4) |
+| NormalizeFieldType (TextBox→text, DateEdit→date,...) | ✅ Done (session 4) |
+| DebugMode ?debug=1 — badge + console log | ✅ Done (session 4) |
+| Test end-to-end (labels, field values, debug mode) | 🔴 Pending |
+| FieldType `select` — LookupBox với GET Sys_Lookup | 🔴 Pending |
+
 ## Next Priorities
-1. MetadataEngine (IMetadataEngine) — backend
-2. Integration tests — backend
-3. Blazor runtime frontend
+1. **Test end-to-end Blazor** — mở `/form/sys_UI_Design?debug=1`, verify labels + field values
+2. Blazor: support FieldType `select` (ComboBox — gọi Sys_Lookup API)
+3. MetadataEngine (IMetadataEngine) — backend
+4. Integration tests — backend
