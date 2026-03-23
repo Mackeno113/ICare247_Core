@@ -35,12 +35,20 @@ public static class DependencyInjection
         // ── Cache ─────────────────────────────────────────────────────────────
         services.AddMemoryCache();
 
-        // Redis — chỉ đăng ký khi có connection string
+        // Redis — chỉ đăng ký khi có connection string.
+        // Nếu không có Redis, fallback về DistributedMemoryCache để IDistributedCache
+        // luôn được resolve (HybridCacheService constructor cần nó dù là nullable).
         var redisConn = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConn))
         {
             services.AddStackExchangeRedisCache(opts =>
                 opts.Configuration = redisConn);
+        }
+        else
+        {
+            // NOTE: DistributedMemoryCache chỉ là placeholder local — không share giữa instances.
+            // HybridCacheService sẽ nhận instance này nhưng thực tế chỉ dùng L1 MemoryCache.
+            services.AddDistributedMemoryCache();
         }
 
         // HybridCacheService — L1 Memory + L2 Redis (optional)
