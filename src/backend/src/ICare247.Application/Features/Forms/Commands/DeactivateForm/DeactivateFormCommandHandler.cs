@@ -31,7 +31,7 @@ public sealed class DeactivateFormCommandHandler : IRequestHandler<DeactivateFor
 
     public async Task Handle(DeactivateFormCommand request, CancellationToken ct)
     {
-        var form = await _formRepo.GetByCodeAsync(request.FormCode, request.TenantId, ct)
+        var form = await _formRepo.GetByCodeAsync(request.FormCode, request.TenantId, ct: ct)
             ?? throw new KeyNotFoundException(
                 $"Form '{request.FormCode}' không tồn tại trong tenant {request.TenantId}.");
 

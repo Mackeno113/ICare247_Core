@@ -183,11 +183,14 @@ else if (_form is not null)
             }
 
             // Build field states từ metadata
+            // NormalizeFieldType: DB lưu 'TextBox','DateEdit',... → Renderer cần 'text','date',...
             _fieldStates = _form.Fields.Select(f => new FieldState
             {
-                FieldCode  = f.FieldCode,
-                FieldType  = f.FieldType,
+                FieldCode  = f.FieldCode.Length > 0 ? f.FieldCode : $"field_{f.FieldId}",
+                FieldType  = NormalizeFieldType(f.FieldType),
                 Label      = f.Label.Length > 0 ? f.Label : f.FieldCode,
+                IsVisible  = f.IsVisible,
+                IsReadOnly = f.IsReadOnly,
                 IsRequired = f.IsRequired,
                 Value      = ParseDefaultValue(f.DefaultValueJson),
             }).ToList();
@@ -331,4 +334,25 @@ else if (_form is not null)
         if (double.TryParse(trimmed, out var d)) return d;
         return trimmed;
     }
+
+    /// <summary>
+    /// Chuyển Editor_Type từ DB sang lowercase type mà FieldRenderer dùng.
+    /// DB value → Renderer type:
+    ///   TextBox/Text  → text    | TextArea        → textarea
+    ///   NumberEdit    → number  | DateEdit        → date
+    ///   DateTimeEdit  → datetime| CheckBox/Toggle → bool
+    ///   ComboBox/Select/LookupEdit/Dropdown → select
+    /// </summary>
+    private static string NormalizeFieldType(string dbType) => dbType.ToLower() switch
+    {
+        "textbox"   or "text"                                => "text",
+        "textarea"  or "memo"                                => "textarea",
+        "numberedit" or "number" or "numericbox"             => "number",
+        "dateedit"  or "date"                                => "date",
+        "datetimeedit" or "datetime"                         => "datetime",
+        "checkbox"  or "toggle" or "bool"                    => "bool",
+        "combobox"  or "select" or "lookupedit"
+            or "dropdown" or "multiselect"                   => "select",
+        _ => "text"   // fallback an toàn — hiển thị text input
+    };
 }

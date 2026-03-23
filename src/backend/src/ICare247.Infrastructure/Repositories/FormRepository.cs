@@ -98,7 +98,7 @@ public sealed class FormRepository : IFormRepository
 
     /// <inheritdoc />
     public async Task<FormMetadata?> GetByCodeAsync(
-        string formCode, int tenantId, CancellationToken ct = default)
+        string formCode, int tenantId, string langCode = "vi", CancellationToken ct = default)
     {
         const string sqlForm = """
             SELECT f.Form_Id    AS FormId,
@@ -125,16 +125,26 @@ public sealed class FormRepository : IFormRepository
             ORDER BY s.Order_No
             """;
 
+        // ── sqlFields: map đúng cột, resolve Label qua Sys_Resource ──────────
+        // sc.Column_Code  → FieldCode (mã kỹ thuật, dùng làm key trong EvaluationContext)
+        // Sys_Resource    → Label đã localize; fallback về Label_Key nếu chưa có resource
+        // Is_Visible      → IsVisible (không phải IsRequired!)
+        // Control_Props_Json → ControlPropsJson (cấu hình UI, không phải default value)
         const string sqlFields = """
-            SELECT fi.Field_Id          AS FieldId,
-                   fi.Form_Id           AS FormId,
-                   fi.Section_Id        AS SectionId,
-                   fi.Editor_Type       AS FieldType,
-                   fi.Label_Key         AS Label,
-                   fi.Order_No          AS SortOrder,
-                   fi.Is_Visible        AS IsRequired,
-                   fi.Control_Props_Json AS DefaultValueJson
-            FROM   dbo.Ui_Field fi
+            SELECT fi.Field_Id                               AS FieldId,
+                   fi.Form_Id                                AS FormId,
+                   fi.Section_Id                             AS SectionId,
+                   sc.Column_Code                            AS FieldCode,
+                   fi.Editor_Type                            AS FieldType,
+                   COALESCE(r.Resource_Value, fi.Label_Key)  AS Label,
+                   fi.Order_No                               AS SortOrder,
+                   fi.Is_Visible                             AS IsVisible,
+                   fi.Is_ReadOnly                            AS IsReadOnly,
+                   fi.Control_Props_Json                     AS ControlPropsJson
+            FROM       dbo.Ui_Field fi
+            LEFT JOIN  dbo.Sys_Column   sc ON sc.Column_Id    = fi.Column_Id
+            LEFT JOIN  dbo.Sys_Resource r  ON r.Resource_Key  = fi.Label_Key
+                                          AND r.Lang_Code      = @LangCode
             WHERE  fi.Form_Id = @FormId
             ORDER BY fi.Order_No
             """;
@@ -154,7 +164,7 @@ public sealed class FormRepository : IFormRepository
                 cancellationToken: ct))).AsList();
 
         var allFields = (await conn.QueryAsync<FieldMetadata>(
-            new CommandDefinition(sqlFields, new { FormId = formDto.FormId },
+            new CommandDefinition(sqlFields, new { FormId = formDto.FormId, LangCode = langCode },
                 cancellationToken: ct))).AsList();
 
         // ── Gán fields vào sections ─────────────────────────────────────────
@@ -206,7 +216,7 @@ public sealed class FormRepository : IFormRepository
             new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId },
                 cancellationToken: ct));
 
-        return formCode is null ? null : await GetByCodeAsync(formCode, tenantId, ct);
+        return formCode is null ? null : await GetByCodeAsync(formCode, tenantId, ct: ct);
     }
 
     /// <inheritdoc />

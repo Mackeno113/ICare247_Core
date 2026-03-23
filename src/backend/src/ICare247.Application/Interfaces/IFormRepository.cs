@@ -39,7 +39,9 @@ public interface IFormRepository
     /// Lấy form metadata đầy đủ (aggregate root) theo Form_Code.
     /// Bao gồm Sections + Fields đã sắp xếp theo Order_No.
     /// </summary>
-    Task<FormMetadata?> GetByCodeAsync(string formCode, int tenantId, CancellationToken ct = default);
+    /// <param name="langCode">Mã ngôn ngữ để resolve Label từ Sys_Resource (mặc định "vi").</param>
+    Task<FormMetadata?> GetByCodeAsync(
+        string formCode, int tenantId, string langCode = "vi", CancellationToken ct = default);
 
     /// <summary>
     /// Lấy form metadata đầy đủ theo Form_Id.

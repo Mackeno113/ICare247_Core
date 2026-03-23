@@ -31,15 +31,21 @@ public sealed class SectionMetadataDto
 /// <summary>Metadata một field — dùng để render control tương ứng.</summary>
 public sealed class FieldMetadataDto
 {
-    public int     FieldId         { get; set; }
-    public string  FieldCode       { get; set; } = "";
+    public int     FieldId          { get; set; }
+    public string  FieldCode        { get; set; } = "";
     /// <summary>
-    /// Kiểu: text | number | date | datetime | bool | select |
-    ///        multiselect | textarea | file.
+    /// Kiểu editor từ DB: 'TextBox', 'TextArea', 'NumberEdit', 'DateEdit',
+    /// 'DateTimeEdit', 'CheckBox', 'ComboBox', 'LookupEdit',...
+    /// FormRunner normalize về lowercase trước khi truyền vào FieldRenderer.
     /// </summary>
-    public string  FieldType       { get; set; } = "text";
-    public string  Label           { get; set; } = "";
+    public string  FieldType        { get; set; } = "TextBox";
+    public string  Label            { get; set; } = "";
+    /// <summary>Cấu hình UI dạng JSON — không phải default value.</summary>
+    public string? ControlPropsJson { get; set; }
     public string? DefaultValueJson { get; set; }
-    public bool    IsRequired      { get; set; }
-    public int     SortOrder       { get; set; }
+    public bool    IsVisible        { get; set; } = true;
+    public bool    IsReadOnly       { get; set; }
+    /// <summary>Luôn false từ metadata; Val_Rule quyết định required runtime.</summary>
+    public bool    IsRequired       { get; set; }
+    public int     SortOrder        { get; set; }
 }

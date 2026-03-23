@@ -53,7 +53,7 @@ public sealed class RuntimeController : ControllerBase
         CancellationToken ct = default)
     {
         // Resolve FormCode → FormId
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct);
+        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
         if (form is null)
             return FormNotFound(formCode);
 
@@ -80,7 +80,7 @@ public sealed class RuntimeController : ControllerBase
         [FromBody] ValidateFormRequest body,
         CancellationToken ct = default)
     {
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct);
+        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
         if (form is null)
             return FormNotFound(formCode);
 
@@ -106,7 +106,7 @@ public sealed class RuntimeController : ControllerBase
         [FromBody] HandleEventRequest body,
         CancellationToken ct = default)
     {
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct);
+        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
         if (form is null)
             return FormNotFound(formCode);
 

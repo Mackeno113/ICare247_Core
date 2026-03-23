@@ -50,6 +50,27 @@ public static class DebugLogger
     public static void Error(string module, string message)
         => Write(module, message, level: "ERROR", ConsoleColor.Red);
 
+    /// <summary>
+    /// Log exception — tự động dùng <see cref="ExceptionExtensions.ToReadable"/>
+    /// để tóm tắt thành 1 dòng ngắn gọn thay vì dump cả stack trace.
+    /// </summary>
+    /// <example>
+    /// catch (Exception ex) { DebugLogger.Error("DB", ex); }
+    /// → [10:25:33] [DB] ERROR SqlException: Cannot connect... | Win32Exception: File not found
+    /// </example>
+    public static void Error(string module, Exception ex)
+        => Write(module, ex.ToReadable(), level: "ERROR", ConsoleColor.Red);
+
+    /// <summary>
+    /// Log exception với thêm context message.
+    /// </summary>
+    /// <example>
+    /// DebugLogger.Error("LocalConfig", "Đọc file thất bại", ex);
+    /// → [10:25:33] [LocalConfig] ERROR Đọc file thất bại → SqlException: ...
+    /// </example>
+    public static void Error(string module, string context, Exception ex)
+        => Write(module, $"{context} → {ex.ToReadable()}", level: "ERROR", ConsoleColor.Red);
+
     // ── Cấu hình từ IConfiguration ───────────────────────────────────────────
 
     /// <summary>

@@ -29,7 +29,7 @@ public sealed class CloneFormCommandHandler : IRequestHandler<CloneFormCommand, 
     {
         // ── Validate source tồn tại ─────────────────────────────────────────
         var sourceForm = await _formRepo.GetByCodeAsync(
-            request.SourceFormCode, request.TenantId, ct)
+            request.SourceFormCode, request.TenantId, ct: ct)
             ?? throw new KeyNotFoundException(
                 $"Form nguồn '{request.SourceFormCode}' không tồn tại trong tenant {request.TenantId}.");
 

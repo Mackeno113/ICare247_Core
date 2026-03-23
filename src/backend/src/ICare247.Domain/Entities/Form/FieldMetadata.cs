@@ -25,28 +25,52 @@ public sealed class FieldMetadata
     public int TenantId { get; init; }
 
     /// <summary>
-    /// Mã kỹ thuật duy nhất trong form (Ui_Field.Field_Code).
+    /// Mã kỹ thuật duy nhất trong form — lấy từ Sys_Column.Column_Code qua Column_Id.
     /// Dùng làm key trong <see cref="ValueObjects.EvaluationContext"/>.
     /// </summary>
     public string FieldCode { get; init; } = string.Empty;
 
     /// <summary>
-    /// Kiểu dữ liệu field: 'text', 'number', 'date', 'datetime', 'bool',
-    /// 'select', 'multiselect', 'textarea', 'file'.
-    /// Lưu dạng string — không dùng enum để tránh deploy lại khi thêm type mới.
+    /// Kiểu editor lưu trong DB: 'TextBox', 'TextArea', 'NumberEdit', 'DateEdit',
+    /// 'DateTimeEdit', 'CheckBox', 'ComboBox', 'LookupEdit',...
+    /// Blazor cần normalize về lowercase trước khi render.
     /// </summary>
-    public string FieldType { get; init; } = "text";
+    public string FieldType { get; init; } = "TextBox";
 
-    /// <summary>Nhãn hiển thị cho người dùng (đã localize theo langCode).</summary>
+    /// <summary>
+    /// Nhãn hiển thị cho người dùng — đã resolve qua Sys_Resource.
+    /// Fallback về Label_Key nếu không tìm thấy resource.
+    /// </summary>
     public string Label { get; init; } = string.Empty;
 
     /// <summary>
-    /// Giá trị mặc định dạng JSON string (Ui_Field.Default_Value_Json).
-    /// Null nếu không có default. Parse bởi engine khi cần.
+    /// Cấu hình UI dạng JSON (Ui_Field.Control_Props_Json).
+    /// Ví dụ: {"lookupCode":"GENDER"}, {"format":"dd/MM/yyyy","minDate":"01/01/2000"}.
+    /// </summary>
+    public string? ControlPropsJson { get; init; }
+
+    /// <summary>
+    /// Giá trị mặc định dạng JSON string.
+    /// Null nếu không có default (bảng Ui_Field hiện chưa có cột Default_Value_Json).
     /// </summary>
     public string? DefaultValueJson { get; init; }
 
-    /// <summary>Field bắt buộc nhập hay không (Ui_Field.Is_Required).</summary>
+    /// <summary>
+    /// Field hiển thị hay ẩn theo cấu hình ban đầu (Ui_Field.Is_Visible).
+    /// Có thể thay đổi runtime qua UiDelta SET_VISIBLE.
+    /// </summary>
+    public bool IsVisible { get; init; } = true;
+
+    /// <summary>
+    /// Field read-only theo cấu hình ban đầu (Ui_Field.Is_ReadOnly).
+    /// Có thể thay đổi runtime qua UiDelta SET_READONLY.
+    /// </summary>
+    public bool IsReadOnly { get; init; }
+
+    /// <summary>
+    /// Field bắt buộc nhập — xác định bởi Val_Rule, không phải Ui_Field.
+    /// Giá trị ban đầu = false, có thể thay đổi runtime qua UiDelta SET_REQUIRED.
+    /// </summary>
     public bool IsRequired { get; init; }
 
     /// <summary>Thứ tự hiển thị trong section — tăng dần.</summary>

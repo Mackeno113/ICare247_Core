@@ -104,6 +104,10 @@ try
     // ────────────────────────────────────────────────────────────────────────
     var app = builder.Build();
 
+    // ── Kiểm tra kết nối DB + Redis ngay khi khởi động ───────────────────────
+    // Không throw — chỉ log kết quả qua DebugLogger để debug nhanh
+    await ConnectionChecker.CheckAllAsync(builder.Configuration);
+
     // ── Middleware pipeline (thứ tự quan trọng!) ─────────────────────────────
 
     // 1. Exception handling — phải đầu tiên để catch tất cả

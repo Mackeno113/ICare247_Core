@@ -33,7 +33,7 @@ public sealed class UpdateFormCommandHandler : IRequestHandler<UpdateFormCommand
     public async Task Handle(UpdateFormCommand request, CancellationToken ct)
     {
         // ── Lấy form hiện tại ───────────────────────────────────────────────
-        var form = await _formRepo.GetByCodeAsync(request.FormCode, request.TenantId, ct)
+        var form = await _formRepo.GetByCodeAsync(request.FormCode, request.TenantId, ct: ct)
             ?? throw new KeyNotFoundException(
                 $"Form '{request.FormCode}' không tồn tại trong tenant {request.TenantId}.");
 

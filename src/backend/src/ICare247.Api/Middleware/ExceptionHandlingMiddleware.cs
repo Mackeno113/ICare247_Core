@@ -78,7 +78,9 @@ public sealed class ExceptionHandlingMiddleware
         catch (Exception ex)
         {
             // Mọi exception khác → 500 Internal Server Error
-            _logger.LogError(ex, "Lỗi không xử lý được — Path={Path}", context.Request.Path);
+            // ToDetail(): tóm tắt ngắn gọn — loại lỗi + message + dòng code, không có stack trace dài
+            _logger.LogError("Lỗi không xử lý được — Path={Path}\n{Detail}",
+                context.Request.Path, ex.ToDetail());
             await WriteProblemDetailsAsync(context, new ProblemDetails
             {
                 Type = "https://icare247.vn/errors/internal",

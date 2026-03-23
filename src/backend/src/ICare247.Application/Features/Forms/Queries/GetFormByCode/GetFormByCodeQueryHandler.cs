@@ -54,7 +54,7 @@ public sealed class GetFormByCodeQueryHandler
             request.FormCode, request.TenantId);
 
         var form = await _formRepository.GetByCodeAsync(
-            request.FormCode, request.TenantId, ct);
+            request.FormCode, request.TenantId, request.LangCode, ct);
 
         if (form is null)
         {
