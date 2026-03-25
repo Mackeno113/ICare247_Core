@@ -48,4 +48,10 @@ public sealed class FieldMetadataDto
     /// <summary>Luôn false từ metadata; Val_Rule quyết định required runtime.</summary>
     public bool    IsRequired       { get; set; }
     public int     SortOrder        { get; set; }
+    /// <summary>Độ rộng grid: 1 = 1/3, 2 = 2/3, 3 = full width.</summary>
+    public byte    ColSpan          { get; set; } = 1;
+    /// <summary>null | "static" (Sys_Lookup) | "dynamic" (Ui_Field_Lookup)</summary>
+    public string? LookupSource     { get; set; }
+    /// <summary>Mã lookup trong Sys_Lookup — chỉ có giá trị khi LookupSource = "static".</summary>
+    public string? LookupCode       { get; set; }
 }

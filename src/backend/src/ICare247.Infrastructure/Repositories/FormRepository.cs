@@ -113,9 +113,24 @@ public sealed class FormRepository : IFormRepository
               AND  f.Is_Active = 1
             """;
 
+        const string sqlTabs = """
+            SELECT t.Tab_Id     AS TabId,
+                   t.Form_Id    AS FormId,
+                   t.Tab_Code   AS TabCode,
+                   t.Title_Key  AS TitleKey,
+                   t.Icon_Key   AS IconKey,
+                   t.Order_No   AS OrderNo,
+                   t.Is_Default AS IsDefault
+            FROM   dbo.Ui_Tab t
+            WHERE  t.Form_Id = @FormId
+              AND  t.Is_Active = 1
+            ORDER BY t.Order_No
+            """;
+
         const string sqlSections = """
             SELECT s.Section_Id   AS SectionId,
                    s.Form_Id      AS FormId,
+                   s.Tab_Id       AS TabId,
                    s.Section_Code AS SectionCode,
                    ''             AS SectionName,
                    s.Order_No     AS SortOrder
@@ -128,8 +143,9 @@ public sealed class FormRepository : IFormRepository
         // ── sqlFields: map đúng cột, resolve Label qua Sys_Resource ──────────
         // sc.Column_Code  → FieldCode (mã kỹ thuật, dùng làm key trong EvaluationContext)
         // Sys_Resource    → Label đã localize; fallback về Label_Key nếu chưa có resource
-        // Is_Visible      → IsVisible (không phải IsRequired!)
-        // Control_Props_Json → ControlPropsJson (cấu hình UI, không phải default value)
+        // Col_Span        → ColSpan (độ rộng grid: 1/2/3)
+        // Lookup_Source   → LookupSource (null / 'static' / 'dynamic')
+        // Lookup_Code     → LookupCode (dùng khi LookupSource = 'static')
         const string sqlFields = """
             SELECT fi.Field_Id                               AS FieldId,
                    fi.Form_Id                                AS FormId,
@@ -140,13 +156,33 @@ public sealed class FormRepository : IFormRepository
                    fi.Order_No                               AS SortOrder,
                    fi.Is_Visible                             AS IsVisible,
                    fi.Is_ReadOnly                            AS IsReadOnly,
-                   fi.Control_Props_Json                     AS ControlPropsJson
+                   fi.Control_Props_Json                     AS ControlPropsJson,
+                   fi.Col_Span                               AS ColSpan,
+                   fi.Lookup_Source                          AS LookupSource,
+                   fi.Lookup_Code                            AS LookupCode
             FROM       dbo.Ui_Field fi
             LEFT JOIN  dbo.Sys_Column   sc ON sc.Column_Id    = fi.Column_Id
             LEFT JOIN  dbo.Sys_Resource r  ON r.Resource_Key  = fi.Label_Key
                                           AND r.Lang_Code      = @LangCode
             WHERE  fi.Form_Id = @FormId
             ORDER BY fi.Order_No
+            """;
+
+        // ── sqlLookupConfigs: cấu hình FK lookup cho tất cả dynamic fields ──
+        const string sqlLookupConfigs = """
+            SELECT fl.Lookup_Cfg_Id      AS LookupCfgId,
+                   fl.Field_Id           AS FieldId,
+                   fl.Query_Mode         AS QueryMode,
+                   fl.Source_Name        AS SourceName,
+                   fl.Value_Column       AS ValueColumn,
+                   fl.Display_Column     AS DisplayColumn,
+                   fl.Filter_Sql         AS FilterSql,
+                   fl.Order_By           AS OrderBy,
+                   fl.Search_Enabled     AS SearchEnabled,
+                   fl.Popup_Columns_Json AS PopupColumnsJson
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
+            WHERE  fi.Form_Id = @FormId
             """;
 
         using var conn = _db.CreateConnection();
@@ -158,14 +194,40 @@ public sealed class FormRepository : IFormRepository
 
         if (formDto is null) return null;
 
-        // ── Lấy sections + fields ───────────────────────────────────────────
-        var sections = (await conn.QueryAsync<SectionMetadata>(
-            new CommandDefinition(sqlSections, new { FormId = formDto.FormId },
-                cancellationToken: ct))).AsList();
+        var formParam = new { FormId = formDto.FormId };
 
-        var allFields = (await conn.QueryAsync<FieldMetadata>(
+        // ── Lấy tabs, sections, fields, lookup configs song song ────────────
+        var tabs = (await conn.QueryAsync<TabMetadata>(
+            new CommandDefinition(sqlTabs, formParam, cancellationToken: ct))).AsList();
+
+        var sections = (await conn.QueryAsync<SectionMetadata>(
+            new CommandDefinition(sqlSections, formParam, cancellationToken: ct))).AsList();
+
+        var rawFields = (await conn.QueryAsync<FieldMetadata>(
             new CommandDefinition(sqlFields, new { FormId = formDto.FormId, LangCode = langCode },
                 cancellationToken: ct))).AsList();
+
+        var lookupConfigMap = (await conn.QueryAsync<FieldLookupConfig>(
+            new CommandDefinition(sqlLookupConfigs, formParam, cancellationToken: ct)))
+            .ToDictionary(fl => fl.FieldId);
+
+        // ── Gán LookupConfig vào field dynamic ──────────────────────────────
+        var allFields = rawFields.Select(f =>
+        {
+            if (f.LookupSource == "dynamic" && lookupConfigMap.TryGetValue(f.FieldId, out var cfg))
+                return new FieldMetadata
+                {
+                    FieldId = f.FieldId, FormId = f.FormId, SectionId = f.SectionId,
+                    TenantId = f.TenantId, FieldCode = f.FieldCode, FieldType = f.FieldType,
+                    Label = f.Label, ControlPropsJson = f.ControlPropsJson,
+                    DefaultValueJson = f.DefaultValueJson, IsVisible = f.IsVisible,
+                    IsReadOnly = f.IsReadOnly, IsRequired = f.IsRequired,
+                    SortOrder = f.SortOrder, ColSpan = f.ColSpan,
+                    LookupSource = f.LookupSource, LookupCode = f.LookupCode,
+                    LookupConfig = cfg
+                };
+            return f;
+        }).ToList();
 
         // ── Gán fields vào sections ─────────────────────────────────────────
         var sectionFieldsMap = allFields
@@ -178,10 +240,25 @@ public sealed class FormRepository : IFormRepository
             SectionId = s.SectionId,
             FormId = s.FormId,
             TenantId = tenantId,
+            TabId = s.TabId,
             SectionCode = s.SectionCode,
             SectionName = s.SectionName,
             SortOrder = s.SortOrder,
             Fields = sectionFieldsMap.GetValueOrDefault(s.SectionId, [])
+        }).ToList();
+
+        // ── Gán sections vào tabs ────────────────────────────────────────────
+        var tabSectionsMap = enrichedSections
+            .Where(s => s.TabId.HasValue)
+            .GroupBy(s => s.TabId!.Value)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<SectionMetadata>)g.ToList());
+
+        var enrichedTabs = tabs.Select(t => new TabMetadata
+        {
+            TabId = t.TabId, FormId = t.FormId, TabCode = t.TabCode,
+            TitleKey = t.TitleKey, IconKey = t.IconKey,
+            OrderNo = t.OrderNo, IsDefault = t.IsDefault,
+            Sections = tabSectionsMap.GetValueOrDefault(t.TabId, [])
         }).ToList();
 
         // ── Trả aggregate root ──────────────────────────────────────────────
@@ -193,6 +270,7 @@ public sealed class FormRepository : IFormRepository
             FormName = formDto.FormName,
             Version = formDto.Version,
             Platform = formDto.Platform,
+            Tabs = enrichedTabs,
             Sections = enrichedSections,
             Fields = allFields
         };

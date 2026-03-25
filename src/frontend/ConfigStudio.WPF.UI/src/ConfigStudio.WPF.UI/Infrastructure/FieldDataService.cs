@@ -1,7 +1,9 @@
 // File    : FieldDataService.cs
 // Module  : Infrastructure
 // Layer   : Presentation
-// Purpose : Dapper implementation cho IFieldDataService — Ui_Field + Sys_Column.
+// Purpose : Dapper implementation cho IFieldDataService.
+//           Ui_Field (bao gồm Col_Span, Lookup_Source, Lookup_Code)
+//           + Ui_Field_Lookup (FK dynamic config) trong cùng transaction.
 
 using Dapper;
 using Microsoft.Data.SqlClient;
@@ -11,7 +13,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 namespace ConfigStudio.WPF.UI.Infrastructure;
 
 /// <summary>
-/// CRUD field metadata + lookup columns. Tenant resolve qua Sys_Table.
+/// CRUD field metadata + Ui_Field_Lookup. Tenant resolve qua Sys_Table.
 /// </summary>
 public sealed class FieldDataService : IFieldDataService
 {
@@ -23,7 +25,8 @@ public sealed class FieldDataService : IFieldDataService
     }
 
     /// <inheritdoc />
-    public async Task<FieldConfigRecord?> GetFieldDetailAsync(int fieldId, int tenantId, CancellationToken ct = default)
+    public async Task<FieldConfigRecord?> GetFieldDetailAsync(
+        int fieldId, int tenantId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return null;
 
@@ -42,6 +45,9 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Is_ReadOnly        AS IsReadOnly,
                    fi.Order_No           AS OrderNo,
                    fi.Control_Props_Json AS ControlPropsJson,
+                   fi.Col_Span           AS ColSpan,
+                   fi.Lookup_Source      AS LookupSource,
+                   fi.Lookup_Code        AS LookupCode,
                    fi.Version,
                    fi.Description
             FROM   dbo.Ui_Field fi
@@ -55,11 +61,38 @@ public sealed class FieldDataService : IFieldDataService
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.QueryFirstOrDefaultAsync<FieldConfigRecord>(
-            new CommandDefinition(sql, new { FieldId = fieldId, TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, new { FieldId = fieldId, TenantId = tenantId },
+                cancellationToken: ct));
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(int tableId, CancellationToken ct = default)
+    public async Task<FieldLookupConfigRecord?> GetFieldLookupConfigAsync(
+        int fieldId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return null;
+
+        const string sql = """
+            SELECT fl.Field_Id           AS FieldId,
+                   fl.Query_Mode         AS QueryMode,
+                   fl.Source_Name        AS SourceName,
+                   fl.Value_Column       AS ValueColumn,
+                   fl.Display_Column     AS DisplayColumn,
+                   fl.Filter_Sql         AS FilterSql,
+                   fl.Order_By           AS OrderBy,
+                   fl.Search_Enabled     AS SearchEnabled,
+                   fl.Popup_Columns_Json AS PopupColumnsJson
+            FROM   dbo.Ui_Field_Lookup fl
+            WHERE  fl.Field_Id = @FieldId
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        return await conn.QueryFirstOrDefaultAsync<FieldLookupConfigRecord>(
+            new CommandDefinition(sql, new { FieldId = fieldId }, cancellationToken: ct));
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(
+        int tableId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return [];
 
@@ -83,7 +116,8 @@ public sealed class FieldDataService : IFieldDataService
     }
 
     /// <inheritdoc />
-    public async Task<int> GetTableIdByFormAsync(int formId, int tenantId, CancellationToken ct = default)
+    public async Task<int> GetTableIdByFormAsync(
+        int formId, int tenantId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return 0;
 
@@ -97,64 +131,146 @@ public sealed class FieldDataService : IFieldDataService
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.QueryFirstOrDefaultAsync<int>(
-            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId },
+                cancellationToken: ct));
     }
 
     /// <inheritdoc />
-    public async Task<int> SaveFieldAsync(FieldConfigRecord field, int tenantId, CancellationToken ct = default)
+    public async Task<int> SaveFieldAsync(
+        FieldConfigRecord field, int tenantId,
+        FieldLookupConfigRecord? lookupConfig = null,
+        CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return 0;
 
-        if (field.FieldId == 0)
-        {
-            const string sql = """
-                INSERT INTO dbo.Ui_Field
-                       (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key, Placeholder_Key,
-                        Tooltip_Key, Is_Visible, Is_ReadOnly, Order_No, Control_Props_Json,
-                        Version, Updated_At, Description)
-                OUTPUT INSERTED.Field_Id
-                VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey, @PlaceholderKey,
-                        @TooltipKey, @IsVisible, @IsReadOnly, @OrderNo, @ControlPropsJson,
-                        1, GETDATE(), @Description)
-                """;
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
 
-            await using var conn = new SqlConnection(_config.ConnectionString);
-            return await conn.ExecuteScalarAsync<int>(new CommandDefinition(sql, field, cancellationToken: ct));
+        try
+        {
+            int fieldId;
+
+            if (field.FieldId == 0)
+            {
+                // ── INSERT Ui_Field ──────────────────────────────────────────
+                const string sqlInsert = """
+                    INSERT INTO dbo.Ui_Field
+                           (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key,
+                            Placeholder_Key, Tooltip_Key, Is_Visible, Is_ReadOnly,
+                            Order_No, Control_Props_Json, Col_Span, Lookup_Source,
+                            Lookup_Code, Version, Updated_At, Description)
+                    OUTPUT INSERTED.Field_Id
+                    VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
+                            @PlaceholderKey, @TooltipKey, @IsVisible, @IsReadOnly,
+                            @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
+                            @LookupCode, 1, GETDATE(), @Description)
+                    """;
+
+                fieldId = await conn.ExecuteScalarAsync<int>(
+                    new CommandDefinition(sqlInsert, BuildFieldParam(field),
+                        transaction: tx, cancellationToken: ct));
+            }
+            else
+            {
+                // ── UPDATE Ui_Field ──────────────────────────────────────────
+                const string sqlUpdate = """
+                    UPDATE dbo.Ui_Field
+                    SET    Section_Id        = @SectionId,
+                           Column_Id         = @ColumnId,
+                           Editor_Type       = @EditorType,
+                           Label_Key         = @LabelKey,
+                           Placeholder_Key   = @PlaceholderKey,
+                           Tooltip_Key       = @TooltipKey,
+                           Is_Visible        = @IsVisible,
+                           Is_ReadOnly       = @IsReadOnly,
+                           Order_No          = @OrderNo,
+                           Control_Props_Json = @ControlPropsJson,
+                           Col_Span          = @ColSpan,
+                           Lookup_Source     = @LookupSource,
+                           Lookup_Code       = @LookupCode,
+                           Version           = Version + 1,
+                           Updated_At        = GETDATE(),
+                           Description       = @Description
+                    WHERE  Field_Id = @FieldId
+                    """;
+
+                await conn.ExecuteAsync(
+                    new CommandDefinition(sqlUpdate, BuildFieldParam(field, field.FieldId),
+                        transaction: tx, cancellationToken: ct));
+
+                fieldId = field.FieldId;
+            }
+
+            // ── Xử lý Ui_Field_Lookup ──────────────────────────────────────
+            if (lookupConfig is not null)
+            {
+                // INSERT nếu chưa có (UNIQUE constraint Field_Id), UPDATE nếu đã có
+                const string sqlUpsertLookup = """
+                    IF EXISTS (SELECT 1 FROM dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId)
+                        UPDATE dbo.Ui_Field_Lookup
+                        SET    Query_Mode         = @QueryMode,
+                               Source_Name        = @SourceName,
+                               Value_Column       = @ValueColumn,
+                               Display_Column     = @DisplayColumn,
+                               Filter_Sql         = @FilterSql,
+                               Order_By           = @OrderBy,
+                               Search_Enabled     = @SearchEnabled,
+                               Popup_Columns_Json = @PopupColumnsJson,
+                               Updated_At         = GETDATE()
+                        WHERE  Field_Id = @FieldId
+                    ELSE
+                        INSERT INTO dbo.Ui_Field_Lookup
+                               (Field_Id, Query_Mode, Source_Name, Value_Column,
+                                Display_Column, Filter_Sql, Order_By, Search_Enabled,
+                                Popup_Columns_Json, Updated_At)
+                        VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
+                                @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
+                                @PopupColumnsJson, GETDATE())
+                    """;
+
+                await conn.ExecuteAsync(
+                    new CommandDefinition(sqlUpsertLookup, new
+                    {
+                        FieldId        = fieldId,
+                        lookupConfig.QueryMode,
+                        lookupConfig.SourceName,
+                        lookupConfig.ValueColumn,
+                        lookupConfig.DisplayColumn,
+                        lookupConfig.FilterSql,
+                        lookupConfig.OrderBy,
+                        lookupConfig.SearchEnabled,
+                        lookupConfig.PopupColumnsJson
+                    }, transaction: tx, cancellationToken: ct));
+            }
+            else
+            {
+                // Xóa lookup config nếu tồn tại (field đã đổi sang type không phải LookupBox)
+                const string sqlDeleteLookup = """
+                    DELETE FROM dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId
+                    """;
+
+                await conn.ExecuteAsync(
+                    new CommandDefinition(sqlDeleteLookup, new { FieldId = fieldId },
+                        transaction: tx, cancellationToken: ct));
+            }
+
+            await tx.CommitAsync(ct);
+            return fieldId;
         }
-        else
+        catch
         {
-            const string sql = """
-                UPDATE dbo.Ui_Field
-                SET    Section_Id        = @SectionId,
-                       Column_Id         = @ColumnId,
-                       Editor_Type       = @EditorType,
-                       Label_Key         = @LabelKey,
-                       Placeholder_Key   = @PlaceholderKey,
-                       Tooltip_Key       = @TooltipKey,
-                       Is_Visible        = @IsVisible,
-                       Is_ReadOnly       = @IsReadOnly,
-                       Order_No          = @OrderNo,
-                       Control_Props_Json = @ControlPropsJson,
-                       Version           = Version + 1,
-                       Updated_At        = GETDATE(),
-                       Description       = @Description
-                WHERE  Field_Id = @FieldId
-                """;
-
-            await using var conn = new SqlConnection(_config.ConnectionString);
-            await conn.ExecuteAsync(new CommandDefinition(sql, field, cancellationToken: ct));
-            return field.FieldId;
+            await tx.RollbackAsync(ct);
+            throw;
         }
     }
 
     /// <inheritdoc />
-    public async Task<int> EnsureColumnExistsAsync(int tableId, ColumnSchemaDto col, CancellationToken ct = default)
+    public async Task<int> EnsureColumnExistsAsync(
+        int tableId, ColumnSchemaDto col, CancellationToken ct = default)
     {
         if (!_config.IsConfigured || tableId <= 0) return 0;
 
-        await using var conn = new SqlConnection(_config.ConnectionString);
-
-        // INSERT nếu chưa có (UNIQUE constraint Table_Id + Column_Code bảo vệ race condition)
         const string sql = """
             IF NOT EXISTS (
                 SELECT 1 FROM dbo.Sys_Column
@@ -173,6 +289,7 @@ public sealed class FieldDataService : IFieldDataService
             WHERE  Table_Id = @TableId AND Column_Code = @ColumnCode
             """;
 
+        await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(sql, new
             {
@@ -186,4 +303,28 @@ public sealed class FieldDataService : IFieldDataService
                 IsIdentity = col.IsIdentity ? 1 : 0,
             }, cancellationToken: ct));
     }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    /// <summary>Build anonymous param object cho INSERT/UPDATE Ui_Field.</summary>
+    private static object BuildFieldParam(FieldConfigRecord f, int fieldId = 0) => new
+    {
+        FieldId          = fieldId,
+        f.FormId,
+        f.SectionId,
+        f.ColumnId,
+        f.EditorType,
+        f.LabelKey,
+        f.PlaceholderKey,
+        f.TooltipKey,
+        f.IsVisible,
+        f.IsReadOnly,
+        f.OrderNo,
+        // LookupBox lưu config vào Ui_Field_Lookup — Control_Props_Json chứa props khác
+        ControlPropsJson = f.LookupSource == "dynamic" ? null : f.ControlPropsJson,
+        f.ColSpan,
+        f.LookupSource,
+        f.LookupCode,
+        f.Description
+    };
 }

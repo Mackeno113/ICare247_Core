@@ -30,6 +30,13 @@ public sealed class FormMetadata
     public string Platform { get; init; } = "web";
 
     /// <summary>
+    /// Danh sách tabs theo thứ tự Order_No.
+    /// Rỗng = form không có tab → FormRunner render phẳng (backward compat).
+    /// Mỗi tab chứa danh sách sections; mỗi section chứa danh sách fields.
+    /// </summary>
+    public IReadOnlyList<TabMetadata> Tabs { get; init; } = [];
+
+    /// <summary>
     /// Danh sách sections theo thứ tự Sort_Order.
     /// Mỗi section chứa danh sách fields của section đó.
     /// </summary>

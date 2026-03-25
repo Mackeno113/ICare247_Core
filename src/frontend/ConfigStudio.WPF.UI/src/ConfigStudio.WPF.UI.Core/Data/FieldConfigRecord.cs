@@ -21,6 +21,15 @@ public sealed class FieldConfigRecord
     public bool IsReadOnly { get; init; }
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
+    /// <summary>Độ rộng grid: 1 = 1/3, 2 = 2/3, 3 = full width.</summary>
+    public byte ColSpan { get; init; } = 1;
+
+    /// <summary>null = thường | "static" = Sys_Lookup | "dynamic" = Ui_Field_Lookup</summary>
+    public string? LookupSource { get; init; }
+
+    /// <summary>Lookup code trong Sys_Lookup. Chỉ có giá trị khi LookupSource = "static".</summary>
+    public string? LookupCode { get; init; }
+
     public int Version { get; init; }
     public string? Description { get; init; }
 }

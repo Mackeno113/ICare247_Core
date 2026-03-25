@@ -18,6 +18,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
+        <conv:ColSpanConverter x:Key="ColSpanConverter" />
 
         <!-- ── Color Palette (giống FormEditorView) ────────────── -->
         <Color x:Key="AccentColor">#3B82F6</Color>
@@ -367,6 +368,23 @@
                                     <dxe:TextEdit EditValue="{Binding OrderNo, UpdateSourceTrigger=PropertyChanged}"
                                                   Width="100" HorizontalAlignment="Left" />
                                     <TextBlock Text="Thứ tự sắp xếp field trong section (Order_No)."
+                                               Style="{StaticResource HelpTextStyle}" />
+                                </StackPanel>
+
+                                <!-- Col Span -->
+                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                    <TextBlock Text="Độ rộng (Col Span)" Style="{StaticResource FieldLabelStyle}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="1/3"  GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=1}"
+                                                     Margin="0,0,16,0" />
+                                        <RadioButton Content="2/3"  GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=2}"
+                                                     Margin="0,0,16,0" />
+                                        <RadioButton Content="Full" GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=3}" />
+                                    </StackPanel>
+                                    <TextBlock Text="Độ rộng field trong grid layout (1=1/3, 2=2/3, 3=full width)."
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
                             </StackPanel>

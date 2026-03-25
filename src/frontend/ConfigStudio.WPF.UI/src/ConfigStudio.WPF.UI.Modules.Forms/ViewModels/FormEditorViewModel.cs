@@ -1224,7 +1224,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 };
 
                 var fieldId = await _fieldDataService.SaveFieldAsync(
-                    record, _appConfig.TenantId, cts.Token);
+                    record, _appConfig.TenantId, ct: cts.Token);
 
                 // Cập nhật node với Id thật — xóa marker temp-id âm
                 node.Id = fieldId;

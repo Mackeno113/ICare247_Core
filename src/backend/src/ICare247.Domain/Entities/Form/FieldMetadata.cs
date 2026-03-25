@@ -73,6 +73,33 @@ public sealed class FieldMetadata
     /// </summary>
     public bool IsRequired { get; init; }
 
+    /// <summary>
+    /// Độ rộng field trong grid layout (Ui_Field.Col_Span).
+    /// 1 = 1/3 width (default), 2 = 2/3 width, 3 = full width.
+    /// FormRunner dùng trực tiếp để build CSS grid class.
+    /// </summary>
+    public byte ColSpan { get; init; } = 1;
+
+    /// <summary>
+    /// Phân loại nguồn dữ liệu lookup (Ui_Field.Lookup_Source).
+    /// Null    = field thường (TextBox, DateEdit,...).
+    /// "static"  = đọc từ Sys_Lookup theo <see cref="LookupCode"/>.
+    /// "dynamic" = đọc theo cấu hình trong <see cref="LookupConfig"/>.
+    /// </summary>
+    public string? LookupSource { get; init; }
+
+    /// <summary>
+    /// Mã lookup trong Sys_Lookup — chỉ có giá trị khi <see cref="LookupSource"/> = "static".
+    /// Tham chiếu logic (không FK vật lý) để linh hoạt theo tenant.
+    /// </summary>
+    public string? LookupCode { get; init; }
+
+    /// <summary>
+    /// Cấu hình FK lookup động — chỉ có giá trị khi <see cref="LookupSource"/> = "dynamic".
+    /// Maps từ bảng Ui_Field_Lookup (quan hệ 1-1).
+    /// </summary>
+    public FieldLookupConfig? LookupConfig { get; init; }
+
     /// <summary>Thứ tự hiển thị trong section — tăng dần.</summary>
     public int SortOrder { get; init; }
 }

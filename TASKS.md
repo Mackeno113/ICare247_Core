@@ -21,10 +21,11 @@
 - [x] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — toàn bộ schema mới + sơ đồ quan hệ + thống kê 33 bảng
 
 **Việc tiếp theo (máy khác):**
-- [ ] Chạy migrations 003→009 trên DB thật (theo thứ tự)
-- [ ] Cập nhật Domain entities: SectionMetadata (+ TabId), FieldMetadata (+ ColSpan, LookupSource, LookupCode)
-- [ ] Cập nhật Repositories: FormRepository, FieldRepository (query có Tab, Col_Span, Lookup)
-- [ ] Cập nhật ConfigStudio: IFieldDataService + FieldConfigViewModel (tab FK Lookup config)
+- [x] Chạy migrations 003→009 trên DB thật (theo thứ tự) — done trước session này
+- [x] Cập nhật Domain entities: SectionMetadata (+ TabId), FieldMetadata (+ ColSpan, LookupSource, LookupCode), TabMetadata, FieldLookupConfig
+- [x] Cập nhật Repositories: FormRepository, FieldRepository (query Ui_Tab, Col_Span, Lookup_Source, Lookup_Code, Ui_Field_Lookup)
+- [x] Cập nhật ConfigStudio: IFieldDataService + FieldDataService + FieldConfigViewModel + FieldConfigView (ColSpan radio, FK Lookup config, transaction save)
+- [x] Blazor: FieldType `select` (static Sys_Lookup) + `fklookup` placeholder — LookupApiService, FormRunner, FieldRenderer
 
 ### Design System — Brand & UI Foundation
 
@@ -359,3 +360,7 @@
 | 2026-03-25 | Ui_Field.Lookup_Source phân biệt 'static' (Sys_Lookup) / 'dynamic' (Ui_Field_Lookup) / NULL | Type-safe, integrity rõ ràng, không phụ thuộc vào JSON string parsing |
 | 2026-03-25 | Ui_Field_Lookup bảng riêng 1-1, Popup_Columns_Json dùng JSON array | Load tách biệt chỉ khi cần, popup columns ít thay đổi + không cần query riêng từng cột |
 | 2026-03-25 | Sys_Lookup.Tenant_Id đổi DEFAULT 0 → NULL = global | Nhất quán với toàn hệ thống (Sys_Table, Sys_Config, Sys_Role đều dùng NULL = global) |
+| 2026-03-25 | FK lookup config deprecated JSON → Ui_Field_Lookup table (Option B) | JSON cũ không có integrity; Ui_Field_Lookup có FK constraint, query trực tiếp, transaction-safe |
+| 2026-03-25 | SaveFieldAsync dùng transaction: UPSERT Ui_Field + Ui_Field_Lookup atomically | Nếu save field thành công nhưng lookup config fail → data inconsistent; transaction bắt buộc |
+| 2026-03-25 | FieldRenderer `case "select"`: fallback text input khi Options.Count == 0 | Options chưa load hoặc LookupCode không tồn tại — graceful degradation, không crash |
+| 2026-03-25 | `fklookup` tách biệt với `select` trong NormalizeFieldType | FK dynamic lookup cần UI khác (popup search), chưa implement; placeholder text input tránh nhầm lẫn với static select |

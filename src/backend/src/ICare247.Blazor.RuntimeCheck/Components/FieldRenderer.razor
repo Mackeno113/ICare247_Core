@@ -1,6 +1,6 @@
 @* File    : FieldRenderer.razor
    Purpose : Render một field dựa vào FieldType + FieldState.
-             Hỗ trợ: text, number, date, datetime, bool, textarea, select.
+             Hỗ trợ: text, number, date, datetime, bool, textarea, select, fklookup.
              Phát event OnChange khi user thay đổi giá trị. *@
 
 @if (State is not null && State.IsVisible)
@@ -18,7 +18,11 @@
         @if (DebugMode)
         {
             <span style="font-size:10px;color:#888;font-style:italic">
-                [@State.FieldCode | type: @State.FieldType | visible: @State.IsVisible | ro: @State.IsReadOnly]
+                [@State.FieldCode | type: @State.FieldType | visible: @State.IsVisible | ro: @State.IsReadOnly
+                @if (State.FieldType == "select")
+                {
+                    <text> | options: @State.Options.Count</text>
+                }]
             </span>
         }
 
@@ -67,8 +71,52 @@
                 </div>
                 break;
 
+            case "select":
+                @if (State.Options.Count > 0)
+                {
+                    @* Static lookup — render <select> với options từ Sys_Lookup *@
+                    <select class="field-input"
+                            disabled="@State.IsReadOnly"
+                            @onchange="HandleChange"
+                            @onblur="HandleBlur">
+                        <option value="">-- Chọn --</option>
+                        @foreach (var opt in State.Options)
+                        {
+                            @if (State.ValueString == opt.ItemCode)
+                            {
+                                <option value="@opt.ItemCode" selected>@opt.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@opt.ItemCode">@opt.Label</option>
+                            }
+                        }
+                    </select>
+                }
+                else
+                {
+                    @* Options chưa load hoặc LookupCode không tồn tại → fallback text *@
+                    <input type="text" class="field-input"
+                           value="@State.ValueString"
+                           disabled="@State.IsReadOnly"
+                           placeholder="(lookup options not loaded)"
+                           @onchange="HandleChange"
+                           @onblur="HandleBlur" />
+                }
+                break;
+
+            case "fklookup":
+                @* FK dynamic lookup — chưa triển khai đầy đủ, hiển thị text input tạm *@
+                <input type="text" class="field-input"
+                       value="@State.ValueString"
+                       disabled="@State.IsReadOnly"
+                       placeholder="(FK lookup — chưa triển khai)"
+                       @onchange="HandleChange"
+                       @onblur="HandleBlur" />
+                break;
+
             default:
-                @* text, select (fallback về text input) *@
+                @* text và các type không nhận dạng được → text input *@
                 <input type="text" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"

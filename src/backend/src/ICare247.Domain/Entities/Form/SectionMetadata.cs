@@ -26,6 +26,12 @@ public sealed class SectionMetadata
     /// <summary>Tên hiển thị của section.</summary>
     public string SectionName { get; init; } = string.Empty;
 
+    /// <summary>
+    /// Tab chứa section này (FK → Ui_Tab.Tab_Id).
+    /// Null = section không thuộc tab nào → FormRunner render phẳng (backward compat).
+    /// </summary>
+    public int? TabId { get; init; }
+
     /// <summary>Thứ tự hiển thị trong form — tăng dần.</summary>
     public int SortOrder { get; init; }
 

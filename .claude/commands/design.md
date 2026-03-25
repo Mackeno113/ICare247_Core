@@ -11,7 +11,7 @@ Kích hoạt **design-agent** để thiết kế giao diện web cho ICare247.
 ### Ví dụ
 
 ```
-/design thiết kế color palette cho ICare247 — healthcare app
+/design thiết kế color palette cho ICare247 web
 /design tạo Design System tokens đầy đủ cho Blazor + DevExpress
 /design spec component Button: primary, secondary, danger variants
 /design UX pattern cho form validation và error feedback

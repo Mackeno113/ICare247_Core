@@ -98,12 +98,32 @@ public sealed class FieldState
     public bool    IsReadOnly { get; set; }
     public List<string> Errors { get; set; } = [];
 
+    /// <summary>
+    /// Mã lookup trong Sys_Lookup — chỉ có giá trị khi LookupSource = "static".
+    /// Dùng để load Options qua LookupApiService.
+    /// </summary>
+    public string? LookupCode { get; init; }
+
+    /// <summary>
+    /// Danh sách options cho select field — load từ Sys_Lookup API.
+    /// Rỗng khi chưa load hoặc không phải select field.
+    /// </summary>
+    public List<LookupOptionDto> Options { get; set; } = [];
+
     /// <summary>Giá trị dạng string để bind vào input element.</summary>
     public string ValueString
     {
         get => Value?.ToString() ?? "";
         set => Value = value;
     }
+}
+
+/// <summary>Một option trong danh sách select — map từ Sys_Lookup item.</summary>
+public sealed class LookupOptionDto
+{
+    public string ItemCode  { get; set; } = "";
+    public string Label     { get; set; } = "";
+    public int    SortOrder { get; set; }
 }
 
 /// <summary>Cài đặt API từ appsettings.json.</summary>

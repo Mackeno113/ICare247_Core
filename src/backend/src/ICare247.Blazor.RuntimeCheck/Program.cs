@@ -41,5 +41,6 @@ builder.Services.AddScoped(sp =>
 // ── Application services ───────────────────────────────────────────────────
 builder.Services.AddScoped<FormApiService>();
 builder.Services.AddScoped<RuntimeApiService>();
+builder.Services.AddScoped<LookupApiService>();
 
 await builder.Build().RunAsync();

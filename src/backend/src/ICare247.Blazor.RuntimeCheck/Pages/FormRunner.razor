@@ -6,6 +6,7 @@
 @page "/form/{FormCode}"
 @inject FormApiService FormApi
 @inject RuntimeApiService RuntimeApi
+@inject LookupApiService LookupApi
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -201,7 +202,12 @@ else if (_form is not null)
                 IsReadOnly = f.IsReadOnly,
                 IsRequired = f.IsRequired,
                 Value      = ParseDefaultValue(f.DefaultValueJson),
+                // Chỉ truyền LookupCode cho static lookup — dynamic FK sẽ xử lý sau
+                LookupCode = f.LookupSource == "static" ? f.LookupCode : null,
             }).ToList();
+
+            // Load Sys_Lookup options cho tất cả static select fields (gọi song song theo code)
+            await LoadLookupOptionsAsync();
 
             // DEBUG: log ra console browser (F12) — xóa sau khi verify xong
             if (DebugMode)
@@ -330,8 +336,25 @@ else if (_form is not null)
                     if (delta.Data.TryGetValue("readOnly", out var ro))
                         fs.IsReadOnly = ToBool(ro);
                     break;
+
+                case "RELOAD_OPTIONS":
+                    // Reload lookup options khi có cascading change (VD: đổi CapToChuc → reload LoaiNhanVien)
+                    // lookupCode trong delta.Data["lookupCode"] ghi đè LookupCode của field
+                    var newCode = delta.Data.TryGetValue("lookupCode", out var lc)
+                        ? lc?.ToString()
+                        : fs.LookupCode;
+                    if (!string.IsNullOrWhiteSpace(newCode))
+                        _ = ReloadFieldOptionsAsync(fs, newCode);
+                    break;
             }
         }
+    }
+
+    /// <summary>Reload options cho 1 field cụ thể (dùng sau RELOAD_OPTIONS delta).</summary>
+    private async Task ReloadFieldOptionsAsync(FieldState fs, string lookupCode)
+    {
+        fs.Options = await LookupApi.GetOptionsAsync(lookupCode);
+        StateHasChanged();
     }
 
     private static bool ToBool(object? v)
@@ -352,23 +375,54 @@ else if (_form is not null)
     }
 
     /// <summary>
+    /// Load Sys_Lookup options cho tất cả static select fields.
+    /// Gọi song song theo LookupCode — mỗi code chỉ gọi API 1 lần.
+    /// </summary>
+    private async Task LoadLookupOptionsAsync()
+    {
+        // Lấy tất cả code cần load (loại bỏ null/empty + duplicate)
+        var codes = _fieldStates
+            .Where(fs => !string.IsNullOrWhiteSpace(fs.LookupCode))
+            .Select(fs => fs.LookupCode!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (codes.Count == 0) return;
+
+        // Gọi song song
+        var optionsMap = await LookupApi.GetOptionsBatchAsync(codes);
+
+        // Gán options vào từng field state theo LookupCode
+        foreach (var fs in _fieldStates)
+        {
+            if (!string.IsNullOrWhiteSpace(fs.LookupCode)
+                && optionsMap.TryGetValue(fs.LookupCode, out var opts))
+                fs.Options = opts;
+        }
+    }
+
+    /// <summary>
     /// Chuyển Editor_Type từ DB sang lowercase type mà FieldRenderer dùng.
     /// DB value → Renderer type:
-    ///   TextBox/Text  → text    | TextArea        → textarea
-    ///   NumberEdit    → number  | DateEdit        → date
-    ///   DateTimeEdit  → datetime| CheckBox/Toggle → bool
-    ///   ComboBox/Select/LookupEdit/Dropdown → select
+    ///   TextBox/Text  → text     | TextArea         → textarea
+    ///   NumberEdit    → number   | DateEdit         → date
+    ///   DateTimeEdit  → datetime | CheckBox/Toggle  → bool
+    ///   ComboBox/RadioGroup/LookupComboBox/Select   → select  (Sys_Lookup)
+    ///   LookupBox     → fklookup (FK dynamic — render text input tạm thời)
     /// </summary>
     private static string NormalizeFieldType(string dbType) => dbType.ToLower() switch
     {
-        "textbox"   or "text"                                => "text",
-        "textarea"  or "memo"                                => "textarea",
-        "numberedit" or "number" or "numericbox"             => "number",
-        "dateedit"  or "date"                                => "date",
-        "datetimeedit" or "datetime"                         => "datetime",
-        "checkbox"  or "toggle" or "bool"                    => "bool",
-        "combobox"  or "select" or "lookupedit"
-            or "dropdown" or "multiselect"                   => "select",
-        _ => "text"   // fallback an toàn — hiển thị text input
+        "textbox"    or "text"                                          => "text",
+        "textarea"   or "memo"                                          => "textarea",
+        "numberedit" or "number" or "numericbox"                        => "number",
+        "dateedit"   or "date"                                          => "date",
+        "datetimeedit" or "datetime"                                    => "datetime",
+        "checkbox"   or "toggle" or "bool"                              => "bool",
+        "combobox"   or "select"   or "lookupedit"
+            or "dropdown" or "multiselect"
+            or "radiogroup" or "lookupcombobox"                         => "select",
+        // LookupBox = FK dynamic lookup — chưa triển khai, hiển thị text input tạm
+        "lookupbox"                                                     => "fklookup",
+        _                                                               => "text"
     };
 }

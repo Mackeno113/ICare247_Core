@@ -86,14 +86,31 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         get => _selectedEditorType;
         set
         {
+            // Nếu đang rời khỏi LookupBox và có config → yêu cầu xác nhận
+            if (!_isLoading
+                && _selectedEditorType == "LookupBox"
+                && value != "LookupBox"
+                && HasFkLookupConfig)
+            {
+                var result = System.Windows.MessageBox.Show(
+                    "Bạn đang đổi kiểu field từ LookupBox sang loại khác.\n" +
+                    "Toàn bộ cấu hình FK Lookup sẽ bị xóa khi lưu.\n\n" +
+                    "Tiếp tục đổi kiểu?",
+                    "Xác nhận đổi kiểu field",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Warning);
+
+                if (result == System.Windows.MessageBoxResult.No) return;
+
+                // User xác nhận → xóa config cũ
+                ClearFkLookupConfig();
+            }
+
             if (SetProperty(ref _selectedEditorType, value))
             {
                 LoadControlPropSchema();
                 RaisePropertyChanged(nameof(IsLookupEditor));
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
-                // Khi chuyển sang lookup editor → load danh sách lookup codes
-                // Bỏ qua khi đang load từ DB (_isLoading=true) để tránh race condition
-                // với await LoadLookupCodesAsync() trong LoadFromDatabaseAsync
                 if (IsLookupEditor && !_isLoading)
                     _ = LoadLookupCodesAsync();
                 IsDirty = true;
@@ -111,6 +128,43 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>True khi EditorType là LookupBox (FK tham chiếu bảng nghiệp vụ).</summary>
     public bool IsFkLookupEditor => SelectedEditorType == "LookupBox";
+
+    /// <summary>True khi đang có cấu hình FK Lookup (dùng để confirm trước khi đổi type).</summary>
+    private bool HasFkLookupConfig =>
+        !string.IsNullOrWhiteSpace(_fkTableName)
+        || !string.IsNullOrWhiteSpace(_fkValueField)
+        || !string.IsNullOrWhiteSpace(_fkFunctionName)
+        || !string.IsNullOrWhiteSpace(_fkSelectSql)
+        || FkPopupColumns.Count > 0;
+
+    /// <summary>Xóa toàn bộ FK Lookup config khi user xác nhận đổi EditorType.</summary>
+    private void ClearFkLookupConfig()
+    {
+        _isRebuildingProps = true;
+        _queryMode       = "table";
+        _fkTableName     = "";
+        _fkValueField    = "";
+        _fkDisplayField  = "";
+        _fkFilterSql     = "";
+        _fkOrderBy       = "";
+        _fkSearchEnabled = true;
+        _fkFunctionName  = "";
+        _fkSelectSql     = "";
+        FkPopupColumns.Clear();
+        FkFilterParams.Clear();
+        FkFunctionParams.Clear();
+        ReloadOnChangeFields.Clear();
+        DataSourceConditions.Clear();
+        _isRebuildingProps = false;
+        // Raise tất cả property liên quan
+        RaisePropertyChanged(nameof(QueryMode));
+        RaisePropertyChanged(nameof(IsTableMode));
+        RaisePropertyChanged(nameof(IsFunctionMode));
+        RaisePropertyChanged(nameof(IsSqlMode));
+        RaisePropertyChanged(nameof(FkTableName));
+        RaisePropertyChanged(nameof(FkValueField));
+        RaisePropertyChanged(nameof(FkDisplayField));
+    }
 
     // ── Query Mode ─────────────────────────────────────────────────
 
@@ -447,6 +501,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
     }
 
+    // ── Layout ───────────────────────────────────────────────
+
+    private byte _colSpan = 1;
+    /// <summary>Độ rộng field trong grid: 1 = 1/3, 2 = 2/3, 3 = full width.</summary>
+    public byte ColSpan
+    {
+        get => _colSpan;
+        set { if (SetProperty(ref _colSpan, value)) IsDirty = true; }
+    }
+
     // ── Control Props tab ────────────────────────────────────
     public ObservableCollection<ControlPropValue> ControlProps { get; } = [];
 
@@ -620,6 +684,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     ColumnCode         = field.ColumnCode;
                     SelectedEditorType = field.EditorType;
                     OrderNo            = field.OrderNo;
+                    ColSpan            = field.ColSpan;
                     LabelKey           = field.LabelKey;
                     // Mặc định bằng LabelKey nếu chưa cấu hình riêng
                     PlaceholderKey     = string.IsNullOrEmpty(field.PlaceholderKey) ? field.LabelKey : field.PlaceholderKey;
@@ -627,131 +692,72 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     IsVisible          = field.IsVisible;
                     IsReadOnly         = field.IsReadOnly;
                     ControlPropsJson   = field.ControlPropsJson ?? "{}";
+
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
-                    // Phải load AvailableLookupCodes TRƯỚC rồi mới set LookupCode
+                    // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
                     if (IsLookupEditor)
                     {
                         await LoadLookupCodesAsync();
-                        try
-                        {
-                            var props = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
-                                field.ControlPropsJson ?? "{}");
-                            if (props?.TryGetValue("lookupCode", out var lc) == true)
-                                LookupCode = lc.GetString() ?? "";
-                        }
-                        catch { /* bỏ qua nếu JSON không hợp lệ */ }
+                        LookupCode = field.LookupCode ?? "";
                     }
 
-                    // ── Restore FK Lookup (LookupBox) ────────────────────
-                    if (IsFkLookupEditor)
+                    // ── Restore FK Lookup (LookupBox) — đọc từ Ui_Field_Lookup ──
+                    // Lookup_Source = "dynamic" → load FieldLookupConfig từ bảng riêng
+                    if (IsFkLookupEditor && field.LookupSource == "dynamic" && _fieldService is not null)
                     {
                         try
                         {
-                            var props = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
-                                field.ControlPropsJson ?? "{}");
-                            if (props is null) goto skipFkRestore;
+                            var cfg = await _fieldService.GetFieldLookupConfigAsync(FieldId, ct);
+                            if (cfg is null) goto skipFkRestore;
 
-                            _isRebuildingProps = true; // tránh rebuild JSON liên tục khi set từng prop
-                            // Common fields
-                            if (props.TryGetValue("queryMode",    out var qm)) QueryMode      = qm.GetString() ?? "table";
-                            if (props.TryGetValue("valueField",   out var vf)) FkValueField   = vf.GetString() ?? "";
-                            if (props.TryGetValue("displayField", out var df)) FkDisplayField = df.GetString() ?? "";
-                            if (props.TryGetValue("orderBy",      out var ob)) FkOrderBy      = ob.GetString() ?? "";
-                            if (props.TryGetValue("searchEnabled",out var se)) FkSearchEnabled = se.GetBoolean();
-                            // Table mode
-                            if (props.TryGetValue("tableName",    out var tn)) FkTableName    = tn.GetString() ?? "";
-                            if (props.TryGetValue("filterSql",    out var fs)) FkFilterSql    = fs.GetString() ?? "";
-                            // Function mode
-                            if (props.TryGetValue("functionName", out var fc)) FkFunctionName = fc.GetString() ?? "";
-                            // SQL mode
-                            if (props.TryGetValue("selectSql",    out var ss)) FkSelectSql    = ss.GetString() ?? "";
-                            _isRebuildingProps = false;
+                            _isRebuildingProps = true;
+                            QueryMode      = cfg.QueryMode;
+                            FkValueField   = cfg.ValueColumn;
+                            FkDisplayField = cfg.DisplayColumn;
+                            FkOrderBy      = cfg.OrderBy ?? "";
+                            FkSearchEnabled = cfg.SearchEnabled;
 
-                            // Restore functionParams (TVF)
-                            FkFunctionParams.Clear();
-                            if (props.TryGetValue("functionParams", out var fps2) && fps2.ValueKind == JsonValueKind.Array)
+                            // Phân tách source theo query mode
+                            switch (cfg.QueryMode)
                             {
-                                foreach (var fp in fps2.EnumerateArray())
-                                {
-                                    var p = new FunctionParam
-                                    {
-                                        Name       = fp.TryGetProperty("name",       out var pn) ? pn.GetString() ?? "" : "",
-                                        SourceType = fp.TryGetProperty("sourceType", out var st) ? st.GetString() ?? "field" : "field",
-                                        FieldRef   = fp.TryGetProperty("fieldRef",   out var fr) ? fr.GetString() ?? "" : "",
-                                        SystemKey  = fp.TryGetProperty("systemKey",  out var sk) ? sk.GetString() ?? "@TenantId" : "@TenantId",
-                                        Type       = fp.TryGetProperty("type",       out var tp) ? tp.GetString() ?? "String" : "String"
-                                    };
-                                    p.PropertyChanged += (_, _) => RebuildControlPropsJson();
-                                    FkFunctionParams.Add(p);
-                                }
+                                case "table":
+                                    FkTableName = cfg.SourceName;
+                                    FkFilterSql = cfg.FilterSql ?? "";
+                                    break;
+                                case "tvf":
+                                    FkFunctionName = cfg.SourceName;
+                                    break;
+                                case "custom_sql":
+                                    FkSelectSql = cfg.SourceName;
+                                    break;
                             }
-
-                            // Restore danh sách cột popup
+                            // Restore danh sách cột popup từ PopupColumnsJson
                             FkPopupColumns.Clear();
-                            if (props.TryGetValue("columns", out var cols) && cols.ValueKind == JsonValueKind.Array)
+                            if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
                             {
-                                foreach (var col in cols.EnumerateArray())
+                                try
                                 {
-                                    var colCfg = new FkColumnConfig
-                                    {
-                                        FieldName = col.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? "" : "",
-                                        Caption   = col.TryGetProperty("caption",   out var cp) ? cp.GetString() ?? "" : "",
-                                        Width     = col.TryGetProperty("width",     out var w)  ? w.GetInt32()        : 150
-                                    };
-                                    colCfg.PropertyChanged += (_, _) => RebuildControlPropsJson();
-                                    FkPopupColumns.Add(colCfg);
+                                    var cols = JsonSerializer.Deserialize<List<JsonElement>>(cfg.PopupColumnsJson);
+                                    if (cols is not null)
+                                        foreach (var col in cols)
+                                        {
+                                            var colCfg = new FkColumnConfig
+                                            {
+                                                FieldName = col.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? "" : "",
+                                                Caption   = col.TryGetProperty("caption",   out var cp) ? cp.GetString() ?? "" : "",
+                                                Width     = col.TryGetProperty("width",     out var w)  ? w.GetInt32() : 150
+                                            };
+                                            colCfg.PropertyChanged += (_, _) => RebuildControlPropsJson();
+                                            FkPopupColumns.Add(colCfg);
+                                        }
                                 }
+                                catch { /* bỏ qua nếu JSON không hợp lệ */ }
                             }
 
-                            // Restore tham số động (filterParams)
-                            FkFilterParams.Clear();
-                            if (props.TryGetValue("filterParams", out var fps) && fps.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var fp in fps.EnumerateArray())
-                                {
-                                    var param = new FkFilterParam
-                                    {
-                                        Param    = fp.TryGetProperty("param",    out var pm) ? pm.GetString() ?? "" : "",
-                                        FieldRef = fp.TryGetProperty("fieldRef", out var fr) ? fr.GetString() ?? "" : "",
-                                        Type     = fp.TryGetProperty("type",     out var tp) ? tp.GetString() ?? "String" : "String"
-                                    };
-                                    param.PropertyChanged += (_, _) => RebuildControlPropsJson();
-                                    FkFilterParams.Add(param);
-                                }
-                            }
-
-                            // Restore reloadOnChange
-                            ReloadOnChangeFields.Clear();
-                            if (props.TryGetValue("reloadOnChange", out var roc) && roc.ValueKind == JsonValueKind.Array)
-                                foreach (var f in roc.EnumerateArray())
-                                    if (f.GetString() is { Length: > 0 } rocCode)
-                                        ReloadOnChangeFields.Add(rocCode);
-
-                            // Restore dataSourceConditions
-                            DataSourceConditions.Clear();
-                            if (props.TryGetValue("dataSourceConditions", out var dsc) && dsc.ValueKind == JsonValueKind.Array)
-                            {
-                                foreach (var item in dsc.EnumerateArray())
-                                {
-                                    var cond = new DataSourceCondition();
-                                    if (item.TryGetProperty("when", out var when))
-                                    {
-                                        cond.WhenField = when.TryGetProperty("field", out var wf) ? wf.GetString() ?? "" : "";
-                                        cond.WhenOp    = when.TryGetProperty("op",    out var wo) ? wo.GetString() ?? "eq" : "eq";
-                                        cond.WhenValue = when.TryGetProperty("value", out var wv) ? wv.GetString() ?? "" : "";
-                                    }
-                                    cond.TableName    = item.TryGetProperty("tableName",    out var tn2) ? tn2.GetString() ?? "" : "";
-                                    cond.DisplayField = item.TryGetProperty("displayField", out var df2) ? df2.GetString() ?? "" : "";
-                                    cond.FilterSql    = item.TryGetProperty("filterSql",    out var fs2) ? fs2.GetString() ?? "" : "";
-                                    cond.PropertyChanged += (_, _) => RebuildControlPropsJson();
-                                    DataSourceConditions.Add(cond);
-                                }
-                            }
-
+                            _isRebuildingProps = false;
                             skipFkRestore:;
                         }
-                        catch { /* bỏ qua nếu JSON không hợp lệ */ }
-                        finally { _isRebuildingProps = false; }
+                        catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }
                     }
                 }
             }
@@ -1353,24 +1359,66 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
+            // Xác định LookupSource theo EditorType
+            var lookupSource = IsLookupEditor   ? "static"
+                             : IsFkLookupEditor ? "dynamic"
+                             : (string?)null;
+
             var field = new FieldConfigRecord
             {
-                FieldId = FieldId,
-                FormId = FormId,
-                SectionId = SectionId > 0 ? SectionId : null,
-                ColumnId = SelectedColumn?.ColumnId ?? 0,
-                ColumnCode = ColumnCode,
-                SectionCode = SectionName,
-                EditorType = SelectedEditorType,
-                LabelKey = LabelKey,
-                PlaceholderKey = PlaceholderKey,
-                TooltipKey = TooltipKey,
-                IsVisible = IsVisible,
-                IsReadOnly = IsReadOnly,
-                OrderNo = OrderNo,
-                ControlPropsJson = ControlPropsJson
+                FieldId          = FieldId,
+                FormId           = FormId,
+                SectionId        = SectionId > 0 ? SectionId : null,
+                ColumnId         = SelectedColumn?.ColumnId ?? 0,
+                ColumnCode       = ColumnCode,
+                SectionCode      = SectionName,
+                EditorType       = SelectedEditorType,
+                LabelKey         = LabelKey,
+                PlaceholderKey   = PlaceholderKey,
+                TooltipKey       = TooltipKey,
+                IsVisible        = IsVisible,
+                IsReadOnly       = IsReadOnly,
+                OrderNo          = OrderNo,
+                ColSpan          = ColSpan,
+                LookupSource     = lookupSource,
+                LookupCode       = IsLookupEditor ? LookupCode : null,
+                // LookupBox: ControlPropsJson không dùng (config lưu trong Ui_Field_Lookup)
+                ControlPropsJson = IsFkLookupEditor ? null : ControlPropsJson
             };
-            await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, _cts.Token);
+
+            // Build lookup config cho dynamic field
+            FieldLookupConfigRecord? lookupConfig = null;
+            if (IsFkLookupEditor)
+            {
+                // Xác định SourceName theo query mode
+                var sourceName = _queryMode switch
+                {
+                    "tvf"        => FkFunctionName,
+                    "custom_sql" => FkSelectSql,
+                    _            => FkTableName          // "table" (default)
+                };
+
+                // Serialize popup columns
+                var popupColumnsJson = FkPopupColumns.Count > 0
+                    ? JsonSerializer.Serialize(FkPopupColumns.Select(c => new
+                        { fieldName = c.FieldName, caption = c.Caption, width = c.Width }))
+                    : null;
+
+                lookupConfig = new FieldLookupConfigRecord
+                {
+                    FieldId        = FieldId,
+                    QueryMode      = _queryMode,
+                    SourceName     = sourceName,
+                    ValueColumn    = FkValueField,
+                    DisplayColumn  = FkDisplayField,
+                    FilterSql      = string.IsNullOrWhiteSpace(FkFilterSql) ? null : FkFilterSql,
+                    OrderBy        = string.IsNullOrWhiteSpace(FkOrderBy)   ? null : FkOrderBy,
+                    SearchEnabled  = FkSearchEnabled,
+                    PopupColumnsJson = popupColumnsJson
+                };
+            }
+
+            await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
         }
         IsDirty = false;
     }
