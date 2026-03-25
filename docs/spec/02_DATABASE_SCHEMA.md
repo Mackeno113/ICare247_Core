@@ -304,7 +304,7 @@
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Lookup_Id | int | PK IDENTITY | |
-| Tenant_Id | int | NOT NULL DEFAULT 0 | 0 = global (dùng chung mọi tenant) |
+| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global (dùng chung mọi tenant) |
 | Lookup_Code | nvarchar(50) | NOT NULL | VD: 'GENDER', 'MARITAL_STATUS', 'BLOOD_TYPE' |
 | Item_Code | nvarchar(50) | NOT NULL | Giá trị lưu vào cột nghiệp vụ. VD: 'NAM', 'NU', 'KXD' |
 | Label_Key | nvarchar(200) | NOT NULL | Key trong Sys_Resource → resolve theo ngôn ngữ |
@@ -312,7 +312,8 @@
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 
 **Constraints:**
-- `UQ_Sys_Lookup (Tenant_Id, Lookup_Code, Item_Code)` — không trùng code trong cùng tenant
+- `UQ_Sys_Lookup_Global`: UNIQUE `(Lookup_Code, Item_Code)` WHERE `Tenant_Id IS NULL`
+- `UQ_Sys_Lookup_Tenant`: UNIQUE `(Lookup_Code, Item_Code, Tenant_Id)` WHERE `Tenant_Id IS NOT NULL`
 - `IX_Sys_Lookup_Code (Tenant_Id, Lookup_Code, Is_Active)` — query nhanh theo code
 
 **Quy tắc sử dụng:**
@@ -332,6 +333,28 @@
 ---
 
 ## Module: UI Form Engine (`Ui_*`)
+
+### Ui_Tab
+> Tab của form. Một form có thể có nhiều tab.
+> Nếu form có 0 hoặc 1 tab → FormRunner bỏ qua tab bar, render phẳng (backward compat).
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Tab_Id | int | PK IDENTITY | |
+| Form_Id | int | NOT NULL FK→Ui_Form | |
+| Tab_Code | nvarchar(100) | NOT NULL | Unique trong form (filtered: Is_Active=1) |
+| Title_Key | nvarchar(150) | NULL | Resource key → Sys_Resource. NULL = không hiện tab label |
+| Icon_Key | nvarchar(100) | NULL | Icon tùy chọn |
+| Order_No | int | NOT NULL DEFAULT 0 | Thứ tự hiển thị |
+| Is_Default | bit | NOT NULL DEFAULT 0 | Tab mở đầu tiên khi form load (max 1 per form) |
+| Is_Active | bit | NOT NULL DEFAULT 1 | |
+
+**Indexes:**
+- `IX_Ui_Tab_Form`: `(Form_Id, Is_Active, Order_No)`
+- `UQ_Ui_Tab_Code`: UNIQUE `(Form_Id, Tab_Code)` WHERE `Is_Active = 1`
+- `UQ_Ui_Tab_Default`: UNIQUE `(Form_Id)` WHERE `Is_Default = 1 AND Is_Active = 1`
+
+---
 
 ### Ui_Form
 > Định nghĩa một form. Gắn với một business table và một platform.
@@ -355,21 +378,24 @@
 ---
 
 ### Ui_Section
-> Nhóm các field trong form thành từng section (tab, panel, group).
+> Nhóm các field trong form thành từng section (group/panel).
+> Thuộc về một tab qua `Tab_Id`. NULL = chưa gắn tab (form phẳng, backward compat).
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Section_Id | int | PK IDENTITY | |
 | Form_Id | int | NOT NULL FK→Ui_Form | |
+| Tab_Id | int | NULL FK→Ui_Tab | NULL = form không dùng tab |
 | Section_Code | nvarchar(100) | NOT NULL | Unique trong form |
 | Title_Key | nvarchar(150) | NULL | Resource key → Sys_Resource |
-| Order_No | int | NOT NULL DEFAULT 0 | Thứ tự hiển thị |
+| Order_No | int | NOT NULL DEFAULT 0 | Thứ tự hiển thị trong tab |
 | Layout_Json | nvarchar(max) | NULL | Cấu hình layout chi tiết (JSON) |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 | Description | nvarchar(500) | NULL | |
 
 **Indexes:**
 - `IX_Ui_Section_Form (Form_Id, Is_Active, Order_No)`
+- `IX_Ui_Section_Tab (Tab_Id, Is_Active, Order_No)` WHERE `Tab_Id IS NOT NULL`
 - `UQ_Ui_Section_Code`: UNIQUE `(Form_Id, Section_Code)` WHERE `Is_Active = 1`
 
 ---
@@ -391,14 +417,42 @@
 | Is_Visible | bit | NOT NULL DEFAULT 1 | |
 | Is_ReadOnly | bit | NOT NULL DEFAULT 0 | |
 | Order_No | int | NOT NULL DEFAULT 0 | Thứ tự trong section |
-| Control_Props_Json | nvarchar(max) | NULL | Props riêng của component (JSON) |
+| Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng trong grid: 1=1/3, 2=2/3, 3=full |
+| Lookup_Source | nvarchar(20) | NULL | NULL / 'static' / 'dynamic' |
+| Lookup_Code | nvarchar(50) | NULL | Tham chiếu Sys_Lookup.Lookup_Code (khi Lookup_Source='static') |
+| Control_Props_Json | nvarchar(max) | NULL | Props UI của component (JSON): placeholder, maxLength, format,... |
 | Version | int | NOT NULL DEFAULT 1 | |
 | Updated_At | datetime | DEFAULT getdate() | |
 | Description | nvarchar(500) | NULL | |
 
+**Constraints:**
+- `CHK_Ui_Field_ColSpan`: `Col_Span BETWEEN 1 AND 3`
+- `CHK_Ui_Field_LookupSource`: `Lookup_Source IN ('static','dynamic') OR Lookup_Source IS NULL`
+- `CHK_Ui_Field_LookupConsistency`: static→Lookup_Code NOT NULL; dynamic/NULL→Lookup_Code NULL
+
 **Indexes:** `IX_Ui_Field_Form (Form_Id, Is_Visible, Order_No)`
 
-> **Lưu ý:** `Is_Required` không có trong bảng này — logic required được định nghĩa qua `Val_Rule` với `Rule_Type_Code = 'Required'` và liên kết qua `Val_Rule_Field`.
+> **Lưu ý:** `Is_Required` không có trong bảng này — logic required được định nghĩa qua `Val_Rule` với `Rule_Type_Code = 'Required'`.
+
+---
+
+### Ui_Field_Lookup
+> Cấu hình FK lookup cho field dynamic (`Lookup_Source = 'dynamic'`).
+> Quan hệ 1-1 với `Ui_Field`. Chỉ tồn tại khi field là dropdown đọc từ bảng/view/TVF/SQL.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Lookup_Cfg_Id | int | PK IDENTITY | |
+| Field_Id | int | NOT NULL UNIQUE FK→Ui_Field | 1-1 với Ui_Field |
+| Query_Mode | nvarchar(20) | NOT NULL DEFAULT 'table' | 'table' / 'tvf' / 'custom_sql' |
+| Source_Name | nvarchar(500) | NOT NULL | Tên bảng/view/TVF hoặc câu SQL tùy chỉnh |
+| Value_Column | nvarchar(100) | NOT NULL | Cột lưu vào DB khi user chọn |
+| Display_Column | nvarchar(100) | NOT NULL | Cột hiển thị trong dropdown |
+| Filter_Sql | nvarchar(max) | NULL | WHERE parameterized. Hỗ trợ @TenantId, @Today, @CurrentUser, @FieldCode |
+| Order_By | nvarchar(200) | NULL | VD: 'Ten_PhongBan ASC' |
+| Search_Enabled | bit | NOT NULL DEFAULT 1 | Cho phép tìm kiếm trong dropdown |
+| Popup_Columns_Json | nvarchar(max) | NULL | Cột hiển thị trong popup grid: `[{"column":"...","title":"...","width":80}]` |
+| Updated_At | datetime | NOT NULL DEFAULT getdate() | |
 
 ---
 
@@ -603,13 +657,18 @@
 Sys_Tenant
     └── Sys_Table (Tenant_Id nullable)
             ├── Sys_Column
-            │       └── Ui_Field ──────────────────── Val_Rule (Field_Id FK) ── Val_Rule_Type
+            │       └── Ui_Field ──────────────── Val_Rule (Field_Id FK) ── Val_Rule_Type
+            │               └── Ui_Field_Lookup  (1-1, khi Lookup_Source='dynamic')
             └── Ui_Form (Table_Id)
-                    ├── Ui_Section
-                    │       └── Ui_Field (Section_Id nullable)
+                    ├── Ui_Tab
+                    │       └── Ui_Section (Tab_Id nullable)
+                    │               └── Ui_Field (Section_Id nullable)
                     ├── Evt_Definition (Form_Id / Field_Id)
                     │       └── Evt_Action ── Evt_Action_Type
                     └── Sys_Dependency
+
+Sys_Lookup (Tenant_Id nullable)
+    → Ui_Field.Lookup_Code  (logic ref, khi Lookup_Source='static')
 
 Sys_Relation  : Sys_Table ←→ Sys_Table
 Ui_Control_Map: Editor_Type + Platform → Control_Name
@@ -637,11 +696,11 @@ Evt_Execution_Log
 
 ## Thống kê
 
-| Module | Số bảng |
-|---|---|
-| System (`Sys_*`) | 16 |
-| UI Form Engine (`Ui_*`) | 4 |
-| Validation (`Val_*`) | 3 |
-| Grammar / AST (`Gram_*`) | 3 |
-| Event Engine (`Evt_*`) | 5 |
-| **Tổng** | **31** |
+| Module | Số bảng | Ghi chú |
+|---|---|---|
+| System (`Sys_*`) | 16 | |
+| UI Form Engine (`Ui_*`) | 6 | +Ui_Tab, +Ui_Field_Lookup (migration 005, 008) |
+| Validation (`Val_*`) | 3 | |
+| Grammar / AST (`Gram_*`) | 3 | |
+| Event Engine (`Evt_*`) | 5 | |
+| **Tổng** | **33** | |

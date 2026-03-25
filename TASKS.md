@@ -8,6 +8,24 @@
 
 ## ✅ Done (session 2026-03-25)
 
+### Phase 10 — Schema Extension: Tab + Lookup (2026-03-25)
+
+> Thảo luận thiết kế + viết migration SQL + cập nhật spec
+
+- [x] Thiết kế multi-tab form: Ui_Form → Ui_Tab → Ui_Section → Ui_Field
+- [x] `005_add_ui_tab.sql` — bảng Ui_Tab (Tab_Code unique, filtered index Is_Default)
+- [x] `006_alter_ui_section_add_tab.sql` — thêm Tab_Id nullable FK vào Ui_Section
+- [x] `007_alter_ui_field_add_cols.sql` — thêm Col_Span (tinyint 1-3), Lookup_Source, Lookup_Code + 3 constraints
+- [x] `008_add_ui_field_lookup.sql` — bảng Ui_Field_Lookup (1-1 với Ui_Field, Query_Mode/Source/Filter/Popup_Columns_Json)
+- [x] `009_fix_sys_lookup_tenant.sql` — fix Sys_Lookup.Tenant_Id: DEFAULT 0 → NULL, rebuild filtered indexes trong transaction
+- [x] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — toàn bộ schema mới + sơ đồ quan hệ + thống kê 33 bảng
+
+**Việc tiếp theo (máy khác):**
+- [ ] Chạy migrations 003→009 trên DB thật (theo thứ tự)
+- [ ] Cập nhật Domain entities: SectionMetadata (+ TabId), FieldMetadata (+ ColSpan, LookupSource, LookupCode)
+- [ ] Cập nhật Repositories: FormRepository, FieldRepository (query có Tab, Col_Span, Lookup)
+- [ ] Cập nhật ConfigStudio: IFieldDataService + FieldConfigViewModel (tab FK Lookup config)
+
 ### Design System — Brand & UI Foundation
 
 - [x] Thảo luận chốt brand direction: "I Care 24/7" — ấm áp, tận tâm, đa ngành
@@ -336,3 +354,8 @@
 | 2026-03-22 | `InitResourceIfMissingAsync` — IF NOT EXISTS INSERT cho Sys_Resource          | Khi save rule tự động tạo bản dịch mặc định nhưng không overwrite bản dịch người dùng đã nhập |
 | 2026-03-22 | Mọi thao tác xóa dữ liệu DB phải confirm dialog, default = No                | Xóa không thể hoàn tác — user cần cơ hội từ chối nếu nhấn nhầm               |
 | 2026-03-22 | `LoadFromDatabaseAsync` tách catch: lỗi bước chính → error banner, KHÔNG fallback mock | Fallback mock với data sai (SoLuong) gây hiểu nhầm nghiêm trọng — lỗi phải hiện rõ |
+| 2026-03-25 | Multi-tab form dùng bảng Ui_Tab riêng (Option A), 0-1 tab = render phẳng như cũ | Rõ ràng, backward compat, không breaking change với form cũ |
+| 2026-03-25 | Col_Span là column riêng trên Ui_Field (tinyint 1-3), không để trong Control_Props_Json | FormRunner cần đọc trực tiếp để build CSS grid — layout/structure phải là column riêng |
+| 2026-03-25 | Ui_Field.Lookup_Source phân biệt 'static' (Sys_Lookup) / 'dynamic' (Ui_Field_Lookup) / NULL | Type-safe, integrity rõ ràng, không phụ thuộc vào JSON string parsing |
+| 2026-03-25 | Ui_Field_Lookup bảng riêng 1-1, Popup_Columns_Json dùng JSON array | Load tách biệt chỉ khi cần, popup columns ít thay đổi + không cần query riêng từng cột |
+| 2026-03-25 | Sys_Lookup.Tenant_Id đổi DEFAULT 0 → NULL = global | Nhất quán với toàn hệ thống (Sys_Table, Sys_Config, Sys_Role đều dùng NULL = global) |

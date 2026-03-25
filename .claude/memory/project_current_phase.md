@@ -64,9 +64,25 @@
 | Module colors assignment | 🔴 Pending |
 | Apply tokens vào Blazor components thực tế | 🔴 Pending |
 
+## Phase 10 — Schema Extension: Tab + Lookup (session 6)
+
+| Component | Status |
+|---|---|
+| Migration 005: Ui_Tab | ✅ SQL viết xong — chưa chạy DB |
+| Migration 006: Ui_Section.Tab_Id | ✅ SQL viết xong — chưa chạy DB |
+| Migration 007: Ui_Field Col_Span + Lookup cols | ✅ SQL viết xong — chưa chạy DB |
+| Migration 008: Ui_Field_Lookup | ✅ SQL viết xong — chưa chạy DB |
+| Migration 009: Fix Sys_Lookup.Tenant_Id | ✅ SQL viết xong — chưa chạy DB |
+| Spec 02_DATABASE_SCHEMA.md | ✅ Cập nhật xong |
+| Domain entities update | 🔴 Pending |
+| Repositories update | 🔴 Pending |
+| ConfigStudio FK Lookup tab | 🔴 Pending |
+
 ## Next Priorities
-1. **Test end-to-end Blazor** — mở `/form/sys_UI_Design?debug=1`, verify labels + field values
-2. **Assign module colors** — khi chốt danh sách module → update `tokens.css`
-3. Blazor: support FieldType `select` (ComboBox — gọi Sys_Lookup API)
-4. MetadataEngine (IMetadataEngine) — backend
-5. Integration tests — backend
+1. **Chạy migrations 003→009** trên DB thật (theo thứ tự)
+2. **Domain entities** — SectionMetadata + FieldMetadata (cols mới)
+3. **Repositories** — FormRepository, FieldRepository (JOIN Ui_Tab, Lookup fields)
+4. **ConfigStudio** — IFieldDataService + FieldConfigViewModel (FK Lookup tab)
+5. **Blazor** — FieldType `select` (LookupBox — gọi Sys_Lookup API)
+6. MetadataEngine (IMetadataEngine) — backend
+7. Integration tests — backend
