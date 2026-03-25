@@ -6,6 +6,20 @@
 
 ---
 
+## ✅ Done (session 2026-03-25)
+
+### Design System — Brand & UI Foundation
+
+- [x] Thảo luận chốt brand direction: "I Care 24/7" — ấm áp, tận tâm, đa ngành
+- [x] Chọn color strategy: Multi-color 3 màu (Coral → Violet → Teal), gradient logo
+- [x] Chọn typography: Plus Jakarta Sans (heading) + Inter (body)
+- [x] Generate `docs/design-system/tokens.css` — toàn bộ CSS custom properties
+- [x] Generate `docs/design-system/README.md` — documentation Design System
+- [x] Tạo `.claude/agents/design-agent.md` — custom agent cho thiết kế UI
+- [x] Tạo `.claude/commands/design.md` — slash command `/design`
+
+---
+
 ## 🟡 Cần làm (Todo)
 
 ### Phase 1 — Foundation

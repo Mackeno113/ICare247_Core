@@ -1,0 +1,475 @@
+/* ═══════════════════════════════════════════════════════════════
+   ICare247 Design System — Core Tokens v1.0
+   Brand: "I Care 24/7" | Style: Colorful · Playful · Approachable
+   Generated: 2026-03-25
+   ─────────────────────────────────────────────────────────────
+   Stack: Blazor WASM + DevExpress
+   Fonts: Plus Jakarta Sans (heading) · Inter (body)
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Google Fonts ─────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap');
+
+:root {
+
+  /* ═══════════════════════════════════════════════════════════
+     BRAND COLORS
+     Coral → Violet → Teal  |  gradient: 135deg
+  ═══════════════════════════════════════════════════════════ */
+
+  /* Coral — "I Care" · Warmth · Energy */
+  --color-coral-50:  #FFF5F5;
+  --color-coral-100: #FFE8E8;
+  --color-coral-200: #FFCECE;
+  --color-coral-300: #FFADAD;
+  --color-coral-400: #FF8C8C;
+  --color-coral-500: #FF6B6B;   /* ← brand base */
+  --color-coral-600: #E84E4E;
+  --color-coral-700: #C93636;
+  --color-coral-800: #A52323;
+  --color-coral-900: #821515;
+  --color-coral-950: #540A0A;
+
+  /* Violet — Platform · Creative · Bridge */
+  --color-violet-50:  #F5F0FF;
+  --color-violet-100: #EAE0FF;
+  --color-violet-200: #D4BFFF;
+  --color-violet-300: #BC98FF;
+  --color-violet-400: #A37BFF;
+  --color-violet-500: #845EF7;   /* ← brand base */
+  --color-violet-600: #6B44E0;
+  --color-violet-700: #552DC4;
+  --color-violet-800: #3E1FA0;
+  --color-violet-900: #2A1278;
+  --color-violet-950: #180A4F;
+
+  /* Teal — "247" · Reliable · Always Fresh */
+  --color-teal-50:  #E0FFF9;
+  --color-teal-100: #B8FFF1;
+  --color-teal-200: #7AFFE6;
+  --color-teal-300: #3DFFD8;
+  --color-teal-400: #00E8C0;
+  --color-teal-500: #00C9A7;   /* ← brand base */
+  --color-teal-600: #00A589;
+  --color-teal-700: #00826C;
+  --color-teal-800: #006050;
+  --color-teal-900: #003F35;
+  --color-teal-950: #001F19;
+
+  /* Brand Gradient */
+  --gradient-brand: linear-gradient(135deg, #FF6B6B 0%, #845EF7 50%, #00C9A7 100%);
+  --gradient-brand-subtle: linear-gradient(135deg,
+    color-mix(in srgb, #FF6B6B 15%, white) 0%,
+    color-mix(in srgb, #845EF7 15%, white) 50%,
+    color-mix(in srgb, #00C9A7 15%, white) 100%);
+
+  /* ═══════════════════════════════════════════════════════════
+     MODULE COLORS — assign khi có danh sách module
+     Placeholder format: thay [COLOR] bằng brand color hoặc mở rộng
+  ═══════════════════════════════════════════════════════════ */
+  --color-module-1: var(--color-coral-500);    /* Module 1 — TBD */
+  --color-module-2: var(--color-violet-500);   /* Module 2 — TBD */
+  --color-module-3: var(--color-teal-500);     /* Module 3 — TBD */
+  /* --color-module-4: #F59E0B;                   Module 4 — mở rộng nếu cần */
+  /* --color-module-5: #3B82F6;                   Module 5 — mở rộng nếu cần */
+
+  /* ═══════════════════════════════════════════════════════════
+     NEUTRAL PALETTE
+  ═══════════════════════════════════════════════════════════ */
+  --color-neutral-0:   #FFFFFF;
+  --color-neutral-50:  #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-500: #64748B;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1E293B;
+  --color-neutral-900: #0F172A;
+  --color-neutral-950: #020617;
+
+  /* ═══════════════════════════════════════════════════════════
+     SEMANTIC COLORS
+  ═══════════════════════════════════════════════════════════ */
+  --color-success-light: #D1FAE5;
+  --color-success:       #10B981;
+  --color-success-dark:  #065F46;
+
+  --color-warning-light: #FEF3C7;
+  --color-warning:       #F59E0B;
+  --color-warning-dark:  #92400E;
+
+  --color-error-light:   #FEE2E2;
+  --color-error:         #EF4444;
+  --color-error-dark:    #991B1B;
+
+  --color-info-light:    #DBEAFE;
+  --color-info:          #3B82F6;
+  --color-info-dark:     #1E40AF;
+
+  /* ═══════════════════════════════════════════════════════════
+     SEMANTIC UI TOKENS — Light Mode
+  ═══════════════════════════════════════════════════════════ */
+
+  /* Backgrounds */
+  --bg-page:        var(--color-neutral-50);    /* #F8FAFC */
+  --bg-surface:     var(--color-neutral-0);     /* #FFFFFF */
+  --bg-surface-2:   var(--color-neutral-100);   /* #F1F5F9 */
+  --bg-overlay:     rgba(15, 23, 42, 0.5);
+
+  /* Text */
+  --text-primary:   var(--color-neutral-900);   /* #0F172A */
+  --text-secondary: var(--color-neutral-500);   /* #64748B */
+  --text-tertiary:  var(--color-neutral-400);   /* #94A3B8 */
+  --text-disabled:  var(--color-neutral-300);   /* #CBD5E1 */
+  --text-inverse:   var(--color-neutral-0);     /* #FFFFFF */
+  --text-brand:     var(--color-violet-600);    /* Violet cho links/accents */
+
+  /* Borders */
+  --border-default: var(--color-neutral-200);   /* #E2E8F0 */
+  --border-strong:  var(--color-neutral-300);   /* #CBD5E1 */
+  --border-focus:   var(--color-violet-500);    /* #845EF7 */
+  --border-error:   var(--color-error);
+
+  /* Interactive */
+  --color-primary:          var(--color-violet-500);   /* Default action */
+  --color-primary-hover:    var(--color-violet-600);
+  --color-primary-active:   var(--color-violet-700);
+  --color-primary-subtle:   var(--color-violet-50);
+  --color-primary-text:     var(--color-neutral-0);
+
+  /* ═══════════════════════════════════════════════════════════
+     TYPOGRAPHY
+  ═══════════════════════════════════════════════════════════ */
+  --font-heading: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Font Sizes */
+  --text-xs:   0.75rem;    /* 12px */
+  --text-sm:   0.875rem;   /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg:   1.125rem;   /* 18px */
+  --text-xl:   1.25rem;    /* 20px */
+  --text-2xl:  1.5rem;     /* 24px */
+  --text-3xl:  1.875rem;   /* 30px */
+  --text-4xl:  2.25rem;    /* 36px */
+  --text-5xl:  3rem;       /* 48px */
+
+  /* Font Weights */
+  --font-normal:   400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+
+  /* Line Heights */
+  --leading-tight:   1.25;    /* Heading */
+  --leading-snug:    1.375;   /* Subheading */
+  --leading-normal:  1.5;     /* Body */
+  --leading-relaxed: 1.625;   /* Long-form content */
+
+  /* Letter Spacing */
+  --tracking-tight:  -0.025em;   /* Large headings */
+  --tracking-normal:  0;
+  --tracking-wide:    0.025em;   /* Uppercase labels */
+  --tracking-wider:   0.05em;
+
+  /* ═══════════════════════════════════════════════════════════
+     SPACING — 8px base
+  ═══════════════════════════════════════════════════════════ */
+  --space-0:  0;
+  --space-px: 1px;
+  --space-1:  0.25rem;    /* 4px  — micro */
+  --space-2:  0.5rem;     /* 8px  — xs */
+  --space-3:  0.75rem;    /* 12px — sm */
+  --space-4:  1rem;       /* 16px — md */
+  --space-5:  1.25rem;    /* 20px */
+  --space-6:  1.5rem;     /* 24px — lg */
+  --space-8:  2rem;       /* 32px — xl */
+  --space-10: 2.5rem;     /* 40px */
+  --space-12: 3rem;       /* 48px — 2xl */
+  --space-16: 4rem;       /* 64px — 3xl */
+  --space-20: 5rem;       /* 80px */
+  --space-24: 6rem;       /* 96px */
+
+  /* ═══════════════════════════════════════════════════════════
+     BORDER RADIUS — Rounded & Friendly
+  ═══════════════════════════════════════════════════════════ */
+  --radius-xs:   0.125rem;   /* 2px  — subtle */
+  --radius-sm:   0.25rem;    /* 4px  — badge, tag nhỏ */
+  --radius-md:   0.5rem;     /* 8px  — button, input */
+  --radius-lg:   0.75rem;    /* 12px — card, dropdown */
+  --radius-xl:   1rem;       /* 16px — panel, sidebar */
+  --radius-2xl:  1.5rem;     /* 24px — modal, dialog */
+  --radius-full: 9999px;     /* pill — badge, chip, avatar */
+
+  /* ═══════════════════════════════════════════════════════════
+     SHADOWS
+  ═══════════════════════════════════════════════════════════ */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+
+  /* Brand shadow — dùng cho focus ring, highlight */
+  --shadow-brand: 0 0 0 3px color-mix(in srgb, var(--color-violet-500) 20%, transparent);
+  --shadow-coral: 0 0 0 3px color-mix(in srgb, var(--color-coral-500) 20%, transparent);
+  --shadow-teal:  0 0 0 3px color-mix(in srgb, var(--color-teal-500) 20%, transparent);
+
+  /* ═══════════════════════════════════════════════════════════
+     TRANSITIONS
+  ═══════════════════════════════════════════════════════════ */
+  --duration-fast:   100ms;
+  --duration-base:   150ms;
+  --duration-slow:   300ms;
+  --ease-default:    cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in:         cubic-bezier(0.4, 0, 1, 1);
+  --ease-out:        cubic-bezier(0, 0, 0.2, 1);
+  --ease-bounce:     cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ═══════════════════════════════════════════════════════════
+     Z-INDEX
+  ═══════════════════════════════════════════════════════════ */
+  --z-base:     0;
+  --z-raised:   10;
+  --z-dropdown: 100;
+  --z-sticky:   200;
+  --z-overlay:  300;
+  --z-modal:    400;
+  --z-toast:    500;
+  --z-tooltip:  600;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPONENT TOKENS
+   Specific tokens cho từng component — override semantic tokens
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+
+  /* ─── Button ─────────────────────────────────────────────── */
+  --btn-height-sm:     2rem;       /* 32px */
+  --btn-height-md:     2.5rem;     /* 40px */
+  --btn-height-lg:     3rem;       /* 48px */
+  --btn-px-sm:         0.75rem;    /* 12px */
+  --btn-px-md:         1rem;       /* 16px */
+  --btn-px-lg:         1.25rem;    /* 20px */
+  --btn-font-sm:       var(--text-sm);
+  --btn-font-md:       var(--text-sm);
+  --btn-font-lg:       var(--text-base);
+  --btn-font-weight:   var(--font-semibold);
+  --btn-radius:        var(--radius-md);
+  --btn-transition:    background-color var(--duration-base) var(--ease-default),
+                       transform var(--duration-fast) var(--ease-default),
+                       box-shadow var(--duration-base) var(--ease-default);
+
+  /* Primary button */
+  --btn-primary-bg:           var(--color-violet-500);
+  --btn-primary-bg-hover:     var(--color-violet-600);
+  --btn-primary-bg-active:    var(--color-violet-700);
+  --btn-primary-bg-disabled:  var(--color-neutral-200);
+  --btn-primary-text:         var(--color-neutral-0);
+  --btn-primary-text-disabled:var(--color-neutral-400);
+
+  /* Secondary button */
+  --btn-secondary-bg:          var(--color-neutral-0);
+  --btn-secondary-bg-hover:    var(--color-neutral-100);
+  --btn-secondary-bg-active:   var(--color-neutral-200);
+  --btn-secondary-border:      var(--border-default);
+  --btn-secondary-border-hover:var(--color-neutral-300);
+  --btn-secondary-text:        var(--text-primary);
+
+  /* Danger button */
+  --btn-danger-bg:          var(--color-error);
+  --btn-danger-bg-hover:    #DC2626;
+  --btn-danger-bg-active:   #B91C1C;
+  --btn-danger-text:        var(--color-neutral-0);
+
+  /* Ghost button */
+  --btn-ghost-bg:           transparent;
+  --btn-ghost-bg-hover:     var(--color-violet-50);
+  --btn-ghost-text:         var(--color-violet-600);
+  --btn-ghost-text-hover:   var(--color-violet-700);
+
+  /* ─── Input / Editor ─────────────────────────────────────── */
+  --input-height-sm:   2rem;       /* 32px */
+  --input-height-md:   2.5rem;     /* 40px */
+  --input-height-lg:   3rem;       /* 48px */
+  --input-px:          0.75rem;    /* 12px */
+  --input-font:        var(--text-sm);
+  --input-radius:      var(--radius-md);
+
+  --input-bg:           var(--color-neutral-0);
+  --input-bg-disabled:  var(--color-neutral-100);
+  --input-border:       var(--border-default);
+  --input-border-hover: var(--color-neutral-300);
+  --input-border-focus: var(--color-violet-500);
+  --input-border-error: var(--color-error);
+  --input-text:         var(--text-primary);
+  --input-placeholder:  var(--text-tertiary);
+  --input-label:        var(--text-secondary);
+  --input-label-font:   var(--text-sm);
+  --input-label-weight: var(--font-medium);
+  --input-helper-font:  var(--text-xs);
+  --input-shadow-focus: var(--shadow-brand);
+  --input-shadow-error: 0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent);
+  --input-transition:   border-color var(--duration-base) var(--ease-default),
+                        box-shadow var(--duration-base) var(--ease-default);
+
+  /* ─── Card ───────────────────────────────────────────────── */
+  --card-bg:         var(--bg-surface);
+  --card-border:     var(--border-default);
+  --card-radius:     var(--radius-lg);
+  --card-shadow:     var(--shadow-sm);
+  --card-shadow-hover: var(--shadow-md);
+  --card-padding-sm: var(--space-4);
+  --card-padding-md: var(--space-6);
+  --card-padding-lg: var(--space-8);
+
+  /* ─── Badge / Chip ───────────────────────────────────────── */
+  --badge-radius:      var(--radius-full);
+  --badge-px:          0.5rem;
+  --badge-py:          0.125rem;
+  --badge-font:        var(--text-xs);
+  --badge-font-weight: var(--font-semibold);
+
+  /* ─── Table ──────────────────────────────────────────────── */
+  --table-header-bg:        var(--color-neutral-50);
+  --table-header-text:      var(--text-secondary);
+  --table-header-font:      var(--text-xs);
+  --table-header-weight:    var(--font-semibold);
+  --table-header-tracking:  var(--tracking-wide);
+  --table-row-border:       var(--border-default);
+  --table-row-hover:        var(--color-neutral-50);
+  --table-row-selected:     var(--color-violet-50);
+  --table-row-height:       3rem;      /* 48px */
+  --table-cell-px:          var(--space-4);
+  --table-cell-font:        var(--text-sm);
+
+  /* ─── Modal / Popup ──────────────────────────────────────── */
+  --modal-bg:         var(--bg-surface);
+  --modal-radius:     var(--radius-2xl);
+  --modal-shadow:     var(--shadow-xl);
+  --modal-padding:    var(--space-6);
+  --modal-max-sm:     28rem;    /* 448px */
+  --modal-max-md:     36rem;    /* 576px */
+  --modal-max-lg:     48rem;    /* 768px */
+
+  /* ─── Sidebar / Navigation ───────────────────────────────── */
+  --sidebar-width:        16rem;     /* 256px */
+  --sidebar-width-collapsed: 4rem;  /* 64px */
+  --sidebar-bg:           var(--color-neutral-900);
+  --sidebar-text:         var(--color-neutral-300);
+  --sidebar-text-active:  var(--color-neutral-0);
+  --sidebar-item-radius:  var(--radius-md);
+  --sidebar-item-hover:   rgba(255,255,255, 0.06);
+  --sidebar-item-active:  rgba(255,255,255, 0.12);
+
+  /* ─── Toast / Notification ───────────────────────────────── */
+  --toast-radius:    var(--radius-lg);
+  --toast-shadow:    var(--shadow-lg);
+  --toast-min-width: 20rem;    /* 320px */
+  --toast-max-width: 28rem;    /* 448px */
+
+  /* ─── Tabs ───────────────────────────────────────────────── */
+  --tab-height:         2.5rem;
+  --tab-px:             var(--space-4);
+  --tab-font:           var(--text-sm);
+  --tab-font-weight:    var(--font-medium);
+  --tab-active-color:   var(--color-violet-600);
+  --tab-active-border:  2px solid var(--color-violet-500);
+  --tab-inactive-color: var(--text-secondary);
+  --tab-hover-bg:       var(--color-neutral-100);
+
+  /* ─── Toolbar ─────────────────────────────────────────────── */
+  --toolbar-height:     3.5rem;    /* 56px */
+  --toolbar-bg:         var(--bg-surface);
+  --toolbar-border:     var(--border-default);
+  --toolbar-px:         var(--space-4);
+  --toolbar-shadow:     var(--shadow-xs);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   DEVEXPRESS OVERRIDES
+   CSS variables để override DevExpress theme
+   Áp dụng sau khi import dx.theme.css
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* Buttons */
+  --dx-color-primary:             var(--color-violet-500);
+  --dx-color-primary-dark:        var(--color-violet-600);
+  --dx-color-primary-darker:      var(--color-violet-700);
+  --dx-color-primary-light:       var(--color-violet-50);
+
+  /* Editors (TextBox, DateEdit, ComboBox...) */
+  --dx-editor-border-color:       var(--border-default);
+  --dx-editor-border-radius:      var(--radius-md);
+  --dx-editor-focused-border:     var(--color-violet-500);
+  --dx-editor-error-border:       var(--color-error);
+
+  /* Grid */
+  --dx-grid-header-bg:            var(--table-header-bg);
+  --dx-grid-row-hover-bg:         var(--table-row-hover);
+  --dx-grid-row-selected-bg:      var(--table-row-selected);
+  --dx-grid-border-color:         var(--border-default);
+
+  /* Popup */
+  --dx-popup-border-radius:       var(--radius-2xl);
+
+  /* Tab */
+  --dx-tab-selected-color:        var(--tab-active-color);
+}
+
+/* ─── DevExpress component overrides ─────────────────────────── */
+.dxbl-btn-primary {
+  background: var(--btn-primary-bg);
+  border-radius: var(--btn-radius);
+  font-family: var(--font-heading);
+  font-weight: var(--btn-font-weight);
+  transition: var(--btn-transition);
+}
+.dxbl-btn-primary:hover  { background: var(--btn-primary-bg-hover); }
+.dxbl-btn-primary:active { background: var(--btn-primary-bg-active); transform: scale(0.98); }
+
+.dxbl-editors-input {
+  border-radius: var(--input-radius);
+  font-family: var(--font-body);
+  font-size: var(--input-font);
+  transition: var(--input-transition);
+}
+.dxbl-editors-input:focus-within {
+  border-color: var(--input-border-focus);
+  box-shadow: var(--input-shadow-focus);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+═══════════════════════════════════════════════════════════════ */
+
+/* Brand gradient text */
+.text-gradient-brand {
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Brand gradient background */
+.bg-gradient-brand { background: var(--gradient-brand); }
+.bg-gradient-brand-subtle { background: var(--gradient-brand-subtle); }
+
+/* Module accent colors */
+.accent-module-1 { --module-color: var(--color-module-1); }
+.accent-module-2 { --module-color: var(--color-module-2); }
+.accent-module-3 { --module-color: var(--color-module-3); }
+
+/* Focus visible */
+:focus-visible {
+  outline: 2px solid var(--color-violet-500);
+  outline-offset: 2px;
+}

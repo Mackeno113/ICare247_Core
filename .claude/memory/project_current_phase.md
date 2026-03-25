@@ -51,8 +51,22 @@
 | Test end-to-end (labels, field values, debug mode) | 🔴 Pending |
 | FieldType `select` — LookupBox với GET Sys_Lookup | 🔴 Pending |
 
+## Design System — Khởi động (session 5)
+
+| Component | Status |
+|---|---|
+| Brand direction chốt: "I Care 24/7", đa ngành, Colorful/Playful | ✅ Done |
+| Color system: Coral → Violet → Teal, gradient logo | ✅ Done |
+| Typography: Plus Jakarta Sans + Inter | ✅ Done |
+| `docs/design-system/tokens.css` — CSS custom properties đầy đủ | ✅ Done |
+| `docs/design-system/README.md` — documentation | ✅ Done |
+| `.claude/agents/design-agent.md` — custom agent | ✅ Done |
+| Module colors assignment | 🔴 Pending |
+| Apply tokens vào Blazor components thực tế | 🔴 Pending |
+
 ## Next Priorities
 1. **Test end-to-end Blazor** — mở `/form/sys_UI_Design?debug=1`, verify labels + field values
-2. Blazor: support FieldType `select` (ComboBox — gọi Sys_Lookup API)
-3. MetadataEngine (IMetadataEngine) — backend
-4. Integration tests — backend
+2. **Assign module colors** — khi chốt danh sách module → update `tokens.css`
+3. Blazor: support FieldType `select` (ComboBox — gọi Sys_Lookup API)
+4. MetadataEngine (IMetadataEngine) — backend
+5. Integration tests — backend
