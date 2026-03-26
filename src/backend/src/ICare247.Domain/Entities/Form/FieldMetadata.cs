@@ -68,10 +68,17 @@ public sealed class FieldMetadata
     public bool IsReadOnly { get; init; }
 
     /// <summary>
-    /// Field bắt buộc nhập — xác định bởi Val_Rule, không phải Ui_Field.
-    /// Giá trị ban đầu = false, có thể thay đổi runtime qua UiDelta SET_REQUIRED.
+    /// Field bắt buộc nhập theo cấu hình tĩnh (Ui_Field.Is_Required — ADR-011).
+    /// Có thể override runtime qua UiDelta SET_REQUIRED.
     /// </summary>
     public bool IsRequired { get; init; }
+
+    /// <summary>
+    /// Field có thể tương tác hay không (Ui_Field.Is_Enabled — ADR-012).
+    /// false = grayout, không nhập được, không submit giá trị.
+    /// Có thể override runtime qua UiDelta SET_ENABLED.
+    /// </summary>
+    public bool IsEnabled { get; init; } = true;
 
     /// <summary>
     /// Độ rộng field trong grid layout 4-column (Ui_Field.Col_Span).

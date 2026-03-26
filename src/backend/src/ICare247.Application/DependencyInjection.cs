@@ -49,6 +49,10 @@ public static class DependencyInjection
         // ── Event Engine — scoped vì phụ thuộc scoped repositories + ValidationEngine ──
         services.AddScoped<IEventEngine, EventEngine>();
 
+        // ── Metadata Engine — scoped vì phụ thuộc scoped repositories ──────────
+        // Load FormMetadata + ResourceMap với L1+L2 cache — dùng cho RuntimeController.
+        services.AddScoped<IMetadataEngine, MetadataEngine>();
+
         return services;
     }
 }

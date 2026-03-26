@@ -686,6 +686,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand<RuleSummaryDto> DeleteRuleCommand { get; }
     public DelegateCommand AddEventCommand { get; }
     public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
+    public DelegateCommand<EventSummaryDto> DeleteEventCommand { get; }
 
     public FieldConfigViewModel(
         IRegionManager regionManager,
@@ -711,9 +712,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ManageI18nCommand = new DelegateCommand(ExecuteManageI18n);
         AddRuleCommand  = new DelegateCommand(ExecuteAddRule);
         OpenRuleCommand = new DelegateCommand<RuleSummaryDto>(ExecuteOpenRule);
-        DeleteRuleCommand    = new DelegateCommand<RuleSummaryDto>(ExecuteDeleteRule);
-        AddEventCommand = new DelegateCommand(ExecuteAddEvent);
-        OpenEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
+        DeleteRuleCommand    = new DelegateCommand<RuleSummaryDto>(async r => await ExecuteDeleteRuleAsync(r));
+        AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
+        OpenEventCommand   = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
+        DeleteEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteDeleteEvent);
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
@@ -1379,6 +1381,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             LinkedRules[i].OrderNo = i + 1;
     }
 
+    private void ReindexEventOrders()
+    {
+        for (int i = 0; i < LinkedEvents.Count; i++)
+            LinkedEvents[i].OrderNo = i + 1;
+    }
+
     // ── Command handlers ─────────────────────────────────────
 
     private async Task ExecuteSaveAsync()
@@ -1500,9 +1508,23 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.ValidationRuleEditor, p);
     }
 
-    private void ExecuteDeleteRule(RuleSummaryDto? rule)
+    private async Task ExecuteDeleteRuleAsync(RuleSummaryDto? rule)
     {
         if (rule is null) return;
+
+        // Xác nhận trước khi xóa
+        var confirm = System.Windows.MessageBox.Show(
+            $"Xóa rule [{rule.RuleTypeCode}] — {rule.ErrorKey}?\nThao tác này không thể hoàn tác.",
+            "Xác nhận xóa rule",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        // Xóa DB nếu rule đã được lưu (RuleId > 0)
+        if (rule.RuleId > 0 && _ruleService is not null)
+            await _ruleService.DeleteRuleAsync(rule.RuleId, _cts.Token);
+
         LinkedRules.Remove(rule);
         ReindexRuleOrders();
         IsDirty = true;
@@ -1517,6 +1539,28 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             { "mode", "new" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, p);
+    }
+
+    private async void ExecuteDeleteEvent(EventSummaryDto? evt)
+    {
+        if (evt is null) return;
+
+        // Xác nhận trước khi xóa — default No, không thể hoàn tác
+        var confirm = System.Windows.MessageBox.Show(
+            $"Xóa event [{evt.TriggerCode}] → '{evt.FieldTarget}'?\nThao tác này không thể hoàn tác.",
+            "Xác nhận xóa event",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        // Xóa DB nếu event đã được lưu (EventId > 0)
+        if (evt.EventId > 0 && _eventService is not null)
+            await _eventService.DeleteEventAsync(evt.EventId, _cts.Token);
+
+        LinkedEvents.Remove(evt);
+        ReindexEventOrders();
+        IsDirty = true;
     }
 
     private void ExecuteOpenEvent(EventSummaryDto? evt)

@@ -6,6 +6,7 @@
 using ICare247.Application.Engines;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine.Models;
+using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Rule;
 using ICare247.Domain.ValueObjects;
 
@@ -16,6 +17,7 @@ public sealed class ValidationEngineTests
     private readonly ValidationEngine _engine;
     private readonly StubRuleRepository _ruleRepo;
     private readonly StubDependencyRepository _depRepo;
+    private readonly StubFieldRepository _fieldRepo;
 
     public ValidationEngineTests()
     {
@@ -25,9 +27,10 @@ public sealed class ValidationEngineTests
         var compiler = new AstCompiler(registry);
         var astEngine = new AstEngine(parser, compiler);
 
-        _ruleRepo = new StubRuleRepository();
-        _depRepo = new StubDependencyRepository();
-        _engine = new ValidationEngine(astEngine, _ruleRepo, _depRepo);
+        _ruleRepo  = new StubRuleRepository();
+        _depRepo   = new StubDependencyRepository();
+        _fieldRepo = new StubFieldRepository();
+        _engine = new ValidationEngine(astEngine, _ruleRepo, _depRepo, _fieldRepo);
     }
 
     // ── ValidateFieldAsync ──────────────────────────────────────
@@ -248,6 +251,131 @@ public sealed class ValidationEngineTests
         Assert.Equal("warning", result.Results[0].Severity);
     }
 
+    // ── Length rule ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task ValidateField_LengthRule_TooShort_ReturnsFail()
+    {
+        // len(Phone) >= 10 && len(Phone) <= 15 → fail khi Phone = "123" (3 ký tự)
+        var expr = """
+        {
+          "type":"binary","op":"&&",
+          "left":{
+            "type":"binary","op":">=",
+            "left":{"type":"function_call","name":"len","args":[{"type":"identifier","name":"Phone"}]},
+            "right":{"type":"literal","value":10}
+          },
+          "right":{
+            "type":"binary","op":"<=",
+            "left":{"type":"function_call","name":"len","args":[{"type":"identifier","name":"Phone"}]},
+            "right":{"type":"literal","value":15}
+          }
+        }
+        """;
+
+        _ruleRepo.SetFieldRules(1, "Phone", 1, new List<RuleMetadata>
+        {
+            Rule(1, "Phone", "Length", expressionJson: expr,
+                errorMessage: "Số điện thoại phải từ 10 đến 15 ký tự")
+        });
+
+        var result = await _engine.ValidateFieldAsync(1, "Phone", "123", EvaluationContext.Empty, 1);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("Số điện thoại phải từ 10 đến 15 ký tự", result.Results[0].Message);
+    }
+
+    [Fact]
+    public async Task ValidateField_LengthRule_ValidLength_ReturnsValid()
+    {
+        var expr = """
+        {
+          "type":"binary","op":"&&",
+          "left":{
+            "type":"binary","op":">=",
+            "left":{"type":"function_call","name":"len","args":[{"type":"identifier","name":"Phone"}]},
+            "right":{"type":"literal","value":10}
+          },
+          "right":{
+            "type":"binary","op":"<=",
+            "left":{"type":"function_call","name":"len","args":[{"type":"identifier","name":"Phone"}]},
+            "right":{"type":"literal","value":15}
+          }
+        }
+        """;
+
+        _ruleRepo.SetFieldRules(1, "Phone", 1, new List<RuleMetadata>
+        {
+            Rule(1, "Phone", "Length", expressionJson: expr,
+                errorMessage: "Số điện thoại phải từ 10 đến 15 ký tự")
+        });
+
+        // "0123456789" = 10 ký tự → pass
+        var result = await _engine.ValidateFieldAsync(1, "Phone", "0123456789", EvaluationContext.Empty, 1);
+
+        Assert.True(result.IsValid);
+    }
+
+    // ── Compare rule ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task ValidateField_CompareRule_EndDateBeforeStart_ReturnsFail()
+    {
+        // EndDate >= StartDate → fail khi EndDate < StartDate
+        var expr = """
+        {
+          "type":"binary","op":">=",
+          "left":{"type":"identifier","name":"EndDate"},
+          "right":{"type":"identifier","name":"StartDate"}
+        }
+        """;
+
+        _ruleRepo.SetFieldRules(1, "EndDate", 1, new List<RuleMetadata>
+        {
+            Rule(1, "EndDate", "Compare", expressionJson: expr,
+                errorMessage: "Ngày kết thúc phải sau ngày bắt đầu")
+        });
+
+        var ctx = new EvaluationContext(new Dictionary<string, object?>
+        {
+            ["StartDate"] = "2025-06-01",
+            ["EndDate"]   = "2025-01-01"   // trước StartDate → fail
+        });
+
+        var result = await _engine.ValidateFieldAsync(1, "EndDate", "2025-01-01", ctx, 1);
+
+        Assert.False(result.IsValid);
+        Assert.Equal("Ngày kết thúc phải sau ngày bắt đầu", result.Results[0].Message);
+    }
+
+    [Fact]
+    public async Task ValidateField_CompareRule_EndDateAfterStart_ReturnsValid()
+    {
+        var expr = """
+        {
+          "type":"binary","op":">=",
+          "left":{"type":"identifier","name":"EndDate"},
+          "right":{"type":"identifier","name":"StartDate"}
+        }
+        """;
+
+        _ruleRepo.SetFieldRules(1, "EndDate", 1, new List<RuleMetadata>
+        {
+            Rule(1, "EndDate", "Compare", expressionJson: expr,
+                errorMessage: "Ngày kết thúc phải sau ngày bắt đầu")
+        });
+
+        var ctx = new EvaluationContext(new Dictionary<string, object?>
+        {
+            ["StartDate"] = "2025-01-01",
+            ["EndDate"]   = "2025-06-01"   // sau StartDate → pass
+        });
+
+        var result = await _engine.ValidateFieldAsync(1, "EndDate", "2025-06-01", ctx, 1);
+
+        Assert.True(result.IsValid);
+    }
+
     // ── ValidateFormAsync ───────────────────────────────────────
 
     [Fact]
@@ -290,9 +418,10 @@ public sealed class ValidationEngineTests
 
         var result = await _engine.ValidateFormAsync(1, ctx, 1);
 
-        Assert.Equal(2, result.Count);
+        // Chỉ field có lỗi được đưa vào result — Age pass nên không có trong dictionary
+        Assert.Single(result);
         Assert.False(result["Name"].IsValid);
-        Assert.True(result["Age"].IsValid);
+        Assert.False(result.ContainsKey("Age")); // Age pass >= 0, không fail
     }
 
     // ── Topological Sort ────────────────────────────────────────
@@ -420,6 +549,33 @@ internal sealed class StubRuleRepository : IRuleRepository
               new Dictionary<string, IReadOnlyList<RuleMetadata>>();
         return Task.FromResult(result);
     }
+}
+
+internal sealed class StubFieldRepository : IFieldRepository
+{
+    private readonly Dictionary<int, List<FieldMetadata>> _fields = new();
+
+    public void SetFields(int formId, params FieldMetadata[] fields)
+    {
+        _fields[formId] = [.. fields];
+    }
+
+    public Task<IReadOnlyList<FieldMetadata>> GetByFormIdAsync(
+        int formId, int tenantId, CancellationToken ct = default)
+    {
+        var result = _fields.TryGetValue(formId, out var list)
+            ? (IReadOnlyList<FieldMetadata>)list
+            : Array.Empty<FieldMetadata>();
+        return Task.FromResult(result);
+    }
+
+    public Task<FieldMetadata?> GetByIdAsync(
+        int fieldId, int tenantId, CancellationToken ct = default)
+        => Task.FromResult<FieldMetadata?>(null);
+
+    public Task<IReadOnlyList<FieldMetadata>> GetBySectionIdAsync(
+        int sectionId, int tenantId, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<FieldMetadata>>(Array.Empty<FieldMetadata>());
 }
 
 internal sealed class StubDependencyRepository : IDependencyRepository

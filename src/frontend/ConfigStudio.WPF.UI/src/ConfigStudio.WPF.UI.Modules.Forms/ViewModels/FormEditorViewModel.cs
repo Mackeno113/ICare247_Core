@@ -660,7 +660,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsFormCodeDuplicate = false;
             Sections.Clear();
             Events.Clear();
-            LoadDefaultPermissions();
+            _ = LoadPermissionsAsync();
             ActiveTabIndex     = 0; // Mở tab "Thông tin Form"
             IsDirty            = false;
             _ = LoadTableLookupSafeAsync();
@@ -828,8 +828,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 });
             }
 
-            // ── 5. Permissions — TODO(phase2): load từ Sys_Role ──
-            LoadDefaultPermissions();
+            // ── 5. Permissions: load từ Sys_Role (WPF-06) ────────
+            await LoadPermissionsAsync(ct);
 
             RaisePropertyChanged(nameof(TotalSections));
             RaisePropertyChanged(nameof(TotalFields));
@@ -873,11 +873,34 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                         ?? TableLookupItems.FirstOrDefault();
     }
 
-    /// <summary>Load danh sách roles mặc định với quyền form.</summary>
-    private void LoadDefaultPermissions()
+    /// <summary>
+    /// WPF-06: Load danh sách roles thực từ <c>Sys_Role</c> qua <see cref="IFormDataService.GetRolesAsync"/>.
+    /// Fallback sang hardcoded nếu chưa cấu hình DB hoặc bảng chưa có data.
+    /// </summary>
+    private async Task LoadPermissionsAsync(CancellationToken ct = default)
     {
         Permissions.Clear();
-        // TODO(phase2): gọi API GetRoleLookup() để lấy danh sách roles thực từ Sys_Role
+
+        if (_formDataService is not null && _appConfig is { IsConfigured: true })
+        {
+            var roles = await _formDataService.GetRolesAsync(_appConfig.TenantId, ct);
+            if (roles.Count > 0)
+            {
+                foreach (var r in roles)
+                    Permissions.Add(new FormPermissionRow
+                    {
+                        RoleId          = r.RoleId,
+                        RoleName        = r.RoleName,
+                        RoleDescription = r.RoleCode,
+                        CanRead         = true,
+                        CanWrite        = false,
+                        CanSubmit       = false
+                    });
+                return;
+            }
+        }
+
+        // Fallback hardcoded khi chưa cấu hình DB hoặc Sys_Role chưa có data
         Permissions.Add(new FormPermissionRow { RoleId = 1, RoleName = "Admin",    RoleDescription = "Quản trị hệ thống",           CanRead = true,  CanWrite = true,  CanSubmit = true  });
         Permissions.Add(new FormPermissionRow { RoleId = 2, RoleName = "Manager",  RoleDescription = "Quản lý nghiệp vụ",           CanRead = true,  CanWrite = true,  CanSubmit = true  });
         Permissions.Add(new FormPermissionRow { RoleId = 3, RoleName = "Staff",    RoleDescription = "Nhân viên nhập liệu",         CanRead = true,  CanWrite = true,  CanSubmit = false });
@@ -1330,7 +1353,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         if (SelectedNode.NodeType == FormNodeType.Section)
         {
-            // TODO(phase2): Confirm dialog trước khi xóa section (kèm tất cả fields)
+            // WPF-04: Confirm trước khi xóa section vì kéo theo tất cả fields bên trong
+            var fieldCount = SelectedNode.Children.Count;
+            var msg = fieldCount > 0
+                ? $"Xóa section '{SelectedNode.DisplayName}' và {fieldCount} field bên trong?\nThao tác này không thể hoàn tác."
+                : $"Xóa section '{SelectedNode.DisplayName}'?\nThao tác này không thể hoàn tác.";
+
+            var confirm = System.Windows.MessageBox.Show(
+                msg, "Xác nhận xóa section",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
             Sections.Remove(SelectedNode);
             RaisePropertyChanged(nameof(TotalSections));
             RaisePropertyChanged(nameof(TotalFields));
@@ -1348,6 +1383,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _autoSave?.NotifyDirty();
         _linting?.NotifyChanged();
     }
+
 
     private void ExecuteMoveUp()
     {
@@ -1646,7 +1682,24 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteBackToList()
     {
-        // TODO(phase2): Confirm nếu IsDirty trước khi navigate back
+        // WPF-05: Nếu có thay đổi chưa lưu, hỏi user trước khi thoát
+        if (IsDirty)
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Form có thay đổi chưa lưu.\nBạn có muốn lưu trước khi quay lại không?",
+                "Thay đổi chưa lưu",
+                System.Windows.MessageBoxButton.YesNoCancel,
+                System.Windows.MessageBoxImage.Question);
+
+            if (answer == System.Windows.MessageBoxResult.Cancel) return;
+
+            if (answer == System.Windows.MessageBoxResult.Yes)
+            {
+                // Fire-and-forget: ExecuteSaveAsync tự xử lý lỗi nội bộ
+                _ = ExecuteSaveAsync();
+            }
+        }
+
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormManager);
     }
 

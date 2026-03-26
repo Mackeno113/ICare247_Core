@@ -26,16 +26,17 @@
   - INSERT `Evt_Action_Type`: `SHOW_MESSAGE`  — `{"messageKey":"string","severity":"info|warn|error"}`
 - [ ] **Chạy migrations 010–012 trên DB thật**
 
-### Wave B — Backend (ICare247.Domain + Infrastructure)
+### Wave B — Backend ✅ (2026-03-26)
 
-- [ ] `FieldMetadata.cs` — thêm `IsRequired`, `IsEnabled`
-- [ ] `FieldRepository.cs` — thêm `Is_Required`, `Is_Enabled` vào SELECT/INSERT/UPDATE
-- [ ] `ValidationEngine.cs` — implement rule type `Length` (dùng `len()` function)
-- [ ] `ValidationEngine.cs` — implement rule type `Compare` (resolve OtherField từ EvaluationContext)
-- [ ] `EventEngine.cs` — thêm handler cho `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
-- [ ] `UiDelta.cs` (nếu có) — thêm `enabledFields`, `clearedFields`, `messages` vào delta
-- [ ] Bỏ rule type `Required` khỏi Val_Rule_Type seed (hoặc deprecated — giữ backward compat)
-- [ ] Build verify backend — 0 errors, 0 warnings
+- [x] `FieldMetadata.cs` — thêm `IsRequired`, `IsEnabled`
+- [x] `FieldRepository.cs` — thêm `Is_Required`, `Is_Enabled` vào SELECT
+- [x] `ValidationEngine.cs` — Length + Compare rules: supported via AST evaluation (len() đã có trong BuiltinFunctions) + unit tests xác nhận (145/145 pass)
+- [x] `EventEngine.cs` — thêm handler cho `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+- [x] `UiDelta.cs` — thêm comment 3 action types mới
+- [x] Required rule: giữ backward compat (deprecated comment), không xóa (ADR-011)
+- [x] Resource System: IResourceRepository, ResourceResolver, MetadataEngine, CacheKeys mới
+- [x] RuntimeController: dùng IMetadataEngine thay IFormRepository
+- [x] Build verify — 0 errors, 0 warnings, 145/145 tests
 
 ### Wave C — ConfigStudio WPF ✅ (commit 707c882, 2026-03-26)
 

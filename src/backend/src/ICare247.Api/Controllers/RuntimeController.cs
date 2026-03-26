@@ -20,23 +20,23 @@ namespace ICare247.Api.Controllers;
 public sealed class RuntimeController : ControllerBase
 {
     private readonly IValidationEngine _validationEngine;
-    private readonly IEventEngine _eventEngine;
-    private readonly IFormRepository _formRepository;
-    private readonly ITenantContext _tenant;
+    private readonly IEventEngine      _eventEngine;
+    private readonly IMetadataEngine   _metadataEngine;
+    private readonly ITenantContext    _tenant;
     private readonly ILogger<RuntimeController> _logger;
 
     public RuntimeController(
         IValidationEngine validationEngine,
-        IEventEngine eventEngine,
-        IFormRepository formRepository,
-        ITenantContext tenant,
+        IEventEngine      eventEngine,
+        IMetadataEngine   metadataEngine,
+        ITenantContext    tenant,
         ILogger<RuntimeController> logger)
     {
         _validationEngine = validationEngine;
-        _eventEngine = eventEngine;
-        _formRepository = formRepository;
-        _tenant = tenant;
-        _logger = logger;
+        _eventEngine      = eventEngine;
+        _metadataEngine   = metadataEngine;
+        _tenant           = tenant;
+        _logger           = logger;
     }
 
     // ── Validate Field ──────────────────────────────────────────────
@@ -50,10 +50,12 @@ public sealed class RuntimeController : ControllerBase
     public async Task<IActionResult> ValidateField(
         string formCode,
         [FromBody] ValidateFieldRequest body,
+        [FromQuery] string lang = "vi",
         CancellationToken ct = default)
     {
-        // Resolve FormCode → FormId
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
+        // Load FormMetadata + ResourceMap qua MetadataEngine (có caching L1+L2)
+        var form = await _metadataEngine.GetFormMetadataAsync(
+            formCode, lang, platform: "web", _tenant.TenantId, ct);
         if (form is null)
             return FormNotFound(formCode);
 
@@ -61,9 +63,23 @@ public sealed class RuntimeController : ControllerBase
 
         var result = await _validationEngine.ValidateFieldAsync(
             form.FormId, body.FieldCode, body.Value, context,
-            _tenant.TenantId, ct);
+            _tenant.TenantId,
+            langCode:    lang,
+            resourceMap: form.ResourceMap,
+            formCode:    form.FormCode,
+            ct:          ct);
 
-        return Ok(result);
+        // Trả shape { isValid, errors } để Blazor dễ consume
+        return Ok(new
+        {
+            isValid = result.IsValid,
+            errors  = result.Results.Select(r => new
+            {
+                ruleId   = r.RuleId,
+                severity = r.Severity,
+                message  = r.Message
+            })
+        });
     }
 
     // ── Validate Form ───────────────────────────────────────────────
@@ -78,18 +94,37 @@ public sealed class RuntimeController : ControllerBase
     public async Task<IActionResult> ValidateForm(
         string formCode,
         [FromBody] ValidateFormRequest body,
+        [FromQuery] string lang = "vi",
         CancellationToken ct = default)
     {
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
+        var form = await _metadataEngine.GetFormMetadataAsync(
+            formCode, lang, platform: "web", _tenant.TenantId, ct);
         if (form is null)
             return FormNotFound(formCode);
 
         var context = BuildContext(body.ContextSnapshot);
 
         var results = await _validationEngine.ValidateFormAsync(
-            form.FormId, context, _tenant.TenantId, ct);
+            form.FormId, context, _tenant.TenantId,
+            langCode:    lang,
+            resourceMap: form.ResourceMap,
+            formCode:    form.FormCode,
+            ct:          ct);
 
-        return Ok(results);
+        // Wrap thành { isValid, fields: { fieldCode: [{ruleId, severity, message}] } }
+        // để match FormValidationResponseDto trong Blazor client
+        var fields = results.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value.Results.Select(r => new
+            {
+                ruleId   = r.RuleId,
+                severity = r.Severity,
+                message  = r.Message
+            }).ToList());
+
+        var isValid = !results.Values.Any(v => !v.IsValid);
+
+        return Ok(new { isValid, fields });
     }
 
     // ── Handle Event ────────────────────────────────────────────────
@@ -106,7 +141,9 @@ public sealed class RuntimeController : ControllerBase
         [FromBody] HandleEventRequest body,
         CancellationToken ct = default)
     {
-        var form = await _formRepository.GetByCodeAsync(formCode, _tenant.TenantId, ct: ct);
+        // Dùng "vi" mặc định cho handle-event (không cần lang param vì delta không chứa message)
+        var form = await _metadataEngine.GetFormMetadataAsync(
+            formCode, langCode: "vi", platform: "web", _tenant.TenantId, ct);
         if (form is null)
             return FormNotFound(formCode);
 
@@ -145,8 +182,8 @@ public sealed class RuntimeController : ControllerBase
     {
         return NotFound(new ProblemDetails
         {
-            Type = "https://icare247.vn/errors/form-not-found",
-            Title = "Form không tồn tại",
+            Type   = "https://icare247.vn/errors/form-not-found",
+            Title  = "Form không tồn tại",
             Status = StatusCodes.Status404NotFound,
             Detail = $"Không tìm thấy form với mã '{formCode}' trong tenant {_tenant.TenantId}."
         });

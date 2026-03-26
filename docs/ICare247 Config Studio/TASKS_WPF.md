@@ -23,7 +23,7 @@
 
 ## 🔴 In Progress
 
-_(trống — chọn task từ danh sách bên dưới)_
+_(trống)_
 
 ---
 
@@ -31,23 +31,7 @@ _(trống — chọn task từ danh sách bên dưới)_
 
 ### Priority 1 — Bug / Thiếu logic trong màn hình cấu hình field
 
-#### WPF-01: Thêm DeleteEventCommand trong FieldConfigView Tab Events
-- **File:** `FieldConfigViewModel.cs` + `FieldConfigView.xaml` (Tab 4)
-- **Vấn đề:** Tab 4 Events chỉ có nút `⚙ OpenEvent`, không có nút Delete. Tab 3 Rules đã có `DeleteRuleCommand` + nút 🗑.
-- **Việc cần làm:**
-  1. Thêm `DelegateCommand<EventSummaryDto> DeleteEventCommand` vào ViewModel
-  2. Implement `ExecuteDeleteEvent(EventSummaryDto?)`: remove từ `LinkedEvents`, reindex, `IsDirty = true`
-  3. Thêm nút 🗑 `InlineDeleteBtnStyle` vào CellTemplate column Actions trong Events grid (xaml)
-- **Ước lượng:** ~30 phút
-
-#### WPF-02: ExecuteDeleteRule không gọi DB
-- **File:** `FieldConfigViewModel.cs` line 1503
-- **Vấn đề:** `ExecuteDeleteRule` chỉ xóa khỏi `LinkedRules` local, không gọi `_ruleService.DeleteRuleAsync()` → rule vẫn tồn tại trong DB sau khi save field.
-- **Việc cần làm:**
-  1. Thêm `IRuleDataService.DeleteRuleAsync(ruleId, ct)` nếu chưa có
-  2. Trong `ExecuteDeleteRule`: gọi `_ruleService?.DeleteRuleAsync(rule.RuleId, _cts.Token)` (fire-and-forget hoặc await)
-  3. Thêm confirmation dialog trước khi xóa ("Xóa rule này?")
-- **Ước lượng:** ~45 phút
+~~WPF-01, WPF-02 — moved to Done (2026-03-26)~~
 
 ---
 
@@ -62,31 +46,7 @@ _(trống — chọn task từ danh sách bên dưới)_
   3. Handle version conflict (optimistic concurrency)
 - **Ước lượng:** ~2 giờ
 
-#### WPF-04: FormEditorViewModel — Confirm dialog xóa Section
-- **File:** `FormEditorViewModel.cs` line 1332
-- **Vấn đề:** `ExecuteDeleteSection` không có confirm dialog — xóa ngay lập tức cả section + tất cả fields.
-- **Việc cần làm:**
-  1. Inject `IDialogService` vào FormEditorViewModel
-  2. Hiện `ConfirmDialog("Xóa section '{name}' và tất cả {count} fields? Không thể hoàn tác.")`
-  3. Chỉ xóa nếu user confirm
-- **Ước lượng:** ~30 phút
-
-#### WPF-05: FormEditorViewModel — Confirm IsDirty khi navigate back
-- **File:** `FormEditorViewModel.cs` line 1612
-- **Vấn đề:** `ExecuteBack()` navigate ngay, không kiểm tra `IsDirty` → mất unsaved changes.
-- **Việc cần làm:**
-  1. Nếu `IsDirty`, hiện dialog "Có thay đổi chưa lưu. Lưu trước khi thoát?"
-  2. Options: Lưu và thoát / Thoát không lưu / Hủy
-- **Ước lượng:** ~30 phút
-
-#### WPF-06: FormEditorViewModel — Load Permissions từ Sys_Role
-- **File:** `FormEditorViewModel.cs` line 830, 879
-- **Vấn đề:** Tab Permissions dùng hardcoded roles, chưa load từ DB.
-- **Việc cần làm:**
-  1. Implement `IFormDataService.GetRolesAsync(tenantId, ct)` query `Sys_Role`
-  2. Populate `AvailableRoles` collection trong ViewModel
-  3. UI: Checkbox list roles với quyền View/Edit/Delete per role
-- **Ước lượng:** ~1.5 giờ
+~~WPF-04, WPF-05, WPF-06 — moved to Done~~
 
 ---
 
@@ -158,6 +118,11 @@ _(trống — chọn task từ danh sách bên dưới)_
 | Wave D | 8add8ba | Spec docs: DB schema + engine spec + action/rule param schema |
 | ADR-013 | 932e879 | ColSpan 3-col → 4-col: Migration + Blazor CSS fix (ColSpan từng bị ignore) + WPF RadioButton |
 | WPF-03 | 932e879 | FormEditorViewModel.ExecuteSaveAsync: IFormDataService.UpdateFormMetadataAsync + FormDataService implement + auto-save delegate |
+| WPF-04 | session 2026-03-26 | ExecuteDeleteNode: confirm MessageBox trước khi xóa section (dùng DisplayName + fieldCount) |
+| WPF-05 | session 2026-03-26 | ExecuteBackToList: check IsDirty → YesNoCancel dialog → Save/Discard/Cancel |
+| WPF-06 | session 2026-03-26 | LoadPermissionsAsync: GetRolesAsync từ Sys_Role (global + per-tenant) + fallback hardcoded |
+| WPF-01 | session 2026-03-26 | ExecuteDeleteEvent: confirm dialog + gọi DeleteEventAsync DB (đã có skeleton, bổ sung confirm + DB call) |
+| WPF-02 | session 2026-03-26 | ExecuteDeleteRuleAsync: đã gọi DB + confirm — verified done |
 
 ---
 

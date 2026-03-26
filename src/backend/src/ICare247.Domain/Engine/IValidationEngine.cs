@@ -32,28 +32,47 @@ public interface IValidationEngine
     /// <see cref="ValidationResponse"/> với danh sách rules fail.
     /// IsValid = false khi có ít nhất một rule severity 'error' fail.
     /// </returns>
+    /// <param name="langCode">Ngôn ngữ hiển thị thông báo lỗi — "vi" hoặc "en".</param>
+    /// <param name="resourceMap">
+    /// Resource map đã load từ Sys_Resource — dùng để resolve thông báo lỗi theo key.
+    /// Null = dùng fallback hardcoded.
+    /// </param>
+    /// <param name="formCode">
+    /// Form_Code — cần thiết để build resource key <c>{formCode}.val.{fieldCode}.Required</c>.
+    /// Rỗng = bỏ qua form-specific lookup, chỉ dùng global template.
+    /// </param>
     Task<ValidationResponse> ValidateFieldAsync(
         int formId,
         string fieldCode,
         object? value,
         EvaluationContext context,
         int tenantId,
+        string langCode = "vi",
+        IReadOnlyDictionary<string, string>? resourceMap = null,
+        string formCode = "",
         CancellationToken ct = default);
 
     /// <summary>
     /// Validate toàn bộ form — gọi trước khi submit.
+    /// Bao gồm cả check <c>Is_Required</c> cho mọi field, không chỉ field có Val_Rule.
     /// </summary>
     /// <param name="formId">Form cần validate.</param>
-    /// <param name="context">Snapshot đầy đủ giá trị form tại thời điểm submit.</param>
+    /// <param name="context">Snapshot đầy đủ giá trị field tại thời điểm submit.</param>
     /// <param name="tenantId">Tenant — bắt buộc.</param>
+    /// <param name="langCode">Ngôn ngữ hiển thị thông báo lỗi — "vi" hoặc "en".</param>
+    /// <param name="resourceMap">Resource map đã load — dùng để resolve thông báo lỗi theo key.</param>
+    /// <param name="formCode">Form_Code — cần thiết để build resource key theo convention.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>
-    /// Dictionary field → ValidationResponse cho mỗi field có rule.
-    /// Fields không có rule hoặc rule đều pass → không có trong kết quả (hoặc IsValid = true).
+    /// Dictionary field → ValidationResponse. Bao gồm cả fields không có rule
+    /// nhưng có <c>Is_Required = true</c> và giá trị rỗng.
     /// </returns>
     Task<IReadOnlyDictionary<string, ValidationResponse>> ValidateFormAsync(
         int formId,
         EvaluationContext context,
         int tenantId,
+        string langCode = "vi",
+        IReadOnlyDictionary<string, string>? resourceMap = null,
+        string formCode = "",
         CancellationToken ct = default);
 }

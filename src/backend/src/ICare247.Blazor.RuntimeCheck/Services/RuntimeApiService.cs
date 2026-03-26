@@ -31,9 +31,10 @@ public sealed class RuntimeApiService
         string fieldCode,
         object? value,
         Dictionary<string, object?> context,
+        string langCode = "vi",
         CancellationToken ct = default)
     {
-        var url  = $"/api/v1/forms/{Uri.EscapeDataString(formCode)}/validate-field";
+        var url  = $"/api/v1/forms/{Uri.EscapeDataString(formCode)}/validate-field?lang={langCode}";
         var body = new ValidateFieldRequest
         {
             FieldCode       = fieldCode,
@@ -64,9 +65,10 @@ public sealed class RuntimeApiService
     public async Task<FormValidationResponseDto> ValidateFormAsync(
         string formCode,
         Dictionary<string, object?> context,
+        string langCode = "vi",
         CancellationToken ct = default)
     {
-        var url  = $"/api/v1/forms/{Uri.EscapeDataString(formCode)}/validate";
+        var url  = $"/api/v1/forms/{Uri.EscapeDataString(formCode)}/validate?lang={langCode}";
         var body = new ValidateFormRequest { ContextSnapshot = context };
 
         _logger.LogDebug("ValidateForm → {FormCode}", formCode);

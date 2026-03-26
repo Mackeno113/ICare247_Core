@@ -27,10 +27,12 @@
             </span>
         }
 
+        @* id="field_{FieldCode}" dùng để JS focus khi submit có lỗi *@
         @switch (State.FieldType.ToLower())
         {
             case "textarea":
-                <textarea class="field-input"
+                <textarea id="field_@State.FieldCode"
+                          class="field-input"
                           value="@State.ValueString"
                           disabled="@State.IsReadOnly"
                           rows="3"
@@ -39,7 +41,8 @@
                 break;
 
             case "number":
-                <input type="number" class="field-input"
+                <input id="field_@State.FieldCode"
+                       type="number" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"
                        @onchange="HandleChange"
@@ -47,7 +50,8 @@
                 break;
 
             case "date":
-                <input type="date" class="field-input"
+                <input id="field_@State.FieldCode"
+                       type="date" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"
                        @onchange="HandleChange"
@@ -55,7 +59,8 @@
                 break;
 
             case "datetime":
-                <input type="datetime-local" class="field-input"
+                <input id="field_@State.FieldCode"
+                       type="datetime-local" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"
                        @onchange="HandleChange"
@@ -64,11 +69,12 @@
 
             case "bool":
                 <div class="bool-wrapper">
-                    <input type="checkbox" id="@($"chk_{State.FieldCode}")"
+                    <input id="field_@State.FieldCode"
+                           type="checkbox"
                            checked="@(State.ValueString == "true" || State.ValueString == "True")"
                            disabled="@State.IsReadOnly"
                            @onchange="HandleBoolChange" />
-                    <label for="@($"chk_{State.FieldCode}")" class="bool-label">@State.Label</label>
+                    <label for="field_@State.FieldCode" class="bool-label">@State.Label</label>
                 </div>
                 break;
 
@@ -76,7 +82,8 @@
                 @if (State.Options.Count > 0)
                 {
                     @* Static lookup — render <select> với options từ Sys_Lookup *@
-                    <select class="field-input"
+                    <select id="field_@State.FieldCode"
+                            class="field-input"
                             disabled="@State.IsReadOnly"
                             @onchange="HandleChange"
                             @onblur="HandleBlur">
@@ -97,7 +104,8 @@
                 else
                 {
                     @* Options chưa load hoặc LookupCode không tồn tại → fallback text *@
-                    <input type="text" class="field-input"
+                    <input id="field_@State.FieldCode"
+                           type="text" class="field-input"
                            value="@State.ValueString"
                            disabled="@State.IsReadOnly"
                            placeholder="(lookup options not loaded)"
@@ -108,7 +116,8 @@
 
             case "fklookup":
                 @* FK dynamic lookup — chưa triển khai đầy đủ, hiển thị text input tạm *@
-                <input type="text" class="field-input"
+                <input id="field_@State.FieldCode"
+                       type="text" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"
                        placeholder="(FK lookup — chưa triển khai)"
@@ -118,7 +127,8 @@
 
             default:
                 @* text và các type không nhận dạng được → text input *@
-                <input type="text" class="field-input"
+                <input id="field_@State.FieldCode"
+                       type="text" class="field-input"
                        value="@State.ValueString"
                        disabled="@State.IsReadOnly"
                        @onchange="HandleChange"

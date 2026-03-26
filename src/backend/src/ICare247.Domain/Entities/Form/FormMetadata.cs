@@ -49,6 +49,14 @@ public sealed class FormMetadata
     public IReadOnlyList<FieldMetadata> Fields { get; init; } = [];
 
     /// <summary>
+    /// Resource map cho form — load bởi MetadataEngine khi runtime, rỗng khi load qua
+    /// FormRepository trực tiếp (ConfigStudio, WPF không cần validation messages).
+    /// Key pattern: <c>{formCode}.val.{fieldCode}.{qualifier}</c> và <c>sys.val.{qualifier}</c>.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ResourceMap { get; init; }
+        = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Lookup field theo FieldCode (OrdinalIgnoreCase).
     /// Trả null nếu không tìm thấy — không throw.
     /// </summary>

@@ -165,6 +165,9 @@ public sealed class EventEngine : IEventEngine
                 "SET_VISIBLE" => ExecuteSetVisible(action, context),
                 "SET_REQUIRED" => ExecuteSetRequired(action, context),
                 "SET_READONLY" => ExecuteSetReadOnly(action, context),
+                "SET_ENABLED" => ExecuteSetEnabled(action, context),
+                "CLEAR_VALUE" => ExecuteClearValue(action),
+                "SHOW_MESSAGE" => ExecuteShowMessage(action, context),
                 "RELOAD_OPTIONS" => ExecuteReloadOptions(action, context),
                 "TRIGGER_VALIDATION" => await ExecuteTriggerValidationAsync(
                     action, context, formEvent, ct),
@@ -266,6 +269,87 @@ public sealed class EventEngine : IEventEngine
         ];
     }
 
+    // ── SET_ENABLED ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// SET_ENABLED: evaluate conditionExpression → tạo delta bật/tắt enabled cho targetField.
+    /// false = grayout, không tương tác, không submit giá trị (ADR-012).
+    /// Param JSON: { "targetField": "BankAccount", "conditionExpression": {...} }
+    /// </summary>
+    private IReadOnlyList<UiDelta> ExecuteSetEnabled(
+        EventAction action, EvaluationContext context)
+    {
+        var (targetField, conditionResult) = EvaluateConditionAction(action, context);
+        if (targetField is null) return [];
+
+        return
+        [
+            new UiDelta(targetField, "SET_ENABLED",
+                new Dictionary<string, object?> { ["enabled"] = conditionResult })
+        ];
+    }
+
+    // ── CLEAR_VALUE ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// CLEAR_VALUE: đặt giá trị field về null — không cần condition.
+    /// Param JSON: { "targetField": "District" }
+    /// </summary>
+    private IReadOnlyList<UiDelta> ExecuteClearValue(EventAction action)
+    {
+        var param = ParseParam(action);
+        if (param is null) return [];
+
+        var targetField = GetString(param, "targetField");
+        if (targetField is null) return [];
+
+        return
+        [
+            new UiDelta(targetField, "CLEAR_VALUE",
+                new Dictionary<string, object?> { ["value"] = null })
+        ];
+    }
+
+    // ── SHOW_MESSAGE ────────────────────────────────────────────────
+
+    /// <summary>
+    /// SHOW_MESSAGE: hiển thị thông báo inline tại field — không block submit.
+    /// conditionExpression là tùy chọn; nếu có thì evaluate trước, false → không show.
+    /// Param JSON: { "targetField": "Age", "messageKey": "msg.age.under_18", "severity": "Warning", "conditionExpression": {...} }
+    /// </summary>
+    private IReadOnlyList<UiDelta> ExecuteShowMessage(
+        EventAction action, EvaluationContext context)
+    {
+        var param = ParseParam(action);
+        if (param is null) return [];
+
+        var targetField = GetString(param, "targetField");
+        var messageKey  = GetString(param, "messageKey");
+        var severity    = GetString(param, "severity") ?? "Info";
+
+        if (targetField is null || messageKey is null) return [];
+
+        // conditionExpression là optional — nếu có thì evaluate; false → không tạo delta
+        var condExprElement = GetElement(param, "conditionExpression");
+        if (condExprElement is not null)
+        {
+            var condExprJson = condExprElement.Value.GetRawText();
+            var result = _astEngine.Evaluate(condExprJson, context);
+            if (!(BuiltinFunctions.ToBool(result) ?? false))
+                return [];
+        }
+
+        return
+        [
+            new UiDelta(targetField, "SHOW_MESSAGE",
+                new Dictionary<string, object?>
+                {
+                    ["messageKey"] = messageKey,
+                    ["severity"]   = severity
+                })
+        ];
+    }
+
     // ── RELOAD_OPTIONS ──────────────────────────────────────────────
 
     /// <summary>
@@ -326,7 +410,7 @@ public sealed class EventEngine : IEventEngine
             var value = context.GetValue(fieldCode);
             var response = await _validationEngine.ValidateFieldAsync(
                 formEvent.FormId, fieldCode, value, context,
-                formEvent.TenantId, ct);
+                formEvent.TenantId, langCode: "vi", ct: ct);
 
             // Tạo delta chứa validation errors
             var errors = response.Results

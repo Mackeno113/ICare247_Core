@@ -11,8 +11,9 @@ namespace ICare247.Domain.Engine.Models;
 /// </summary>
 /// <param name="FieldCode">Field bị ảnh hưởng (Field_Code). Null nếu delta áp dụng cho toàn form.</param>
 /// <param name="Action">
-/// Loại thay đổi: 'SET_VALUE' | 'SET_VISIBLE' | 'SET_REQUIRED' |
-/// 'SET_READONLY' | 'RELOAD_OPTIONS' | 'TRIGGER_VALIDATION'.
+/// Loại thay đổi: 'SET_VALUE' | 'SET_VISIBLE' | 'SET_REQUIRED' | 'SET_READONLY' |
+/// 'SET_ENABLED' | 'CLEAR_VALUE' | 'SHOW_MESSAGE' |
+/// 'RELOAD_OPTIONS' | 'TRIGGER_VALIDATION'.
 /// </param>
 /// <param name="Data">
 /// Payload kèm theo action — tuỳ loại action.

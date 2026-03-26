@@ -159,8 +159,12 @@ else if (_form is not null)
 
 @code {
     [Parameter] public string FormCode  { get; set; } = "";
-    // Nhận ?debug=1 hoặc ?debug=true — Blazor router không parse bool từ "1"
-    // nên dùng string? và tự convert
+
+    // ?lang=vi|en — ngôn ngữ thông báo lỗi validation, default "vi"
+    [SupplyParameterFromQuery(Name = "lang")]
+    [Parameter] public string LangCode { get; set; } = "vi";
+
+    // ?debug=1 hoặc ?debug=true — Blazor router không parse bool từ "1"
     [SupplyParameterFromQuery(Name = "debug")]
     [Parameter] public string? DebugParam { get; set; }
     private bool DebugMode => DebugParam is "1" or "true" or "True";
@@ -246,7 +250,7 @@ else if (_form is not null)
         if (fs is null) return;
 
         var result = await RuntimeApi.ValidateFieldAsync(
-            FormCode, fieldCode, fs.Value, BuildContext());
+            FormCode, fieldCode, fs.Value, BuildContext(), LangCode);
 
         fs.Errors = result.Errors.Select(e => e.Message).ToList();
         StateHasChanged();
@@ -259,13 +263,21 @@ else if (_form is not null)
         try
         {
             await FireEventAsync("FORM_SUBMIT", null);
-            _submitResult = await RuntimeApi.ValidateFormAsync(FormCode, BuildContext());
+            _submitResult = await RuntimeApi.ValidateFormAsync(FormCode, BuildContext(), LangCode);
 
             foreach (var fs in _fieldStates)
             {
                 fs.Errors = _submitResult.Fields.TryGetValue(fs.FieldCode, out var errs)
                     ? errs.Select(e => e.Message).ToList()
                     : [];
+            }
+
+            // Focus field đầu tiên có lỗi để user biết cần sửa gì
+            if (!_submitResult.IsValid)
+            {
+                var firstError = _fieldStates.FirstOrDefault(f => f.Errors.Count > 0);
+                if (firstError is not null)
+                    await JS.InvokeVoidAsync("icare.focusField", firstError.FieldCode);
             }
         }
         catch (Exception ex)

@@ -1460,14 +1460,20 @@
                                 <dxg:GridColumn Header="Condition" FieldName="ConditionPreview" Width="*" />
                                 <dxg:GridColumn Header="Actions" FieldName="ActionsCount" Width="70" />
                                 <dxg:GridColumn Header="Active" FieldName="IsActive" Width="60" />
-                                <dxg:GridColumn Header="" Width="45" AllowEditing="False" AllowSorting="False">
+                                <dxg:GridColumn Header="" Width="70" AllowEditing="False" AllowSorting="False">
                                     <dxg:GridColumn.CellTemplate>
                                         <DataTemplate>
-                                            <Button Style="{StaticResource IconBtnStyle}"
-                                                    Width="28" Height="28" FontSize="13"
-                                                    Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
-                                                    CommandParameter="{Binding Row}"
-                                                    ToolTip="Cấu hình event" Content="⚙" />
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Style="{StaticResource IconBtnStyle}"
+                                                        Width="28" Height="28" FontSize="13"
+                                                        Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        CommandParameter="{Binding Row}"
+                                                        ToolTip="Cấu hình event" Content="⚙" />
+                                                <Button Style="{StaticResource InlineDeleteBtnStyle}"
+                                                        Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        CommandParameter="{Binding Row}"
+                                                        ToolTip="Xóa event" Content="🗑" />
+                                            </StackPanel>
                                         </DataTemplate>
                                     </dxg:GridColumn.CellTemplate>
                                 </dxg:GridColumn>

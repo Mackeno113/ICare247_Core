@@ -842,6 +842,49 @@ public sealed class FormDataService : IFormDataService
         return affected > 0;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RoleLookupRecord>> GetRolesAsync(
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+
+        // Lấy schema thực tế của Sys_Role để tránh lỗi cột không tồn tại
+        var cols = await GetTableColumnsAsync(conn, "dbo", "Sys_Role", ct);
+        if (cols.Count == 0 || !cols.Contains("Role_Id") || !cols.Contains("Role_Code"))
+            return [];
+
+        var roleNameExpr = cols.Contains("Role_Name")
+            ? "Role_Name"
+            : "Role_Code";
+
+        // Lấy global roles (Tenant_Id IS NULL) + roles của tenant hiện tại
+        var tenantFilter = cols.Contains("Tenant_Id")
+            ? "AND (r.Tenant_Id IS NULL OR r.Tenant_Id = @TenantId)"
+            : "";
+
+        var activeFilter = cols.Contains("Is_Active")
+            ? "AND r.Is_Active = 1"
+            : "";
+
+        var sql = $"""
+            SELECT r.Role_Id   AS RoleId,
+                   r.Role_Code AS RoleCode,
+                   r.{roleNameExpr} AS RoleName
+            FROM   dbo.Sys_Role r
+            WHERE  1 = 1
+                   {tenantFilter}
+                   {activeFilter}
+            ORDER BY r.Role_Id
+            """;
+
+        var rows = await conn.QueryAsync<RoleLookupRecord>(
+            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct));
+        return rows.AsList();
+    }
+
     /// <summary>
     /// Build biểu thức COUNT an toàn theo schema thật của bảng con.
     /// </summary>
