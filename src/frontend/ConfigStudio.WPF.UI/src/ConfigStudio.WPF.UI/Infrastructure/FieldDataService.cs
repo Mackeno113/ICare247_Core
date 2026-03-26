@@ -43,6 +43,8 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Tooltip_Key        AS TooltipKey,
                    fi.Is_Visible         AS IsVisible,
                    fi.Is_ReadOnly        AS IsReadOnly,
+                   fi.Is_Required        AS IsRequired,
+                   fi.Is_Enabled         AS IsEnabled,
                    fi.Order_No           AS OrderNo,
                    fi.Control_Props_Json AS ControlPropsJson,
                    fi.Col_Span           AS ColSpan,
@@ -158,11 +160,13 @@ public sealed class FieldDataService : IFieldDataService
                     INSERT INTO dbo.Ui_Field
                            (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key,
                             Placeholder_Key, Tooltip_Key, Is_Visible, Is_ReadOnly,
+                            Is_Required, Is_Enabled,
                             Order_No, Control_Props_Json, Col_Span, Lookup_Source,
                             Lookup_Code, Version, Updated_At, Description)
                     OUTPUT INSERTED.Field_Id
                     VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
                             @PlaceholderKey, @TooltipKey, @IsVisible, @IsReadOnly,
+                            @IsRequired, @IsEnabled,
                             @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
                             @LookupCode, 1, GETDATE(), @Description)
                     """;
@@ -184,6 +188,8 @@ public sealed class FieldDataService : IFieldDataService
                            Tooltip_Key       = @TooltipKey,
                            Is_Visible        = @IsVisible,
                            Is_ReadOnly       = @IsReadOnly,
+                           Is_Required       = @IsRequired,
+                           Is_Enabled        = @IsEnabled,
                            Order_No          = @OrderNo,
                            Control_Props_Json = @ControlPropsJson,
                            Col_Span          = @ColSpan,
@@ -319,6 +325,8 @@ public sealed class FieldDataService : IFieldDataService
         f.TooltipKey,
         f.IsVisible,
         f.IsReadOnly,
+        f.IsRequired,
+        f.IsEnabled,
         f.OrderNo,
         // LookupBox lưu config vào Ui_Field_Lookup — Control_Props_Json chứa props khác
         ControlPropsJson = f.LookupSource == "dynamic" ? null : f.ControlPropsJson,

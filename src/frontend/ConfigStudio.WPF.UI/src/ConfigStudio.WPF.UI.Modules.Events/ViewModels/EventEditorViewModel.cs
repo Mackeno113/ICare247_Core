@@ -80,8 +80,13 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     // ── Trigger types ─────────────────────────────────────────
     public List<string> TriggerOptions { get; } = ["OnChange", "OnBlur", "OnFocus", "OnLoad", "OnSubmit"];
 
+    // Seed mặc định — sẽ bị thay bằng dữ liệu từ DB khi load (Evt_Action_Type)
     public List<string> ActionTypeOptions { get; } =
-        ["SetValue", "SetVisible", "SetReadOnly", "SetRequired", "Recalculate", "ShowMessage", "Navigate"];
+    [
+        "SET_VALUE", "SET_VISIBLE", "SET_READONLY", "SET_REQUIRED",
+        "SET_ENABLED", "CLEAR_VALUE", "SHOW_MESSAGE",
+        "RELOAD_OPTIONS", "TRIGGER_VALIDATION"
+    ];
 
     // ── State ─────────────────────────────────────────────────
     private bool _isDirty;

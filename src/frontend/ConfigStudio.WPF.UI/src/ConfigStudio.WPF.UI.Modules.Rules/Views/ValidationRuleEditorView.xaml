@@ -254,10 +254,10 @@
                                        Style="{StaticResource HelpText}" />
                         </StackPanel>
 
-                        <!-- ── Range: min / max input trực tiếp ─────── -->
+                        <!-- ── Range / Length: min / max input trực tiếp ── -->
                         <StackPanel Style="{StaticResource FieldGroup}"
                                     Visibility="{Binding IsRangeType, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="Khoảng giá trị" Style="{StaticResource FieldLabel}" />
+                            <TextBlock Text="{Binding RangeSectionLabel}" Style="{StaticResource FieldLabel}" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -267,7 +267,7 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Min" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
                                     <dxe:TextEdit EditValue="{Binding EditRangeMin, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: 1 hoặc 2024-01-01" />
+                                                  NullText="{Binding RangeMinPlaceholder}" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="–"
                                            VerticalAlignment="Bottom" HorizontalAlignment="Center"
@@ -275,7 +275,7 @@
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Max" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
                                     <dxe:TextEdit EditValue="{Binding EditRangeMax, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: 9999 hoặc 2099-12-31" />
+                                                  NullText="{Binding RangeMaxPlaceholder}" />
                                 </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource HelpText}"
@@ -348,6 +348,40 @@
                                     Padding="8,5" Margin="0,4,0,0"
                                     Visibility="{Binding HasRegexPattern, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{Binding EditRegexPattern}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ── Compare: field selector + operator ───── -->
+                        <StackPanel Style="{StaticResource FieldGroup}"
+                                    Visibility="{Binding IsCompareType, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="So sánh với field khác" Style="{StaticResource FieldLabel}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="80" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Field Code" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <dxe:TextEdit EditValue="{Binding EditCompareField, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: NgayVaoLam" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Toán tử" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding CompareOpOptions}"
+                                                      EditValue="{Binding EditCompareOp}" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Style="{StaticResource HelpText}"
+                                       Text="FieldCode phân biệt hoa thường. VD: NgayNghiViec >= NgayVaoLam" />
+                            <!-- Preview expression tự sinh -->
+                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="8,5" Margin="0,6,0,0"
+                                    Visibility="{Binding HasComparePreview, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding CompareExpressionPreview}"
                                            FontFamily="Consolas" FontSize="11"
                                            Foreground="#0891B2" TextWrapping="Wrap" />
                             </Border>

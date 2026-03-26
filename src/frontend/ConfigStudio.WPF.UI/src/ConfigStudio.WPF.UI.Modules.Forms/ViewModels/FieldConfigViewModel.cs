@@ -623,15 +623,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool IsRequired
     {
         get => _isRequired;
-        set
-        {
-            if (SetProperty(ref _isRequired, value))
-            {
-                // NOTE: Toggle tự động tạo/xóa Required rule trong LinkedRules (chưa save DB)
-                ToggleRequiredRule(value);
-                IsDirty = true;
-            }
-        }
+        set { if (SetProperty(ref _isRequired, value)) IsDirty = true; }
+    }
+
+    private bool _isEnabled = true;
+    /// <summary>
+    /// Field có được tương tác không. False = grayout hoàn toàn + không submit.
+    /// Khác IsReadOnly: readonly vẫn hiện giá trị và submit; disabled thì không.
+    /// </summary>
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set { if (SetProperty(ref _isEnabled, value)) IsDirty = true; }
     }
 
     // ── Layout ───────────────────────────────────────────────
@@ -831,6 +834,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     TooltipKey         = string.IsNullOrEmpty(field.TooltipKey)     ? field.LabelKey : field.TooltipKey;
                     IsVisible          = field.IsVisible;
                     IsReadOnly         = field.IsReadOnly;
+                    IsRequired         = field.IsRequired;
+                    IsEnabled          = field.IsEnabled;
                     ControlPropsJson   = field.ControlPropsJson ?? "{}";
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
@@ -931,8 +936,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         IsActive          = r.IsActive
                     });
                 }
-                _isRequired = LinkedRules.Any(r => r.RuleTypeCode == "Required");
-                RaisePropertyChanged(nameof(IsRequired));
+                // IsRequired là cột DB (Ui_Field.Is_Required) — đã load từ GetFieldDetailAsync
             }
             catch (OperationCanceledException) { return; }
             catch (Exception ex)
@@ -1369,32 +1373,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ConfigExplanation = sb.ToString();
     }
 
-    // ── Required rule toggle ─────────────────────────────────
-
-    /// <summary>
-    /// Tự động tạo/xóa Required rule khi toggle IsRequired (chưa save DB).
-    /// </summary>
-    private void ToggleRequiredRule(bool isRequired)
-    {
-        var existing = LinkedRules.FirstOrDefault(r => r.RuleTypeCode == "Required");
-
-        if (isRequired && existing is null)
-        {
-            LinkedRules.Insert(0, new RuleSummaryDto
-            {
-                RuleId = 0, OrderNo = 0, RuleTypeCode = "Required",
-                ExpressionPreview = "(built-in)", ErrorKey = "err.fld.req", IsActive = true
-            });
-            // NOTE: Reindex OrderNo sau khi insert
-            ReindexRuleOrders();
-        }
-        else if (!isRequired && existing is not null)
-        {
-            LinkedRules.Remove(existing);
-            ReindexRuleOrders();
-        }
-    }
-
     private void ReindexRuleOrders()
     {
         for (int i = 0; i < LinkedRules.Count; i++)
@@ -1426,6 +1404,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 TooltipKey       = TooltipKey,
                 IsVisible        = IsVisible,
                 IsReadOnly       = IsReadOnly,
+                IsRequired       = IsRequired,
+                IsEnabled        = IsEnabled,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,

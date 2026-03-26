@@ -19,6 +19,10 @@ public sealed class FieldConfigRecord
     public string? TooltipKey { get; init; }
     public bool IsVisible { get; init; } = true;
     public bool IsReadOnly { get; init; }
+    /// <summary>Không cho phép để trống khi submit. Lưu vào Ui_Field.Is_Required.</summary>
+    public bool IsRequired { get; init; }
+    /// <summary>Field có được tương tác không. False = grayout + không submit. Lưu vào Ui_Field.Is_Enabled.</summary>
+    public bool IsEnabled { get; init; } = true;
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
     /// <summary>Độ rộng grid: 1 = 1/3, 2 = 2/3, 3 = full width.</summary>

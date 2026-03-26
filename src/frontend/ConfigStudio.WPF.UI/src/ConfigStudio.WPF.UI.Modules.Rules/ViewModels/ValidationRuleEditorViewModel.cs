@@ -72,27 +72,33 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     public bool IsRuleSelected => SelectedRule is not null;
 
     // ── Rule type options + descriptions ─────────────────────
-    public List<string> RuleTypeOptions { get; } = ["Required", "Range", "Regex", "Numeric", "Custom"];
+    // Required bị ẩn khỏi danh sách (ADR-010: dùng Ui_Field.Is_Required thay thế).
+    // Vẫn có thể hiển thị rule Required cũ từ DB nhưng không cho tạo mới.
+    public List<string> RuleTypeOptions { get; } = ["Length", "Range", "Regex", "Compare", "Numeric", "Custom"];
 
     /// <summary>Mô tả ngắn loại rule đang chọn — hiển thị trong edit panel.</summary>
     public string EditRuleTypeDescription => EditRuleType switch
     {
-        "Required" => "Bắt buộc nhập giá trị. Không cần thiết lập điều kiện thêm.",
-        "Range"    => "Giá trị phải nằm trong khoảng min–max. Thiết lập điều kiện bên dưới.",
-        "Regex"    => "Giá trị phải khớp với biểu thức chính quy (Regular Expression).",
-        "Numeric"  => "Chỉ cho phép nhập số. Tùy chọn min/max.",
-        "Custom"   => "Điều kiện tự do — dùng Expression Builder để xây dựng logic.",
-        _          => ""
+        "Length"  => "Kiểm tra độ dài ký tự nằm trong khoảng [min, max]. Dùng cho nvarchar/varchar.",
+        "Range"   => "Giá trị phải nằm trong khoảng min–max. Áp dụng cho số và ngày.",
+        "Regex"   => "Giá trị phải khớp với biểu thức chính quy (Regular Expression).",
+        "Compare" => "So sánh giá trị field này với giá trị của field khác trong cùng form.",
+        "Numeric" => "Chỉ cho phép nhập số. Tùy chọn min/max.",
+        "Custom"  => "Điều kiện tự do — dùng Expression Builder để xây dựng logic.",
+        _         => ""
     };
 
-    /// <summary>Hiển thị UI input Range (min/max) khi loại rule là Range hoặc Numeric.</summary>
-    public bool IsRangeType => EditRuleType is "Range" or "Numeric";
+    /// <summary>Hiển thị UI input Range (min/max) khi loại rule là Range, Numeric, hoặc Length.</summary>
+    public bool IsRangeType => EditRuleType is "Range" or "Numeric" or "Length";
 
     /// <summary>Hiển thị UI input Regex pattern + template chips.</summary>
     public bool IsRegexType => EditRuleType == "Regex";
 
-    /// <summary>Hiển thị Expression Builder cho Custom và các loại khác không có UI riêng.</summary>
-    public bool IsCustomOrOther => EditRuleType is "Custom" or "Required" ? EditRuleType == "Custom" : !IsRangeType && !IsRegexType;
+    /// <summary>Hiển thị UI Compare (field selector + operator).</summary>
+    public bool IsCompareType => EditRuleType == "Compare";
+
+    /// <summary>Hiển thị Expression Builder cho Custom.</summary>
+    public bool IsCustomOrOther => EditRuleType == "Custom";
 
     /// <summary>
     /// Auto-generated ErrorKey theo pattern: {tableCode}.val.{fieldCode}.{ruleTypeCode}.
@@ -133,7 +139,11 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
                 RaisePropertyChanged(nameof(EditRuleTypeDescription));
                 RaisePropertyChanged(nameof(IsRangeType));
                 RaisePropertyChanged(nameof(IsRegexType));
+                RaisePropertyChanged(nameof(IsCompareType));
                 RaisePropertyChanged(nameof(IsCustomOrOther));
+                RaisePropertyChanged(nameof(RangeSectionLabel));
+                RaisePropertyChanged(nameof(RangeMinPlaceholder));
+                RaisePropertyChanged(nameof(RangeMaxPlaceholder));
                 RaisePropertyChanged(nameof(AutoErrorKey));
             }
         }
@@ -200,6 +210,50 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     }
 
     public bool HasRangePreview => !string.IsNullOrEmpty(RangeExpressionPreview);
+
+    /// <summary>Nhãn section Range — đổi theo loại rule.</summary>
+    public string RangeSectionLabel => EditRuleType == "Length" ? "Độ dài ký tự" : "Khoảng giá trị";
+
+    /// <summary>Placeholder Min — gợi ý theo loại rule.</summary>
+    public string RangeMinPlaceholder => EditRuleType == "Length" ? "VD: 6" :
+                                         EditRuleType == "Range"  ? "VD: 1 hoặc 2024-01-01" : "VD: 0";
+
+    /// <summary>Placeholder Max — gợi ý theo loại rule.</summary>
+    public string RangeMaxPlaceholder => EditRuleType == "Length" ? "VD: 100" :
+                                         EditRuleType == "Range"  ? "VD: 9999 hoặc 2099-12-31" : "VD: 999999";
+
+    // ── Compare inputs ────────────────────────────────────────
+    private string _editCompareField = "";
+    public string EditCompareField
+    {
+        get => _editCompareField;
+        set
+        {
+            if (SetProperty(ref _editCompareField, value))
+                RaisePropertyChanged(nameof(CompareExpressionPreview));
+        }
+    }
+
+    private string _editCompareOp = ">=";
+    public string EditCompareOp
+    {
+        get => _editCompareOp;
+        set
+        {
+            if (SetProperty(ref _editCompareOp, value))
+                RaisePropertyChanged(nameof(CompareExpressionPreview));
+        }
+    }
+
+    public List<string> CompareOpOptions { get; } = ["==", "!=", ">", ">=", "<", "<="];
+
+    /// <summary>Preview expression Compare tự sinh để user thấy trước khi lưu.</summary>
+    public string CompareExpressionPreview =>
+        string.IsNullOrWhiteSpace(_editCompareField)
+            ? ""
+            : $"{FieldCode} {_editCompareOp} {_editCompareField}";
+
+    public bool HasComparePreview => !string.IsNullOrEmpty(CompareExpressionPreview);
 
     // ── Regex inputs ─────────────────────────────────────────
     private string _editRegexPattern = "";
@@ -363,6 +417,8 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         EditRangeMin = "";
         EditRangeMax = "";
         EditRegexPattern = "";
+        EditCompareField = "";
+        EditCompareOp = ">=";
         IsEditPanelOpen = true;
     }
 
