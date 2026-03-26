@@ -39,14 +39,12 @@ Build backend: **0 errors, 0 warnings** ✅
 
 ## Trạng thái hiện tại
 
-- Migration 013 (ColSpan 4-col): **file tạo, CHƯA chạy trên DB thật** ⚠️
-- Migration 010–012 (Is_Required/Is_Enabled, rule/action types): **CHƯA chạy trên DB thật** ⚠️
+- Migration 010–013 (Is_Required/Is_Enabled, rule/action types, ColSpan 4-col): **ĐÃ chạy trên DB thật** ✅
 - WPF-03 FormEditorViewModel.ExecuteSaveAsync: **done + committed** ✅
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **Wave A** — Chạy migrations 010–013 trên DB thật (`docs/migrations/`)
-2. **WPF-01** — Thêm DeleteEventCommand trong FieldConfigView Tab 4 Events
+1. **WPF-01** — Thêm DeleteEventCommand trong FieldConfigView Tab 4 Events
 3. **WPF-02** — ExecuteDeleteRule gọi DB delete thật
 4. **Backend Wave B** — `ValidationEngine.cs` (Length/Compare), `EventEngine.cs` (SET_ENABLED/CLEAR_VALUE/SHOW_MESSAGE), `UiDelta.cs`
 5. **MetadataEngine** — implement IMetadataEngine (Phase 6 còn lại)
