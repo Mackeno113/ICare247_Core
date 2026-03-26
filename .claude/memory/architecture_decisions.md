@@ -66,6 +66,13 @@
   - `SHOW_MESSAGE` — hiển thị toast/popup thông báo cho user (`info`/`warn`/`error`)
 - **Migration:** `012_add_action_types.sql`
 
+## ADR-013: Col_Span 3-column → 4-column grid (2026-03-26)
+- **Context:** Full HD layout có đủ chỗ. 3-col tạo ra tỉ lệ 1/3, 2/3 không tự nhiên. 4-col cho 1/4, half, 3/4, full — phù hợp form y tế nhiều field nhỏ.
+- **Decision:** `Col_Span BETWEEN 1 AND 4`; mapping: 1=1/4, 2=half, 3=3/4, 4=full. Data migration: 3(full cũ)→4(full mới).
+- **Blazor:** `.fields-grid { grid-template-columns: repeat(4, 1fr) }` + `grid-column: span @State.ColSpan` per FieldRenderer.
+- **WPF:** RadioButton 1/4, 1/2, 3/4, Full (ConverterParameter 1/2/3/4).
+- **Migration:** `013_colSpan_4col.sql`
+
 ## ADR-007: ConfigStudio.WPF.UI — Direct DB, KHÔNG qua backend API (2026-03-20)
 - **Decision:** WPF admin tool kết nối trực tiếp SQL Server qua Dapper + connection string
 - **KHÔNG** gọi HTTP API (backend API chỉ dành cho Blazor runtime)

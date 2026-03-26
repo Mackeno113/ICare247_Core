@@ -156,6 +156,8 @@ _(trống — chọn task từ danh sách bên dưới)_
 |---|---|---|
 | Wave C | 707c882 | FieldConfig Behavior 2×2 + ValidationRule Length/Compare + Event SET_ENABLED/CLEAR_VALUE/SHOW_MESSAGE |
 | Wave D | 8add8ba | Spec docs: DB schema + engine spec + action/rule param schema |
+| ADR-013 | 932e879 | ColSpan 3-col → 4-col: Migration + Blazor CSS fix (ColSpan từng bị ignore) + WPF RadioButton |
+| WPF-03 | 932e879 | FormEditorViewModel.ExecuteSaveAsync: IFormDataService.UpdateFormMetadataAsync + FormDataService implement + auto-save delegate |
 
 ---
 
