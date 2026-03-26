@@ -27,6 +27,24 @@ _(trống)_
 
 ---
 
+### ✅ Bug Fix — ControlProps TextBox blank (2026-03-27)
+
+**File:** `FieldConfigViewModel.cs`
+
+**Vấn đề:** Tab "Control Props" không hiển thị input fields khi mở field có EditorType = TextBox (default).
+
+**Root cause (2 bugs):**
+1. `_selectedEditorType` default = `"TextBox"` → `SetProperty` không detect change → `LoadControlPropSchema()` không được gọi → `ControlProps` rỗng
+2. Ngay cả khi gọi được, giá trị từ DB không được restore (dùng `oldValues` từ `ControlProps` rỗng → dùng default)
+
+**Fix:**
+- Reset `_selectedEditorType = ""` trước khi gán `field.EditorType` → force SetProperty detect change
+- Set `_controlPropsJson` (backing field) TRƯỚC khi `SelectedEditorType` được gán
+- `LoadControlPropSchema()`: khi `ControlProps.Count == 0` → parse `_controlPropsJson` để restore saved values
+- Thêm `ParseControlPropsJson()` + `ConvertJsonPropValue()` helpers
+
+---
+
 ## ⬜ Backlog
 
 ### Priority 1 — Bug / Thiếu logic trong màn hình cấu hình field
@@ -114,6 +132,7 @@ _(trống)_
 
 | Task | Commit | Mô tả |
 |---|---|---|
+| Bug: ControlProps TextBox blank | 2026-03-27 | Fix `LoadControlPropSchema` không được gọi khi field là TextBox (default) + restore values từ JSON |
 | Wave C | 707c882 | FieldConfig Behavior 2×2 + ValidationRule Length/Compare + Event SET_ENABLED/CLEAR_VALUE/SHOW_MESSAGE |
 | Wave D | 8add8ba | Spec docs: DB schema + engine spec + action/rule param schema |
 | ADR-013 | 932e879 | ColSpan 3-col → 4-col: Migration + Blazor CSS fix (ColSpan từng bị ignore) + WPF RadioButton |

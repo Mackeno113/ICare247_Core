@@ -827,18 +827,23 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     SectionName        = field.SectionCode;
                     SelectedColumn     = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
                     ColumnCode         = field.ColumnCode;
-                    SelectedEditorType = field.EditorType;
-                    OrderNo            = field.OrderNo;
-                    ColSpan            = field.ColSpan;
-                    LabelKey           = field.LabelKey;
+                    // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
+                    // để LoadControlPropSchema() có thể restore giá trị từ DB
+                    _controlPropsJson      = field.ControlPropsJson ?? "{}";
+                    // NOTE: Reset _selectedEditorType về "" để SetProperty luôn detect change,
+                    // tránh trường hợp field đang là "TextBox" (default) → không trigger LoadControlPropSchema
+                    _selectedEditorType    = "";
+                    SelectedEditorType     = field.EditorType;
+                    OrderNo                = field.OrderNo;
+                    ColSpan                = field.ColSpan;
+                    LabelKey               = field.LabelKey;
                     // Mặc định bằng LabelKey nếu chưa cấu hình riêng
-                    PlaceholderKey     = string.IsNullOrEmpty(field.PlaceholderKey) ? field.LabelKey : field.PlaceholderKey;
-                    TooltipKey         = string.IsNullOrEmpty(field.TooltipKey)     ? field.LabelKey : field.TooltipKey;
-                    IsVisible          = field.IsVisible;
-                    IsReadOnly         = field.IsReadOnly;
-                    IsRequired         = field.IsRequired;
-                    IsEnabled          = field.IsEnabled;
-                    ControlPropsJson   = field.ControlPropsJson ?? "{}";
+                    PlaceholderKey         = string.IsNullOrEmpty(field.PlaceholderKey) ? field.LabelKey : field.PlaceholderKey;
+                    TooltipKey             = string.IsNullOrEmpty(field.TooltipKey)     ? field.LabelKey : field.TooltipKey;
+                    IsVisible              = field.IsVisible;
+                    IsReadOnly             = field.IsReadOnly;
+                    IsRequired             = field.IsRequired;
+                    IsEnabled              = field.IsEnabled;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
                     // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
@@ -1012,10 +1017,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// </summary>
     private void LoadControlPropSchema()
     {
-        // NOTE: Lưu giá trị cũ để khôi phục nếu PropName trùng
-        var oldValues = ControlProps.ToDictionary(
-            p => p.Definition.PropName,
-            p => p.Value);
+        // NOTE: Lưu giá trị cũ để khôi phục nếu PropName trùng.
+        // Nếu ControlProps rỗng (lần đầu load từ DB) → parse từ _controlPropsJson để restore giá trị đã lưu.
+        var oldValues = ControlProps.Count > 0
+            ? ControlProps.ToDictionary(p => p.Definition.PropName, p => p.Value)
+            : ParseControlPropsJson(_controlPropsJson);
 
         ControlProps.Clear();
 
@@ -1023,10 +1029,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         foreach (var def in definitions)
         {
+            object? resolvedValue = def.DefaultValue;
+            if (oldValues.TryGetValue(def.PropName, out var saved))
+                resolvedValue = ConvertJsonPropValue(saved, def.PropType) ?? def.DefaultValue;
+
             var propValue = new ControlPropValue
             {
                 Definition = def,
-                Value = oldValues.TryGetValue(def.PropName, out var old) ? old : def.DefaultValue
+                Value      = resolvedValue
             };
             // NOTE: Dùng flag _isRebuildingProps để tránh gọi RebuildControlPropsJson đệ quy
             // khi PropertyChanged fire trong lúc đang build collection
@@ -1125,6 +1135,35 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             _isRebuildingProps = false;
         }
+    }
+
+    /// <summary>
+    /// Parse JSON string thành dictionary prop values (dùng khi restore từ DB).
+    /// </summary>
+    private static Dictionary<string, object?> ParseControlPropsJson(string json)
+    {
+        try
+        {
+            var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+            if (raw is null) return [];
+            return raw.ToDictionary(kv => kv.Key, kv => (object?)kv.Value);
+        }
+        catch { return []; }
+    }
+
+    /// <summary>
+    /// Chuyển JsonElement thành đúng kiểu dựa trên PropType của definition.
+    /// </summary>
+    private static object? ConvertJsonPropValue(object? raw, string propType)
+    {
+        if (raw is not JsonElement je) return raw;
+        return propType switch
+        {
+            "Number"  => je.ValueKind == JsonValueKind.Number  ? je.GetDouble()  : (object?)null,
+            "Boolean" => je.ValueKind is JsonValueKind.True
+                                      or JsonValueKind.False   ? je.GetBoolean() : (object?)null,
+            _         => je.ValueKind == JsonValueKind.String  ? je.GetString()  : je.ToString()
+        };
     }
 
     /// <summary>
