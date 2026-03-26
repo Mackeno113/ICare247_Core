@@ -18,7 +18,7 @@ namespace ConfigStudio.WPF.UI.Modules.I18n.ViewModels;
 /// ViewModel cho màn hình i18n Manager (Screen 10).
 /// DataGrid key/language matrix, filter theo table prefix + module, inline edit + auto-save to DB.
 /// Khi DB đã cấu hình → load dữ liệu thật qua II18nDataService.
-/// Khi chưa cấu hình → fallback mock data.
+/// Khi chưa cấu hình → hiển thị danh sách rỗng.
 /// </summary>
 public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
 {
@@ -171,7 +171,12 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
             await LoadFromDatabaseAsync();
         else
-            LoadMockData();
+        {
+            // Chưa cấu hình DB → danh sách rỗng
+            Entries.Clear();
+            RebuildTableOptions();
+            RefreshFilter();
+        }
     }
 
     /// <summary>
@@ -208,7 +213,9 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         catch (OperationCanceledException) { /* Navigation away */ }
         catch
         {
-            LoadMockData();
+            Entries.Clear();
+            RebuildTableOptions();
+            RefreshFilter();
         }
     }
 
@@ -280,37 +287,32 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
 
     /// <summary>
     /// Gọi từ code-behind sau khi user commit cell.
-    /// Save ngay vào Sys_Resource với đúng lang.
+    /// Map FieldName (tên property DTO) → language code, rồi save vào Sys_Resource.
     /// </summary>
     private async Task ExecuteSaveCellAsync(CellSaveArgs args)
     {
         if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
-        if (string.IsNullOrWhiteSpace(args.ResourceKey) || string.IsNullOrWhiteSpace(args.Lang)) return;
+        if (string.IsNullOrWhiteSpace(args.ResourceKey)) return;
+
+        // Map tên property của I18nEntryDto → language code lưu trong DB
+        var lang = args.FieldName switch
+        {
+            "ViVn" => "vi",
+            "EnUs" => "en",
+            "JaJp" => "ja",
+            _      => null
+        };
+        if (lang is null) return;
 
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            await _i18nService.SaveResourceAsync(args.ResourceKey, args.Lang, args.Value ?? "", cts.Token);
+            await _i18nService.SaveResourceAsync(args.ResourceKey, lang, args.Value ?? "", cts.Token);
         }
         catch (Exception ex)
         {
             SaveError = $"Lưu thất bại: {ex.Message}";
         }
-    }
-
-    // ── Load mock data ───────────────────────────────────────
-
-    private void LoadMockData()
-    {
-        Entries.Clear();
-        Entries.Add(new I18nEntryDto { ResourceId = 1, ResourceKey = "nhanvien.field.manhanvien",  Module = "Field", TablePrefix = "nhanvien", ViVn = "Mã Nhân Viên",   EnUs = "Employee Code", JaJp = "" });
-        Entries.Add(new I18nEntryDto { ResourceId = 2, ResourceKey = "nhanvien.field.hoten",       Module = "Field", TablePrefix = "nhanvien", ViVn = "Họ Tên",          EnUs = "Full Name",     JaJp = "" });
-        Entries.Add(new I18nEntryDto { ResourceId = 3, ResourceKey = "nhanvien.section.thongtin",  Module = "Form",  TablePrefix = "nhanvien", ViVn = "Thông tin chung", EnUs = "General Info",  JaJp = "" });
-        RebuildTableOptions();
-        RefreshFilter();
-        RaisePropertyChanged(nameof(TotalEntries));
-        RaisePropertyChanged(nameof(FilteredCount));
-        RaisePropertyChanged(nameof(MissingCount));
     }
 
     // ── Filter ───────────────────────────────────────────────
@@ -372,5 +374,5 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     private void ExecuteImport() { /* TODO(phase2): Import từ CSV/JSON   */ }
 }
 
-/// <summary>Args truyền từ code-behind khi cell commit.</summary>
-public sealed record CellSaveArgs(string ResourceKey, string Lang, string? Value);
+/// <summary>Args truyền từ code-behind khi cell commit. FieldName là tên property của DTO trên grid.</summary>
+public sealed record CellSaveArgs(string ResourceKey, string FieldName, string? Value);

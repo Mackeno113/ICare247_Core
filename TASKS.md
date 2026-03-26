@@ -6,6 +6,70 @@
 
 ---
 
+## 🟠 Kế hoạch — Field Config Schema Fix (2026-03-26)
+
+> **Bối cảnh:** Phân tích lại schema phát hiện inconsistency: `Is_ReadOnly` là cột trong `Ui_Field` nhưng `Is_Required` lại được lưu như `Val_Rule`. Quyết định ADR-010: cả 3 (`Is_Visible`, `Is_ReadOnly`, `Is_Required`) phải là cột tĩnh trong `Ui_Field`.
+> Đồng thời bổ sung `Is_Enabled` (disabled ≠ readonly), 2 rule type mới (`Length`, `Compare`), 3 action type mới (`SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`).
+
+### Wave A — Database Migration
+
+- [ ] Tạo `db/migrations/010_field_behavior_columns.sql`
+  - `ALTER TABLE Ui_Field ADD Is_Required bit NOT NULL DEFAULT 0`
+  - `ALTER TABLE Ui_Field ADD Is_Enabled  bit NOT NULL DEFAULT 1`
+  - Comment rõ: Is_Required tĩnh (luôn bắt buộc); SET_REQUIRED event = dynamic
+- [ ] Tạo `db/migrations/011_add_rule_types.sql`
+  - INSERT `Val_Rule_Type`: `Length` — kiểm tra `len(value)` trong khoảng min..max
+  - INSERT `Val_Rule_Type`: `Compare` — so sánh với field khác (`value >= {OtherField}`)
+- [ ] Tạo `db/migrations/012_add_action_types.sql`
+  - INSERT `Evt_Action_Type`: `SET_ENABLED`  — `{"targetField":"string","conditionExpression":"ast"}`
+  - INSERT `Evt_Action_Type`: `CLEAR_VALUE`   — `{"targetField":"string"}`
+  - INSERT `Evt_Action_Type`: `SHOW_MESSAGE`  — `{"messageKey":"string","severity":"info|warn|error"}`
+- [ ] **Chạy migrations 010–012 trên DB thật**
+
+### Wave B — Backend (ICare247.Domain + Infrastructure)
+
+- [ ] `FieldMetadata.cs` — thêm `IsRequired`, `IsEnabled`
+- [ ] `FieldRepository.cs` — thêm `Is_Required`, `Is_Enabled` vào SELECT/INSERT/UPDATE
+- [ ] `ValidationEngine.cs` — implement rule type `Length` (dùng `len()` function)
+- [ ] `ValidationEngine.cs` — implement rule type `Compare` (resolve OtherField từ EvaluationContext)
+- [ ] `EventEngine.cs` — thêm handler cho `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+- [ ] `UiDelta.cs` (nếu có) — thêm `enabledFields`, `clearedFields`, `messages` vào delta
+- [ ] Bỏ rule type `Required` khỏi Val_Rule_Type seed (hoặc deprecated — giữ backward compat)
+- [ ] Build verify backend — 0 errors, 0 warnings
+
+### Wave C — ConfigStudio WPF
+
+- [ ] `db/migrations/010`: chạy migration trước Wave C
+- [ ] `FieldConfigRecord.cs` (Core/Data) — thêm `IsRequired`, `IsEnabled`
+- [ ] `IFieldDataService.cs` — không thay đổi interface (IsRequired/IsEnabled đã trong record)
+- [ ] `FieldDataService.cs` — cập nhật SQL SELECT/UPSERT thêm `Is_Required`, `Is_Enabled`
+- [ ] `FieldConfigViewModel.cs` — đã có `IsRequired`; thêm `IsEnabled` property
+- [ ] `FieldConfigView.xaml` — Behavior card: thêm toggle **Is_Enabled** thành hàng 2 × 2
+  ```
+  [Hiển thị]  [🔒 Chỉ đọc]
+  [✱ Bắt buộc] [🚫 Vô hiệu hóa]
+  ```
+- [ ] `ValidationRuleEditorViewModel.cs`
+  - Xóa `Required` khỏi `RuleTypeOptions` (đã có cột field, không cần rule)
+  - Thêm `Length` vào `RuleTypeOptions` + `EditRuleTypeDescription`
+  - Thêm `Compare` vào `RuleTypeOptions` + UI: ComboBox chọn field + ComboBox chọn toán tử
+  - Thêm `IsCompareType` property + `EditCompareField`, `EditCompareOp` properties
+  - Cập nhật `ExecuteSaveRuleAsync`: build ExpressionJson từ Length/Compare params
+- [ ] `ValidationRuleEditorView.xaml`
+  - Thêm section **Compare**: ComboBox `EditCompareField` + ComboBox `EditCompareOp`
+  - Preview expression `{FieldCode} >= {EditCompareField}` (tự sinh)
+- [ ] `EventEditorViewModel.cs` — thêm `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE` vào ActionTypeOptions + descriptions
+- [ ] Build verify WPF — 0 errors, 0 warnings
+
+### Wave D — Tài liệu
+
+- [x] Tạo `docs/spec/09_FIELD_CONFIG_GUIDE.md` — hướng dẫn end-user đầy đủ (2026-03-26)
+- [ ] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — thêm cột `Is_Required`, `Is_Enabled` vào bảng `Ui_Field`
+- [ ] Cập nhật `docs/spec/04_ENGINE_SPEC.md` — thêm rule type `Length`, `Compare`; action type `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+- [ ] Cập nhật `docs/spec/05_ACTION_RULE_PARAM_SCHEMA.md` — thêm schema cho các type mới
+
+---
+
 ## ✅ Done (session 2026-03-25)
 
 ### Phase 10 — Schema Extension: Tab + Lookup (2026-03-25)

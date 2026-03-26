@@ -210,7 +210,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     }
 
     /// <summary>
-    /// Load danh sách form từ DB (nếu đã cấu hình), fallback sang mock data.
+    /// Load danh sách form từ DB. Nếu chưa cấu hình → hiện thông báo, list rỗng.
     /// </summary>
     private async Task LoadDataAsync()
     {
@@ -221,39 +221,39 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         {
             await EnsureAppConfigLoadedAsync();
 
-            // ── 1. Thử load từ DB ──────────────────────────────────
-            if (_formDataService is not null && _appConfig is not null && _appConfig.IsConfigured)
+            if (_formDataService is null || _appConfig is null || !_appConfig.IsConfigured)
             {
-                var records = await _formDataService.GetAllFormsAsync(
-                    _appConfig.TenantId,
-                    includeInactive: true);
-
                 Forms.Clear();
-                foreach (var r in records)
-                {
-                    Forms.Add(new FormSummaryDto
-                    {
-                        FormId       = r.FormId,
-                        FormCode     = r.FormCode,
-                        FormName     = r.FormName,
-                        Version      = r.Version,
-                        Platform     = r.Platform,
-                        TableName    = r.TableName,
-                        SectionCount = r.SectionCount,
-                        FieldCount   = r.FieldCount,
-                        IsActive     = r.IsActive,
-                        UpdatedAt    = r.UpdatedAt,
-                        UpdatedBy    = r.UpdatedBy,
-                    });
-                }
-
-                RebuildTableOptions();
                 RaiseStatistics();
+                LoadErrorMessage = "Chưa cấu hình kết nối DB. Vào Settings để nhập Connection String.";
                 return;
             }
 
-            // ── 2. Fallback: mock data khi chưa có DB ──────────────
-            LoadMockData();
+            var records = await _formDataService.GetAllFormsAsync(
+                _appConfig.TenantId,
+                includeInactive: true);
+
+            Forms.Clear();
+            foreach (var r in records)
+            {
+                Forms.Add(new FormSummaryDto
+                {
+                    FormId       = r.FormId,
+                    FormCode     = r.FormCode,
+                    FormName     = r.FormName,
+                    Version      = r.Version,
+                    Platform     = r.Platform,
+                    TableName    = r.TableName,
+                    SectionCount = r.SectionCount,
+                    FieldCount   = r.FieldCount,
+                    IsActive     = r.IsActive,
+                    UpdatedAt    = r.UpdatedAt,
+                    UpdatedBy    = r.UpdatedBy,
+                });
+            }
+
+            RebuildTableOptions();
+            RaiseStatistics();
         }
         catch (Exception ex)
         {
@@ -266,60 +266,6 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         {
             IsLoading = false;
         }
-    }
-
-    /// <summary>
-    /// Mock data dùng khi chưa cấu hình DB (dev / demo).
-    /// </summary>
-    private void LoadMockData()
-    {
-        Forms.Clear();
-
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 1, FormCode = "PO_ORDER", FormName = "Đơn Đặt Hàng",
-            Version = 3, Platform = "web", TableName = "PurchaseOrder",
-            SectionCount = 3, FieldCount = 8,
-            IsActive = true, UpdatedAt = DateTime.Now.AddHours(-2), UpdatedBy = "admin"
-        });
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 2, FormCode = "HR_LEAVE", FormName = "Đơn Xin Nghỉ Phép",
-            Version = 1, Platform = "web", TableName = "HrLeave",
-            SectionCount = 2, FieldCount = 6,
-            IsActive = true, UpdatedAt = DateTime.Now.AddDays(-1), UpdatedBy = "hr_admin"
-        });
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 3, FormCode = "INV_RECEIPT", FormName = "Phiếu Nhập Kho",
-            Version = 5, Platform = "web", TableName = "Inventory",
-            SectionCount = 4, FieldCount = 12,
-            IsActive = true, UpdatedAt = DateTime.Now.AddDays(-3), UpdatedBy = "admin"
-        });
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 4, FormCode = "MOBILE_CHECK", FormName = "Kiểm Tra Hiện Trường",
-            Version = 2, Platform = "mobile", TableName = "Inspection",
-            SectionCount = 5, FieldCount = 15,
-            IsActive = true, UpdatedAt = DateTime.Now.AddDays(-5), UpdatedBy = "field_admin"
-        });
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 5, FormCode = "WPF_REPORT", FormName = "Báo Cáo Desktop",
-            Version = 1, Platform = "wpf", TableName = "Report",
-            SectionCount = 2, FieldCount = 7,
-            IsActive = true, UpdatedAt = DateTime.Now.AddDays(-7), UpdatedBy = "admin"
-        });
-        Forms.Add(new FormSummaryDto
-        {
-            FormId = 6, FormCode = "OLD_FORM", FormName = "Form Cũ (Inactive)",
-            Version = 1, Platform = "web", TableName = "PurchaseOrder",
-            SectionCount = 1, FieldCount = 3,
-            IsActive = false, UpdatedAt = DateTime.Now.AddMonths(-2), UpdatedBy = "admin"
-        });
-
-        RebuildTableOptions();
-        RaiseStatistics();
     }
 
     /// <summary>

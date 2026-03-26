@@ -20,7 +20,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// Quản lý cấu hình chi tiết 1 field: thông tin cơ bản, control props, rules, events.
 /// Mở từ FormEditor khi click [⚙] trên field.
 /// Khi DB đã cấu hình → load dữ liệu thật qua IFieldDataService + II18nDataService.
-/// Khi chưa cấu hình → fallback mock data.
+/// Khi chưa cấu hình → hiển thị danh sách rỗng + thông báo lỗi.
 /// </summary>
 public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 {
@@ -111,6 +111,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 LoadControlPropSchema();
                 RaisePropertyChanged(nameof(IsLookupEditor));
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
+                RaisePropertyChanged(nameof(EditorTypeGuide));
+                RaisePropertyChanged(nameof(HasEditorTypeGuide));
                 if (IsLookupEditor && !_isLoading)
                     _ = LoadLookupCodesAsync();
                 IsDirty = true;
@@ -128,6 +130,137 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>True khi EditorType là LookupBox (FK tham chiếu bảng nghiệp vụ).</summary>
     public bool IsFkLookupEditor => SelectedEditorType == "LookupBox";
+
+    /// <summary>Hướng dẫn inline cho EditorType đang chọn — cập nhật khi SelectedEditorType thay đổi.</summary>
+    public ControlTypeGuide EditorTypeGuide => BuildGuide(SelectedEditorType);
+
+    /// <summary>True khi đã chọn EditorType và có guide để hiển thị card hướng dẫn.</summary>
+    public bool HasEditorTypeGuide => !string.IsNullOrEmpty(SelectedEditorType);
+
+    private static ControlTypeGuide BuildGuide(string editorType) => editorType switch
+    {
+        "TextBox" => new(
+            Icon:       "📝",
+            Title:      "TextBox — Văn bản ngắn",
+            WhenToUse:  "Tên người, mã số, email, địa chỉ, URL...",
+            ColumnType: "nvarchar, varchar, char",
+            Props:
+            [
+                new("maxLength",   "Độ dài ký tự tối đa (mặc định 255)"),
+                new("isMultiline", "Cho phép nhiều dòng (true/false)"),
+                new("rows",        "Số dòng hiển thị khi isMultiline = true"),
+            ]),
+
+        "TextArea" => new(
+            Icon:       "📄",
+            Title:      "TextArea — Văn bản dài",
+            WhenToUse:  "Ghi chú, mô tả, nội dung dài...",
+            ColumnType: "nvarchar(max), text",
+            Props:
+            [
+                new("maxLength",   "Độ dài ký tự tối đa"),
+                new("rows",        "Số dòng hiển thị (khuyến nghị ≥ 3)"),
+            ]),
+
+        "NumericBox" => new(
+            Icon:       "🔢",
+            Title:      "NumericBox — Số",
+            WhenToUse:  "Số lượng, đơn giá, tuổi, phần trăm...",
+            ColumnType: "int, decimal, float, double",
+            Props:
+            [
+                new("minValue",  "Giá trị tối thiểu (mặc định 0)"),
+                new("maxValue",  "Giá trị tối đa (mặc định 999999)"),
+                new("decimals",  "Số chữ số thập phân (0 = số nguyên)"),
+                new("spinStep",  "Bước nhảy khi bấm mũi tên (mặc định 1)"),
+                new("allowNull", "Cho phép để trống (true/false)"),
+            ]),
+
+        "DatePicker" => new(
+            Icon:       "📅",
+            Title:      "DatePicker — Ngày / Ngày giờ",
+            WhenToUse:  "Ngày sinh, ngày đặt hàng, ngày hết hạn...",
+            ColumnType: "datetime, date",
+            Props:
+            [
+                new("format",  "Định dạng: dd/MM/yyyy · dd/MM/yyyy HH:mm · MM/yyyy · yyyy"),
+                new("minDate", "Ngày tối thiểu được chọn (bỏ trống = không giới hạn)"),
+                new("maxDate", "Ngày tối đa được chọn (bỏ trống = không giới hạn)"),
+            ]),
+
+        "CheckBox" => new(
+            Icon:       "☑️",
+            Title:      "CheckBox — Có / Không",
+            WhenToUse:  "Trạng thái bật/tắt, đồng ý điều khoản...",
+            ColumnType: "bit (0/1)",
+            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")]),
+
+        "ToggleSwitch" => new(
+            Icon:       "🔘",
+            Title:      "ToggleSwitch — Công tắc",
+            WhenToUse:  "Active/Inactive, bật/tắt tính năng...",
+            ColumnType: "bit (0/1)",
+            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")]),
+
+        "ComboBox" => new(
+            Icon:       "🔽",
+            Title:      "ComboBox — Dropdown từ API",
+            WhenToUse:  "Danh sách động lấy từ API endpoint...",
+            ColumnType: "bất kỳ",
+            Props:
+            [
+                new("dataSource",   "URL API endpoint trả danh sách (VD: /api/phongban)"),
+                new("valueField",   "Field dùng làm giá trị lưu (mặc định: id)"),
+                new("displayField", "Field hiển thị trong dropdown (mặc định: name)"),
+                new("allowNull",    "Cho phép chọn trống (mặc định: true)"),
+            ]),
+
+        "RadioGroup" => new(
+            Icon:       "🔘",
+            Title:      "RadioGroup — Danh mục tĩnh (nút chọn)",
+            WhenToUse:  "Giới tính, trạng thái đơn giản (≤ 5 options)...",
+            ColumnType: "nvarchar",
+            Props:
+            [
+                new("Lookup Code", "Mã danh mục trong Sys_Lookup (VD: GENDER, TRANGTHAI_PO)"),
+                new("(cấu hình tại tab Control Props)", "→ mục Cấu hình Lookup"),
+            ]),
+
+        "LookupComboBox" => new(
+            Icon:       "📋",
+            Title:      "LookupComboBox — Danh mục tĩnh (dropdown)",
+            WhenToUse:  "Danh mục nhiều options từ Sys_Lookup (> 5 options)...",
+            ColumnType: "nvarchar",
+            Props:
+            [
+                new("Lookup Code", "Mã danh mục trong Sys_Lookup (VD: DM_LOAI_HD)"),
+                new("(cấu hình tại tab Control Props)", "→ mục Cấu hình Lookup"),
+            ]),
+
+        "LookupBox" => new(
+            Icon:       "🔍",
+            Title:      "LookupBox — FK tham chiếu bảng nghiệp vụ",
+            WhenToUse:  "Phòng ban, nhà cung cấp, khách hàng (cột FK int)...",
+            ColumnType: "int (FK)",
+            Props:
+            [
+                new("Query Mode",     "table = bảng trực tiếp · function = TVF · sql = full SQL"),
+                new("Source Table",   "[table] Tên bảng nguồn (VD: DM_PhongBan)"),
+                new("Value Field",    "[table] Cột lưu vào DB (VD: PhongBan_Id)"),
+                new("Display Field",  "[table] Cột hiển thị trong ô (VD: Ten_PhongBan)"),
+                new("Filter SQL",     "[table] Điều kiện WHERE bổ sung (parameterized)"),
+                new("Popup Columns",  "Danh sách cột hiển thị trong bảng popup chọn"),
+                new("Reload OnChange","FieldCode trigger reload datasource khi thay đổi"),
+                new("(cấu hình tại tab Control Props)", "→ mục FK Lookup"),
+            ]),
+
+        _ => new(
+            Icon:       "ℹ️",
+            Title:      editorType,
+            WhenToUse:  "",
+            ColumnType: "",
+            Props:      [])
+    };
 
     /// <summary>True khi đang có cấu hình FK Lookup (dùng để confirm trước khi đổi type).</summary>
     private bool HasFkLookupConfig =>
@@ -625,7 +758,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
         else
         {
-            LoadMockData();
+            // Chưa cấu hình DB → trả về trạng thái rỗng, hiện thông báo
+            AvailableColumns.Clear();
+            LinkedRules.Clear();
+            LinkedEvents.Clear();
+            LoadError = "Chưa cấu hình kết nối DB. Vào Settings để nhập Connection String.";
+            RaisePropertyChanged(nameof(HasLoadError));
+            IsLoading = false;
+            IsDirty   = false;
         }
     }
 
@@ -833,81 +973,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IsDirty   = false;
     }
 
-    // ── Load mock data ───────────────────────────────────────
-
-    /// <summary>
-    /// Load mock data cho demo khi chưa kết nối DB.
-    /// </summary>
-    private void LoadMockData()
-    {
-        IsLoading = true;
-
-        // ── 1. Load danh sách columns ────────────────────────
-        AvailableColumns.Clear();
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 1, ColumnCode = "MaDonHang", DataType = "nvarchar(50)", NetType = "String", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 2, ColumnCode = "NgayDatHang", DataType = "datetime", NetType = "DateTime", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 3, ColumnCode = "TrangThai", DataType = "nvarchar(20)", NetType = "String", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 4, ColumnCode = "NhaCungCap", DataType = "int", NetType = "Int32", IsNullable = true });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 5, ColumnCode = "SoLuong", DataType = "int", NetType = "Int32", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 6, ColumnCode = "DonGia", DataType = "decimal(18,2)", NetType = "Decimal", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 7, ColumnCode = "ThanhTien", DataType = "decimal(18,2)", NetType = "Decimal", IsNullable = false });
-        AvailableColumns.Add(new ColumnInfoDto { ColumnId = 8, ColumnCode = "LyDoTuChoi", DataType = "nvarchar(500)", NetType = "String", IsNullable = true });
-
-        if (_mode == "new")
-        {
-            // ── Tạo field mới ────────────────────────────────
-            SectionName = "Chi Tiết";
-            SelectedEditorType = "TextBox";
-            IsLoading = false;
-            IsDirty = false;
-            return;
-        }
-
-        // ── 2. Load thông tin field hiện tại (mock: SoLuong) ─
-        FieldId = FieldId > 0 ? FieldId : 5;
-        FormId = FormId > 0 ? FormId : 1;
-        SectionId = SectionId > 0 ? SectionId : 2;
-        SectionName = "Chi Tiết";
-
-        SelectedColumn = AvailableColumns.FirstOrDefault(c => c.ColumnCode == "SoLuong");
-        SelectedEditorType = "NumericBox";
-        OrderNo = 1;
-
-        LabelKey = "lbl.soluong";
-        PlaceholderKey = "ph.soluong";
-        TooltipKey = "tip.soluong";
-
-        IsVisible = true;
-        IsReadOnly = false;
-        IsRequired = true;
-
-        // ── 3. Load linked rules (mock) ──────────────────────
-        LinkedRules.Clear();
-        LinkedRules.Add(new RuleSummaryDto
-        {
-            RuleId = 1, OrderNo = 1, RuleTypeCode = "Required",
-            ExpressionPreview = "(built-in)", ErrorKey = "err.fld.req", IsActive = true
-        });
-        LinkedRules.Add(new RuleSummaryDto
-        {
-            RuleId = 2, OrderNo = 2, RuleTypeCode = "Numeric",
-            ExpressionPreview = "SoLuong >= 1 && SoLuong <= 9999",
-            ErrorKey = "err.sl.range", IsActive = true
-        });
-
-        // ── 4. Load linked events (mock) ─────────────────────
-        LinkedEvents.Clear();
-        LinkedEvents.Add(new EventSummaryDto
-        {
-            EventId = 18, TriggerCode = "OnChange",
-            ConditionPreview = "TrangThai == \"TuChoi\"",
-            ActionsCount = 3, IsActive = true
-        });
-
-        IsLoading = false;
-        IsDirty = false;
-    }
-
     // ── i18n preview resolver ────────────────────────────────
 
     /// <summary>
@@ -928,27 +993,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
         else
         {
-            setter(ResolveMockI18n(key));
+            // Chưa cấu hình DB → hiển thị key nguyên để user biết cần resolve
+            setter(key);
         }
     }
-
-    /// <summary>
-    /// Mock resolve i18n key thành text hiển thị.
-    /// </summary>
-    private static string ResolveMockI18n(string key) => key switch
-    {
-        "lbl.soluong" => "Số Lượng",
-        "ph.soluong" => "Nhập số lượng",
-        "tip.soluong" => "Số lượng đặt hàng",
-        "lbl.madohang" => "Mã Đơn Hàng",
-        "lbl.ngaydathang" => "Ngày Đặt Hàng",
-        "lbl.trangthai" => "Trạng Thái",
-        "lbl.nhacungcap" => "Nhà Cung Cấp",
-        "lbl.dongia" => "Đơn Giá",
-        "lbl.thanhtien" => "Thành Tiền",
-        "lbl.lydotuchoi" => "Lý Do Từ Chối",
-        _ => key
-    };
 
     // ── Control prop schema loader ───────────────────────────
 

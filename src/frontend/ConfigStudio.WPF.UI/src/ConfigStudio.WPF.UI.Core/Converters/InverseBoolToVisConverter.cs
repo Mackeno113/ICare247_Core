@@ -1,13 +1,13 @@
 // File    : InverseBoolToVisConverter.cs
-// Module  : Forms
-// Layer   : Presentation
-// Purpose : Converter đảo ngược: true → Collapsed, false → Visible.
+// Module  : Core
+// Layer   : Shared
+// Purpose : Converter dùng chung — đảo ngược: true → Collapsed, false → Visible.
 
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace ConfigStudio.WPF.UI.Modules.Forms.Converters;
+namespace ConfigStudio.WPF.UI.Core.Converters;
 
 /// <summary>
 /// Đảo ngược <see cref="BooleanToVisibilityConverter"/>:

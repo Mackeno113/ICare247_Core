@@ -101,21 +101,18 @@ public sealed class FormDataService : IFormDataService
         if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
-        var sql = $"""
-            SELECT f.Form_Id       AS FormId,
-                   f.Form_Code     AS FormCode,
-                   {formNameExpr},
-                   {versionExpr},
-                   {platformExpr},
-                   {isActiveExpr},
-                   {updatedAtExpr},
-                   {updatedByExpr},
-                   {sectionCountExpr},
-                   {fieldCountExpr}
-            FROM   {fromClause}
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            ORDER BY f.Form_Code
-            """;
+        var sql = "SELECT f.Form_Id AS FormId, f.Form_Code AS FormCode,\n"
+                + "       " + formNameExpr + ",\n"
+                + "       " + versionExpr + ",\n"
+                + "       " + platformExpr + ",\n"
+                + "       " + isActiveExpr + ",\n"
+                + "       " + updatedAtExpr + ",\n"
+                + "       " + updatedByExpr + ",\n"
+                + "       " + sectionCountExpr + ",\n"
+                + "       " + fieldCountExpr + "\n"
+                + "FROM   " + fromClause + "\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts) + "\n"
+                + "ORDER BY f.Form_Code";
 
         // ── 2. Execute ────────────────────────────────────────
         var result = await conn.QueryAsync<FormRecord>(
@@ -169,16 +166,14 @@ public sealed class FormDataService : IFormDataService
             ? "st.Table_Code"
             : "st.Table_Id";
 
-        var sql = $"""
-            SELECT st.Table_Id AS TableId,
-                   {tableCodeExpr},
-                   {tableNameExpr},
-                   {schemaExpr},
-                   {descriptionExpr}
-            FROM   dbo.Sys_Table st
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            ORDER BY {orderBy}
-            """;
+        var sql = "SELECT st.Table_Id AS TableId,\n"
+                + "       " + tableCodeExpr + ",\n"
+                + "       " + tableNameExpr + ",\n"
+                + "       " + schemaExpr + ",\n"
+                + "       " + descriptionExpr + "\n"
+                + "FROM   dbo.Sys_Table st\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts) + "\n"
+                + "ORDER BY " + orderBy;
 
         var result = await conn.QueryAsync<TableLookupRecord>(
             new CommandDefinition(
@@ -248,23 +243,21 @@ public sealed class FormDataService : IFormDataService
             ? "st.Table_Code"
             : "st.Table_Id";
 
-        var sql = $"""
-            SELECT st.Table_Id AS TableId,
-                   {tableCodeExpr},
-                   {tableNameExpr},
-                   {schemaExpr},
-                   {isTenantExpr},
-                   st.Tenant_Id AS TenantId,
-                   {versionExpr},
-                   {checksumExpr},
-                   {isActiveExpr},
-                   {createdAtExpr},
-                   {updatedAtExpr},
-                   {descriptionExpr}
-            FROM   dbo.Sys_Table st
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            ORDER BY {orderBy}
-            """;
+        var sql = "SELECT st.Table_Id AS TableId,\n"
+                + "       " + tableCodeExpr + ",\n"
+                + "       " + tableNameExpr + ",\n"
+                + "       " + schemaExpr + ",\n"
+                + "       " + isTenantExpr + ",\n"
+                + "       st.Tenant_Id AS TenantId,\n"
+                + "       " + versionExpr + ",\n"
+                + "       " + checksumExpr + ",\n"
+                + "       " + isActiveExpr + ",\n"
+                + "       " + createdAtExpr + ",\n"
+                + "       " + updatedAtExpr + ",\n"
+                + "       " + descriptionExpr + "\n"
+                + "FROM   dbo.Sys_Table st\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts) + "\n"
+                + "ORDER BY " + orderBy;
 
         var result = await conn.QueryAsync<SysTableRecord>(
             new CommandDefinition(
@@ -371,14 +364,11 @@ public sealed class FormDataService : IFormDataService
             insertVals.Add("@Description");
         }
 
-        var sql = $"""
-            INSERT INTO dbo.Sys_Table
-                ({string.Join(", ", insertCols)})
-            VALUES
-                ({string.Join(", ", insertVals)});
-
-            SELECT CAST(SCOPE_IDENTITY() AS INT);
-            """;
+        var sql = "INSERT INTO dbo.Sys_Table ("
+                + string.Join(", ", insertCols) + ")\n"
+                + "VALUES ("
+                + string.Join(", ", insertVals) + ");\n"
+                + "SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(
@@ -466,12 +456,10 @@ public sealed class FormDataService : IFormDataService
         if (setParts.Count == 0)
             throw new InvalidOperationException("Không tìm thấy cột hợp lệ để update Sys_Table.");
 
-        var sql = $"""
-            UPDATE dbo.Sys_Table
-            SET    {string.Join(", ", setParts)}
-            WHERE  Table_Id = @TableId
-              AND  Tenant_Id = @TenantId
-            """;
+        var sql = "UPDATE dbo.Sys_Table\n"
+                + "SET    " + string.Join(", ", setParts) + "\n"
+                + "WHERE  Table_Id = @TableId\n"
+                + "  AND  Tenant_Id = @TenantId";
 
         var affected = await conn.ExecuteAsync(
             new CommandDefinition(
@@ -606,14 +594,11 @@ public sealed class FormDataService : IFormDataService
             insertVals.Add("'system'");
         }
 
-        var sql = $"""
-            INSERT INTO dbo.Ui_Form
-                ({string.Join(", ", insertCols)})
-            VALUES
-                ({string.Join(", ", insertVals)});
-
-            SELECT CAST(SCOPE_IDENTITY() AS INT);
-            """;
+        var sql = "INSERT INTO dbo.Ui_Form ("
+                + string.Join(", ", insertCols) + ")\n"
+                + "VALUES ("
+                + string.Join(", ", insertVals) + ");\n"
+                + "SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(
@@ -671,11 +656,9 @@ public sealed class FormDataService : IFormDataService
             ? "dbo.Ui_Form f INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
             : "dbo.Ui_Form f";
 
-        var sql = $"""
-            SELECT TOP (1) 1
-            FROM   {fromClause}
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            """;
+        var sql = "SELECT TOP (1) 1\n"
+                + "FROM   " + fromClause + "\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts);
 
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
@@ -704,12 +687,10 @@ public sealed class FormDataService : IFormDataService
         if (sysTableCols.Contains("Is_Tenant"))
             whereParts.Add("Is_Tenant = 1");
 
-        var sql = $"""
-            SELECT TOP (1) Table_Id
-            FROM   dbo.Sys_Table
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            ORDER BY Table_Id
-            """;
+        var sql = "SELECT TOP (1) Table_Id\n"
+                + "FROM   dbo.Sys_Table\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts) + "\n"
+                + "ORDER BY Table_Id";
 
         return await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
@@ -741,11 +722,9 @@ public sealed class FormDataService : IFormDataService
         if (sysTableCols.Contains("Is_Tenant"))
             whereParts.Add("Is_Tenant = 1");
 
-        var sql = $"""
-            SELECT TOP (1) 1
-            FROM   dbo.Sys_Table
-            WHERE  {string.Join("\n              AND  ", whereParts)}
-            """;
+        var sql = "SELECT TOP (1) 1\n"
+                + "FROM   dbo.Sys_Table\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts);
 
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
@@ -798,9 +777,11 @@ public sealed class FormDataService : IFormDataService
             return $"CAST(0 AS int) AS {outputAlias}";
 
         var activeFilter = columns.Contains("Is_Active")
-            ? $" AND {alias}.Is_Active = 1"
+            ? " AND " + alias + ".Is_Active = 1"
             : string.Empty;
 
-        return $"(SELECT COUNT(*) FROM dbo.{tableName} {alias} WHERE {alias}.Form_Id = f.Form_Id{activeFilter}) AS {outputAlias}";
+        return "(SELECT COUNT(*) FROM dbo." + tableName + " " + alias
+             + " WHERE " + alias + ".Form_Id = f.Form_Id" + activeFilter
+             + ") AS " + outputAlias;
     }
 }

@@ -254,9 +254,108 @@
                                        Style="{StaticResource HelpText}" />
                         </StackPanel>
 
-                        <!-- Điều kiện (ẩn khi Required) -->
+                        <!-- ── Range: min / max input trực tiếp ─────── -->
                         <StackPanel Style="{StaticResource FieldGroup}"
-                                    Visibility="{Binding IsExpressionNeeded, Converter={StaticResource BoolToVis}}">
+                                    Visibility="{Binding IsRangeType, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Khoảng giá trị" Style="{StaticResource FieldLabel}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Min" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <dxe:TextEdit EditValue="{Binding EditRangeMin, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: 1 hoặc 2024-01-01" />
+                                </StackPanel>
+                                <TextBlock Grid.Column="1" Text="–"
+                                           VerticalAlignment="Bottom" HorizontalAlignment="Center"
+                                           Margin="0,0,0,6" Foreground="#94A3B8" FontSize="16" />
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Max" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <dxe:TextEdit EditValue="{Binding EditRangeMax, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: 9999 hoặc 2099-12-31" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Style="{StaticResource HelpText}"
+                                       Text="Để trống một đầu = không giới hạn đầu đó. Áp dụng cho số, ngày, độ dài string." />
+                            <!-- Preview expression được build tự động -->
+                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="8,5" Margin="0,6,0,0"
+                                    Visibility="{Binding HasRangePreview, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding RangeExpressionPreview}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ── Regex: pattern + template chips ──────── -->
+                        <StackPanel Style="{StaticResource FieldGroup}"
+                                    Visibility="{Binding IsRegexType, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="Regex Pattern" Style="{StaticResource FieldLabel}" />
+                            <dxe:TextEdit EditValue="{Binding EditRegexPattern, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: ^[A-Za-z0-9]{6,}$"
+                                          FontFamily="Consolas" />
+                            <TextBlock Style="{StaticResource HelpText}"
+                                       Text="Chọn mẫu có sẵn bên dưới hoặc nhập thủ công." />
+                            <!-- Template chips -->
+                            <WrapPanel Margin="0,8,0,0">
+                                <ItemsControl ItemsSource="{Binding RegexTemplates}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Command="{Binding DataContext.ApplyRegexTemplateCommand,
+                                                                      RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding Pattern}"
+                                                    Margin="0,0,6,6"
+                                                    Padding="10,4"
+                                                    Cursor="Hand"
+                                                    Background="#EFF6FF"
+                                                    BorderBrush="#BFDBFE"
+                                                    BorderThickness="1">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border Background="{TemplateBinding Background}"
+                                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                                CornerRadius="12"
+                                                                Padding="{TemplateBinding Padding}">
+                                                            <ContentPresenter HorizontalAlignment="Center"
+                                                                              VerticalAlignment="Center" />
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter Property="Background" Value="#DBEAFE" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="#2563EB" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </WrapPanel>
+                            <!-- Preview pattern đang chọn -->
+                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                                    BorderThickness="1" CornerRadius="3"
+                                    Padding="8,5" Margin="0,4,0,0"
+                                    Visibility="{Binding HasRegexPattern, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding EditRegexPattern}"
+                                           FontFamily="Consolas" FontSize="11"
+                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+
+                        <!-- ── Custom / Fallback: Expression Builder ── -->
+                        <StackPanel Style="{StaticResource FieldGroup}"
+                                    Visibility="{Binding IsCustomOrOther, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="Điều kiện validate" Style="{StaticResource FieldLabel}" />
                             <dxe:TextEdit EditValue="{Binding EditExpressionPreview, UpdateSourceTrigger=PropertyChanged}"
                                           NullText="VD: value >= 1 &amp;&amp; value &lt;= 9999"

@@ -6,7 +6,7 @@
              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Models"
-             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Grammar.Converters"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Core.Converters;assembly=ConfigStudio.WPF.UI.Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
              d:DesignWidth="900"

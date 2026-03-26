@@ -10,6 +10,7 @@ using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Rules.Models;
+using System.Collections.Generic;
 using Prism.Commands;
 using Prism.Navigation.Regions;
 using Prism.Dialogs;
@@ -20,7 +21,7 @@ namespace ConfigStudio.WPF.UI.Modules.Rules.ViewModels;
 /// ViewModel cho màn hình Validation Rule Editor (Screen 05).
 /// Hiển thị DataGrid rules, thêm/sửa/xóa, mở Expression Builder dialog.
 /// Khi DB đã cấu hình → load/save dữ liệu thật qua IRuleDataService.
-/// Khi chưa cấu hình → fallback mock data.
+/// Khi chưa cấu hình → hiển thị danh sách rỗng.
 /// </summary>
 public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAware
 {
@@ -84,8 +85,14 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         _          => ""
     };
 
-    /// <summary>Rule Required không cần Expression — ẩn phần expression builder.</summary>
-    public bool IsExpressionNeeded => EditRuleType != "Required";
+    /// <summary>Hiển thị UI input Range (min/max) khi loại rule là Range hoặc Numeric.</summary>
+    public bool IsRangeType => EditRuleType is "Range" or "Numeric";
+
+    /// <summary>Hiển thị UI input Regex pattern + template chips.</summary>
+    public bool IsRegexType => EditRuleType == "Regex";
+
+    /// <summary>Hiển thị Expression Builder cho Custom và các loại khác không có UI riêng.</summary>
+    public bool IsCustomOrOther => EditRuleType is "Custom" or "Required" ? EditRuleType == "Custom" : !IsRangeType && !IsRegexType;
 
     /// <summary>
     /// Auto-generated ErrorKey theo pattern: {tableCode}.val.{fieldCode}.{ruleTypeCode}.
@@ -124,7 +131,9 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
             if (SetProperty(ref _editRuleType, value))
             {
                 RaisePropertyChanged(nameof(EditRuleTypeDescription));
-                RaisePropertyChanged(nameof(IsExpressionNeeded));
+                RaisePropertyChanged(nameof(IsRangeType));
+                RaisePropertyChanged(nameof(IsRegexType));
+                RaisePropertyChanged(nameof(IsCustomOrOther));
                 RaisePropertyChanged(nameof(AutoErrorKey));
             }
         }
@@ -147,6 +156,77 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     private string _editExpressionPreview = "";
     public string EditExpressionPreview { get => _editExpressionPreview; set => SetProperty(ref _editExpressionPreview, value); }
 
+    // ── Range inputs ─────────────────────────────────────────
+    private string _editRangeMin = "";
+    public string EditRangeMin
+    {
+        get => _editRangeMin;
+        set
+        {
+            if (SetProperty(ref _editRangeMin, value))
+            {
+                RaisePropertyChanged(nameof(RangeExpressionPreview));
+                RaisePropertyChanged(nameof(HasRangePreview));
+            }
+        }
+    }
+
+    private string _editRangeMax = "";
+    public string EditRangeMax
+    {
+        get => _editRangeMax;
+        set
+        {
+            if (SetProperty(ref _editRangeMax, value))
+            {
+                RaisePropertyChanged(nameof(RangeExpressionPreview));
+                RaisePropertyChanged(nameof(HasRangePreview));
+            }
+        }
+    }
+
+    /// <summary>Preview expression được build từ min/max để user thấy trước khi lưu.</summary>
+    public string RangeExpressionPreview
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(_editRangeMin))
+                parts.Add($"{FieldCode} >= {_editRangeMin}");
+            if (!string.IsNullOrWhiteSpace(_editRangeMax))
+                parts.Add($"{FieldCode} <= {_editRangeMax}");
+            return parts.Count > 0 ? string.Join(" && ", parts) : "";
+        }
+    }
+
+    public bool HasRangePreview => !string.IsNullOrEmpty(RangeExpressionPreview);
+
+    // ── Regex inputs ─────────────────────────────────────────
+    private string _editRegexPattern = "";
+    public string EditRegexPattern
+    {
+        get => _editRegexPattern;
+        set
+        {
+            if (SetProperty(ref _editRegexPattern, value))
+                RaisePropertyChanged(nameof(HasRegexPattern));
+        }
+    }
+
+    public bool HasRegexPattern => !string.IsNullOrEmpty(_editRegexPattern);
+
+    /// <summary>Danh sách template regex phổ biến — user click để áp dụng ngay.</summary>
+    public List<RegexTemplateItem> RegexTemplates { get; } =
+    [
+        new("Mật khẩu mạnh",   @"^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%]).{8,}$"),
+        new("Email",           @"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"),
+        new("Số điện thoại VN",@"^(0|\+84)[0-9]{9,10}$"),
+        new("Chỉ số nguyên",   @"^[0-9]+$"),
+        new("Chỉ chữ cái",     @"^[a-zA-ZÀ-ỹ\s]+$"),
+        new("Mã định danh",    @"^[A-Z0-9_]{3,50}$"),
+        new("URL",             @"^https?://[^\s/$.?#].[^\s]*$"),
+    ];
+
     private string _editMode = "new";
 
     // ── Commands ──────────────────────────────────────────────
@@ -158,6 +238,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     public DelegateCommand OpenExpressionBuilderCommand { get; }
     public DelegateCommand SaveRuleCommand { get; }
     public DelegateCommand CancelEditCommand { get; }
+    public DelegateCommand<string> ApplyRegexTemplateCommand { get; }
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
@@ -182,6 +263,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         OpenExpressionBuilderCommand = new DelegateCommand(ExecuteOpenExpressionBuilder, () => IsRuleSelected);
         SaveRuleCommand = new DelegateCommand(async () => await ExecuteSaveRuleAsync());
         CancelEditCommand = new DelegateCommand(() => IsEditPanelOpen = false);
+        ApplyRegexTemplateCommand = new DelegateCommand<string>(p => EditRegexPattern = p ?? "");
         SaveAllCommand = new DelegateCommand(async () => await ExecuteSaveAllAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
         BackCommand = new DelegateCommand(ExecuteBack);
@@ -217,7 +299,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         _cts = new CancellationTokenSource();
     }
 
-    // ── Load data (DB hoặc mock) ─────────────────────────────
+    // ── Load data ────────────────────────────────────────────
 
     private async Task LoadDataAsync()
     {
@@ -227,7 +309,9 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         }
         else
         {
-            LoadMockData();
+            // Chưa cấu hình DB → danh sách rỗng
+            Rules.Clear();
+            IsDirty = false;
         }
     }
 
@@ -263,42 +347,8 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         catch (OperationCanceledException) { /* Navigation away */ }
         catch
         {
-            LoadMockData();
+            Rules.Clear();
         }
-    }
-
-    // ── Load mock data ───────────────────────────────────────
-
-    private void LoadMockData()
-    {
-        FieldCode = "SoLuong";
-
-        Rules.Clear();
-        Rules.Add(new RuleItemDto
-        {
-            RuleId = 1, FieldId = FieldId, FieldCode = FieldCode,
-            RuleTypeCode = "Required", OrderNo = 1,
-            ExpressionPreview = "(built-in)", ExpressionJson = "{}",
-            ErrorKey = "err.fld.req", Severity = "Error", IsActive = true
-        });
-        Rules.Add(new RuleItemDto
-        {
-            RuleId = 2, FieldId = FieldId, FieldCode = FieldCode,
-            RuleTypeCode = "Range", OrderNo = 2,
-            ExpressionPreview = "SoLuong >= 1 && SoLuong <= 9999",
-            ExpressionJson = "{\"type\":\"Binary\",\"op\":\"&&\"}",
-            ErrorKey = "err.sl.range", Severity = "Error", IsActive = true
-        });
-        Rules.Add(new RuleItemDto
-        {
-            RuleId = 3, FieldId = FieldId, FieldCode = FieldCode,
-            RuleTypeCode = "Custom", OrderNo = 3,
-            ExpressionPreview = "SoLuong <= DonGia * 100",
-            ExpressionJson = "{\"type\":\"Binary\",\"op\":\"<=\"}",
-            ErrorKey = "err.sl.exceed", Severity = "Warning", IsActive = true
-        });
-
-        IsDirty = false;
     }
 
     // ── Command handlers ─────────────────────────────────────
@@ -310,6 +360,9 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         EditErrorKey = "";
         EditSeverity = "Error";
         EditExpressionPreview = "";
+        EditRangeMin = "";
+        EditRangeMax = "";
+        EditRegexPattern = "";
         IsEditPanelOpen = true;
     }
 

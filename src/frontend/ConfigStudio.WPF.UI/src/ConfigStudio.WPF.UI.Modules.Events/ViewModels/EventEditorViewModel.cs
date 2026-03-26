@@ -19,7 +19,7 @@ namespace ConfigStudio.WPF.UI.Modules.Events.ViewModels;
 /// ViewModel cho màn hình Event Editor (Screen 06).
 /// Hiển thị DataGrid events, danh sách actions, mở Expression Builder cho condition.
 /// Khi DB đã cấu hình → load/save dữ liệu thật qua IEventDataService.
-/// Khi chưa cấu hình → fallback mock data.
+/// Khi chưa cấu hình → hiển thị danh sách rỗng.
 /// </summary>
 public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
 {
@@ -138,7 +138,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         _cts = new CancellationTokenSource();
     }
 
-    // ── Load data (DB hoặc mock) ─────────────────────────────
+    // ── Load data ────────────────────────────────────────────
 
     private async Task LoadDataAsync()
     {
@@ -148,7 +148,10 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         }
         else
         {
-            LoadMockData();
+            // Chưa cấu hình DB → trả về trạng thái rỗng
+            Events.Clear();
+            Actions.Clear();
+            IsDirty = false;
         }
     }
 
@@ -203,49 +206,9 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         catch (OperationCanceledException) { /* Navigation away */ }
         catch
         {
-            LoadMockData();
+            Events.Clear();
+            Actions.Clear();
         }
-    }
-
-    // ── Load mock data ───────────────────────────────────────
-
-    private void LoadMockData()
-    {
-        FieldCode = "SoLuong";
-
-        Events.Clear();
-        Events.Add(new EventItemDto
-        {
-            EventId = 1, FieldId = FieldId, FieldCode = FieldCode,
-            TriggerCode = "OnChange", OrderNo = 1,
-            ConditionPreview = "TrangThai == \"TuChoi\"",
-            ConditionJson = "{\"type\":\"Binary\",\"op\":\"==\"}",
-            ActionsCount = 3,
-            ActionsPreview = "SetVisible, SetRequired, Recalculate",
-            IsActive = true
-        });
-        Events.Add(new EventItemDto
-        {
-            EventId = 2, FieldId = FieldId, FieldCode = FieldCode,
-            TriggerCode = "OnBlur", OrderNo = 2,
-            ConditionPreview = "SoLuong > 0",
-            ConditionJson = "{\"type\":\"Binary\",\"op\":\">\"}",
-            ActionsCount = 1,
-            ActionsPreview = "Recalculate",
-            IsActive = true
-        });
-        Events.Add(new EventItemDto
-        {
-            EventId = 3, FieldId = FieldId, FieldCode = FieldCode,
-            TriggerCode = "OnLoad", OrderNo = 3,
-            ConditionPreview = "(luôn thực thi)",
-            ConditionJson = "{}",
-            ActionsCount = 2,
-            ActionsPreview = "SetValue, SetReadOnly",
-            IsActive = true
-        });
-
-        IsDirty = false;
     }
 
     /// <summary>
@@ -276,36 +239,13 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
             catch (OperationCanceledException) { /* Navigation away */ }
             catch
             {
-                LoadMockActionsForEvent();
+                Actions.Clear();
             }
         }
         else
         {
-            LoadMockActionsForEvent();
-        }
-    }
-
-    /// <summary>
-    /// Mock actions theo EventId.
-    /// </summary>
-    private void LoadMockActionsForEvent()
-    {
-        if (SelectedEvent is null) return;
-
-        switch (SelectedEvent.EventId)
-        {
-            case 1:
-                Actions.Add(new ActionItemDto { ActionId = 1, EventId = 1, ActionType = "SetVisible", TargetField = "LyDoTuChoi", ParamJson = "{\"visible\": true}", OrderNo = 1 });
-                Actions.Add(new ActionItemDto { ActionId = 2, EventId = 1, ActionType = "SetRequired", TargetField = "LyDoTuChoi", ParamJson = "{\"required\": true}", OrderNo = 2 });
-                Actions.Add(new ActionItemDto { ActionId = 3, EventId = 1, ActionType = "Recalculate", TargetField = "ThanhTien", ParamJson = "{}", OrderNo = 3 });
-                break;
-            case 2:
-                Actions.Add(new ActionItemDto { ActionId = 4, EventId = 2, ActionType = "Recalculate", TargetField = "ThanhTien", ParamJson = "{\"formula\": \"SoLuong * DonGia\"}", OrderNo = 1 });
-                break;
-            case 3:
-                Actions.Add(new ActionItemDto { ActionId = 5, EventId = 3, ActionType = "SetValue", TargetField = "NgayDatHang", ParamJson = "{\"value\": \"today()\"}", OrderNo = 1 });
-                Actions.Add(new ActionItemDto { ActionId = 6, EventId = 3, ActionType = "SetReadOnly", TargetField = "MaDonHang", ParamJson = "{\"readonly\": true}", OrderNo = 2 });
-                break;
+            // Chưa cấu hình DB → danh sách actions rỗng
+            Actions.Clear();
         }
     }
 

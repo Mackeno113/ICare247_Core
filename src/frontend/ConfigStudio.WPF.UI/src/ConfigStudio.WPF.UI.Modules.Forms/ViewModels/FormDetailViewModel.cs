@@ -17,7 +17,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// ViewModel cho màn hình Form Detail — hiển thị readonly toàn bộ metadata của form
 /// bao gồm header, sections, fields, events, rules, audit log.
 /// Khi DB đã cấu hình → load dữ liệu thật qua IFormDetailDataService.
-/// Khi chưa cấu hình → fallback mock data.
+/// Khi chưa cấu hình → hiển thị thông báo lỗi, không load dữ liệu.
 /// </summary>
 public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 {

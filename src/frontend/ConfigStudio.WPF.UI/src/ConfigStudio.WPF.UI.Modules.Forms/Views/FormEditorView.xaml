@@ -8,7 +8,7 @@
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Models"
-             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
+             xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Core.Converters;assembly=ConfigStudio.WPF.UI.Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="700"
              d:DesignWidth="1200"
