@@ -37,36 +37,25 @@
 - [ ] Bỏ rule type `Required` khỏi Val_Rule_Type seed (hoặc deprecated — giữ backward compat)
 - [ ] Build verify backend — 0 errors, 0 warnings
 
-### Wave C — ConfigStudio WPF
+### Wave C — ConfigStudio WPF ✅ (commit 707c882, 2026-03-26)
 
-- [ ] `db/migrations/010`: chạy migration trước Wave C
-- [ ] `FieldConfigRecord.cs` (Core/Data) — thêm `IsRequired`, `IsEnabled`
-- [ ] `IFieldDataService.cs` — không thay đổi interface (IsRequired/IsEnabled đã trong record)
-- [ ] `FieldDataService.cs` — cập nhật SQL SELECT/UPSERT thêm `Is_Required`, `Is_Enabled`
-- [ ] `FieldConfigViewModel.cs` — đã có `IsRequired`; thêm `IsEnabled` property
-- [ ] `FieldConfigView.xaml` — Behavior card: thêm toggle **Is_Enabled** thành hàng 2 × 2
-  ```
-  [Hiển thị]  [🔒 Chỉ đọc]
-  [✱ Bắt buộc] [🚫 Vô hiệu hóa]
-  ```
-- [ ] `ValidationRuleEditorViewModel.cs`
-  - Xóa `Required` khỏi `RuleTypeOptions` (đã có cột field, không cần rule)
-  - Thêm `Length` vào `RuleTypeOptions` + `EditRuleTypeDescription`
-  - Thêm `Compare` vào `RuleTypeOptions` + UI: ComboBox chọn field + ComboBox chọn toán tử
-  - Thêm `IsCompareType` property + `EditCompareField`, `EditCompareOp` properties
-  - Cập nhật `ExecuteSaveRuleAsync`: build ExpressionJson từ Length/Compare params
-- [ ] `ValidationRuleEditorView.xaml`
-  - Thêm section **Compare**: ComboBox `EditCompareField` + ComboBox `EditCompareOp`
-  - Preview expression `{FieldCode} >= {EditCompareField}` (tự sinh)
-- [ ] `EventEditorViewModel.cs` — thêm `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE` vào ActionTypeOptions + descriptions
-- [ ] Build verify WPF — 0 errors, 0 warnings
+- [x] `db/migrations/010`: chạy migration trước Wave C
+- [x] `FieldConfigRecord.cs` (Core/Data) — thêm `IsRequired`, `IsEnabled`
+- [x] `IFieldDataService.cs` — không thay đổi interface (IsRequired/IsEnabled đã trong record)
+- [x] `FieldDataService.cs` — cập nhật SQL SELECT/UPSERT thêm `Is_Required`, `Is_Enabled`
+- [x] `FieldConfigViewModel.cs` — thêm `IsEnabled`; xóa `ToggleRequiredRule`
+- [x] `FieldConfigView.xaml` — Behavior card 2×2 Grid: IsVisible + IsReadOnly / IsRequired + IsEnabled
+- [x] `ValidationRuleEditorViewModel.cs` — xóa `Required`, thêm `Length` + `Compare` (IsCompareType, EditCompareField, EditCompareOp, CompareOpOptions, preview)
+- [x] `ValidationRuleEditorView.xaml` — thêm section Compare + preview Border
+- [x] `EventEditorViewModel.cs` — thêm `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+- [x] Build verify WPF — 0 errors, 0 warnings
 
-### Wave D — Tài liệu
+### Wave D — Tài liệu ✅ (2026-03-26)
 
 - [x] Tạo `docs/spec/09_FIELD_CONFIG_GUIDE.md` — hướng dẫn end-user đầy đủ (2026-03-26)
-- [ ] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — thêm cột `Is_Required`, `Is_Enabled` vào bảng `Ui_Field`
-- [ ] Cập nhật `docs/spec/04_ENGINE_SPEC.md` — thêm rule type `Length`, `Compare`; action type `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
-- [ ] Cập nhật `docs/spec/05_ACTION_RULE_PARAM_SCHEMA.md` — thêm schema cho các type mới
+- [x] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — thêm cột `Is_Required`, `Is_Enabled` vào bảng `Ui_Field`; cập nhật Val_Rule_Type + Evt_Action_Type
+- [x] Cập nhật `docs/spec/04_ENGINE_SPEC.md` — thêm rule type `Length`, `Compare`; action type `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`; fix Val_Rule_Field → Field_Id trực tiếp
+- [x] Cập nhật `docs/spec/05_ACTION_RULE_PARAM_SCHEMA.md` — deprecated `Required`; thêm schema đầy đủ `Length`, `Compare`, `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
 
 ---
 

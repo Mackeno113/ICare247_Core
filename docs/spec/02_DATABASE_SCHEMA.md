@@ -415,7 +415,9 @@
 | Placeholder_Key | nvarchar(150) | NULL | Resource key |
 | Tooltip_Key | nvarchar(150) | NULL | Resource key |
 | Is_Visible | bit | NOT NULL DEFAULT 1 | |
-| Is_ReadOnly | bit | NOT NULL DEFAULT 0 | |
+| Is_ReadOnly | bit | NOT NULL DEFAULT 0 | Field hiển thị giá trị, không cho sửa, vẫn submit |
+| Is_Required | bit | NOT NULL DEFAULT 0 | Bắt buộc nhập — cột DB, không phải Val_Rule |
+| Is_Enabled | bit | NOT NULL DEFAULT 1 | false = grayout, không tương tác, KHÔNG submit |
 | Order_No | int | NOT NULL DEFAULT 0 | Thứ tự trong section |
 | Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng trong grid: 1=1/3, 2=2/3, 3=full |
 | Lookup_Source | nvarchar(20) | NULL | NULL / 'static' / 'dynamic' |
@@ -432,7 +434,9 @@
 
 **Indexes:** `IX_Ui_Field_Form (Form_Id, Is_Visible, Order_No)`
 
-> **Lưu ý:** `Is_Required` không có trong bảng này — logic required được định nghĩa qua `Val_Rule` với `Rule_Type_Code = 'Required'`.
+> **ADR-010:** `Is_Required` và `Is_Enabled` là **cột DB** trên `Ui_Field` — đồng nhất với `Is_Visible` và `Is_ReadOnly`.
+> `Is_ReadOnly = true`: field hiển thị giá trị, không chỉnh sửa được, **vẫn submit** lên server.
+> `Is_Enabled = false`: field bị grayout, không tương tác, **KHÔNG submit** — dùng cho trường phụ thuộc điều kiện nghiệp vụ.
 
 ---
 
@@ -483,7 +487,7 @@
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
-| Rule_Type_Code | nvarchar(50) | PK | VD: 'Required', 'Regex', 'Range', 'Custom' |
+| Rule_Type_Code | nvarchar(50) | PK | VD: 'Regex', 'Range', 'Length', 'Compare', 'Custom' *('Required' deprecated — xem ADR-011)* |
 | Param_Schema | nvarchar(max) | NULL | JSON Schema mô tả params hợp lệ |
 
 ---
@@ -497,7 +501,7 @@
 |---|---|---|---|
 | Rule_Id | int | PK IDENTITY | |
 | Field_Id | int | NOT NULL FK→Ui_Field | Field sở hữu rule này |
-| Rule_Type_Code | nvarchar(50) | NOT NULL FK→Val_Rule_Type | VD: 'Required', 'Range', 'Regex', 'Custom' |
+| Rule_Type_Code | nvarchar(50) | NOT NULL FK→Val_Rule_Type | VD: 'Regex', 'Range', 'Length', 'Compare', 'Custom' |
 | Error_Key | nvarchar(150) | NOT NULL UNIQUE | Pattern: `{table}.val.{column}.{type}` → Sys_Resource |
 | Severity | nvarchar(20) | NOT NULL DEFAULT 'Error' | 'Error' / 'Warning' / 'Info' |
 | Expression_Json | nvarchar(max) | NULL | AST expression (bắt buộc trừ Required) |
@@ -507,8 +511,8 @@
 | Updated_At | datetime | DEFAULT getdate() | |
 
 **Constraints:**
-- `CHK_Val_Rule_HasExpression`: `Expression_Json IS NOT NULL OR Rule_Type_Code = 'Required'`
-  *(Rule Required không cần Expression — engine tự hiểu là kiểm tra not null/empty)*
+- `CHK_Val_Rule_HasExpression`: `Expression_Json IS NOT NULL`
+  *(ADR-011: `Required` deprecated — Is_Required là cột DB trên Ui_Field. Mọi rule type đều cần Expression_Json)*
 - `UX_Val_Rule_ErrorKey`: UNIQUE `(Error_Key)`
 
 **Indexes:** `IX_Val_Rule_Field_Id (Field_Id, Order_No)`
@@ -606,7 +610,7 @@
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
-| Action_Code | nvarchar(50) | PK | VD: 'SetValue', 'ShowHide', 'CallApi', 'Navigate' |
+| Action_Code | nvarchar(50) | PK | VD: 'SET_VALUE', 'SET_VISIBLE', 'SET_REQUIRED', 'SET_READONLY', 'SET_ENABLED', 'CLEAR_VALUE', 'SHOW_MESSAGE', 'RELOAD_OPTIONS', 'TRIGGER_VALIDATION' |
 | Param_Schema | nvarchar(max) | NULL | JSON Schema mô tả params hợp lệ |
 
 ---

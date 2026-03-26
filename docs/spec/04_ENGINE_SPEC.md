@@ -56,23 +56,29 @@ public interface IAstEngine
 ```
 ValidateFieldAsync(formId, fieldCode, value, context, tenantId)
     → Load Field_Id từ fieldCode + formId
-    → Load rules của field từ Val_Rule_Field JOIN Val_Rule
-          (Val_Rule_Field.Field_Id = Field_Id, ORDER BY Val_Rule_Field.Order_No)
+    → Load rules của field từ Val_Rule WHERE Field_Id = Field_Id ORDER BY Order_No
+          (Migration 003: bỏ bảng junction Val_Rule_Field — Field_Id trực tiếp trên Val_Rule)
     → Resolve dependencies qua Sys_Dependency
     → Sort rules theo dependency graph (topological sort)
     → Evaluate từng rule:
           - Nếu Val_Rule.Condition_Expr != NULL → evaluate điều kiện trước
           - Nếu điều kiện = false → skip rule
-          - Nếu Rule_Type_Code = 'Required' → kiểm tra not null/empty
-          - Còn lại → AstEngine.Evaluate(Expression_Json)
-    → Resolve error text: Val_Rule.Error_Key → Sys_Resource
+          - Rule_Type_Code = 'Regex'  → AstEngine.Evaluate(Expression_Json) → regex match
+          - Rule_Type_Code = 'Range'  → AstEngine.Evaluate → value >= min && value <= max
+          - Rule_Type_Code = 'Length' → AstEngine.Evaluate → len(value) >= min && len(value) <= max
+          - Rule_Type_Code = 'Compare'→ AstEngine.Evaluate → cross-field comparison (op: ==,!=,<,<=,>,>=)
+          - Rule_Type_Code = 'Custom' → AstEngine.Evaluate(Expression_Json) → bool
+    → Resolve error text: Val_Rule.Error_Key → Sys_Resource (đa ngôn ngữ)
     → Collect ValidationResult list
     → Return ValidationResponse
 ```
 
-> **Quan hệ DB:** `Val_Rule_Field` là bảng trung gian nhiều-nhiều giữa `Ui_Field` và `Val_Rule`.
-> Một field có thể có nhiều rules; một rule có thể dùng lại cho nhiều fields.
-> `Val_Rule_Field.Order_No` quyết định thứ tự evaluate trong trường hợp không có dependency.
+> **Quan hệ DB (sau Migration 003):** Quan hệ **1 field → nhiều rules** (1-N). `Val_Rule.Field_Id` là FK trực tiếp.
+> Bảng junction `Val_Rule_Field` đã bị loại bỏ — một rule không chia sẻ giữa nhiều fields.
+> `Val_Rule.Order_No` quyết định thứ tự evaluate khi không có dependency graph.
+>
+> **ADR-011:** Rule_Type `Required` **deprecated** — `Is_Required` là cột DB trên `Ui_Field`.
+> Rule type `Length` (kiểm tra độ dài chuỗi) và `Compare` (so sánh cross-field) được thêm mới.
 
 **Interface:**
 ```csharp
@@ -103,10 +109,13 @@ HandleEventAsync(event)
 ```
 
 **Action Types:**
-- `SET_VALUE`: Gán giá trị field
+- `SET_VALUE`: Gán giá trị field (valueExpression là AST)
 - `SET_VISIBLE`: Ẩn/hiện field/section
-- `SET_REQUIRED`: Bật/tắt required
-- `SET_READONLY`: Bật/tắt readonly
+- `SET_REQUIRED`: Bật/tắt required động (runtime override Is_Required)
+- `SET_READONLY`: Bật/tắt readonly động (runtime override Is_ReadOnly)
+- `SET_ENABLED`: Bật/tắt enabled — grayout field, không tương tác, không submit *(ADR-012)*
+- `CLEAR_VALUE`: Xóa giá trị field (đặt về null/empty) *(ADR-012)*
+- `SHOW_MESSAGE`: Hiển thị thông báo inline tại field *(ADR-012)*
 - `RELOAD_OPTIONS`: Reload dropdown options
 - `TRIGGER_VALIDATION`: Kích hoạt validate field
 
