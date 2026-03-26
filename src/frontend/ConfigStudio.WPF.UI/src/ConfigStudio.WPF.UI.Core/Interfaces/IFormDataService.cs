@@ -82,4 +82,22 @@ public interface IFormDataService
         int tenantId,
         string? description = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Cập nhật metadata của form (Tab Thông tin trong FormEditor).
+    /// Dùng optimistic concurrency qua <paramref name="currentVersion"/>.
+    /// Trả về <c>true</c> nếu UPDATE thành công.
+    /// Trả về <c>false</c> nếu version conflict (form đã được sửa từ nơi khác).
+    /// </summary>
+    Task<bool> UpdateFormMetadataAsync(
+        int formId,
+        string formCode,
+        string formName,
+        string platform,
+        string layoutEngine,
+        string? description,
+        bool isActive,
+        int? tableId,
+        int currentVersion,
+        CancellationToken ct = default);
 }

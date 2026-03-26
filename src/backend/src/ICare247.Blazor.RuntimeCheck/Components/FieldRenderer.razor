@@ -5,7 +5,8 @@
 
 @if (State is not null && State.IsVisible)
 {
-    <div class="field-wrapper @(State.Errors.Count > 0 ? "has-error" : "")">
+    <div class="field-wrapper @(State.Errors.Count > 0 ? "has-error" : "")"
+         style="grid-column: span @State.ColSpan">
         <label class="field-label">
             @State.Label
             @if (State.IsRequired)

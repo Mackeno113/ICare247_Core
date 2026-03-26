@@ -764,6 +764,84 @@ public sealed class FormDataService : IFormDataService
         return new HashSet<string>(colNames, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <inheritdoc />
+    public async Task<bool> UpdateFormMetadataAsync(
+        int formId,
+        string formCode,
+        string formName,
+        string platform,
+        string layoutEngine,
+        string? description,
+        bool isActive,
+        int? tableId,
+        int currentVersion,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured)
+            throw new InvalidOperationException(
+                "DB chưa được cấu hình. Kiểm tra %APPDATA%\\ICare247\\ConfigStudio\\appsettings.json");
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+
+        var formCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Form", ct);
+        if (formCols.Count == 0)
+            throw new InvalidOperationException("Không tìm thấy bảng dbo.Ui_Form.");
+
+        // ── Build SET clause theo schema thật ─────────────────
+        var setClauses = new List<string> { "Updated_At = GETDATE()", "Version = Version + 1" };
+
+        if (formCols.Contains("Form_Code"))
+            setClauses.Add("Form_Code = @FormCode");
+
+        if (formCols.Contains("Form_Name"))
+            setClauses.Add("Form_Name = @FormName");
+        else if (formCols.Contains("Description") && string.IsNullOrWhiteSpace(description))
+            // Nếu không có Form_Name, lưu FormName vào Description
+            setClauses.Add("Description = @FormName");
+
+        if (formCols.Contains("Platform"))
+            setClauses.Add("Platform = @Platform");
+
+        if (formCols.Contains("Layout_Engine"))
+            setClauses.Add("Layout_Engine = @LayoutEngine");
+
+        if (formCols.Contains("Description") && description is not null)
+            setClauses.Add("Description = @Description");
+
+        if (formCols.Contains("Is_Active"))
+            setClauses.Add("Is_Active = @IsActive");
+
+        if (formCols.Contains("Table_Id") && tableId.HasValue)
+            setClauses.Add("Table_Id = @TableId");
+
+        var sql = $"""
+            UPDATE dbo.Ui_Form
+            SET    {string.Join(",\n           ", setClauses)}
+            WHERE  Form_Id = @FormId
+              AND  Version = @CurrentVersion
+            """;
+
+        var affected = await conn.ExecuteAsync(
+            new CommandDefinition(
+                sql,
+                new
+                {
+                    FormId         = formId,
+                    FormCode       = formCode,
+                    FormName       = formName,
+                    Platform       = platform,
+                    LayoutEngine   = layoutEngine,
+                    Description    = description,
+                    IsActive       = isActive ? 1 : 0,
+                    TableId        = tableId,
+                    CurrentVersion = currentVersion
+                },
+                cancellationToken: ct));
+
+        // affected = 0 → version conflict (row đã được sửa bởi tiến trình khác)
+        return affected > 0;
+    }
+
     /// <summary>
     /// Build biểu thức COUNT an toàn theo schema thật của bảng con.
     /// </summary>

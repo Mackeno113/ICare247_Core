@@ -74,9 +74,10 @@ public sealed class FieldMetadata
     public bool IsRequired { get; init; }
 
     /// <summary>
-    /// Độ rộng field trong grid layout (Ui_Field.Col_Span).
-    /// 1 = 1/3 width (default), 2 = 2/3 width, 3 = full width.
-    /// FormRunner dùng trực tiếp để build CSS grid class.
+    /// Độ rộng field trong grid layout 4-column (Ui_Field.Col_Span).
+    /// 1 = 1/4 width (narrow, default), 2 = 2/4 (half),
+    /// 3 = 3/4 width, 4 = full width (textarea, subgrid).
+    /// FormRunner dùng trực tiếp để build CSS grid-column: span X.
     /// </summary>
     public byte ColSpan { get; init; } = 1;
 

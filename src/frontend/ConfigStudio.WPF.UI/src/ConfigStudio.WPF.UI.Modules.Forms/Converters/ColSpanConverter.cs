@@ -1,7 +1,7 @@
 // File    : ColSpanConverter.cs
 // Module  : Forms
 // Layer   : Presentation
-// Purpose : Convert byte ColSpan ↔ bool IsChecked cho RadioButton 1/2/3.
+// Purpose : Convert byte ColSpan ↔ bool IsChecked cho RadioButton 1/2/3/4.
 
 using System.Globalization;
 using System.Windows.Data;
@@ -9,8 +9,9 @@ using System.Windows.Data;
 namespace ConfigStudio.WPF.UI.Modules.Forms.Converters;
 
 /// <summary>
-/// Dùng cho 3 RadioButton Col Span: IsChecked = (ColSpan == ConverterParameter).
-/// ConverterParameter = "1" | "2" | "3".
+/// Dùng cho 4 RadioButton Col Span: IsChecked = (ColSpan == ConverterParameter).
+/// ConverterParameter = "1" | "2" | "3" | "4".
+/// Grid 4-column: 1=1/4, 2=2/4(half), 3=3/4, 4=full.
 /// </summary>
 public sealed class ColSpanConverter : IValueConverter
 {

@@ -110,6 +110,12 @@ public sealed class FieldState
     /// </summary>
     public List<LookupOptionDto> Options { get; set; } = [];
 
+    /// <summary>
+    /// Độ rộng field trong CSS grid 4-column (grid-column: span X).
+    /// 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.
+    /// </summary>
+    public byte ColSpan { get; init; } = 1;
+
     /// <summary>Giá trị dạng string để bind vào input element.</summary>
     public string ValueString
     {

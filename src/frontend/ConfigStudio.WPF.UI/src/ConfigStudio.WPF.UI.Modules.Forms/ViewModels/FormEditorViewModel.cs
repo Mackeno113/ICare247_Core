@@ -575,8 +575,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         OpenFieldConfigCommand = new DelegateCommand(ExecuteOpenFieldConfig, () => IsFieldSelected);
 
         // Form actions
-        SaveFormCommand = new DelegateCommand(ExecuteSave, () => IsDirty)
-            .ObservesProperty(() => IsDirty);
+        SaveFormCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty && !IsLoading)
+            .ObservesProperty(() => IsDirty)
+            .ObservesProperty(() => IsLoading);
         PublishCommand = new DelegateCommand(ExecutePublish);
         ViewDependenciesCommand = new DelegateCommand(ExecuteViewDependencies);
         BackToListCommand = new DelegateCommand(ExecuteBackToList);
@@ -1588,11 +1589,47 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     // ── Navigation commands ──────────────────────────────────
 
-    private void ExecuteSave()
+    private async Task ExecuteSaveAsync()
     {
-        // TODO(phase2): Gọi API save form metadata + sections + fields + events + permissions
-        IsDirty = false;
-        _undoRedo.Clear();
+        if (_formDataService is null || _appConfig is not { IsConfigured: true })
+            return;
+
+        IsLoading    = true;
+        ErrorMessage = "";
+        try
+        {
+            var success = await _formDataService.UpdateFormMetadataAsync(
+                formId:         FormId,
+                formCode:       FormCode,
+                formName:       FormName,
+                platform:       Platform,
+                layoutEngine:   LayoutEngine,
+                description:    string.IsNullOrWhiteSpace(Description) ? null : Description,
+                isActive:       IsFormActive,
+                tableId:        SelectedTable?.TableId,
+                currentVersion: Version,
+                ct:             _loadCts.Token);
+
+            if (success)
+            {
+                Version++;
+                IsDirty = false;
+                _undoRedo.Clear();
+            }
+            else
+            {
+                ErrorMessage = "Lưu thất bại: form đã được sửa bởi tiến trình khác (version conflict). Tải lại để đồng bộ.";
+            }
+        }
+        catch (OperationCanceledException) { /* navigate away — bỏ qua */ }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Lỗi khi lưu form: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
     private void ExecutePublish()
@@ -1735,11 +1772,29 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>Khởi tạo Auto-save + Linting services khi navigate vào editor.</summary>
     private void InitP0Services()
     {
-        // Auto-save: debounce 3 giây
+        // Auto-save: debounce 3 giây — gọi UpdateFormMetadataAsync nếu đã cấu hình DB
         _autoSave = new AutoSaveService(async ct =>
         {
-            // TODO(phase2): Thay bằng actual save qua data service
-            await Task.Delay(100, ct); // Simulate save
+            if (_formDataService is null || _appConfig is not { IsConfigured: true } || !IsDirty)
+                return;
+
+            var success = await _formDataService.UpdateFormMetadataAsync(
+                formId:         FormId,
+                formCode:       FormCode,
+                formName:       FormName,
+                platform:       Platform,
+                layoutEngine:   LayoutEngine,
+                description:    string.IsNullOrWhiteSpace(Description) ? null : Description,
+                isActive:       IsFormActive,
+                tableId:        SelectedTable?.TableId,
+                currentVersion: Version,
+                ct:             ct);
+
+            if (success)
+            {
+                Version++;
+                IsDirty = false;
+            }
         });
         _autoSave.StatusChanged += (_, _) =>
         {

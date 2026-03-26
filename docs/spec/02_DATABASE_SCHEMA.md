@@ -419,7 +419,7 @@
 | Is_Required | bit | NOT NULL DEFAULT 0 | Bắt buộc nhập — cột DB, không phải Val_Rule |
 | Is_Enabled | bit | NOT NULL DEFAULT 1 | false = grayout, không tương tác, KHÔNG submit |
 | Order_No | int | NOT NULL DEFAULT 0 | Thứ tự trong section |
-| Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng trong grid: 1=1/3, 2=2/3, 3=full |
+| Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng grid 4-col: 1=1/4, 2=half, 3=3/4, 4=full |
 | Lookup_Source | nvarchar(20) | NULL | NULL / 'static' / 'dynamic' |
 | Lookup_Code | nvarchar(50) | NULL | Tham chiếu Sys_Lookup.Lookup_Code (khi Lookup_Source='static') |
 | Control_Props_Json | nvarchar(max) | NULL | Props UI của component (JSON): placeholder, maxLength, format,... |
@@ -428,13 +428,14 @@
 | Description | nvarchar(500) | NULL | |
 
 **Constraints:**
-- `CHK_Ui_Field_ColSpan`: `Col_Span BETWEEN 1 AND 3`
+- `CHK_Ui_Field_ColSpan`: `Col_Span BETWEEN 1 AND 4` *(Migration 013: 3-col → 4-col grid, ADR-013)*
 - `CHK_Ui_Field_LookupSource`: `Lookup_Source IN ('static','dynamic') OR Lookup_Source IS NULL`
 - `CHK_Ui_Field_LookupConsistency`: static→Lookup_Code NOT NULL; dynamic/NULL→Lookup_Code NULL
 
 **Indexes:** `IX_Ui_Field_Form (Form_Id, Is_Visible, Order_No)`
 
 > **ADR-010:** `Is_Required` và `Is_Enabled` là **cột DB** trên `Ui_Field` — đồng nhất với `Is_Visible` và `Is_ReadOnly`.
+> **ADR-013:** `Col_Span` đổi từ 3-column sang **4-column** grid (Migration 013). Mapping: cũ 3(full)→mới 4(full). Thêm giá trị 3=3/4 (mới). Blazor CSS: `grid-template-columns: repeat(4, 1fr)` + `grid-column: span X` per field.
 > `Is_ReadOnly = true`: field hiển thị giá trị, không chỉnh sửa được, **vẫn submit** lên server.
 > `Is_Enabled = false`: field bị grayout, không tương tác, **KHÔNG submit** — dùng cho trường phụ thuộc điều kiện nghiệp vụ.
 

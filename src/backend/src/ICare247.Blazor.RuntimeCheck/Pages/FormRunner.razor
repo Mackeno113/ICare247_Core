@@ -202,6 +202,7 @@ else if (_form is not null)
                 IsReadOnly = f.IsReadOnly,
                 IsRequired = f.IsRequired,
                 Value      = ParseDefaultValue(f.DefaultValueJson),
+                ColSpan    = f.ColSpan > 0 ? f.ColSpan : (byte)1,
                 // Chỉ truyền LookupCode cho static lookup — dynamic FK sẽ xử lý sau
                 LookupCode = f.LookupSource == "static" ? f.LookupCode : null,
             }).ToList();

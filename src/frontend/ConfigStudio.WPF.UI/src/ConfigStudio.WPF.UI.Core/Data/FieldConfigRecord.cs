@@ -25,7 +25,7 @@ public sealed class FieldConfigRecord
     public bool IsEnabled { get; init; } = true;
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
-    /// <summary>Độ rộng grid: 1 = 1/3, 2 = 2/3, 3 = full width.</summary>
+    /// <summary>Độ rộng grid 4-column: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>
     public byte ColSpan { get; init; } = 1;
 
     /// <summary>null = thường | "static" = Sys_Lookup | "dynamic" = Ui_Field_Lookup</summary>

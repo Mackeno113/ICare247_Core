@@ -177,7 +177,7 @@ code { background: #e8edf2; padding: 2px 6px; border-radius: 4px; font-size: 12p
 
 .fields-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 14px;
 }
 
