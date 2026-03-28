@@ -21,6 +21,7 @@ public class FormSummaryDto : BindableBase
     public string TableName { get; set; } = "";
     public int SectionCount { get; set; }
     public int FieldCount { get; set; }
+    public int EventCount { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
     public string UpdatedBy { get; set; } = "";

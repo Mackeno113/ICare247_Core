@@ -289,6 +289,7 @@
                     <dxg:GridColumn Header="Ver"      FieldName="Version"     Width="50" />
                     <dxg:GridColumn Header="Sections" FieldName="SectionCount" Width="70" />
                     <dxg:GridColumn Header="Fields"   FieldName="FieldCount"   Width="60" />
+                    <dxg:GridColumn Header="Events"   FieldName="EventCount"   Width="60" />
 
                     <!-- Trạng thái — badge Active / Inactive -->
                     <dxg:GridColumn Header="Trạng thái" FieldName="IsActive" Width="100"

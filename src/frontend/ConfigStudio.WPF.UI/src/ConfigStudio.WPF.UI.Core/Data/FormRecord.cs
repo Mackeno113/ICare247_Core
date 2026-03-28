@@ -22,4 +22,5 @@ public sealed class FormRecord
     public string   UpdatedBy   { get; init; } = "";
     public int      SectionCount{ get; init; }
     public int      FieldCount  { get; init; }
+    public int      EventCount  { get; init; }
 }

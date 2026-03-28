@@ -43,6 +43,7 @@ public sealed class FormDataService : IFormDataService
 
         var sectionCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Section", ct);
         var fieldCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Field", ct);
+        var evtDefCols = await GetTableColumnsAsync(conn, "dbo", "Evt_Definition", ct);
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
 
         var useTenantFromForm = formCols.Contains("Tenant_Id");
@@ -85,8 +86,9 @@ public sealed class FormDataService : IFormDataService
                 ? "ISNULL(f.Created_By, '') AS UpdatedBy"
                 : "CAST('' AS nvarchar(255)) AS UpdatedBy";
 
-        var sectionCountExpr = BuildCountExpr("Ui_Section", "s", sectionCols, "SectionCount");
-        var fieldCountExpr = BuildCountExpr("Ui_Field", "fi", fieldCols, "FieldCount");
+        var sectionCountExpr  = BuildCountExpr("Ui_Section",    "s",   sectionCols,  "SectionCount");
+        var fieldCountExpr    = BuildCountExpr("Ui_Field",       "fi",  fieldCols,    "FieldCount");
+        var eventCountExpr    = BuildCountExpr("Evt_Definition", "ed",  evtDefCols,   "EventCount");
 
         var fromClause = useTenantFromSysTable
             ? "dbo.Ui_Form f\n            INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
@@ -109,7 +111,8 @@ public sealed class FormDataService : IFormDataService
                 + "       " + updatedAtExpr + ",\n"
                 + "       " + updatedByExpr + ",\n"
                 + "       " + sectionCountExpr + ",\n"
-                + "       " + fieldCountExpr + "\n"
+                + "       " + fieldCountExpr + ",\n"
+                + "       " + eventCountExpr + "\n"
                 + "FROM   " + fromClause + "\n"
                 + "WHERE  " + string.Join("\n  AND  ", whereParts) + "\n"
                 + "ORDER BY f.Form_Code";

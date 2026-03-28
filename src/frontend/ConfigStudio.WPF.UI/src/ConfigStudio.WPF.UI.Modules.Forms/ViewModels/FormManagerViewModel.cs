@@ -246,6 +246,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
                     TableName    = r.TableName,
                     SectionCount = r.SectionCount,
                     FieldCount   = r.FieldCount,
+                    EventCount   = r.EventCount,
                     IsActive     = r.IsActive,
                     UpdatedAt    = r.UpdatedAt,
                     UpdatedBy    = r.UpdatedBy,
@@ -380,7 +381,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
             { "formName",     form.FormName },
             { "sectionCount", form.SectionCount },
             { "fieldCount",   form.FieldCount },
-            { "eventCount",   0 }  // NOTE: EventCount chưa có trong FormSummaryDto — truyền 0, phase2 bổ sung
+            { "eventCount",   form.EventCount }
         };
 
         _dialogService.ShowDialog(ViewNames.DeactivateFormDialog, p, result =>
