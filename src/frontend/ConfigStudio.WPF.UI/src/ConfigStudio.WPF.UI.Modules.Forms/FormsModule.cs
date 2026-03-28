@@ -34,6 +34,9 @@ public sealed class FormsModule : IModule
 
         // NOTE: Đăng ký dialog đồng bộ schema — hiện diff giữa Target DB và form hiện tại
         containerRegistry.RegisterDialog<SyncSchemaDialog, SyncSchemaDialogViewModel>(ViewNames.SyncSchemaDialog);
+
+        // NOTE: Đăng ký dialog chọn column từ Sys_Column (dùng trong FieldConfig → Browse Column)
+        containerRegistry.RegisterDialog<ColumnPickerDialog, ColumnPickerDialogViewModel>(ViewNames.ColumnPickerDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

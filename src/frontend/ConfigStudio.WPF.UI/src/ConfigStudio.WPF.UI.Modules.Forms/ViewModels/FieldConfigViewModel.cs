@@ -11,6 +11,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -31,6 +32,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private readonly IEventDataService? _eventService;
     private readonly ISysLookupDataService? _lookupService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IDialogService? _dialogService;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params ────────────────────────────────────
@@ -872,7 +874,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IRuleDataService? ruleService = null,
         IEventDataService? eventService = null,
         ISysLookupDataService? lookupService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        IDialogService? dialogService = null)
     {
         _regionManager  = regionManager;
         _fieldService   = fieldService;
@@ -881,6 +884,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _eventService   = eventService;
         _lookupService  = lookupService;
         _appConfig      = appConfig;
+        _dialogService  = dialogService;
 
         SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
@@ -1811,7 +1815,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteBrowseColumn()
     {
-        // TODO(phase2): Mở popup chọn column từ Sys_Column
+        if (_dialogService is null) return;
+
+        var p = new DialogParameters();
+        p.Add("columns", AvailableColumns.AsEnumerable());
+
+        _dialogService.ShowDialog(ViewNames.ColumnPickerDialog, p, result =>
+        {
+            if (result.Result == ButtonResult.OK
+                && result.Parameters.TryGetValue("selectedColumn", out ColumnInfoDto? col)
+                && col is not null)
+                SelectedColumn = col;
+        });
     }
 
     private void ExecuteManageI18n()
