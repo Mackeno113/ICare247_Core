@@ -427,19 +427,43 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
             { "existingCodes",  existingCodes }
         };
 
-        _dialogService.ShowDialog(ViewNames.CloneFormDialog, p, result =>
+        _dialogService.ShowDialog(ViewNames.CloneFormDialog, p, async result =>
         {
             if (result.Result != ButtonResult.OK) return;
 
             var newCode = result.Parameters.GetValue<string>("newFormCode");
             if (string.IsNullOrWhiteSpace(newCode)) return;
 
-            // NOTE: Tạo clone object với Form_Code mới, Version=1 — phase2 sẽ gọi API thật
+            var newName = SelectedForm.FormName + " (Bản sao)";
+            var sourceId = SelectedForm.FormId;
+
+            // Gọi DB nếu đã cấu hình — deep clone Ui_Form + Ui_Section + Ui_Field
+            if (_formDataService is not null && _appConfig is { IsConfigured: true })
+            {
+                try
+                {
+                    var ct = new CancellationTokenSource(TimeSpan.FromSeconds(30)).Token;
+                    var newFormId = await _formDataService.CloneFormAsync(
+                        sourceId, newCode, newName, _appConfig.TenantId, ct);
+
+                    // Reload danh sách form để lấy record đầy đủ từ DB
+                    await LoadDataSafeAsync();
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    LoadErrorMessage = $"Clone form thất bại: {ex.Message}";
+                    LogLoadError(ex);
+                    // Fallthrough → thêm tạm thời vào UI
+                }
+            }
+
+            // Fallback khi chưa cấu hình DB
             var clone = new FormSummaryDto
             {
                 FormId       = Forms.DefaultIfEmpty().Max(f => f?.FormId ?? 0) + 1,
                 FormCode     = newCode,
-                FormName     = SelectedForm.FormName + " (Bản sao)",
+                FormName     = newName,
                 Version      = 1,
                 Platform     = SelectedForm.Platform,
                 TableName    = SelectedForm.TableName,

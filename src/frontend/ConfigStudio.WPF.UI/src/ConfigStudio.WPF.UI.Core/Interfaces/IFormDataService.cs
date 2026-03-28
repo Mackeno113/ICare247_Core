@@ -92,6 +92,17 @@ public interface IFormDataService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Deep clone form: sao chép Ui_Form + Ui_Section + Ui_Field sang Form_Code mới.
+    /// Chạy trong transaction. Trả về Form_Id mới.
+    /// </summary>
+    Task<int> CloneFormAsync(
+        int sourceFormId,
+        string newFormCode,
+        string newFormName,
+        int tenantId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Cập nhật metadata của form (Tab Thông tin trong FormEditor).
     /// Dùng optimistic concurrency qua <paramref name="currentVersion"/>.
     /// Trả về <c>true</c> nếu UPDATE thành công.

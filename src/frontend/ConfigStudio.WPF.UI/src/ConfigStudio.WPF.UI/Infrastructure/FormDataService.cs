@@ -767,6 +767,214 @@ public sealed class FormDataService : IFormDataService
         return new HashSet<string>(colNames, StringComparer.OrdinalIgnoreCase);
     }
 
+    // ── CloneFormAsync ────────────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<int> CloneFormAsync(
+        int sourceFormId,
+        string newFormCode,
+        string newFormName,
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured)
+            throw new InvalidOperationException(
+                "DB chưa được cấu hình. Kiểm tra settings.");
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+
+        // Đọc schema 3 bảng
+        var formCols    = await GetTableColumnsAsync(conn, "dbo", "Ui_Form",    ct);
+        var sectionCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Section", ct);
+        var fieldCols   = await GetTableColumnsAsync(conn, "dbo", "Ui_Field",   ct);
+
+        if (formCols.Count == 0)
+            throw new InvalidOperationException("Không tìm thấy bảng dbo.Ui_Form.");
+
+        var hasTenantId = formCols.Contains("Tenant_Id");
+
+        await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
+        try
+        {
+            // ── Bước 1: Clone Ui_Form ─────────────────────────
+            var newFormId = await CloneFormRowAsync(
+                conn, tx, formCols, sourceFormId, newFormCode, newFormName, tenantId, hasTenantId, ct);
+
+            // ── Bước 2: Clone Ui_Section (lấy mapping oldId→newId) ──
+            var sectionMap = new Dictionary<int, int>();
+            if (sectionCols.Count > 0 && sectionCols.Contains("Section_Id"))
+                sectionMap = await CloneSectionsAsync(conn, tx, sectionCols, sourceFormId, newFormId, ct);
+
+            // ── Bước 3: Clone Ui_Field với remapped Section_Id ───
+            if (fieldCols.Count > 0 && fieldCols.Contains("Field_Id"))
+                await CloneFieldsAsync(conn, tx, fieldCols, sourceFormId, newFormId, sectionMap, ct);
+
+            await tx.CommitAsync(ct);
+            return newFormId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <summary>INSERT Ui_Form mới từ source: pass-through tất cả cột, override Form_Code/Name/Version/timestamps.</summary>
+    private static async Task<int> CloneFormRowAsync(
+        SqlConnection conn, SqlTransaction tx,
+        HashSet<string> cols,
+        int sourceFormId, string newFormCode, string newFormName,
+        int tenantId, bool hasTenantId, CancellationToken ct)
+    {
+        // Các cột được gán giá trị cố định (không copy từ source)
+        var fixedCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "Form_Id", "Form_Code", "Form_Name", "Version",
+              "Is_Active", "Created_At", "Updated_At", "Created_By", "Updated_By" };
+
+        var insertCols  = new List<string>();
+        var selectExprs = new List<string>();
+
+        // Form_Code + Form_Name override
+        if (cols.Contains("Form_Code")) { insertCols.Add("Form_Code"); selectExprs.Add("@NewFormCode"); }
+        if (cols.Contains("Form_Name")) { insertCols.Add("Form_Name"); selectExprs.Add("@NewFormName"); }
+        if (cols.Contains("Version"))    { insertCols.Add("Version");    selectExprs.Add("1"); }
+        if (cols.Contains("Is_Active"))  { insertCols.Add("Is_Active");  selectExprs.Add("1"); }
+        if (cols.Contains("Created_At")) { insertCols.Add("Created_At"); selectExprs.Add("GETDATE()"); }
+        if (cols.Contains("Updated_At")) { insertCols.Add("Updated_At"); selectExprs.Add("GETDATE()"); }
+        if (cols.Contains("Created_By")) { insertCols.Add("Created_By"); selectExprs.Add("'system'"); }
+        if (cols.Contains("Updated_By")) { insertCols.Add("Updated_By"); selectExprs.Add("'system'"); }
+
+        // Pass-through: mọi cột khác trừ PK và fixed
+        foreach (var col in cols)
+        {
+            if (!fixedCols.Contains(col))
+            {
+                insertCols.Add(col);
+                selectExprs.Add("src." + col);
+            }
+        }
+
+        var whereClause = hasTenantId
+            ? "WHERE src.Form_Id = @SourceFormId AND src.Tenant_Id = @TenantId"
+            : "WHERE src.Form_Id = @SourceFormId";
+
+        var sql = $"""
+            INSERT INTO dbo.Ui_Form ({string.Join(", ", insertCols)})
+            SELECT {string.Join(", ", selectExprs)}
+            FROM dbo.Ui_Form src
+            {whereClause};
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            """;
+
+        return await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(sql,
+                new { NewFormCode = newFormCode, NewFormName = newFormName,
+                      SourceFormId = sourceFormId, TenantId = tenantId },
+                tx, cancellationToken: ct));
+    }
+
+    /// <summary>Clone Ui_Section với new Form_Id. Trả về oldSectionId→newSectionId mapping.</summary>
+    private static async Task<Dictionary<int, int>> CloneSectionsAsync(
+        SqlConnection conn, SqlTransaction tx,
+        HashSet<string> cols,
+        int sourceFormId, int newFormId, CancellationToken ct)
+    {
+        var oldIds = (await conn.QueryAsync<int>(
+            new CommandDefinition(
+                "SELECT Section_Id FROM dbo.Ui_Section WHERE Form_Id = @FormId",
+                new { FormId = sourceFormId }, tx, cancellationToken: ct))).ToList();
+
+        if (oldIds.Count == 0) return [];
+
+        var fixedCols   = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Section_Id", "Form_Id" };
+        var insertCols  = new List<string> { "Form_Id" };
+        var selectExprs = new List<string> { "@NewFormId" };
+
+        foreach (var col in cols)
+        {
+            if (!fixedCols.Contains(col))
+            {
+                insertCols.Add(col);
+                selectExprs.Add("src." + col);
+            }
+        }
+
+        var sql = $"""
+            INSERT INTO dbo.Ui_Section ({string.Join(", ", insertCols)})
+            SELECT {string.Join(", ", selectExprs)}
+            FROM dbo.Ui_Section src
+            WHERE src.Section_Id = @OldSectionId;
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            """;
+
+        var map = new Dictionary<int, int>(oldIds.Count);
+        foreach (var oldId in oldIds)
+        {
+            var newId = await conn.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql,
+                    new { NewFormId = newFormId, OldSectionId = oldId },
+                    tx, cancellationToken: ct));
+            map[oldId] = newId;
+        }
+        return map;
+    }
+
+    /// <summary>Clone Ui_Field với new Form_Id và remapped Section_Id (từ sectionMap).</summary>
+    private static async Task CloneFieldsAsync(
+        SqlConnection conn, SqlTransaction tx,
+        HashSet<string> cols,
+        int sourceFormId, int newFormId,
+        Dictionary<int, int> sectionMap, CancellationToken ct)
+    {
+        // Lấy Field_Id + Section_Id cũ để tính mapping
+        var fieldRows = (await conn.QueryAsync<(int FieldId, int? SectionId)>(
+            new CommandDefinition(
+                "SELECT Field_Id, Section_Id FROM dbo.Ui_Field WHERE Form_Id = @FormId",
+                new { FormId = sourceFormId }, tx, cancellationToken: ct))).ToList();
+
+        if (fieldRows.Count == 0) return;
+
+        var fixedCols   = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "Field_Id", "Form_Id", "Section_Id", "Version", "Updated_At" };
+        var insertCols  = new List<string> { "Form_Id" };
+        var selectExprs = new List<string> { "@NewFormId" };
+
+        if (cols.Contains("Section_Id")) { insertCols.Add("Section_Id"); selectExprs.Add("@NewSectionId"); }
+        if (cols.Contains("Version"))    { insertCols.Add("Version");    selectExprs.Add("1"); }
+        if (cols.Contains("Updated_At")) { insertCols.Add("Updated_At"); selectExprs.Add("GETDATE()"); }
+
+        foreach (var col in cols)
+        {
+            if (!fixedCols.Contains(col))
+            {
+                insertCols.Add(col);
+                selectExprs.Add("f." + col);
+            }
+        }
+
+        var sql = $"""
+            INSERT INTO dbo.Ui_Field ({string.Join(", ", insertCols)})
+            SELECT {string.Join(", ", selectExprs)}
+            FROM dbo.Ui_Field f
+            WHERE f.Field_Id = @OldFieldId;
+            """;
+
+        foreach (var (fieldId, oldSectionId) in fieldRows)
+        {
+            // Remap Section_Id cũ → Section_Id mới (nếu có trong mapping)
+            int? newSectionId = oldSectionId.HasValue
+                && sectionMap.TryGetValue(oldSectionId.Value, out var mapped)
+                    ? mapped
+                    : oldSectionId;
+
+            await conn.ExecuteAsync(
+                new CommandDefinition(sql,
+                    new { NewFormId = newFormId, NewSectionId = newSectionId, OldFieldId = fieldId },
+                    tx, cancellationToken: ct));
+        }
+    }
+
     /// <inheritdoc />
     public async Task<bool> UpdateFormMetadataAsync(
         int formId,
