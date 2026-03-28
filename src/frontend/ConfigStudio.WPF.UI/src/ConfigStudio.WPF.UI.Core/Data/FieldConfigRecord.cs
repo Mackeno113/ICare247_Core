@@ -21,6 +21,11 @@ public sealed class FieldConfigRecord
     public bool IsReadOnly { get; init; }
     /// <summary>Không cho phép để trống khi submit. Lưu vào Ui_Field.Is_Required.</summary>
     public bool IsRequired { get; init; }
+    /// <summary>
+    /// i18n key cho thông báo lỗi khi để trống (chỉ dùng khi IsRequired = true).
+    /// Pattern: {tableCode}.val.{fieldCode}.required. Lưu vào Ui_Field.Required_Error_Key.
+    /// </summary>
+    public string? RequiredErrorKey { get; init; }
     /// <summary>Field có được tương tác không. False = grayout + không submit. Lưu vào Ui_Field.Is_Enabled.</summary>
     public bool IsEnabled { get; init; } = true;
     public int OrderNo { get; init; }

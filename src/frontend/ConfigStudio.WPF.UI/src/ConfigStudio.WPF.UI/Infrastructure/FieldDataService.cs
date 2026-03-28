@@ -41,6 +41,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Label_Key          AS LabelKey,
                    fi.Placeholder_Key    AS PlaceholderKey,
                    fi.Tooltip_Key        AS TooltipKey,
+                   fi.Required_Error_Key AS RequiredErrorKey,
                    fi.Is_Visible         AS IsVisible,
                    fi.Is_ReadOnly        AS IsReadOnly,
                    fi.Is_Required        AS IsRequired,
@@ -164,14 +165,14 @@ public sealed class FieldDataService : IFieldDataService
                 const string sqlInsert = """
                     INSERT INTO dbo.Ui_Field
                            (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key,
-                            Placeholder_Key, Tooltip_Key, Is_Visible, Is_ReadOnly,
-                            Is_Required, Is_Enabled,
+                            Placeholder_Key, Tooltip_Key, Required_Error_Key,
+                            Is_Visible, Is_ReadOnly, Is_Required, Is_Enabled,
                             Order_No, Control_Props_Json, Col_Span, Lookup_Source,
                             Lookup_Code, Version, Updated_At, Description)
                     OUTPUT INSERTED.Field_Id
                     VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
-                            @PlaceholderKey, @TooltipKey, @IsVisible, @IsReadOnly,
-                            @IsRequired, @IsEnabled,
+                            @PlaceholderKey, @TooltipKey, @RequiredErrorKey,
+                            @IsVisible, @IsReadOnly, @IsRequired, @IsEnabled,
                             @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
                             @LookupCode, 1, GETDATE(), @Description)
                     """;
@@ -191,6 +192,7 @@ public sealed class FieldDataService : IFieldDataService
                            Label_Key         = @LabelKey,
                            Placeholder_Key   = @PlaceholderKey,
                            Tooltip_Key       = @TooltipKey,
+                           Required_Error_Key = @RequiredErrorKey,
                            Is_Visible        = @IsVisible,
                            Is_ReadOnly       = @IsReadOnly,
                            Is_Required       = @IsRequired,
@@ -342,6 +344,7 @@ public sealed class FieldDataService : IFieldDataService
         f.LabelKey,
         f.PlaceholderKey,
         f.TooltipKey,
+        f.RequiredErrorKey,
         f.IsVisible,
         f.IsReadOnly,
         f.IsRequired,

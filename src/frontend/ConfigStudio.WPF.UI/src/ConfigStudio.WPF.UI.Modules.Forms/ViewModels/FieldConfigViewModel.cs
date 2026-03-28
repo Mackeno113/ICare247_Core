@@ -821,8 +821,48 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool IsRequired
     {
         get => _isRequired;
-        set { if (SetProperty(ref _isRequired, value)) IsDirty = true; }
+        set
+        {
+            if (SetProperty(ref _isRequired, value))
+            {
+                // Khi bật Required và chưa có error key → auto-suggest ngay
+                if (value && string.IsNullOrEmpty(_requiredErrorKey))
+                    _ = AutoSuggestRequiredErrorKeyAsync();
+                RaisePropertyChanged(nameof(IsRequiredExpanded));
+                IsDirty = true;
+            }
+        }
     }
+
+    /// <summary>True khi IsRequired = true — hiện section error key bên dưới.</summary>
+    public bool IsRequiredExpanded => _isRequired;
+
+    private string _requiredErrorKey = "";
+    public string RequiredErrorKey
+    {
+        get => _requiredErrorKey;
+        set
+        {
+            if (SetProperty(ref _requiredErrorKey, value))
+            {
+                _ = ResolveI18nPreviewAsync(value, v => RequiredErrorKeyPreview = v);
+                IsDirty = true;
+            }
+        }
+    }
+
+    private string _requiredErrorKeyPreview = "";
+    public string RequiredErrorKeyPreview
+    {
+        get => _requiredErrorKeyPreview;
+        set
+        {
+            if (SetProperty(ref _requiredErrorKeyPreview, value))
+                RaisePropertyChanged(nameof(HasRequiredErrorKeyPreview));
+        }
+    }
+
+    public bool HasRequiredErrorKeyPreview => !string.IsNullOrEmpty(_requiredErrorKeyPreview);
 
     private bool _isEnabled = true;
     /// <summary>
@@ -888,6 +928,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand GenerateLabelKeyCommand { get; }
     public DelegateCommand GeneratePlaceholderKeyCommand { get; }
     public DelegateCommand GenerateTooltipKeyCommand { get; }
+    public DelegateCommand GenerateRequiredErrorKeyCommand { get; }
     public DelegateCommand<FieldNavItem> NavigateToFieldCommand { get; }
 
     public FieldConfigViewModel(
@@ -922,10 +963,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
         OpenEventCommand   = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
         DeleteEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteDeleteEvent);
-        GenerateLabelKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("label",       k => LabelKey       = k));
-        GeneratePlaceholderKeyCommand = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("placeholder", k => PlaceholderKey = k));
-        GenerateTooltipKeyCommand    = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey     = k));
-        NavigateToFieldCommand       = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
+        GenerateLabelKeyCommand        = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("label",       k => LabelKey           = k));
+        GeneratePlaceholderKeyCommand  = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("placeholder", k => PlaceholderKey     = k));
+        GenerateTooltipKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey         = k));
+        GenerateRequiredErrorKeyCommand = new DelegateCommand(async () => await ExecuteGenerateRequiredErrorKeyAsync());
+        NavigateToFieldCommand         = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
@@ -1056,6 +1098,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     IsVisible              = field.IsVisible;
                     IsReadOnly             = field.IsReadOnly;
                     IsRequired             = field.IsRequired;
+                    _requiredErrorKey      = field.RequiredErrorKey ?? "";
+                    RaisePropertyChanged(nameof(RequiredErrorKey));
+                    RaisePropertyChanged(nameof(IsRequiredExpanded));
+                    if (!string.IsNullOrEmpty(_requiredErrorKey))
+                        _ = ResolveI18nPreviewAsync(_requiredErrorKey, v => RequiredErrorKeyPreview = v);
                     IsEnabled              = field.IsEnabled;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
@@ -1321,10 +1368,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private async Task ExecuteGenerateKeyAsync(string qualifier, Action<string> setter)
     {
         var columnCode = ColumnCode.ToLowerInvariant();
-        var formCode   = FormCode.ToLowerInvariant();
-        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(formCode)) return;
+        var tableCode  = TableCode.ToLowerInvariant();
+        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
 
-        var key = $"{formCode}.field.{columnCode}.{qualifier}";
+        var key = $"{tableCode}.field.{columnCode}.{qualifier}";
 
         // Kiểm tra key đã tồn tại trong DB chưa
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
@@ -1344,6 +1391,55 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
 
         setter(key);
+    }
+
+    // ── Required error key generator ─────────────────────────
+
+    /// <summary>
+    /// Auto-suggest Required_Error_Key theo pattern {tableCode}.val.{columnCode}.required.
+    /// Dùng khi user bật toggle Is_Required và key chưa được nhập.
+    /// </summary>
+    private async Task AutoSuggestRequiredErrorKeyAsync()
+    {
+        var columnCode = ColumnCode.ToLowerInvariant();
+        var tableCode  = TableCode.ToLowerInvariant();
+        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
+
+        var key = $"{tableCode}.val.{columnCode}.required";
+        _requiredErrorKey = key;
+        RaisePropertyChanged(nameof(RequiredErrorKey));
+        _ = ResolveI18nPreviewAsync(key, v => RequiredErrorKeyPreview = v);
+    }
+
+    /// <summary>
+    /// Tạo key Required_Error_Key với cảnh báo nếu key đã tồn tại.
+    /// Pattern: {tableCode}.val.{columnCode}.required
+    /// </summary>
+    private async Task ExecuteGenerateRequiredErrorKeyAsync()
+    {
+        var columnCode = ColumnCode.ToLowerInvariant();
+        var tableCode  = TableCode.ToLowerInvariant();
+        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
+
+        var key = $"{tableCode}.val.{columnCode}.required";
+
+        if (_i18nService is not null && _appConfig is { IsConfigured: true })
+        {
+            var existing = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
+            if (existing is not null)
+            {
+                var choice = System.Windows.MessageBox.Show(
+                    $"Key \"{key}\" đã tồn tại trong Sys_Resource.\n" +
+                    $"Giá trị hiện tại (VI): \"{existing}\"\n\n" +
+                    "Vẫn dùng key này?",
+                    "Key đã tồn tại",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Warning);
+                if (choice == System.Windows.MessageBoxResult.No) return;
+            }
+        }
+
+        RequiredErrorKey = key;
     }
 
     // ── Field Navigator loader ────────────────────────────────
@@ -1882,10 +1978,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 LabelKey         = LabelKey,
                 PlaceholderKey   = PlaceholderKey,
                 TooltipKey       = TooltipKey,
-                IsVisible        = IsVisible,
-                IsReadOnly       = IsReadOnly,
-                IsRequired       = IsRequired,
-                IsEnabled        = IsEnabled,
+                IsVisible          = IsVisible,
+                IsReadOnly         = IsReadOnly,
+                IsRequired         = IsRequired,
+                RequiredErrorKey   = IsRequired ? (string.IsNullOrWhiteSpace(RequiredErrorKey) ? null : RequiredErrorKey) : null,
+                IsEnabled          = IsEnabled,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,

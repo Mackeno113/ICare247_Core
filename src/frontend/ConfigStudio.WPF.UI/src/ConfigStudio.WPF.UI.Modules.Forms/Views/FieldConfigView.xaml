@@ -691,6 +691,43 @@
                                         </StackPanel>
                                     </Border>
                                 </Grid>
+
+                                <!-- ── Required Error Key (chỉ hiện khi IsRequired = true) ── -->
+                                <Border Margin="0,12,0,0" Padding="12,10"
+                                        Background="#FEF2F2" CornerRadius="6"
+                                        BorderBrush="#FECACA" BorderThickness="1"
+                                        Visibility="{Binding IsRequiredExpanded, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,8" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#DC2626">
+                                            <Run Text="✱" /><Run Text=" Thông báo lỗi khi để trống (i18n)" />
+                                        </TextBlock>
+                                        <!-- Key input + Tạo key button -->
+                                        <DockPanel Margin="0,0,0,4">
+                                            <Button DockPanel.Dock="Right"
+                                                    Command="{Binding GenerateRequiredErrorKeyCommand}"
+                                                    Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                    Margin="6,0,0,0"
+                                                    ToolTip="Tạo key theo pattern {tableCode}.val.{fieldCode}.required">
+                                                <TextBlock Text="+ Tạo key" FontSize="11" />
+                                            </Button>
+                                            <dxe:TextEdit EditValue="{Binding RequiredErrorKey, UpdateSourceTrigger=LostFocus}"
+                                                          NullText="vd: nhanvien.val.manhanvien.required" />
+                                        </DockPanel>
+                                        <!-- Preview VI -->
+                                        <Border Background="#FFF0F0" CornerRadius="4" Padding="8,5"
+                                                Visibility="{Binding HasRequiredErrorKeyPreview, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock FontSize="11" Foreground="#991B1B">
+                                                <Run Text="→ " />
+                                                <Run Text="{Binding RequiredErrorKeyPreview, Mode=OneWay}" FontWeight="SemiBold" />
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#B91C1C"
+                                                   FontFamily="Cascadia Code, Consolas">
+                                            <Run Text="Pattern: {tableCode}.val.{fieldCode}.required" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
