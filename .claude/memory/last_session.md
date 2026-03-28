@@ -1,40 +1,51 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-27 (session 10)
+> Cập nhật: 2026-03-29 (session 12)
 
-## Đã làm (session 27/03 — session 10)
+## Đã làm (session 29/03 — WPF Backlog clear)
 
-### Bug Fix: ControlProps TextBox blank (FieldConfigViewModel.cs)
+### WPF-09: ColumnPickerDialog (Browse Column Popup)
+- `ViewNames.ColumnPickerDialog` constant
+- `ColumnPickerDialogViewModel.cs`: IDialogAware, search/filter realtime theo ColumnCode/DataType
+- `ColumnPickerDialog.xaml`: ListBox với custom item style, double-click → select
+- `FormsModule.cs`: RegisterDialog
+- `FieldConfigViewModel.cs`: IDialogService? + ExecuteBrowseColumn() thật
+- **Commit:** 9059747
 
-**Vấn đề:** Tab "Control Props" không hiển thị gì khi mở field có EditorType = "TextBox".
+### WPF-12: I18n Export/Import CSV/JSON
+- `I18nManagerViewModel.cs`: ExecuteExportAsync (SaveFileDialog → CSV/JSON) + ExecuteImportAsync (OpenFileDialog → parse → merge → persist to DB)
+- CSV: RFC 4180 parser/writer, Header Key,VI,EN,JA
+- JSON: System.Text.Json, PropertyNameCaseInsensitive
+- PersistImportedAsync: upsert 3 langs mỗi key
+- **Commit:** 037bc34
 
-**Root cause (2 bugs):**
-1. `_selectedEditorType` default = `"TextBox"` → `SetProperty` không detect change khi load field TextBox → `LoadControlPropSchema()` không được gọi → `ControlProps` rỗng
-2. Kể cả khi load được, `oldValues` lấy từ `ControlProps` rỗng → không restore values từ DB
+### WPF-07: Clone Form Deep
+- `IFormDataService`: thêm `CloneFormAsync`
+- `FormDataService.cs`: CloneFormAsync trong transaction — CloneFormRowAsync (INSERT SELECT schema-aware) + CloneSectionsAsync (loop, oldId→newId map) + CloneFieldsAsync (loop với remapped Section_Id)
+- `FormManagerViewModel.cs`: ExecuteDuplicateForm gọi service thật → reload
+- **Commit:** 52ba4ce
 
-**Fix trong `LoadFromDatabaseAsync()`:**
-- Set `_controlPropsJson = field.ControlPropsJson` (backing field) trước khi SelectedEditorType thay đổi
-- Reset `_selectedEditorType = ""` → force SetProperty detect change → `LoadControlPropSchema()` luôn chạy
-- Xóa dòng `ControlPropsJson = field.ControlPropsJson` dư (rebuild tự động sau)
-
-**Fix trong `LoadControlPropSchema()`:**
-- Khi `ControlProps.Count == 0` → parse `_controlPropsJson` thay vì dùng empty dict
-- Thêm `ParseControlPropsJson()` + `ConvertJsonPropValue()` helpers (xử lý JsonElement → typed value)
-
-Build WPF: **0 errors, 0 warnings** ✅
-Build backend: **0 errors, 0 warnings** ✅
+### WPF-08: Form Preview Dialog
+- `ViewNames.FormPreviewDialog` constant
+- `FormPreviewModels.cs`: SectionPreviewModel + FieldPreviewModel (EditorTypeBg/Fg trả SolidColorBrush)
+- `FormPreviewDialogViewModel.cs`: IDialogAware, load parallel sections+fields, group by SectionCode, orphan section
+- `FormPreviewDialog.xaml`: WrapPanel field cards, EditorType badge, RO badge, opacity IsVisible=false
+- `FormsModule.cs`: RegisterDialog
+- `FormManagerViewModel.cs`: ExecutePreviewForm mở dialog
+- **Commit:** 495a90e
 
 ---
 
 ## Trạng thái hiện tại
 
-- Migration 010–013: **ĐÃ chạy trên DB thật** ✅
-- Bug ControlProps blank: **fixed + committed** ✅
+- Migration 014: **ĐÃ chạy** trên DB thật ✅
+- WPF backlog (WPF-07, -08, -09, -10, -11, -12): **TẤT CẢ HOÀN THÀNH** ✅
+- T4-T8 ComboBox/LookupBox panels: **ĐÃ HOÀN THÀNH** (session trước) ✅
+- Build: **0 warnings, 0 errors** ✅
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **WPF-09** — Browse Column Popup (ColumnPickerDialog)
-2. **WPF-10** — ValidationRuleEditor Compare rule: TextBox → dropdown field list
-3. **WPF-07** — FormManager Clone Form implement thật
-4. **WPF-11** — FormSummaryDto EventCount
-5. **Backend** — MetadataEngine implement (Phase 6 còn lại)
+1. **Backend** — MetadataEngine implement (Phase 6)
+2. **T11 (Blazor)** — LookupComboBoxRenderer static (low priority)
+3. **WPF** — T11 Blazor FormRunner ColSpan support nếu cần
+4. Kiểm tra DB thật với các tính năng mới: Clone Form, Preview Dialog, Browse Column

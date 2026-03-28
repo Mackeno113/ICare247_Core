@@ -23,19 +23,7 @@
 
 ## 🔴 In Progress
 
-### Wave ComboBox/LookupBox — WPF Tasks (2026-03-28)
-
-> Dedicated props panels thay thế generic key-value cho ComboBox, LookupComboBox, LookupBox.
-
-| Task | File | Mô tả | Trạng thái |
-|---|---|---|---|
-| T4 | `Views/Panels/ControlProps/ComboBoxPropsPanel.xaml` | UserControl mới — 4 subsections: Data Source (4 modes) + Search + Display + Popup Columns | ⬜ |
-| T5 | `Views/Panels/ControlProps/LookupBoxPropsPanel.xaml` | UserControl mới — FK source + EditBox mode + Popup grid config | ⬜ |
-| T6 | `FieldConfigViewModel.cs` | Thêm props ComboBox: SearchMode, SearchFilterCondition, AllowUserInput, NullTextKey, DropDownWidthMode, ClearButton, GroupFieldName, DisabledFieldName, PopupColumns | ⬜ |
-| T7 | `FieldConfigViewModel.cs` | Thêm props LookupBox: EditBoxMode, CodeField, DropDownWidth, DropDownHeight, ReloadTriggerField + SaveAsync/LoadAsync | ⬜ |
-| T8 | `FieldConfigView.xaml` | Tích hợp 2 panel mới + thay FK Lookup section inline | ⬜ |
-
-**Thứ tự:** T6 → T7 → T4 → T5 → T8
+*(Không còn task in-progress — xem Backlog)*
 
 ---
 
@@ -144,6 +132,13 @@
 
 | Task | Commit | Mô tả |
 |---|---|---|
+| WPF-08 | 495a90e | Form Preview Dialog — section/field card view với EditorType badges |
+| WPF-07 | 52ba4ce | Clone Form deep — CloneFormAsync (Ui_Form + Ui_Section + Ui_Field) trong transaction |
+| WPF-12 | 037bc34 | I18n Export/Import CSV/JSON — RFC 4180 + System.Text.Json |
+| WPF-09 | 9059747 | ColumnPickerDialog — Browse Column popup với search/filter |
+| WPF-10 | 044219e | ValidationRuleEditor Compare field dropdown — IFormDetailDataService |
+| WPF-11 | 044219e | FormSummaryDto EventCount — subquery COUNT Evt_Definition |
+| T4-T8 (Wave CB) | (session) | ComboBoxPropsPanel + LookupBoxPropsPanel hoàn chỉnh + tích hợp FieldConfigView |
 | Bug: ControlProps TextBox blank | 2026-03-27 | Fix `LoadControlPropSchema` không được gọi khi field là TextBox (default) + restore values từ JSON |
 | Wave C | 707c882 | FieldConfig Behavior 2×2 + ValidationRule Length/Compare + Event SET_ENABLED/CLEAR_VALUE/SHOW_MESSAGE |
 | Wave D | 8add8ba | Spec docs: DB schema + engine spec + action/rule param schema |
@@ -152,7 +147,7 @@
 | WPF-04 | session 2026-03-26 | ExecuteDeleteNode: confirm MessageBox trước khi xóa section (dùng DisplayName + fieldCount) |
 | WPF-05 | session 2026-03-26 | ExecuteBackToList: check IsDirty → YesNoCancel dialog → Save/Discard/Cancel |
 | WPF-06 | session 2026-03-26 | LoadPermissionsAsync: GetRolesAsync từ Sys_Role (global + per-tenant) + fallback hardcoded |
-| WPF-01 | session 2026-03-26 | ExecuteDeleteEvent: confirm dialog + gọi DeleteEventAsync DB (đã có skeleton, bổ sung confirm + DB call) |
+| WPF-01 | session 2026-03-26 | ExecuteDeleteEvent: confirm dialog + gọi DeleteEventAsync DB |
 | WPF-02 | session 2026-03-26 | ExecuteDeleteRuleAsync: đã gọi DB + confirm — verified done |
 
 ---
