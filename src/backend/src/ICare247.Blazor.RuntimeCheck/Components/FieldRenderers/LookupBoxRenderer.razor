@@ -1,0 +1,292 @@
+@* File    : LookupBoxRenderer.razor
+   Purpose : Render FK dynamic LookupBox — popup grid để chọn từ data source.
+             Dùng cho Editor_Type = LookupBox + LookupSource = dynamic.
+             Hỗ trợ 3 EditBox modes: TextOnly / CodeAndName / Custom.
+             Popup hiển thị bảng dữ liệu với các cột từ PopupColumnsJson (nếu có).
+             Cascade reload khi ReloadTriggerField thay đổi. *@
+
+@inject ILookupQueryService LookupQuerySvc
+
+<div class="lookupbox-wrapper">
+    @* ── EditBox — hiển thị giá trị đã chọn ── *@
+    <div class="lookupbox-editbox @(State?.IsReadOnly == true ? "readonly" : "")">
+        <div class="lookupbox-display" @onclick="TogglePopup">
+            @if (string.IsNullOrEmpty(State?.ValueString))
+            {
+                <span class="lookupbox-placeholder">-- Chọn --</span>
+            }
+            else
+            {
+                @switch (State?.LookupConfig?.EditBoxMode)
+                {
+                    case "CodeAndName":
+                        @* Hiển thị: [code] tên *@
+                        <span class="lookupbox-code">[@GetSelectedCode()]</span>
+                        <span class="lookupbox-name">@GetSelectedDisplay()</span>
+                        break;
+                    default:
+                        @* TextOnly — chỉ hiển thị DisplayColumn *@
+                        <span>@GetSelectedDisplay()</span>
+                        break;
+                }
+            }
+        </div>
+        @if (!State?.IsReadOnly == true && !string.IsNullOrEmpty(State?.ValueString))
+        {
+            <button class="lookupbox-clear" @onclick="ClearValue" title="Xóa">✕</button>
+        }
+        <button class="lookupbox-btn" @onclick="TogglePopup"
+                disabled="@(State?.IsReadOnly == true)"
+                title="Mở danh sách">▼</button>
+    </div>
+
+    @* ── Popup grid ── *@
+    @if (_popupVisible)
+    {
+        <div class="lookupbox-popup" style="width:@(State?.LookupConfig?.DropDownWidth ?? 600)px">
+            @* Search bar *@
+            @if (State?.LookupConfig?.SearchEnabled == true)
+            {
+                <div class="popup-search">
+                    <input type="text" class="popup-search-input"
+                           placeholder="Tìm kiếm..."
+                           value="@_searchText"
+                           @oninput="OnSearchInput" />
+                </div>
+            }
+
+            @* Bảng dữ liệu *@
+            @if (_loading)
+            {
+                <div class="popup-loading">⏳ Đang tải dữ liệu...</div>
+            }
+            else if (_loadError is not null)
+            {
+                <div class="popup-error">⚠ @_loadError</div>
+            }
+            else if (FilteredRows.Count == 0)
+            {
+                <div class="popup-empty">Không có dữ liệu</div>
+            }
+            else
+            {
+                <div class="popup-table-wrap" style="max-height:@(State?.LookupConfig?.DropDownHeight ?? 400)px">
+                    <table class="popup-table">
+                        <thead>
+                            <tr>
+                                @foreach (var col in PopupColumns)
+                                {
+                                    <th>@col.Title</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in FilteredRows)
+                            {
+                                var rowVal = GetVal(row);
+                                <tr class="@(State?.ValueString == rowVal ? "selected" : "")"
+                                    @onclick="() => SelectRow(row)">
+                                    @foreach (var col in PopupColumns)
+                                    {
+                                        <td>@GetColValue(row, col.Column)</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+        @* Overlay nhấn ra ngoài để đóng popup *@
+        <div class="lookupbox-overlay" @onclick="ClosePopup"></div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldState?                                 State    { get; set; }
+    [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter]                 public EventCallback<string>                       OnBlur   { get; set; }
+    [Parameter]                 public Dictionary<string, object?>                 Context  { get; set; } = [];
+
+    private bool    _popupVisible;
+    private bool    _loading;
+    private string? _loadError;
+    private string  _searchText = "";
+    private object? _lastTriggerValue;
+
+    // ── Popup columns từ PopupColumnsJson ────────────────────────────────────
+
+    private List<PopupColDef> _popupColumns = [];
+
+    private List<PopupColDef> PopupColumns
+    {
+        get
+        {
+            if (_popupColumns.Count > 0) return _popupColumns;
+            _popupColumns = ParsePopupColumns();
+            return _popupColumns;
+        }
+    }
+
+    private List<PopupColDef> ParsePopupColumns()
+    {
+        var json = State?.LookupConfig?.PopupColumnsJson;
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            // Fallback: chỉ hiển thị DisplayColumn
+            var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+            return [new PopupColDef { Column = displayCol, Title = displayCol }];
+        }
+
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions
+                { PropertyNameCaseInsensitive = true };
+            return System.Text.Json.JsonSerializer
+                .Deserialize<List<PopupColDef>>(json, opts) ?? [];
+        }
+        catch { return []; }
+    }
+
+    // ── Filtered rows (search) ────────────────────────────────────────────────
+
+    private List<Dictionary<string, object?>> FilteredRows
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_searchText))
+                return State?.DynamicRows ?? [];
+
+            var term = _searchText.ToLower();
+            var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+            return (State?.DynamicRows ?? [])
+                .Where(r => GetColValue(r, displayCol).ToLower().Contains(term))
+                .ToList();
+        }
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State is null) return;
+
+        var triggerField = State.LookupConfig?.ReloadTriggerField;
+        var currentTriggerValue = !string.IsNullOrWhiteSpace(triggerField)
+            && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+
+        var needsLoad = State.DynamicRows.Count == 0
+            || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
+
+        if (needsLoad)
+        {
+            _lastTriggerValue = currentTriggerValue;
+            // Clear giá trị đã chọn khi data source thay đổi (cascading)
+            if (State.DynamicRows.Count > 0)
+                await ClearValue();
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (State is null) return;
+
+        _loading   = true;
+        _loadError = null;
+        _popupColumns = []; // reset columns cache
+
+        try
+        {
+            State.DynamicRows = await LookupQuerySvc.QueryAsync(State.FieldId, Context);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            State.DynamicRows = [];
+        }
+        finally { _loading = false; }
+    }
+
+    // ── UI Interactions ────────────────────────────────────────────────────────
+
+    private async Task TogglePopup()
+    {
+        if (State?.IsReadOnly == true) return;
+        _popupVisible = !_popupVisible;
+
+        // Load data khi mở popup lần đầu
+        if (_popupVisible && State?.DynamicRows.Count == 0 && !_loading)
+            await LoadDataAsync();
+    }
+
+    private void ClosePopup()
+    {
+        _popupVisible = false;
+        _searchText   = "";
+    }
+
+    private async Task SelectRow(Dictionary<string, object?> row)
+    {
+        if (State is null) return;
+
+        var val = GetVal(row);
+        State.Value = val;
+        ClosePopup();
+
+        await OnChange.InvokeAsync((State.FieldCode, val));
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    private async Task ClearValue()
+    {
+        if (State is null) return;
+        State.Value = null;
+        await OnChange.InvokeAsync((State.FieldCode, null));
+    }
+
+    private void OnSearchInput(ChangeEventArgs e)
+        => _searchText = e.Value?.ToString() ?? "";
+
+    // ── Value / Display helpers ───────────────────────────────────────────────
+
+    private string GetVal(Dictionary<string, object?> row)
+        => GetColValue(row, State?.LookupConfig?.ValueColumn ?? "");
+
+    private string GetSelectedDisplay()
+    {
+        var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+        var selectedVal = State?.ValueString ?? "";
+        var valueCol = State?.LookupConfig?.ValueColumn ?? "";
+        var row = (State?.DynamicRows ?? [])
+            .FirstOrDefault(r => GetColValue(r, valueCol) == selectedVal);
+        return row is not null ? GetColValue(row, displayCol) : selectedVal;
+    }
+
+    private string GetSelectedCode()
+    {
+        var codeField = State?.LookupConfig?.CodeField ?? "";
+        if (string.IsNullOrWhiteSpace(codeField)) return State?.ValueString ?? "";
+        var selectedVal = State?.ValueString ?? "";
+        var valueCol    = State?.LookupConfig?.ValueColumn ?? "";
+        var row = (State?.DynamicRows ?? [])
+            .FirstOrDefault(r => GetColValue(r, valueCol) == selectedVal);
+        return row is not null ? GetColValue(row, codeField) : selectedVal;
+    }
+
+    private static string GetColValue(Dictionary<string, object?> row, string col)
+    {
+        if (string.IsNullOrWhiteSpace(col)) return "";
+        var kv = row.FirstOrDefault(p => p.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return kv.Value?.ToString() ?? "";
+    }
+
+    // ── Inner types ───────────────────────────────────────────────────────────
+
+    private sealed class PopupColDef
+    {
+        public string Column { get; set; } = "";
+        public string Title  { get; set; } = "";
+        public int    Width  { get; set; }
+    }
+}

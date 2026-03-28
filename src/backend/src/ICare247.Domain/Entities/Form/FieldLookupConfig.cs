@@ -58,4 +58,33 @@ public sealed class FieldLookupConfig
     /// Null = chỉ hiển thị <see cref="DisplayColumn"/>, không dùng popup grid.
     /// </summary>
     public string? PopupColumnsJson { get; init; }
+
+    // ── LookupBox (DxDropDownBox) — thêm từ Migration 014 ─────────────
+
+    /// <summary>
+    /// Chế độ hiển thị EditBox khi đã chọn giá trị.
+    /// <c>TextOnly</c> = chỉ cột Display (mặc định).
+    /// <c>CodeAndName</c> = mã code nhỏ + tên.
+    /// <c>Custom</c> = template Blazor tùy chỉnh.
+    /// </summary>
+    public string EditBoxMode { get; init; } = "TextOnly";
+
+    /// <summary>
+    /// Tên cột code trong data source — dùng khi <see cref="EditBoxMode"/> = <c>CodeAndName</c>.
+    /// Null = không dùng code field.
+    /// </summary>
+    public string? CodeField { get; init; }
+
+    /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
+    public int DropDownWidth { get; init; } = 600;
+
+    /// <summary>Chiều cao popup grid (px). Mặc định: 400.</summary>
+    public int DropDownHeight { get; init; } = 400;
+
+    /// <summary>
+    /// FieldCode của field khác trong form — khi thay đổi giá trị,
+    /// LookupBox clear SelectedId và reload data source (cascading lookup).
+    /// Null = không có trigger.
+    /// </summary>
+    public string? ReloadTriggerField { get; init; }
 }

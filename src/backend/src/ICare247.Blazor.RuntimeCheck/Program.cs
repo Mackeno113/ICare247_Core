@@ -42,5 +42,6 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddScoped<FormApiService>();
 builder.Services.AddScoped<RuntimeApiService>();
 builder.Services.AddScoped<LookupApiService>();
+builder.Services.AddScoped<ILookupQueryService, LookupQueryService>();
 
 await builder.Build().RunAsync();

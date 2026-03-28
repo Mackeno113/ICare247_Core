@@ -54,4 +54,35 @@ public sealed class FieldMetadataDto
     public string? LookupSource     { get; set; }
     /// <summary>Mã lookup trong Sys_Lookup — chỉ có giá trị khi LookupSource = "static".</summary>
     public string? LookupCode       { get; set; }
+    /// <summary>
+    /// Cấu hình FK lookup động — chỉ có giá trị khi LookupSource = "dynamic".
+    /// Được backend serialize từ <c>FieldLookupConfig</c> domain entity.
+    /// </summary>
+    public FieldLookupConfigDto? LookupConfig { get; set; }
+}
+
+/// <summary>
+/// Cấu hình động của field lookup — mirror của domain <c>FieldLookupConfig</c>.
+/// Được dùng bởi ComboBoxRenderer và LookupBoxRenderer để biết cách hiển thị.
+/// </summary>
+public sealed class FieldLookupConfigDto
+{
+    /// <summary>"table" | "tvf" | "custom_sql"</summary>
+    public string  QueryMode      { get; set; } = "table";
+    public string  SourceName     { get; set; } = "";
+    public string  ValueColumn    { get; set; } = "";
+    public string  DisplayColumn  { get; set; } = "";
+    public string? FilterSql      { get; set; }
+    public string? OrderBy        { get; set; }
+    public bool    SearchEnabled  { get; set; } = true;
+    public string? PopupColumnsJson { get; set; }
+
+    // ── LookupBox (DxDropDownBox) props ──────────────────────────────────
+    /// <summary>"TextOnly" | "CodeAndName" | "Custom"</summary>
+    public string  EditBoxMode    { get; set; } = "TextOnly";
+    public string? CodeField      { get; set; }
+    public int     DropDownWidth  { get; set; } = 600;
+    public int     DropDownHeight { get; set; } = 400;
+    /// <summary>FieldCode của field trigger cascading reload.</summary>
+    public string? ReloadTriggerField { get; set; }
 }

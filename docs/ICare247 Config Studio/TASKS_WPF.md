@@ -23,7 +23,19 @@
 
 ## 🔴 In Progress
 
-_(trống)_
+### Wave ComboBox/LookupBox — WPF Tasks (2026-03-28)
+
+> Dedicated props panels thay thế generic key-value cho ComboBox, LookupComboBox, LookupBox.
+
+| Task | File | Mô tả | Trạng thái |
+|---|---|---|---|
+| T4 | `Views/Panels/ControlProps/ComboBoxPropsPanel.xaml` | UserControl mới — 4 subsections: Data Source (4 modes) + Search + Display + Popup Columns | ⬜ |
+| T5 | `Views/Panels/ControlProps/LookupBoxPropsPanel.xaml` | UserControl mới — FK source + EditBox mode + Popup grid config | ⬜ |
+| T6 | `FieldConfigViewModel.cs` | Thêm props ComboBox: SearchMode, SearchFilterCondition, AllowUserInput, NullTextKey, DropDownWidthMode, ClearButton, GroupFieldName, DisabledFieldName, PopupColumns | ⬜ |
+| T7 | `FieldConfigViewModel.cs` | Thêm props LookupBox: EditBoxMode, CodeField, DropDownWidth, DropDownHeight, ReloadTriggerField + SaveAsync/LoadAsync | ⬜ |
+| T8 | `FieldConfigView.xaml` | Tích hợp 2 panel mới + thay FK Lookup section inline | ⬜ |
+
+**Thứ tự:** T6 → T7 → T4 → T5 → T8
 
 ---
 

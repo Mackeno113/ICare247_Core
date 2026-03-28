@@ -114,6 +114,7 @@ else if (_form is not null)
                             <FieldRenderer State="fs"
                                            OnChange="OnFieldChanged"
                                            OnBlur="OnFieldBlur"
+                                           Context="BuildContext()"
                                            DebugMode="DebugMode" />
                         }
                     </div>
@@ -137,6 +138,7 @@ else if (_form is not null)
                             <FieldRenderer State="fs"
                                            OnChange="OnFieldChanged"
                                            OnBlur="OnFieldBlur"
+                                           Context="BuildContext()"
                                            DebugMode="DebugMode" />
                         }
                     </div>
@@ -197,18 +199,23 @@ else if (_form is not null)
 
             // Build field states từ metadata
             // NormalizeFieldType: DB lưu 'TextBox','DateEdit',... → Renderer cần 'text','date',...
+            // ComboBox + dynamic source → "combobox" (để tách biệt khỏi static "select")
             _fieldStates = _form.Fields.Select(f => new FieldState
             {
-                FieldCode  = f.FieldCode.Length > 0 ? f.FieldCode : $"field_{f.FieldId}",
-                FieldType  = NormalizeFieldType(f.FieldType),
-                Label      = f.Label.Length > 0 ? f.Label : f.FieldCode,
-                IsVisible  = f.IsVisible,
-                IsReadOnly = f.IsReadOnly,
-                IsRequired = f.IsRequired,
-                Value      = ParseDefaultValue(f.DefaultValueJson),
-                ColSpan    = f.ColSpan > 0 ? f.ColSpan : (byte)1,
-                // Chỉ truyền LookupCode cho static lookup — dynamic FK sẽ xử lý sau
-                LookupCode = f.LookupSource == "static" ? f.LookupCode : null,
+                FieldId      = f.FieldId,
+                FieldCode    = f.FieldCode.Length > 0 ? f.FieldCode : $"field_{f.FieldId}",
+                FieldType    = NormalizeFieldType(f.FieldType, f.LookupSource),
+                Label        = f.Label.Length > 0 ? f.Label : f.FieldCode,
+                IsVisible    = f.IsVisible,
+                IsReadOnly   = f.IsReadOnly,
+                IsRequired   = f.IsRequired,
+                Value        = ParseDefaultValue(f.DefaultValueJson),
+                ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
+                LookupSource = f.LookupSource,
+                // Static: truyền LookupCode để load Sys_Lookup options
+                LookupCode   = f.LookupSource == "static" ? f.LookupCode : null,
+                // Dynamic: truyền config để renderer biết columns, width, v.v.
+                LookupConfig = f.LookupSource == "dynamic" ? f.LookupConfig : null,
             }).ToList();
 
             // Load Sys_Lookup options cho tất cả static select fields (gọi song song theo code)
@@ -420,10 +427,13 @@ else if (_form is not null)
     ///   TextBox/Text  → text     | TextArea         → textarea
     ///   NumberEdit    → number   | DateEdit         → date
     ///   DateTimeEdit  → datetime | CheckBox/Toggle  → bool
-    ///   ComboBox/RadioGroup/LookupComboBox/Select   → select  (Sys_Lookup)
-    ///   LookupBox     → fklookup (FK dynamic — render text input tạm thời)
+    ///   LookupComboBox/RadioGroup/Select            → select  (Sys_Lookup static)
+    ///   ComboBox + LookupSource="static"            → select  (Sys_Lookup static)
+    ///   ComboBox + LookupSource="dynamic"           → combobox (dynamic Table/TVF/SQL)
+    ///   LookupBox                                   → fklookup (FK popup grid)
     /// </summary>
-    private static string NormalizeFieldType(string dbType) => dbType.ToLower() switch
+    private static string NormalizeFieldType(string dbType, string? lookupSource)
+        => dbType.ToLower() switch
     {
         "textbox"    or "text"                                          => "text",
         "textarea"   or "memo"                                          => "textarea",
@@ -431,10 +441,12 @@ else if (_form is not null)
         "dateedit"   or "date"                                          => "date",
         "datetimeedit" or "datetime"                                    => "datetime",
         "checkbox"   or "toggle" or "bool"                              => "bool",
-        "combobox"   or "select"   or "lookupedit"
+        // ComboBox: dynamic → "combobox", static → "select"
+        "combobox"   => lookupSource == "dynamic" ? "combobox" : "select",
+        "select"     or "lookupedit"
             or "dropdown" or "multiselect"
             or "radiogroup" or "lookupcombobox"                         => "select",
-        // LookupBox = FK dynamic lookup — chưa triển khai, hiển thị text input tạm
+        // LookupBox = FK popup grid
         "lookupbox"                                                     => "fklookup",
         _                                                               => "text"
     };

@@ -110,7 +110,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             {
                 LoadControlPropSchema();
                 RaisePropertyChanged(nameof(IsLookupEditor));
+                RaisePropertyChanged(nameof(IsRadioGroupEditor));
+                RaisePropertyChanged(nameof(IsLookupOrComboBoxEditor));
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
+                RaisePropertyChanged(nameof(IsComboBoxEditor));
+                RaisePropertyChanged(nameof(IsDynamicDataEditor));
                 RaisePropertyChanged(nameof(EditorTypeGuide));
                 RaisePropertyChanged(nameof(HasEditorTypeGuide));
                 if (IsLookupEditor && !_isLoading)
@@ -126,10 +130,29 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool IsLookupEditor =>
         SelectedEditorType is "RadioGroup" or "LookupComboBox";
 
+    /// <summary>True chỉ khi EditorType = RadioGroup — hiện section Lookup Code đơn giản.</summary>
+    public bool IsRadioGroupEditor => SelectedEditorType == "RadioGroup";
+
+    /// <summary>
+    /// True khi EditorType cần ComboBoxPropsPanel:
+    /// LookupComboBox (static + search props) hoặc ComboBox (dynamic + search props).
+    /// </summary>
+    public bool IsLookupOrComboBoxEditor =>
+        SelectedEditorType is "LookupComboBox" or "ComboBox";
+
     // ── FK Lookup editor (LookupBox) ─────────────────────────
 
     /// <summary>True khi EditorType là LookupBox (FK tham chiếu bảng nghiệp vụ).</summary>
     public bool IsFkLookupEditor => SelectedEditorType == "LookupBox";
+
+    /// <summary>True khi EditorType là ComboBox (dynamic data từ Bảng/TVF/SQL, dùng DxComboBox).</summary>
+    public bool IsComboBoxEditor => SelectedEditorType == "ComboBox";
+
+    /// <summary>
+    /// True khi EditorType cần cấu hình nguồn dữ liệu động từ Ui_Field_Lookup
+    /// (LookupBox hoặc ComboBox — dùng chung bộ props FkTableName/FkFilter...).
+    /// </summary>
+    public bool IsDynamicDataEditor => IsFkLookupEditor || IsComboBoxEditor;
 
     /// <summary>Hướng dẫn inline cho EditorType đang chọn — cập nhật khi SelectedEditorType thay đổi.</summary>
     public ControlTypeGuide EditorTypeGuide => BuildGuide(SelectedEditorType);
@@ -288,6 +311,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         FkFunctionParams.Clear();
         ReloadOnChangeFields.Clear();
         DataSourceConditions.Clear();
+        // LookupBox new props (Migration 014)
+        _editBoxMode          = "TextOnly";
+        _codeField            = "";
+        _dropDownWidth        = 600;
+        _dropDownHeight       = 400;
+        _reloadTriggerField   = "";
         _isRebuildingProps = false;
         // Raise tất cả property liên quan
         RaisePropertyChanged(nameof(QueryMode));
@@ -443,6 +472,154 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>Các phép so sánh hợp lệ trong DataSourceCondition.WhenOp.</summary>
     public List<string> WhenOpOptions { get; } =
         ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "startsWith"];
+
+    // ── LookupBox new props (Migration 014) ───────────────────────────
+
+    /// <summary>
+    /// Chế độ hiển thị EditBox khi đã chọn FK record (chỉ LookupBox).
+    /// "TextOnly" | "CodeAndName" | "Custom". Mặc định: "TextOnly".
+    /// </summary>
+    private string _editBoxMode = "TextOnly";
+    public string EditBoxMode
+    {
+        get => _editBoxMode;
+        set { if (SetProperty(ref _editBoxMode, value)) { RaisePropertyChanged(nameof(IsCodeAndNameMode)); IsDirty = true; } }
+    }
+
+    /// <summary>True khi EditBoxMode = "CodeAndName" — hiện thêm input CodeField.</summary>
+    public bool IsCodeAndNameMode => _editBoxMode == "CodeAndName";
+
+    /// <summary>Tên cột mã code trong data source — dùng khi EditBoxMode = "CodeAndName".</summary>
+    private string _codeField = "";
+    public string CodeField
+    {
+        get => _codeField;
+        set { if (SetProperty(ref _codeField, value)) IsDirty = true; }
+    }
+
+    /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
+    private int _dropDownWidth = 600;
+    public int DropDownWidth
+    {
+        get => _dropDownWidth;
+        set { if (SetProperty(ref _dropDownWidth, value)) IsDirty = true; }
+    }
+
+    /// <summary>Chiều cao popup grid (px). Mặc định: 400.</summary>
+    private int _dropDownHeight = 400;
+    public int DropDownHeight
+    {
+        get => _dropDownHeight;
+        set { if (SetProperty(ref _dropDownHeight, value)) IsDirty = true; }
+    }
+
+    /// <summary>
+    /// FieldCode của field khác trong form — khi thay đổi, LookupBox tự clear + reload.
+    /// Lưu vào Ui_Field_Lookup.Reload_Trigger_Field (single field, đơn giản nhất).
+    /// </summary>
+    private string _reloadTriggerField = "";
+    public string ReloadTriggerField
+    {
+        get => _reloadTriggerField;
+        set { if (SetProperty(ref _reloadTriggerField, value)) IsDirty = true; }
+    }
+
+    /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
+    public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
+
+    // ── ComboBox / LookupComboBox display props ───────────────────────
+
+    /// <summary>
+    /// Chế độ tìm kiếm trong dropdown DxComboBox.
+    /// "None" | "AutoFilter" | "AutoSearch". Mặc định: "AutoFilter".
+    /// </summary>
+    private string _cbSearchMode = "AutoFilter";
+    public string CbSearchMode
+    {
+        get => _cbSearchMode;
+        set
+        {
+            if (SetProperty(ref _cbSearchMode, value))
+            {
+                RaisePropertyChanged(nameof(ShowSearchFilterCondition));
+                if (!_isRebuildingProps) RebuildControlPropsJson();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Điều kiện so khớp khi tìm kiếm.
+    /// "Contains" | "StartsWith" | "Equals". Mặc định: "Contains".
+    /// </summary>
+    private string _cbSearchFilterCondition = "Contains";
+    public string CbSearchFilterCondition
+    {
+        get => _cbSearchFilterCondition;
+        set { if (SetProperty(ref _cbSearchFilterCondition, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>True khi SearchMode != "None" — hiện dropdown SearchFilterCondition.</summary>
+    public bool ShowSearchFilterCondition => _cbSearchMode != "None";
+
+    /// <summary>Cho phép người dùng nhập text tự do (AllowUserInput). Mặc định: false.</summary>
+    private bool _cbAllowUserInput;
+    public bool CbAllowUserInput
+    {
+        get => _cbAllowUserInput;
+        set { if (SetProperty(ref _cbAllowUserInput, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>I18n key cho placeholder khi chưa chọn. Null = dùng fallback "-- Chọn --".</summary>
+    private string _cbNullTextKey = "";
+    public string CbNullTextKey
+    {
+        get => _cbNullTextKey;
+        set { if (SetProperty(ref _cbNullTextKey, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>
+    /// Chiều rộng dropdown panel.
+    /// "ContentOrEditorWidth" | "ContentWidth" | "EditorWidth". Mặc định: "ContentOrEditorWidth".
+    /// </summary>
+    private string _cbDropDownWidthMode = "ContentOrEditorWidth";
+    public string CbDropDownWidthMode
+    {
+        get => _cbDropDownWidthMode;
+        set { if (SetProperty(ref _cbDropDownWidthMode, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>Nút xóa: "Hidden" | "Auto". Mặc định: "Auto".</summary>
+    private string _cbClearButton = "Auto";
+    public string CbClearButton
+    {
+        get => _cbClearButton;
+        set { if (SetProperty(ref _cbClearButton, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>Tên field để group items trong dropdown — chỉ ComboBox (dynamic). Null = không group.</summary>
+    private string _cbGroupFieldName = "";
+    public string CbGroupFieldName
+    {
+        get => _cbGroupFieldName;
+        set { if (SetProperty(ref _cbGroupFieldName, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>Tên field bool để disable item trong dropdown — chỉ ComboBox (dynamic). Null = không disable.</summary>
+    private string _cbDisabledFieldName = "";
+    public string CbDisabledFieldName
+    {
+        get => _cbDisabledFieldName;
+        set { if (SetProperty(ref _cbDisabledFieldName, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
+
+    /// <summary>Các chế độ SearchMode hợp lệ.</summary>
+    public List<string> SearchModeOptions { get; } = ["None", "AutoFilter", "AutoSearch"];
+    /// <summary>Các điều kiện so khớp khi search hợp lệ.</summary>
+    public List<string> SearchFilterConditionOptions { get; } = ["Contains", "StartsWith", "Equals"];
+    /// <summary>Các chế độ chiều rộng dropdown hợp lệ.</summary>
+    public List<string> DropDownWidthModeOptions { get; } = ["ContentOrEditorWidth", "ContentWidth", "EditorWidth"];
+    /// <summary>Các chế độ nút xóa hợp lệ.</summary>
+    public List<string> ClearButtonModeOptions { get; } = ["Hidden", "Auto"];
 
     /// <summary>
     /// Diễn giải cấu hình hiện tại bằng tiếng Việt — sinh tự động từ JSON.
@@ -863,10 +1040,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             if (cfg is null) goto skipFkRestore;
 
                             _isRebuildingProps = true;
-                            QueryMode      = cfg.QueryMode;
-                            FkValueField   = cfg.ValueColumn;
-                            FkDisplayField = cfg.DisplayColumn;
-                            FkOrderBy      = cfg.OrderBy ?? "";
+                            QueryMode       = cfg.QueryMode;
+                            FkValueField    = cfg.ValueColumn;
+                            FkDisplayField  = cfg.DisplayColumn;
+                            FkOrderBy       = cfg.OrderBy ?? "";
                             FkSearchEnabled = cfg.SearchEnabled;
 
                             // Phân tách source theo query mode
@@ -905,11 +1082,98 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                 }
                                 catch { /* bỏ qua nếu JSON không hợp lệ */ }
                             }
+                            // LookupBox new props (Migration 014)
+                            _editBoxMode        = cfg.EditBoxMode;
+                            _codeField          = cfg.CodeField ?? "";
+                            _dropDownWidth      = cfg.DropDownWidth;
+                            _dropDownHeight     = cfg.DropDownHeight;
+                            _reloadTriggerField = cfg.ReloadTriggerField ?? "";
 
                             _isRebuildingProps = false;
+                            // Raise LookupBox new props sau khi _isRebuildingProps = false
+                            RaisePropertyChanged(nameof(EditBoxMode));
+                            RaisePropertyChanged(nameof(IsCodeAndNameMode));
+                            RaisePropertyChanged(nameof(CodeField));
+                            RaisePropertyChanged(nameof(DropDownWidth));
+                            RaisePropertyChanged(nameof(DropDownHeight));
+                            RaisePropertyChanged(nameof(ReloadTriggerField));
                             skipFkRestore:;
                         }
                         catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }
+                    }
+
+                    // ── Restore ComboBox dynamic source — đọc từ Ui_Field_Lookup ──
+                    // ComboBox với Lookup_Source = "dynamic" dùng cùng bảng Ui_Field_Lookup
+                    if (IsComboBoxEditor && field.LookupSource == "dynamic" && _fieldService is not null)
+                    {
+                        try
+                        {
+                            var cfg = await _fieldService.GetFieldLookupConfigAsync(FieldId, ct);
+                            if (cfg is not null)
+                            {
+                                _isRebuildingProps = true;
+                                QueryMode       = cfg.QueryMode;
+                                FkValueField    = cfg.ValueColumn;
+                                FkDisplayField  = cfg.DisplayColumn;
+                                FkOrderBy       = cfg.OrderBy ?? "";
+                                FkSearchEnabled = cfg.SearchEnabled;
+                                switch (cfg.QueryMode)
+                                {
+                                    case "table":   FkTableName    = cfg.SourceName; FkFilterSql = cfg.FilterSql ?? ""; break;
+                                    case "tvf":     FkFunctionName = cfg.SourceName; break;
+                                    case "custom_sql": FkSelectSql = cfg.SourceName; break;
+                                }
+                                FkPopupColumns.Clear();
+                                if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
+                                {
+                                    try
+                                    {
+                                        var cols = JsonSerializer.Deserialize<List<JsonElement>>(cfg.PopupColumnsJson);
+                                        if (cols is not null)
+                                            foreach (var col in cols)
+                                            {
+                                                var colCfg = new FkColumnConfig
+                                                {
+                                                    FieldName = col.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? "" : "",
+                                                    Caption   = col.TryGetProperty("caption",   out var cp) ? cp.GetString() ?? "" : "",
+                                                    Width     = col.TryGetProperty("width",     out var w)  ? w.GetInt32() : 150
+                                                };
+                                                colCfg.PropertyChanged += (_, _) => RebuildControlPropsJson();
+                                                FkPopupColumns.Add(colCfg);
+                                            }
+                                    }
+                                    catch { /* bỏ qua */ }
+                                }
+                                _isRebuildingProps = false;
+                            }
+                        }
+                        catch { _isRebuildingProps = false; }
+                    }
+
+                    // ── Restore ComboBox / LookupComboBox display props từ ControlPropsJson ──
+                    if (IsComboBoxEditor || SelectedEditorType == "LookupComboBox")
+                    {
+                        // Parse trực tiếp từ JSON dict — WPF không reference backend Domain
+                        var raw = ParseControlPropsJson(field.ControlPropsJson ?? "{}");
+                        _isRebuildingProps = true;
+                        _cbSearchMode          = GetStr(raw, "searchMode",           "AutoFilter");
+                        _cbSearchFilterCondition = GetStr(raw, "searchFilterCondition", "Contains");
+                        _cbAllowUserInput      = GetBool(raw, "allowUserInput",      false);
+                        _cbNullTextKey         = GetStr(raw, "nullTextKey",          "");
+                        _cbDropDownWidthMode   = GetStr(raw, "dropDownWidthMode",    "ContentOrEditorWidth");
+                        _cbClearButton         = GetStr(raw, "clearButton",          "Auto");
+                        _cbGroupFieldName      = GetStr(raw, "groupFieldName",       "");
+                        _cbDisabledFieldName   = GetStr(raw, "disabledFieldName",    "");
+                        _isRebuildingProps     = false;
+                        RaisePropertyChanged(nameof(CbSearchMode));
+                        RaisePropertyChanged(nameof(CbSearchFilterCondition));
+                        RaisePropertyChanged(nameof(ShowSearchFilterCondition));
+                        RaisePropertyChanged(nameof(CbAllowUserInput));
+                        RaisePropertyChanged(nameof(CbNullTextKey));
+                        RaisePropertyChanged(nameof(CbDropDownWidthMode));
+                        RaisePropertyChanged(nameof(CbClearButton));
+                        RaisePropertyChanged(nameof(CbGroupFieldName));
+                        RaisePropertyChanged(nameof(CbDisabledFieldName));
                     }
                 }
             }
@@ -1067,6 +1331,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             if (IsLookupEditor && !string.IsNullOrWhiteSpace(_lookupCode))
                 dict["lookupCode"] = _lookupCode;
 
+            // ComboBox / LookupComboBox: merge search + display props vào JSON
+            if (IsComboBoxEditor || SelectedEditorType == "LookupComboBox")
+            {
+                dict["searchMode"]           = _cbSearchMode;
+                dict["searchFilterCondition"]= _cbSearchFilterCondition;
+                dict["allowUserInput"]       = (object)_cbAllowUserInput;
+                dict["dropDownWidthMode"]    = _cbDropDownWidthMode;
+                dict["clearButton"]          = _cbClearButton;
+                if (!string.IsNullOrWhiteSpace(_cbNullTextKey))
+                    dict["nullTextKey"] = _cbNullTextKey;
+                if (!string.IsNullOrWhiteSpace(_cbGroupFieldName))
+                    dict["groupFieldName"] = _cbGroupFieldName;
+                if (!string.IsNullOrWhiteSpace(_cbDisabledFieldName))
+                    dict["disabledFieldName"] = _cbDisabledFieldName;
+            }
+
             // FK Lookup: serialize toàn bộ config LookupBox theo queryMode
             if (IsFkLookupEditor)
             {
@@ -1151,6 +1431,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         catch { return []; }
     }
 
+    /// <summary>Đọc string từ prop dict, fallback về <paramref name="def"/> nếu không tìm thấy.</summary>
+    private static string GetStr(Dictionary<string, object?> d, string key, string def)
+    {
+        if (!d.TryGetValue(key, out var v) || v is not JsonElement je) return def;
+        return je.ValueKind == JsonValueKind.String ? (je.GetString() ?? def) : def;
+    }
+
+    /// <summary>Đọc bool từ prop dict, fallback về <paramref name="def"/> nếu không tìm thấy.</summary>
+    private static bool GetBool(Dictionary<string, object?> d, string key, bool def)
+    {
+        if (!d.TryGetValue(key, out var v) || v is not JsonElement je) return def;
+        return je.ValueKind is JsonValueKind.True  ? true
+             : je.ValueKind is JsonValueKind.False ? false
+             : def;
+    }
+
     /// <summary>
     /// Chuyển JsonElement thành đúng kiểu dựa trên PropType của definition.
     /// </summary>
@@ -1186,13 +1482,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             new() { PropName = "isMultiline", PropType = "Boolean", DefaultValue = false,  Label = "Nhiều dòng" },
             new() { PropName = "rows",        PropType = "Number",  DefaultValue = 1,      Label = "Số dòng (khi multiline)" },
         ],
-        "ComboBox" =>
-        [
-            new() { PropName = "dataSource",   PropType = "String",  DefaultValue = "",     Label = "API endpoint datasource" },
-            new() { PropName = "valueField",   PropType = "String",  DefaultValue = "id",   Label = "Field giá trị" },
-            new() { PropName = "displayField", PropType = "String",  DefaultValue = "name", Label = "Field hiển thị" },
-            new() { PropName = "allowNull",    PropType = "Boolean", DefaultValue = true,   Label = "Cho phép rỗng" },
-        ],
+        // ComboBox dùng dedicated ComboBoxPropsPanel — không qua generic ControlProps
+        "ComboBox" => [],
         "DatePicker" =>
         [
             new() { PropName = "format",  PropType = "Enum",   DefaultValue = "dd/MM/yyyy", Label = "Định dạng ngày", AllowedValues = ["dd/MM/yyyy", "dd/MM/yyyy HH:mm", "MM/yyyy", "yyyy"] },
@@ -1433,8 +1724,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
             // Xác định LookupSource theo EditorType
-            var lookupSource = IsLookupEditor   ? "static"
-                             : IsFkLookupEditor ? "dynamic"
+            var lookupSource = IsLookupEditor    ? "static"
+                             : IsFkLookupEditor  ? "dynamic"
+                             : IsComboBoxEditor  ? "dynamic"
                              : (string?)null;
 
             var field = new FieldConfigRecord
@@ -1457,13 +1749,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,
                 LookupCode       = IsLookupEditor ? LookupCode : null,
-                // LookupBox: ControlPropsJson không dùng (config lưu trong Ui_Field_Lookup)
+                // LookupBox: ControlPropsJson = null (toàn bộ config lưu trong Ui_Field_Lookup)
+                // ComboBox/LookupComboBox: ControlPropsJson lưu search+display props
                 ControlPropsJson = IsFkLookupEditor ? null : ControlPropsJson
             };
 
-            // Build lookup config cho dynamic field
+            // Build lookup config cho dynamic field (LookupBox hoặc ComboBox)
             FieldLookupConfigRecord? lookupConfig = null;
-            if (IsFkLookupEditor)
+            if (IsFkLookupEditor || IsComboBoxEditor)
             {
                 // Xác định SourceName theo query mode
                 var sourceName = _queryMode switch
@@ -1481,15 +1774,23 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
                 lookupConfig = new FieldLookupConfigRecord
                 {
-                    FieldId        = FieldId,
-                    QueryMode      = _queryMode,
-                    SourceName     = sourceName,
-                    ValueColumn    = FkValueField,
-                    DisplayColumn  = FkDisplayField,
-                    FilterSql      = string.IsNullOrWhiteSpace(FkFilterSql) ? null : FkFilterSql,
-                    OrderBy        = string.IsNullOrWhiteSpace(FkOrderBy)   ? null : FkOrderBy,
-                    SearchEnabled  = FkSearchEnabled,
-                    PopupColumnsJson = popupColumnsJson
+                    FieldId          = FieldId,
+                    QueryMode        = _queryMode,
+                    SourceName       = sourceName,
+                    ValueColumn      = FkValueField,
+                    DisplayColumn    = FkDisplayField,
+                    FilterSql        = string.IsNullOrWhiteSpace(FkFilterSql) ? null : FkFilterSql,
+                    OrderBy          = string.IsNullOrWhiteSpace(FkOrderBy)   ? null : FkOrderBy,
+                    SearchEnabled    = FkSearchEnabled,
+                    PopupColumnsJson = popupColumnsJson,
+                    // LookupBox-specific props — ComboBox giữ default
+                    EditBoxMode         = IsFkLookupEditor ? _editBoxMode        : "TextOnly",
+                    CodeField           = IsFkLookupEditor && !string.IsNullOrWhiteSpace(_codeField)
+                                          ? _codeField : null,
+                    DropDownWidth       = IsFkLookupEditor ? _dropDownWidth      : 600,
+                    DropDownHeight      = IsFkLookupEditor ? _dropDownHeight     : 400,
+                    ReloadTriggerField  = !string.IsNullOrWhiteSpace(_reloadTriggerField)
+                                          ? _reloadTriggerField : null,
                 };
             }
 

@@ -74,15 +74,20 @@ public sealed class FieldDataService : IFieldDataService
         if (!_config.IsConfigured) return null;
 
         const string sql = """
-            SELECT fl.Field_Id           AS FieldId,
-                   fl.Query_Mode         AS QueryMode,
-                   fl.Source_Name        AS SourceName,
-                   fl.Value_Column       AS ValueColumn,
-                   fl.Display_Column     AS DisplayColumn,
-                   fl.Filter_Sql         AS FilterSql,
-                   fl.Order_By           AS OrderBy,
-                   fl.Search_Enabled     AS SearchEnabled,
-                   fl.Popup_Columns_Json AS PopupColumnsJson
+            SELECT fl.Field_Id              AS FieldId,
+                   fl.Query_Mode            AS QueryMode,
+                   fl.Source_Name           AS SourceName,
+                   fl.Value_Column          AS ValueColumn,
+                   fl.Display_Column        AS DisplayColumn,
+                   fl.Filter_Sql            AS FilterSql,
+                   fl.Order_By              AS OrderBy,
+                   fl.Search_Enabled        AS SearchEnabled,
+                   fl.Popup_Columns_Json    AS PopupColumnsJson,
+                   ISNULL(fl.EditBox_Mode, N'TextOnly') AS EditBoxMode,
+                   fl.Code_Field            AS CodeField,
+                   ISNULL(fl.DropDown_Width,  600)      AS DropDownWidth,
+                   ISNULL(fl.DropDown_Height, 400)      AS DropDownHeight,
+                   fl.Reload_Trigger_Field  AS ReloadTriggerField
             FROM   dbo.Ui_Field_Lookup fl
             WHERE  fl.Field_Id = @FieldId
             """;
@@ -215,30 +220,39 @@ public sealed class FieldDataService : IFieldDataService
                 const string sqlUpsertLookup = """
                     IF EXISTS (SELECT 1 FROM dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId)
                         UPDATE dbo.Ui_Field_Lookup
-                        SET    Query_Mode         = @QueryMode,
-                               Source_Name        = @SourceName,
-                               Value_Column       = @ValueColumn,
-                               Display_Column     = @DisplayColumn,
-                               Filter_Sql         = @FilterSql,
-                               Order_By           = @OrderBy,
-                               Search_Enabled     = @SearchEnabled,
-                               Popup_Columns_Json = @PopupColumnsJson,
-                               Updated_At         = GETDATE()
+                        SET    Query_Mode            = @QueryMode,
+                               Source_Name           = @SourceName,
+                               Value_Column          = @ValueColumn,
+                               Display_Column        = @DisplayColumn,
+                               Filter_Sql            = @FilterSql,
+                               Order_By              = @OrderBy,
+                               Search_Enabled        = @SearchEnabled,
+                               Popup_Columns_Json    = @PopupColumnsJson,
+                               EditBox_Mode          = @EditBoxMode,
+                               Code_Field            = @CodeField,
+                               DropDown_Width        = @DropDownWidth,
+                               DropDown_Height       = @DropDownHeight,
+                               Reload_Trigger_Field  = @ReloadTriggerField,
+                               Updated_At            = GETDATE()
                         WHERE  Field_Id = @FieldId
                     ELSE
                         INSERT INTO dbo.Ui_Field_Lookup
                                (Field_Id, Query_Mode, Source_Name, Value_Column,
                                 Display_Column, Filter_Sql, Order_By, Search_Enabled,
-                                Popup_Columns_Json, Updated_At)
+                                Popup_Columns_Json, EditBox_Mode, Code_Field,
+                                DropDown_Width, DropDown_Height, Reload_Trigger_Field,
+                                Updated_At)
                         VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
                                 @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
-                                @PopupColumnsJson, GETDATE())
+                                @PopupColumnsJson, @EditBoxMode, @CodeField,
+                                @DropDownWidth, @DropDownHeight, @ReloadTriggerField,
+                                GETDATE())
                     """;
 
                 await conn.ExecuteAsync(
                     new CommandDefinition(sqlUpsertLookup, new
                     {
-                        FieldId        = fieldId,
+                        FieldId              = fieldId,
                         lookupConfig.QueryMode,
                         lookupConfig.SourceName,
                         lookupConfig.ValueColumn,
@@ -246,7 +260,12 @@ public sealed class FieldDataService : IFieldDataService
                         lookupConfig.FilterSql,
                         lookupConfig.OrderBy,
                         lookupConfig.SearchEnabled,
-                        lookupConfig.PopupColumnsJson
+                        lookupConfig.PopupColumnsJson,
+                        lookupConfig.EditBoxMode,
+                        lookupConfig.CodeField,
+                        lookupConfig.DropDownWidth,
+                        lookupConfig.DropDownHeight,
+                        lookupConfig.ReloadTriggerField
                     }, transaction: tx, cancellationToken: ct));
             }
             else

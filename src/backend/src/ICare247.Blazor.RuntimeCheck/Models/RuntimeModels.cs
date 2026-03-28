@@ -89,6 +89,8 @@ public sealed class HandleEventRequest
 /// </summary>
 public sealed class FieldState
 {
+    /// <summary>Field_Id trong Ui_Field — dùng để gọi POST /api/v1/lookups/query-dynamic.</summary>
+    public int     FieldId   { get; init; }
     public string  FieldCode  { get; init; } = "";
     public string  FieldType  { get; init; } = "text";
     public string  Label      { get; set; }  = "";
@@ -98,6 +100,9 @@ public sealed class FieldState
     public bool    IsReadOnly { get; set; }
     public List<string> Errors { get; set; } = [];
 
+    /// <summary>null | "static" | "dynamic" — phân loại nguồn dữ liệu lookup.</summary>
+    public string? LookupSource { get; init; }
+
     /// <summary>
     /// Mã lookup trong Sys_Lookup — chỉ có giá trị khi LookupSource = "static".
     /// Dùng để load Options qua LookupApiService.
@@ -105,10 +110,22 @@ public sealed class FieldState
     public string? LookupCode { get; init; }
 
     /// <summary>
-    /// Danh sách options cho select field — load từ Sys_Lookup API.
+    /// Danh sách options cho static select field — load từ Sys_Lookup API.
     /// Rỗng khi chưa load hoặc không phải select field.
     /// </summary>
     public List<LookupOptionDto> Options { get; set; } = [];
+
+    /// <summary>
+    /// Cấu hình dynamic lookup — chỉ có giá trị khi LookupSource = "dynamic".
+    /// Dùng bởi ComboBoxRenderer / LookupBoxRenderer để biết ValueColumn, DisplayColumn, v.v.
+    /// </summary>
+    public FieldLookupConfigDto? LookupConfig { get; init; }
+
+    /// <summary>
+    /// Rows dữ liệu dynamic lookup đã load — cache trong session.
+    /// Cleared + reloaded khi ReloadTriggerField thay đổi giá trị.
+    /// </summary>
+    public List<Dictionary<string, object?>> DynamicRows { get; set; } = [];
 
     /// <summary>
     /// Độ rộng field trong CSS grid 4-column (grid-column: span X).

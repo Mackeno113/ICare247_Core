@@ -114,15 +114,20 @@
                 }
                 break;
 
+            case "combobox":
+                @* Dynamic ComboBox — lấy data từ Table/TVF/SQL qua API *@
+                <ComboBoxRenderer State="State"
+                                  OnChange="OnChange"
+                                  OnBlur="OnBlur"
+                                  Context="Context" />
+                break;
+
             case "fklookup":
-                @* FK dynamic lookup — chưa triển khai đầy đủ, hiển thị text input tạm *@
-                <input id="field_@State.FieldCode"
-                       type="text" class="field-input"
-                       value="@State.ValueString"
-                       disabled="@State.IsReadOnly"
-                       placeholder="(FK lookup — chưa triển khai)"
-                       @onchange="HandleChange"
-                       @onblur="HandleBlur" />
+                @* FK LookupBox — popup grid chọn từ data source động *@
+                <LookupBoxRenderer State="State"
+                                   OnChange="OnChange"
+                                   OnBlur="OnBlur"
+                                   Context="Context" />
                 break;
 
             default:
@@ -152,6 +157,8 @@
     [Parameter, EditorRequired] public FieldState?                                State     { get; set; }
     [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange  { get; set; }
     [Parameter]                 public EventCallback<string>                       OnBlur    { get; set; }
+    /// <summary>Context snapshot toàn form — cần thiết cho ComboBoxRenderer / LookupBoxRenderer (cascading).</summary>
+    [Parameter]                 public Dictionary<string, object?>                 Context   { get; set; } = [];
     /// <summary>Bật để hiển thị debug badge: FieldCode | FieldType | IsVisible | IsReadOnly.</summary>
     [Parameter]                 public bool                                        DebugMode { get; set; }
 

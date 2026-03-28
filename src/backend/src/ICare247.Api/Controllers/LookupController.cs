@@ -1,11 +1,13 @@
 // File    : LookupController.cs
 // Module  : Lookup
 // Layer   : Api
-// Purpose : REST endpoint lấy danh sách Sys_Lookup items theo code.
+// Purpose : REST endpoint lấy Sys_Lookup items và query dynamic lookup data.
 
 using ICare247.Application.Features.Lookups.Queries.GetLookupByCode;
+using ICare247.Application.Features.Lookups.Queries.QueryDynamic;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json.Serialization;
 
 namespace ICare247.Api.Controllers;
 
@@ -62,6 +64,35 @@ public sealed class LookupController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// Truy vấn dữ liệu nguồn cho một dynamic field (ComboBox / LookupBox).
+    /// Backend tự đọc cấu hình từ <c>Ui_Field_Lookup</c> theo <c>fieldId</c> — không nhận SQL từ client.
+    /// </summary>
+    /// <remarks>
+    /// POST /api/v1/lookups/query-dynamic
+    /// Body: { "fieldId": 42, "contextValues": { "PhongBanId": 5 } }
+    /// Response: [{ "Id": 1, "Ten": "Phòng A" }, ...]
+    /// </remarks>
+    [HttpPost("query-dynamic")]
+    public async Task<IActionResult> QueryDynamic(
+        [FromBody] QueryDynamicRequest body,
+        CancellationToken ct = default)
+    {
+        if (body.FieldId <= 0)
+            return BadRequest(new ProblemDetails
+            {
+                Type   = "https://tools.ietf.org/html/rfc7807",
+                Title  = "FieldId không hợp lệ",
+                Status = 400,
+                Detail = "FieldId phải lớn hơn 0."
+            });
+
+        var query  = new QueryDynamicLookupQuery(body.FieldId, GetTenantId(), body.ContextValues);
+        var result = await _mediator.Send(query, ct);
+
+        return Ok(result);
+    }
+
     private int GetTenantId()
     {
         if (Request.Headers.TryGetValue("X-Tenant-Id", out var values)
@@ -70,4 +101,19 @@ public sealed class LookupController : ControllerBase
             return tenantId;
         return 1;
     }
+}
+
+/// <summary>Request body cho POST /api/v1/lookups/query-dynamic.</summary>
+public sealed class QueryDynamicRequest
+{
+    /// <summary>Field_Id trong Ui_Field — xác định cấu hình lookup cần chạy.</summary>
+    [JsonPropertyName("fieldId")]
+    public int FieldId { get; init; }
+
+    /// <summary>
+    /// Snapshot giá trị các field trong form — dùng cho cascading filter.
+    /// Ví dụ: { "PhongBanId": 5, "NamHoc": "2024" }.
+    /// </summary>
+    [JsonPropertyName("contextValues")]
+    public Dictionary<string, object?> ContextValues { get; init; } = [];
 }

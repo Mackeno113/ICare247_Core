@@ -1,0 +1,128 @@
+@* File    : ComboBoxRenderer.razor
+   Purpose : Render dynamic ComboBox — gọi API lấy rows từ Table/TVF/SQL rồi hiển thị <select>.
+             Dùng cho Editor_Type = ComboBox + LookupSource = dynamic.
+             Load data khi khởi tạo; reload tự động nếu ReloadTriggerField thay đổi. *@
+
+@inject ILookupQueryService LookupQuerySvc
+
+<div class="combobox-wrapper">
+    @if (_loading)
+    {
+        <span class="lookup-loading">⏳ Đang tải...</span>
+    }
+    else if (_loadError is not null)
+    {
+        <span class="lookup-error" title="@_loadError">⚠ Lỗi tải dữ liệu</span>
+    }
+    else if (State is not null)
+    {
+        <select id="field_@State.FieldCode"
+                class="field-input"
+                disabled="@State.IsReadOnly"
+                @onchange="HandleChange"
+                @onblur="HandleBlur">
+            <option value="">-- Chọn --</option>
+            @foreach (var row in State.DynamicRows)
+            {
+                var val = GetVal(row);
+                var lbl = GetDisplay(row);
+                @if (State.ValueString == val)
+                {
+                    <option value="@val" selected>@lbl</option>
+                }
+                else
+                {
+                    <option value="@val">@lbl</option>
+                }
+            }
+        </select>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldState?                                 State    { get; set; }
+    [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter]                 public EventCallback<string>                       OnBlur   { get; set; }
+    /// <summary>Context snapshot toàn form — truyền vào query để hỗ trợ cascading filter.</summary>
+    [Parameter]                 public Dictionary<string, object?>                 Context  { get; set; } = [];
+
+    private bool    _loading;
+    private string? _loadError;
+    // Theo dõi giá trị trigger field để biết khi nào cần reload
+    private object? _lastTriggerValue;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State is null) return;
+
+        // Reload khi trigger field thay đổi giá trị
+        var triggerField = State.LookupConfig?.ReloadTriggerField;
+        var currentTriggerValue = !string.IsNullOrWhiteSpace(triggerField)
+            && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+
+        var needsLoad = State.DynamicRows.Count == 0
+            || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
+
+        if (needsLoad)
+        {
+            _lastTriggerValue = currentTriggerValue;
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (State is null) return;
+
+        _loading   = true;
+        _loadError = null;
+
+        try
+        {
+            State.DynamicRows = await LookupQuerySvc.QueryAsync(State.FieldId, Context);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            State.DynamicRows = [];
+        }
+        finally { _loading = false; }
+    }
+
+    // ── Value / Display mapping ───────────────────────────────────────────────
+
+    private string GetVal(Dictionary<string, object?> row)
+    {
+        var col = State?.LookupConfig?.ValueColumn ?? "";
+        return GetColValue(row, col);
+    }
+
+    private string GetDisplay(Dictionary<string, object?> row)
+    {
+        var col = State?.LookupConfig?.DisplayColumn ?? "";
+        return GetColValue(row, col);
+    }
+
+    private static string GetColValue(Dictionary<string, object?> row, string col)
+    {
+        if (string.IsNullOrWhiteSpace(col)) return "";
+        // Tìm theo tên cột (case-insensitive)
+        var kv = row.FirstOrDefault(p => p.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return kv.Value?.ToString() ?? "";
+    }
+
+    // ── Event handlers ────────────────────────────────────────────────────────
+
+    private async Task HandleChange(ChangeEventArgs e)
+    {
+        if (State is null) return;
+        State.Value = e.Value;
+        await OnChange.InvokeAsync((State.FieldCode, e.Value));
+    }
+
+    private async Task HandleBlur(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+}

@@ -10,6 +10,7 @@
              xmlns:models="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Models"
              xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
              xmlns:coreconv="clr-namespace:ConfigStudio.WPF.UI.Core.Converters;assembly=ConfigStudio.WPF.UI.Core"
+             xmlns:panels="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Views.Panels.ControlProps"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="700"
              d:DesignWidth="950"
@@ -714,27 +715,22 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── Lookup Config (chỉ hiện khi EditorType = RadioGroup / LookupComboBox) -->
+                        <!-- ── Lookup Config — chỉ RadioGroup (Sys_Lookup đơn giản) ─── -->
                         <Border Style="{StaticResource SectionCardStyle}"
-                                Visibility="{Binding IsLookupEditor, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding IsRadioGroupEditor, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
-                                <TextBlock Text="Cấu hình Lookup" FontSize="13" FontWeight="SemiBold"
+                                <TextBlock Text="Cấu hình Lookup — Sys_Lookup" FontSize="13" FontWeight="SemiBold"
                                            Foreground="#1E293B" Margin="0,0,0,12" />
-
-                                <!-- Lookup Code -->
                                 <TextBlock Text="Lookup Code" FontSize="11"
                                            Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
                                 <dxe:ComboBoxEdit ItemsSource="{Binding AvailableLookupCodes}"
                                                   EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
                                                   IsTextEditable="True"
                                                   Height="32" Margin="0,0,0,4" />
-                                <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}"
-                                           Margin="0,0,0,12">
+                                <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12">
                                     <Run Text="Mã danh mục trong Sys_Lookup. VD: " />
                                     <Run Text="GENDER" FontFamily="Consolas" Foreground="{StaticResource AccentDarkBrush}" />
                                 </TextBlock>
-
-                                <!-- Preview items -->
                                 <TextBlock Text="Xem trước options:" FontSize="11"
                                            Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"
                                            Visibility="{Binding LookupPreviewItems.Count, Converter={StaticResource BoolToVis}}" />
@@ -757,9 +753,17 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── FK Lookup Config (chỉ hiện khi EditorType = LookupBox) ── -->
-                        <Border Style="{StaticResource SectionCardStyle}"
-                                Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
+                        <!-- ── ComboBoxPropsPanel — LookupComboBox (static) + ComboBox (dynamic) ── -->
+                        <panels:ComboBoxPropsPanel
+                            Visibility="{Binding IsLookupOrComboBoxEditor, Converter={StaticResource BoolToVis}}" />
+
+                        <!-- ── LookupBoxPropsPanel — LookupBox (DxDropDownBox) ── -->
+                        <!-- REPLACED: FK Lookup Config inline section → dedicated UserControl -->
+                        <panels:LookupBoxPropsPanel
+                            Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}" />
+
+                        <!-- ── FK Lookup Config (LEGACY — hidden, kept for reference) ── -->
+                        <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
                             <StackPanel>
                                 <TextBlock Text="Cấu hình FK Lookup" FontSize="13" FontWeight="SemiBold"
                                            Foreground="#1E293B" Margin="0,0,0,14" />
@@ -1280,9 +1284,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── Kiểm tra & Diễn giải ───────────────────────── -->
-                        <Border Style="{StaticResource SectionCardStyle}"
-                                Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
+                        <!-- ── Kiểm tra & Diễn giải (LEGACY — đã chuyển vào LookupBoxPropsPanel) ── -->
+                        <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"

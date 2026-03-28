@@ -2,7 +2,36 @@
 
 ## 🔴 Đang làm (In Progress)
 
-<!-- Không có task đang làm dở -->
+### Wave — ComboBox/LookupBox System (2026-03-28)
+
+> **Bối cảnh:** Hệ thống có 2 dạng dropdown Blazor hoàn toàn khác nhau: DxComboBox (static/dynamic list) và DxDropDownBox (FK lookup với popup grid + template phức tạp). Cần typed ControlProps models, WPF dedicated panels, và Blazor renderer thật thay placeholder.
+
+#### WAVE 1 — Nền tảng
+
+- [x] **T1** — Domain: `ComboBoxControlProps.cs` + `LookupBoxControlProps.cs` — typed C# models cho Control_Props_Json _(2026-03-28)_
+- [x] **T2** — DB Migration `014_ui_field_lookup_add_cols.sql`: thêm `Reload_Trigger_Field`, `EditBox_Mode`, `Code_Field`, `DropDown_Width`, `DropDown_Height` vào `Ui_Field_Lookup` _(2026-03-28)_
+- [x] **T3** — `FieldLookupConfig.cs` domain entity + `FieldLookupConfigRecord.cs` WPF DTO + `FieldDataService.cs` SELECT/UPSERT: thêm 5 fields mới từ T2 _(2026-03-28)_
+
+#### WAVE 2 — WPF Config Studio
+
+- [x] **T4** — WPF NEW: `Views/Panels/ControlProps/ComboBoxPropsPanel.xaml` — 3 sections: Data Source + Search + Display _(2026-03-28)_
+- [x] **T5** — WPF NEW: `Views/Panels/ControlProps/LookupBoxPropsPanel.xaml` — FK source + EditBox mode + Popup grid + Diễn giải _(2026-03-28)_
+- [x] **T6** — `FieldConfigViewModel.cs`: thêm IsLookupOrComboBoxEditor + IsRadioGroupEditor + props ComboBox (SearchMode, SearchFilterCondition, AllowUserInput, NullTextKey, DropDownWidthMode, ClearButton, GroupFieldName, DisabledFieldName) _(2026-03-28)_
+- [x] **T7** — `FieldConfigViewModel.cs`: thêm props LookupBox (EditBoxMode, CodeField, DropDownWidth, DropDownHeight, ReloadTriggerField) + SaveAsync/LoadAsync updated _(2026-03-28)_
+- [x] **T8** — `FieldConfigView.xaml`: thêm `panels:` namespace, RadioGroup section, LookupBoxPropsPanel thay FK Lookup inline, ComboBoxPropsPanel _(2026-03-28)_
+
+#### WAVE 3 — Blazor Runtime
+
+- [x] **T9** — Blazor NEW: `Services/ILookupQueryService.cs` + `Services/LookupQueryService.cs` — POST /api/v1/lookups/query-dynamic _(2026-03-28)_
+- [x] **T10** — Blazor NEW: `Components/FieldRenderers/ComboBoxRenderer.razor` — HTML select với dynamic data + cascade reload _(2026-03-28)_
+- [ ] **T11** — Blazor NEW: `Components/FieldRenderers/LookupComboBoxRenderer.razor` — static Sys_Lookup (hiện dùng chung "select" case — low priority)
+- [x] **T12** — Blazor NEW: `Components/FieldRenderers/LookupBoxRenderer.razor` — popup grid + 3 EditBox modes + search _(2026-03-28)_
+- [x] **T13** — `FieldRenderer.razor` + `FormRunner.razor`: add combobox/fklookup cases + Context param + NormalizeFieldType _(2026-03-28)_
+
+#### WAVE 4 — Backend API
+
+- [x] **T14** — `POST /api/v1/lookups/query-dynamic` trong `LookupController.cs` + `IDynamicLookupRepository` + `DynamicLookupRepository` Dapper + CQRS handler _(2026-03-28)_
+- [ ] **DB** — Chạy migration `014_ui_field_lookup_add_cols.sql` trên DB thật
 
 ---
 
