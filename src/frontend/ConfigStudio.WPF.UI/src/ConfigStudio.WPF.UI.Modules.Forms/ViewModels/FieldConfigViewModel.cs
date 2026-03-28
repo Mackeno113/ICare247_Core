@@ -735,15 +735,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         get => _labelKey;
         set
         {
-            var old = _labelKey;
             if (SetProperty(ref _labelKey, value))
             {
                 _ = ResolveI18nPreviewAsync(value, v => LabelPreview = v);
-                // Auto-sync Placeholder/Tooltip nếu chúng đang bám theo LabelKey cũ
-                SyncKeyIfLinked(ref _placeholderKey, nameof(PlaceholderKey), old, value,
-                                v => PlaceholderPreview = v);
-                SyncKeyIfLinked(ref _tooltipKey, nameof(TooltipKey), old, value,
-                                v => TooltipPreview = v);
                 IsDirty = true;
             }
         }
@@ -774,22 +768,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 _ = ResolveI18nPreviewAsync(value, v => TooltipPreview = v);
                 IsDirty = true;
             }
-        }
-    }
-
-    /// <summary>
-    /// Nếu field phụ (placeholder/tooltip) đang bằng giá trị cũ của LabelKey
-    /// hoặc chưa được nhập → tự đồng bộ theo LabelKey mới.
-    /// </summary>
-    private void SyncKeyIfLinked(ref string field, string propertyName,
-                                  string oldLabel, string newLabel,
-                                  Action<string> updatePreview)
-    {
-        if (field == oldLabel || string.IsNullOrEmpty(field))
-        {
-            field = newLabel;
-            RaisePropertyChanged(propertyName);
-            _ = ResolveI18nPreviewAsync(newLabel, updatePreview);
         }
     }
 
@@ -1092,9 +1070,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     OrderNo                = field.OrderNo;
                     ColSpan                = field.ColSpan;
                     LabelKey               = field.LabelKey;
-                    // Mặc định bằng LabelKey nếu chưa cấu hình riêng
-                    PlaceholderKey         = string.IsNullOrEmpty(field.PlaceholderKey) ? field.LabelKey : field.PlaceholderKey;
-                    TooltipKey             = string.IsNullOrEmpty(field.TooltipKey)     ? field.LabelKey : field.TooltipKey;
+                    PlaceholderKey         = field.PlaceholderKey ?? "";
+                    TooltipKey             = field.TooltipKey     ?? "";
                     IsVisible              = field.IsVisible;
                     IsReadOnly             = field.IsReadOnly;
                     IsRequired             = field.IsRequired;
