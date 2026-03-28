@@ -132,6 +132,7 @@
 
 | Task | Commit | Mô tả |
 |---|---|---|
+| FieldConfig Redesign | 4d0081d | Left Panel Navigator + header badges (EditorType/Required/DataType) + breadcrumb + i18n key gen + LostFocus preview |
 | WPF-08 | 495a90e | Form Preview Dialog — section/field card view với EditorType badges |
 | WPF-07 | 52ba4ce | Clone Form deep — CloneFormAsync (Ui_Form + Ui_Section + Ui_Field) trong transaction |
 | WPF-12 | 037bc34 | I18n Export/Import CSV/JSON — RFC 4180 + System.Text.Json |
@@ -156,6 +157,9 @@
 
 | Date | Decision | Lý do |
 |---|---|---|
+| 2026-03-29 | i18n key syntax: `{FormCode}.field.{FieldCode}.{qualifier}` (qualifier = label/placeholder/tooltip) | User xác nhận — cập nhật vào 09_FIELD_CONFIG_GUIDE.md |
+| 2026-03-29 | Preview i18n khi `LostFocus` (không phải mỗi keystroke) | Tránh spam DB/cache mỗi lần gõ ký tự |
+| 2026-03-29 | Warn nếu key đã tồn tại, không silent skip | User cần biết key đã có bản dịch để tránh ghi đè nhầm |
 | 2026-03-26 | `Is_Required` / `Is_Enabled` = static columns trong `Ui_Field` (không phải Val_Rule) | ADR-010: required/enabled là state tĩnh, không cần điều kiện động |
 | 2026-03-26 | `Required` rule type bị xóa khỏi ValidationRuleEditor | Thay bởi `Ui_Field.Is_Required` — tránh conflict giữa 2 cơ chế |
 | 2026-03-26 | Tab Events trong FieldConfigView: chỉ có OpenEvent, không có DeleteEvent | Design intent ban đầu — nhưng cần bổ sung (WPF-01) |

@@ -32,11 +32,10 @@
 **Remaining WPF tasks:**
 - Wire Impact Preview vào DependencyViewer UI
 - Pass `tableCode` khi navigate từ FieldConfig → I18nManager
-- **Chạy migration 003**: `docs/migrations/003_remove_val_rule_field.sql` trên DB thật
-- **Chạy migration 004**: `docs/migrations/004_add_sys_lookup.sql` trên DB thật
 - Test LookupBox end-to-end (cấu hình GioiTinh + PhongBanID)
 - Feature "Diễn giải cấu hình" — hiển thị ý nghĩa JSON bằng tiếng Việt
 - Màn hình quản lý Sys_Lookup trong ConfigStudio (thêm/sửa/xóa lookup code)
+- T11: LookupComboBoxRenderer Blazor (low priority)
 
 ## Blazor RuntimeCheck — Đang hoàn thiện
 

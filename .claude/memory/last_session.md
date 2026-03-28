@@ -1,51 +1,52 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-29 (session 12)
+> Cập nhật: 2026-03-29 (session 13)
 
-## Đã làm (session 29/03 — WPF Backlog clear)
+## Đã làm (session 29/03 — FieldConfig Redesign)
 
-### WPF-09: ColumnPickerDialog (Browse Column Popup)
-- `ViewNames.ColumnPickerDialog` constant
-- `ColumnPickerDialogViewModel.cs`: IDialogAware, search/filter realtime theo ColumnCode/DataType
-- `ColumnPickerDialog.xaml`: ListBox với custom item style, double-click → select
-- `FormsModule.cs`: RegisterDialog
-- `FieldConfigViewModel.cs`: IDialogService? + ExecuteBrowseColumn() thật
-- **Commit:** 9059747
+### FieldConfig UI Redesign (commit 4d0081d)
 
-### WPF-12: I18n Export/Import CSV/JSON
-- `I18nManagerViewModel.cs`: ExecuteExportAsync (SaveFileDialog → CSV/JSON) + ExecuteImportAsync (OpenFileDialog → parse → merge → persist to DB)
-- CSV: RFC 4180 parser/writer, Header Key,VI,EN,JA
-- JSON: System.Text.Json, PropertyNameCaseInsensitive
-- PersistImportedAsync: upsert 3 langs mỗi key
-- **Commit:** 037bc34
+**Phân tích:** product-analyst agent phân tích screenshot thiết kế FieldConfig (dark theme, left panel navigator, breadcrumb, i18n key gen, header badges)
 
-### WPF-07: Clone Form Deep
-- `IFormDataService`: thêm `CloneFormAsync`
-- `FormDataService.cs`: CloneFormAsync trong transaction — CloneFormRowAsync (INSERT SELECT schema-aware) + CloneSectionsAsync (loop, oldId→newId map) + CloneFieldsAsync (loop với remapped Section_Id)
-- `FormManagerViewModel.cs`: ExecuteDuplicateForm gọi service thật → reload
-- **Commit:** 52ba4ce
+**Implement 7 features:**
 
-### WPF-08: Form Preview Dialog
-- `ViewNames.FormPreviewDialog` constant
-- `FormPreviewModels.cs`: SectionPreviewModel + FieldPreviewModel (EditorTypeBg/Fg trả SolidColorBrush)
-- `FormPreviewDialogViewModel.cs`: IDialogAware, load parallel sections+fields, group by SectionCode, orphan section
-- `FormPreviewDialog.xaml`: WrapPanel field cards, EditorType badge, RO badge, opacity IsVisible=false
-- `FormsModule.cs`: RegisterDialog
-- `FormManagerViewModel.cs`: ExecutePreviewForm mở dialog
-- **Commit:** 495a90e
+1. **ColumnInfoDto** — thêm `MaxLength` + `DataTypeDisplay` (format `nvarchar(20)`)
+2. **FieldNavGroup + FieldNavItem** — model mới cho Left Panel Navigator
+3. **FormEditorViewModel** — truyền `formCode`/`formName` qua navigation params
+4. **FieldConfigViewModel** — nhiều thay đổi:
+   - `IFormDetailDataService` injection + `LoadFieldNavigatorAsync`
+   - `FormCode`, `FormName`, `DataTypeDisplay`, `HasDataType` properties
+   - `GenerateLabelKeyCommand`, `GeneratePlaceholderKeyCommand`, `GenerateTooltipKeyCommand`: auto-gen key theo cú pháp `{formCode}.field.{columnCode}.{qualifier}`, cảnh báo nếu key đã tồn tại
+   - `NavigateToFieldCommand`: click field trong navigator → navigate sang FieldConfig đó
+   - Map `MaxLength` khi build `ColumnInfoDto`
+5. **FieldConfigView.xaml** — layout 2-column:
+   - **Left Panel (220px):** Field navigator grouped by section, click → navigate
+   - **Header badges:** EditorType | IsRequired (red, chỉ hiện khi true) | DataType(MaxLength) (green)
+   - **Breadcrumb:** FormName › SectionName › ColumnCode
+   - **Display section:** `UpdateSourceTrigger=LostFocus` + "+ Tạo key" buttons
+6. **docs/spec/09_FIELD_CONFIG_GUIDE.md** — cập nhật key naming convention
+
+**I18n key convention xác nhận:**
+- Cú pháp: `{FormCode}.field.{FieldCode}.{qualifier}`
+- Qualifier: `label`, `placeholder`, `tooltip`
+- Ví dụ: `nhanvien.field.manhanvien.label`
+- Warn nếu key đã tồn tại → user chọn Yes/No
+
+**Behavior confirmed:**
+- Preview on blur (LostFocus), không trigger mỗi keystroke
+- Click field navigator → interactive, navigate tới field đó
+- DataType badge format: `nvarchar(20)` (có MaxLength)
 
 ---
 
 ## Trạng thái hiện tại
 
-- Migration 014: **ĐÃ chạy** trên DB thật ✅
-- WPF backlog (WPF-07, -08, -09, -10, -11, -12): **TẤT CẢ HOÀN THÀNH** ✅
-- T4-T8 ComboBox/LookupBox panels: **ĐÃ HOÀN THÀNH** (session trước) ✅
 - Build: **0 warnings, 0 errors** ✅
+- FieldConfig redesign: **HOÀN THÀNH** ✅
+- Commit: **4d0081d**
 
 ## Việc tiếp theo (ưu tiên)
 
 1. **Backend** — MetadataEngine implement (Phase 6)
-2. **T11 (Blazor)** — LookupComboBoxRenderer static (low priority)
-3. **WPF** — T11 Blazor FormRunner ColSpan support nếu cần
-4. Kiểm tra DB thật với các tính năng mới: Clone Form, Preview Dialog, Browse Column
+2. Test thực tế: mở FieldConfig từ FormEditor → check left panel, breadcrumb, badges, "Tạo key"
+3. **T11 (Blazor)** — LookupComboBoxRenderer static (low priority)
