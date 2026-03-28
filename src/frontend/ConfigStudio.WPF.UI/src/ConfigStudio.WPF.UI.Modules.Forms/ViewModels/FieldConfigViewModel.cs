@@ -33,6 +33,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private readonly ISysLookupDataService? _lookupService;
     private readonly IAppConfigService? _appConfig;
     private readonly IDialogService? _dialogService;
+    private readonly IFormDetailDataService? _formDetailService;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params ────────────────────────────────────
@@ -67,6 +68,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             {
                 ColumnCode = value.ColumnCode;
                 NetType = value.NetType;
+                RaisePropertyChanged(nameof(DataTypeDisplay));
+                RaisePropertyChanged(nameof(HasDataType));
                 IsDirty = true;
             }
         }
@@ -74,6 +77,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private string _netType = "";
     public string NetType { get => _netType; set => SetProperty(ref _netType, value); }
+
+    // ── Form context (từ navigation params) ──────────────────
+    private string _formCode = "";
+    public string FormCode { get => _formCode; set => SetProperty(ref _formCode, value); }
+
+    private string _formName = "";
+    public string FormName { get => _formName; set => SetProperty(ref _formName, value); }
+
+    /// <summary>DataType kèm MaxLength của column đang chọn — vd: "nvarchar(20)", "int".</summary>
+    public string DataTypeDisplay => _selectedColumn?.DataTypeDisplay ?? "";
+
+    /// <summary>True khi đã chọn column và có DataType để hiển thị badge.</summary>
+    public bool HasDataType => !string.IsNullOrEmpty(DataTypeDisplay);
+
+    // ── Field Navigator (Left Panel) ─────────────────────────
+    public ObservableCollection<FieldNavGroup> FieldNavigatorGroups { get; } = [];
 
     public List<string> AvailableEditorTypes { get; } =
     [
@@ -866,6 +885,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand AddEventCommand { get; }
     public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
     public DelegateCommand<EventSummaryDto> DeleteEventCommand { get; }
+    public DelegateCommand GenerateLabelKeyCommand { get; }
+    public DelegateCommand GeneratePlaceholderKeyCommand { get; }
+    public DelegateCommand GenerateTooltipKeyCommand { get; }
+    public DelegateCommand<FieldNavItem> NavigateToFieldCommand { get; }
 
     public FieldConfigViewModel(
         IRegionManager regionManager,
@@ -875,16 +898,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IEventDataService? eventService = null,
         ISysLookupDataService? lookupService = null,
         IAppConfigService? appConfig = null,
-        IDialogService? dialogService = null)
+        IDialogService? dialogService = null,
+        IFormDetailDataService? formDetailService = null)
     {
-        _regionManager  = regionManager;
-        _fieldService   = fieldService;
-        _i18nService    = i18nService;
-        _ruleService    = ruleService;
-        _eventService   = eventService;
-        _lookupService  = lookupService;
-        _appConfig      = appConfig;
-        _dialogService  = dialogService;
+        _regionManager     = regionManager;
+        _fieldService      = fieldService;
+        _i18nService       = i18nService;
+        _ruleService       = ruleService;
+        _eventService      = eventService;
+        _lookupService     = lookupService;
+        _appConfig         = appConfig;
+        _dialogService     = dialogService;
+        _formDetailService = formDetailService;
 
         SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
@@ -897,6 +922,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
         OpenEventCommand   = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
         DeleteEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteDeleteEvent);
+        GenerateLabelKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("label",       k => LabelKey       = k));
+        GeneratePlaceholderKeyCommand = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("placeholder", k => PlaceholderKey = k));
+        GenerateTooltipKeyCommand    = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey     = k));
+        NavigateToFieldCommand       = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
@@ -922,6 +951,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         SectionId = navigationContext.Parameters.GetValue<int>("sectionId");
         FieldId   = navigationContext.Parameters.GetValue<int>("fieldId");
         TableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
+        FormCode  = navigationContext.Parameters.GetValue<string>("formCode")  ?? "";
+        FormName  = navigationContext.Parameters.GetValue<string>("formName")  ?? "";
 
         await LoadDataAsync();
     }
@@ -983,6 +1014,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         ColumnCode = c.ColumnCode,
                         DataType   = c.DataType,
                         NetType    = c.NetType,
+                        MaxLength  = c.MaxLength,
                         IsNullable = c.IsNullable
                     });
                 }
@@ -1248,6 +1280,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             catch { /* Events load thất bại — bỏ qua, không hiện lỗi */ }
         }
 
+        // ── 5. Field Navigator (phụ — không ảnh hưởng main flow) ─────────
+        await LoadFieldNavigatorAsync(_cts.Token);
+
         IsLoading = false;
         IsDirty   = false;
     }
@@ -1275,6 +1310,108 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             // Chưa cấu hình DB → hiển thị key nguyên để user biết cần resolve
             setter(key);
         }
+    }
+
+    // ── i18n key generator ────────────────────────────────────
+
+    /// <summary>
+    /// Auto-generate key theo cú pháp {formCode}.field.{columnCode}.{qualifier}.
+    /// Cảnh báo nếu key đã tồn tại, cho user xác nhận dùng tiếp hay hủy.
+    /// </summary>
+    private async Task ExecuteGenerateKeyAsync(string qualifier, Action<string> setter)
+    {
+        var columnCode = ColumnCode.ToLowerInvariant();
+        var formCode   = FormCode.ToLowerInvariant();
+        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(formCode)) return;
+
+        var key = $"{formCode}.field.{columnCode}.{qualifier}";
+
+        // Kiểm tra key đã tồn tại trong DB chưa
+        if (_i18nService is not null && _appConfig is { IsConfigured: true })
+        {
+            var existing = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
+            if (existing is not null)
+            {
+                var choice = System.Windows.MessageBox.Show(
+                    $"Key \"{key}\" đã tồn tại trong Sys_Resource.\n" +
+                    $"Giá trị hiện tại (VI): \"{existing}\"\n\n" +
+                    "Vẫn dùng key này?",
+                    "Key đã tồn tại",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Warning);
+                if (choice == System.Windows.MessageBoxResult.No) return;
+            }
+        }
+
+        setter(key);
+    }
+
+    // ── Field Navigator loader ────────────────────────────────
+
+    /// <summary>
+    /// Load danh sách field của form (grouped by section) cho Left Panel Navigator.
+    /// Lỗi bị bỏ qua — navigator là tính năng phụ trợ, không ảnh hưởng main flow.
+    /// </summary>
+    private async Task LoadFieldNavigatorAsync(CancellationToken ct)
+    {
+        if (_formDetailService is null || _appConfig is not { IsConfigured: true }) return;
+
+        try
+        {
+            var tenantId     = _appConfig.TenantId;
+            var sectionsTask = _formDetailService.GetSectionsByFormAsync(FormId, tenantId, ct);
+            var fieldsTask   = _formDetailService.GetFieldsByFormAsync(FormId, tenantId, ct);
+            await Task.WhenAll(sectionsTask, fieldsTask);
+
+            var sections = sectionsTask.Result;
+            var fields   = fieldsTask.Result;
+
+            // Group fields by SectionCode
+            var fieldsBySec = fields
+                .GroupBy(f => f.SectionCode, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.OrderBy(f => f.OrderNo).ToList(),
+                              StringComparer.OrdinalIgnoreCase);
+
+            FieldNavigatorGroups.Clear();
+            foreach (var sec in sections.OrderBy(s => s.OrderNo))
+            {
+                var group = new FieldNavGroup { SectionCode = sec.SectionCode };
+                if (fieldsBySec.TryGetValue(sec.SectionCode, out var secFields))
+                {
+                    foreach (var f in secFields)
+                        group.Fields.Add(new FieldNavItem
+                        {
+                            FieldId        = f.FieldId,
+                            ColumnCode     = f.ColumnCode,
+                            EditorType     = f.EditorType,
+                            IsCurrentField = f.FieldId == FieldId
+                        });
+                }
+                if (group.Fields.Count > 0)
+                    FieldNavigatorGroups.Add(group);
+            }
+        }
+        catch (OperationCanceledException) { /* bỏ qua */ }
+        catch { /* navigator load lỗi → bỏ qua, không ảnh hưởng main form */ }
+    }
+
+    // ── Field Navigator command ───────────────────────────────
+
+    private void ExecuteNavigateToField(FieldNavItem? item)
+    {
+        if (item is null || item.FieldId == FieldId) return;
+
+        var p = new NavigationParameters
+        {
+            { "fieldId",   item.FieldId },
+            { "formId",    FormId },
+            { "sectionId", 0 },
+            { "tableCode", TableCode },
+            { "formCode",  FormCode },
+            { "formName",  FormName },
+            { "mode",      "edit" }
+        };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }
 
     // ── Control prop schema loader ───────────────────────────

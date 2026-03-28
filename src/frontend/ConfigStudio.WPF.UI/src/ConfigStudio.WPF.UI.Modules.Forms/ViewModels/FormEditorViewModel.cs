@@ -1434,6 +1434,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             { "formId",    FormId },
             { "sectionId", parentSection?.Id ?? 0 },
             { "tableCode", SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
+            { "formCode",  FormCode },
+            { "formName",  FormName },
             { "mode",      "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);

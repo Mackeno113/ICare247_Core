@@ -15,7 +15,13 @@ public sealed class ColumnInfoDto
     public string ColumnCode { get; set; } = "";
     public string DataType { get; set; } = "";
     public string NetType { get; set; } = "";
+    public int? MaxLength { get; set; }
     public bool IsNullable { get; set; }
+
+    /// <summary>
+    /// Hiển thị DataType kèm MaxLength nếu có — ví dụ: "nvarchar(20)", "int".
+    /// </summary>
+    public string DataTypeDisplay => MaxLength.HasValue ? $"{DataType}({MaxLength})" : DataType;
 
     /// <summary>
     /// Chuỗi hiển thị dạng "SoLuong (Int32, NOT NULL)" cho ComboBox.

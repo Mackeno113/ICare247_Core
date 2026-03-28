@@ -105,10 +105,25 @@ Section layout (3 cột):
 
 | Trường | Mô tả | Ví dụ |
 |--------|-------|-------|
-| **Label Key** | Resource key cho nhãn field. Tra cứu trong `Sys_Resource`. | `nhanvien.field.manhanvien` |
-| **Placeholder Key** | Resource key cho placeholder text trong ô nhập. | `nhanvien.field.manhanvien` |
-| **Tooltip Key** | Resource key cho tooltip khi hover. | `nhanvien.field.manhanvien` |
+| **Label Key** | Resource key cho nhãn field. Tra cứu trong `Sys_Resource`. | `nhanvien.field.manhanvien.label` |
+| **Placeholder Key** | Resource key cho placeholder text trong ô nhập. | `nhanvien.field.manhanvien.placeholder` |
+| **Tooltip Key** | Resource key cho tooltip khi hover. | `nhanvien.field.manhanvien.tooltip` |
 
+**Cú pháp key chuẩn:** `{FormCode}.field.{FieldCode}.{qualifier}`
+
+| Component | Ví dụ | Ghi chú |
+|-----------|-------|---------|
+| `FormCode` | `nhanvien` | `Ui_Form.Form_Code` viết thường |
+| `field` | `field` | cố định, phân biệt namespace |
+| `FieldCode` | `manhanvien` | `Ui_Field.Column_Code` viết thường |
+| `qualifier` | `label`, `placeholder`, `tooltip` | loại nội dung |
+
+**Ví dụ:** field `MaNhanVien` trong form `NhanVien`:
+- Label: `nhanvien.field.manhanvien.label` → "Mã nhân viên"
+- Placeholder: `nhanvien.field.manhanvien.placeholder` → "Nhập mã nhân viên..."
+- Tooltip: `nhanvien.field.manhanvien.tooltip` → "Mã định danh duy nhất"
+
+> **Tự động tạo key:** Nhấn **+ Tạo key** trong FieldConfigView để auto-generate theo cú pháp trên. Nếu key đã tồn tại → hệ thống cảnh báo và cho phép dùng tiếp hoặc hủy.
 > **Quy ước tự động:** Khi nhập Label Key, Placeholder và Tooltip tự động theo theo. Bạn có thể tách biệt nếu cần nội dung khác nhau.
 > **Manage i18n →** nhấn nút để mở màn hình quản lý bản dịch cho key này.
 
