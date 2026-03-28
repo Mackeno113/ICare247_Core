@@ -132,6 +132,7 @@
 
 | Task | Commit | Mô tả |
 |---|---|---|
+| FieldConfig RequiredErrorKey | bd6f765 | Is_Required inline error key + RequiredErrorKey dedicated column + auto-suggest + fix key syntax dùng TableCode (không phải FormCode) |
 | FieldConfig Redesign | 4d0081d | Left Panel Navigator + header badges (EditorType/Required/DataType) + breadcrumb + i18n key gen + LostFocus preview |
 | WPF-08 | 495a90e | Form Preview Dialog — section/field card view với EditorType badges |
 | WPF-07 | 52ba4ce | Clone Form deep — CloneFormAsync (Ui_Form + Ui_Section + Ui_Field) trong transaction |
@@ -157,6 +158,9 @@
 
 | Date | Decision | Lý do |
 |---|---|---|
+| 2026-03-29 | i18n key syntax đổi sang `{TableCode}.field.{FieldCode}.{qualifier}` (dùng TableCode, không phải FormCode) | TableCode là stable identifier, FormCode có thể thay đổi |
+| 2026-03-29 | `Required_Error_Key` dùng dedicated column trong `Ui_Field` (không lưu trong Control_Props_Json) | Nhất quán với LabelKey/PlaceholderKey/TooltipKey pattern |
+| 2026-03-29 | `Is_Required = true` → auto-suggest `RequiredErrorKey` nếu chưa có giá trị; null out khi `Is_Required = false` | Giữ DB sạch, tránh orphan keys |
 | 2026-03-29 | i18n key syntax: `{FormCode}.field.{FieldCode}.{qualifier}` (qualifier = label/placeholder/tooltip) | User xác nhận — cập nhật vào 09_FIELD_CONFIG_GUIDE.md |
 | 2026-03-29 | Preview i18n khi `LostFocus` (không phải mỗi keystroke) | Tránh spam DB/cache mỗi lần gõ ký tự |
 | 2026-03-29 | Warn nếu key đã tồn tại, không silent skip | User cần biết key đã có bản dịch để tránh ghi đè nhầm |
