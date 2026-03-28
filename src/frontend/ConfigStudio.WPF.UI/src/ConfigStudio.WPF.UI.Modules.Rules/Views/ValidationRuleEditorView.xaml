@@ -365,8 +365,11 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Field Code" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
-                                    <dxe:TextEdit EditValue="{Binding EditCompareField, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: NgayVaoLam" />
+                                    <!-- IsTextEditable=True: cho phép gõ tay nếu list chưa load -->
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding AvailableCompareFields}"
+                                                      EditValue="{Binding EditCompareField, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsTextEditable="True"
+                                                      NullText="Chọn hoặc nhập field code" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Toán tử" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />

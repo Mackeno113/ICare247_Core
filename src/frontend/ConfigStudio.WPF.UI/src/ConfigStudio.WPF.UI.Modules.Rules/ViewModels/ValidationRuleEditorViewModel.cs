@@ -30,6 +30,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     private readonly IRuleDataService? _ruleService;
     private readonly II18nDataService? _i18nService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IFormDetailDataService? _formDetailService;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params / Context ───────────────────────────
@@ -223,6 +224,13 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
                                          EditRuleType == "Range"  ? "VD: 9999 hoặc 2099-12-31" : "VD: 999999";
 
     // ── Compare inputs ────────────────────────────────────────
+
+    /// <summary>
+    /// Danh sách FieldCode của các field khác trong cùng form — dùng cho dropdown Compare rule.
+    /// Load từ DB sau OnNavigatedTo. Rỗng khi chưa load hoặc chưa cấu hình DB.
+    /// </summary>
+    public List<string> AvailableCompareFields { get; private set; } = [];
+
     private string _editCompareField = "";
     public string EditCompareField
     {
@@ -301,13 +309,15 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         IDialogService dialogService,
         IRuleDataService? ruleService = null,
         II18nDataService? i18nService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        IFormDetailDataService? formDetailService = null)
     {
-        _regionManager = regionManager;
-        _dialogService = dialogService;
-        _ruleService   = ruleService;
-        _i18nService   = i18nService;
-        _appConfig     = appConfig;
+        _regionManager     = regionManager;
+        _dialogService     = dialogService;
+        _ruleService       = ruleService;
+        _i18nService       = i18nService;
+        _appConfig         = appConfig;
+        _formDetailService = formDetailService;
 
         AddRuleCommand = new DelegateCommand(ExecuteAddRule);
         EditRuleCommand = new DelegateCommand(ExecuteEditRule, () => IsRuleSelected);
@@ -360,12 +370,43 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         if (_ruleService is not null && _appConfig is { IsConfigured: true })
         {
             await LoadFromDatabaseAsync();
+            await LoadAvailableCompareFieldsAsync();
         }
         else
         {
             // Chưa cấu hình DB → danh sách rỗng
             Rules.Clear();
             IsDirty = false;
+        }
+    }
+
+    /// <summary>
+    /// Load danh sách FieldCode của các field khác trong form — để compare rule dropdown.
+    /// Loại bỏ FieldCode của field hiện tại (không so sánh field với chính nó).
+    /// </summary>
+    private async Task LoadAvailableCompareFieldsAsync()
+    {
+        if (_formDetailService is null || _appConfig is not { IsConfigured: true }) return;
+
+        try
+        {
+            var tenantId = _appConfig.TenantId;
+            var fields   = await _formDetailService.GetFieldsByFormAsync(FormId, tenantId, _cts.Token);
+
+            AvailableCompareFields = fields
+                .Select(f => f.ColumnCode)
+                .Where(code => !string.IsNullOrWhiteSpace(code)
+                               && !code.Equals(FieldCode, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(code => code)
+                .ToList();
+
+            RaisePropertyChanged(nameof(AvailableCompareFields));
+        }
+        catch (OperationCanceledException) { }
+        catch
+        {
+            // Không block UI nếu load field list thất bại
+            AvailableCompareFields = [];
         }
     }
 
