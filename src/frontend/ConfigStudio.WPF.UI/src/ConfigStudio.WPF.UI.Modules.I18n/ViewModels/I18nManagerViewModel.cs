@@ -5,10 +5,15 @@
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Windows;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.I18n.Models;
+using Microsoft.Win32;
 using Prism.Commands;
 using Prism.Navigation.Regions;
 
@@ -125,8 +130,8 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         AddEntryCommand    = new DelegateCommand(ExecuteAddEntry);
         DeleteEntryCommand = new DelegateCommand(ExecuteDeleteEntry, () => SelectedEntry is not null);
         RefreshCommand     = new DelegateCommand(async () => await LoadDataAsync());
-        ExportCommand      = new DelegateCommand(ExecuteExport);
-        ImportCommand      = new DelegateCommand(ExecuteImport);
+        ExportCommand      = new DelegateCommand(async () => await ExecuteExportAsync());
+        ImportCommand      = new DelegateCommand(async () => await ExecuteImportAsync());
         SaveCellCommand    = new DelegateCommand<CellSaveArgs>(async args => await ExecuteSaveCellAsync(args));
     }
 
@@ -370,8 +375,227 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
         RaisePropertyChanged(nameof(MissingCount));
     }
 
-    private void ExecuteExport() { /* TODO(phase2): Export sang CSV/JSON */ }
-    private void ExecuteImport() { /* TODO(phase2): Import từ CSV/JSON   */ }
+    // ── Export ───────────────────────────────────────────────
+
+    private async Task ExecuteExportAsync()
+    {
+        if (Entries.Count == 0)
+        {
+            MessageBox.Show("Không có dữ liệu để xuất.", "Export",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new SaveFileDialog
+        {
+            Title    = "Xuất I18n",
+            Filter   = "CSV files (*.csv)|*.csv|JSON files (*.json)|*.json",
+            FileName = $"i18n_export_{DateTime.Now:yyyyMMdd_HHmm}"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var ext = Path.GetExtension(dlg.FileName).ToLowerInvariant();
+            if (ext == ".json")
+                await ExportJsonAsync(dlg.FileName);
+            else
+                await ExportCsvAsync(dlg.FileName);
+
+            MessageBox.Show($"Đã xuất {Entries.Count} entries sang:\n{dlg.FileName}",
+                "Export thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Xuất thất bại: {ex.Message}", "Lỗi",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task ExportCsvAsync(string path)
+    {
+        var snapshot = Entries.ToList();
+        await Task.Run(() =>
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Key,VI,EN,JA");
+            foreach (var e in snapshot)
+                sb.AppendLine($"{CsvEscape(e.ResourceKey)},{CsvEscape(e.ViVn)},{CsvEscape(e.EnUs)},{CsvEscape(e.JaJp)}");
+            File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+        });
+    }
+
+    private async Task ExportJsonAsync(string path)
+    {
+        var snapshot = Entries
+            .Select(e => new { Key = e.ResourceKey, VI = e.ViVn, EN = e.EnUs, JA = e.JaJp })
+            .ToList();
+        var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(path, json, Encoding.UTF8);
+    }
+
+    private static string CsvEscape(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r'))
+            return $"\"{value.Replace("\"", "\"\"")}\"";
+        return value;
+    }
+
+    // ── Import ───────────────────────────────────────────────
+
+    private async Task ExecuteImportAsync()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title  = "Nhập I18n",
+            Filter = "CSV files (*.csv)|*.csv|JSON files (*.json)|*.json|Tất cả (*.csv;*.json)|*.csv;*.json"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var ext  = Path.GetExtension(dlg.FileName).ToLowerInvariant();
+            var rows = ext == ".json"
+                ? await ParseJsonAsync(dlg.FileName)
+                : await ParseCsvAsync(dlg.FileName);
+
+            if (rows.Count == 0)
+            {
+                MessageBox.Show("File không có dữ liệu hoặc sai định dạng.", "Import",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var confirm = MessageBox.Show(
+                $"Sẽ nhập {rows.Count} entries.\nCác key đã tồn tại sẽ bị ghi đè.\nTiếp tục?",
+                "Xác nhận Import", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            // Merge vào Entries
+            var added = 0; var updated = 0;
+            foreach (var row in rows)
+            {
+                var existing = Entries.FirstOrDefault(e =>
+                    e.ResourceKey.Equals(row.Key, StringComparison.OrdinalIgnoreCase));
+
+                if (existing is not null)
+                {
+                    existing.ViVn = row.VI;
+                    existing.EnUs = row.EN;
+                    existing.JaJp = row.JA;
+                    updated++;
+                }
+                else
+                {
+                    Entries.Add(new I18nEntryDto
+                    {
+                        ResourceId  = Entries.Count > 0 ? Entries.Max(e => e.ResourceId) + 1 : 1,
+                        ResourceKey = row.Key,
+                        Module      = InferModule(row.Key),
+                        TablePrefix = ExtractTablePrefix(row.Key),
+                        ViVn = row.VI, EnUs = row.EN, JaJp = row.JA
+                    });
+                    added++;
+                }
+            }
+
+            // Persist vào DB nếu đã cấu hình
+            if (_i18nService is not null && _appConfig is { IsConfigured: true })
+                await PersistImportedAsync(rows);
+
+            RebuildTableOptions();
+            RefreshFilter();
+            RaisePropertyChanged(nameof(TotalEntries));
+            RaisePropertyChanged(nameof(MissingCount));
+
+            MessageBox.Show($"Import hoàn tất: {added} mới, {updated} cập nhật.",
+                "Import thành công", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Import thất bại: {ex.Message}", "Lỗi",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task PersistImportedAsync(List<ImportRow> rows)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        foreach (var row in rows)
+        {
+            await _i18nService!.SaveResourceAsync(row.Key, "vi", row.VI, cts.Token);
+            await _i18nService!.SaveResourceAsync(row.Key, "en", row.EN, cts.Token);
+            await _i18nService!.SaveResourceAsync(row.Key, "ja", row.JA, cts.Token);
+        }
+    }
+
+    private static async Task<List<ImportRow>> ParseCsvAsync(string path)
+    {
+        var lines  = await File.ReadAllLinesAsync(path, Encoding.UTF8);
+        var result = new List<ImportRow>();
+        foreach (var line in lines.Skip(1)) // bỏ header
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            if (cols.Length < 4) continue;
+            if (!string.IsNullOrWhiteSpace(cols[0]))
+                result.Add(new ImportRow(cols[0], cols[1], cols[2], cols[3]));
+        }
+        return result;
+    }
+
+    /// <summary>RFC 4180 CSV parser — hỗ trợ field có dấu phẩy, nháy kép, xuống dòng.</summary>
+    private static string[] ParseCsvLine(string line)
+    {
+        var fields  = new List<string>();
+        var current = new StringBuilder();
+        var inQuote = false;
+
+        for (var i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            if (inQuote)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i + 1] == '"') { current.Append('"'); i++; }
+                    else inQuote = false;
+                }
+                else current.Append(c);
+            }
+            else
+            {
+                if (c == '"') inQuote = true;
+                else if (c == ',') { fields.Add(current.ToString()); current.Clear(); }
+                else current.Append(c);
+            }
+        }
+        fields.Add(current.ToString());
+        return [.. fields];
+    }
+
+    private static async Task<List<ImportRow>> ParseJsonAsync(string path)
+    {
+        var content = await File.ReadAllTextAsync(path, Encoding.UTF8);
+        var rows    = JsonSerializer.Deserialize<List<JsonImportRow>>(content,
+                          new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        return rows?
+            .Where(r => !string.IsNullOrWhiteSpace(r.Key))
+            .Select(r => new ImportRow(r.Key!, r.VI ?? "", r.EN ?? "", r.JA ?? ""))
+            .ToList() ?? [];
+    }
+
+    // ── Import helpers ────────────────────────────────────────
+
+    private sealed record ImportRow(string Key, string VI, string EN, string JA);
+
+    private sealed class JsonImportRow
+    {
+        public string? Key { get; set; }
+        public string? VI  { get; set; }
+        public string? EN  { get; set; }
+        public string? JA  { get; set; }
+    }
 }
 
 /// <summary>Args truyền từ code-behind khi cell commit. FieldName là tên property của DTO trên grid.</summary>
