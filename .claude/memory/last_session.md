@@ -29,11 +29,19 @@
 
 ---
 
+### Bug Fix — PlaceholderKey/TooltipKey hiển thị sai (commit b400802)
+
+- Load từ DB: `PlaceholderKey`/`TooltipKey` null → fallback về `LabelKey` → hiển thị `.label` suffix
+- `SyncKeyIfLinked`: khi generate LabelKey → kéo theo Placeholder/Tooltip
+- **Fix:** bỏ fallback + xóa `SyncKeyIfLinked` — mỗi key độc lập
+
+---
+
 ## Trạng thái hiện tại
 
 - Build: **0 warnings, 0 errors** ✅
-- FieldConfig RequiredErrorKey: **HOÀN THÀNH** ✅
-- Commit: **bd6f765** (chưa push)
+- FieldConfig RequiredErrorKey + bug fix keys: **HOÀN THÀNH** ✅
+- Commits pushed: **bd6f765, c64aa4a, b400802**
 
 ## Việc tiếp theo (ưu tiên)
 
