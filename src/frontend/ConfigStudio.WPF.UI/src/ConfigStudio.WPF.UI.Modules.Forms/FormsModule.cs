@@ -37,6 +37,9 @@ public sealed class FormsModule : IModule
 
         // NOTE: Đăng ký dialog chọn column từ Sys_Column (dùng trong FieldConfig → Browse Column)
         containerRegistry.RegisterDialog<ColumnPickerDialog, ColumnPickerDialogViewModel>(ViewNames.ColumnPickerDialog);
+
+        // NOTE: Đăng ký dialog xem trước form (section/field card view, read-only)
+        containerRegistry.RegisterDialog<FormPreviewDialog, FormPreviewDialogViewModel>(ViewNames.FormPreviewDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

@@ -363,7 +363,14 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
     private void ExecutePreviewForm(FormSummaryDto? form)
     {
         if (form is null) return;
-        // TODO(phase2): mở preview dialog render form từ metadata
+
+        var p = new DialogParameters
+        {
+            { "formId",   form.FormId   },
+            { "formName", form.FormName },
+            { "formCode", form.FormCode }
+        };
+        _dialogService.ShowDialog(ViewNames.FormPreviewDialog, p, _ => { });
     }
 
     /// <summary>

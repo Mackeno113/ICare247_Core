@@ -27,4 +27,5 @@ public static class ViewNames
     public const string AutoGenerateFieldsDialog    = nameof(AutoGenerateFieldsDialog);
     public const string SyncSchemaDialog             = nameof(SyncSchemaDialog);
     public const string ColumnPickerDialog           = nameof(ColumnPickerDialog);
+    public const string FormPreviewDialog            = nameof(FormPreviewDialog);
 }
