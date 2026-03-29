@@ -2075,7 +2075,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteManageI18n()
     {
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.I18nManager);
+        var p = new NavigationParameters
+        {
+            { "tableCode", TableCode }
+        };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.I18nManager, p);
     }
 
     private void ExecuteAddRule()

@@ -1,7 +1,7 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-03-26
-> Session trước (Wave C): FieldConfigRecord IsRequired/IsEnabled + ValidationRuleEditor Length/Compare + EventEditor SET_ENABLED/CLEAR_VALUE/SHOW_MESSAGE
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-03-29
+> Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
 
 ---
 
@@ -55,14 +55,10 @@
 
 ### Priority 2 — FormEditor TODOs (phase 2)
 
-#### WPF-03: FormEditorViewModel.ExecuteSaveAsync — gọi data service thật
-- **File:** `FormEditorViewModel.cs` line 1593, 1741
-- **Vấn đề:** `ExecuteSaveAsync()` và `ExecuteSaveSectionAsync()` đều là TODO — chưa gọi `IFormDataService`.
-- **Việc cần làm:**
-  1. Implement `IFormDataService.SaveFormAsync(form, sections, ct)` nếu chưa có
-  2. Trong `ExecuteSaveAsync`: build `FormConfigRecord` từ ViewModel state, gọi service
-  3. Handle version conflict (optimistic concurrency)
-- **Ước lượng:** ~2 giờ
+#### ~~WPF-03~~: ✅ FormEditorViewModel.ExecuteSaveAsync — DONE
+- `ExecuteSaveAsync()` gọi `UpdateFormMetadataAsync` với optimistic concurrency (Version)
+- `ExecuteSaveSectionAsync()` gọi `UpsertSectionAsync` + `SaveResourceAsync` vi/en
+- Đã implement từ trước — verified 2026-03-29
 
 ~~WPF-04, WPF-05, WPF-06 — moved to Done~~
 

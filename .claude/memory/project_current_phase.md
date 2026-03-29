@@ -30,11 +30,15 @@
 | Shell, Navigation, FormDetail, FormEditDialog, SysTableManager | ✅ Done |
 
 **Remaining WPF tasks:**
-- Wire Impact Preview vào DependencyViewer UI
+- ~~Wire Impact Preview vào DependencyViewer UI~~ ✅ Done (verified 2026-03-29)
+- ~~Màn hình quản lý Sys_Lookup trong ConfigStudio~~ ✅ Done (verified 2026-03-29)
+- ~~ExecuteSaveAsync / ExecuteSaveSectionAsync~~ ✅ Done (verified 2026-03-29)
+- ~~Control Props JSON preview sidebar~~ ✅ Done (commit c5027b2, 2026-03-29)
 - Pass `tableCode` khi navigate từ FieldConfig → I18nManager
 - Test LookupBox end-to-end (cấu hình GioiTinh + PhongBanID)
-- Feature "Diễn giải cấu hình" — hiển thị ý nghĩa JSON bằng tiếng Việt
-- Màn hình quản lý Sys_Lookup trong ConfigStudio (thêm/sửa/xóa lookup code)
+- WPF-07: FormManager Clone Form — persist vào DB (IFormDataService.CloneFormAsync)
+- WPF-08: Form Preview Dialog — render metadata thành form visual (task lớn ~4h)
+- WPF-09: Browse Column Popup trong FieldConfig
 - T11: LookupComboBoxRenderer Blazor (low priority)
 
 ## Blazor RuntimeCheck — Đang hoàn thiện
