@@ -1,20 +1,38 @@
 @* File    : TextBoxRenderer.razor
-   Purpose : Render DxTextBox từ FieldState + ControlPropsJson.
-             Hỗ trợ: maxLength, isPassword, nullText.
+   Purpose : Render DxTextBox (hoặc DxMemo khi isMultiline=true) từ FieldState.
+             Props đọc từ ControlPropsJson: maxLength, isPassword, nullText,
+             isMultiline, rows.
              Phát OnChange khi text thay đổi, OnBlur khi mất focus. *@
 
 @using System.Text.Json
 @using System.Text.Json.Serialization
 
-@* Wrapper div bắt focusout để phát OnBlur — DX InputLostFocus không cần thiết *@
+@* Wrapper div bắt focusout để phát OnBlur *@
 <div @onfocusout="HandleFocusOut">
-    <DxTextBox Text="@State!.ValueString"
-               TextChanged="@HandleTextChanged"
-               ReadOnly="@State.IsReadOnly"
-               NullText="@(_props.NullText ?? "")"
-               Password="@_props.IsPassword"
-               InputId="@($"field_{State!.FieldCode}")"
-               CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
+
+    @if (_props.IsMultiline)
+    {
+        @* isMultiline=true → DxMemo (textarea nhiều dòng) *@
+        <DxMemo Text="@State!.ValueString"
+                TextChanged="@HandleTextChanged"
+                ReadOnly="@State.IsReadOnly"
+                NullText="@(_props.NullText ?? "")"
+                Rows="@(_props.Rows > 0 ? _props.Rows : 3)"
+                InputId="@($"field_{State!.FieldCode}")"
+                CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
+    }
+    else
+    {
+        @* isMultiline=false (default) → DxTextBox một dòng *@
+        <DxTextBox Text="@State!.ValueString"
+                   TextChanged="@HandleTextChanged"
+                   ReadOnly="@State.IsReadOnly"
+                   NullText="@(_props.NullText ?? "")"
+                   Password="@_props.IsPassword"
+                   InputId="@($"field_{State!.FieldCode}")"
+                   CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
+    }
+
 </div>
 
 @code {
@@ -47,7 +65,7 @@
         await OnChange.InvokeAsync((State.FieldCode, value));
     }
 
-    /// <summary>Phát OnBlur khi focus rời khỏi DxTextBox → trigger validation.</summary>
+    /// <summary>Phát OnBlur khi focus rời khỏi control → trigger field validation.</summary>
     private async Task HandleFocusOut(FocusEventArgs _)
     {
         if (State is null) return;
@@ -57,8 +75,8 @@
     // ── Inner types ──────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Props cấu hình DxTextBox, deserialize từ Control_Props_Json của Ui_Field.
-    /// Ví dụ DB: {"maxLength":100,"isPassword":false,"nullText":"Nhập họ tên..."}
+    /// Props cấu hình DxTextBox/DxMemo, deserialize từ Control_Props_Json của Ui_Field.
+    /// WPF JSON ví dụ: {"maxLength":100,"isPassword":false,"nullText":"Nhập...","isMultiline":false,"rows":1}
     /// </summary>
     private sealed class TextBoxProps
     {
@@ -70,6 +88,12 @@
 
         [JsonPropertyName("nullText")]
         public string? NullText { get; set; }
+
+        [JsonPropertyName("isMultiline")]
+        public bool IsMultiline { get; set; }
+
+        [JsonPropertyName("rows")]
+        public int Rows { get; set; } = 3;
 
         /// <summary>
         /// Parse JSON an toàn — trả về instance mặc định nếu null/rỗng/lỗi.

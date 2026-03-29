@@ -1697,6 +1697,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             new() { PropName = "maxLength",   PropType = "Number",  DefaultValue = 255,   Label = "Độ dài tối đa" },
             new() { PropName = "isMultiline", PropType = "Boolean", DefaultValue = false,  Label = "Nhiều dòng" },
             new() { PropName = "rows",        PropType = "Number",  DefaultValue = 1,      Label = "Số dòng (khi multiline)" },
+            new() { PropName = "isPassword",  PropType = "Boolean", DefaultValue = false,  Label = "Ẩn ký tự (password)" },
+            new() { PropName = "nullText",    PropType = "String",  DefaultValue = "",     Label = "Placeholder (NullText)" },
         ],
         // ComboBox dùng dedicated ComboBoxPropsPanel — không qua generic ControlProps
         "ComboBox" => [],
