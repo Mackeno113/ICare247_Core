@@ -1,38 +1,57 @@
 @* File    : TextBoxRenderer.razor
-   Purpose : Render DxTextBox (hoặc DxMemo khi isMultiline=true) từ FieldState.
-             Props đọc từ ControlPropsJson: maxLength, isPassword, nullText,
-             isMultiline, rows.
-             Phát OnChange khi text thay đổi, OnBlur khi mất focus. *@
+   Purpose : Render DxTextBox / DxMemo từ FieldState + ControlPropsJson.
+             Theo spec chuẩn DxTextBox ICare247:
+             - Binding: BindValueMode (OnInput|OnLostFocus) + InputDelay
+             - UI: NullText, Width, InputId, Enabled, ReadOnly
+             - Input: Password, MaxLength, ClearButton
+             - Events: TextChanged, LostFocus
+             - Validation: CSS dx-has-error (dùng FieldRenderer error display) *@
 
 @using System.Text.Json
 @using System.Text.Json.Serialization
+@using DevExpress.Blazor
 
-@* Wrapper div bắt focusout để phát OnBlur *@
-<div @onfocusout="HandleFocusOut">
-
+@* Wrapper div bắt focusout → phát OnBlur → trigger validation *@
+<div @onfocusout="HandleLostFocus">
     @if (_props.IsMultiline)
     {
         @* isMultiline=true → DxMemo (textarea nhiều dòng) *@
-        <DxMemo Text="@State!.ValueString"
+        <DxMemo Text="@_localValue"
                 TextChanged="@HandleTextChanged"
-                ReadOnly="@State.IsReadOnly"
-                NullText="@(_props.NullText ?? "")"
-                Rows="@(_props.Rows > 0 ? _props.Rows : 3)"
+                BindValueMode="@_bindMode"
+                InputDelay="@(_bindMode == BindValueMode.OnInput ? _props.InputDelay : 0)"
+
+                NullText="@NullTextValue"
+                CssClass="@CssClassValue"
+                Width="100%"
                 InputId="@($"field_{State!.FieldCode}")"
-                CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
+
+                Enabled="true"
+                ReadOnly="@State.IsReadOnly"
+
+                Rows="@(_props.Rows > 0 ? _props.Rows : 3)" />
     }
     else
     {
-        @* isMultiline=false (default) → DxTextBox một dòng *@
-        <DxTextBox Text="@State!.ValueString"
+        @* default → DxTextBox một dòng *@
+        <DxTextBox Text="@_localValue"
                    TextChanged="@HandleTextChanged"
-                   ReadOnly="@State.IsReadOnly"
-                   NullText="@(_props.NullText ?? "")"
-                   Password="@_props.IsPassword"
-                   InputId="@($"field_{State!.FieldCode}")"
-                   CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
-    }
+                   BindValueMode="@_bindMode"
+                   InputDelay="@(_bindMode == BindValueMode.OnInput ? _props.InputDelay : 0)"
 
+                   NullText="@NullTextValue"
+                   CssClass="@CssClassValue"
+                   Width="100%"
+                   InputId="@($"field_{State!.FieldCode}")"
+
+                   Enabled="true"
+                   ReadOnly="@State.IsReadOnly"
+
+                   Password="@_props.IsPassword"
+                   MaxLength="@_props.MaxLength"
+
+                   ClearButtonDisplayMode="@_clearButtonMode" />
+    }
 </div>
 
 @code {
@@ -48,25 +67,67 @@
 
     // ── Private state ────────────────────────────────────────────────────────────
     private TextBoxProps _props = new();
+    private string _localValue = "";
+
+    // Computed từ _props — tránh tính lại mỗi render
+    private BindValueMode _bindMode;
+    private DataEditorClearButtonDisplayMode _clearButtonMode;
+
+    // ── Computed properties ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// NullText placeholder: ưu tiên i18n PlaceholderKey (chưa implement),
+    /// fallback về Label của field.
+    /// </summary>
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl
+        ? lbl + "..."
+        : "";
+
+    /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
+    private string CssClassValue => State?.Errors.Count > 0
+        ? "field-dx dx-has-error"
+        : "field-dx";
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
-    /// <summary>Parse ControlPropsJson mỗi khi State thay đổi.</summary>
+    /// <summary>Parse ControlPropsJson + sync local value mỗi khi State thay đổi.</summary>
     protected override void OnParametersSet()
-        => _props = TextBoxProps.Parse(State?.ControlPropsJson);
+    {
+        _props = TextBoxProps.Parse(State?.ControlPropsJson);
+        _localValue = State?.ValueString ?? "";
+
+        // Map string props → DX enum (tránh tính trong markup)
+        _bindMode = _props.BindValueMode == "OnInput"
+            ? BindValueMode.OnInput
+            : BindValueMode.OnLostFocus;
+
+        _clearButtonMode = _props.ClearButtonMode switch
+        {
+            "Never" => DataEditorClearButtonDisplayMode.Never,
+            _       => DataEditorClearButtonDisplayMode.Auto,   // "Auto" + "Always" → Auto
+        };
+    }
 
     // ── Handlers ─────────────────────────────────────────────────────────────────
 
-    /// <summary>Phát OnChange khi user gõ — cập nhật Value trong FieldState.</summary>
+    /// <summary>
+    /// Phát OnChange khi text thay đổi.
+    /// Khi BindValueMode=OnInput: gọi mỗi keystroke (sau InputDelay).
+    /// Khi BindValueMode=OnLostFocus: gọi khi mất focus.
+    /// </summary>
     private async Task HandleTextChanged(string value)
     {
         if (State is null) return;
-        State.Value = value;
+        _localValue  = value;
+        State.Value  = value;
         await OnChange.InvokeAsync((State.FieldCode, value));
     }
 
-    /// <summary>Phát OnBlur khi focus rời khỏi control → trigger field validation.</summary>
-    private async Task HandleFocusOut(FocusEventArgs _)
+    /// <summary>
+    /// Phát OnBlur khi focus rời khỏi control → trigger field validation.
+    /// LostFocus luôn fire bất kể BindValueMode.
+    /// </summary>
+    private async Task HandleLostFocus(FocusEventArgs _)
     {
         if (State is null) return;
         await OnBlur.InvokeAsync(State.FieldCode);
@@ -76,18 +137,16 @@
 
     /// <summary>
     /// Props cấu hình DxTextBox/DxMemo, deserialize từ Control_Props_Json của Ui_Field.
-    /// WPF JSON ví dụ: {"maxLength":100,"isPassword":false,"nullText":"Nhập...","isMultiline":false,"rows":1}
+    /// WPF JSON ví dụ: {"maxLength":100,"isPassword":false,"isMultiline":false,
+    ///   "rows":1,"bindValueMode":"OnLostFocus","inputDelay":300,"clearButtonMode":"Auto"}
     /// </summary>
     private sealed class TextBoxProps
     {
         [JsonPropertyName("maxLength")]
-        public int MaxLength { get; set; }
+        public int MaxLength { get; set; } = 255;
 
         [JsonPropertyName("isPassword")]
         public bool IsPassword { get; set; }
-
-        [JsonPropertyName("nullText")]
-        public string? NullText { get; set; }
 
         [JsonPropertyName("isMultiline")]
         public bool IsMultiline { get; set; }
@@ -95,9 +154,19 @@
         [JsonPropertyName("rows")]
         public int Rows { get; set; } = 3;
 
-        /// <summary>
-        /// Parse JSON an toàn — trả về instance mặc định nếu null/rỗng/lỗi.
-        /// </summary>
+        /// <summary>"OnInput" | "OnLostFocus" (default)</summary>
+        [JsonPropertyName("bindValueMode")]
+        public string BindValueMode { get; set; } = "OnLostFocus";
+
+        /// <summary>Delay ms khi BindValueMode=OnInput. Mặc định 300ms.</summary>
+        [JsonPropertyName("inputDelay")]
+        public int InputDelay { get; set; } = 300;
+
+        /// <summary>"Never" | "Auto" (default) | "Always"</summary>
+        [JsonPropertyName("clearButtonMode")]
+        public string ClearButtonMode { get; set; } = "Auto";
+
+        /// <summary>Parse JSON an toàn — trả về instance mặc định nếu null/rỗng/lỗi.</summary>
         public static TextBoxProps Parse(string? json)
         {
             if (string.IsNullOrWhiteSpace(json)) return new();
@@ -107,10 +176,7 @@
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
                     ?? new();
             }
-            catch
-            {
-                return new();
-            }
+            catch { return new(); }
         }
     }
 }
