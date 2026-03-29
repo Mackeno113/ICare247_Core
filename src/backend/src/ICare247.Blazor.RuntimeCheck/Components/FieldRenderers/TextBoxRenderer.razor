@@ -1,0 +1,92 @@
+@* File    : TextBoxRenderer.razor
+   Purpose : Render DxTextBox từ FieldState + ControlPropsJson.
+             Hỗ trợ: maxLength, isPassword, nullText.
+             Phát OnChange khi text thay đổi, OnBlur khi mất focus. *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+
+@* Wrapper div bắt focusout để phát OnBlur — DX InputLostFocus không cần thiết *@
+<div @onfocusout="HandleFocusOut">
+    <DxTextBox Text="@State!.ValueString"
+               TextChanged="@HandleTextChanged"
+               ReadOnly="@State.IsReadOnly"
+               NullText="@(_props.NullText ?? "")"
+               Password="@_props.IsPassword"
+               InputId="@($"field_{State!.FieldCode}")"
+               CssClass="@($"field-dx{(State.Errors.Count > 0 ? " dx-has-error" : "")}")" />
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────────
+    [Parameter, EditorRequired]
+    public FieldState? State { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBlur { get; set; }
+
+    // ── Private state ────────────────────────────────────────────────────────────
+    private TextBoxProps _props = new();
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+    /// <summary>Parse ControlPropsJson mỗi khi State thay đổi.</summary>
+    protected override void OnParametersSet()
+        => _props = TextBoxProps.Parse(State?.ControlPropsJson);
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    /// <summary>Phát OnChange khi user gõ — cập nhật Value trong FieldState.</summary>
+    private async Task HandleTextChanged(string value)
+    {
+        if (State is null) return;
+        State.Value = value;
+        await OnChange.InvokeAsync((State.FieldCode, value));
+    }
+
+    /// <summary>Phát OnBlur khi focus rời khỏi DxTextBox → trigger validation.</summary>
+    private async Task HandleFocusOut(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Props cấu hình DxTextBox, deserialize từ Control_Props_Json của Ui_Field.
+    /// Ví dụ DB: {"maxLength":100,"isPassword":false,"nullText":"Nhập họ tên..."}
+    /// </summary>
+    private sealed class TextBoxProps
+    {
+        [JsonPropertyName("maxLength")]
+        public int MaxLength { get; set; }
+
+        [JsonPropertyName("isPassword")]
+        public bool IsPassword { get; set; }
+
+        [JsonPropertyName("nullText")]
+        public string? NullText { get; set; }
+
+        /// <summary>
+        /// Parse JSON an toàn — trả về instance mặc định nếu null/rỗng/lỗi.
+        /// </summary>
+        public static TextBoxProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<TextBoxProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true })
+                    ?? new();
+            }
+            catch
+            {
+                return new();
+            }
+        }
+    }
+}

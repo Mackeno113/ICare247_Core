@@ -211,11 +211,13 @@ else if (_form is not null)
                 IsRequired   = f.IsRequired,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
                 ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
-                LookupSource = f.LookupSource,
+                LookupSource    = f.LookupSource,
                 // Static: truyền LookupCode để load Sys_Lookup options
-                LookupCode   = f.LookupSource == "static" ? f.LookupCode : null,
+                LookupCode      = f.LookupSource == "static" ? f.LookupCode : null,
                 // Dynamic: truyền config để renderer biết columns, width, v.v.
-                LookupConfig = f.LookupSource == "dynamic" ? f.LookupConfig : null,
+                LookupConfig    = f.LookupSource == "dynamic" ? f.LookupConfig : null,
+                // Props JSON tĩnh — renderer tự parse theo FieldType
+                ControlPropsJson = f.ControlPropsJson,
             }).ToList();
 
             // Load Sys_Lookup options cho tất cả static select fields (gọi song song theo code)

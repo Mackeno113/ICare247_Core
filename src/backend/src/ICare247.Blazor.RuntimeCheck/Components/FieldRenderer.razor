@@ -131,13 +131,10 @@
                 break;
 
             default:
-                @* text và các type không nhận dạng được → text input *@
-                <input id="field_@State.FieldCode"
-                       type="text" class="field-input"
-                       value="@State.ValueString"
-                       disabled="@State.IsReadOnly"
-                       @onchange="HandleChange"
-                       @onblur="HandleBlur" />
+                @* text và mọi type không nhận dạng được → DxTextBox *@
+                <TextBoxRenderer State="State"
+                                 OnChange="OnChange"
+                                 OnBlur="OnBlur" />
                 break;
         }
 

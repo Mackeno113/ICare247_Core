@@ -133,6 +133,12 @@ public sealed class FieldState
     /// </summary>
     public byte ColSpan { get; init; } = 1;
 
+    /// <summary>
+    /// JSON cấu hình UI component từ DB (Ui_Field.Control_Props_Json).
+    /// Renderer tự parse theo FieldType: TextBox→TextBoxProps, v.v.
+    /// </summary>
+    public string? ControlPropsJson { get; init; }
+
     /// <summary>Giá trị dạng string để bind vào input element.</summary>
     public string ValueString
     {
