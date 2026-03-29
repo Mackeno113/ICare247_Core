@@ -2010,8 +2010,39 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             }
 
             await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
+
+            // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
+            await RegisterI18nKeysAsync(_cts.Token);
         }
         IsDirty = false;
+    }
+
+    /// <summary>
+    /// Sau khi lưu field: tạo các i18n key vào Sys_Resource nếu chưa có.
+    /// Nguyên tắc: chỉ INSERT khi key+lang chưa tồn tại — không ghi đè bản dịch đã có.
+    /// Default value = ColumnCode cho LabelKey, rỗng cho các key còn lại.
+    /// </summary>
+    private async Task RegisterI18nKeysAsync(CancellationToken ct)
+    {
+        if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
+
+        // Tập hợp các key cần đăng ký: (key, defaultValue)
+        var keys = new List<(string Key, string Default)>();
+
+        if (!string.IsNullOrWhiteSpace(LabelKey))
+            keys.Add((LabelKey, ColumnCode));
+
+        if (!string.IsNullOrWhiteSpace(PlaceholderKey))
+            keys.Add((PlaceholderKey, ""));
+
+        if (!string.IsNullOrWhiteSpace(TooltipKey))
+            keys.Add((TooltipKey, ""));
+
+        if (!string.IsNullOrWhiteSpace(RequiredErrorKey))
+            keys.Add((RequiredErrorKey, $"Trường {ColumnCode} là bắt buộc"));
+
+        foreach (var (key, defaultValue) in keys)
+            await _i18nService.InitResourceIfMissingAsync(key, "vi", defaultValue, ct);
     }
 
     private void ExecuteCancel()
