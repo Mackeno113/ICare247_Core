@@ -1,31 +1,27 @@
-@* File    : TextBoxRenderer.razor
-   Purpose : Render DxTextBox từ FieldState + ControlPropsJson.
-             DxTextBox và DxMemo là 2 control riêng biệt — user tự chọn EditorType.
-             TextBoxRenderer chỉ render DxTextBox (EditorType = "TextBox").
-             Props: maxLength, isPassword, bindValueMode, inputDelay, clearButtonMode. *@
+@* File    : MemoRenderer.razor
+   Purpose : Render DxMemo từ FieldState + ControlPropsJson.
+             EditorType = "TextArea" → DxMemo (textarea nhiều dòng).
+             Props: maxLength, rows, bindValueMode, inputDelay. *@
 
 @using System.Text.Json
 @using System.Text.Json.Serialization
 @using DevExpress.Blazor
 
 <div @onfocusout="HandleLostFocus">
-    <DxTextBox Text="@_localValue"
-               TextChanged="@HandleTextChanged"
-               BindValueMode="@_bindMode"
-               InputDelay="@(_bindMode == BindValueMode.OnInput ? _props.InputDelay : 0)"
+    <DxMemo Text="@_localValue"
+            TextChanged="@HandleTextChanged"
+            BindValueMode="@_bindMode"
+            InputDelay="@(_bindMode == BindValueMode.OnInput ? _props.InputDelay : 0)"
 
-               NullText="@NullTextValue"
-               CssClass="@CssClassValue"
-               Width="100%"
-               InputId="@($"field_{State!.FieldCode}")"
+            NullText="@NullTextValue"
+            CssClass="@CssClassValue"
+            Width="100%"
+            InputId="@($"field_{State!.FieldCode}")"
 
-               Enabled="true"
-               ReadOnly="@State.IsReadOnly"
+            Enabled="true"
+            ReadOnly="@State.IsReadOnly"
 
-               Password="@_props.IsPassword"
-               MaxLength="@_props.MaxLength"
-
-               ClearButtonDisplayMode="@_clearButtonMode" />
+            Rows="@(_props.Rows > 0 ? _props.Rows : 4)" />
 </div>
 
 @code {
@@ -40,33 +36,25 @@
     public EventCallback<string> OnBlur { get; set; }
 
     // ── Private state ────────────────────────────────────────────────────────────
-    private TextBoxProps _props = new();
+    private MemoProps _props = new();
     private string _localValue = "";
     private BindValueMode _bindMode;
-    private DataEditorClearButtonDisplayMode _clearButtonMode;
 
     // ── Computed ─────────────────────────────────────────────────────────────────
 
-    /// <summary>NullText: dùng Label field làm placeholder fallback.</summary>
     private string NullTextValue => State?.Label is { Length: > 0 } lbl ? lbl + "..." : "";
-
-    /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
     private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
 
     protected override void OnParametersSet()
     {
-        _props      = TextBoxProps.Parse(State?.ControlPropsJson);
+        _props      = MemoProps.Parse(State?.ControlPropsJson);
         _localValue = State?.ValueString ?? "";
 
         _bindMode = _props.BindValueMode == "OnInput"
             ? BindValueMode.OnInput
             : BindValueMode.OnLostFocus;
-
-        _clearButtonMode = _props.ClearButtonMode == "Never"
-            ? DataEditorClearButtonDisplayMode.Never
-            : DataEditorClearButtonDisplayMode.Auto;
     }
 
     // ── Handlers ─────────────────────────────────────────────────────────────────
@@ -87,13 +75,13 @@
 
     // ── Inner types ──────────────────────────────────────────────────────────────
 
-    private sealed class TextBoxProps
+    private sealed class MemoProps
     {
         [JsonPropertyName("maxLength")]
-        public int MaxLength { get; set; } = 255;
+        public int MaxLength { get; set; } = 4000;
 
-        [JsonPropertyName("isPassword")]
-        public bool IsPassword { get; set; }
+        [JsonPropertyName("rows")]
+        public int Rows { get; set; } = 4;
 
         /// <summary>"OnLostFocus" (default) | "OnInput"</summary>
         [JsonPropertyName("bindValueMode")]
@@ -102,16 +90,12 @@
         [JsonPropertyName("inputDelay")]
         public int InputDelay { get; set; } = 300;
 
-        /// <summary>"Auto" (default) | "Never"</summary>
-        [JsonPropertyName("clearButtonMode")]
-        public string ClearButtonMode { get; set; } = "Auto";
-
-        public static TextBoxProps Parse(string? json)
+        public static MemoProps Parse(string? json)
         {
             if (string.IsNullOrWhiteSpace(json)) return new();
             try
             {
-                return JsonSerializer.Deserialize<TextBoxProps>(json,
+                return JsonSerializer.Deserialize<MemoProps>(json,
                     new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
             }
             catch { return new(); }

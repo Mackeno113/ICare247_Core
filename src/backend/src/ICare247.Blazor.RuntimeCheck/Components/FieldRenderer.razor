@@ -31,13 +31,10 @@
         @switch (State.FieldType.ToLower())
         {
             case "textarea":
-                <textarea id="field_@State.FieldCode"
-                          class="field-input"
-                          value="@State.ValueString"
-                          disabled="@State.IsReadOnly"
-                          rows="3"
-                          @onchange="HandleChange"
-                          @onblur="HandleBlur" />
+                @* DxMemo — EditorType "TextArea", user tự chọn control riêng *@
+                <MemoRenderer State="State"
+                              OnChange="OnChange"
+                              OnBlur="OnBlur" />
                 break;
 
             case "number":

@@ -1694,15 +1694,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ],
         "TextBox" =>
         [
-            new() { PropName = "maxLength",       PropType = "Number",  DefaultValue = 255,            Label = "Độ dài tối đa" },
-            new() { PropName = "isMultiline",     PropType = "Boolean", DefaultValue = false,           Label = "Nhiều dòng" },
-            new() { PropName = "rows",            PropType = "Number",  DefaultValue = 1,               Label = "Số dòng (khi multiline)" },
-            new() { PropName = "isPassword",      PropType = "Boolean", DefaultValue = false,           Label = "Ẩn ký tự (password)" },
-            new() { PropName = "bindValueMode",   PropType = "Enum",    DefaultValue = "OnLostFocus",   Label = "Khi nào cập nhật giá trị",
+            new() { PropName = "maxLength",       PropType = "Number",  DefaultValue = 255,          Label = "Độ dài tối đa" },
+            new() { PropName = "isPassword",      PropType = "Boolean", DefaultValue = false,         Label = "Ẩn ký tự (password)" },
+            new() { PropName = "bindValueMode",   PropType = "Enum",    DefaultValue = "OnLostFocus", Label = "Khi nào cập nhật giá trị",
                     AllowedValues = ["OnLostFocus", "OnInput"] },
-            new() { PropName = "inputDelay",      PropType = "Number",  DefaultValue = 300,             Label = "Delay (ms) khi OnInput" },
-            new() { PropName = "clearButtonMode", PropType = "Enum",    DefaultValue = "Auto",          Label = "Nút xóa",
-                    AllowedValues = ["Auto", "Always", "Never"] },
+            new() { PropName = "inputDelay",      PropType = "Number",  DefaultValue = 300,           Label = "Delay (ms) khi OnInput" },
+            new() { PropName = "clearButtonMode", PropType = "Enum",    DefaultValue = "Auto",        Label = "Nút xóa",
+                    AllowedValues = ["Auto", "Never"] },
+        ],
+        // TextArea = DxMemo — control riêng, user tự chọn
+        "TextArea" =>
+        [
+            new() { PropName = "maxLength",     PropType = "Number",  DefaultValue = 4000,          Label = "Độ dài tối đa" },
+            new() { PropName = "rows",          PropType = "Number",  DefaultValue = 4,             Label = "Số dòng hiển thị" },
+            new() { PropName = "bindValueMode", PropType = "Enum",    DefaultValue = "OnLostFocus", Label = "Khi nào cập nhật giá trị",
+                    AllowedValues = ["OnLostFocus", "OnInput"] },
+            new() { PropName = "inputDelay",    PropType = "Number",  DefaultValue = 300,           Label = "Delay (ms) khi OnInput" },
         ],
         // ComboBox dùng dedicated ComboBoxPropsPanel — không qua generic ControlProps
         "ComboBox" => [],
