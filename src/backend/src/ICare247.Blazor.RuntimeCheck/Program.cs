@@ -38,6 +38,10 @@ builder.Services.AddScoped(sp =>
     return client;
 });
 
+// ── DevExpress Blazor ──────────────────────────────────────────────────────
+builder.Services.AddDevExpressBlazor(opt =>
+    opt.BootstrapVersion = DevExpress.Blazor.BootstrapVersion.v5);
+
 // ── Application services ───────────────────────────────────────────────────
 builder.Services.AddScoped<FormApiService>();
 builder.Services.AddScoped<RuntimeApiService>();

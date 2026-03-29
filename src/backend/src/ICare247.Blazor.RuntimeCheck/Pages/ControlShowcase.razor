@@ -1,0 +1,511 @@
+@* File    : ControlShowcase.razor
+   Purpose : Trang test từng DevExpress Blazor control với ICare247 Design System tokens.
+             Dùng để verify visual/UX trước khi dùng trong FormRunner. *@
+
+@page "/controls"
+<PageTitle>Control Showcase — ICare247</PageTitle>
+
+<div class="page-container">
+
+    <div class="page-header">
+        <h1 class="text-gradient-brand">🎨 Control Showcase</h1>
+        <p class="subtitle">DevExpress Blazor controls với ICare247 Design System tokens</p>
+        <span class="api-badge">DX 24.2 · Violet Primary · Inter Font</span>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 1 — DxTextBox
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>📝 DxTextBox</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <label class="field-label">Normal</label>
+                <DxTextBox @bind-Text="@_text1"
+                           NullText="Nhập họ và tên..."
+                           InputId="tb-normal" />
+                <small class="hint">Value: @_text1</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Password <span class="required-mark">*</span></label>
+                <DxTextBox @bind-Text="@_password"
+                           Password="true"
+                           NullText="Nhập mật khẩu"
+                           InputId="tb-password" />
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Read-only</label>
+                <DxTextBox Text="Nguyễn Văn A"
+                           ReadOnly="true"
+                           InputId="tb-readonly" />
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Disabled</label>
+                <DxTextBox @bind-Text="@_text2"
+                           Enabled="false"
+                           NullText="Không thể nhập"
+                           InputId="tb-disabled" />
+            </div>
+
+            <div class="field-wrapper has-error">
+                <label class="field-label">Validation Error</label>
+                <DxTextBox @bind-Text="@_text3"
+                           NullText="Nhập email..."
+                           InputId="tb-error"
+                           CssClass="@(_showError ? "dx-invalid" : "")" />
+                @if (_showError)
+                {
+                    <span class="field-error">⚠ Email không hợp lệ</span>
+                }
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">CssClass = cw-320</label>
+                <DxTextBox @bind-Text="@_text4"
+                           NullText="320px cố định"
+                           CssClass="cw-320"
+                           InputId="tb-cw320" />
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 2 — DxMemo (Textarea)
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>📄 DxMemo</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper" style="grid-column: span 2">
+                <label class="field-label">Ghi chú</label>
+                <DxMemo @bind-Text="@_memo"
+                        NullText="Nhập nội dung ghi chú..."
+                        Rows="4"
+                        InputId="memo-normal" />
+                <small class="hint">@(_memo?.Length ?? 0) ký tự</small>
+            </div>
+
+            <div class="field-wrapper" style="grid-column: span 2">
+                <label class="field-label">Read-only</label>
+                <DxMemo Text="Dữ liệu không thể chỉnh sửa trực tiếp. Liên hệ admin để thay đổi."
+                        ReadOnly="true"
+                        Rows="3"
+                        InputId="memo-readonly" />
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 3 — DxSpinEdit (Numeric)
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>🔢 DxSpinEdit</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <label class="field-label">Số nguyên (0–999)</label>
+                <DxSpinEdit @bind-Value="@_intVal"
+                            MinValue="0" MaxValue="999"
+                            InputId="spin-int" />
+                <small class="hint">Value: @_intVal</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Số thập phân (2 chữ số)</label>
+                <DxSpinEdit @bind-Value="@_decVal"
+                            MinValue="0m" MaxValue="9999999m"
+                            Increment="0.01m"
+                            DisplayFormat="N2"
+                            InputId="spin-dec" />
+                <small class="hint">Value: @_decVal.ToString("N2")</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Disabled</label>
+                <DxSpinEdit Value="42"
+                            Enabled="false"
+                            InputId="spin-disabled" />
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 4 — DxComboBox
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>📋 DxComboBox</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <label class="field-label">Static list</label>
+                <DxComboBox Data="@_genderItems"
+                            @bind-Value="@_selectedGender"
+                            TextField="@nameof(LookupItem.Label)"
+                            ValueField="@nameof(LookupItem.Code)"
+                            NullText="-- Chọn giới tính --"
+                            InputId="cb-gender" />
+                <small class="hint">Value: @_selectedGender</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">SearchMode = Contains</label>
+                <DxComboBox Data="@_provinceItems"
+                            @bind-Value="@_selectedProvince"
+                            TextField="@nameof(LookupItem.Label)"
+                            ValueField="@nameof(LookupItem.Code)"
+                            NullText="-- Chọn tỉnh/thành --"
+                            SearchMode="ListSearchMode.AutoSearch"
+                            InputId="cb-province" />
+                <small class="hint">Value: @_selectedProvince</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">AllowUserInput = true</label>
+                <DxComboBox Data="@_genderItems"
+                            @bind-Value="@_selectedGender2"
+                            TextField="@nameof(LookupItem.Label)"
+                            ValueField="@nameof(LookupItem.Code)"
+                            NullText="Tự nhập hoặc chọn..."
+                            AllowUserInput="true"
+                            InputId="cb-user-input" />
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Disabled</label>
+                <DxComboBox Data="@_genderItems"
+                            Value="@("M")"
+                            TextField="@nameof(LookupItem.Label)"
+                            ValueField="@nameof(LookupItem.Code)"
+                            Enabled="false"
+                            InputId="cb-disabled" />
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 5 — DxDateEdit
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>📅 DxDateEdit</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <label class="field-label">Ngày sinh</label>
+                <DxDateEdit @bind-Date="@_dateVal"
+                            Format="dd/MM/yyyy"
+                            NullText="dd/mm/yyyy"
+                            InputId="de-normal" />
+                <small class="hint">Value: @_dateVal?.ToString("dd/MM/yyyy")</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">DateTime (có giờ)</label>
+                <DxDateEdit @bind-Date="@_dateTimeVal"
+                            Format="dd/MM/yyyy HH:mm"
+                            TimeSectionVisible="true"
+                            InputId="de-datetime" />
+                <small class="hint">@_dateTimeVal?.ToString("dd/MM/yyyy HH:mm")</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Read-only</label>
+                <DxDateEdit Date="@DateTime.Today"
+                            ReadOnly="true"
+                            Format="dd/MM/yyyy"
+                            InputId="de-readonly" />
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Min / Max date</label>
+                <DxDateEdit @bind-Date="@_dateRangeVal"
+                            Format="dd/MM/yyyy"
+                            MinDate="@DateTime.Today.AddDays(-30)"
+                            MaxDate="@DateTime.Today.AddDays(30)"
+                            NullText="30 ngày quanh hôm nay"
+                            InputId="de-range" />
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 6 — DxCheckBox
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>☑ DxCheckBox</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <DxCheckBox @bind-Checked="@_check1">Đang hoạt động</DxCheckBox>
+                <small class="hint">Checked: @_check1</small>
+            </div>
+
+            <div class="field-wrapper">
+                <DxCheckBox @bind-Checked="@_check2">Nhận thông báo email</DxCheckBox>
+            </div>
+
+            <div class="field-wrapper">
+                <DxCheckBox Checked="true" Enabled="false">Xác nhận (disabled)</DxCheckBox>
+            </div>
+
+            <div class="field-wrapper">
+                <DxCheckBox Checked="false" Enabled="false">Chưa xác nhận (disabled)</DxCheckBox>
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 7 — DxRadioGroup
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>🔘 DxRadioGroup</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper">
+                <label class="field-label">Giới tính (Horizontal)</label>
+                <DxRadioGroup TData="LookupItem" TValue="string"
+                              Data="@_genderItems"
+                              @bind-Value="@_radioGender"
+                              TextField="@nameof(LookupItem.Label)"
+                              ValueField="@nameof(LookupItem.Code)"
+                              Layout="RadioGroupLayout.Horizontal"
+                              InputId="rg-gender" />
+                <small class="hint">Value: @_radioGender</small>
+            </div>
+
+            <div class="field-wrapper">
+                <label class="field-label">Loại hợp đồng (Vertical)</label>
+                <DxRadioGroup TData="LookupItem" TValue="string"
+                              Data="@_contractTypes"
+                              @bind-Value="@_radioContract"
+                              TextField="@nameof(LookupItem.Label)"
+                              ValueField="@nameof(LookupItem.Code)"
+                              Layout="RadioGroupLayout.Vertical"
+                              InputId="rg-contract" />
+                <small class="hint">Value: @_radioContract</small>
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 8 — DxButton
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>🖱 DxButton</h3>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center;">
+
+            <DxButton Text="Primary" RenderStyle="ButtonRenderStyle.Primary" />
+            <DxButton Text="Secondary" RenderStyle="ButtonRenderStyle.Secondary" />
+            <DxButton Text="Info" RenderStyle="ButtonRenderStyle.Info" />
+            <DxButton Text="Success" RenderStyle="ButtonRenderStyle.Success" />
+            <DxButton Text="Warning" RenderStyle="ButtonRenderStyle.Warning" />
+            <DxButton Text="Danger" RenderStyle="ButtonRenderStyle.Danger" />
+            <DxButton Text="Light" RenderStyle="ButtonRenderStyle.Light" />
+            <DxButton Text="Dark" RenderStyle="ButtonRenderStyle.Dark" />
+            <DxButton Text="None (link)" RenderStyle="ButtonRenderStyle.None" />
+
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:12px;">
+
+            <DxButton Text="Primary Outline" RenderStyle="ButtonRenderStyle.Primary"
+                      RenderStyleMode="ButtonRenderStyleMode.Outline" />
+            <DxButton Text="Danger Outline" RenderStyle="ButtonRenderStyle.Danger"
+                      RenderStyleMode="ButtonRenderStyleMode.Outline" />
+            <DxButton Text="Disabled" RenderStyle="ButtonRenderStyle.Primary" Enabled="false" />
+            <DxButton Text="Loading..." RenderStyle="ButtonRenderStyle.Primary" Enabled="false">
+                <ChildContent><span class="spinner" style="width:14px;height:14px;border-width:2px;margin:0 6px 0 0;display:inline-block;vertical-align:middle;"></span>Loading...</ChildContent>
+            </DxButton>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 9 — DxTagBox
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>🏷 DxTagBox</h3>
+        <div class="showcase-grid">
+
+            <div class="field-wrapper" style="grid-column: span 2">
+                <label class="field-label">Kỹ năng (multi-select)</label>
+                <DxTagBox Data="@_skillItems"
+                          @bind-Values="@_selectedSkills"
+                          TextField="@nameof(LookupItem.Label)"
+                          ValueField="@nameof(LookupItem.Code)"
+                          NullText="-- Chọn kỹ năng --"
+                          InputId="tagbox-skills" />
+                <small class="hint">Selected: @string.Join(", ", _selectedSkills ?? [])</small>
+            </div>
+
+        </div>
+    </div>
+
+    @* ══════════════════════════════════════════════════
+       SECTION 10 — Kết hợp trong form thật
+    ══════════════════════════════════════════════════ *@
+    <div class="card">
+        <h3>📋 Form mẫu — Thông tin nhân viên</h3>
+        <div class="section-card" style="margin-bottom:0">
+            <div class="section-title">Thông tin cơ bản</div>
+            <div class="fields-grid">
+
+                <div class="field-wrapper">
+                    <label class="field-label" for="f-hoTen">Họ và tên <span class="required-mark">*</span></label>
+                    <DxTextBox @bind-Text="@_sampleHoTen" NullText="VD: Nguyễn Văn A" InputId="f-hoTen" />
+                </div>
+
+                <div class="field-wrapper">
+                    <label class="field-label" for="f-ngaySinh">Ngày sinh</label>
+                    <DxDateEdit @bind-Date="@_sampleNgaySinh" Format="dd/MM/yyyy"
+                                NullText="dd/mm/yyyy" InputId="f-ngaySinh" />
+                </div>
+
+                <div class="field-wrapper">
+                    <label class="field-label" for="f-gioiTinh">Giới tính</label>
+                    <DxComboBox Data="@_genderItems"
+                                @bind-Value="@_sampleGioiTinh"
+                                TextField="@nameof(LookupItem.Label)"
+                                ValueField="@nameof(LookupItem.Code)"
+                                NullText="-- Chọn --"
+                                InputId="f-gioiTinh" />
+                </div>
+
+                <div class="field-wrapper">
+                    <label class="field-label" for="f-email">Email</label>
+                    <DxTextBox @bind-Text="@_sampleEmail" NullText="example@company.com"
+                               InputId="f-email" />
+                </div>
+
+                <div class="field-wrapper" style="grid-column: span 2">
+                    <label class="field-label" for="f-diaChi">Địa chỉ</label>
+                    <DxMemo @bind-Text="@_sampleDiaChi" NullText="Số nhà, đường, phường/xã, quận/huyện..."
+                            Rows="2" InputId="f-diaChi" />
+                </div>
+
+                <div class="field-wrapper">
+                    <label class="field-label" for="f-luong">Lương cơ bản</label>
+                    <DxSpinEdit @bind-Value="@_sampleLuong" MinValue="0m"
+                                Increment="500000m" DisplayFormat="N0" InputId="f-luong" />
+                </div>
+
+                <div class="field-wrapper" style="padding-top:20px">
+                    <DxCheckBox @bind-Checked="@_sampleIsActive">Đang làm việc</DxCheckBox>
+                </div>
+
+            </div>
+            <div class="form-footer">
+                <DxButton Text="💾 Lưu" RenderStyle="ButtonRenderStyle.Primary"
+                          Click="@OnSampleSave" />
+                <DxButton Text="Hủy" RenderStyle="ButtonRenderStyle.Secondary" />
+                @if (_sampleSaved)
+                {
+                    <span class="delta-badge">✓ Đã lưu (mock)</span>
+                }
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@code {
+    // ── TextBox state ─────────────────────────────
+    private string? _text1, _text2, _text3, _text4;
+    private string? _password;
+    private bool    _showError = true;
+
+    // ── Memo state ────────────────────────────────
+    private string? _memo;
+
+    // ── SpinEdit state ────────────────────────────
+    private int     _intVal = 10;
+    private decimal _decVal = 99.99m;
+
+    // ── ComboBox state ────────────────────────────
+    private string? _selectedGender, _selectedGender2, _selectedProvince;
+
+    // ── DateEdit state ────────────────────────────
+    private DateTime? _dateVal     = DateTime.Today.AddYears(-25);
+    private DateTime? _dateTimeVal = DateTime.Now;
+    private DateTime? _dateRangeVal;
+
+    // ── CheckBox state ────────────────────────────
+    private bool _check1 = true;
+    private bool _check2;
+
+    // ── RadioGroup state ──────────────────────────
+    private string? _radioGender   = "M";
+    private string? _radioContract = "FULL_TIME";
+
+    // ── TagBox state ──────────────────────────────
+    private IEnumerable<string>? _selectedSkills;
+
+    // ── Sample form state ─────────────────────────
+    private string?   _sampleHoTen;
+    private DateTime? _sampleNgaySinh;
+    private string?   _sampleGioiTinh;
+    private string?   _sampleEmail;
+    private string?   _sampleDiaChi;
+    private decimal   _sampleLuong = 10_000_000m;
+    private bool      _sampleIsActive = true;
+    private bool      _sampleSaved;
+
+    // ── Dữ liệu tĩnh ─────────────────────────────
+    private record LookupItem(string Code, string Label);
+
+    private static readonly List<LookupItem> _genderItems =
+    [
+        new("M", "Nam"),
+        new("F", "Nữ"),
+        new("O", "Khác")
+    ];
+
+    private static readonly List<LookupItem> _contractTypes =
+    [
+        new("FULL_TIME",  "Toàn thời gian"),
+        new("PART_TIME",  "Bán thời gian"),
+        new("FREELANCE",  "Freelance"),
+        new("INTERN",     "Thực tập sinh")
+    ];
+
+    private static readonly List<LookupItem> _provinceItems =
+    [
+        new("HN",  "Hà Nội"),
+        new("HCM", "TP. Hồ Chí Minh"),
+        new("DN",  "Đà Nẵng"),
+        new("HP",  "Hải Phòng"),
+        new("CT",  "Cần Thơ"),
+        new("BD",  "Bình Dương"),
+        new("BH",  "Bình Định"),
+        new("LA",  "Long An"),
+        new("KH",  "Khánh Hòa"),
+        new("QN",  "Quảng Nam")
+    ];
+
+    private static readonly List<LookupItem> _skillItems =
+    [
+        new("CS",    "C#"),
+        new("JS",    "JavaScript"),
+        new("TS",    "TypeScript"),
+        new("SQL",   "SQL"),
+        new("BLAZOR","Blazor"),
+        new("WPF",   "WPF"),
+        new("REACT", "React"),
+        new("DOCKER","Docker")
+    ];
+
+    private void OnSampleSave()
+    {
+        _sampleSaved = true;
+        // NOTE: Mock save — không gọi API thật
+    }
+}
