@@ -8,7 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DevExpress.Blazor" Version="24.2.6" />
+    <PackageReference Include="DevExpress.Blazor" Version="25.2.3" />
+    <PackageReference Include="DevExpress.Blazor.Themes" Version="25.2.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3" />
