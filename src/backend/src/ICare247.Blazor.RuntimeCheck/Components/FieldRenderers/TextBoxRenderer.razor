@@ -24,6 +24,7 @@
 
                Password="@_props.IsPassword"
                MaxLength="@_props.MaxLength"
+               AutoComplete="@_props.AutoComplete"
 
                ClearButtonDisplayMode="@_clearButtonMode" />
 </div>
@@ -94,6 +95,10 @@
 
         [JsonPropertyName("isPassword")]
         public bool IsPassword { get; set; }
+
+        /// <summary>"off" (default) | "on" | "new-password"</summary>
+        [JsonPropertyName("autoComplete")]
+        public string AutoComplete { get; set; } = "off";
 
         /// <summary>"OnLostFocus" (default) | "OnInput"</summary>
         [JsonPropertyName("bindValueMode")]

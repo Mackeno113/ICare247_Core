@@ -1696,6 +1696,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         [
             new() { PropName = "maxLength",       PropType = "Number",  DefaultValue = 255,          Label = "Độ dài tối đa" },
             new() { PropName = "isPassword",      PropType = "Boolean", DefaultValue = false,         Label = "Ẩn ký tự (password)" },
+            new() { PropName = "autoComplete",    PropType = "Enum",    DefaultValue = "off",         Label = "AutoComplete",
+                    AllowedValues = ["off", "on", "new-password"] },
             new() { PropName = "bindValueMode",   PropType = "Enum",    DefaultValue = "OnLostFocus", Label = "Khi nào cập nhật giá trị",
                     AllowedValues = ["OnLostFocus", "OnInput"] },
             new() { PropName = "inputDelay",      PropType = "Number",  DefaultValue = 300,           Label = "Delay (ms) khi OnInput" },
