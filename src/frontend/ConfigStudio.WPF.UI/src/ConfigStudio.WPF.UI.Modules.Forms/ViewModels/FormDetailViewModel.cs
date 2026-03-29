@@ -9,6 +9,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -24,6 +25,7 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
     private readonly IRegionManager _regionManager;
     private readonly IFormDetailDataService? _detailService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IDialogService? _dialogService;
     private CancellationTokenSource _cts = new();
 
     // ── Header metadata ───────────────────────────────────────
@@ -168,11 +170,13 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
     public FormDetailViewModel(
         IRegionManager regionManager,
         IFormDetailDataService? detailService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        IDialogService? dialogService = null)
     {
         _regionManager = regionManager;
         _detailService = detailService;
         _appConfig = appConfig;
+        _dialogService = dialogService;
 
         BackCommand       = new DelegateCommand(ExecuteBack);
         EditCommand       = new DelegateCommand(ExecuteEdit);
@@ -367,7 +371,14 @@ public sealed class FormDetailViewModel : ViewModelBase, INavigationAware
 
     private void ExecutePreview()
     {
-        // TODO(phase2): mở preview dialog render form từ metadata
+        if (_dialogService is null) return;
+        var p = new DialogParameters
+        {
+            { "formId",   FormId   },
+            { "formName", FormName },
+            { "formCode", FormCode }
+        };
+        _dialogService.ShowDialog(ViewNames.FormPreviewDialog, p, _ => { });
     }
 
     private async void ExecuteDeactivateAsync()

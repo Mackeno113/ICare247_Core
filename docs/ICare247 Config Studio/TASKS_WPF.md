@@ -66,31 +66,24 @@
 
 ### Priority 3 — FormManager TODOs (phase 2)
 
-#### WPF-07: FormManager Clone Form — implement thật
-- **File:** `FormManagerViewModel.cs` line 436
-- **Vấn đề:** Clone chỉ tạo object local với Form_Code mới, không persist vào DB.
-- **Việc cần làm:**
-  1. Implement `IFormDataService.CloneFormAsync(sourceFormId, newCode, tenantId, ct)`
-  2. SQL: Copy Ui_Form + Ui_Section + Ui_Field (deep clone, new PKs)
-  3. Sau clone: navigate sang FormEditor với form mới
-- **Ước lượng:** ~2 giờ
+#### ~~WPF-07~~: ✅ FormManager Clone Form — DONE
+- `FormDataService.CloneFormAsync`: deep clone Ui_Form + Ui_Section + Ui_Field trong transaction, schema-aware
+- `FormManagerViewModel.ExecuteDuplicateForm`: gọi service, reload list sau khi clone
+- `CloneFormDialog` + `CloneFormDialogViewModel`: validate unique code
+- Verified 2026-03-29
 
-#### WPF-08: Form Preview Dialog
-- **File:** `FormManagerViewModel.cs` line 365, `FormDetailViewModel.cs` line 370
-- **Vấn đề:** "Preview form" là TODO — chưa có dialog render metadata thành form visual.
-- **Việc cần làm:**
-  1. Tạo `FormPreviewDialog` — render Ui_Field list theo EditorType → DevExpress controls
-  2. Read-only preview (không save data)
-  3. Hiển thị các field theo ColSpan grid layout
-- **Ước lượng:** ~4 giờ (task lớn)
+#### ~~WPF-08~~: ✅ Form Preview Dialog — DONE
+- `FormPreviewDialog` + `FormPreviewDialogViewModel` (186 dòng) + `FormPreviewModels.cs` — đầy đủ
+- `FormManagerViewModel.ExecutePreviewForm` gọi dialog với params ✅
+- `FormDetailViewModel.ExecutePreview` — fix wire dialog (commit session 2026-03-29) ✅
 
 ---
 
 ### Priority 4 — Các màn hình khác
 
-#### WPF-09: FieldConfigViewModel — Browse Column Popup
-- **File:** `FieldConfigViewModel.cs` line 1466 (TODO phase2)
-- **Vấn đề:** Nút 🔍 Browse column hiện chỉ là placeholder, không mở popup.
+#### ~~WPF-09~~: ✅ FieldConfigViewModel — Browse Column Popup — DONE
+- `ColumnPickerDialog` + `ColumnPickerDialogViewModel` registered, `ExecuteBrowseColumn` gọi dialog ✅
+- Verified 2026-03-29
 - **Việc cần làm:**
   1. Implement `ExecuteBrowseColumn()`: mở dialog `ColumnPickerDialog`
   2. Dialog list các column từ `AvailableColumns` với search/filter
