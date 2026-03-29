@@ -1,0 +1,142 @@
+@* File    : CheckBoxRenderer.razor
+   Purpose : Render DxCheckBox từ FieldState + ControlPropsJson.
+             - EditorType "CheckBox"    → CheckType.CheckBox (default)
+             - EditorType "ToggleSwitch" → CheckType.Switch
+             Binding bool, hỗ trợ AllowIndeterminate (bool?).
+             Props: allowIndeterminate, labelPosition, labelWrapMode.
+             checkType truyền từ FieldRenderer (derived từ FieldType). *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using DevExpress.Blazor
+
+<DxCheckBox @bind-Checked="@BoundValue"
+            AllowIndeterminateState="@_props.AllowIndeterminate"
+            AllowIndeterminateStateByClick="@_props.AllowIndeterminate"
+            CheckType="@_checkType"
+            CssClass="@CssClassValue"
+            Alignment="CheckBoxContentAlignment.Center"
+            LabelPosition="@_labelPosition"
+            LabelWrapMode="@_labelWrapMode"
+            Enabled="true"
+            ReadOnly="@(State?.IsReadOnly ?? false)"
+            ValidationEnabled="true"
+            InputId="@($"field_{State!.FieldCode}")">
+    @State!.Label@(State.IsRequired ? " *" : "")
+</DxCheckBox>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────────
+    [Parameter, EditorRequired]
+    public FieldState? State { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBlur { get; set; }
+
+    /// <summary>
+    /// CheckType.CheckBox (EditorType=CheckBox) hoặc CheckType.Switch (EditorType=ToggleSwitch).
+    /// Truyền từ FieldRenderer để tránh duplicate logic.
+    /// </summary>
+    [Parameter]
+    public bool IsSwitch { get; set; }
+
+    // ── Private state ────────────────────────────────────────────────────────────
+    private CheckBoxProps _props = new();
+    private bool _localValue;
+    private CheckType _checkType;
+    private LabelPosition _labelPosition;
+    private LabelWrapMode _labelWrapMode;
+
+    /// <summary>
+    /// Backing property cho @bind-Checked — tự phát event async khi giá trị thay đổi.
+    /// Blazor bind yêu cầu property thường (không async), nên dùng pattern này.
+    /// </summary>
+    private bool BoundValue
+    {
+        get => _localValue;
+        set => _ = HandleCheckedChangedAsync(value);
+    }
+
+    // ── Computed ─────────────────────────────────────────────────────────────────
+
+    private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+    protected override void OnParametersSet()
+    {
+        _props = CheckBoxProps.Parse(State?.ControlPropsJson);
+
+        // Giá trị bool từ State.Value
+        _localValue = State?.Value switch
+        {
+            bool b   => b,
+            string s => s.Equals("true", StringComparison.OrdinalIgnoreCase),
+            _        => false
+        };
+
+        // CheckType từ IsSwitch param (truyền từ FieldRenderer theo FieldType)
+        // Lưu ý: DX v25 dùng CheckType.Checkbox (chữ 'b' thường), không phải CheckBox
+        _checkType = IsSwitch ? CheckType.Switch : CheckType.Checkbox;
+
+        // LabelPosition
+        _labelPosition = _props.LabelPosition == "Left"
+            ? LabelPosition.Left
+            : LabelPosition.Right;
+
+        // LabelWrapMode
+        _labelWrapMode = _props.LabelWrapMode switch
+        {
+            "Ellipsis" => LabelWrapMode.Ellipsis,
+            "NoWrap"   => LabelWrapMode.NoWrap,
+            _          => LabelWrapMode.WordWrap,
+        };
+    }
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task HandleCheckedChangedAsync(bool value)
+    {
+        if (State is null) return;
+        _localValue  = value;
+        State.Value  = value;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
+        // CheckBox thường không cần validation on-change, nhưng vẫn phát OnBlur
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Props từ Control_Props_Json cho CheckBox/ToggleSwitch.
+    /// CheckBox JSON: {"allowIndeterminate":false,"labelPosition":"Right","labelWrapMode":"WordWrap"}
+    /// ToggleSwitch JSON: {"labelPosition":"Right"}
+    /// </summary>
+    private sealed class CheckBoxProps
+    {
+        [JsonPropertyName("allowIndeterminate")]
+        public bool AllowIndeterminate { get; set; }
+
+        /// <summary>"Right" (default) | "Left"</summary>
+        [JsonPropertyName("labelPosition")]
+        public string LabelPosition { get; set; } = "Right";
+
+        /// <summary>"WordWrap" (default) | "Ellipsis" | "NoWrap"</summary>
+        [JsonPropertyName("labelWrapMode")]
+        public string LabelWrapMode { get; set; } = "WordWrap";
+
+        public static CheckBoxProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<CheckBoxProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}

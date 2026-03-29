@@ -442,7 +442,8 @@ else if (_form is not null)
         "numberedit" or "number" or "numericbox"                        => "number",
         "dateedit"   or "date"                                          => "date",
         "datetimeedit" or "datetime"                                    => "datetime",
-        "checkbox"   or "toggle" or "bool"                              => "bool",
+        "checkbox"   or "bool"                                          => "bool",
+        "toggleswitch" or "toggle"                                      => "switch",
         // ComboBox: dynamic → "combobox", static → "select"
         "combobox"   => lookupSource == "dynamic" ? "combobox" : "select",
         "select"     or "lookupedit"

@@ -2,17 +2,24 @@
 
 ## 🔴 Đang làm (In Progress)
 
-### Wave — FormRunner DxTextBox + Design System (2026-03-29)
+### Wave — FormRunner Renderers: TextBox / Memo / CheckBox (2026-03-29 → 2026-03-30)
 
-> **Bối cảnh:** Nâng DevExpress.Blazor 24.2 → 25.2.3, fix CSS path thay đổi, build FormRunner thật đọc config từ API và render DxTextBox. Sync TextBox props giữa WPF config và Blazor renderer.
+> **Bối cảnh:** Nâng DevExpress.Blazor 24.2 → 25.2.3, fix CSS, xây đầy đủ TextBoxRenderer / MemoRenderer / CheckBoxRenderer theo spec. Design correction: mỗi EditorType = 1 renderer riêng (DxTextBox ≠ DxMemo). Sync props WPF ↔ Blazor.
 
 - [x] Fix DX v25 CSS: `DevExpress.Blazor.Themes` 25.2.3 + `blazing-berry.min.css` _(2026-03-29)_
 - [x] Fix nuget.config: solution-level config clear `fallbackPackageFolders` từ DX 24.2 installer _(2026-03-29)_
 - [x] `FieldState.ControlPropsJson` — thêm prop để renderer tự parse _(2026-03-29)_
-- [x] `FormRunner.razor` — pass `ControlPropsJson` khi build FieldState _(2026-03-29)_
-- [x] `TextBoxRenderer.razor` — DxTextBox + DxMemo (isMultiline), đọc props từ ControlPropsJson _(2026-03-29)_
-- [x] `FieldConfigViewModel.cs` WPF — thêm `isPassword` + `nullText` vào TextBox schema _(2026-03-29)_
+- [x] `FormRunner.razor` — pass `ControlPropsJson` khi build FieldState + NormalizeFieldType "toggleswitch"→"switch" _(2026-03-29)_
+- [x] `TextBoxRenderer.razor` — DxTextBox full spec: BindValueMode, InputDelay, ClearButton, AutoComplete, Password, MaxLength _(2026-03-30)_
+- [x] `MemoRenderer.razor` — DxMemo: EditorType "TextArea" riêng biệt, props: maxLength/rows/bindValueMode/inputDelay _(2026-03-30)_
+- [x] `CheckBoxRenderer.razor` — DxCheckBox + ToggleSwitch (IsSwitch param), CheckType.Checkbox/Switch, @bind-Checked backing prop _(2026-03-30)_
+- [x] `FieldRenderer.razor` — case "textarea"→MemoRenderer, "bool"→CheckBoxRenderer, "switch"→CheckBoxRenderer(IsSwitch=true) _(2026-03-30)_
+- [x] WPF `FieldConfigViewModel.cs` — TextBox schema (6 props: maxLength/isPassword/autoComplete/bindValueMode/inputDelay/clearButtonMode) _(2026-03-30)_
+- [x] WPF — TextArea schema mới (4 props: maxLength/rows/bindValueMode/inputDelay) _(2026-03-30)_
+- [x] WPF — CheckBox schema (3 props: allowIndeterminate/labelPosition/labelWrapMode) + ToggleSwitch (1 prop: labelPosition) _(2026-03-30)_
+- [x] `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md` — đặc tả đầy đủ mọi renderer: EditorType→Renderer mapping, ControlPropsJson schema, code patterns _(2026-03-30)_
 - [ ] **Tiếp theo:** NumericBox renderer (DxSpinEdit) — sync WPF ↔ Blazor
+- [ ] **Tiếp theo:** DatePicker renderer (DxDateEdit) — sync WPF ↔ Blazor
 
 ### Wave — ComboBox/LookupBox System (2026-03-28)
 

@@ -1,51 +1,72 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-29 (session 15)
+> Cập nhật: 2026-03-30 (session 16)
 
-## Đã làm (session 29/03 — FormRunner DxTextBox + DX v25 upgrade)
+## Đã làm (session 30/03 — FormRunner MemoRenderer + CheckBoxRenderer)
 
-### 1. Fix DevExpress v25 CSS (commit 9afb2c2)
+### 1. Tách TextBoxRenderer — DxTextBox only (design correction)
 
-- Thêm `DevExpress.Blazor.Themes` 25.2.3 package
-- Đổi CSS path: `_content/DevExpress.Blazor/dx-blazor.css` → `_content/DevExpress.Blazor.Themes/blazing-berry.min.css`
-- Fix badge: DX 24.2 → DX 25.2.3 trong ControlShowcase.razor
+- **Quyết định thiết kế:** DxTextBox và DxMemo là 2 control hoàn toàn khác nhau
+- User tự chọn EditorType phù hợp trong WPF ConfigStudio — không có auto-switch
+- `TextBoxRenderer.razor` chỉ render DxTextBox (loại bỏ `isMultiline` logic)
+- Full spec: `BindValueMode`, `InputDelay`, `ClearButton` (Auto/Never only — không có Always), `AutoComplete`, `Password`, `MaxLength`
+- Blur qua `@onfocusout` wrapper div (DxTextBox `LostFocus` không đáng tin)
 
-### 2. Fix NuGet fallback folder (commit f4cf429)
+### 2. MemoRenderer.razor (NEW)
 
-- DevExpress 24.2 installer để lại machine-level config tại `C:\Program Files (x86)\NuGet\Config\DevExpress 24.2.config`
-- `fallbackPackageFolders` trỏ đến `C:\Program Files\DevExpress 24.2\Components\Offline Packages` (đã bị xóa) → MSB4018 error
-- **Fix:** Tạo `src/backend/nuget.config` với `<fallbackPackageFolders><clear /></fallbackPackageFolders>`
+- EditorType "TextArea" → `MemoRenderer` → `DxMemo`
+- Props: `maxLength=4000`, `rows=4`, `bindValueMode="OnLostFocus"`, `inputDelay=300`
+- `NormalizeFieldType`: "textarea" / "memo" → "textarea"
+- `FieldRenderer.razor`: case "textarea" → `<MemoRenderer>`
 
-### 3. FormRunner: TextBoxRenderer (commit feb18e8)
+### 3. CheckBoxRenderer.razor (NEW)
 
-- `RuntimeModels.cs` — thêm `ControlPropsJson` vào `FieldState`
-- `FormRunner.razor` — pass `ControlPropsJson` từ `FieldMetadataDto` khi build FieldState
-- **`TextBoxRenderer.razor`** (NEW) — DxTextBox renderer đọc ControlPropsJson:
-  - `isMultiline=false` → `DxTextBox` (+ `Password`, `NullText`)
-  - `isMultiline=true`  → `DxMemo` (+ `Rows`, `NullText`)
-  - Blur qua `@onfocusout` wrapper
-- `FieldRenderer.razor` — case "text" + default → `TextBoxRenderer`
+- EditorType "CheckBox" → `CheckBoxRenderer(IsSwitch=false)` → `DxCheckBox CheckType.Checkbox`
+- EditorType "ToggleSwitch" → `CheckBoxRenderer(IsSwitch=true)` → `DxCheckBox CheckType.Switch`
+- **Bug fix quan trọng:** `CheckType.CheckBox` không tồn tại trong DX v25.2.3 → đúng là `CheckType.Checkbox` (chữ 'b' thường)
+- **Bug fix:** `CheckedChanged` không phải generic callback → dùng `@bind-Checked` với backing property pattern:
+  ```csharp
+  private bool BoundValue { get => _localValue; set => _ = HandleCheckedChangedAsync(value); }
+  ```
+- Props: `allowIndeterminate`, `labelPosition`, `labelWrapMode`
+- AllowIndeterminate: 3 trạng thái `true/false/null`, click order: Indeterminate→Checked→Unchecked
+- `NormalizeFieldType`: "toggleswitch" / "toggle" → "switch"
 
-### 4. Sync TextBox props WPF ↔ Blazor (commit f7bf880)
+### 4. WPF FieldConfigViewModel schema updates
 
-- WPF `FieldConfigViewModel.cs` — thêm 2 props còn thiếu vào TextBox schema:
-  - `isPassword` (Boolean, default false) — ẩn ký tự
-  - `nullText` (String, default "") — placeholder
-- Blazor `TextBoxRenderer.razor` — xử lý đầy đủ 5 props: maxLength, isMultiline, rows, isPassword, nullText
+- **TextBox** (6 props): maxLength, isPassword, autoComplete, bindValueMode, inputDelay, clearButtonMode
+- **TextArea** (4 props — EditorType mới): maxLength, rows, bindValueMode, inputDelay
+- **CheckBox** (3 props): allowIndeterminate, labelPosition, labelWrapMode
+- **ToggleSwitch** (1 prop): labelPosition
+- Removed: `isMultiline`, `rows` (từ TextBox), `nullText` (trùng với i18n Placeholder Key)
+
+### 5. Spec 11 — Blazor Control Renderer
+
+- Tạo `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md`
+- EditorType→Renderer mapping table đầy đủ (10 controls)
+- DxTextBox / DxMemo / DxCheckBox full spec với ControlPropsJson schema
+- Common renderer pattern: parameters, code template, Props class inner type
+- FieldRenderer routing table + NormalizeFieldType mapping
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅ (2 warnings DX license — bình thường)
+- Build: **0 errors** ✅ (3 warnings: 2 DX license + 1 đã fix CS8602)
 - Unit tests: **145 passed** ✅
-- FormRunner DxTextBox: **HOÀN THÀNH** ✅
-- DevExpress version: WPF 25.2.4 | Blazor 25.2.3 ✅ (same major.minor)
+- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select ✅
+- Renderers pending: **NumericBox** (DxSpinEdit) | **DatePicker** (DxDateEdit)
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **NumericBox renderer** — `DxSpinEdit` (Blazor) + kiểm tra WPF NumericBox props đủ chưa
-2. **DatePicker renderer** — `DxDateEdit` (Blazor) + kiểm tra WPF DatePicker props
-3. **CheckBox/ToggleSwitch renderer** — `DxCheckBox`
-4. **Test FormRunner end-to-end** — cần API + DB đang chạy, form có TextBox fields
-5. **T11** — `LookupComboBoxRenderer.razor` (low priority)
+1. **NumericBox renderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF NumericBox props schema
+2. **DatePicker renderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF DatePicker props schema
+3. **Test FormRunner end-to-end** — cần API + DB đang chạy, form có CheckBox/TextBox fields
+4. **T11** — `LookupComboBoxRenderer.razor` (low priority)
+
+## Quyết định quan trọng session này
+
+- **DxTextBox ≠ DxMemo:** 2 EditorType riêng biệt, user chọn trong ConfigStudio
+- **CheckType.Checkbox:** DX v25 enum value là `Checkbox` (không phải `CheckBox`)
+- **@bind-Checked pattern:** DxCheckBox dùng backing property để fire async event
+- **NullText:** KHÔNG lưu trong ControlPropsJson — dùng `State.Label + "..."` (fallback), đúng cách là i18n PlaceholderKey

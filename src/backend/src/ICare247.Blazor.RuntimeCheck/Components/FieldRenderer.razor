@@ -65,14 +65,19 @@
                 break;
 
             case "bool":
-                <div class="bool-wrapper">
-                    <input id="field_@State.FieldCode"
-                           type="checkbox"
-                           checked="@(State.ValueString == "true" || State.ValueString == "True")"
-                           disabled="@State.IsReadOnly"
-                           @onchange="HandleBoolChange" />
-                    <label for="field_@State.FieldCode" class="bool-label">@State.Label</label>
-                </div>
+                @* DxCheckBox — EditorType "CheckBox" *@
+                <CheckBoxRenderer State="State"
+                                  OnChange="OnChange"
+                                  OnBlur="OnBlur"
+                                  IsSwitch="false" />
+                break;
+
+            case "switch":
+                @* DxCheckBox CheckType.Switch — EditorType "ToggleSwitch" *@
+                <CheckBoxRenderer State="State"
+                                  OnChange="OnChange"
+                                  OnBlur="OnBlur"
+                                  IsSwitch="true" />
                 break;
 
             case "select":

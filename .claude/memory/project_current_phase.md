@@ -54,13 +54,14 @@
 | DevExpress.Blazor upgrade 24.2 → 25.2.3, CSS blazing-berry theme | ✅ Done (session 15) |
 | Design System tokens.css + app.css refactor | ✅ Done (session 14) |
 | ControlShowcase.razor — 10 sections test DX controls | ✅ Done (session 14) |
-| TextBoxRenderer.razor — DxTextBox + DxMemo, reads ControlPropsJson | ✅ Done (session 15) |
+| TextBoxRenderer.razor — DxTextBox full spec (BindValueMode/InputDelay/ClearButton/etc) | ✅ Done (session 16) |
+| MemoRenderer.razor — DxMemo, EditorType "TextArea" riêng biệt | ✅ Done (session 16) |
+| CheckBoxRenderer.razor — DxCheckBox + ToggleSwitch (IsSwitch), CheckType.Checkbox | ✅ Done (session 16) |
 | FieldType `select` — static Sys_Lookup, LookupApiService, batch load | ✅ Done (session 7) |
 | FieldType `fklookup` — LookupBoxRenderer (popup grid) | ✅ Done (session 8) |
 | FieldType `combobox` — ComboBoxRenderer (dynamic data) | ✅ Done (session 8) |
 | NumericBoxRenderer (DxSpinEdit) | 🔴 Pending |
 | DatePickerRenderer (DxDateEdit) | 🔴 Pending |
-| CheckBoxRenderer (DxCheckBox) | 🔴 Pending |
 | Test end-to-end FormRunner với API + DB thật | 🔴 Pending |
 
 ## Design System — Khởi động (session 5)

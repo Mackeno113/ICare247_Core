@@ -1721,6 +1721,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             new() { PropName = "minDate", PropType = "String", DefaultValue = "",            Label = "Ngày tối thiểu" },
             new() { PropName = "maxDate", PropType = "String", DefaultValue = "",            Label = "Ngày tối đa" },
         ],
+        // CheckBox = DxCheckBox với CheckType.CheckBox
+        "CheckBox" =>
+        [
+            new() { PropName = "allowIndeterminate", PropType = "Boolean", DefaultValue = false,   Label = "3 trạng thái (bool?)" },
+            new() { PropName = "labelPosition",      PropType = "Enum",    DefaultValue = "Right",  Label = "Vị trí label",
+                    AllowedValues = ["Right", "Left"] },
+            new() { PropName = "labelWrapMode",      PropType = "Enum",    DefaultValue = "WordWrap", Label = "Xuống dòng label",
+                    AllowedValues = ["WordWrap", "Ellipsis", "NoWrap"] },
+        ],
+        // ToggleSwitch = DxCheckBox với CheckType.Switch (không hỗ trợ indeterminate)
+        "ToggleSwitch" =>
+        [
+            new() { PropName = "labelPosition", PropType = "Enum", DefaultValue = "Right", Label = "Vị trí label",
+                    AllowedValues = ["Right", "Left"] },
+        ],
         // LookupBox dùng panel riêng (FkTableName, FkValueField...) — không qua generic ControlProps
         "LookupBox" => [],
         _ => []
