@@ -672,6 +672,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand AddDataSourceConditionCommand { get; private set; } = null!;
     public DelegateCommand<DataSourceCondition> RemoveDataSourceConditionCommand { get; private set; } = null!;
     public DelegateCommand ExplainConfigCommand { get; private set; } = null!;
+    public DelegateCommand CopyJsonCommand      { get; private set; } = null!;
 
     private string _lookupCode = "";
     /// <summary>Lookup code trong Sys_Lookup. VD: 'GENDER', 'MARITAL_STATUS'.</summary>
@@ -960,6 +961,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         AddDataSourceConditionCommand   = new DelegateCommand(ExecuteAddDataSourceCondition);
         RemoveDataSourceConditionCommand= new DelegateCommand<DataSourceCondition>(ExecuteRemoveDataSourceCondition);
         ExplainConfigCommand            = new DelegateCommand(ExecuteExplainConfig);
+        CopyJsonCommand                 = new DelegateCommand(() => System.Windows.Clipboard.SetText(ControlPropsJson));
     }
 
     // ── INavigationAware ─────────────────────────────────────

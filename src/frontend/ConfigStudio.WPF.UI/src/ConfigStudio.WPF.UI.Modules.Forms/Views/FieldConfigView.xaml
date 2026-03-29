@@ -831,7 +831,15 @@
                     </StackPanel>
                 </TabItem.Header>
 
-                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,12,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="300" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- ── CỘT TRÁI: Form cấu hình ───────────────────────── -->
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Padding="0,12,0,0">
                     <StackPanel>
 
                         <!-- Editor type badge -->
@@ -1480,21 +1488,49 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- JSON Preview -->
-                        <Border Style="{StaticResource SectionCardStyle}">
-                            <Expander Header="Raw JSON Preview" IsExpanded="False">
+                    </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- ── CỘT PHẢI: JSON Preview Sidebar ────────────────── -->
+                    <Border Grid.Column="2" Margin="0,12,0,0"
+                            Background="#F8FAFC" CornerRadius="8"
+                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                        <DockPanel>
+                            <!-- Header -->
+                            <Border DockPanel.Dock="Top"
+                                    Background="#EFF6FF" CornerRadius="8,8,0,0"
+                                    Padding="12,8"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left"
+                                               Text="Control_Props_Json"
+                                               FontFamily="Cascadia Code, Consolas" FontSize="11"
+                                               FontWeight="SemiBold"
+                                               Foreground="{StaticResource AccentDarkBrush}"
+                                               VerticalAlignment="Center" />
+                                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                            Command="{Binding CopyJsonCommand}"
+                                            Style="{StaticResource SmallSecondaryButtonStyle}"
+                                            ToolTip="Copy JSON vào clipboard">
+                                        <TextBlock Text="📋 Copy" FontSize="10" />
+                                    </Button>
+                                </DockPanel>
+                            </Border>
+                            <!-- JSON content -->
+                            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Auto">
                                 <TextBox Text="{Binding ControlPropsJson, Mode=OneWay}"
                                          IsReadOnly="True"
-                                         FontFamily="Cascadia Code, Consolas" FontSize="12"
-                                         AcceptsReturn="True" TextWrapping="Wrap"
-                                         MaxHeight="200" Margin="0,8,0,0"
-                                         Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}"
-                                         Padding="10,8" />
-                            </Expander>
-                        </Border>
+                                         FontFamily="Cascadia Code, Consolas" FontSize="11"
+                                         AcceptsReturn="True" TextWrapping="NoWrap"
+                                         Background="Transparent" BorderThickness="0"
+                                         Padding="12,10"
+                                         Foreground="#1E293B" />
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
 
-                    </StackPanel>
-                </ScrollViewer>
+                </Grid>
             </TabItem>
 
             <!-- ═══ TAB 3: Validation Rules ════════════════════════ -->
