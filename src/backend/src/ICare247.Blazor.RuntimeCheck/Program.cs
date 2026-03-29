@@ -39,8 +39,8 @@ builder.Services.AddScoped(sp =>
 });
 
 // ── DevExpress Blazor ──────────────────────────────────────────────────────
-builder.Services.AddDevExpressBlazor(opt =>
-    opt.BootstrapVersion = DevExpress.Blazor.BootstrapVersion.v5);
+// NOTE: BootstrapVersion obsolete từ v25 — AddDevExpressBlazor() không cần options
+builder.Services.AddDevExpressBlazor();
 
 // ── Application services ───────────────────────────────────────────────────
 builder.Services.AddScoped<FormApiService>();
