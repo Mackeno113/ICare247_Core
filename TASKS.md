@@ -2,6 +2,18 @@
 
 ## 🔴 Đang làm (In Progress)
 
+### Wave — FormRunner DxTextBox + Design System (2026-03-29)
+
+> **Bối cảnh:** Nâng DevExpress.Blazor 24.2 → 25.2.3, fix CSS path thay đổi, build FormRunner thật đọc config từ API và render DxTextBox. Sync TextBox props giữa WPF config và Blazor renderer.
+
+- [x] Fix DX v25 CSS: `DevExpress.Blazor.Themes` 25.2.3 + `blazing-berry.min.css` _(2026-03-29)_
+- [x] Fix nuget.config: solution-level config clear `fallbackPackageFolders` từ DX 24.2 installer _(2026-03-29)_
+- [x] `FieldState.ControlPropsJson` — thêm prop để renderer tự parse _(2026-03-29)_
+- [x] `FormRunner.razor` — pass `ControlPropsJson` khi build FieldState _(2026-03-29)_
+- [x] `TextBoxRenderer.razor` — DxTextBox + DxMemo (isMultiline), đọc props từ ControlPropsJson _(2026-03-29)_
+- [x] `FieldConfigViewModel.cs` WPF — thêm `isPassword` + `nullText` vào TextBox schema _(2026-03-29)_
+- [ ] **Tiếp theo:** NumericBox renderer (DxSpinEdit) — sync WPF ↔ Blazor
+
 ### Wave — ComboBox/LookupBox System (2026-03-28)
 
 > **Bối cảnh:** Hệ thống có 2 dạng dropdown Blazor hoàn toàn khác nhau: DxComboBox (static/dynamic list) và DxDropDownBox (FK lookup với popup grid + template phức tạp). Cần typed ControlProps models, WPF dedicated panels, và Blazor renderer thật thay placeholder.

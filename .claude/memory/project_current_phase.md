@@ -51,8 +51,17 @@
 | Fix 3 SQL bugs FormRepository sqlFields | ✅ Done (session 4) |
 | NormalizeFieldType (TextBox→text, DateEdit→date,...) | ✅ Done (session 4) |
 | DebugMode ?debug=1 — badge + console log | ✅ Done (session 4) |
-| Test end-to-end (labels, field values, debug mode) | 🔴 Pending |
-| FieldType `select` — LookupBox với GET Sys_Lookup | 🔴 Pending |
+| DevExpress.Blazor upgrade 24.2 → 25.2.3, CSS blazing-berry theme | ✅ Done (session 15) |
+| Design System tokens.css + app.css refactor | ✅ Done (session 14) |
+| ControlShowcase.razor — 10 sections test DX controls | ✅ Done (session 14) |
+| TextBoxRenderer.razor — DxTextBox + DxMemo, reads ControlPropsJson | ✅ Done (session 15) |
+| FieldType `select` — static Sys_Lookup, LookupApiService, batch load | ✅ Done (session 7) |
+| FieldType `fklookup` — LookupBoxRenderer (popup grid) | ✅ Done (session 8) |
+| FieldType `combobox` — ComboBoxRenderer (dynamic data) | ✅ Done (session 8) |
+| NumericBoxRenderer (DxSpinEdit) | 🔴 Pending |
+| DatePickerRenderer (DxDateEdit) | 🔴 Pending |
+| CheckBoxRenderer (DxCheckBox) | 🔴 Pending |
+| Test end-to-end FormRunner với API + DB thật | 🔴 Pending |
 
 ## Design System — Khởi động (session 5)
 
