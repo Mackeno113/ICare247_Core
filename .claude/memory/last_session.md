@@ -1,72 +1,62 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-30 (session 16)
+> Cập nhật: 2026-03-30 (session 17)
 
-## Đã làm (session 30/03 — FormRunner MemoRenderer + CheckBoxRenderer)
+## Đã làm (session 30/03 — Bug Fix: LookupBox Migration 014 + tableCode I18n)
 
-### 1. Tách TextBoxRenderer — DxTextBox only (design correction)
+### 1. Phân tích trạng thái LookupBox end-to-end
 
-- **Quyết định thiết kế:** DxTextBox và DxMemo là 2 control hoàn toàn khác nhau
-- User tự chọn EditorType phù hợp trong WPF ConfigStudio — không có auto-switch
-- `TextBoxRenderer.razor` chỉ render DxTextBox (loại bỏ `isMultiline` logic)
-- Full spec: `BindValueMode`, `InputDelay`, `ClearButton` (Auto/Never only — không có Always), `AutoComplete`, `Password`, `MaxLength`
-- Blur qua `@onfocusout` wrapper div (DxTextBox `LostFocus` không đáng tin)
+- Code trace toàn bộ luồng: WPF ConfigStudio → DB → Backend API → Blazor Renderer
+- Xác nhận **Task 4 (pass tableCode → I18nManager) đã done** từ trước:
+  - `ExecuteManageI18n()` truyền `tableCode` trong NavigationParameters ✅
+  - `I18nManagerViewModel.OnNavigatedTo()` đọc `_pendingTableFilter` ✅
+  - `ApplyPendingFilter()` set `TableFilter` sau khi load ✅
 
-### 2. MemoRenderer.razor (NEW)
+### 2. Bug Fix: Migration 014 columns bị bỏ quên trong 3 SQL queries (backend)
 
-- EditorType "TextArea" → `MemoRenderer` → `DxMemo`
-- Props: `maxLength=4000`, `rows=4`, `bindValueMode="OnLostFocus"`, `inputDelay=300`
-- `NormalizeFieldType`: "textarea" / "memo" → "textarea"
-- `FieldRenderer.razor`: case "textarea" → `<MemoRenderer>`
+**Root cause:** Domain entity `FieldLookupConfig` đã có 5 props mới (từ Migration 014), nhưng 3 SQL SELECT queries trong backend chưa lấy các cột đó từ DB.
 
-### 3. CheckBoxRenderer.razor (NEW)
+**Files fixed:**
+- `FormRepository.cs` `sqlLookupConfigs` — thêm `EditBox_Mode`, `Code_Field`, `DropDown_Width`, `DropDown_Height`, `Reload_Trigger_Field`
+- `FieldRepository.cs` batch load SQL — thêm 5 cột tương tự
+- `FieldRepository.cs` `LoadLookupConfigAsync` single SQL — thêm 5 cột tương tự
 
-- EditorType "CheckBox" → `CheckBoxRenderer(IsSwitch=false)` → `DxCheckBox CheckType.Checkbox`
-- EditorType "ToggleSwitch" → `CheckBoxRenderer(IsSwitch=true)` → `DxCheckBox CheckType.Switch`
-- **Bug fix quan trọng:** `CheckType.CheckBox` không tồn tại trong DX v25.2.3 → đúng là `CheckType.Checkbox` (chữ 'b' thường)
-- **Bug fix:** `CheckedChanged` không phải generic callback → dùng `@bind-Checked` với backing property pattern:
-  ```csharp
-  private bool BoundValue { get => _localValue; set => _ = HandleCheckedChangedAsync(value); }
-  ```
-- Props: `allowIndeterminate`, `labelPosition`, `labelWrapMode`
-- AllowIndeterminate: 3 trạng thái `true/false/null`, click order: Indeterminate→Checked→Unchecked
-- `NormalizeFieldType`: "toggleswitch" / "toggle" → "switch"
+**Impact:** Không có các cột này → LookupConfig từ API trả về toàn default (`EditBoxMode="TextOnly"`, `DropDownWidth=600`, `ReloadTriggerField=null`) dù DB đã lưu đúng.
 
-### 4. WPF FieldConfigViewModel schema updates
+### 3. Bug Fix: DynamicLookupRepository chỉ SELECT 2 cột
 
-- **TextBox** (6 props): maxLength, isPassword, autoComplete, bindValueMode, inputDelay, clearButtonMode
-- **TextArea** (4 props — EditorType mới): maxLength, rows, bindValueMode, inputDelay
-- **CheckBox** (3 props): allowIndeterminate, labelPosition, labelWrapMode
-- **ToggleSwitch** (1 prop): labelPosition
-- Removed: `isMultiline`, `rows` (từ TextBox), `nullText` (trùng với i18n Placeholder Key)
+**Root cause:** `BuildSafeSql` chỉ build `SELECT ValueColumn, DisplayColumn FROM SourceName`. Nếu popup grid cần thêm cột (PopupColumnsJson) hoặc CodeField khác → renderer nhận `""`.
 
-### 5. Spec 11 — Blazor Control Renderer
+**Files fixed:**
+- `DynamicLookupRepository.cs`:
+  - Thêm `Code_Field AS CodeField` vào config query
+  - Thêm `CodeField` vào `LookupCfgRow` inner class
+  - Thêm `PopupColEntry` inner record để parse `PopupColumnsJson`
+  - Thêm `BuildSelectColumns()` helper — deduplicate columns: ValueColumn + DisplayColumn + CodeField + popup columns
+  - `BuildSafeSql` dùng `BuildSelectColumns()` thay vì hardcode 2 cột
 
-- Tạo `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md`
-- EditorType→Renderer mapping table đầy đủ (10 controls)
-- DxTextBox / DxMemo / DxCheckBox full spec với ControlPropsJson schema
-- Common renderer pattern: parameters, code template, Props class inner type
-- FieldRenderer routing table + NormalizeFieldType mapping
+**Build:** 0 errors, 2 warnings DX license ✅
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅ (3 warnings: 2 DX license + 1 đã fix CS8602)
+- Build: **0 errors** ✅ (2 warnings DX license — bình thường)
 - Unit tests: **145 passed** ✅
+- LookupBox backend bugs: **fixed** ✅
+- Task 4 (tableCode → I18nManager): **đã done từ trước** ✅
 - Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select ✅
 - Renderers pending: **NumericBox** (DxSpinEdit) | **DatePicker** (DxDateEdit)
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **NumericBox renderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF NumericBox props schema
-2. **DatePicker renderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF DatePicker props schema
-3. **Test FormRunner end-to-end** — cần API + DB đang chạy, form có CheckBox/TextBox fields
-4. **T11** — `LookupComboBoxRenderer.razor` (low priority)
+1. **Chạy Migration 014 + 015 trên DB thật** — cần thiết để test LookupBox live
+2. **NumericBox renderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF NumericBox props schema
+3. **DatePicker renderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF DatePicker props schema
+4. **Test FormRunner end-to-end** — form có LookupBox field (PhongBanID), verify popup grid + CodeField
 
 ## Quyết định quan trọng session này
 
-- **DxTextBox ≠ DxMemo:** 2 EditorType riêng biệt, user chọn trong ConfigStudio
-- **CheckType.Checkbox:** DX v25 enum value là `Checkbox` (không phải `CheckBox`)
-- **@bind-Checked pattern:** DxCheckBox dùng backing property để fire async event
-- **NullText:** KHÔNG lưu trong ControlPropsJson — dùng `State.Label + "..."` (fallback), đúng cách là i18n PlaceholderKey
+- **Task 4 đã xong từ trước** — không cần code thêm, chỉ cần verify khi test live
+- **DynamicLookupRepository SELECT pattern:** luôn include ValueColumn + DisplayColumn + CodeField + all popup columns (deduplicate) — không SELECT *
+- **Migration 014 adoption:** phải đồng bộ tất cả SQL queries SELECT từ `Ui_Field_Lookup` khi thêm cột mới — FormRepository, FieldRepository, DynamicLookupRepository

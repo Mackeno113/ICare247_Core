@@ -169,17 +169,23 @@ public sealed class FormRepository : IFormRepository
             """;
 
         // ── sqlLookupConfigs: cấu hình FK lookup cho tất cả dynamic fields ──
+        // Bao gồm các cột Migration 014: EditBox_Mode, Code_Field, DropDown_Width/Height, Reload_Trigger_Field
         const string sqlLookupConfigs = """
-            SELECT fl.Lookup_Cfg_Id      AS LookupCfgId,
-                   fl.Field_Id           AS FieldId,
-                   fl.Query_Mode         AS QueryMode,
-                   fl.Source_Name        AS SourceName,
-                   fl.Value_Column       AS ValueColumn,
-                   fl.Display_Column     AS DisplayColumn,
-                   fl.Filter_Sql         AS FilterSql,
-                   fl.Order_By           AS OrderBy,
-                   fl.Search_Enabled     AS SearchEnabled,
-                   fl.Popup_Columns_Json AS PopupColumnsJson
+            SELECT fl.Lookup_Cfg_Id                        AS LookupCfgId,
+                   fl.Field_Id                             AS FieldId,
+                   fl.Query_Mode                           AS QueryMode,
+                   fl.Source_Name                         AS SourceName,
+                   fl.Value_Column                         AS ValueColumn,
+                   fl.Display_Column                       AS DisplayColumn,
+                   fl.Filter_Sql                           AS FilterSql,
+                   fl.Order_By                             AS OrderBy,
+                   fl.Search_Enabled                       AS SearchEnabled,
+                   fl.Popup_Columns_Json                   AS PopupColumnsJson,
+                   ISNULL(fl.EditBox_Mode, N'TextOnly')    AS EditBoxMode,
+                   fl.Code_Field                           AS CodeField,
+                   ISNULL(fl.DropDown_Width,  600)         AS DropDownWidth,
+                   ISNULL(fl.DropDown_Height, 400)         AS DropDownHeight,
+                   fl.Reload_Trigger_Field                 AS ReloadTriggerField
             FROM   dbo.Ui_Field_Lookup fl
             JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
             WHERE  fi.Form_Id = @FormId

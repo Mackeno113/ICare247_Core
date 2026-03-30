@@ -4,6 +4,7 @@
 // Purpose : Dapper implementation của IDynamicLookupRepository.
 //           Đọc cấu hình Ui_Field_Lookup rồi build + execute parameterized SQL an toàn.
 
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
@@ -44,14 +45,16 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     {
         // ── Bước 1: Đọc cấu hình Ui_Field_Lookup theo FieldId ─────────────────
         // Verify tenant qua Ui_Form → Sys_Table.Tenant_Id để ngăn cross-tenant query
+        // Bao gồm cột Migration 014: CodeField dùng để mở rộng SELECT khi EditBoxMode = CodeAndName
         const string cfgSql = """
-            SELECT fl.Query_Mode       AS QueryMode,
-                   fl.Source_Name      AS SourceName,
-                   fl.Value_Column     AS ValueColumn,
-                   fl.Display_Column   AS DisplayColumn,
-                   fl.Filter_Sql       AS FilterSql,
-                   fl.Order_By         AS OrderBy,
-                   fl.Popup_Columns_Json AS PopupColumnsJson
+            SELECT fl.Query_Mode                           AS QueryMode,
+                   fl.Source_Name                         AS SourceName,
+                   fl.Value_Column                         AS ValueColumn,
+                   fl.Display_Column                       AS DisplayColumn,
+                   fl.Filter_Sql                           AS FilterSql,
+                   fl.Order_By                             AS OrderBy,
+                   fl.Popup_Columns_Json                   AS PopupColumnsJson,
+                   fl.Code_Field                           AS CodeField
             FROM   dbo.Ui_Field_Lookup fl
             JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
             JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
@@ -149,8 +152,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             return null;
         }
 
-        // Build SELECT
-        var sql = $"SELECT {cfg.ValueColumn}, {cfg.DisplayColumn} FROM {cfg.SourceName}";
+        // Build SELECT — gồm ValueColumn, DisplayColumn, CodeField (nếu có), và các cột từ PopupColumnsJson
+        var selectCols = BuildSelectColumns(cfg);
+        var sql = $"SELECT {selectCols} FROM {cfg.SourceName}";
 
         // WHERE — FilterSql thường có @TenantId nên luôn thêm (nếu không có FilterSql, thêm WHERE 1=1)
         if (!string.IsNullOrWhiteSpace(cfg.FilterSql))
@@ -161,6 +165,51 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             sql += $" ORDER BY {cfg.OrderBy}";
 
         return sql;
+    }
+
+    /// <summary>
+    /// Xây dựng danh sách cột SELECT đầy đủ — bao gồm ValueColumn, DisplayColumn,
+    /// CodeField (nếu set), và tất cả cột trong PopupColumnsJson.
+    /// Loại bỏ trùng lặp, bỏ qua cột không hợp lệ.
+    /// </summary>
+    private static string BuildSelectColumns(LookupCfgRow cfg)
+    {
+        // Dùng LinkedHashSet để giữ thứ tự + không trùng
+        var cols = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddCol(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            var col = name.Trim();
+            if (SafeIdentifierRegex().IsMatch(col) && seen.Add(col))
+                cols.Add(col);
+        }
+
+        // Luôn có ValueColumn và DisplayColumn
+        AddCol(cfg.ValueColumn);
+        AddCol(cfg.DisplayColumn);
+
+        // CodeField — dùng khi EditBoxMode = CodeAndName
+        AddCol(cfg.CodeField);
+
+        // Popup columns từ JSON: [{"column":"MaPhongBan","title":"Mã",...}, ...]
+        if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
+        {
+            try
+            {
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var popupCols = JsonSerializer.Deserialize<List<PopupColEntry>>(cfg.PopupColumnsJson, opts);
+                foreach (var pc in popupCols ?? [])
+                    AddCol(pc.Column);
+            }
+            catch
+            {
+                // JSON không hợp lệ → bỏ qua, dùng ValueColumn + DisplayColumn là đủ
+            }
+        }
+
+        return string.Join(", ", cols);
     }
 
     private static bool IsValidColumnList(string? cols, out string? err)
@@ -191,16 +240,27 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         return DangerousKeywords.Any(kw => upper.Contains(kw));
     }
 
-    // ── Internal DTO (Dapper mapping) ────────────────────────────────────────
+    // ── Internal DTOs ─────────────────────────────────────────────────────────
 
+    /// <summary>Dapper mapping cho config row từ Ui_Field_Lookup.</summary>
     private sealed class LookupCfgRow
     {
-        public string QueryMode       { get; init; } = "table";
-        public string SourceName      { get; init; } = "";
-        public string ValueColumn     { get; init; } = "";
-        public string DisplayColumn   { get; init; } = "";
-        public string? FilterSql      { get; init; }
-        public string? OrderBy        { get; init; }
+        public string  QueryMode        { get; init; } = "table";
+        public string  SourceName       { get; init; } = "";
+        public string  ValueColumn      { get; init; } = "";
+        public string  DisplayColumn    { get; init; } = "";
+        public string? FilterSql        { get; init; }
+        public string? OrderBy          { get; init; }
         public string? PopupColumnsJson { get; init; }
+        /// <summary>Cột code — dùng khi EditBoxMode = CodeAndName (Migration 014).</summary>
+        public string? CodeField        { get; init; }
+    }
+
+    /// <summary>Một entry trong PopupColumnsJson array — chỉ cần Column để build SELECT.</summary>
+    private sealed class PopupColEntry
+    {
+        public string Column { get; init; } = "";
+        public string Title  { get; init; } = "";
+        public int    Width  { get; init; }
     }
 }

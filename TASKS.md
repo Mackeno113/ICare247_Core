@@ -52,6 +52,17 @@
 - [x] **T14** — `POST /api/v1/lookups/query-dynamic` trong `LookupController.cs` + `IDynamicLookupRepository` + `DynamicLookupRepository` Dapper + CQRS handler _(2026-03-28)_
 - [ ] **DB** — Chạy migration `014_ui_field_lookup_add_cols.sql` trên DB thật
 
+#### WAVE 5 — Bug Fix: Migration 014 columns bị bỏ quên (2026-03-30)
+
+> **Root cause:** 3 SQL queries trong backend không SELECT các cột mới từ Migration 014 (`EditBox_Mode`, `Code_Field`, `DropDown_Width`, `DropDown_Height`, `Reload_Trigger_Field`).
+> `DynamicLookupRepository.BuildSafeSql` chỉ SELECT 2 cột (ValueColumn + DisplayColumn) — popup grid không thấy cột bổ sung.
+
+- [x] **B1** — `FormRepository.cs` `sqlLookupConfigs`: thêm 5 cột Migration 014 _(2026-03-30)_
+- [x] **B2** — `FieldRepository.cs` batch load SQL: thêm 5 cột Migration 014 _(2026-03-30)_
+- [x] **B3** — `FieldRepository.cs` `LoadLookupConfigAsync` single SQL: thêm 5 cột Migration 014 _(2026-03-30)_
+- [x] **B4** — `DynamicLookupRepository.cs`: thêm `Code_Field` vào config SQL + `LookupCfgRow` _(2026-03-30)_
+- [x] **B5** — `DynamicLookupRepository.BuildSafeSql`: mở rộng SELECT gồm cột từ `PopupColumnsJson` + `CodeField` — dùng `BuildSelectColumns()` helper _(2026-03-30)_
+
 ---
 
 ## 🟠 Kế hoạch — Field Config Schema Fix (2026-03-26)
