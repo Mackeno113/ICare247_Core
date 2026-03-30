@@ -33,23 +33,26 @@ public sealed class EventRepository : IEventRepository
         using var conn = _db.CreateConnection();
 
         // ── Query 1: Load event definitions ─────────────────────────
+        // FieldCode được lưu trong Sys_Column.Column_Code (join qua Ui_Field.Column_Id)
+        // Ui_Field không có cột Field_Code trực tiếp
         const string eventSql = """
-            SELECT  ed.Event_Id     AS EventId,
-                    ed.Form_Id      AS FormId,
-                    ed.Field_Id     AS FieldId,
-                    uf.Field_Code   AS FieldCode,
-                    ed.Trigger_Code AS TriggerCode,
+            SELECT  ed.Event_Id       AS EventId,
+                    ed.Form_Id        AS FormId,
+                    ed.Field_Id       AS FieldId,
+                    sc.Column_Code    AS FieldCode,
+                    ed.Trigger_Code   AS TriggerCode,
                     ed.Condition_Expr AS ConditionExpr,
-                    ed.Order_No     AS OrderNo
+                    ed.Order_No       AS OrderNo
             FROM    dbo.Evt_Definition ed
-            LEFT JOIN dbo.Ui_Field uf ON uf.Field_Id = ed.Field_Id
-            INNER JOIN dbo.Ui_Form fm ON fm.Form_Id = ed.Form_Id
-            INNER JOIN dbo.Sys_Table st ON st.Table_Id = fm.Table_Id
+            LEFT JOIN dbo.Ui_Field  uf ON uf.Field_Id  = ed.Field_Id
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id
+            INNER JOIN dbo.Ui_Form  fm ON fm.Form_Id    = ed.Form_Id
+            INNER JOIN dbo.Sys_Table st ON st.Table_Id  = fm.Table_Id
             WHERE   ed.Form_Id = @FormId
               AND   ed.Trigger_Code = @TriggerCode
               AND   ed.Is_Active = 1
               AND   st.Tenant_Id = @TenantId
-              AND   (@FieldCode IS NULL OR uf.Field_Code = @FieldCode)
+              AND   (@FieldCode IS NULL OR sc.Column_Code = @FieldCode)
             ORDER BY ed.Order_No
             """;
 

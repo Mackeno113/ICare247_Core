@@ -63,6 +63,19 @@
 - [x] **B4** — `DynamicLookupRepository.cs`: thêm `Code_Field` vào config SQL + `LookupCfgRow` _(2026-03-30)_
 - [x] **B5** — `DynamicLookupRepository.BuildSafeSql`: mở rộng SELECT gồm cột từ `PopupColumnsJson` + `CodeField` — dùng `BuildSelectColumns()` helper _(2026-03-30)_
 
+#### WAVE 6 — Bug Fix: Runtime 500 errors khi load /form/sys_UI_Design (2026-03-30)
+
+> **Root cause 1:** `EventRepository.cs` dùng `uf.Field_Code` — cột không tồn tại trên `Ui_Field`. FieldCode thực ra là `Sys_Column.Column_Code` (join qua `Ui_Field.Column_Id`).
+> **Root cause 2:** `DynamicLookupRepository` throw `InvalidOperationException` khi `Source_Name` NULL/empty trong DB — nên return `[]` gracefully thay vì 500.
+
+- [x] **B6** — `EventRepository.cs`: thêm `LEFT JOIN Sys_Column sc ON sc.Column_Id = uf.Column_Id`, đổi `uf.Field_Code` → `sc.Column_Code` ở cả SELECT + WHERE _(2026-03-30)_
+- [x] **B7** — `DynamicLookupRepository.cs`: guard `string.IsNullOrWhiteSpace(cfg.SourceName)` → return `[]` (không throw 500) _(2026-03-30)_
+
+#### WAVE 7 — Documentation: Form Runtime Flow (2026-03-30)
+
+- [x] **D1** — `docs/form-runtime-flow.puml` — PlantUML sequence diagram đầy đủ 8 phase (LOAD → RENDER → INTERACT → SUBMIT) _(2026-03-30)_
+- [x] **D2** — `docs/form-runtime-flow.txt` — ASCII text version, readable trong bất kỳ editor nào _(2026-03-30)_
+
 ---
 
 ## 🟠 Kế hoạch — Field Config Schema Fix (2026-03-26)

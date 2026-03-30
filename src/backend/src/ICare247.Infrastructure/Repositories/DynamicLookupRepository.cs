@@ -69,8 +69,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             new CommandDefinition(cfgSql, new { FieldId = fieldId, TenantId = tenantId },
                 cancellationToken: ct));
 
-        // Không có cấu hình → trả rỗng
-        if (cfg is null)
+        // Không có cấu hình, hoặc cấu hình chưa hoàn chỉnh (SourceName rỗng) → trả rỗng
+        if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             return [];
 
         // ── Bước 2: Validate identifiers để ngăn SQL injection ────────────────

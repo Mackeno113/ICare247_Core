@@ -1,62 +1,66 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-30 (session 17)
+> Cập nhật: 2026-03-30 (session 18)
 
-## Đã làm (session 30/03 — Bug Fix: LookupBox Migration 014 + tableCode I18n)
+## Đã làm (session 30/03 — Bug Fix Runtime 500 + Documentation)
 
-### 1. Phân tích trạng thái LookupBox end-to-end
+### 1. Phân tích luồng xử lý `/form/sys_UI_Design`
 
-- Code trace toàn bộ luồng: WPF ConfigStudio → DB → Backend API → Blazor Renderer
-- Xác nhận **Task 4 (pass tableCode → I18nManager) đã done** từ trước:
-  - `ExecuteManageI18n()` truyền `tableCode` trong NavigationParameters ✅
-  - `I18nManagerViewModel.OnNavigatedTo()` đọc `_pendingTableFilter` ✅
-  - `ApplyPendingFilter()` set `TableFilter` sau khi load ✅
+- Trace toàn bộ data flow từ Browser → Blazor → API → Repository → SQL Server
+- Xác định mapping FieldType → Renderer (10 loại control, status từng loại)
+- Lên kế hoạch check từng control type theo thứ tự ưu tiên
 
-### 2. Bug Fix: Migration 014 columns bị bỏ quên trong 3 SQL queries (backend)
+### 2. Bug Fix B6 — `EventRepository.cs`: Invalid column name 'Field_Code'
 
-**Root cause:** Domain entity `FieldLookupConfig` đã có 5 props mới (từ Migration 014), nhưng 3 SQL SELECT queries trong backend chưa lấy các cột đó từ DB.
+**Root cause:** SQL query dùng `uf.Field_Code` nhưng bảng `Ui_Field` không có cột này.
+`FieldCode` thực ra = `Sys_Column.Column_Code` (phải join qua `Ui_Field.Column_Id`).
 
-**Files fixed:**
-- `FormRepository.cs` `sqlLookupConfigs` — thêm `EditBox_Mode`, `Code_Field`, `DropDown_Width`, `DropDown_Height`, `Reload_Trigger_Field`
-- `FieldRepository.cs` batch load SQL — thêm 5 cột tương tự
-- `FieldRepository.cs` `LoadLookupConfigAsync` single SQL — thêm 5 cột tương tự
+**Fix:**
+- Thêm `LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id`
+- Đổi `uf.Field_Code AS FieldCode` → `sc.Column_Code AS FieldCode`
+- Đổi WHERE `uf.Field_Code = @FieldCode` → `sc.Column_Code = @FieldCode`
 
-**Impact:** Không có các cột này → LookupConfig từ API trả về toàn default (`EditBoxMode="TextOnly"`, `DropDownWidth=600`, `ReloadTriggerField=null`) dù DB đã lưu đúng.
+**File:** `ICare247.Infrastructure/Repositories/EventRepository.cs`
 
-### 3. Bug Fix: DynamicLookupRepository chỉ SELECT 2 cột
+### 3. Bug Fix B7 — `DynamicLookupRepository.cs`: SourceName rỗng → 500
 
-**Root cause:** `BuildSafeSql` chỉ build `SELECT ValueColumn, DisplayColumn FROM SourceName`. Nếu popup grid cần thêm cột (PopupColumnsJson) hoặc CodeField khác → renderer nhận `""`.
+**Root cause:** FieldId=9 (PhongBanID) có row trong `Ui_Field_Lookup` nhưng `Source_Name` NULL/empty.
+Code cũ throw `InvalidOperationException` → 500. Nên return `[]` gracefully.
 
-**Files fixed:**
-- `DynamicLookupRepository.cs`:
-  - Thêm `Code_Field AS CodeField` vào config query
-  - Thêm `CodeField` vào `LookupCfgRow` inner class
-  - Thêm `PopupColEntry` inner record để parse `PopupColumnsJson`
-  - Thêm `BuildSelectColumns()` helper — deduplicate columns: ValueColumn + DisplayColumn + CodeField + popup columns
-  - `BuildSafeSql` dùng `BuildSelectColumns()` thay vì hardcode 2 cột
+**Fix:** Thêm guard `string.IsNullOrWhiteSpace(cfg.SourceName)` → return `[]`
 
-**Build:** 0 errors, 2 warnings DX license ✅
+**File:** `ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs`
+
+### 4. Documentation: Form Runtime Flow
+
+- `docs/form-runtime-flow.puml` — PlantUML sequence diagram 8 phase đầy đủ
+- `docs/form-runtime-flow.txt` — ASCII text version, mọi editor đọc được
+
+**Build:** 0 errors ✅
 
 ---
 
 ## Trạng thái hiện tại
 
 - Build: **0 errors** ✅ (2 warnings DX license — bình thường)
-- Unit tests: **145 passed** ✅
-- LookupBox backend bugs: **fixed** ✅
-- Task 4 (tableCode → I18nManager): **đã done từ trước** ✅
-- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select ✅
+- Unit tests: 145 passed ✅
+- EventRepository Bug: **fixed** ✅
+- DynamicLookup SourceName guard: **fixed** ✅
+- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select (HTML) ✅
 - Renderers pending: **NumericBox** (DxSpinEdit) | **DatePicker** (DxDateEdit)
+- Select/ComboBox: dùng native HTML `<select>` — cần nâng lên DxComboBox
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **Chạy Migration 014 + 015 trên DB thật** — cần thiết để test LookupBox live
-2. **NumericBox renderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF NumericBox props schema
-3. **DatePicker renderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF DatePicker props schema
-4. **Test FormRunner end-to-end** — form có LookupBox field (PhongBanID), verify popup grid + CodeField
+1. **Cấu hình DB cho PhongBanID** — Vào ConfigStudio, set Source_Name cho FieldId=9 Ui_Field_Lookup
+2. **NumericBoxRenderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF schema
+3. **DatePickerRenderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF schema
+4. **Nâng Select/ComboBox** → DxComboBox (thống nhất Design System)
+5. **CheckBox layout fix** — checkbox nằm ngang với label, không xuống dòng
+6. **Test end-to-end** form sys_UI_Design sau khi fix DB data
 
 ## Quyết định quan trọng session này
 
-- **Task 4 đã xong từ trước** — không cần code thêm, chỉ cần verify khi test live
-- **DynamicLookupRepository SELECT pattern:** luôn include ValueColumn + DisplayColumn + CodeField + all popup columns (deduplicate) — không SELECT *
-- **Migration 014 adoption:** phải đồng bộ tất cả SQL queries SELECT từ `Ui_Field_Lookup` khi thêm cột mới — FormRepository, FieldRepository, DynamicLookupRepository
+- **EventRepository pattern:** FieldCode luôn lấy qua `Sys_Column.Column_Code` — KHÔNG có cột `Field_Code` trực tiếp trên `Ui_Field`. Tất cả SQL query liên quan phải join `Sys_Column`.
+- **DynamicLookup guard:** Nếu LookupBox field có cấu hình nhưng `Source_Name` rỗng → return `[]` silently. Không throw 500. Renderer sẽ hiện popup rỗng.
+- **Documentation location:** `docs/form-runtime-flow.puml` + `.txt` — tài liệu flow chính thức.

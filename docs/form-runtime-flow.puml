@@ -1,0 +1,270 @@
+@startuml form-runtime-flow
+' ============================================================
+' ICare247 — Luồng xử lý Form Runtime (end-to-end)
+' /form/{FormCode}  →  render  →  interact  →  submit
+' ============================================================
+
+skinparam backgroundColor #FAFAFA
+skinparam sequence {
+    ArrowColor       #4A4A8A
+    LifeLineBorderColor #4A4A8A
+    ParticipantBorderColor #4A4A8A
+    ParticipantBackgroundColor #EEF2FF
+    ActorBorderColor #4A4A8A
+    BoxBorderColor   #CCCCCC
+    BoxBackgroundColor #F5F5FF
+    NoteBackgroundColor #FFFDE7
+    NoteBorderColor  #F9A825
+}
+
+actor       "User (Browser)"          as USR
+box "Blazor WASM (Client)" #EEF7FF
+    participant "FormRunner\n.razor"          as FR
+    participant "FieldRenderer\n.razor"       as FRend
+    participant "TextBoxRenderer\nMemoRenderer\nCheckBoxRenderer\nComboBoxRenderer\nLookupBoxRenderer" as Renderers
+    participant "FormApiService"              as FAS
+    participant "LookupApiService\n(in-memory cache)" as LAS
+    participant "LookupQueryService"          as LQS
+    participant "RuntimeApiService"           as RAS
+end box
+
+box "ASP.NET Core API" #FFF8EE
+    participant "FormController\nGET /config/forms/{code}" as FC
+    participant "LookupController\nGET /lookups/{code}\nPOST /lookups/query-dynamic" as LC
+    participant "RuntimeController\nPOST /forms/{code}/handle-event\nPOST /forms/{code}/validate[-field]" as RC
+end box
+
+box "Application Layer" #F0FFF0
+    participant "GetFormByCodeQuery\nHandler"   as GFBCQH
+    participant "QueryDynamicLookup\nHandler"   as QDLH
+    participant "EventEngine"                   as EE
+    participant "ValidationEngine"              as VE
+    participant "MetadataEngine\n(cache L1)"    as ME
+end box
+
+box "Infrastructure Layer" #FFF0F0
+    participant "FormRepository\n(Dapper)"     as FREPO
+    participant "FieldRepository\n(Dapper)"    as FIELDREPO
+    participant "DynamicLookup\nRepository"    as DLREPO
+    participant "EventRepository\n(Dapper)"    as EREPO
+    participant "ValidationRule\nRepository"   as VRREPO
+end box
+
+database    "MS SQL Server\n(Config DB)"       as DB
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 1 — LOAD FORM METADATA
+' ═══════════════════════════════════════════════════════════
+== PHASE 1 — Load Form Metadata ==
+
+USR -> FR : navigate /form/sys_UI_Design
+activate FR
+
+FR -> FAS : GetFormAsync("sys_UI_Design", lang="vi", platform="web")
+activate FAS
+    FAS -> FC : GET /api/v1/config/forms/sys_UI_Design\n?lang=vi&platform=web\nHeader: X-Tenant-Id: 1
+    activate FC
+        FC -> GFBCQH : GetFormByCodeQuery(code, tenantId, lang)
+        activate GFBCQH
+            GFBCQH -> FREPO : GetByCodeAsync(formCode, tenantId, lang)
+            activate FREPO
+                FREPO -> DB : SELECT Ui_Form\n+ Ui_Tab + Ui_Section\n+ Ui_Field + Sys_Column\n+ Ui_Field_Lookup\n+ Sys_Resource (i18n)
+                DB --> FREPO : rows
+                note right of FREPO
+                  FieldCode = Sys_Column.Column_Code
+                  (join qua Ui_Field.Column_Id)
+                end note
+            deactivate FREPO
+            GFBCQH --> FC : FormMetadata aggregate
+        deactivate GFBCQH
+        FC --> FAS : 200 FormMetadataDto\n{sections[]{fields[]{fieldType, lookupSource,\nlookupCode, lookupConfig, controlPropsJson}}}
+    deactivate FC
+deactivate FAS
+
+FR -> FR : Build FieldState[] từ fields\nNormalizeFieldType(dbType, lookupSource)\n  "TextBox"     → "text"\n  "ComboBox"+static → "select"\n  "ComboBox"+dynamic → "combobox"\n  "LookupBox"   → "fklookup"\n  "CheckBox"    → "bool"\n  "TextArea"    → "textarea"
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 2 — BATCH LOAD STATIC OPTIONS
+' ═══════════════════════════════════════════════════════════
+== PHASE 2 — Batch Load Static Lookup Options ==
+
+FR -> LAS : GetOptionsBatchAsync(["GENDER", ...])\n(distinct LookupCodes có LookupSource="static")
+activate LAS
+    note over LAS : Check in-memory cache\nNếu miss → gọi API
+    LAS -> LC : GET /api/v1/lookups/GENDER?lang=vi\n(Task.WhenAll — song song)
+    activate LC
+        LC -> DB : SELECT Sys_Lookup_Item\nWHERE Lookup_Code=@Code\nAND Tenant_Id=@TenantId
+        DB --> LC : items
+        LC --> LAS : 200 List<LookupOptionDto>\n[{itemCode, label, sortOrder}]
+    deactivate LC
+    LAS -> LAS : cache[code] = options
+deactivate LAS
+
+FR -> FR : Gán State.Options cho từng field\n(LookupSource="static")
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 3 — FORM_LOAD EVENT
+' ═══════════════════════════════════════════════════════════
+== PHASE 3 — FORM_LOAD Event (Rules Engine) ==
+
+FR -> RAS : HandleEventAsync("sys_UI_Design", "FORM_LOAD", null, contextSnapshot)
+activate RAS
+    RAS -> RC : POST /api/v1/forms/sys_UI_Design/handle-event\n{eventType:"FORM_LOAD", contextSnapshot:{...}}
+    activate RC
+        RC -> ME : GetOrLoadAsync(formCode, tenantId, lang)
+        activate ME
+            note over ME : Cache L1 (MemoryCache)\nNếu miss → load từ DB
+            ME --> RC : FormMetadata (cached)
+        deactivate ME
+        RC -> EE : HandleEventAsync(formEvent)
+        activate EE
+            EE -> EREPO : GetByTriggerAsync(formId, "FORM_LOAD", null, tenantId)
+            activate EREPO
+                EREPO -> DB : SELECT Evt_Definition ed\nLEFT JOIN Ui_Field uf\nLEFT JOIN Sys_Column sc\nINNER JOIN Ui_Form, Sys_Table\nWHERE Trigger_Code=@TriggerCode
+                DB --> EREPO : event definitions + actions
+            deactivate EREPO
+            EE -> EE : Evaluate ConditionExpr (AST)\nExecute Evt_Action[]
+            EE --> RC : UiDeltaDto[]\n[{fieldCode, action, data}]
+        deactivate EE
+        RC --> RAS : 200 UiDeltaDto[]
+    deactivate RC
+deactivate RAS
+
+FR -> FR : ApplyDeltas(deltas)\n  SET_VALUE → State.Value\n  SET_VISIBLE → State.IsVisible\n  SET_REQUIRED → State.IsRequired\n  RELOAD_OPTIONS → reload lookup
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 4 — RENDER
+' ═══════════════════════════════════════════════════════════
+== PHASE 4 — Render UI ==
+
+FR -> FRend : Render FieldRenderer(State, OnChange, OnBlur, Context)
+activate FRend
+    FRend -> FRend : switch(State.FieldType.ToLower())
+    FRend -> Renderers : Route đến renderer cụ thể:\n  "text"     → TextBoxRenderer (DxTextBox)\n  "textarea" → MemoRenderer (DxMemo)\n  "bool"     → CheckBoxRenderer (DxCheckBox)\n  "switch"   → CheckBoxRenderer (Switch)\n  "select"   → <select> HTML + State.Options\n  "combobox" → ComboBoxRenderer\n  "fklookup" → LookupBoxRenderer
+    activate Renderers
+        Renderers --> FRend : rendered HTML
+    deactivate Renderers
+deactivate FRend
+
+FR --> USR : Form hiển thị đầy đủ
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 5 — DYNAMIC COMBOBOX / LOOKUPBOX DATA LOAD
+' ═══════════════════════════════════════════════════════════
+== PHASE 5 — Dynamic Lookup Data Load (combobox / fklookup) ==
+
+note over Renderers : ComboBoxRenderer / LookupBoxRenderer\ngọi khi OnParametersSet\nhoặc trigger field thay đổi
+
+Renderers -> LQS : QueryAsync(fieldId, contextValues)
+activate LQS
+    LQS -> LC : POST /api/v1/lookups/query-dynamic\n{fieldId:9, contextValues:{...}}
+    activate LC
+        LC -> QDLH : QueryDynamicLookupQuery(fieldId, tenantId, contextValues)
+        activate QDLH
+            QDLH -> DLREPO : QueryAsync(fieldId, tenantId, contextValues)
+            activate DLREPO
+                DLREPO -> DB : SELECT Source_Name, Value_Column,\nDisplay_Column, Filter_Sql,\nCode_Field, Popup_Columns_Json\nFROM Ui_Field_Lookup\nWHERE Field_Id=@FieldId
+                DB --> DLREPO : config row (LookupCfgRow)
+                note right of DLREPO
+                  Nếu SourceName NULL/empty → return []
+                  Validate identifier (regex)
+                  Build safe SQL:
+                  SELECT ValueCol, DisplayCol, CodeField
+                  FROM SourceName
+                  WHERE FilterSql (params từ contextValues)
+                end note
+                DLREPO -> DB : Execute dynamic SQL\n(Dapper params — không concat)
+                DB --> DLREPO : rows
+            deactivate DLREPO
+            QDLH --> LC : List<IDictionary<string,object>>
+        deactivate QDLH
+        LC --> LQS : 200 rows JSON
+    deactivate LC
+    LQS --> Renderers : rows parsed
+deactivate LQS
+
+Renderers -> Renderers : Render <select> options\nhoặc Popup Grid rows
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 6 — USER INTERACTION (FIELD_CHANGED)
+' ═══════════════════════════════════════════════════════════
+== PHASE 6 — User Interaction: Field Changed ==
+
+USR -> Renderers : Nhập / chọn giá trị
+Renderers -> FR : OnChange(fieldCode, newValue)
+activate FR
+    FR -> FR : State.Value = newValue\nState.Errors.Clear()\nContext[fieldCode] = newValue
+
+    FR -> RAS : FireEventAsync("FIELD_CHANGED", fieldCode)
+    activate RAS
+        RAS -> RC : POST /api/v1/forms/.../handle-event\n{eventType:"FIELD_CHANGED", sourceField:"PhongBanID"}
+        activate RC
+            RC -> EE : HandleEventAsync
+            activate EE
+                EE -> EREPO : GetByTriggerAsync(formId, "FIELD_CHANGED", "PhongBanID", tenantId)
+                DB --> EREPO : matching events
+                EE --> RC : UiDeltaDto[]
+            deactivate EE
+        RC --> RAS : 200 deltas
+        deactivate RC
+        RAS --> FR : deltas
+    deactivate RAS
+
+    FR -> FR : ApplyDeltas() → re-render affected fields
+deactivate FR
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 7 — FIELD BLUR / REAL-TIME VALIDATION
+' ═══════════════════════════════════════════════════════════
+== PHASE 7 — Field Blur: Real-time Validation ==
+
+USR -> Renderers : Rời khỏi field (blur)
+Renderers -> FR : OnBlur(fieldCode)
+activate FR
+    FR -> RAS : ValidateFieldAsync(formCode, fieldCode, value, context)
+    activate RAS
+        RAS -> RC : POST /api/v1/forms/.../validate-field\n{fieldCode, value, contextSnapshot}
+        activate RC
+            RC -> VE : ValidateFieldAsync(field, value, context)
+            activate VE
+                VE -> VRREPO : GetByFieldAsync(fieldId, tenantId)
+                VRREPO -> DB : SELECT Ui_ValidationRule\nWHERE Field_Id=@FieldId
+                DB --> VRREPO : rules
+                VE -> VE : Evaluate rules (AST engine)
+                VE --> RC : List<ValidationError>
+            deactivate VE
+            RC --> RAS : 200 FieldValidationResponseDto\n{errors:[{code, message}]}
+        deactivate RC
+        RAS --> FR : errors
+    deactivate RAS
+    FR -> FR : State.Errors = errors\nStateHasChanged() → hiện badge lỗi
+deactivate FR
+
+' ═══════════════════════════════════════════════════════════
+' PHASE 8 — SUBMIT & VALIDATE
+' ═══════════════════════════════════════════════════════════
+== PHASE 8 — Submit & Validate ==
+
+USR -> FR : Click "Submit & Validate"
+activate FR
+    FR -> RAS : FireEventAsync("FORM_SUBMIT", null)
+    FR -> RAS : ValidateFormAsync(formCode, contextSnapshot)
+    activate RAS
+        RAS -> RC : POST /api/v1/forms/.../validate\n{contextSnapshot:{all field values}}
+        activate RC
+            RC -> VE : ValidateFormAsync(allFields, context)
+            activate VE
+                VE -> VRREPO : GetByFormAsync(formId, tenantId)
+                VE -> VE : Evaluate ALL rules\n(topological order)
+                VE --> RC : Dictionary<fieldCode, List<ValidationError>>
+            deactivate VE
+            RC --> RAS : 200 FormValidationResponseDto
+        deactivate RC
+        RAS --> FR : validation result
+    deactivate RAS
+
+    FR -> FR : Update State.Errors cho mỗi field\nNếu có lỗi: JS focus field đầu tiên
+    FR --> USR : Hiện tất cả lỗi / thông báo thành công
+deactivate FR
+
+@enduml

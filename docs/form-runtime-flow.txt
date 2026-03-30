@@ -1,0 +1,410 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║          ICare247 — Luồng xử lý Form Runtime (end-to-end)                      ║
+║          Route: /form/{FormCode}  →  render  →  interact  →  submit            ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+─────────────────────────────────────────────────────────────────────────────────
+STACK OVERVIEW
+─────────────────────────────────────────────────────────────────────────────────
+
+  [Browser / Blazor WASM]          [ASP.NET Core API]        [Infrastructure]     [DB]
+  ───────────────────────          ──────────────────         ───────────────      ─────
+  FormRunner.razor
+  FieldRenderer.razor         →    FormController             FormRepository    →  SQL Server
+  TextBoxRenderer.razor            LookupController           FieldRepository      (Config DB)
+  MemoRenderer.razor          →    RuntimeController          DynamicLookupRepo
+  CheckBoxRenderer.razor                                       EventRepository
+  ComboBoxRenderer.razor      [Application Layer]             ValidationRuleRepo
+  LookupBoxRenderer.razor          GetFormByCodeQuery
+                                   QueryDynamicLookup
+  FormApiService                   EventEngine
+  LookupApiService (cache)         ValidationEngine
+  LookupQueryService               MetadataEngine (L1 cache)
+  RuntimeApiService
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 1 — LOAD FORM METADATA
+─────────────────────────────────────────────────────────────────────────────────
+
+  User navigate /form/sys_UI_Design
+       │
+       ▼
+  FormRunner.OnInitializedAsync()
+       │
+       ├─► FormApiService.GetFormAsync("sys_UI_Design", lang="vi", platform="web")
+       │         │
+       │         └─► GET /api/v1/config/forms/sys_UI_Design?lang=vi&platform=web
+       │                   Header: X-Tenant-Id: 1
+       │                   │
+       │                   ▼
+       │             FormController.GetByCode()
+       │                   │
+       │                   ▼
+       │             GetFormByCodeQuery → MediatR
+       │                   │
+       │                   ▼
+       │             FormRepository.GetByCodeAsync()
+       │                   │
+       │                   ├─ SELECT Ui_Form (form header)
+       │                   ├─ SELECT Ui_Tab, Ui_Section (layout)
+       │                   ├─ SELECT Ui_Field
+       │                   │    JOIN Sys_Column sc ON sc.Column_Id = fi.Column_Id
+       │                   │    → sc.Column_Code AS FieldCode  ← FieldCode không có trực tiếp trên Ui_Field
+       │                   ├─ SELECT Ui_Field_Lookup (nếu LookupSource = "dynamic")
+       │                   │    gồm: QueryMode, SourceName, ValueColumn, DisplayColumn,
+       │                   │         FilterSql, OrderBy, EditBoxMode, CodeField,
+       │                   │         DropDownWidth, DropDownHeight, ReloadTriggerField,
+       │                   │         PopupColumnsJson  (tất cả cột Migration 014)
+       │                   └─ SELECT Sys_Resource (i18n labels, fallback = Label_Key)
+       │
+       │             Response: FormMetadataDto
+       │               { formCode, formName, platform, sections: [
+       │                   { sectionName, fields: [
+       │                       { fieldId, fieldCode, fieldType, label, isVisible,
+       │                         isReadOnly, isRequired, colSpan, lookupSource,
+       │                         lookupCode, lookupConfig, controlPropsJson }
+       │                   ]}
+       │               ]}
+       │
+       └─► Build FieldState[] từ FormMetadataDto.Fields
+                 │
+                 └─ NormalizeFieldType(dbType, lookupSource):
+                       "TextBox"              → "text"
+                       "TextArea" / "Memo"    → "textarea"
+                       "CheckBox"             → "bool"
+                       "ToggleSwitch"         → "switch"
+                       "ComboBox" + static    → "select"
+                       "ComboBox" + dynamic   → "combobox"
+                       "LookupBox"            → "fklookup"
+                       "NumberEdit"           → "number"
+                       "DateEdit"             → "date"
+                       "DateTimeEdit"         → "datetime"
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 2 — BATCH LOAD STATIC LOOKUP OPTIONS
+─────────────────────────────────────────────────────────────────────────────────
+
+  FormRunner tìm tất cả fields có LookupSource = "static"
+       │
+       └─► LookupApiService.GetOptionsBatchAsync(["GENDER", "DEPT_STATUS", ...])
+                 │
+                 ├─ Check in-memory cache (_cache Dictionary)
+                 │     HIT  → dùng ngay (không gọi API)
+                 │     MISS → gọi API
+                 │
+                 └─ Task.WhenAll (song song cho mỗi code):
+                       GET /api/v1/lookups/GENDER?lang=vi
+                             │
+                             ▼
+                       LookupController.GetByCode()
+                             │
+                             ▼
+                       SELECT Sys_Lookup_Item
+                         WHERE Lookup_Code = @Code
+                           AND Tenant_Id   = @TenantId
+                         ORDER BY Sort_Order
+                             │
+                             ▼
+                       [{ itemCode:"M", label:"Nam" },
+                        { itemCode:"F", label:"Nữ" }]
+                             │
+                 └─ cache[code] = options
+                 └─ State.Options = options  (cho field tương ứng)
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 3 — FORM_LOAD EVENT (Rules Engine)
+─────────────────────────────────────────────────────────────────────────────────
+
+  FormRunner.FireEventAsync("FORM_LOAD", null)
+       │
+       └─► RuntimeApiService.HandleEventAsync("sys_UI_Design", "FORM_LOAD", null, context)
+                 │
+                 └─► POST /api/v1/forms/sys_UI_Design/handle-event
+                       { eventType: "FORM_LOAD", contextSnapshot: { ...all field values } }
+                             │
+                             ▼
+                       RuntimeController.HandleEvent()
+                             │
+                             ├─ MetadataEngine.GetOrLoadAsync(formCode, tenantId, lang)
+                             │    └─ L1 cache (MemoryCache) — miss lần đầu → load từ DB
+                             │
+                             └─ EventEngine.HandleEventAsync(formEvent)
+                                   │
+                                   ├─ EventRepository.GetByTriggerAsync(
+                                   │     formId, "FORM_LOAD", null, tenantId)
+                                   │
+                                   │     SELECT ed.Event_Id, sc.Column_Code AS FieldCode,
+                                   │            ed.Trigger_Code, ed.Condition_Expr, ed.Order_No
+                                   │     FROM   Evt_Definition ed
+                                   │     LEFT JOIN Ui_Field  uf ON uf.Field_Id  = ed.Field_Id
+                                   │     LEFT JOIN Sys_Column sc ON sc.Column_Id = uf.Column_Id
+                                   │     WHERE  ed.Form_Id = @FormId
+                                   │       AND  ed.Trigger_Code = @TriggerCode
+                                   │
+                                   ├─ Evaluate ConditionExpr (AST Engine)
+                                   ├─ Execute Evt_Action[] theo Order_No
+                                   │
+                                   └─ Trả UiDeltaDto[]:
+                                       [{ fieldCode, action: "SET_VALUE|SET_VISIBLE|
+                                          SET_REQUIRED|SET_READONLY|RELOAD_OPTIONS",
+                                          data: {...} }]
+
+  FormRunner.ApplyDeltas(deltas):
+       SET_VALUE    → State.Value = data.value
+       SET_VISIBLE  → State.IsVisible = data.visible
+       SET_REQUIRED → State.IsRequired = data.required
+       SET_READONLY → State.IsReadOnly = data.readOnly
+       RELOAD_OPTIONS → gọi lại LookupApiService hoặc LookupQueryService
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 4 — RENDER UI (Blazor Component Tree)
+─────────────────────────────────────────────────────────────────────────────────
+
+  FormRunner.razor
+   └── foreach Section
+        └── foreach Field  (if IsVisible)
+             └── FieldRenderer(State, OnChange, OnBlur, Context, DebugMode)
+                  │
+                  └── switch(State.FieldType.ToLower())
+                       │
+                       ├── "text"      → TextBoxRenderer
+                       │                  └─ DxTextBox (DevExpress)
+                       │                      Props: maxLength, isPassword, autoComplete,
+                       │                             bindValueMode, inputDelay, clearButtonMode
+                       │                      Event: TextChanged → OnChange
+                       │                             FocusOut   → OnBlur
+                       │
+                       ├── "textarea"  → MemoRenderer
+                       │                  └─ DxMemo (DevExpress)
+                       │                      Props: maxLength, rows, bindValueMode, inputDelay
+                       │
+                       ├── "bool"      → CheckBoxRenderer (IsSwitch=false)
+                       │                  └─ DxCheckBox (DevExpress)
+                       │                      Props: allowIndeterminate, labelPosition, labelWrapMode
+                       │
+                       ├── "switch"    → CheckBoxRenderer (IsSwitch=true)
+                       │                  └─ DxCheckBox CheckType.Switch (DevExpress)
+                       │
+                       ├── "select"    → native <select> HTML
+                       │                  └─ options = State.Options (từ Sys_Lookup cache)
+                       │                  ⚠ TODO: nâng lên DxComboBox
+                       │
+                       ├── "combobox"  → ComboBoxRenderer
+                       │                  └─ native <select> HTML + dynamic rows
+                       │                  ⚠ TODO: nâng lên DxComboBox
+                       │
+                       ├── "fklookup"  → LookupBoxRenderer
+                       │                  └─ EditBox (TextOnly / CodeAndName)
+                       │                     Button "▼" → mở Popup Grid
+                       │                     Popup: Search bar + DX Grid + rows
+                       │                     Click row → SelectRow() → đóng popup
+                       │
+                       ├── "number"    → native <input type="number">
+                       │                  🔴 Pending: DxSpinEdit (NumericBoxRenderer)
+                       ├── "date"      → native <input type="date">
+                       │                  🔴 Pending: DxDateEdit (DatePickerRenderer)
+                       └── "datetime"  → native <input type="datetime-local">
+                                          🔴 Pending: DxDateEdit ShowTime=true
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 5 — DYNAMIC LOOKUP DATA (combobox / fklookup)
+─────────────────────────────────────────────────────────────────────────────────
+
+  Trigger: OnParametersSet (lần đầu) hoặc ReloadTriggerField thay đổi
+       │
+       ├── ComboBoxRenderer / LookupBoxRenderer
+       │       │
+       │       └─► LookupQueryService.QueryAsync(State.FieldId, Context)
+       │                 │
+       │                 └─► POST /api/v1/lookups/query-dynamic
+       │                       { fieldId: 9, contextValues: { "CapToChuc": 5 } }
+       │                             │
+       │                             ▼
+       │                       QueryDynamicLookupQuery → MediatR
+       │                             │
+       │                             ▼
+       │                       DynamicLookupRepository.QueryAsync()
+       │                             │
+       │                             Step 1: Đọc cấu hình
+       │                             SELECT fl.Query_Mode, fl.Source_Name,
+       │                                    fl.Value_Column, fl.Display_Column,
+       │                                    fl.Filter_Sql, fl.Order_By,
+       │                                    fl.Code_Field, fl.Popup_Columns_Json
+       │                             FROM   Ui_Field_Lookup fl
+       │                             JOIN   Ui_Field fi ... JOIN Sys_Table t ...
+       │                             WHERE  fl.Field_Id = @FieldId
+       │                               AND  t.Tenant_Id = @TenantId
+       │                             │
+       │                             Guard: SourceName NULL/empty → return []
+       │                             │
+       │                             Step 2: Validate identifiers (regex)
+       │                               SourceName: ^[a-zA-Z_][a-zA-Z0-9_.]*$
+       │                               Column names: tương tự
+       │                               FilterSql / OrderBy: không có DDL/DML keywords
+       │                             │
+       │                             Step 3: Build safe SQL
+       │                               SELECT BuildSelectColumns(cfg)
+       │                               FROM   {SourceName}
+       │                               WHERE  {FilterSql}      ← admin trust
+       │                               ORDER BY {OrderBy}
+       │                             │
+       │                               BuildSelectColumns():
+       │                                 ValueColumn + DisplayColumn + CodeField
+       │                                 + popup columns từ PopupColumnsJson
+       │                                 (deduplicate, skip invalid)
+       │                             │
+       │                             Step 4: Execute với Dapper params
+       │                               @TenantId + contextValues (sanitized)
+       │                               ContextValues KHÔNG concat vào SQL
+       │                             │
+       │                             Response: List<IDictionary<string,object>>
+       │
+       └── State.DynamicRows = rows
+           Re-render dropdown / popup grid
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 6 — FIELD CHANGED (User Interaction)
+─────────────────────────────────────────────────────────────────────────────────
+
+  User nhập / chọn giá trị trong field
+       │
+       └── Renderer phát OnChange(fieldCode, newValue)
+                 │
+                 ▼
+       FormRunner.OnFieldChanged(fieldCode, newValue)
+                 │
+                 ├─ State.Value = newValue
+                 ├─ State.Errors.Clear()
+                 ├─ Context[fieldCode] = newValue
+                 │
+                 └─► RuntimeApiService.FireEventAsync("FIELD_CHANGED", fieldCode)
+                           │
+                           └─► POST /api/v1/forms/.../handle-event
+                                 { eventType:"FIELD_CHANGED",
+                                   sourceField:"PhongBanID",
+                                   contextSnapshot:{...} }
+                                       │
+                                       ▼
+                                 EventEngine.HandleEventAsync
+                                       │
+                                       ├─ Lấy events có trigger="FIELD_CHANGED"
+                                       │   AND fieldCode = "PhongBanID"
+                                       ├─ Evaluate conditions (AST)
+                                       └─ Execute actions → UiDeltaDto[]
+                                             │
+                                 FormRunner.ApplyDeltas()
+                                   Ví dụ: cascade PhongBanID → reload NhanVienID
+                                   → LookupBoxRenderer reload với context mới
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 7 — FIELD BLUR (Real-time Validation)
+─────────────────────────────────────────────────────────────────────────────────
+
+  User rời khỏi field (blur / focusout)
+       │
+       └── Renderer phát OnBlur(fieldCode)
+                 │
+                 ▼
+       FormRunner.OnFieldBlur(fieldCode)
+                 │
+                 └─► RuntimeApiService.ValidateFieldAsync(formCode, fieldCode, value, context)
+                           │
+                           └─► POST /api/v1/forms/.../validate-field
+                                 { fieldCode, value, contextSnapshot }
+                                       │
+                                       ▼
+                                 ValidationEngine.ValidateFieldAsync()
+                                       │
+                                       ├─ Load Ui_ValidationRule WHERE Field_Id=@FieldId
+                                       ├─ Evaluate từng rule (AST engine)
+                                       │   required, regex, range, custom expr...
+                                       └─ Trả List<ValidationError>
+                                             │
+                                 State.Errors = errors
+                                 StateHasChanged() → hiển thị badge lỗi dưới field
+
+─────────────────────────────────────────────────────────────────────────────────
+PHASE 8 — SUBMIT & VALIDATE
+─────────────────────────────────────────────────────────────────────────────────
+
+  User click "Submit & Validate"
+       │
+       ├─► FireEventAsync("FORM_SUBMIT", null)
+       │
+       └─► RuntimeApiService.ValidateFormAsync(formCode, contextSnapshot)
+                 │
+                 └─► POST /api/v1/forms/.../validate
+                       { contextSnapshot: { tất cả field values } }
+                             │
+                             ▼
+                       ValidationEngine.ValidateFormAsync()
+                             │
+                             ├─ Load TẤT CẢ Ui_ValidationRule của form
+                             ├─ Topological sort (dependency order)
+                             ├─ Evaluate từng rule theo thứ tự
+                             └─ Trả Dictionary<fieldCode, List<ValidationError>>
+                                   │
+                       FormRunner:
+                         foreach field → State.Errors = errors[fieldCode]
+                         Nếu có lỗi → JS.InvokeVoid("focusElement", "field_{firstErrorCode}")
+                         Nếu sạch   → hiển thị success / gọi save API
+
+─────────────────────────────────────────────────────────────────────────────────
+CACHING STRATEGY
+─────────────────────────────────────────────────────────────────────────────────
+
+  Location             Cache Key                TTL        Scope
+  ─────────────────    ─────────────────────    ────────   ─────────────────
+  LookupApiService     _cache[lookupCode]        ∞ session  Per browser tab
+  MetadataEngine       form:{code}:t:{tenantId}  5 phút     Server MemoryCache
+  DynamicRows          FieldState.DynamicRows    Until trigger field changes
+  FormMetadata (API)   Không cache               —          Mỗi navigate load lại
+
+─────────────────────────────────────────────────────────────────────────────────
+SECURITY RULES (tóm tắt)
+─────────────────────────────────────────────────────────────────────────────────
+
+  1. Tenant isolation:  Tất cả query đều filter Sys_Table.Tenant_Id = @TenantId
+  2. SQL injection:     SourceName / column names qua SafeIdentifierRegex
+                        FilterSql / OrderBy block DDL/DML keywords
+                        ContextValues → Dapper params (KHÔNG concat vào SQL)
+  3. Cross-tenant:      DynamicLookupRepository verify tenant qua
+                        Ui_Field_Lookup → Ui_Field → Ui_Form → Sys_Table → Tenant_Id
+  4. TenantId override: contextValues không được override @TenantId param
+
+─────────────────────────────────────────────────────────────────────────────────
+FILES LIÊN QUAN
+─────────────────────────────────────────────────────────────────────────────────
+
+  Blazor (Frontend):
+    Pages/FormRunner.razor
+    Components/FieldRenderer.razor
+    Components/FieldRenderers/TextBoxRenderer.razor
+    Components/FieldRenderers/MemoRenderer.razor
+    Components/FieldRenderers/CheckBoxRenderer.razor
+    Components/FieldRenderers/ComboBoxRenderer.razor
+    Components/FieldRenderers/LookupBoxRenderer.razor
+    Services/FormApiService.cs
+    Services/LookupApiService.cs
+    Services/LookupQueryService.cs
+    Services/RuntimeApiService.cs
+    Models/FormMetadataDto.cs
+
+  API Controllers:
+    Controllers/FormController.cs
+    Controllers/LookupController.cs
+    Controllers/RuntimeController.cs
+
+  Application:
+    Features/Forms/Queries/GetFormByCode/
+    Features/Lookups/Queries/QueryDynamic/
+    Engines/EventEngine.cs
+    Engines/ValidationEngine.cs
+    Engines/MetadataEngine.cs
+
+  Infrastructure (Dapper):
+    Repositories/FormRepository.cs
+    Repositories/FieldRepository.cs
+    Repositories/DynamicLookupRepository.cs
+    Repositories/EventRepository.cs
+    Repositories/ValidationRuleRepository.cs
