@@ -369,3 +369,22 @@ code {
     font-family: var(--font-mono);
 }
 .cw-320 { max-width: 320px !important; }
+
+/* ── DevExpress control overrides ──────────────────────── */
+
+/* DxComboBox / DxDateEdit / DxSpinEdit: constrain button height
+   trong field-wrapper flex column để icon ▼ không bị phình full-height */
+.field-wrapper .dxbl-edit {
+    width: 100%;
+}
+.field-wrapper .dxbl-edit-btn {
+    height: 32px;
+    width: 32px;
+    align-self: center;
+    flex-shrink: 0;
+}
+
+/* DxCheckBox: ẩn label trên từ FieldRenderer (label đã có trong DxCheckBox ChildContent) */
+.field-wrapper:has(.dxbl-checkbox) > .field-label {
+    display: none;
+}
