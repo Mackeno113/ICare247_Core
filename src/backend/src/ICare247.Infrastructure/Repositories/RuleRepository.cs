@@ -30,10 +30,11 @@ public sealed class RuleRepository : IRuleRepository
         CancellationToken ct = default)
     {
         // Query thẳng Val_Rule theo Field_Id — không cần JOIN junction
+        // Lưu ý: Ui_Field không có cột Field_Code — phải join Sys_Column.Column_Code
         const string sql = """
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
-                   fi.Field_Code      AS FieldCode,
+                   sc.Column_Code     AS FieldCode,
                    st.Tenant_Id       AS TenantId,
                    r.Rule_Type_Code   AS RuleType,
                    COALESCE(r.Severity, 'error') AS Severity,
@@ -42,13 +43,14 @@ public sealed class RuleRepository : IRuleRepository
                    r.Error_Key        AS ErrorMessage,
                    r.Order_No         AS SortOrder
             FROM   dbo.Val_Rule r
-            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = r.Field_Id
-            JOIN   dbo.Ui_Form f       ON f.Form_Id   = fi.Form_Id
+            JOIN   dbo.Ui_Field fi     ON fi.Field_Id  = r.Field_Id
+            JOIN   dbo.Sys_Column sc   ON sc.Column_Id = fi.Column_Id
+            JOIN   dbo.Ui_Form f       ON f.Form_Id    = fi.Form_Id
             JOIN   dbo.Sys_Table st    ON st.Table_Id  = f.Table_Id
-            WHERE  fi.Form_Id    = @FormId
-              AND  fi.Field_Code = @FieldCode
-              AND  st.Tenant_Id  = @TenantId
-              AND  r.Is_Active   = 1
+            WHERE  fi.Form_Id     = @FormId
+              AND  sc.Column_Code = @FieldCode
+              AND  st.Tenant_Id   = @TenantId
+              AND  r.Is_Active    = 1
             ORDER BY r.Order_No
             """;
 
@@ -66,10 +68,11 @@ public sealed class RuleRepository : IRuleRepository
         CancellationToken ct = default)
     {
         // Lấy toàn bộ rules của form — group theo FieldCode
+        // Lưu ý: Ui_Field không có cột Field_Code — phải join Sys_Column.Column_Code
         const string sql = """
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
-                   fi.Field_Code      AS FieldCode,
+                   sc.Column_Code     AS FieldCode,
                    st.Tenant_Id       AS TenantId,
                    r.Rule_Type_Code   AS RuleType,
                    COALESCE(r.Severity, 'error') AS Severity,
@@ -78,13 +81,14 @@ public sealed class RuleRepository : IRuleRepository
                    r.Error_Key        AS ErrorMessage,
                    r.Order_No         AS SortOrder
             FROM   dbo.Val_Rule r
-            JOIN   dbo.Ui_Field fi     ON fi.Field_Id = r.Field_Id
-            JOIN   dbo.Ui_Form f       ON f.Form_Id   = fi.Form_Id
-            JOIN   dbo.Sys_Table st    ON st.Table_Id  = f.Table_Id
+            JOIN   dbo.Ui_Field fi     ON fi.Field_Id  = r.Field_Id
+            JOIN   dbo.Sys_Column sc   ON sc.Column_Id = fi.Column_Id
+            JOIN   dbo.Ui_Form f       ON f.Form_Id    = fi.Form_Id
+            JOIN   dbo.Sys_Table st    ON st.Table_Id   = f.Table_Id
             WHERE  fi.Form_Id   = @FormId
               AND  st.Tenant_Id = @TenantId
               AND  r.Is_Active  = 1
-            ORDER BY fi.Field_Code, r.Order_No
+            ORDER BY sc.Column_Code, r.Order_No
             """;
 
         using var conn = _db.CreateConnection();
