@@ -24,7 +24,8 @@ namespace ICare247.Infrastructure.Repositories;
 /// </remarks>
 public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 {
-    private readonly IDbConnectionFactory _db;
+    private readonly IDbConnectionFactory     _configDb;
+    private readonly IDataDbConnectionFactory _dataDb;
 
     // Regex kiểm tra tên identifier an toàn: a-z, A-Z, 0-9, _, dấu chấm (schema.table)
     [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_.]*$", RegexOptions.Compiled)]
@@ -34,7 +35,11 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     private static readonly string[] DangerousKeywords =
         ["DROP", "DELETE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "TRUNCATE", "ALTER", "CREATE", "MERGE", "--", ";"];
 
-    public DynamicLookupRepository(IDbConnectionFactory db) => _db = db;
+    public DynamicLookupRepository(IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb)
+    {
+        _configDb = configDb;
+        _dataDb   = dataDb;
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<IDictionary<string, object>>> QueryAsync(
@@ -63,9 +68,10 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
               AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
-        using var conn = _db.CreateConnection();
+        // Bước 1 đọc cấu hình từ Config DB
+        using var configConn = _configDb.CreateConnection();
 
-        var cfg = await conn.QueryFirstOrDefaultAsync<LookupCfgRow>(
+        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
             new CommandDefinition(cfgSql, new { FieldId = fieldId, TenantId = tenantId },
                 cancellationToken: ct));
 
@@ -89,8 +95,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 dp.Add(key, val);
         }
 
-        // ── Bước 4: Execute + map sang Dictionary ─────────────────────────────
-        var rows = await conn.QueryAsync(
+        // ── Bước 4: Execute query trên Data DB (DB nghiệp vụ — DM_PhongBan, v.v.) ──
+        using var dataConn = _dataDb.CreateConnection();
+        var rows = await dataConn.QueryAsync(
             new CommandDefinition(querySql, dp, cancellationToken: ct));
 
         // Dapper trả ExpandoObject khi không chỉ định type — ExpandoObject implements IDictionary<string, object>
