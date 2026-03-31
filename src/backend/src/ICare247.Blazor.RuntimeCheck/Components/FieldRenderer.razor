@@ -75,39 +75,10 @@
                 break;
 
             case "select":
-                @if (State.Options.Count > 0)
-                {
-                    @* Static lookup — render <select> với options từ Sys_Lookup *@
-                    <select id="field_@State.FieldCode"
-                            class="field-input"
-                            disabled="@State.IsReadOnly"
-                            @onchange="HandleChange"
-                            @onblur="HandleBlur">
-                        <option value="">-- Chọn --</option>
-                        @foreach (var opt in State.Options)
-                        {
-                            @if (State.ValueString == opt.ItemCode)
-                            {
-                                <option value="@opt.ItemCode" selected>@opt.Label</option>
-                            }
-                            else
-                            {
-                                <option value="@opt.ItemCode">@opt.Label</option>
-                            }
-                        }
-                    </select>
-                }
-                else
-                {
-                    @* Options chưa load hoặc LookupCode không tồn tại → fallback text *@
-                    <input id="field_@State.FieldCode"
-                           type="text" class="field-input"
-                           value="@State.ValueString"
-                           disabled="@State.IsReadOnly"
-                           placeholder="(lookup options not loaded)"
-                           @onchange="HandleChange"
-                           @onblur="HandleBlur" />
-                }
+                @* Static Sys_Lookup — DxComboBox thay HTML <select>, hỗ trợ search *@
+                <LookupComboBoxRenderer State="State"
+                                        OnChange="OnChange"
+                                        OnBlur="OnBlur" />
                 break;
 
             case "combobox":

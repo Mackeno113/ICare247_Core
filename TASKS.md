@@ -44,7 +44,7 @@
 
 - [x] **T9** — Blazor NEW: `Services/ILookupQueryService.cs` + `Services/LookupQueryService.cs` — POST /api/v1/lookups/query-dynamic _(2026-03-28)_
 - [x] **T10** — Blazor NEW: `Components/FieldRenderers/ComboBoxRenderer.razor` — HTML select với dynamic data + cascade reload _(2026-03-28)_
-- [ ] **T11** — Blazor NEW: `Components/FieldRenderers/LookupComboBoxRenderer.razor` — static Sys_Lookup (hiện dùng chung "select" case — low priority)
+- [x] **T11** — Blazor NEW: `Components/FieldRenderers/LookupComboBoxRenderer.razor` — DxComboBox static Sys_Lookup, searchMode/allowUserInput/clearButton, thay HTML select _(2026-03-31)_
 - [x] **T12** — Blazor NEW: `Components/FieldRenderers/LookupBoxRenderer.razor` — popup grid + 3 EditBox modes + search _(2026-03-28)_
 - [x] **T13** — `FieldRenderer.razor` + `FormRunner.razor`: add combobox/fklookup cases + Context param + NormalizeFieldType _(2026-03-28)_
 

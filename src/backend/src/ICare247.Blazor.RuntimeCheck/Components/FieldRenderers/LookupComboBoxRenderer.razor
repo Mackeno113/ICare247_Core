@@ -1,0 +1,155 @@
+@* File    : LookupComboBoxRenderer.razor
+   Purpose : Render DxComboBox cho static Sys_Lookup — EditorType "LookupComboBox".
+             Data = State.Options (đã load sẵn từ Sys_Lookup qua LookupApiService).
+             Thay thế HTML <select> bằng DxComboBox để có search + UX tốt hơn.
+             Props: searchMode, allowUserInput, clearButton. *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using DevExpress.Blazor
+@using ICare247.Blazor.RuntimeCheck.Models
+
+<div @onfocusout="HandleLostFocus">
+    @if (State?.Options.Count > 0)
+    {
+        <DxComboBox Data="@State!.Options"
+                    @bind-Value="BoundValue"
+                    TextField="@nameof(LookupOptionDto.Label)"
+                    ValueField="@nameof(LookupOptionDto.ItemCode)"
+                    SearchMode="@_searchMode"
+                    AllowUserInput="@_props.AllowUserInput"
+                    ClearButtonDisplayMode="@_clearButtonMode"
+
+                    NullText="@NullTextValue"
+                    CssClass="@CssClassValue"
+                    Width="100%"
+                    InputId="@($"field_{State!.FieldCode}")"
+
+                    Enabled="true"
+                    ReadOnly="@(State?.IsReadOnly ?? false)" />
+    }
+    else
+    {
+        @* Options chưa load hoặc LookupCode không tồn tại → fallback *@
+        <input id="field_@State!.FieldCode"
+               type="text" class="field-input"
+               value="@State.ValueString"
+               disabled="@State.IsReadOnly"
+               placeholder="(lookup options not loaded)"
+               @onchange="HandleFallbackChange"
+               @onblur="HandleFallbackBlur" />
+    }
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────────
+    [Parameter, EditorRequired]
+    public FieldState? State { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBlur { get; set; }
+
+    // ── Private state ────────────────────────────────────────────────────────────
+    private LookupComboBoxProps _props = new();
+    private string? _localValue;
+    private ListSearchMode _searchMode;
+    private DataEditorClearButtonDisplayMode _clearButtonMode;
+
+    /// <summary>
+    /// Backing property cho @bind-Value — phát event async khi giá trị thay đổi.
+    /// </summary>
+    private string? BoundValue
+    {
+        get => _localValue;
+        set => _ = HandleValueChangedAsync(value);
+    }
+
+    // ── Computed ─────────────────────────────────────────────────────────────────
+
+    /// <summary>NullText: label field làm placeholder fallback.</summary>
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : "-- Chọn --";
+
+    /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
+    private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+    protected override void OnParametersSet()
+    {
+        _props      = LookupComboBoxProps.Parse(State?.ControlPropsJson);
+        _localValue = State?.ValueString is { Length: > 0 } v ? v : null;
+
+        _searchMode = _props.SearchMode == "None"
+            ? ListSearchMode.None
+            : ListSearchMode.AutoSearch;
+
+        _clearButtonMode = _props.ClearButton
+            ? DataEditorClearButtonDisplayMode.Auto
+            : DataEditorClearButtonDisplayMode.Never;
+    }
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task HandleValueChangedAsync(string? value)
+    {
+        if (State is null) return;
+        _localValue = value;
+        State.Value = value;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
+    }
+
+    private async Task HandleLostFocus(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // Fallback handlers khi Options rỗng
+    private async Task HandleFallbackChange(ChangeEventArgs e)
+    {
+        if (State is null) return;
+        State.Value = e.Value;
+        await OnChange.InvokeAsync((State.FieldCode, e.Value));
+    }
+
+    private async Task HandleFallbackBlur(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Props từ Control_Props_Json cho LookupComboBox.
+    /// JSON mẫu: {"searchMode":"AutoSearch","allowUserInput":false,"clearButton":true}
+    /// </summary>
+    private sealed class LookupComboBoxProps
+    {
+        /// <summary>"AutoSearch" (default) | "None" — tắt search khi danh mục ngắn.</summary>
+        [JsonPropertyName("searchMode")]
+        public string SearchMode { get; set; } = "AutoSearch";
+
+        /// <summary>Cho phép user tự gõ giá trị không có trong danh sách.</summary>
+        [JsonPropertyName("allowUserInput")]
+        public bool AllowUserInput { get; set; } = false;
+
+        /// <summary>Hiện nút X xóa giá trị — true khi field nullable.</summary>
+        [JsonPropertyName("clearButton")]
+        public bool ClearButton { get; set; } = true;
+
+        public static LookupComboBoxProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<LookupComboBoxProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}
