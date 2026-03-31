@@ -103,6 +103,15 @@
     private static DateTime? TryParseDate(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
+
+        // Thử các format thường dùng: ISO, dd/MM/yyyy (VN), MM/dd/yyyy (US)
+        string[] formats = ["yyyy-MM-dd", "dd/MM/yyyy", "dd/MM/yyyy HH:mm", "MM/yyyy", "yyyy"];
+        if (DateTime.TryParseExact(s, formats,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var exact))
+            return exact;
+
+        // Fallback: culture hiện tại
         return DateTime.TryParse(s, out var d) ? d : null;
     }
 
