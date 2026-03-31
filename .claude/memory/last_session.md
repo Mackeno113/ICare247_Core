@@ -1,8 +1,58 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-30 (session 18)
+> Cập nhật: 2026-03-31 (session 19)
 
-## Đã làm (session 30/03 — Bug Fix Runtime 500 + Documentation)
+## Đã làm (session 31/03 — NumericBoxRenderer + DatePickerRenderer)
+
+### 1. NumericBoxRenderer.razor (NEW)
+
+- EditorType "NumericBox" → `NumericBoxRenderer` → `DxSpinEdit<decimal?>`
+- Props: `minValue=0`, `maxValue=999999`, `decimals=0`, `spinStep=1`, `allowNull=false`
+- `DisplayFormat = $"N{_props.Decimals}"` → "N0", "N2",...
+- `BoundValue` backing property pattern (async event)
+- AllowNull=false → default 0m khi State.Value là null
+
+### 2. DatePickerRenderer.razor (NEW)
+
+- EditorType "DatePicker" → `DatePickerRenderer` → `DxDateEdit<DateTime?>`
+- Props: `format="dd/MM/yyyy"`, `minDate=""`, `maxDate=""`
+- `TimeSectionVisible`: auto bật khi format chứa "HH"
+- `NullText`: hiển thị format gợi ý lowercase vd "dd/mm/yyyy"
+- MinDate/MaxDate parse từ ISO string, fallback DateTime.MinValue/MaxValue
+
+### 3. FieldRenderer.razor cập nhật
+
+- case "number" → `<NumericBoxRenderer>` (thay `<input type="number">`)
+- case "date" + "datetime" → `<DatePickerRenderer>` (thay `<input type="date/datetime-local">`)
+
+### 4. Build verify: **0 errors** ✅
+
+> Session trước (session 18 - 30/03): Bug Fix B6 EventRepository (Field_Code → Sys_Column join) + Bug Fix B7 DynamicLookup SourceName guard + docs/form-runtime-flow.puml
+
+---
+
+## Trạng thái hiện tại
+
+- Build: **0 errors** ✅ (2 warnings DX license — bình thường)
+- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select ✅ | **NumericBox ✅** | **DatePicker ✅**
+- Wave FormRunner Renderers: **HOÀN THÀNH** ✅
+
+## Việc tiếp theo (ưu tiên)
+
+1. **Test end-to-end** FormRunner với NumericBox/DatePicker fields (cần DB đang chạy)
+2. **T11** — `LookupComboBoxRenderer.razor` (low priority)
+3. **WPF: Pass tableCode** khi navigate từ FieldConfig → I18nManager
+4. **CheckBox layout** — checkbox ngang với label
+
+## Quyết định quan trọng session này
+
+- **DxSpinEdit<decimal?>:** dùng kiểu nullable; cast double→decimal từ Props
+- **DisplayFormat = $"N{decimals}":** đơn giản cho mọi số chữ số thập phân
+- **DatePickerRenderer xử lý cả "date" và "datetime":** cùng renderer, TimeSectionVisible auto
+
+---
+
+## (Lưu lại session 18 — 30/03 — Bug Fix Runtime 500 + Documentation)
 
 ### 1. Phân tích luồng xử lý `/form/sys_UI_Design`
 

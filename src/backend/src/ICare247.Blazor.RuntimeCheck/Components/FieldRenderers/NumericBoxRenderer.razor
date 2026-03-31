@@ -1,0 +1,133 @@
+@* File    : NumericBoxRenderer.razor
+   Purpose : Render DxSpinEdit từ FieldState + ControlPropsJson.
+             EditorType "NumericBox" — số nguyên hoặc số thập phân.
+             Props: minValue, maxValue, decimals, spinStep, allowNull.
+             Dùng decimal? để hỗ trợ cả số nguyên lẫn thập phân + cho phép null. *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using DevExpress.Blazor
+
+<div @onfocusout="HandleLostFocus">
+    <DxSpinEdit @bind-Value="BoundValue"
+                MinValue="@((decimal)_props.MinValue)"
+                MaxValue="@((decimal)_props.MaxValue)"
+                Increment="@((decimal)_props.SpinStep)"
+                DisplayFormat="@_displayFormat"
+
+                NullText="@NullTextValue"
+                CssClass="@CssClassValue"
+                Width="100%"
+                InputId="@($"field_{State!.FieldCode}")"
+
+                Enabled="true"
+                ReadOnly="@(State?.IsReadOnly ?? false)" />
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────────
+    [Parameter, EditorRequired]
+    public FieldState? State { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBlur { get; set; }
+
+    // ── Private state ────────────────────────────────────────────────────────────
+    private NumericBoxProps _props = new();
+    private decimal? _localValue;
+    private string _displayFormat = "N0";
+
+    /// <summary>
+    /// Backing property cho @bind-Value — phát event async khi giá trị thay đổi.
+    /// </summary>
+    private decimal? BoundValue
+    {
+        get => _localValue;
+        set => _ = HandleValueChangedAsync(value);
+    }
+
+    // ── Computed ─────────────────────────────────────────────────────────────────
+
+    /// <summary>NullText: format gợi ý hoặc label fallback.</summary>
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? lbl + "..." : "";
+
+    /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
+    private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+    protected override void OnParametersSet()
+    {
+        _props        = NumericBoxProps.Parse(State?.ControlPropsJson);
+        _displayFormat = $"N{_props.Decimals}";
+
+        // Parse giá trị hiện tại từ State.Value (có thể là nhiều kiểu)
+        _localValue = State?.Value switch
+        {
+            decimal d                                          => d,
+            int     i                                          => (decimal)i,
+            long    l                                          => (decimal)l,
+            double  db                                         => (decimal)db,
+            string  s when decimal.TryParse(s, out var parsed) => parsed,
+            null when !_props.AllowNull                        => 0m,
+            _                                                  => null
+        };
+    }
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task HandleValueChangedAsync(decimal? value)
+    {
+        if (State is null) return;
+        _localValue = value;
+        State.Value = value;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
+    }
+
+    private async Task HandleLostFocus(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Props từ Control_Props_Json cho NumericBox.
+    /// JSON mẫu: {"minValue":0,"maxValue":999999,"decimals":2,"spinStep":0.5,"allowNull":false}
+    /// </summary>
+    private sealed class NumericBoxProps
+    {
+        [JsonPropertyName("minValue")]
+        public double MinValue { get; set; } = 0;
+
+        [JsonPropertyName("maxValue")]
+        public double MaxValue { get; set; } = 999999;
+
+        /// <summary>Số chữ số thập phân hiển thị — 0 = số nguyên.</summary>
+        [JsonPropertyName("decimals")]
+        public int Decimals { get; set; } = 0;
+
+        /// <summary>Bước nhảy khi bấm mũi tên spin.</summary>
+        [JsonPropertyName("spinStep")]
+        public double SpinStep { get; set; } = 1;
+
+        /// <summary>Cho phép để trống (null) — false = bắt buộc có giá trị, mặc định 0.</summary>
+        [JsonPropertyName("allowNull")]
+        public bool AllowNull { get; set; } = false;
+
+        public static NumericBoxProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<NumericBoxProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}

@@ -18,8 +18,9 @@
 - [x] WPF — TextArea schema mới (4 props: maxLength/rows/bindValueMode/inputDelay) _(2026-03-30)_
 - [x] WPF — CheckBox schema (3 props: allowIndeterminate/labelPosition/labelWrapMode) + ToggleSwitch (1 prop: labelPosition) _(2026-03-30)_
 - [x] `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md` — đặc tả đầy đủ mọi renderer: EditorType→Renderer mapping, ControlPropsJson schema, code patterns _(2026-03-30)_
-- [ ] **Tiếp theo:** NumericBox renderer (DxSpinEdit) — sync WPF ↔ Blazor
-- [ ] **Tiếp theo:** DatePicker renderer (DxDateEdit) — sync WPF ↔ Blazor
+- [x] `NumericBoxRenderer.razor` — DxSpinEdit: decimal?, minValue/maxValue/decimals/spinStep/allowNull, DisplayFormat="N{decimals}" _(2026-03-31)_
+- [x] `DatePickerRenderer.razor` — DxDateEdit: format/minDate/maxDate, TimeSectionVisible tự động theo format _(2026-03-31)_
+- [x] `FieldRenderer.razor` — case "number"→NumericBoxRenderer, "date"/"datetime"→DatePickerRenderer _(2026-03-31)_
 
 ### Wave — ComboBox/LookupBox System (2026-03-28)
 

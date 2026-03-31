@@ -38,30 +38,24 @@
                 break;
 
             case "number":
-                <input id="field_@State.FieldCode"
-                       type="number" class="field-input"
-                       value="@State.ValueString"
-                       disabled="@State.IsReadOnly"
-                       @onchange="HandleChange"
-                       @onblur="HandleBlur" />
+                @* DxSpinEdit — EditorType "NumericBox", hỗ trợ int/decimal + allowNull *@
+                <NumericBoxRenderer State="State"
+                                    OnChange="OnChange"
+                                    OnBlur="OnBlur" />
                 break;
 
             case "date":
-                <input id="field_@State.FieldCode"
-                       type="date" class="field-input"
-                       value="@State.ValueString"
-                       disabled="@State.IsReadOnly"
-                       @onchange="HandleChange"
-                       @onblur="HandleBlur" />
+                @* DxDateEdit — EditorType "DatePicker", format từ ControlPropsJson *@
+                <DatePickerRenderer State="State"
+                                    OnChange="OnChange"
+                                    OnBlur="OnBlur" />
                 break;
 
             case "datetime":
-                <input id="field_@State.FieldCode"
-                       type="datetime-local" class="field-input"
-                       value="@State.ValueString"
-                       disabled="@State.IsReadOnly"
-                       @onchange="HandleChange"
-                       @onblur="HandleBlur" />
+                @* DxDateEdit với TimeSectionVisible=true — cùng renderer, format "dd/MM/yyyy HH:mm" *@
+                <DatePickerRenderer State="State"
+                                    OnChange="OnChange"
+                                    OnBlur="OnBlur" />
                 break;
 
             case "bool":

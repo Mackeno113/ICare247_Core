@@ -1,0 +1,140 @@
+@* File    : DatePickerRenderer.razor
+   Purpose : Render DxDateEdit từ FieldState + ControlPropsJson.
+             EditorType "DatePicker" — date (dd/MM/yyyy) hoặc datetime (dd/MM/yyyy HH:mm).
+             Props: format, minDate, maxDate.
+             TimeSectionVisible tự động bật khi format chứa "HH". *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using DevExpress.Blazor
+
+<div @onfocusout="HandleLostFocus">
+    <DxDateEdit @bind-Date="BoundDate"
+                Format="@_props.Format"
+                TimeSectionVisible="@_showTime"
+                MinDate="@_minDate"
+                MaxDate="@_maxDate"
+
+                NullText="@NullTextValue"
+                CssClass="@CssClassValue"
+                Width="100%"
+                InputId="@($"field_{State!.FieldCode}")"
+
+                Enabled="true"
+                ReadOnly="@(State?.IsReadOnly ?? false)" />
+</div>
+
+@code {
+    // ── Parameters ───────────────────────────────────────────────────────────────
+    [Parameter, EditorRequired]
+    public FieldState? State { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnBlur { get; set; }
+
+    // ── Private state ────────────────────────────────────────────────────────────
+    private DatePickerProps _props = new();
+    private DateTime? _localDate;
+    private bool _showTime;
+    private DateTime _minDate = DateTime.MinValue;
+    private DateTime _maxDate = DateTime.MaxValue;
+
+    /// <summary>
+    /// Backing property cho @bind-Date — phát event async khi giá trị thay đổi.
+    /// </summary>
+    private DateTime? BoundDate
+    {
+        get => _localDate;
+        set => _ = HandleDateChangedAsync(value);
+    }
+
+    // ── Computed ─────────────────────────────────────────────────────────────────
+
+    /// <summary>NullText: hiển thị format gợi ý cho user (vd: "dd/mm/yyyy").</summary>
+    private string NullTextValue
+        => _props.Format is { Length: > 0 } f ? f.ToLower() : "dd/mm/yyyy";
+
+    /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
+    private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────────
+
+    protected override void OnParametersSet()
+    {
+        _props    = DatePickerProps.Parse(State?.ControlPropsJson);
+
+        // TimeSectionVisible: bật khi format có giờ (HH:mm)
+        _showTime = _props.Format.Contains("HH", StringComparison.OrdinalIgnoreCase);
+
+        // Parse minDate/maxDate từ string — bỏ trống = không giới hạn
+        _minDate = TryParseDate(_props.MinDate) ?? DateTime.MinValue;
+        _maxDate = TryParseDate(_props.MaxDate) ?? DateTime.MaxValue;
+
+        // Parse giá trị hiện tại từ State.Value
+        _localDate = State?.Value switch
+        {
+            DateTime dt                                       => dt,
+            string s when DateTime.TryParse(s, out var parsed) => parsed,
+            _                                                 => null
+        };
+    }
+
+    // ── Handlers ─────────────────────────────────────────────────────────────────
+
+    private async Task HandleDateChangedAsync(DateTime? value)
+    {
+        if (State is null) return;
+        _localDate  = value;
+        State.Value = value;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
+    }
+
+    private async Task HandleLostFocus(FocusEventArgs _)
+    {
+        if (State is null) return;
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────────
+
+    private static DateTime? TryParseDate(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        return DateTime.TryParse(s, out var d) ? d : null;
+    }
+
+    // ── Inner types ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Props từ Control_Props_Json cho DatePicker.
+    /// JSON mẫu: {"format":"dd/MM/yyyy","minDate":"","maxDate":""}
+    /// </summary>
+    private sealed class DatePickerProps
+    {
+        /// <summary>"dd/MM/yyyy" (default) | "dd/MM/yyyy HH:mm" | "MM/yyyy" | "yyyy"</summary>
+        [JsonPropertyName("format")]
+        public string Format { get; set; } = "dd/MM/yyyy";
+
+        /// <summary>Ngày tối thiểu — ISO string "yyyy-MM-dd" hoặc rỗng = không giới hạn.</summary>
+        [JsonPropertyName("minDate")]
+        public string MinDate { get; set; } = "";
+
+        /// <summary>Ngày tối đa — ISO string "yyyy-MM-dd" hoặc rỗng = không giới hạn.</summary>
+        [JsonPropertyName("maxDate")]
+        public string MaxDate { get; set; } = "";
+
+        public static DatePickerProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<DatePickerProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}
