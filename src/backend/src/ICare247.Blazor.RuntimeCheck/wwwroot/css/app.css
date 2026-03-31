@@ -370,21 +370,52 @@ code {
 }
 .cw-320 { max-width: 320px !important; }
 
-/* ── DevExpress control overrides ──────────────────────── */
+/* ══════════════════════════════════════════════════════════
+   DevExpress Blazor — Bootstrap conflict fixes
+   ──────────────────────────────────────────────────────────
+   Root cause: Bootstrap reset + utility classes override DX
+   internal layout. DX v25.2 dùng inline SVG icons nhưng
+   Bootstrap không constrain SVG size trong flex containers.
+   ══════════════════════════════════════════════════════════ */
 
-/* DxComboBox / DxDateEdit / DxSpinEdit: constrain button height
-   trong field-wrapper flex column để icon ▼ không bị phình full-height */
+/* ── DX Editor wrapper: chiếm full width trong field-wrapper ── */
 .field-wrapper .dxbl-edit {
     width: 100%;
 }
-.field-wrapper .dxbl-edit-btn {
-    height: 32px;
-    width: 32px;
-    align-self: center;
+
+/* ── DX SVG icons: constrain tất cả SVG trong DX edit controls ── */
+.dxbl-edit svg,
+.dxbl-btn-group svg,
+.dxbl-edit-btn svg {
+    width: 16px !important;
+    height: 16px !important;
     flex-shrink: 0;
 }
 
-/* DxCheckBox: ẩn label trên từ FieldRenderer (label đã có trong DxCheckBox ChildContent) */
+/* ── DX dropdown/calendar button: fixed size, không bị flex stretch ── */
+.dxbl-edit-btn {
+    width: 32px !important;
+    min-width: 32px;
+    max-width: 32px;
+    height: auto;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── DX input container: prevent overflow ── */
+.dxbl-edit-input-ctn {
+    overflow: hidden;
+    min-width: 0;
+}
+
+/* ── DxCheckBox: ẩn field-label (label đã có trong DxCheckBox ChildContent) ── */
 .field-wrapper:has(.dxbl-checkbox) > .field-label {
     display: none;
+}
+
+/* ── DxCheckBox: align bên trong field-wrapper ── */
+.field-wrapper .dxbl-checkbox {
+    padding-top: 4px;
 }
