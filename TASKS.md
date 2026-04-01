@@ -2,25 +2,7 @@
 
 ## 🔴 Đang làm (In Progress)
 
-### Wave — FormRunner Renderers: TextBox / Memo / CheckBox (2026-03-29 → 2026-03-30)
-
-> **Bối cảnh:** Nâng DevExpress.Blazor 24.2 → 25.2.3, fix CSS, xây đầy đủ TextBoxRenderer / MemoRenderer / CheckBoxRenderer theo spec. Design correction: mỗi EditorType = 1 renderer riêng (DxTextBox ≠ DxMemo). Sync props WPF ↔ Blazor.
-
-- [x] Fix DX v25 CSS: `DevExpress.Blazor.Themes` 25.2.3 + `blazing-berry.min.css` _(2026-03-29)_
-- [x] Fix nuget.config: solution-level config clear `fallbackPackageFolders` từ DX 24.2 installer _(2026-03-29)_
-- [x] `FieldState.ControlPropsJson` — thêm prop để renderer tự parse _(2026-03-29)_
-- [x] `FormRunner.razor` — pass `ControlPropsJson` khi build FieldState + NormalizeFieldType "toggleswitch"→"switch" _(2026-03-29)_
-- [x] `TextBoxRenderer.razor` — DxTextBox full spec: BindValueMode, InputDelay, ClearButton, AutoComplete, Password, MaxLength _(2026-03-30)_
-- [x] `MemoRenderer.razor` — DxMemo: EditorType "TextArea" riêng biệt, props: maxLength/rows/bindValueMode/inputDelay _(2026-03-30)_
-- [x] `CheckBoxRenderer.razor` — DxCheckBox + ToggleSwitch (IsSwitch param), CheckType.Checkbox/Switch, @bind-Checked backing prop _(2026-03-30)_
-- [x] `FieldRenderer.razor` — case "textarea"→MemoRenderer, "bool"→CheckBoxRenderer, "switch"→CheckBoxRenderer(IsSwitch=true) _(2026-03-30)_
-- [x] WPF `FieldConfigViewModel.cs` — TextBox schema (6 props: maxLength/isPassword/autoComplete/bindValueMode/inputDelay/clearButtonMode) _(2026-03-30)_
-- [x] WPF — TextArea schema mới (4 props: maxLength/rows/bindValueMode/inputDelay) _(2026-03-30)_
-- [x] WPF — CheckBox schema (3 props: allowIndeterminate/labelPosition/labelWrapMode) + ToggleSwitch (1 prop: labelPosition) _(2026-03-30)_
-- [x] `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md` — đặc tả đầy đủ mọi renderer: EditorType→Renderer mapping, ControlPropsJson schema, code patterns _(2026-03-30)_
-- [x] `NumericBoxRenderer.razor` — DxSpinEdit: decimal?, minValue/maxValue/decimals/spinStep/allowNull, DisplayFormat="N{decimals}" _(2026-03-31)_
-- [x] `DatePickerRenderer.razor` — DxDateEdit: format/minDate/maxDate, TimeSectionVisible tự động theo format _(2026-03-31)_
-- [x] `FieldRenderer.razor` — case "number"→NumericBoxRenderer, "date"/"datetime"→DatePickerRenderer _(2026-03-31)_
+_(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ### Wave — ComboBox/LookupBox System (2026-03-28)
 
@@ -130,6 +112,27 @@
 - [x] Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` — thêm cột `Is_Required`, `Is_Enabled` vào bảng `Ui_Field`; cập nhật Val_Rule_Type + Evt_Action_Type
 - [x] Cập nhật `docs/spec/04_ENGINE_SPEC.md` — thêm rule type `Length`, `Compare`; action type `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`; fix Val_Rule_Field → Field_Id trực tiếp
 - [x] Cập nhật `docs/spec/05_ACTION_RULE_PARAM_SCHEMA.md` — deprecated `Required`; thêm schema đầy đủ `Length`, `Compare`, `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+
+---
+
+## ✅ Done (session 2026-04-01)
+
+### Wave — FormRunner Renderers (2026-03-29 → 2026-04-01) ✅
+
+> Nâng DX 24.2→25.2.3, xây đầy đủ 6 renderer (TextBox/Memo/CheckBox/NumericBox/DatePicker/LookupComboBox), fix CSS, fix backend SQL bugs.
+
+- [x] Fix DX v25 CSS: theme file `blazing-berry.bs5.min.css` (không phải `blazing-berry.min.css`) _(2026-04-01)_
+- [x] NumericBoxRenderer, DatePickerRenderer, LookupComboBoxRenderer _(2026-03-31)_
+- [x] TextBoxRenderer, MemoRenderer, CheckBoxRenderer _(2026-03-30)_
+- [x] WPF ControlProps schemas sync _(2026-03-30)_
+- [x] Bug fix: RuleRepository `Field_Code` → `Sys_Column.Column_Code` _(2026-03-31)_
+- [x] Bug fix: DynamicLookupRepository dùng sai DB (Config vs Data) _(2026-03-31)_
+- [x] Bug fix: EventRepository `Field_Code` → `Sys_Column.Column_Code` _(2026-03-30)_
+- [x] Bug fix: DynamicLookupRepository guard SourceName NULL _(2026-03-30)_
+
+### Wave — ComboBox/LookupBox System (2026-03-28) ✅
+
+> 14 tasks hoàn thành: Domain models, DB migration 014, WPF panels, Blazor renderers, Backend API.
 
 ---
 

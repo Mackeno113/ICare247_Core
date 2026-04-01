@@ -1,116 +1,55 @@
 # Last Session Summary
 
-> Cập nhật: 2026-03-31 (session 19)
+> Cập nhật: 2026-04-01 (session 20)
 
-## Đã làm (session 31/03 — NumericBoxRenderer + DatePickerRenderer)
+## Đã làm (session 01/04 — Fix DX theme CSS + LookupComboBox + backend bugs)
 
-### 1. NumericBoxRenderer.razor (NEW)
+### 1. **ROOT CAUSE FIX: DX theme CSS không load** 🎉
 
-- EditorType "NumericBox" → `NumericBoxRenderer` → `DxSpinEdit<decimal?>`
-- Props: `minValue=0`, `maxValue=999999`, `decimals=0`, `spinStep=1`, `allowNull=false`
-- `DisplayFormat = $"N{_props.Decimals}"` → "N0", "N2",...
-- `BoundValue` backing property pattern (async event)
-- AllowNull=false → default 0m khi State.Value là null
+**Vấn đề:** Tất cả DX controls (DxComboBox, DxDateEdit, DxSpinEdit...) render với SVG icons khổng lồ, giao diện xấu hoàn toàn.
 
-### 2. DatePickerRenderer.razor (NEW)
+**Root cause:** `index.html` tham chiếu `blazing-berry.min.css` — file này KHÔNG TỒN TẠI trong DX v25.2.3.
+DX v25 đổi tên theme file: `blazing-berry.bs5.min.css` (có suffix `.bs5`).
+→ Theme CSS không load → DX controls render raw, không có styling.
 
-- EditorType "DatePicker" → `DatePickerRenderer` → `DxDateEdit<DateTime?>`
-- Props: `format="dd/MM/yyyy"`, `minDate=""`, `maxDate=""`
-- `TimeSectionVisible`: auto bật khi format chứa "HH"
-- `NullText`: hiển thị format gợi ý lowercase vd "dd/mm/yyyy"
-- MinDate/MaxDate parse từ ISO string, fallback DateTime.MinValue/MaxValue
+**Fix:** `index.html` line 9: `blazing-berry.min.css` → `blazing-berry.bs5.min.css`
 
-### 3. FieldRenderer.razor cập nhật
+### 2. LookupComboBoxRenderer.razor (T11)
 
-- case "number" → `<NumericBoxRenderer>` (thay `<input type="number">`)
-- case "date" + "datetime" → `<DatePickerRenderer>` (thay `<input type="date/datetime-local">`)
+- DxComboBox cho static Sys_Lookup options
+- Props: searchMode, allowUserInput, clearButton
+- Fallback text input khi Options rỗng
 
-### 4. Build verify: **0 errors** ✅
+### 3. Bug fixes backend
 
-> Session trước (session 18 - 30/03): Bug Fix B6 EventRepository (Field_Code → Sys_Column join) + Bug Fix B7 DynamicLookup SourceName guard + docs/form-runtime-flow.puml
+- `RuleRepository.cs`: `Field_Code` → `Sys_Column.Column_Code` (JOIN pattern)
+- `DynamicLookupRepository.cs`: tách 2 DB — Config DB (IDbConnectionFactory) vs Data DB (IDataDbConnectionFactory)
+- `FormRunner.razor`: NormalizeFieldType thêm "datepicker"→"date", "datetimepicker"→"datetime"
+
+### 4. CSS cleanup
+
+- Xóa Bootstrap CSS khỏi index.html (không cần khi dùng DX theme)
+- Viết lại app.css: plain CSS, không override `.dxbl-*` classes
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅ (2 warnings DX license — bình thường)
-- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select ✅ | **NumericBox ✅** | **DatePicker ✅**
+- Build: **0 errors** ✅
+- **DX theme CSS: FIXED** ✅ — `blazing-berry.bs5.min.css` load đúng
+- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | NumericBox ✅ | DatePicker ✅ | LookupComboBox ✅ | ComboBox ✅ | LookupBox ✅
 - Wave FormRunner Renderers: **HOÀN THÀNH** ✅
+- Wave ComboBox/LookupBox: **HOÀN THÀNH** ✅
 
 ## Việc tiếp theo (ưu tiên)
 
-1. **Test end-to-end** FormRunner với NumericBox/DatePicker fields (cần DB đang chạy)
-2. **T11** — `LookupComboBoxRenderer.razor` (low priority)
-3. **WPF: Pass tableCode** khi navigate từ FieldConfig → I18nManager
-4. **CheckBox layout** — checkbox ngang với label
+1. **Field Config Schema Fix** — Migration 010/011/012 (Is_Required, Is_Enabled, Length/Compare rules)
+2. **WPF: Pass tableCode** khi navigate từ FieldConfig → I18nManager
+3. **Test end-to-end** FormRunner với DX controls styled đúng
+4. **DB cleanup** — UPDATE Control_Props_Json cho TextBox fields (xóa isMultiline/rows cũ)
 
 ## Quyết định quan trọng session này
 
-- **DxSpinEdit<decimal?>:** dùng kiểu nullable; cast double→decimal từ Props
-- **DisplayFormat = $"N{decimals}":** đơn giản cho mọi số chữ số thập phân
-- **DatePickerRenderer xử lý cả "date" và "datetime":** cùng renderer, TimeSectionVisible auto
-
----
-
-## (Lưu lại session 18 — 30/03 — Bug Fix Runtime 500 + Documentation)
-
-### 1. Phân tích luồng xử lý `/form/sys_UI_Design`
-
-- Trace toàn bộ data flow từ Browser → Blazor → API → Repository → SQL Server
-- Xác định mapping FieldType → Renderer (10 loại control, status từng loại)
-- Lên kế hoạch check từng control type theo thứ tự ưu tiên
-
-### 2. Bug Fix B6 — `EventRepository.cs`: Invalid column name 'Field_Code'
-
-**Root cause:** SQL query dùng `uf.Field_Code` nhưng bảng `Ui_Field` không có cột này.
-`FieldCode` thực ra = `Sys_Column.Column_Code` (phải join qua `Ui_Field.Column_Id`).
-
-**Fix:**
-- Thêm `LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id`
-- Đổi `uf.Field_Code AS FieldCode` → `sc.Column_Code AS FieldCode`
-- Đổi WHERE `uf.Field_Code = @FieldCode` → `sc.Column_Code = @FieldCode`
-
-**File:** `ICare247.Infrastructure/Repositories/EventRepository.cs`
-
-### 3. Bug Fix B7 — `DynamicLookupRepository.cs`: SourceName rỗng → 500
-
-**Root cause:** FieldId=9 (PhongBanID) có row trong `Ui_Field_Lookup` nhưng `Source_Name` NULL/empty.
-Code cũ throw `InvalidOperationException` → 500. Nên return `[]` gracefully.
-
-**Fix:** Thêm guard `string.IsNullOrWhiteSpace(cfg.SourceName)` → return `[]`
-
-**File:** `ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs`
-
-### 4. Documentation: Form Runtime Flow
-
-- `docs/form-runtime-flow.puml` — PlantUML sequence diagram 8 phase đầy đủ
-- `docs/form-runtime-flow.txt` — ASCII text version, mọi editor đọc được
-
-**Build:** 0 errors ✅
-
----
-
-## Trạng thái hiện tại
-
-- Build: **0 errors** ✅ (2 warnings DX license — bình thường)
-- Unit tests: 145 passed ✅
-- EventRepository Bug: **fixed** ✅
-- DynamicLookup SourceName guard: **fixed** ✅
-- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | ComboBox ✅ | LookupBox ✅ | Select (HTML) ✅
-- Renderers pending: **NumericBox** (DxSpinEdit) | **DatePicker** (DxDateEdit)
-- Select/ComboBox: dùng native HTML `<select>` — cần nâng lên DxComboBox
-
-## Việc tiếp theo (ưu tiên)
-
-1. **Cấu hình DB cho PhongBanID** — Vào ConfigStudio, set Source_Name cho FieldId=9 Ui_Field_Lookup
-2. **NumericBoxRenderer** — `NumericBoxRenderer.razor` (DxSpinEdit) + WPF schema
-3. **DatePickerRenderer** — `DatePickerRenderer.razor` (DxDateEdit) + WPF schema
-4. **Nâng Select/ComboBox** → DxComboBox (thống nhất Design System)
-5. **CheckBox layout fix** — checkbox nằm ngang với label, không xuống dòng
-6. **Test end-to-end** form sys_UI_Design sau khi fix DB data
-
-## Quyết định quan trọng session này
-
-- **EventRepository pattern:** FieldCode luôn lấy qua `Sys_Column.Column_Code` — KHÔNG có cột `Field_Code` trực tiếp trên `Ui_Field`. Tất cả SQL query liên quan phải join `Sys_Column`.
-- **DynamicLookup guard:** Nếu LookupBox field có cấu hình nhưng `Source_Name` rỗng → return `[]` silently. Không throw 500. Renderer sẽ hiện popup rỗng.
-- **Documentation location:** `docs/form-runtime-flow.puml` + `.txt` — tài liệu flow chính thức.
+- **DX v25 theme naming:** Files có suffix `.bs4` hoặc `.bs5`. ICare247 dùng `.bs5` (Bootstrap 5 compatible).
+- **2-DB pattern cho DynamicLookup:** Config metadata từ IDbConnectionFactory, business data từ IDataDbConnectionFactory.
+- **Ui_Field không có Field_Code:** Mọi SQL cần FieldCode phải JOIN Sys_Column (đã fix ở EventRepository, RuleRepository).
