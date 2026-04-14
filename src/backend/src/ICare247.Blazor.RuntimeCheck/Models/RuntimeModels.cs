@@ -98,6 +98,8 @@ public sealed class FieldState
     public bool    IsVisible  { get; set; }  = true;
     public bool    IsRequired { get; set; }
     public bool    IsReadOnly { get; set; }
+    /// <summary>false = grayout, không tương tác, KHÔNG submit (ADR-010).</summary>
+    public bool    IsEnabled  { get; set; }  = true;
     public List<string> Errors { get; set; } = [];
 
     /// <summary>null | "static" | "dynamic" — phân loại nguồn dữ liệu lookup.</summary>

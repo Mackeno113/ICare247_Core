@@ -20,7 +20,7 @@
                 Width="100%"
                 InputId="@($"field_{State!.FieldCode}")"
 
-                Enabled="true"
+                Enabled="@(State?.IsEnabled ?? true)"
                 ReadOnly="@(State?.IsReadOnly ?? false)" />
 </div>
 
