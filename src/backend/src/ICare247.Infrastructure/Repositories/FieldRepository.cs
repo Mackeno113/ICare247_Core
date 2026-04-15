@@ -24,29 +24,33 @@ public sealed class FieldRepository : IFieldRepository
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<FieldMetadata>> GetByFormIdAsync(
-        int formId, int tenantId, CancellationToken ct = default)
+        int formId, int tenantId, string langCode = "vi", CancellationToken ct = default)
     {
-        // ── SELECT đủ cột, resolve FieldCode qua Sys_Column ─────────────────
+        // ── SELECT đủ cột, resolve Label qua Sys_Resource (cùng pattern FormRepository) ──
+        // Label_Key là resource key → COALESCE(Resource_Value, Label_Key) trả text đã localize
+        // fallback về Label_Key nếu Sys_Resource chưa có entry
         const string sql = """
-            SELECT fi.Field_Id             AS FieldId,
-                   fi.Form_Id              AS FormId,
-                   fi.Section_Id           AS SectionId,
-                   sc.Column_Code          AS FieldCode,
-                   fi.Editor_Type          AS FieldType,
-                   fi.Label_Key            AS Label,
-                   fi.Order_No             AS SortOrder,
-                   fi.Is_Visible           AS IsVisible,
-                   fi.Is_ReadOnly          AS IsReadOnly,
-                   fi.Is_Required          AS IsRequired,
-                   fi.Is_Enabled           AS IsEnabled,
-                   fi.Control_Props_Json   AS ControlPropsJson,
-                   fi.Col_Span             AS ColSpan,
-                   fi.Lookup_Source        AS LookupSource,
-                   fi.Lookup_Code          AS LookupCode
+            SELECT fi.Field_Id                              AS FieldId,
+                   fi.Form_Id                               AS FormId,
+                   fi.Section_Id                            AS SectionId,
+                   sc.Column_Code                           AS FieldCode,
+                   fi.Editor_Type                           AS FieldType,
+                   COALESCE(r.Resource_Value, fi.Label_Key) AS Label,
+                   fi.Order_No                              AS SortOrder,
+                   fi.Is_Visible                            AS IsVisible,
+                   fi.Is_ReadOnly                           AS IsReadOnly,
+                   fi.Is_Required                           AS IsRequired,
+                   fi.Is_Enabled                            AS IsEnabled,
+                   fi.Control_Props_Json                    AS ControlPropsJson,
+                   fi.Col_Span                              AS ColSpan,
+                   fi.Lookup_Source                         AS LookupSource,
+                   fi.Lookup_Code                           AS LookupCode
             FROM   dbo.Ui_Field fi
-            JOIN   dbo.Ui_Form f   ON f.Form_Id   = fi.Form_Id
-            JOIN   dbo.Sys_Table t ON t.Table_Id  = f.Table_Id
+            JOIN   dbo.Ui_Form f      ON f.Form_Id      = fi.Form_Id
+            JOIN   dbo.Sys_Table t    ON t.Table_Id     = f.Table_Id
             LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = fi.Label_Key
+                                        AND r.Lang_Code    = @LangCode
             WHERE  fi.Form_Id = @FormId
               AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             ORDER BY fi.Order_No
@@ -55,7 +59,7 @@ public sealed class FieldRepository : IFieldRepository
         using var conn = _db.CreateConnection();
 
         var fields = (await conn.QueryAsync<FieldMetadata>(
-            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId },
+            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId, LangCode = langCode },
                 cancellationToken: ct))).AsList();
 
         // Gán LookupConfig cho các field dynamic

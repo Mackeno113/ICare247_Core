@@ -38,8 +38,10 @@ public sealed class FieldMetadata
     public string FieldType { get; init; } = "TextBox";
 
     /// <summary>
-    /// Nhãn hiển thị cho người dùng — đã resolve qua Sys_Resource.
-    /// Fallback về Label_Key nếu không tìm thấy resource.
+    /// Nhãn hiển thị cho người dùng.
+    /// FormRepository: resolve qua Sys_Resource (COALESCE), fallback về Label_Key.
+    /// FieldRepository: resolve qua Sys_Resource (langCode param), fallback về Label_Key.
+    /// Không bao giờ là null — worst case trả Label_Key thô.
     /// </summary>
     public string Label { get; init; } = string.Empty;
 

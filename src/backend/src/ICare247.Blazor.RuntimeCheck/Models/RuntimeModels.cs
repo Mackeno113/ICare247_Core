@@ -155,6 +155,12 @@ public sealed class LookupOptionDto
     public string ItemCode  { get; set; } = "";
     public string Label     { get; set; } = "";
     public int    SortOrder { get; set; }
+
+    /// <summary>
+    /// Override để DxComboBox render đúng text trong dropdown list
+    /// khi TextField reflection không áp dụng được.
+    /// </summary>
+    public override string ToString() => Label;
 }
 
 /// <summary>Cài đặt API từ appsettings.json.</summary>

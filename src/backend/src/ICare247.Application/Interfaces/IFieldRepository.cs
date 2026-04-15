@@ -15,8 +15,9 @@ public interface IFieldRepository
 {
     /// <summary>
     /// Lấy tất cả fields (active) của một form, sắp xếp theo Order_No.
+    /// Label được resolve qua Sys_Resource theo <paramref name="langCode"/>.
     /// </summary>
-    Task<IReadOnlyList<FieldMetadata>> GetByFormIdAsync(int formId, int tenantId, CancellationToken ct = default);
+    Task<IReadOnlyList<FieldMetadata>> GetByFormIdAsync(int formId, int tenantId, string langCode = "vi", CancellationToken ct = default);
 
     /// <summary>
     /// Lấy field đơn lẻ theo Field_Id.

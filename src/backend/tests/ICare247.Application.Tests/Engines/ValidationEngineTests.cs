@@ -561,7 +561,7 @@ internal sealed class StubFieldRepository : IFieldRepository
     }
 
     public Task<IReadOnlyList<FieldMetadata>> GetByFormIdAsync(
-        int formId, int tenantId, CancellationToken ct = default)
+        int formId, int tenantId, string langCode = "vi", CancellationToken ct = default)
     {
         var result = _fields.TryGetValue(formId, out var list)
             ? (IReadOnlyList<FieldMetadata>)list

@@ -1,55 +1,67 @@
 # Last Session Summary
 
-> Cập nhật: 2026-04-01 (session 20)
+> Cập nhật: 2026-04-15 (session 21)
 
-## Đã làm (session 01/04 — Fix DX theme CSS + LookupComboBox + backend bugs)
+## Đã làm (session 15/04 — Audit UI bugs + Fix repository SQL mismatches)
 
-### 1. **ROOT CAUSE FIX: DX theme CSS không load** 🎉
+### 1. Phân tích 4 bugs giao diện FormRunner
 
-**Vấn đề:** Tất cả DX controls (DxComboBox, DxDateEdit, DxSpinEdit...) render với SVG icons khổng lồ, giao diện xấu hoàn toàn.
+Từ screenshots, xác định root cause:
 
-**Root cause:** `index.html` tham chiếu `blazing-berry.min.css` — file này KHÔNG TỒN TẠI trong DX v25.2.3.
-DX v25 đổi tên theme file: `blazing-berry.bs5.min.css` (có suffix `.bs5`).
-→ Theme CSS không load → DX controls render raw, không có styling.
+| Bug | Root cause |
+|-----|-----------|
+| Error message = raw key | `FieldRepository.Label_Key` chưa resolve qua Sys_Resource |
+| Không có dấu * required | `FormRepository.sqlFields` thiếu `Is_Required` column |
+| DxComboBox hiện class name | `LookupOptionDto` thiếu `ToString()` override |
+| "Phòng ban" styling khác | `ComboBoxRenderer` dùng native `<select>`, không phải DxComboBox |
 
-**Fix:** `index.html` line 9: `blazing-berry.min.css` → `blazing-berry.bs5.min.css`
+### 2. Fix `DependencyRepository.cs`
 
-### 2. LookupComboBoxRenderer.razor (T11)
+**Lỗi:** `src.Field_Code` / `tgt.Field_Code` không tồn tại trên `Ui_Field`
+**Fix:** JOIN `Sys_Column sc_src / sc_tgt` → dùng `sc.Column_Code` (cùng pattern với RuleRepository, EventRepository)
 
-- DxComboBox cho static Sys_Lookup options
-- Props: searchMode, allowUserInput, clearButton
-- Fallback text input khi Options rỗng
+### 3. Fix `FormRepository.cs` — 2 bugs
 
-### 3. Bug fixes backend
+a) `sqlFields` thiếu `Is_Required AS IsRequired` và `Is_Enabled AS IsEnabled`
+   → FieldState.IsRequired luôn false → asterisk * không hiện
 
-- `RuleRepository.cs`: `Field_Code` → `Sys_Column.Column_Code` (JOIN pattern)
-- `DynamicLookupRepository.cs`: tách 2 DB — Config DB (IDbConnectionFactory) vs Data DB (IDataDbConnectionFactory)
-- `FormRunner.razor`: NormalizeFieldType thêm "datepicker"→"date", "datetimepicker"→"datetime"
+b) `sqlCloneFields` thiếu `Is_Required, Is_Enabled, Col_Span, Lookup_Source, Lookup_Code`
+   → Clone form bị mất các flag quan trọng
 
-### 4. CSS cleanup
+### 4. Fix `FieldRepository.cs` + interface
 
-- Xóa Bootstrap CSS khỏi index.html (không cần khi dùng DX theme)
-- Viết lại app.css: plain CSS, không override `.dxbl-*` classes
+- Thêm `langCode = "vi"` parameter vào `GetByFormIdAsync`
+- Thêm LEFT JOIN `Sys_Resource` → `COALESCE(Resource_Value, Label_Key) AS Label`
+- `ValidationEngine` truyền `langCode` vào cả 2 calls `GetByFormIdAsync`
+
+### 5. Fix `LookupOptionDto.ToString()`
+
+Thêm `override string ToString() => Label` → DxComboBox render đúng label trong dropdown list
+
+### 6. Fix doc comment `FieldMetadata.Label`
+
+Comment sai "đã resolve" → sửa thành mô tả đúng cả 2 repository
+
+---
+
+## Vấn đề còn tồn đọng (chưa fix)
+
+1. **ComboBoxRenderer dùng native `<select>`** — visual inconsistency so với DxComboBox của LookupComboBoxRenderer. Có thể nâng lên DxComboBox nhưng chưa cần thiết.
+2. **`DefaultValueJson` orphan property** — `FieldMetadata.DefaultValueJson` tồn tại trong code nhưng DB không có cột tương ứng. Luôn null. Cần quyết định: thêm migration hoặc xóa property.
+3. **Sys_Resource chưa có đủ data** — nếu Sys_Resource rỗng, label fallback về Label_Key (đã handle đúng, nhưng UX xấu).
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅
-- **DX theme CSS: FIXED** ✅ — `blazing-berry.bs5.min.css` load đúng
-- Renderers done: TextBox ✅ | Memo ✅ | CheckBox ✅ | NumericBox ✅ | DatePicker ✅ | LookupComboBox ✅ | ComboBox ✅ | LookupBox ✅
-- Wave FormRunner Renderers: **HOÀN THÀNH** ✅
-- Wave ComboBox/LookupBox: **HOÀN THÀNH** ✅
-
-## Việc tiếp theo (ưu tiên)
-
-1. **Field Config Schema Fix** — Migration 010/011/012 (Is_Required, Is_Enabled, Length/Compare rules)
-2. **WPF: Pass tableCode** khi navigate từ FieldConfig → I18nManager
-3. **Test end-to-end** FormRunner với DX controls styled đúng
-4. **DB cleanup** — UPDATE Control_Props_Json cho TextBox fields (xóa isMultiline/rows cũ)
+- Build: **0 errors** ✅ (3 projects verified)
+- `DependencyRepository.cs`: **FIXED** ✅
+- `FormRepository.cs`: **FIXED** ✅ (Is_Required, Is_Enabled, Clone)
+- `FieldRepository.cs`: **FIXED** ✅ (langCode + Sys_Resource join)
+- `LookupOptionDto`: **FIXED** ✅ (ToString override)
 
 ## Quyết định quan trọng session này
 
-- **DX v25 theme naming:** Files có suffix `.bs4` hoặc `.bs5`. ICare247 dùng `.bs5` (Bootstrap 5 compatible).
-- **2-DB pattern cho DynamicLookup:** Config metadata từ IDbConnectionFactory, business data từ IDataDbConnectionFactory.
-- **Ui_Field không có Field_Code:** Mọi SQL cần FieldCode phải JOIN Sys_Column (đã fix ở EventRepository, RuleRepository).
+- **Pattern lấy Label từ Ui_Field:** Luôn dùng `COALESCE(r.Resource_Value, fi.Label_Key)` với LEFT JOIN Sys_Resource — không dùng `fi.Label_Key` trực tiếp.
+- **Ui_Field không có Field_Code:** Tất cả repository đã được fix, dùng JOIN Sys_Column.Column_Code.
+- **LookupOptionDto.ToString():** Cần override để DxComboBox fallback đúng text khi TextField reflection không hoạt động.

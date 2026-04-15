@@ -115,6 +115,27 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (session 2026-04-15)
+
+### Wave 8 — Bug Fix: Repository SQL mismatches + UI bugs (2026-04-15) ✅
+
+> Phân tích 4 bugs giao diện FormRunner từ screenshots, fix toàn bộ SQL column mismatches giữa code vs DB schema.
+
+- [x] Bug fix: `DependencyRepository.cs` dùng `src.Field_Code` / `tgt.Field_Code` không tồn tại → JOIN `Sys_Column sc_src/sc_tgt`, dùng `Column_Code` _(2026-04-15)_
+- [x] Bug fix: `FormRepository.sqlFields` thiếu `Is_Required`, `Is_Enabled` → FieldState.IsRequired luôn false → asterisk * không hiện _(2026-04-15)_
+- [x] Bug fix: `FormRepository.sqlCloneFields` thiếu `Is_Required`, `Is_Enabled`, `Col_Span`, `Lookup_Source`, `Lookup_Code` → clone form mất config _(2026-04-15)_
+- [x] Bug fix: `FieldRepository.GetByFormIdAsync` trả `Label_Key` thô → thêm `langCode` param + JOIN `Sys_Resource` → COALESCE(Resource_Value, Label_Key) _(2026-04-15)_
+- [x] Bug fix: `IFieldRepository` + `ValidationEngine` — thêm `langCode` param, truyền đúng vào cả 2 calls _(2026-04-15)_
+- [x] Bug fix: `LookupOptionDto.ToString()` override → DxComboBox render đúng label trong dropdown list _(2026-04-15)_
+- [x] Bug fix: `StubFieldRepository` trong tests — update signature mới _(2026-04-15)_
+- [x] Doc fix: `FieldMetadata.Label` comment sai "đã resolve" → mô tả đúng cả 2 repository _(2026-04-15)_
+
+**Vấn đề còn tồn đọng:**
+- `DefaultValueJson` orphan property — `FieldMetadata` có property nhưng DB không có cột. Luôn null. Cần quyết định: thêm migration hoặc xóa.
+- `ComboBoxRenderer` dùng native `<select>` — visual inconsistency so với DxComboBox (chưa cần fix ngay).
+
+---
+
 ## ✅ Done (session 2026-04-01)
 
 ### Wave — FormRunner Renderers (2026-03-29 → 2026-04-01) ✅

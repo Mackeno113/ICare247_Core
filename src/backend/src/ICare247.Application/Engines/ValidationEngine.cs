@@ -54,7 +54,7 @@ public sealed class ValidationEngine : IValidationEngine
         var failures = new List<ValidationResult>();
 
         // ── 1. Check Is_Required trước khi evaluate rules ─────────────────
-        var formFields = await _fieldRepo.GetByFormIdAsync(formId, tenantId, ct);
+        var formFields = await _fieldRepo.GetByFormIdAsync(formId, tenantId, langCode, ct);
         var fieldMeta  = formFields.FirstOrDefault(
             f => f.FieldCode.Equals(fieldCode, StringComparison.OrdinalIgnoreCase));
 
@@ -98,7 +98,7 @@ public sealed class ValidationEngine : IValidationEngine
         CancellationToken ct = default)
     {
         // ── 1. Load TẤT CẢ fields để check Is_Required ────────────────────
-        var allFields = await _fieldRepo.GetByFormIdAsync(formId, tenantId, ct);
+        var allFields = await _fieldRepo.GetByFormIdAsync(formId, tenantId, langCode, ct);
 
         // ── 2. Load tất cả rules của form — 1 query thay vì N ─────────────
         var rulesByField = await _ruleRepo.GetByFormAsync(formId, tenantId, ct);
