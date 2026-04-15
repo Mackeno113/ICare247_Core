@@ -80,6 +80,20 @@ else if (_form is not null)
             </div>
         }
 
+        @* SHOW_MESSAGE banners từ EventEngine *@
+        @if (_messages.Count > 0)
+        {
+            <div class="form-messages">
+                @foreach (var msg in _messages)
+                {
+                    <div class="form-message form-message-@msg.Severity">
+                        <span>@msg.Key</span>
+                        <button class="btn-icon" @onclick="() => _messages.Remove(msg)">✕</button>
+                    </div>
+                }
+            </div>
+        }
+
         @* Context snapshot (debug) *@
         @if (_showDebug)
         {
@@ -179,6 +193,8 @@ else if (_form is not null)
     private FormValidationResponseDto?  _submitResult;
     private bool                        _showDebug;
     private int                         _lastDeltaCount;
+    /// <summary>Thông báo từ SHOW_MESSAGE delta — hiển thị cuối form.</summary>
+    private List<FormMessage>           _messages       = [];
 
     protected override async Task OnInitializedAsync()
         => await LoadFormAsync();
@@ -188,6 +204,7 @@ else if (_form is not null)
         _loading      = true;
         _error        = null;
         _submitResult = null;
+        _messages.Clear();
         try
         {
             _form = await FormApi.GetFormAsync(FormCode);
@@ -209,6 +226,7 @@ else if (_form is not null)
                 IsVisible    = f.IsVisible,
                 IsReadOnly   = f.IsReadOnly,
                 IsRequired   = f.IsRequired,
+                IsEnabled    = f.IsEnabled,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
                 ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
                 LookupSource    = f.LookupSource,
@@ -320,24 +338,42 @@ else if (_form is not null)
             var response = await RuntimeApi.HandleEventAsync(
                 FormCode, eventType, sourceField, BuildContext());
             _lastDeltaCount = response.Delta.Count;
-            ApplyDeltas(response.Delta);
+            await ApplyDeltasAsync(response.Delta);
         }
         catch
         {
             _lastDeltaCount = 0;
         }
+        // Luôn re-render sau event dù không có delta — state có thể đã thay đổi
+        StateHasChanged();
     }
 
-    private void ApplyDeltas(IEnumerable<UiDeltaDto> deltas)
+    private async Task ApplyDeltasAsync(IEnumerable<UiDeltaDto> deltas)
     {
+        // Gom các field cần TRIGGER_VALIDATION để validate sau khi apply xong tất cả delta
+        var fieldsToValidate = new List<string>();
+
         foreach (var delta in deltas)
         {
+            // Một số action không cần FieldCode (SHOW_MESSAGE form-level)
+            var action = delta.Action.ToUpper();
+
+            // SHOW_MESSAGE có thể không có FieldCode (thông báo form-level)
+            if (action == "SHOW_MESSAGE")
+            {
+                var key      = delta.Data.TryGetValue("messageKey", out var mk) ? mk?.ToString() : null;
+                var severity = delta.Data.TryGetValue("severity",   out var sv) ? sv?.ToString() : "info";
+                if (!string.IsNullOrWhiteSpace(key))
+                    _messages.Add(new FormMessage(key!, severity ?? "info"));
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(delta.FieldCode)) continue;
 
             var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == delta.FieldCode);
             if (fs is null) continue;
 
-            switch (delta.Action.ToUpper())
+            switch (action)
             {
                 case "SET_VALUE":
                     if (delta.Data.TryGetValue("value", out var v))
@@ -359,16 +395,46 @@ else if (_form is not null)
                         fs.IsReadOnly = ToBool(ro);
                     break;
 
+                case "SET_ENABLED":
+                    // false = grayout + không submit (ADR-010)
+                    if (delta.Data.TryGetValue("enabled", out var en))
+                    {
+                        fs.IsEnabled = ToBool(en);
+                        // Khi disable field, xóa errors để không block submit
+                        if (!fs.IsEnabled) fs.Errors.Clear();
+                    }
+                    break;
+
+                case "CLEAR_VALUE":
+                    fs.Value = null;
+                    fs.Errors.Clear();
+                    break;
+
                 case "RELOAD_OPTIONS":
-                    // Reload lookup options khi có cascading change (VD: đổi CapToChuc → reload LoaiNhanVien)
-                    // lookupCode trong delta.Data["lookupCode"] ghi đè LookupCode của field
+                    // Cascade reload — lookupCode trong Data ghi đè code mặc định của field
                     var newCode = delta.Data.TryGetValue("lookupCode", out var lc)
                         ? lc?.ToString()
                         : fs.LookupCode;
                     if (!string.IsNullOrWhiteSpace(newCode))
-                        _ = ReloadFieldOptionsAsync(fs, newCode);
+                        await ReloadFieldOptionsAsync(fs, newCode);
+                    break;
+
+                case "TRIGGER_VALIDATION":
+                    // Gom lại, validate sau khi apply xong tất cả delta
+                    fieldsToValidate.Add(delta.FieldCode);
                     break;
             }
+        }
+
+        // Validate các field được yêu cầu (sau khi apply xong toàn bộ delta)
+        foreach (var fieldCode in fieldsToValidate)
+        {
+            var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
+            if (fs is null || !fs.IsEnabled) continue;
+
+            var result = await RuntimeApi.ValidateFieldAsync(
+                FormCode, fieldCode, fs.Value, BuildContext(), LangCode);
+            fs.Errors = result.Errors.Select(e => e.Message).ToList();
         }
     }
 
@@ -382,8 +448,18 @@ else if (_form is not null)
     private static bool ToBool(object? v)
         => v is bool b ? b : bool.TryParse(v?.ToString(), out var r) && r;
 
+    /// <summary>Thông báo từ SHOW_MESSAGE delta.</summary>
+    private sealed record FormMessage(string Key, string Severity);
+
+    /// <summary>
+    /// Snapshot context toàn form — dùng để gửi lên API.
+    /// ADR-010: field IsEnabled=false KHÔNG được submit → loại khỏi context.
+    /// Field IsVisible=false nhưng còn Enabled vẫn giữ trong context (hidden field).
+    /// </summary>
     private Dictionary<string, object?> BuildContext()
-        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+        => _fieldStates
+            .Where(f => f.IsEnabled)
+            .ToDictionary(f => f.FieldCode, f => f.Value);
 
     private static object? ParseDefaultValue(string? json)
     {

@@ -18,8 +18,8 @@
             Width="100%"
             InputId="@($"field_{State!.FieldCode}")"
 
-            Enabled="true"
-            ReadOnly="@State.IsReadOnly"
+            Enabled="@(State?.IsEnabled ?? true)"
+            ReadOnly="@(State?.IsReadOnly ?? false)"
 
             Rows="@(_props.Rows > 0 ? _props.Rows : 4)" />
 </div>

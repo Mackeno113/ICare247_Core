@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>ICare247.DbMigrator</AssemblyName>
+    <RootNamespace>ICare247.DbMigrator</RootNamespace>
+    <!-- Tắt invariant mode để hiển thị tiếng Việt đúng trong console -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DbUp: migration runner cho SQL Server -->
+    <PackageReference Include="dbup-sqlserver" Version="5.0.37" />
+  </ItemGroup>
+
+</Project>

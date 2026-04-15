@@ -9,7 +9,7 @@
 
 <div class="lookupbox-wrapper">
     @* ── EditBox — hiển thị giá trị đã chọn ── *@
-    <div class="lookupbox-editbox @(State?.IsReadOnly == true ? "readonly" : "")">
+    <div class="lookupbox-editbox @(State?.IsReadOnly == true || State?.IsEnabled == false ? "readonly" : "")">
         <div class="lookupbox-display" @onclick="TogglePopup">
             @if (string.IsNullOrEmpty(State?.ValueString))
             {
@@ -31,12 +31,12 @@
                 }
             }
         </div>
-        @if (!State?.IsReadOnly == true && !string.IsNullOrEmpty(State?.ValueString))
+        @if (State?.IsReadOnly != true && State?.IsEnabled != false && !string.IsNullOrEmpty(State?.ValueString))
         {
             <button class="lookupbox-clear" @onclick="ClearValue" title="Xóa">✕</button>
         }
         <button class="lookupbox-btn" @onclick="TogglePopup"
-                disabled="@(State?.IsReadOnly == true)"
+                disabled="@(State?.IsReadOnly == true || State?.IsEnabled == false)"
                 title="Mở danh sách">▼</button>
     </div>
 
@@ -212,7 +212,7 @@
 
     private async Task TogglePopup()
     {
-        if (State?.IsReadOnly == true) return;
+        if (State?.IsReadOnly == true || State?.IsEnabled == false) return;
         _popupVisible = !_popupVisible;
 
         // Load data khi mở popup lần đầu

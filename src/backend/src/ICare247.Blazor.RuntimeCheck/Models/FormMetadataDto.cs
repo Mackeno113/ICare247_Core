@@ -47,6 +47,8 @@ public sealed class FieldMetadataDto
     public bool    IsReadOnly       { get; set; }
     /// <summary>Luôn false từ metadata; Val_Rule quyết định required runtime.</summary>
     public bool    IsRequired       { get; set; }
+    /// <summary>false = grayout, không tương tác, KHÔNG submit (ADR-010).</summary>
+    public bool    IsEnabled        { get; set; } = true;
     public int     SortOrder        { get; set; }
     /// <summary>Độ rộng grid 4-col: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>
     public byte    ColSpan          { get; set; } = 1;

@@ -19,8 +19,8 @@
                Width="100%"
                InputId="@($"field_{State!.FieldCode}")"
 
-               Enabled="true"
-               ReadOnly="@State.IsReadOnly"
+               Enabled="@(State?.IsEnabled ?? true)"
+               ReadOnly="@(State?.IsReadOnly ?? false)"
 
                Password="@_props.IsPassword"
                MaxLength="@_props.MaxLength"

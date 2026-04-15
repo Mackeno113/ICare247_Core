@@ -18,7 +18,7 @@
     {
         <select id="field_@State.FieldCode"
                 class="field-input"
-                disabled="@State.IsReadOnly"
+                disabled="@(State.IsReadOnly || !State.IsEnabled)"
                 @onchange="HandleChange"
                 @onblur="HandleBlur">
             <option value="">-- Chọn --</option>
