@@ -165,6 +165,9 @@ else if (_form is not null)
             <button class="btn-link" @onclick="ToggleDebug">
                 @(_showDebug ? "Ẩn" : "Hiện") context snapshot
             </button>
+            <button class="btn-link" @onclick="ExportConfigJsonAsync">
+                ⬇ Export config JSON
+            </button>
             @if (_lastDeltaCount > 0)
             {
                 <span class="delta-badge">⚡ @_lastDeltaCount delta(s) applied</span>
@@ -276,8 +279,16 @@ else if (_form is not null)
         var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
         if (fs is null) return;
 
+        // Snapshot value trước khi gọi API — tránh race condition với ValueChanged:
+        // nếu user vừa chọn (ValueChanged chưa kịp fire), validate sẽ dùng giá trị cũ.
+        // Sau khi API trả về, chỉ apply errors nếu value chưa thay đổi.
+        var valueSnapshot = fs.Value;
+
         var result = await RuntimeApi.ValidateFieldAsync(
-            FormCode, fieldCode, fs.Value, BuildContext(), LangCode);
+            FormCode, fieldCode, valueSnapshot, BuildContext(), LangCode);
+
+        // Bỏ qua kết quả nếu giá trị đã thay đổi trong lúc chờ API
+        if (!Equals(fs.Value, valueSnapshot)) return;
 
         fs.Errors = result.Errors.Select(e => e.Message).ToList();
         StateHasChanged();
@@ -529,4 +540,21 @@ else if (_form is not null)
         "lookupbox"                                                     => "fklookup",
         _                                                               => "text"
     };
+
+    // ── Export config ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Serialize toàn bộ FormMetadataDto → JSON rồi trigger download file
+    /// {FormCode}_config.json để tiện kiểm tra cấu hình.
+    /// </summary>
+    private async Task ExportConfigJsonAsync()
+    {
+        if (_form is null) return;
+
+        var json = System.Text.Json.JsonSerializer.Serialize(_form,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+        var filename = $"{_form.FormCode}_config.json";
+        await JS.InvokeVoidAsync("icare.downloadJson", filename, json);
+    }
 }

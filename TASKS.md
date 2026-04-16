@@ -115,6 +115,29 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (session 2026-04-16)
+
+### Wave 9 — Bug Fix: Blazor Renderer UI bugs (2026-04-16) ✅
+
+> Phân tích cấu hình JSON export, xác định và fix 6 bugs liên quan đến rendering ComboBox/LookupBox/DatePicker.
+
+- [x] **ComboBoxRenderer** — đổi `<select>` HTML → `DxComboBox` với dynamic data (map `DynamicRows` → `List<LookupItem>` typed để DxComboBox bind được) _(2026-04-16)_
+- [x] **LookupBoxRenderer** — fix `PopupColDef`: `Column`/`Title` → thêm `[JsonPropertyName("fieldName")]`/`[JsonPropertyName("caption")]` khớp với WPF output _(2026-04-16)_
+- [x] **DynamicLookupRepository** — fix `PopupColEntry`: thêm `[JsonPropertyName("fieldName")]` → BUILD SELECT đúng cột popup _(2026-04-16)_
+- [x] **LookupBoxRenderer.razor.css** — tạo mới CSS scoped: `position: absolute` cho popup → không còn chiếm layout inline _(2026-04-16)_
+- [x] **LookupComboBoxRenderer** — đổi `@bind-Value` từ `ValueField=ItemCode` sang bind `LookupOptionDto?` trực tiếp → fix DX hiển thị item đầu tiên khi null _(2026-04-16)_
+- [x] **LookupComboBoxRenderer** — thêm `Task.Delay(50)` trong `HandleLostFocus` → tránh race condition với `ValueChanged` _(2026-04-16)_
+- [x] **FormRunner** — race condition fix trong `OnFieldBlur`: snapshot value trước API, bỏ qua kết quả nếu value đã thay đổi _(2026-04-16)_
+- [x] **FormRunner** — thêm `ExportConfigJsonAsync()` + button "⬇ Export config JSON" → download `{FormCode}_config.json` _(2026-04-16)_
+- [x] **DatePickerRenderer** — thêm `ClearButtonDisplayMode="Auto"` → nút xóa ngày hiển thị đúng _(2026-04-16)_
+- [x] **index.html** — thêm `icare.downloadJson()` JS helper cho blob download _(2026-04-16)_
+
+**Quyết định thiết kế:**
+- `PopupColumnsJson` key format là `fieldName`/`caption`/`width` (WPF output) — không phải `column`/`title`. Tất cả consumer phải dùng `[JsonPropertyName]`.
+- `LookupComboBoxRenderer` bind `LookupOptionDto?` (full object) thay vì `string` (ItemCode via ValueField) — tránh DevExpress null display bug.
+
+---
+
 ## ✅ Done (session 2026-04-15)
 
 ### Wave 8 — Bug Fix: Repository SQL mismatches + UI bugs (2026-04-15) ✅

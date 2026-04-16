@@ -200,7 +200,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         // CodeField — dùng khi EditBoxMode = CodeAndName
         AddCol(cfg.CodeField);
 
-        // Popup columns từ JSON: [{"column":"MaPhongBan","title":"Mã",...}, ...]
+        // Popup columns từ JSON: [{"fieldName":"MaPhongBan","caption":"Mã",...}, ...]
         if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
         {
             try
@@ -263,9 +263,13 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         public string? CodeField        { get; init; }
     }
 
-    /// <summary>Một entry trong PopupColumnsJson array — chỉ cần Column để build SELECT.</summary>
+    /// <summary>
+    /// Một entry trong PopupColumnsJson array — chỉ cần Column để build SELECT.
+    /// JSON từ WPF ConfigStudio dùng key "fieldName" (không phải "column").
+    /// </summary>
     private sealed class PopupColEntry
     {
+        [System.Text.Json.Serialization.JsonPropertyName("fieldName")]
         public string Column { get; init; } = "";
         public string Title  { get; init; } = "";
         public int    Width  { get; init; }

@@ -12,10 +12,11 @@
 <div @onfocusout="HandleLostFocus">
     @if (State?.Options.Count > 0)
     {
+        @* Bind full LookupOptionDto (không dùng ValueField) để DxComboBox hiển thị
+           NullText đúng khi chưa chọn — tránh bug hiển thị item đầu tiên khi Value = null. *@
         <DxComboBox Data="@State!.Options"
-                    @bind-Value="BoundValue"
+                    @bind-Value="SelectedOption"
                     TextField="@nameof(LookupOptionDto.Label)"
-                    ValueField="@nameof(LookupOptionDto.ItemCode)"
                     SearchMode="@_searchMode"
                     AllowUserInput="@_props.AllowUserInput"
                     ClearButtonDisplayMode="@_clearButtonMode"
@@ -54,17 +55,18 @@
 
     // ── Private state ────────────────────────────────────────────────────────────
     private LookupComboBoxProps _props = new();
-    private string? _localValue;
     private ListSearchMode _searchMode;
     private DataEditorClearButtonDisplayMode _clearButtonMode;
 
     /// <summary>
-    /// Backing property cho @bind-Value — phát event async khi giá trị thay đổi.
+    /// Bind full LookupOptionDto thay vì string ItemCode.
+    /// Tránh bug DxComboBox hiển thị item đầu tiên khi Value (string?) = null với ValueField.
+    /// Khi user chọn option → SelectedOption.set → extract ItemCode → set State.Value.
     /// </summary>
-    private string? BoundValue
+    private LookupOptionDto? SelectedOption
     {
-        get => _localValue;
-        set => _ = HandleValueChangedAsync(value);
+        get => State?.Options.FirstOrDefault(o => o.ItemCode == State.ValueString);
+        set => _ = HandleOptionChangedAsync(value);
     }
 
     // ── Computed ─────────────────────────────────────────────────────────────────
@@ -79,8 +81,7 @@
 
     protected override void OnParametersSet()
     {
-        _props      = LookupComboBoxProps.Parse(State?.ControlPropsJson);
-        _localValue = State?.ValueString is { Length: > 0 } v ? v : null;
+        _props = LookupComboBoxProps.Parse(State?.ControlPropsJson);
 
         _searchMode = _props.SearchMode == "None"
             ? ListSearchMode.None
@@ -93,17 +94,21 @@
 
     // ── Handlers ─────────────────────────────────────────────────────────────────
 
-    private async Task HandleValueChangedAsync(string? value)
+    private async Task HandleOptionChangedAsync(LookupOptionDto? option)
     {
         if (State is null) return;
-        _localValue = value;
-        State.Value = value;
-        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
+        // Extract ItemCode từ option đã chọn — null khi user xóa selection
+        var itemCode = option?.ItemCode;
+        State.Value  = itemCode;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)itemCode));
     }
 
     private async Task HandleLostFocus(FocusEventArgs _)
     {
         if (State is null) return;
+        // Delay nhỏ để DxComboBox ValueChanged (HandleOptionChangedAsync) kịp fire trước
+        // khi focus chuyển sang popup dropdown rồi quay lại — tránh validate với giá trị cũ.
+        await Task.Delay(50);
         await OnBlur.InvokeAsync(State.FieldCode);
     }
 

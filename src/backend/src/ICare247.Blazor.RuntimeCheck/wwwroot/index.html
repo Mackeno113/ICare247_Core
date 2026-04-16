@@ -36,6 +36,18 @@
                 if (!el) return;
                 el.focus();
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            },
+            // downloadJson(filename, jsonText) — tạo blob và trigger download file .json
+            downloadJson: function (filename, jsonText) {
+                const blob = new Blob([jsonText], { type: 'application/json' });
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href     = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
         };
     </script>

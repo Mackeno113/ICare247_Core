@@ -1,11 +1,15 @@
 @* File    : ComboBoxRenderer.razor
-   Purpose : Render dynamic ComboBox — gọi API lấy rows từ Table/TVF/SQL rồi hiển thị <select>.
+   Purpose : Render DxComboBox cho dynamic lookup — gọi API lấy rows từ Table/TVF/SQL.
              Dùng cho Editor_Type = ComboBox + LookupSource = dynamic.
-             Load data khi khởi tạo; reload tự động nếu ReloadTriggerField thay đổi. *@
+             Rows được map sang LookupItem (Value/Label) để DxComboBox bind được.
+             Reload tự động khi ReloadTriggerField thay đổi giá trị. *@
+
+@using DevExpress.Blazor
+@using ICare247.Blazor.RuntimeCheck.Models
 
 @inject ILookupQueryService LookupQuerySvc
 
-<div class="combobox-wrapper">
+<div @onfocusout="HandleLostFocus">
     @if (_loading)
     {
         <span class="lookup-loading">⏳ Đang tải...</span>
@@ -16,26 +20,20 @@
     }
     else if (State is not null)
     {
-        <select id="field_@State.FieldCode"
-                class="field-input"
-                disabled="@(State.IsReadOnly || !State.IsEnabled)"
-                @onchange="HandleChange"
-                @onblur="HandleBlur">
-            <option value="">-- Chọn --</option>
-            @foreach (var row in State.DynamicRows)
-            {
-                var val = GetVal(row);
-                var lbl = GetDisplay(row);
-                @if (State.ValueString == val)
-                {
-                    <option value="@val" selected>@lbl</option>
-                }
-                else
-                {
-                    <option value="@val">@lbl</option>
-                }
-            }
-        </select>
+        <DxComboBox Data="@_items"
+                    @bind-Value="BoundValue"
+                    TextField="@nameof(LookupItem.Label)"
+                    ValueField="@nameof(LookupItem.Value)"
+                    SearchMode="ListSearchMode.AutoSearch"
+                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+
+                    NullText="@NullTextValue"
+                    CssClass="@CssClassValue"
+                    Width="100%"
+                    InputId="@($"field_{State!.FieldCode}")"
+
+                    Enabled="@(State?.IsEnabled ?? true)"
+                    ReadOnly="@(State?.IsReadOnly ?? false)" />
     }
 </div>
 
@@ -46,21 +44,35 @@
     /// <summary>Context snapshot toàn form — truyền vào query để hỗ trợ cascading filter.</summary>
     [Parameter]                 public Dictionary<string, object?>                 Context  { get; set; } = [];
 
-    private bool    _loading;
-    private string? _loadError;
-    // Theo dõi giá trị trigger field để biết khi nào cần reload
-    private object? _lastTriggerValue;
+    private bool             _loading;
+    private string?          _loadError;
+    private string?          _localValue;
+    private object?          _lastTriggerValue;
+    private List<LookupItem> _items = [];
+
+    /// <summary>Backing property cho @bind-Value — phát event async khi giá trị thay đổi.</summary>
+    private string? BoundValue
+    {
+        get => _localValue;
+        set => _ = HandleValueChangedAsync(value);
+    }
+
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : "-- Chọn --";
+    private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
 
     protected override async Task OnParametersSetAsync()
     {
         if (State is null) return;
 
-        // Reload khi trigger field thay đổi giá trị
-        var triggerField = State.LookupConfig?.ReloadTriggerField;
-        var currentTriggerValue = !string.IsNullOrWhiteSpace(triggerField)
-            && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+        // Đồng bộ giá trị hiển thị từ State
+        _localValue = State.ValueString is { Length: > 0 } v ? v : null;
 
-        var needsLoad = State.DynamicRows.Count == 0
+        // Reload khi trigger field thay đổi giá trị
+        var triggerField         = State.LookupConfig?.ReloadTriggerField;
+        var currentTriggerValue  = !string.IsNullOrWhiteSpace(triggerField)
+                                   && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+
+        var needsLoad = _items.Count == 0
             || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
 
         if (needsLoad)
@@ -80,49 +92,53 @@
         try
         {
             State.DynamicRows = await LookupQuerySvc.QueryAsync(State.FieldId, Context);
+
+            // Map Dictionary rows → typed LookupItem để DxComboBox bind được
+            var valCol = State.LookupConfig?.ValueColumn   ?? "";
+            var lblCol = State.LookupConfig?.DisplayColumn ?? "";
+            _items = State.DynamicRows
+                .Select(row => new LookupItem(
+                    Value: GetColValue(row, valCol),
+                    Label: GetColValue(row, lblCol)))
+                .ToList();
         }
         catch (Exception ex)
         {
-            _loadError = ex.Message;
+            _loadError        = ex.Message;
             State.DynamicRows = [];
+            _items            = [];
         }
         finally { _loading = false; }
     }
 
-    // ── Value / Display mapping ───────────────────────────────────────────────
-
-    private string GetVal(Dictionary<string, object?> row)
-    {
-        var col = State?.LookupConfig?.ValueColumn ?? "";
-        return GetColValue(row, col);
-    }
-
-    private string GetDisplay(Dictionary<string, object?> row)
-    {
-        var col = State?.LookupConfig?.DisplayColumn ?? "";
-        return GetColValue(row, col);
-    }
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static string GetColValue(Dictionary<string, object?> row, string col)
     {
         if (string.IsNullOrWhiteSpace(col)) return "";
-        // Tìm theo tên cột (case-insensitive)
+        // Case-insensitive lookup theo tên cột
         var kv = row.FirstOrDefault(p => p.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
         return kv.Value?.ToString() ?? "";
     }
 
     // ── Event handlers ────────────────────────────────────────────────────────
 
-    private async Task HandleChange(ChangeEventArgs e)
+    private async Task HandleValueChangedAsync(string? value)
     {
         if (State is null) return;
-        State.Value = e.Value;
-        await OnChange.InvokeAsync((State.FieldCode, e.Value));
+        _localValue  = value;
+        State.Value  = value;
+        await OnChange.InvokeAsync((State.FieldCode, (object?)value));
     }
 
-    private async Task HandleBlur(FocusEventArgs _)
+    private async Task HandleLostFocus(FocusEventArgs _)
     {
         if (State is null) return;
         await OnBlur.InvokeAsync(State.FieldCode);
     }
+
+    // ── Inner types ───────────────────────────────────────────────────────────
+
+    /// <summary>Typed wrapper cho một row lookup — cần thiết để DxComboBox reflection bind được TextField/ValueField.</summary>
+    private sealed record LookupItem(string Value, string Label);
 }

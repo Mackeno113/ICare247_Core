@@ -1,67 +1,65 @@
 # Last Session Summary
 
-> Cập nhật: 2026-04-15 (session 21)
+> Cập nhật: 2026-04-16 (session 22)
 
-## Đã làm (session 15/04 — Audit UI bugs + Fix repository SQL mismatches)
+## Đã làm (session 16/04 — Blazor Renderer UI Bug Fixes)
 
-### 1. Phân tích 4 bugs giao diện FormRunner
+### 1. ComboBoxRenderer: `<select>` → DxComboBox
 
-Từ screenshots, xác định root cause:
+**Vấn đề:** `ComboBoxRenderer` dùng HTML `<select>` thô, không nhất quán với DxComboBox  
+**Fix:** Map `DynamicRows` (`List<Dictionary<string,object?>>`) → `List<LookupItem>` (typed record) → bind vào `DxComboBox` với `TextField`/`ValueField`
 
-| Bug | Root cause |
-|-----|-----------|
-| Error message = raw key | `FieldRepository.Label_Key` chưa resolve qua Sys_Resource |
-| Không có dấu * required | `FormRepository.sqlFields` thiếu `Is_Required` column |
-| DxComboBox hiện class name | `LookupOptionDto` thiếu `ToString()` override |
-| "Phòng ban" styling khác | `ComboBoxRenderer` dùng native `<select>`, không phải DxComboBox |
+### 2. LookupBoxRenderer + DynamicLookupRepository: JSON key mismatch
 
-### 2. Fix `DependencyRepository.cs`
+**Root cause:** WPF ConfigStudio sinh `PopupColumnsJson` với keys `"fieldName"`/`"caption"` nhưng code C# expect `"Column"`/`"Title"` → cột popup rỗng, SQL SELECT thiếu cột  
+**Fix:**
+- `LookupBoxRenderer.PopupColDef`: thêm `[JsonPropertyName("fieldName")]` + `[JsonPropertyName("caption")]`
+- `DynamicLookupRepository.PopupColEntry`: thêm `[JsonPropertyName("fieldName")]`
 
-**Lỗi:** `src.Field_Code` / `tgt.Field_Code` không tồn tại trên `Ui_Field`
-**Fix:** JOIN `Sys_Column sc_src / sc_tgt` → dùng `sc.Column_Code` (cùng pattern với RuleRepository, EventRepository)
+### 3. LookupBoxRenderer CSS: popup chiếm layout
 
-### 3. Fix `FormRepository.cs` — 2 bugs
+**Vấn đề:** Không có CSS → `lookupbox-popup` render inline, chiếm toàn bộ grid layout  
+**Fix:** Tạo `LookupBoxRenderer.razor.css` với `position: absolute; z-index: 1050` cho popup
 
-a) `sqlFields` thiếu `Is_Required AS IsRequired` và `Is_Enabled AS IsEnabled`
-   → FieldState.IsRequired luôn false → asterisk * không hiện
+### 4. LookupComboBoxRenderer: DX hiển thị item đầu tiên khi null
 
-b) `sqlCloneFields` thiếu `Is_Required, Is_Enabled, Col_Span, Lookup_Source, Lookup_Code`
-   → Clone form bị mất các flag quan trọng
+**Root cause:** `@bind-Value` với `ValueField="ItemCode"` (string?) + `Value = null` → DxComboBox hiển thị item đầu tiên thay vì NullText  
+**Fix:** Bỏ `ValueField`, bind `LookupOptionDto?` trực tiếp → null thực sự = không chọn
 
-### 4. Fix `FieldRepository.cs` + interface
+### 5. Race condition: blur validation trước ValueChanged
 
-- Thêm `langCode = "vi"` parameter vào `GetByFormIdAsync`
-- Thêm LEFT JOIN `Sys_Resource` → `COALESCE(Resource_Value, Label_Key) AS Label`
-- `ValidationEngine` truyền `langCode` vào cả 2 calls `GetByFormIdAsync`
+**Fix:** `HandleLostFocus` thêm `Task.Delay(50)` + `FormRunner.OnFieldBlur` snapshot value trước API, bỏ qua result nếu value đã thay đổi
 
-### 5. Fix `LookupOptionDto.ToString()`
+### 6. Export Config JSON
 
-Thêm `override string ToString() => Label` → DxComboBox render đúng label trong dropdown list
+**Tính năng mới:** Button "⬇ Export config JSON" trong footer → serialize `FormMetadataDto` → download file `{FormCode}_config.json`  
+**Impl:** `icare.downloadJson()` JS helper + `ExportConfigJsonAsync()` C#
 
-### 6. Fix doc comment `FieldMetadata.Label`
+### 7. DatePickerRenderer: nút xóa trống
 
-Comment sai "đã resolve" → sửa thành mô tả đúng cả 2 repository
-
----
-
-## Vấn đề còn tồn đọng (chưa fix)
-
-1. **ComboBoxRenderer dùng native `<select>`** — visual inconsistency so với DxComboBox của LookupComboBoxRenderer. Có thể nâng lên DxComboBox nhưng chưa cần thiết.
-2. **`DefaultValueJson` orphan property** — `FieldMetadata.DefaultValueJson` tồn tại trong code nhưng DB không có cột tương ứng. Luôn null. Cần quyết định: thêm migration hoặc xóa property.
-3. **Sys_Resource chưa có đủ data** — nếu Sys_Resource rỗng, label fallback về Label_Key (đã handle đúng, nhưng UX xấu).
+**Fix:** Thêm `ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"` vào `DxDateEdit`
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅ (3 projects verified)
-- `DependencyRepository.cs`: **FIXED** ✅
-- `FormRepository.cs`: **FIXED** ✅ (Is_Required, Is_Enabled, Clone)
-- `FieldRepository.cs`: **FIXED** ✅ (langCode + Sys_Resource join)
-- `LookupOptionDto`: **FIXED** ✅ (ToString override)
+- Build: **0 errors** ✅ (verified `src/backend/ICare247.slnx`)
+- ComboBoxRenderer: **FIXED** ✅ (DxComboBox dynamic)
+- LookupBoxRenderer: **FIXED** ✅ (JSON keys + CSS popup)
+- DynamicLookupRepository: **FIXED** ✅ (PopupColEntry JSON keys)
+- LookupComboBoxRenderer: **FIXED** ✅ (null binding + race condition)
+- FormRunner: **FIXED** ✅ (race condition + export feature)
+- DatePickerRenderer: **FIXED** ✅ (clear button)
 
 ## Quyết định quan trọng session này
 
-- **Pattern lấy Label từ Ui_Field:** Luôn dùng `COALESCE(r.Resource_Value, fi.Label_Key)` với LEFT JOIN Sys_Resource — không dùng `fi.Label_Key` trực tiếp.
-- **Ui_Field không có Field_Code:** Tất cả repository đã được fix, dùng JOIN Sys_Column.Column_Code.
-- **LookupOptionDto.ToString():** Cần override để DxComboBox fallback đúng text khi TextField reflection không hoạt động.
+- **PopupColumnsJson key format:** `fieldName`/`caption`/`width` — WPF là source of truth. Mọi consumer dùng `[JsonPropertyName]`.
+- **LookupComboBoxRenderer binding:** Bind `LookupOptionDto?` (full object), không dùng `ValueField` — tránh DevExpress null display bug khi `Value = null (string?)`.
+- **Blur validation race condition:** Pattern chuẩn: snapshot value trước async API call, discard result nếu value đã thay đổi.
+
+## Task tiếp theo gợi ý
+
+1. **Kiểm tra thực tế** — Test đầy đủ các renderer: ComboBox dynamic, LookupBox popup, DatePicker clear button
+2. **Fix validation errors** — Kiểm tra tại sao submit vẫn báo lỗi khi đã chọn đủ (context snapshot debug)
+3. **DefaultValueJson** — Quyết định: thêm DB migration hoặc xóa orphan property
+4. **LookupBox CodeField** — Cấu hình `CodeField` cho PhongBanID field trong DB để EditBoxMode "CodeAndName" hiển thị đúng

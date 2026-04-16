@@ -5,6 +5,7 @@
              Popup hiển thị bảng dữ liệu với các cột từ PopupColumnsJson (nếu có).
              Cascade reload khi ReloadTriggerField thay đổi. *@
 
+@using System.Text.Json.Serialization
 @inject ILookupQueryService LookupQuerySvc
 
 <div class="lookupbox-wrapper">
@@ -283,10 +284,14 @@
 
     // ── Inner types ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Ánh xạ JSON từ WPF ConfigStudio (keys: fieldName / caption / width)
+    /// sang C# object để render cột trong popup grid.
+    /// </summary>
     private sealed class PopupColDef
     {
-        public string Column { get; set; } = "";
-        public string Title  { get; set; } = "";
-        public int    Width  { get; set; }
+        [JsonPropertyName("fieldName")] public string Column { get; set; } = "";
+        [JsonPropertyName("caption")]   public string Title  { get; set; } = "";
+        [JsonPropertyName("width")]     public int    Width  { get; set; }
     }
 }
