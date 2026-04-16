@@ -264,14 +264,16 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     }
 
     /// <summary>
-    /// Một entry trong PopupColumnsJson array — chỉ cần Column để build SELECT.
-    /// JSON từ WPF ConfigStudio dùng key "fieldName" (không phải "column").
+    /// Một entry trong PopupColumnsJson array — chỉ cần FieldName để build SELECT.
+    /// JSON từ WPF ConfigStudio dùng key "fieldName" + "captionKey" (i18n).
+    /// MetadataEngine đã resolve captionKey → caption trước khi lưu vào cache;
+    /// DynamicLookupRepository chỉ cần FieldName để xây SELECT nên không cần các field khác.
     /// </summary>
     private sealed class PopupColEntry
     {
         [System.Text.Json.Serialization.JsonPropertyName("fieldName")]
         public string Column { get; init; } = "";
-        public string Title  { get; init; } = "";
-        public int    Width  { get; init; }
+        // captionKey / caption không cần cho SQL builder — chỉ cần tên cột DB
+        public int Width { get; init; }
     }
 }

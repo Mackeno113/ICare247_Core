@@ -66,6 +66,43 @@ public sealed class ResourceRepository : IResourceRepository
         return map;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> GetByKeysAsync(
+        IEnumerable<string> keys,
+        string langCode,
+        CancellationToken ct = default)
+    {
+        // Loại bỏ key rỗng, tránh query vô nghĩa
+        var keyList = keys.Where(k => !string.IsNullOrWhiteSpace(k)).Distinct().ToList();
+        if (keyList.Count == 0)
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        const string sql = """
+            SELECT r.Resource_Key   AS ResourceKey,
+                   r.Resource_Value AS ResourceValue
+            FROM   dbo.Sys_Resource r
+            WHERE  r.Lang_Code = @LangCode
+              AND  r.Resource_Key IN @Keys
+            """;
+
+        using var conn = _db.CreateConnection();
+        var cmd = new CommandDefinition(
+            sql,
+            new { LangCode = langCode, Keys = keyList },
+            cancellationToken: ct);
+
+        var rows = await conn.QueryAsync<ResourceRow>(cmd);
+
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            if (!string.IsNullOrWhiteSpace(row.ResourceKey))
+                map[row.ResourceKey] = row.ResourceValue ?? string.Empty;
+        }
+
+        return map;
+    }
+
     // ── Private DTO ──────────────────────────────────────────────────────
     private sealed class ResourceRow
     {

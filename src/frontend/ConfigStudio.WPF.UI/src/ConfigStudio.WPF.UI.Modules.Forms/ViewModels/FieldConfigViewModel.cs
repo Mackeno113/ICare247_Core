@@ -1134,11 +1134,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                         {
                                             var colCfg = new FkColumnConfig
                                             {
-                                                FieldName = col.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? "" : "",
-                                                Caption   = col.TryGetProperty("caption",   out var cp) ? cp.GetString() ?? "" : "",
-                                                Width     = col.TryGetProperty("width",     out var w)  ? w.GetInt32() : 150
+                                                FieldName  = col.TryGetProperty("fieldName",  out var fn) ? fn.GetString() ?? "" : "",
+                                                // Ưu tiên captionKey (i18n key mới); fallback caption (data cũ plain text)
+                                                CaptionKey = col.TryGetProperty("captionKey", out var ck) ? ck.GetString() ?? ""
+                                                           : col.TryGetProperty("caption",    out var cp) ? cp.GetString() ?? "" : "",
+                                                Width      = col.TryGetProperty("width",      out var w)  ? w.GetInt32() : 150
                                             };
-                                            colCfg.PropertyChanged += (_, _) => RebuildControlPropsJson();
+                                            WireFkColumnHandlers(colCfg);
                                             FkPopupColumns.Add(colCfg);
                                         }
                                 }
@@ -1196,9 +1198,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                             {
                                                 var colCfg = new FkColumnConfig
                                                 {
-                                                    FieldName = col.TryGetProperty("fieldName", out var fn) ? fn.GetString() ?? "" : "",
-                                                    Caption   = col.TryGetProperty("caption",   out var cp) ? cp.GetString() ?? "" : "",
-                                                    Width     = col.TryGetProperty("width",     out var w)  ? w.GetInt32() : 150
+                                                    FieldName  = col.TryGetProperty("fieldName",  out var fn) ? fn.GetString() ?? "" : "",
+                                                    // Ưu tiên captionKey (i18n key mới); fallback caption (data cũ plain text)
+                                                    CaptionKey = col.TryGetProperty("captionKey", out var ck) ? ck.GetString() ?? ""
+                                                               : col.TryGetProperty("caption",    out var cp) ? cp.GetString() ?? "" : "",
+                                                    Width      = col.TryGetProperty("width",      out var w)  ? w.GetInt32() : 150
                                                 };
                                                 colCfg.PropertyChanged += (_, _) => RebuildControlPropsJson();
                                                 FkPopupColumns.Add(colCfg);
@@ -1604,8 +1608,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 }
 
                 // Cột popup, reloadOnChange, dataSourceConditions — dùng cho cả 3 mode
+                // Lưu captionKey (i18n key) — backend resolve → text theo langCode khi trả Blazor
                 dict["columns"] = FkPopupColumns.Select(c => new
-                    { fieldName = c.FieldName, caption = c.Caption, width = c.Width }).ToList();
+                    { fieldName = c.FieldName, captionKey = c.CaptionKey, width = c.Width }).ToList();
 
                 if (ReloadOnChangeFields.Count > 0)
                     dict["reloadOnChange"] = ReloadOnChangeFields.ToList();
@@ -1746,11 +1751,61 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>Thêm 1 cột mới vào danh sách popup columns của LookupBox.</summary>
     private void ExecuteAddFkColumn()
     {
-        var col = new FkColumnConfig { FieldName = "", Caption = "", Width = 150 };
-        // Đăng ký rebuild JSON khi user sửa tên/caption/width inline
-        col.PropertyChanged += (_, _) => RebuildControlPropsJson();
+        var col = new FkColumnConfig { FieldName = "", CaptionKey = "", Width = 150 };
+        WireFkColumnHandlers(col);
         FkPopupColumns.Add(col);
         RebuildControlPropsJson();
+    }
+
+    /// <summary>
+    /// Đăng ký PropertyChanged handlers cho 1 FkColumnConfig:
+    /// - Khi FieldName thay đổi → tự sinh CaptionKey nếu key đang rỗng hoặc là auto-gen cũ.
+    /// - Mọi thay đổi → rebuild ControlPropsJson + IsDirty.
+    /// </summary>
+    private void WireFkColumnHandlers(FkColumnConfig col)
+    {
+        col.PropertyChanged += (sender, e) =>
+        {
+            if (sender is not FkColumnConfig c) return;
+
+            // Auto-gen captionKey khi FieldName thay đổi
+            if (e.PropertyName == nameof(FkColumnConfig.FieldName))
+            {
+                var generated = GenerateCaptionKey(FkTableName, c.FieldName);
+                // Chỉ ghi đè nếu key đang rỗng hoặc user chưa nhập tay
+                // (kiểm tra theo pattern: key cũ = auto-gen của fieldName cũ → cho phép overwrite)
+                if (string.IsNullOrWhiteSpace(c.CaptionKey)
+                    || c.CaptionKey.StartsWith(GetTablePrefix() + ".col.", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Gán trực tiếp không qua setter để tránh vòng lặp (setter gọi PropertyChanged lại)
+                    c.CaptionKey = generated;
+                    return; // CaptionKey.set sẽ kích hoạt PropertyChanged → RebuildControlPropsJson được gọi
+                }
+            }
+
+            RebuildControlPropsJson();
+        };
+    }
+
+    /// <summary>Sinh i18n key theo pattern: {table_lower}.col.{column_snake_case}.</summary>
+    private string GenerateCaptionKey(string? tableName, string? fieldName)
+    {
+        var table = string.IsNullOrWhiteSpace(tableName) ? "lookup" : tableName.ToLowerInvariant();
+        var col   = ToSnakeCase(fieldName ?? "");
+        return $"{table}.col.{col}";
+    }
+
+    /// <summary>Prefix table hiện tại (dùng để nhận biết auto-gen key).</summary>
+    private string GetTablePrefix()
+        => string.IsNullOrWhiteSpace(FkTableName) ? "lookup" : FkTableName.ToLowerInvariant();
+
+    /// <summary>Chuyển PascalCase / camelCase sang snake_case. VD: MaPhongBan → ma_phong_ban.</summary>
+    private static string ToSnakeCase(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        // Chèn dấu _ trước chữ hoa đứng sau chữ thường/số: MaPhongBan → Ma_Phong_Ban
+        var snake = System.Text.RegularExpressions.Regex.Replace(s, @"(?<=[a-z0-9])([A-Z])", "_$1");
+        return snake.ToLowerInvariant();
     }
 
     /// <summary>Xóa 1 cột khỏi danh sách popup columns của LookupBox.</summary>
@@ -1939,7 +1994,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             sb.AppendLine();
             sb.AppendLine("📊  Cột hiển thị trong popup chọn:");
             foreach (var col in FkPopupColumns)
-                sb.AppendLine($"    • \"{col.Caption}\" (cột DB: {col.FieldName}, rộng: {col.Width}px)");
+                sb.AppendLine($"    • [{col.CaptionKey}] (cột DB: {col.FieldName}, rộng: {col.Width}px)");
         }
 
         // ── Search ──
@@ -2014,9 +2069,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 };
 
                 // Serialize popup columns
+                // Lưu captionKey (i18n key) vào DB — backend resolve khi trả Blazor
                 var popupColumnsJson = FkPopupColumns.Count > 0
                     ? JsonSerializer.Serialize(FkPopupColumns.Select(c => new
-                        { fieldName = c.FieldName, caption = c.Caption, width = c.Width }))
+                        { fieldName = c.FieldName, captionKey = c.CaptionKey, width = c.Width }))
                     : null;
 
                 lookupConfig = new FieldLookupConfigRecord
@@ -2041,13 +2097,31 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 };
             }
 
-            await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
-
-            // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
-            await RegisterI18nKeysAsync(_cts.Token);
+            try
+            {
+                SaveError = null;
+                await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
+                // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại (captionKeys + LabelKey...)
+                await RegisterI18nKeysAsync(_cts.Token);
+                IsDirty = false;
+            }
+            catch (Exception ex)
+            {
+                SaveError = $"Lưu thất bại: {ex.Message}";
+            }
         }
-        IsDirty = false;
     }
+
+    private string? _saveError;
+    /// <summary>Thông báo lỗi khi lưu thất bại — hiển thị banner đỏ trên UI.</summary>
+    public string? SaveError
+    {
+        get => _saveError;
+        set { if (SetProperty(ref _saveError, value)) RaisePropertyChanged(nameof(HasSaveError)); }
+    }
+
+    /// <summary>True khi có lỗi lưu → hiển thị banner lỗi.</summary>
+    public bool HasSaveError => !string.IsNullOrEmpty(_saveError);
 
     /// <summary>
     /// Sau khi lưu field: tạo các i18n key vào Sys_Resource nếu chưa có.
@@ -2072,6 +2146,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         if (!string.IsNullOrWhiteSpace(RequiredErrorKey))
             keys.Add((RequiredErrorKey, $"Trường {ColumnCode} là bắt buộc"));
+
+        // Đăng ký captionKey của từng cột popup LookupBox
+        // Default vi = FieldName split PascalCase; default en = FieldName (raw)
+        foreach (var col in FkPopupColumns)
+        {
+            if (!string.IsNullOrWhiteSpace(col.CaptionKey))
+            {
+                // VD: "phongban.col.ma_phong_ban" → default vi = "Mã phòng ban" (để trống, user tự nhập)
+                keys.Add((col.CaptionKey, col.FieldName));
+            }
+        }
 
         foreach (var (key, defaultValue) in keys)
             await _i18nService.InitResourceIfMissingAsync(key, "vi", defaultValue, ct);

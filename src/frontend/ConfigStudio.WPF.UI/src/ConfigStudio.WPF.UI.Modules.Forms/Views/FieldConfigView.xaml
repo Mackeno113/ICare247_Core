@@ -328,6 +328,22 @@
         </Border>
 
         <!-- ═══════════════════════════════════════════════════════════════
+             BANNER: Lỗi save (chỉ hiện khi HasSaveError = true)
+             ═══════════════════════════════════════════════════════════════ -->
+        <Border Grid.Row="1" Grid.ColumnSpan="2"
+                Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="0,0,0,1"
+                Padding="16,8" Margin="0,32,0,0"
+                Visibility="{Binding HasSaveError, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="💾" FontSize="14" Foreground="#C2410C"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="{Binding SaveError, Mode=OneWay}"
+                           FontSize="12" Foreground="#C2410C"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- ═══════════════════════════════════════════════════════════════
              ROW 2 / COL 0: Left Panel — Field Navigator
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Grid.Column="0"

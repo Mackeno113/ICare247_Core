@@ -256,14 +256,14 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Chiều rộng popup (px)" FontSize="11" Foreground="#64748B"
                                    Margin="0,0,0,3" FontWeight="SemiBold" />
-                        <dxe:SpinEdit Value="{Binding DropDownWidth}" MinValue="200" MaxValue="1200"
-                                      Increment="50" Height="32" Mask="d" />
+                        <dxe:SpinEdit Value="{Binding DropDownWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      MinValue="200" MaxValue="1200" Increment="50" Height="32" Mask="d" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Chiều cao popup (px)" FontSize="11" Foreground="#64748B"
                                    Margin="0,0,0,3" FontWeight="SemiBold" />
-                        <dxe:SpinEdit Value="{Binding DropDownHeight}" MinValue="150" MaxValue="800"
-                                      Increment="50" Height="32" Mask="d" />
+                        <dxe:SpinEdit Value="{Binding DropDownHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                      MinValue="150" MaxValue="800" Increment="50" Height="32" Mask="d" />
                     </StackPanel>
                 </Grid>
 
@@ -303,17 +303,19 @@
                                                       NullText="VD: PhongBan_Code" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Tiêu đề" FontSize="10"
-                                                   Foreground="#64748B" Margin="0,0,0,2" />
-                                        <dxe:TextEdit Height="28" FontSize="11"
-                                                      Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="VD: Mã phòng ban" />
+                                        <TextBlock FontSize="10" Foreground="#64748B" Margin="0,0,0,2">
+                                            <Run Text="Resource Key" />
+                                            <Run Text=" (i18n)" Foreground="#6366F1" />
+                                        </TextBlock>
+                                        <dxe:TextEdit Height="28" FontSize="11" FontFamily="Consolas"
+                                                      Text="{Binding CaptionKey, UpdateSourceTrigger=PropertyChanged}"
+                                                      NullText="VD: phongban.col.ma_phong_ban" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="4">
                                         <TextBlock Text="Rộng (px)" FontSize="10"
                                                    Foreground="#64748B" Margin="0,0,0,2" />
                                         <dxe:SpinEdit Height="28" Mask="d"
-                                                      Value="{Binding Width}"
+                                                      Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                       MinValue="40" MaxValue="400" />
                                     </StackPanel>
                                     <Button Grid.Column="5" Content="✕" Width="24" Height="24"

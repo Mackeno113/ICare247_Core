@@ -54,10 +54,11 @@ public sealed class FieldLookupConfig
 
     /// <summary>
     /// Cấu hình các cột hiển thị trong popup grid dạng JSON array.
-    /// Ví dụ: [{"column":"MaPhongBan","title":"Mã","width":80}, ...].
+    /// Schema: [{"fieldName":"MaPhongBan","captionKey":"phongban.col.ma","caption":"Mã","width":80}, ...].
+    /// "captionKey" lưu i18n key (WPF ghi); MetadataEngine resolve → "caption" text theo langCode trước khi cache.
     /// Null = chỉ hiển thị <see cref="DisplayColumn"/>, không dùng popup grid.
     /// </summary>
-    public string? PopupColumnsJson { get; init; }
+    public string? PopupColumnsJson { get; set; }
 
     // ── LookupBox (DxDropDownBox) — thêm từ Migration 014 ─────────────
 

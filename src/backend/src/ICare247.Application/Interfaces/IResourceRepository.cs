@@ -31,4 +31,20 @@ public interface IResourceRepository
         string langCode,
         int tenantId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Batch-load resource values cho một tập key cụ thể.
+    /// Dùng để resolve <c>captionKey</c> trong <c>PopupColumnsJson</c> của LookupBox.
+    /// </summary>
+    /// <param name="keys">Danh sách resource key cần resolve.</param>
+    /// <param name="langCode">Ngôn ngữ: 'vi' hoặc 'en'.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// Dictionary Resource_Key → Resource_Value (OrdinalIgnoreCase).
+    /// Key không tìm thấy trong Sys_Resource sẽ không xuất hiện trong kết quả.
+    /// </returns>
+    Task<IReadOnlyDictionary<string, string>> GetByKeysAsync(
+        IEnumerable<string> keys,
+        string langCode,
+        CancellationToken ct = default);
 }
