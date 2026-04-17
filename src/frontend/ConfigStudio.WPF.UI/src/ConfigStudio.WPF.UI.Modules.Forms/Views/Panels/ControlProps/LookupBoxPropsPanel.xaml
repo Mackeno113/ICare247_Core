@@ -285,24 +285,50 @@
                         <DataTemplate>
                             <Border Background="#F8FAFC" CornerRadius="4"
                                     BorderBrush="#E2E8F0" BorderThickness="1"
-                                    Padding="10,8" Margin="0,0,0,6">
+                                    Padding="8,8" Margin="0,0,0,6">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="24" />
+                                        <ColumnDefinition Width="6" />
                                         <ColumnDefinition Width="2*" />
                                         <ColumnDefinition Width="8" />
                                         <ColumnDefinition Width="2*" />
                                         <ColumnDefinition Width="8" />
                                         <ColumnDefinition Width="80" />
+                                        <ColumnDefinition Width="6" />
                                         <ColumnDefinition Width="28" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
+
+                                    <!-- Nút sắp xếp thứ tự lên/xuống -->
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <Button Content="▲" Width="22" Height="18" FontSize="9"
+                                                Foreground="#475569" Background="#E2E8F0"
+                                                BorderThickness="0" Cursor="Hand" Padding="0"
+                                                Margin="0,0,0,2"
+                                                ToolTip="Di chuyển lên"
+                                                Command="{Binding DataContext.MoveFkColumnUpCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Content="▼" Width="22" Height="18" FontSize="9"
+                                                Foreground="#475569" Background="#E2E8F0"
+                                                BorderThickness="0" Cursor="Hand" Padding="0"
+                                                ToolTip="Di chuyển xuống"
+                                                Command="{Binding DataContext.MoveFkColumnDownCommand,
+                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+
+                                    <!-- Tên cột DB -->
+                                    <StackPanel Grid.Column="2">
                                         <TextBlock Text="Tên cột DB" FontSize="10"
                                                    Foreground="#64748B" Margin="0,0,0,2" />
                                         <dxe:TextEdit Height="28" FontFamily="Consolas" FontSize="11"
                                                       Text="{Binding FieldName, UpdateSourceTrigger=PropertyChanged}"
                                                       NullText="VD: PhongBan_Code" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="2">
+
+                                    <!-- Resource Key i18n -->
+                                    <StackPanel Grid.Column="4">
                                         <TextBlock FontSize="10" Foreground="#64748B" Margin="0,0,0,2">
                                             <Run Text="Resource Key" />
                                             <Run Text=" (i18n)" Foreground="#6366F1" />
@@ -311,19 +337,26 @@
                                                       Text="{Binding CaptionKey, UpdateSourceTrigger=PropertyChanged}"
                                                       NullText="VD: phongban.col.ma_phong_ban" />
                                     </StackPanel>
-                                    <StackPanel Grid.Column="4">
+
+                                    <!-- Độ rộng -->
+                                    <StackPanel Grid.Column="6">
                                         <TextBlock Text="Rộng (px)" FontSize="10"
                                                    Foreground="#64748B" Margin="0,0,0,2" />
                                         <dxe:SpinEdit Height="28" Mask="d"
                                                       Value="{Binding Width, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                       MinValue="40" MaxValue="400" />
                                     </StackPanel>
-                                    <Button Grid.Column="5" Content="✕" Width="24" Height="24"
-                                            FontSize="12" Foreground="#EF4444"
-                                            Background="Transparent" BorderThickness="0" Cursor="Hand"
+
+                                    <!-- Nút xóa -->
+                                    <Button Grid.Column="8"
+                                            Content="✕" Width="26" Height="26" FontSize="13"
+                                            Foreground="White" Background="#EF4444"
+                                            BorderBrush="#DC2626" BorderThickness="1"
+                                            Cursor="Hand" VerticalAlignment="Bottom"
+                                            ToolTip="Xóa cột này"
                                             Command="{Binding DataContext.RemoveFkColumnCommand,
                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}" VerticalAlignment="Bottom" />
+                                            CommandParameter="{Binding}" />
                                 </Grid>
                             </Border>
                         </DataTemplate>

@@ -661,7 +661,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool HasConfigExplanation => !string.IsNullOrEmpty(_configExplanation);
 
     public DelegateCommand AddFkColumnCommand { get; private set; } = null!;
-    public DelegateCommand<FkColumnConfig> RemoveFkColumnCommand { get; private set; } = null!;
+    public DelegateCommand<FkColumnConfig> RemoveFkColumnCommand      { get; private set; } = null!;
+    public DelegateCommand<FkColumnConfig> MoveFkColumnUpCommand      { get; private set; } = null!;
+    public DelegateCommand<FkColumnConfig> MoveFkColumnDownCommand    { get; private set; } = null!;
     public DelegateCommand AddFkFilterParamCommand { get; private set; } = null!;
     public DelegateCommand<FkFilterParam> RemoveFkFilterParamCommand { get; private set; } = null!;
     public DelegateCommand<string> SetQueryModeCommand { get; private set; } = null!;
@@ -951,6 +953,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
         RemoveFkColumnCommand      = new DelegateCommand<FkColumnConfig>(ExecuteRemoveFkColumn);
+        MoveFkColumnUpCommand      = new DelegateCommand<FkColumnConfig>(ExecuteMoveFkColumnUp);
+        MoveFkColumnDownCommand    = new DelegateCommand<FkColumnConfig>(ExecuteMoveFkColumnDown);
         AddFkFilterParamCommand         = new DelegateCommand(ExecuteAddFkFilterParam);
         RemoveFkFilterParamCommand      = new DelegateCommand<FkFilterParam>(ExecuteRemoveFkFilterParam);
         SetQueryModeCommand             = new DelegateCommand<string>(mode => QueryMode = mode);
@@ -1312,6 +1316,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         // ── 5. Field Navigator (phụ — không ảnh hưởng main flow) ─────────
         await LoadFieldNavigatorAsync(_cts.Token);
+
+        // Refresh JSON preview — RebuildControlPropsJson đã gọi khi set SelectedEditorType,
+        // nhưng FK/ComboBox config được load sau (async) → cần gọi lại để JSON phản ánh đúng
+        // FkPopupColumns + ComboBox props đã restore từ DB.
+        RebuildControlPropsJson();
 
         IsLoading = false;
         IsDirty   = false;
@@ -1812,6 +1821,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private void ExecuteRemoveFkColumn(FkColumnConfig col)
     {
         FkPopupColumns.Remove(col);
+        RebuildControlPropsJson();
+    }
+
+    /// <summary>Di chuyển cột popup lên 1 vị trí (giảm index).</summary>
+    private void ExecuteMoveFkColumnUp(FkColumnConfig col)
+    {
+        var idx = FkPopupColumns.IndexOf(col);
+        if (idx <= 0) return;
+        FkPopupColumns.Move(idx, idx - 1);
+        RebuildControlPropsJson();
+    }
+
+    /// <summary>Di chuyển cột popup xuống 1 vị trí (tăng index).</summary>
+    private void ExecuteMoveFkColumnDown(FkColumnConfig col)
+    {
+        var idx = FkPopupColumns.IndexOf(col);
+        if (idx < 0 || idx >= FkPopupColumns.Count - 1) return;
+        FkPopupColumns.Move(idx, idx + 1);
         RebuildControlPropsJson();
     }
 
