@@ -115,6 +115,28 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (session 2026-04-17)
+
+### Wave 10 — i18n captionKey + WPF UX fixes (2026-04-17) ✅
+
+> i18n hóa caption cột popup LookupBox, fix 4 bugs WPF ConfigStudio liên quan đến LookupBoxPropsPanel.
+
+- [x] **i18n captionKey** — Đổi `Caption` → `CaptionKey` (i18n resource key) trong `FkColumnConfig`; WPF auto-gen key theo pattern `{table}.col.{snake_case}` khi nhập FieldName via `WireFkColumnHandlers` _(2026-04-17)_
+- [x] **RegisterI18nKeysAsync** — Khi lưu field, tự động INSERT key vào `Sys_Resource` với default value = FieldName (user vào I18nManager để đặt bản dịch thật) _(2026-04-17)_
+- [x] **MetadataEngine resolve captionKey** — `ResolvePopupColumnCaptionsAsync`: batch load từ `Sys_Resource` qua `GetByKeysAsync`, rewrite JSON với `caption` resolved trước khi cache; Blazor nhận text đã dịch _(2026-04-17)_
+- [x] **FieldLookupConfig** — `PopupColumnsJson` đổi `init` → `set` để MetadataEngine mutate sau construction _(2026-04-17)_
+- [x] **SpinEdit race condition** — `UpdateSourceTrigger=PropertyChanged` cho Width/DropDownWidth/DropDownHeight → lưu đúng giá trị khi nhấn "Lưu Field" _(2026-04-17)_
+- [x] **SysLookupManagerView XamlParseException** — `AutoGenerateColumns="False"` → `"None"` (DX enum) _(2026-04-17)_
+- [x] **MainWindow fullscreen che taskbar** — Hook `WM_GETMINMAXINFO` (0x0024) dùng `MonitorFromWindow` + `GetMonitorInfo` giới hạn MaxSize = WorkArea; `DragMove()` chỉ gọi khi `WindowState == Normal` _(2026-04-17)_
+- [x] **Popup columns UX** — Thêm nút ▲▼ di chuyển thứ tự cột; nút xóa ✕ đỏ rõ ràng; fix `columns: []` trong JSON preview (gọi `RebuildControlPropsJson()` sau khi load xong từ DB) _(2026-04-17)_
+
+**Quyết định thiết kế:**
+- captionKey pattern: `{table_lower}.col.{field_snake_case}` — auto-gen khi nhập FieldName, chỉ overwrite khi còn empty hoặc vẫn theo auto-gen pattern
+- `RegisterI18nKeysAsync` dùng `IF NOT EXISTS INSERT` để không overwrite bản dịch user đã nhập
+- WM_GETMINMAXINFO hook dùng `MonitorFromWindow(MONITOR_DEFAULTTONEAREST)` để hỗ trợ multi-monitor
+
+---
+
 ## ✅ Done (session 2026-04-16)
 
 ### Wave 9 — Bug Fix: Blazor Renderer UI bugs (2026-04-16) ✅

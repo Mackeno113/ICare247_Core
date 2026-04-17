@@ -1,65 +1,62 @@
 # Last Session Summary
 
-> Cập nhật: 2026-04-16 (session 22)
+> Cập nhật: 2026-04-17 (session 24)
 
-## Đã làm (session 16/04 — Blazor Renderer UI Bug Fixes)
+## Đã làm (session 17/04 — Wave 10: i18n captionKey + WPF UX fixes)
 
-### 1. ComboBoxRenderer: `<select>` → DxComboBox
+### 1. i18n captionKey cho Popup_Columns_Json
 
-**Vấn đề:** `ComboBoxRenderer` dùng HTML `<select>` thô, không nhất quán với DxComboBox  
-**Fix:** Map `DynamicRows` (`List<Dictionary<string,object?>>`) → `List<LookupItem>` (typed record) → bind vào `DxComboBox` với `TextField`/`ValueField`
+**Vấn đề:** `caption` trong popup columns là plain text — không đa ngôn ngữ  
+**Flow:** WPF lưu `captionKey` → MetadataEngine resolve → Blazor nhận text đã dịch
 
-### 2. LookupBoxRenderer + DynamicLookupRepository: JSON key mismatch
+**Files thay đổi:**
+- `FkColumnConfig.cs`: `Caption` → `CaptionKey`
+- `FieldConfigViewModel.cs`: `WireFkColumnHandlers` auto-gen key `{table}.col.{snake_case}`, `RegisterI18nKeysAsync` INSERT key vào Sys_Resource
+- `IResourceRepository` + `ResourceRepository`: thêm `GetByKeysAsync` batch lookup
+- `MetadataEngine.cs`: `ResolvePopupColumnCaptionsAsync` resolve captionKey → text trước khi cache
+- `FieldLookupConfig.cs`: `PopupColumnsJson` đổi `init` → `set`
 
-**Root cause:** WPF ConfigStudio sinh `PopupColumnsJson` với keys `"fieldName"`/`"caption"` nhưng code C# expect `"Column"`/`"Title"` → cột popup rỗng, SQL SELECT thiếu cột  
-**Fix:**
-- `LookupBoxRenderer.PopupColDef`: thêm `[JsonPropertyName("fieldName")]` + `[JsonPropertyName("caption")]`
-- `DynamicLookupRepository.PopupColEntry`: thêm `[JsonPropertyName("fieldName")]`
+### 2. Fix SpinEdit race condition (Width không lưu)
 
-### 3. LookupBoxRenderer CSS: popup chiếm layout
+**Root cause:** `UpdateSourceTrigger=LostFocus` default → click "Lưu" trước LostFocus → width không update  
+**Fix:** `Mode=TwoWay, UpdateSourceTrigger=PropertyChanged` cho Width/DropDownWidth/DropDownHeight trong `LookupBoxPropsPanel.xaml`
 
-**Vấn đề:** Không có CSS → `lookupbox-popup` render inline, chiếm toàn bộ grid layout  
-**Fix:** Tạo `LookupBoxRenderer.razor.css` với `position: absolute; z-index: 1050` cho popup
+### 3. Fix SysLookupManagerView XamlParseException
 
-### 4. LookupComboBoxRenderer: DX hiển thị item đầu tiên khi null
+`AutoGenerateColumns="False"` → `AutoGenerateColumns="None"` (DX enum value)
 
-**Root cause:** `@bind-Value` với `ValueField="ItemCode"` (string?) + `Value = null` → DxComboBox hiển thị item đầu tiên thay vì NullText  
-**Fix:** Bỏ `ValueField`, bind `LookupOptionDto?` trực tiếp → null thực sự = không chọn
+### 4. Fix MainWindow fullscreen che taskbar
 
-### 5. Race condition: blur validation trước ValueChanged
+Hook `WM_GETMINMAXINFO` (0x0024) + P/Invoke `MonitorFromWindow`/`GetMonitorInfo` → MaxSize = WorkArea.  
+`DragMove()` chỉ gọi khi `WindowState == Normal`
 
-**Fix:** `HandleLostFocus` thêm `Task.Delay(50)` + `FormRunner.OnFieldBlur` snapshot value trước API, bỏ qua result nếu value đã thay đổi
+### 5. Popup columns UX (session 24 tiếp theo)
 
-### 6. Export Config JSON
-
-**Tính năng mới:** Button "⬇ Export config JSON" trong footer → serialize `FormMetadataDto` → download file `{FormCode}_config.json`  
-**Impl:** `icare.downloadJson()` JS helper + `ExportConfigJsonAsync()` C#
-
-### 7. DatePickerRenderer: nút xóa trống
-
-**Fix:** Thêm `ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"` vào `DxDateEdit`
+- **Fix `columns: []`**: `RebuildControlPropsJson()` gọi khi `SelectedEditorType` set (trước khi FK data load) → JSON luôn trống. Fix: gọi thêm 1 lần ở cuối `LoadFromDatabaseAsync`
+- **Nút ▲▼**: `MoveFkColumnUpCommand` / `MoveFkColumnDownCommand` dùng `ObservableCollection.Move()`
+- **Nút xóa rõ**: Background=#EF4444, Foreground=White, ToolTip="Xóa cột này"
 
 ---
 
 ## Trạng thái hiện tại
 
-- Build: **0 errors** ✅ (verified `src/backend/ICare247.slnx`)
-- ComboBoxRenderer: **FIXED** ✅ (DxComboBox dynamic)
-- LookupBoxRenderer: **FIXED** ✅ (JSON keys + CSS popup)
-- DynamicLookupRepository: **FIXED** ✅ (PopupColEntry JSON keys)
-- LookupComboBoxRenderer: **FIXED** ✅ (null binding + race condition)
-- FormRunner: **FIXED** ✅ (race condition + export feature)
-- DatePickerRenderer: **FIXED** ✅ (clear button)
+- Commits: **20c7f48** (session 23) + **2e58562** (session 24) ✅
+- Build backend: **0 errors** ✅ (verified `ICare247.slnx`)
+- Build WPF Modules.Forms: **0 errors** ✅
+- i18n captionKey: **DONE** ✅
+- SpinEdit race condition: **FIXED** ✅
+- SysLookupManagerView: **FIXED** ✅
+- MainWindow maximize: **FIXED** ✅
+- Popup columns UX: **DONE** ✅
 
-## Quyết định quan trọng session này
+## Quyết định quan trọng
 
-- **PopupColumnsJson key format:** `fieldName`/`caption`/`width` — WPF là source of truth. Mọi consumer dùng `[JsonPropertyName]`.
-- **LookupComboBoxRenderer binding:** Bind `LookupOptionDto?` (full object), không dùng `ValueField` — tránh DevExpress null display bug khi `Value = null (string?)`.
-- **Blur validation race condition:** Pattern chuẩn: snapshot value trước async API call, discard result nếu value đã thay đổi.
+- **captionKey pattern**: `{table_lower}.col.{field_snake_case}` — auto-gen, không overwrite nếu user đã đặt tay
+- **WM_GETMINMAXINFO**: dùng `MONITOR_DEFAULTTONEAREST` để hỗ trợ multi-monitor
 
 ## Task tiếp theo gợi ý
 
-1. **Kiểm tra thực tế** — Test đầy đủ các renderer: ComboBox dynamic, LookupBox popup, DatePicker clear button
-2. **Fix validation errors** — Kiểm tra tại sao submit vẫn báo lỗi khi đã chọn đủ (context snapshot debug)
-3. **DefaultValueJson** — Quyết định: thêm DB migration hoặc xóa orphan property
-4. **LookupBox CodeField** — Cấu hình `CodeField` cho PhongBanID field trong DB để EditBoxMode "CodeAndName" hiển thị đúng
+1. **I18nManager** — Đặt tên tiếng Việt cho captionKeys mới (VD: "MaPhongBan" → "Mã phòng ban")
+2. **DB migrations** — Chạy migration 010, 011, 012, 014 trên DB thực (đã pending nhiều sessions)
+3. **Blazor E2E** — Test LookupBox popup với captionKey resolved + column width + thứ tự cột
+4. **DefaultValueJson** — Orphan property: thêm DB migration hoặc xóa property
