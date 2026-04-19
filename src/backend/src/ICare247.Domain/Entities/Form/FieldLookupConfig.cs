@@ -85,7 +85,50 @@ public sealed class FieldLookupConfig
     /// <summary>
     /// FieldCode của field khác trong form — khi thay đổi giá trị,
     /// LookupBox clear SelectedId và reload data source (cascading lookup).
-    /// Null = không có trigger.
+    /// Null = không có trigger. Dùng ReloadTriggerFields để hỗ trợ nhiều trigger.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    // ── Multi-trigger cascading (Migration 016) ────────────────────────────
+
+    /// <summary>
+    /// Dapper-mapped raw string: danh sách FieldCode phân cách bằng dấu phẩy.
+    /// VD: "ProvinceId,DistrictId". Dùng <see cref="ReloadTriggerFields"/> để truy cập.
+    /// </summary>
+    public string? ReloadTriggerFieldsRaw { get; init; }
+
+    /// <summary>
+    /// Danh sách FieldCode trigger cascading reload — backward-compat với ReloadTriggerField.
+    /// Nếu ReloadTriggerFieldsRaw được set → dùng nó; ngược lại fallback sang ReloadTriggerField.
+    /// </summary>
+    public IReadOnlyList<string> ReloadTriggerFields =>
+        !string.IsNullOrWhiteSpace(ReloadTriggerFieldsRaw)
+            ? ReloadTriggerFieldsRaw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            : !string.IsNullOrWhiteSpace(ReloadTriggerField)
+                ? [ReloadTriggerField!]
+                : [];
+
+    // ── Tree Control config (Migration 016) ───────────────────────────────
+
+    /// <summary>
+    /// Tên cột chứa ID cha trong bảng nguồn — dùng để build cây phân cấp.
+    /// VD: "Parent_Id". Null = không phải tree config.
+    /// </summary>
+    public string? TreeParentColumn { get; init; }
+
+    /// <summary>
+    /// Mệnh đề WHERE bổ sung để lọc node gốc (chỉ dùng cho lazy load mode).
+    /// VD: "Parent_Id IS NULL".
+    /// </summary>
+    public string? TreeRootFilter { get; init; }
+
+    /// <summary>
+    /// Node nào user được phép chọn: "all" | "leaf" | "branch". Mặc định "all".
+    /// </summary>
+    public string? TreeSelectableLevel { get; init; }
+
+    /// <summary>
+    /// Cách load dữ liệu cây: "all_at_once" | "lazy". Mặc định "all_at_once".
+    /// </summary>
+    public string? TreeLoadMode { get; init; }
 }

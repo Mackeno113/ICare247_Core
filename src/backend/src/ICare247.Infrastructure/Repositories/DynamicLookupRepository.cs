@@ -51,6 +51,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         // ── Bước 1: Đọc cấu hình Ui_Field_Lookup theo FieldId ─────────────────
         // Verify tenant qua Ui_Form → Sys_Table.Tenant_Id để ngăn cross-tenant query
         // Bao gồm cột Migration 014: CodeField dùng để mở rộng SELECT khi EditBoxMode = CodeAndName
+        // Bao gồm cột Migration 016: Tree_Parent_Column để include vào SELECT khi Editor_Type = TreePicker
         const string cfgSql = """
             SELECT fl.Query_Mode                           AS QueryMode,
                    fl.Source_Name                         AS SourceName,
@@ -59,7 +60,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                    fl.Filter_Sql                           AS FilterSql,
                    fl.Order_By                             AS OrderBy,
                    fl.Popup_Columns_Json                   AS PopupColumnsJson,
-                   fl.Code_Field                           AS CodeField
+                   fl.Code_Field                           AS CodeField,
+                   fl.Tree_Parent_Column                   AS TreeParentColumn
             FROM   dbo.Ui_Field_Lookup fl
             JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
             JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
@@ -200,6 +202,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         // CodeField — dùng khi EditBoxMode = CodeAndName
         AddCol(cfg.CodeField);
 
+        // TreeParentColumn — include để TreePicker build được cây phân cấp (Migration 016)
+        AddCol(cfg.TreeParentColumn);
+
         // Popup columns từ JSON: [{"fieldName":"MaPhongBan","caption":"Mã",...}, ...]
         if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
         {
@@ -252,15 +257,17 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// <summary>Dapper mapping cho config row từ Ui_Field_Lookup.</summary>
     private sealed class LookupCfgRow
     {
-        public string  QueryMode        { get; init; } = "table";
-        public string  SourceName       { get; init; } = "";
-        public string  ValueColumn      { get; init; } = "";
-        public string  DisplayColumn    { get; init; } = "";
-        public string? FilterSql        { get; init; }
-        public string? OrderBy          { get; init; }
-        public string? PopupColumnsJson { get; init; }
+        public string  QueryMode         { get; init; } = "table";
+        public string  SourceName        { get; init; } = "";
+        public string  ValueColumn       { get; init; } = "";
+        public string  DisplayColumn     { get; init; } = "";
+        public string? FilterSql         { get; init; }
+        public string? OrderBy           { get; init; }
+        public string? PopupColumnsJson  { get; init; }
         /// <summary>Cột code — dùng khi EditBoxMode = CodeAndName (Migration 014).</summary>
-        public string? CodeField        { get; init; }
+        public string? CodeField         { get; init; }
+        /// <summary>Cột ParentId — include vào SELECT để TreePicker build được cây (Migration 016).</summary>
+        public string? TreeParentColumn  { get; init; }
     }
 
     /// <summary>

@@ -97,6 +97,14 @@
                                    Context="Context" />
                 break;
 
+            case "treepicker":
+                @* Tree Picker — hiển thị dữ liệu phân cấp dạng dropdown cây (Migration 016) *@
+                <TreePickerRenderer State="State"
+                                    OnChange="OnChange"
+                                    OnBlur="OnBlur"
+                                    Context="Context" />
+                break;
+
             default:
                 @* text và mọi type không nhận dạng được → DxTextBox *@
                 <TextBoxRenderer State="State"

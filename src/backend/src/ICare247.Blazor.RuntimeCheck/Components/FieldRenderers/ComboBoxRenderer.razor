@@ -47,7 +47,8 @@
     private bool             _loading;
     private string?          _loadError;
     private string?          _localValue;
-    private object?          _lastTriggerValue;
+    // Snapshot giá trị tất cả trigger fields — hỗ trợ multi-trigger (Migration 016)
+    private List<object?>    _lastTriggerSnapshot = [];
     private List<LookupItem> _items = [];
 
     /// <summary>Backing property cho @bind-Value — phát event async khi giá trị thay đổi.</summary>
@@ -67,19 +68,29 @@
         // Đồng bộ giá trị hiển thị từ State
         _localValue = State.ValueString is { Length: > 0 } v ? v : null;
 
-        // Reload khi trigger field thay đổi giá trị
-        var triggerField         = State.LookupConfig?.ReloadTriggerField;
-        var currentTriggerValue  = !string.IsNullOrWhiteSpace(triggerField)
-                                   && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+        // Lấy danh sách trigger fields — ưu tiên ReloadTriggerFields (multi), fallback ReloadTriggerField (đơn)
+        var triggerFields   = State.LookupConfig?.ReloadTriggerFields ?? [];
+        var currentSnapshot = triggerFields
+            .Select(f => Context.TryGetValue(f, out var v) ? v : null)
+            .ToList();
 
         var needsLoad = _items.Count == 0
-            || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
+            || (triggerFields.Count > 0 && !SnapshotEquals(_lastTriggerSnapshot, currentSnapshot));
 
         if (needsLoad)
         {
-            _lastTriggerValue = currentTriggerValue;
+            _lastTriggerSnapshot = currentSnapshot;
             await LoadDataAsync();
         }
+    }
+
+    // So sánh hai snapshot bằng Equals từng phần tử
+    private static bool SnapshotEquals(List<object?> a, List<object?> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (!Equals(a[i], b[i])) return false;
+        return true;
     }
 
     private async Task LoadDataAsync()

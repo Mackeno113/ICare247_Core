@@ -85,6 +85,32 @@ public sealed class FieldLookupConfigDto
     public string? CodeField      { get; set; }
     public int     DropDownWidth  { get; set; } = 600;
     public int     DropDownHeight { get; set; } = 400;
-    /// <summary>FieldCode của field trigger cascading reload.</summary>
+    /// <summary>
+    /// FieldCode của field trigger cascading reload (đơn lẻ — backward compat).
+    /// Nên dùng <see cref="ReloadTriggerFields"/> thay thế.
+    /// </summary>
     public string? ReloadTriggerField { get; set; }
+
+    // ── Multi-trigger cascading (Migration 016) ────────────────────────────
+
+    /// <summary>
+    /// Danh sách FieldCode trigger cascading reload — serialized từ
+    /// <c>FieldLookupConfig.ReloadTriggerFields</c> (computed property).
+    /// Rỗng = không có trigger.
+    /// </summary>
+    public List<string> ReloadTriggerFields { get; set; } = [];
+
+    // ── Tree Control config (Migration 016) ───────────────────────────────
+
+    /// <summary>Tên cột ParentId trong bảng nguồn để build cây. Null = không phải tree.</summary>
+    public string? TreeParentColumn    { get; set; }
+
+    /// <summary>WHERE filter node gốc — dùng cho lazy load mode.</summary>
+    public string? TreeRootFilter      { get; set; }
+
+    /// <summary>"all" | "leaf" | "branch" — node nào user được phép chọn.</summary>
+    public string  TreeSelectableLevel { get; set; } = "all";
+
+    /// <summary>"all_at_once" | "lazy" — cách load dữ liệu cây.</summary>
+    public string  TreeLoadMode        { get; set; } = "all_at_once";
 }

@@ -1,0 +1,300 @@
+@* File    : TreePickerRenderer.razor
+   Purpose : Render tree picker cho Editor_Type = TreePicker — hiển thị dữ liệu phân cấp
+             dạng dropdown cây (Province → District → Commune, danh mục có cấp bậc, v.v.)
+             Load flat data từ API (query-dynamic), build cây client-side theo Tree_Parent_Column.
+             Hỗ trợ Tree_Selectable_Level: 'all' | 'leaf' | 'branch'.
+             Hỗ trợ multi-trigger cascading qua ReloadTriggerFields (Migration 016). *@
+
+@using ICare247.Blazor.RuntimeCheck.Models
+
+@inject ILookupQueryService LookupQuerySvc
+
+<div class="treepicker-wrapper">
+    @* ── EditBox — hiển thị node đã chọn ── *@
+    <div class="treepicker-editbox @(IsDisabled ? "readonly" : "") @(HasError ? "has-error" : "")"
+         @onclick="ToggleDropdown">
+        @if (string.IsNullOrEmpty(State?.ValueString))
+        {
+            <span class="treepicker-placeholder">-- @(State?.Label ?? "Chọn") --</span>
+        }
+        else
+        {
+            <span class="treepicker-selected">@_selectedLabel</span>
+        }
+        <span class="treepicker-chevron @(_dropdownOpen ? "open" : "")">&#9660;</span>
+    </div>
+    @if (!string.IsNullOrEmpty(State?.ValueString) && !IsDisabled)
+    {
+        <button class="treepicker-clear" @onclick="ClearValueAsync" @onclick:stopPropagation title="Xóa">&#10005;</button>
+    }
+
+    @* ── Dropdown cây ── *@
+    @if (_dropdownOpen)
+    {
+        <div class="treepicker-dropdown">
+            @if (_loading)
+            {
+                <div class="treepicker-loading">&#9203; Đang tải...</div>
+            }
+            else if (_loadError is not null)
+            {
+                <div class="treepicker-error">&#9888; @_loadError</div>
+            }
+            else if (_rootNodes.Count == 0)
+            {
+                <div class="treepicker-empty">Không có dữ liệu</div>
+            }
+            else
+            {
+                <div class="treepicker-tree">
+                    @foreach (var root in _rootNodes)
+                    {
+                        @RenderNode(root, 0)
+                    }
+                </div>
+            }
+        </div>
+        <div class="treepicker-overlay" @onclick="CloseDropdown"></div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldState?                                 State    { get; set; }
+    [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter]                 public EventCallback<string>                       OnBlur   { get; set; }
+    [Parameter]                 public Dictionary<string, object?>                 Context  { get; set; } = [];
+
+    private bool          _dropdownOpen;
+    private bool          _loading;
+    private string?       _loadError;
+    private string        _selectedLabel = "";
+    private List<TreeNode> _rootNodes    = [];
+    private List<object?> _lastTriggerSnapshot = [];
+
+    private bool IsDisabled => State?.IsReadOnly == true || State?.IsEnabled == false;
+    private bool HasError   => State?.Errors.Count > 0;
+
+    // ── Lifecycle ────────────────────────────��────────────────────────────────
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State is null) return;
+
+        // Reload khi trigger fields thay đổi (giống ComboBoxRenderer)
+        var triggerFields   = State.LookupConfig?.ReloadTriggerFields ?? [];
+        var currentSnapshot = triggerFields
+            .Select(f => Context.TryGetValue(f, out var v) ? v : null)
+            .ToList();
+
+        var needsLoad = _rootNodes.Count == 0
+            || (triggerFields.Count > 0 && !SnapshotEquals(_lastTriggerSnapshot, currentSnapshot));
+
+        if (needsLoad)
+        {
+            _lastTriggerSnapshot = currentSnapshot;
+            if (_rootNodes.Count > 0) await ClearValueAsync();
+            await LoadDataAsync();
+        }
+        else
+        {
+            // Cập nhật label khi Value thay đổi từ bên ngoài (SET_VALUE delta)
+            UpdateSelectedLabel();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (State is null) return;
+
+        _loading   = true;
+        _loadError = null;
+        _rootNodes = [];
+
+        try
+        {
+            State.DynamicRows = await LookupQuerySvc.QueryAsync(State.FieldId, Context);
+            _rootNodes        = BuildTree(State.DynamicRows);
+            UpdateSelectedLabel();
+        }
+        catch (Exception ex)
+        {
+            _loadError        = ex.Message;
+            State.DynamicRows = [];
+        }
+        finally { _loading = false; }
+    }
+
+    // ── Tree builder — flat list → cây phân cấp ───────────────────────────────
+
+    private List<TreeNode> BuildTree(List<Dictionary<string, object?>> rows)
+    {
+        var valCol    = State?.LookupConfig?.ValueColumn    ?? "";
+        var lblCol    = State?.LookupConfig?.DisplayColumn  ?? "";
+        var parentCol = State?.LookupConfig?.TreeParentColumn ?? "";
+
+        // Build node map
+        var nodeMap = rows.ToDictionary(
+            r => GetColValue(r, valCol),
+            r => new TreeNode
+            {
+                Value    = GetColValue(r, valCol),
+                Label    = GetColValue(r, lblCol),
+                ParentId = GetColValue(r, parentCol)
+            });
+
+        var roots = new List<TreeNode>();
+        foreach (var node in nodeMap.Values)
+        {
+            // Node là root nếu ParentId rỗng hoặc không tồn tại trong map
+            if (string.IsNullOrWhiteSpace(node.ParentId) || !nodeMap.ContainsKey(node.ParentId))
+                roots.Add(node);
+            else
+                nodeMap[node.ParentId].Children.Add(node);
+        }
+
+        return roots;
+    }
+
+    // ── UI interactions ────────────────────────────────────────────────────────
+
+    private async Task ToggleDropdown()
+    {
+        if (IsDisabled) return;
+        _dropdownOpen = !_dropdownOpen;
+        if (_dropdownOpen && _rootNodes.Count == 0 && !_loading)
+            await LoadDataAsync();
+    }
+
+    private void CloseDropdown() => _dropdownOpen = false;
+
+    private async Task SelectNodeAsync(TreeNode node)
+    {
+        if (State is null) return;
+
+        // Kiểm tra selectableLevel
+        var level  = State.LookupConfig?.TreeSelectableLevel ?? "all";
+        var isLeaf = node.Children.Count == 0;
+        if (level == "leaf"   && !isLeaf) return;
+        if (level == "branch" &&  isLeaf) return;
+
+        State.Value    = node.Value;
+        _selectedLabel = node.Label;
+        CloseDropdown();
+
+        await OnChange.InvokeAsync((State.FieldCode, (object?)node.Value));
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    private async Task ClearValueAsync()
+    {
+        if (State is null) return;
+        State.Value    = null;
+        _selectedLabel = "";
+        await OnChange.InvokeAsync((State.FieldCode, null));
+    }
+
+    private void UpdateSelectedLabel()
+    {
+        if (State is null || string.IsNullOrEmpty(State.ValueString))
+        {
+            _selectedLabel = "";
+            return;
+        }
+        // Tìm label trong tree đã build
+        _selectedLabel = FindLabel(_rootNodes, State.ValueString) ?? State.ValueString;
+    }
+
+    private static string? FindLabel(List<TreeNode> nodes, string value)
+    {
+        foreach (var node in nodes)
+        {
+            if (node.Value == value) return node.Label;
+            var found = FindLabel(node.Children, value);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    // ── Recursive render fragment ───────────────────────���─────────────────────
+
+    private RenderFragment RenderNode(TreeNode node, int depth) => __builder =>
+    {
+        var isLeaf    = node.Children.Count == 0;
+        var isSelected = State?.ValueString == node.Value;
+        var level     = State?.LookupConfig?.TreeSelectableLevel ?? "all";
+        var selectable = level == "all"
+            || (level == "leaf"   &&  isLeaf)
+            || (level == "branch" && !isLeaf);
+
+        __builder.OpenElement(0, "div");
+        __builder.AddAttribute(1, "class",
+            $"tree-node depth-{depth} {(isSelected ? "selected" : "")} {(selectable ? "selectable" : "non-selectable")}");
+        __builder.AddAttribute(2, "style", $"padding-left: {depth * 16 + 8}px");
+
+        // Toggle expand/collapse icon
+        __builder.OpenElement(3, "span");
+        __builder.AddAttribute(4, "class", $"tree-toggle {(isLeaf ? "leaf" : node.IsExpanded ? "expanded" : "collapsed")}");
+        if (!isLeaf)
+        {
+            __builder.AddAttribute(5, "onclick",
+                EventCallback.Factory.Create(this, () => { node.IsExpanded = !node.IsExpanded; }));
+            __builder.AddContent(6, node.IsExpanded ? "▾" : "▸");
+        }
+        else
+        {
+            __builder.AddContent(7, "•");
+        }
+        __builder.CloseElement(); // span.tree-toggle
+
+        // Node label — click để chọn (nếu selectable)
+        __builder.OpenElement(8, "span");
+        __builder.AddAttribute(9, "class", "tree-label");
+        if (selectable)
+        {
+            __builder.AddAttribute(10, "onclick",
+                EventCallback.Factory.Create(this, () => SelectNodeAsync(node)));
+        }
+        __builder.AddContent(11, node.Label);
+        __builder.CloseElement(); // span.tree-label
+
+        __builder.CloseElement(); // div.tree-node
+
+        // Render children (nếu expanded)
+        if (!isLeaf && node.IsExpanded)
+        {
+            foreach (var child in node.Children)
+            {
+                var childFragment = RenderNode(child, depth + 1);
+                __builder.AddContent(12, childFragment);
+            }
+        }
+    };
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string GetColValue(Dictionary<string, object?> row, string col)
+    {
+        if (string.IsNullOrWhiteSpace(col)) return "";
+        var kv = row.FirstOrDefault(p => p.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return kv.Value?.ToString() ?? "";
+    }
+
+    private static bool SnapshotEquals(List<object?> a, List<object?> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (var i = 0; i < a.Count; i++)
+            if (!Equals(a[i], b[i])) return false;
+        return true;
+    }
+
+    // ── Inner types ──────────────────────────��──────────────────────────────���─
+
+    private sealed class TreeNode
+    {
+        public string      Value      { get; init; } = "";
+        public string      Label      { get; init; } = "";
+        public string      ParentId   { get; init; } = "";
+        public List<TreeNode> Children { get; } = [];
+        public bool        IsExpanded { get; set; }
+    }
+}

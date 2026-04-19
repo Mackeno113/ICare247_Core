@@ -171,7 +171,8 @@ public sealed class FormRepository : IFormRepository
             """;
 
         // ── sqlLookupConfigs: cấu hình FK lookup cho tất cả dynamic fields ──
-        // Bao gồm các cột Migration 014: EditBox_Mode, Code_Field, DropDown_Width/Height, Reload_Trigger_Field
+        // Bao gồm cột Migration 014: EditBox_Mode, Code_Field, DropDown_Width/Height, Reload_Trigger_Field
+        // Bao gồm cột Migration 016: Reload_Trigger_Fields, Tree_* (tree config)
         const string sqlLookupConfigs = """
             SELECT fl.Lookup_Cfg_Id                        AS LookupCfgId,
                    fl.Field_Id                             AS FieldId,
@@ -187,7 +188,12 @@ public sealed class FormRepository : IFormRepository
                    fl.Code_Field                           AS CodeField,
                    ISNULL(fl.DropDown_Width,  600)         AS DropDownWidth,
                    ISNULL(fl.DropDown_Height, 400)         AS DropDownHeight,
-                   fl.Reload_Trigger_Field                 AS ReloadTriggerField
+                   fl.Reload_Trigger_Field                 AS ReloadTriggerField,
+                   fl.Reload_Trigger_Fields                AS ReloadTriggerFieldsRaw,
+                   fl.Tree_Parent_Column                   AS TreeParentColumn,
+                   fl.Tree_Root_Filter                     AS TreeRootFilter,
+                   fl.Tree_Selectable_Level                AS TreeSelectableLevel,
+                   fl.Tree_Load_Mode                       AS TreeLoadMode
             FROM   dbo.Ui_Field_Lookup fl
             JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
             WHERE  fi.Form_Id = @FormId
