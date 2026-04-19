@@ -58,8 +58,33 @@ public sealed class FieldLookupConfigRecord
     public int DropDownHeight { get; init; } = 400;
 
     /// <summary>
-    /// FieldCode của field trigger cascading reload.
-    /// Null = không có cascading.
+    /// FieldCode của field trigger cascading reload (đơn lẻ — backward compat).
+    /// Dùng <see cref="ReloadTriggerFields"/> để hỗ trợ nhiều trigger.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    // ── Multi-trigger cascading + Tree Control (Migration 016) ────────────
+
+    /// <summary>
+    /// Danh sách FieldCode trigger phân cách bằng dấu phẩy — multi-trigger cascading.
+    /// VD: "ProvinceId,DistrictId". Null = không có (xem ReloadTriggerField).
+    /// </summary>
+    public string? ReloadTriggerFields { get; init; }
+
+    // ── Tree Control config ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Tên cột ParentId trong bảng nguồn để build cây phân cấp.
+    /// VD: "Parent_Id". Null = không phải TreePicker.
+    /// </summary>
+    public string? TreeParentColumn { get; init; }
+
+    /// <summary>WHERE filter node gốc — dùng cho lazy load. VD: "Parent_Id IS NULL".</summary>
+    public string? TreeRootFilter { get; init; }
+
+    /// <summary>"all" | "leaf" | "branch" — node nào được phép chọn. Mặc định "all".</summary>
+    public string TreeSelectableLevel { get; init; } = "all";
+
+    /// <summary>"all_at_once" | "lazy" — cách load dữ liệu cây. Mặc định "all_at_once".</summary>
+    public string TreeLoadMode { get; init; } = "all_at_once";
 }

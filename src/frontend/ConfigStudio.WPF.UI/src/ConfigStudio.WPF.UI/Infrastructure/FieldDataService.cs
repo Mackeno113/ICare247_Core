@@ -84,11 +84,16 @@ public sealed class FieldDataService : IFieldDataService
                    fl.Order_By              AS OrderBy,
                    fl.Search_Enabled        AS SearchEnabled,
                    fl.Popup_Columns_Json    AS PopupColumnsJson,
-                   ISNULL(fl.EditBox_Mode, N'TextOnly') AS EditBoxMode,
-                   fl.Code_Field            AS CodeField,
-                   ISNULL(fl.DropDown_Width,  600)      AS DropDownWidth,
-                   ISNULL(fl.DropDown_Height, 400)      AS DropDownHeight,
-                   fl.Reload_Trigger_Field  AS ReloadTriggerField
+                   ISNULL(fl.EditBox_Mode, N'TextOnly')      AS EditBoxMode,
+                   fl.Code_Field                               AS CodeField,
+                   ISNULL(fl.DropDown_Width,  600)             AS DropDownWidth,
+                   ISNULL(fl.DropDown_Height, 400)             AS DropDownHeight,
+                   fl.Reload_Trigger_Field                     AS ReloadTriggerField,
+                   fl.Reload_Trigger_Fields                    AS ReloadTriggerFields,
+                   fl.Tree_Parent_Column                       AS TreeParentColumn,
+                   fl.Tree_Root_Filter                         AS TreeRootFilter,
+                   ISNULL(fl.Tree_Selectable_Level, N'all')    AS TreeSelectableLevel,
+                   ISNULL(fl.Tree_Load_Mode, N'all_at_once')   AS TreeLoadMode
             FROM   dbo.Ui_Field_Lookup fl
             WHERE  fl.Field_Id = @FieldId
             """;
@@ -230,12 +235,17 @@ public sealed class FieldDataService : IFieldDataService
                                Order_By              = @OrderBy,
                                Search_Enabled        = @SearchEnabled,
                                Popup_Columns_Json    = @PopupColumnsJson,
-                               EditBox_Mode          = @EditBoxMode,
-                               Code_Field            = @CodeField,
-                               DropDown_Width        = @DropDownWidth,
-                               DropDown_Height       = @DropDownHeight,
-                               Reload_Trigger_Field  = @ReloadTriggerField,
-                               Updated_At            = GETDATE()
+                               EditBox_Mode           = @EditBoxMode,
+                               Code_Field             = @CodeField,
+                               DropDown_Width         = @DropDownWidth,
+                               DropDown_Height        = @DropDownHeight,
+                               Reload_Trigger_Field   = @ReloadTriggerField,
+                               Reload_Trigger_Fields  = @ReloadTriggerFields,
+                               Tree_Parent_Column     = @TreeParentColumn,
+                               Tree_Root_Filter       = @TreeRootFilter,
+                               Tree_Selectable_Level  = @TreeSelectableLevel,
+                               Tree_Load_Mode         = @TreeLoadMode,
+                               Updated_At             = GETDATE()
                         WHERE  Field_Id = @FieldId
                     ELSE
                         INSERT INTO dbo.Ui_Field_Lookup
@@ -243,12 +253,14 @@ public sealed class FieldDataService : IFieldDataService
                                 Display_Column, Filter_Sql, Order_By, Search_Enabled,
                                 Popup_Columns_Json, EditBox_Mode, Code_Field,
                                 DropDown_Width, DropDown_Height, Reload_Trigger_Field,
-                                Updated_At)
+                                Reload_Trigger_Fields, Tree_Parent_Column, Tree_Root_Filter,
+                                Tree_Selectable_Level, Tree_Load_Mode, Updated_At)
                         VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
                                 @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
                                 @PopupColumnsJson, @EditBoxMode, @CodeField,
                                 @DropDownWidth, @DropDownHeight, @ReloadTriggerField,
-                                GETDATE())
+                                @ReloadTriggerFields, @TreeParentColumn, @TreeRootFilter,
+                                @TreeSelectableLevel, @TreeLoadMode, GETDATE())
                     """;
 
                 await conn.ExecuteAsync(
@@ -267,7 +279,12 @@ public sealed class FieldDataService : IFieldDataService
                         lookupConfig.CodeField,
                         lookupConfig.DropDownWidth,
                         lookupConfig.DropDownHeight,
-                        lookupConfig.ReloadTriggerField
+                        lookupConfig.ReloadTriggerField,
+                        lookupConfig.ReloadTriggerFields,
+                        lookupConfig.TreeParentColumn,
+                        lookupConfig.TreeRootFilter,
+                        lookupConfig.TreeSelectableLevel,
+                        lookupConfig.TreeLoadMode
                     }, transaction: tx, cancellationToken: ct));
             }
             else

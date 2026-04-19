@@ -947,6 +947,10 @@
                         <panels:LookupBoxPropsPanel
                             Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}" />
 
+                        <!-- ── TreePickerPropsPanel — TreePicker (dropdown cây phân cấp) ── -->
+                        <panels:TreePickerPropsPanel
+                            Visibility="{Binding IsTreePickerEditor, Converter={StaticResource BoolToVis}}" />
+
                         <!-- ── FK Lookup Config (LEGACY — hidden, kept for reference) ── -->
                         <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
                             <StackPanel>

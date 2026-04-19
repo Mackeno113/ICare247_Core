@@ -98,7 +98,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     [
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox",
-        "LookupBox", "TextArea", "CheckBox", "ToggleSwitch"
+        "LookupBox", "TreePicker", "TextArea", "CheckBox", "ToggleSwitch"
     ];
 
     private string _selectedEditorType = "TextBox";
@@ -107,10 +107,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         get => _selectedEditorType;
         set
         {
-            // Nếu đang rời khỏi LookupBox và có config → yêu cầu xác nhận
+            // Nếu đang rời khỏi LookupBox/TreePicker và có config → yêu cầu xác nhận
             if (!_isLoading
-                && _selectedEditorType == "LookupBox"
-                && value != "LookupBox"
+                && _selectedEditorType is "LookupBox" or "TreePicker"
+                && value != _selectedEditorType
                 && HasFkLookupConfig)
             {
                 var result = System.Windows.MessageBox.Show(
@@ -135,6 +135,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 RaisePropertyChanged(nameof(IsLookupOrComboBoxEditor));
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
                 RaisePropertyChanged(nameof(IsComboBoxEditor));
+                RaisePropertyChanged(nameof(IsTreePickerEditor));
                 RaisePropertyChanged(nameof(IsDynamicDataEditor));
                 RaisePropertyChanged(nameof(EditorTypeGuide));
                 RaisePropertyChanged(nameof(HasEditorTypeGuide));
@@ -169,11 +170,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>True khi EditorType là ComboBox (dynamic data từ Bảng/TVF/SQL, dùng DxComboBox).</summary>
     public bool IsComboBoxEditor => SelectedEditorType == "ComboBox";
 
+    /// <summary>True khi EditorType là TreePicker — hiển thị dữ liệu phân cấp dạng cây (Migration 016).</summary>
+    public bool IsTreePickerEditor => SelectedEditorType == "TreePicker";
+
     /// <summary>
     /// True khi EditorType cần cấu hình nguồn dữ liệu động từ Ui_Field_Lookup
-    /// (LookupBox hoặc ComboBox — dùng chung bộ props FkTableName/FkFilter...).
+    /// (LookupBox, ComboBox hoặc TreePicker — dùng chung bộ props FkTableName/FkFilter...).
     /// </summary>
-    public bool IsDynamicDataEditor => IsFkLookupEditor || IsComboBoxEditor;
+    public bool IsDynamicDataEditor => IsFkLookupEditor || IsComboBoxEditor || IsTreePickerEditor;
 
     /// <summary>Hướng dẫn inline cho EditorType đang chọn — cập nhật khi SelectedEditorType thay đổi.</summary>
     public ControlTypeGuide EditorTypeGuide => BuildGuide(SelectedEditorType);
@@ -544,6 +548,56 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         get => _reloadTriggerField;
         set { if (SetProperty(ref _reloadTriggerField, value)) IsDirty = true; }
     }
+
+    // ── Multi-trigger cascading (Migration 016) ──────────────────────────
+
+    /// <summary>
+    /// Danh sách FieldCode trigger phân cách bằng dấu phẩy — thay thế ReloadTriggerField khi cần đa trigger.
+    /// VD: "ProvinceId,DistrictId". Để trống = không cascading.
+    /// Load từ DB: ưu tiên Reload_Trigger_Fields, fallback Reload_Trigger_Field.
+    /// </summary>
+    private string _reloadTriggerFields = "";
+    public string ReloadTriggerFields
+    {
+        get => _reloadTriggerFields;
+        set { if (SetProperty(ref _reloadTriggerFields, value)) IsDirty = true; }
+    }
+
+    // ── Tree Control config (Migration 016) ─────────────────────────────
+
+    private string _treeParentColumn = "";
+    public string TreeParentColumn
+    {
+        get => _treeParentColumn;
+        set { if (SetProperty(ref _treeParentColumn, value)) IsDirty = true; }
+    }
+
+    private string _treeRootFilter = "";
+    public string TreeRootFilter
+    {
+        get => _treeRootFilter;
+        set { if (SetProperty(ref _treeRootFilter, value)) IsDirty = true; }
+    }
+
+    private string _treeSelectableLevel = "all";
+    public string TreeSelectableLevel
+    {
+        get => _treeSelectableLevel;
+        set { if (SetProperty(ref _treeSelectableLevel, value)) IsDirty = true; }
+    }
+
+    private string _treeLoadMode = "all_at_once";
+    public string TreeLoadMode
+    {
+        get => _treeLoadMode;
+        set { if (SetProperty(ref _treeLoadMode, value)) IsDirty = true; }
+    }
+
+    /// <summary>Mức độ node có thể chọn: all (tất cả), leaf (chỉ lá), branch (chỉ nhánh).</summary>
+    public List<string> TreeSelectableLevelOptions { get; } = ["all", "leaf", "branch"];
+
+    /// <summary>Chế độ load cây: all_at_once (toàn bộ 1 lần), lazy (từng cấp khi mở).</summary>
+    public List<string> TreeLoadModeOptions { get; } = ["all_at_once", "lazy"];
 
     /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
     public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
@@ -1156,6 +1210,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             _dropDownWidth      = cfg.DropDownWidth;
                             _dropDownHeight     = cfg.DropDownHeight;
                             _reloadTriggerField = cfg.ReloadTriggerField ?? "";
+                            // Multi-trigger (Migration 016) — ưu tiên ReloadTriggerFields, fallback ReloadTriggerField
+                            _reloadTriggerFields = !string.IsNullOrWhiteSpace(cfg.ReloadTriggerFields)
+                                ? cfg.ReloadTriggerFields
+                                : cfg.ReloadTriggerField ?? "";
 
                             _isRebuildingProps = false;
                             // Raise LookupBox new props sau khi _isRebuildingProps = false
@@ -1165,6 +1223,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             RaisePropertyChanged(nameof(DropDownWidth));
                             RaisePropertyChanged(nameof(DropDownHeight));
                             RaisePropertyChanged(nameof(ReloadTriggerField));
+                            RaisePropertyChanged(nameof(ReloadTriggerFields));
                             skipFkRestore:;
                         }
                         catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }
@@ -1215,6 +1274,47 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                     catch { /* bỏ qua */ }
                                 }
                                 _isRebuildingProps = false;
+                            }
+                        }
+                        catch { _isRebuildingProps = false; }
+                    }
+
+                    // ── Restore TreePicker — đọc từ Ui_Field_Lookup (Migration 016) ──
+                    if (IsTreePickerEditor && field.LookupSource == "dynamic" && _fieldService is not null)
+                    {
+                        try
+                        {
+                            var cfg = await _fieldService.GetFieldLookupConfigAsync(FieldId, ct);
+                            if (cfg is not null)
+                            {
+                                _isRebuildingProps = true;
+                                QueryMode       = cfg.QueryMode;
+                                FkValueField    = cfg.ValueColumn;
+                                FkDisplayField  = cfg.DisplayColumn;
+                                FkOrderBy       = cfg.OrderBy ?? "";
+                                FkSearchEnabled = cfg.SearchEnabled;
+                                switch (cfg.QueryMode)
+                                {
+                                    case "table":      FkTableName    = cfg.SourceName; FkFilterSql = cfg.FilterSql ?? ""; break;
+                                    case "tvf":        FkFunctionName = cfg.SourceName; break;
+                                    case "custom_sql": FkSelectSql    = cfg.SourceName; break;
+                                }
+                                // Tree-specific props (Migration 016)
+                                _treeParentColumn    = cfg.TreeParentColumn   ?? "";
+                                _treeRootFilter      = cfg.TreeRootFilter     ?? "";
+                                _treeSelectableLevel = cfg.TreeSelectableLevel;
+                                _treeLoadMode        = cfg.TreeLoadMode;
+                                // Multi-trigger
+                                _reloadTriggerFields = !string.IsNullOrWhiteSpace(cfg.ReloadTriggerFields)
+                                    ? cfg.ReloadTriggerFields
+                                    : cfg.ReloadTriggerField ?? "";
+
+                                _isRebuildingProps = false;
+                                RaisePropertyChanged(nameof(TreeParentColumn));
+                                RaisePropertyChanged(nameof(TreeRootFilter));
+                                RaisePropertyChanged(nameof(TreeSelectableLevel));
+                                RaisePropertyChanged(nameof(TreeLoadMode));
+                                RaisePropertyChanged(nameof(ReloadTriggerFields));
                             }
                         }
                         catch { _isRebuildingProps = false; }
@@ -2052,9 +2152,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
             // Xác định LookupSource theo EditorType
-            var lookupSource = IsLookupEditor    ? "static"
-                             : IsFkLookupEditor  ? "dynamic"
-                             : IsComboBoxEditor  ? "dynamic"
+            var lookupSource = IsLookupEditor      ? "static"
+                             : IsFkLookupEditor    ? "dynamic"
+                             : IsComboBoxEditor    ? "dynamic"
+                             : IsTreePickerEditor  ? "dynamic"
                              : (string?)null;
 
             var field = new FieldConfigRecord
@@ -2080,12 +2181,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 LookupCode       = IsLookupEditor ? LookupCode : null,
                 // LookupBox: ControlPropsJson = null (toàn bộ config lưu trong Ui_Field_Lookup)
                 // ComboBox/LookupComboBox: ControlPropsJson lưu search+display props
-                ControlPropsJson = IsFkLookupEditor ? null : ControlPropsJson
+                ControlPropsJson = (IsFkLookupEditor || IsTreePickerEditor) ? null : ControlPropsJson
             };
 
-            // Build lookup config cho dynamic field (LookupBox hoặc ComboBox)
+            // Build lookup config cho dynamic field (LookupBox, ComboBox hoặc TreePicker)
             FieldLookupConfigRecord? lookupConfig = null;
-            if (IsFkLookupEditor || IsComboBoxEditor)
+            if (IsFkLookupEditor || IsComboBoxEditor || IsTreePickerEditor)
             {
                 // Xác định SourceName theo query mode
                 var sourceName = _queryMode switch
@@ -2113,7 +2214,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     OrderBy          = string.IsNullOrWhiteSpace(FkOrderBy)   ? null : FkOrderBy,
                     SearchEnabled    = FkSearchEnabled,
                     PopupColumnsJson = popupColumnsJson,
-                    // LookupBox-specific props — ComboBox giữ default
+                    // LookupBox-specific props — ComboBox/TreePicker giữ default
                     EditBoxMode         = IsFkLookupEditor ? _editBoxMode        : "TextOnly",
                     CodeField           = IsFkLookupEditor && !string.IsNullOrWhiteSpace(_codeField)
                                           ? _codeField : null,
@@ -2121,6 +2222,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     DropDownHeight      = IsFkLookupEditor ? _dropDownHeight     : 400,
                     ReloadTriggerField  = !string.IsNullOrWhiteSpace(_reloadTriggerField)
                                           ? _reloadTriggerField : null,
+                    // Multi-trigger cascading (Migration 016)
+                    ReloadTriggerFields = !string.IsNullOrWhiteSpace(_reloadTriggerFields)
+                                          ? _reloadTriggerFields : null,
+                    // Tree Control props (Migration 016) — chỉ set khi TreePicker
+                    TreeParentColumn    = IsTreePickerEditor && !string.IsNullOrWhiteSpace(_treeParentColumn)
+                                          ? _treeParentColumn : null,
+                    TreeRootFilter      = IsTreePickerEditor && !string.IsNullOrWhiteSpace(_treeRootFilter)
+                                          ? _treeRootFilter : null,
+                    TreeSelectableLevel = IsTreePickerEditor ? _treeSelectableLevel : "all",
+                    TreeLoadMode        = IsTreePickerEditor ? _treeLoadMode        : "all_at_once",
                 };
             }
 
