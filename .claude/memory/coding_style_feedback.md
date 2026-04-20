@@ -64,6 +64,15 @@ DebugLogger.Error("LocalConfig",$"Lỗi đọc file: {ex.Message}");
 - Áp dụng cho: backend API, LocalConfigLoader, bất kỳ code nào chạy trước Serilog
 - KHÔNG áp dụng cho: Serilog `ILogger<T>` trong services/repositories (giữ nguyên)
 
+## [2026-04-20] Memory files luôn commit lên master — không phải feature branch
+
+**Why:** Memory files (`.claude/memory/`) là global/cross-branch — dùng chung cho mọi session, mọi máy. Commit lên feature branch làm memory bị lock trong branch đó.
+
+**How to apply:**
+- Sau khi cập nhật bất kỳ file nào trong `.claude/memory/` → checkout master, commit ở đó, push master
+- Nếu đang trên feature branch → cherry-pick commit memory sang master
+- KHÔNG commit memory files trực tiếp lên feature branch
+
 ## [2026-03-20] Run.Text binding trong XAML phải dùng Mode=OneWay
 
 WPF `<Run Text="{Binding Prop}" />` mặc định là **TwoWay**. Nếu property có `private set` → throw `InvalidOperationException` runtime.
