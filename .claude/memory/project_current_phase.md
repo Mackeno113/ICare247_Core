@@ -34,12 +34,11 @@
 - ~~Màn hình quản lý Sys_Lookup trong ConfigStudio~~ ✅ Done (verified 2026-03-29)
 - ~~ExecuteSaveAsync / ExecuteSaveSectionAsync~~ ✅ Done (verified 2026-03-29)
 - ~~Control Props JSON preview sidebar~~ ✅ Done (commit c5027b2, 2026-03-29)
+- ~~TreePickerPropsPanel — UI cấu hình TreePicker (tree config + cascading)~~ ✅ Done (session 25-26, Migration 016)
+- ~~LookupBoxPropsPanel multi-trigger — ReloadTriggerFields thay ReloadTriggerField~~ ✅ Done (session 25-26)
 - Pass `tableCode` khi navigate từ FieldConfig → I18nManager
 - Test LookupBox end-to-end (cấu hình GioiTinh + PhongBanID)
-- WPF-07: FormManager Clone Form — persist vào DB (IFormDataService.CloneFormAsync)
-- WPF-08: Form Preview Dialog — render metadata thành form visual (task lớn ~4h)
-- WPF-09: Browse Column Popup trong FieldConfig
-- T11: LookupComboBoxRenderer Blazor (low priority)
+- WPF-10: ValidationRuleEditor Compare rule field list dropdown
 
 ## Blazor RuntimeCheck — Đang hoàn thiện
 
@@ -60,6 +59,8 @@
 | FieldType `select` — static Sys_Lookup, LookupApiService, batch load | ✅ Done (session 7) |
 | FieldType `fklookup` — LookupBoxRenderer (popup grid) | ✅ Done (session 8) |
 | FieldType `combobox` — ComboBoxRenderer (dynamic data) | ✅ Done (session 8) |
+| FieldType `treepicker` — TreePickerRenderer (dropdown cây, flat→tree, multi-trigger) | ✅ Done (session 25, Migration 016) |
+| Multi-trigger cascading — ComboBoxRenderer + LookupBoxRenderer dùng snapshot list | ✅ Done (session 25, Migration 016) |
 | NumericBoxRenderer (DxSpinEdit) | 🔴 Pending |
 | DatePickerRenderer (DxDateEdit) | 🔴 Pending |
 | Test end-to-end FormRunner với API + DB thật | 🔴 Pending |
