@@ -1,6 +1,6 @@
 # Last Session Summary
 
-> Cập nhật: 2026-04-19 (session 25–26)
+> Cập nhật: 2026-04-20 (session 27 — chuyển máy)
 
 ## Đã làm — Wave 016: Dynamic Tree Control + Multi-Trigger Cascading
 
@@ -99,6 +99,15 @@ Tree_Load_Mode         NVARCHAR(20)   DEFAULT 'all_at_once' -- all_at_once|lazy
 - **Dapper mapping List<string>:** Tránh bằng cách dùng `ReloadTriggerFieldsRaw (string)` làm Dapper-mapped, `ReloadTriggerFields (List<string>)` là computed
 - **Không cần API endpoint mới cho TreePicker:** Reuse `POST /api/v1/lookups/query-dynamic` — `DynamicLookupRepository.BuildSelectColumns` tự include TreeParentColumn
 - **TreePicker render:** Custom CSS tree (không dùng DxTreeView vì không có trong codebase), consistent với LookupBoxRenderer pattern
+
+## Session 27 (2026-04-20) — Chuyển máy
+
+Không code. Chỉ sync memory:
+- Commit memory files lên **master** (quy tắc mới: memory luôn ở master)
+- Ghi nhớ rule: memory files → commit master, không phải feature branch
+- Branch hiện tại: `claude/dynamic-tree-control-bLerc` (up to date)
+
+---
 
 ## Task tiếp theo gợi ý
 
