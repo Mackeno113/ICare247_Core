@@ -1,59 +1,45 @@
-# AI Handoff Log - ICare247 Core
+# AI Handoff Log — ICare247 Core
 
-## How to use
-
-- Add one entry when starting a task and one entry when handing off.
-- Keep entries short, factual, and file-specific.
-- Include blockers and exact next action.
+Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
+**Newest first.** Cập nhật ngay khi bắt đầu hoặc hoàn thành một task.
 
 ---
 
-## Entry Template
+## Template
 
-### [YYYY-MM-DD HH:mm] Task <TASK-ID> - <from-agent> -> <to-agent>
-
-- Status: `in_progress|blocked|ready_for_review|done`
-- Branch: `<branch-name>`
-- Scope:
-  - `<what is included>`
-- Files changed:
-  - `<path1>`
-  - `<path2>`
-- Commands run:
-  - `<command>`
-  - `<command>`
-- Validation result:
-  - `<build/test result summary>`
-- Decisions referenced:
-  - `<AI_DECISIONS.md entry id or none>`
-- Risks/Blockers:
-  - `<risk or blocker>`
-- Next exact step:
-  - `<single next action>`
+```
+### [YYYY-MM-DD] <TASK-ID> — <from> → <to>
+- Status: in_progress | blocked | done
+- Files: <danh sách file chính đã/sẽ sửa>
+- Cần biết: <thông tin quan trọng cho agent nhận>
+- Bước tiếp theo: <1 hành động cụ thể>
+```
 
 ---
 
-## Handoff Entries
+## Entries
 
-### [2026-03-03 17:20] Task GOV-001 - codex -> claude
+### [2026-04-25] GOV-001 — claude → both
 
-- Status: `done`
-- Branch: `n/a`
-- Scope:
-  - Created shared governance templates for dual-agent collaboration.
-- Files changed:
-  - `AI_PROJECT_BRIEF.md`
-  - `AI_TASKS.yaml`
-  - `AI_HANDOFF.md`
-  - `AI_DECISIONS.md`
-- Commands run:
-  - `Get-ChildItem -Path . -File`
-  - `apply_patch` (create files)
-- Validation result:
-  - Files created successfully; no build impact.
-- Decisions referenced:
-  - `DEC-2026-03-03-001`
-- Risks/Blockers:
-  - Initial task ownership and branch strategy still need team confirmation.
-- Next exact step:
-  - Confirm owners for `CORE-001`, `APP-001`, `INF-001`, `API-001` in sprint planning.
+- Status: done
+- Files: `BRAIN.md`, `CLAUDE.md`, `AGENTS.md`, `.codex/memory/*`, `MACHINE_SWITCH.md`, `AI_TASKS.yaml`, `AI_DECISIONS.md`, `AI_HANDOFF.md`
+- Cần biết: Toàn bộ AI config đã được rebuild. BRAIN.md là single source of truth. Codex giờ có `.codex/memory/` riêng. Đọc MACHINE_SWITCH.md trước khi đổi máy.
+- Bước tiếp theo: Codex bắt đầu WPF-10 (Compare rule dropdown) hoặc WPF-13 (pass tableCode).
+
+---
+
+### [2026-04-17] Wave 10 — claude → codex
+
+- Status: done
+- Files: `FieldLookupConfig.cs`, `MetadataEngine.cs`, `I18nManagerViewModel.cs`, `FieldConfigViewModel.cs`, `MainWindow.xaml.cs`, `LookupBoxPropsPanel.xaml`
+- Cần biết: i18n captionKey hoàn chỉnh. MetadataEngine resolve popup column captions từ Sys_Resource. WPF: SpinEdit race condition fix, SysLookupManager fix, MainWindow fullscreen fix, popup columns UX (▲▼ + ✕).
+- Bước tiếp theo: Test LookupBox end-to-end với GioiTinh + PhongBanID.
+
+---
+
+### [2026-03-03] GOV-001 — codex → claude
+
+- Status: done
+- Files: `AI_PROJECT_BRIEF.md` (đã xóa), `AI_TASKS.yaml`, `AI_HANDOFF.md`, `AI_DECISIONS.md`
+- Cần biết: Governance files ban đầu được tạo.
+- Bước tiếp theo: Confirm owners cho CORE-001, APP-001, INF-001, API-001.

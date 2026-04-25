@@ -4,6 +4,29 @@
 
 _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
+---
+
+## 🟠 Kế hoạch (Next Up)
+
+### Backend — Claude Code
+
+- [ ] **BE-001** — Implement `IMetadataEngine` (orchestration FormRepo + FieldRepo + Cache)
+- [ ] **BE-002** — Integration tests: ValidationEngine + EventEngine + MetadataEngine
+- [ ] **BE-003** — Test Blazor end-to-end với API + DB thật (form sys_UI_Design)
+- [ ] **BE-004** — Apply Design System tokens vào Blazor components
+
+### WPF ConfigStudio — Codex
+
+- [ ] **WPF-13** ⭐ — Pass `tableCode` khi navigate FieldConfig → I18nManager
+- [ ] **WPF-10** ⭐ — ValidationRuleEditor: Compare rule field list → ComboBoxEdit (~45 phút)
+- [ ] **WPF-11** — FormSummaryDto: thêm EventCount subquery (~30 phút)
+- [ ] **WPF-12** — I18n Manager: Export/Import CSV/JSON (~1.5 giờ)
+- [ ] **WPF-14** — Test LookupBox end-to-end (GioiTinh + PhongBanID)
+
+---
+
+## ✅ Done (Wave ComboBox/LookupBox System — 2026-03-28)
+
 ### Wave — ComboBox/LookupBox System (2026-03-28)
 
 > **Bối cảnh:** Hệ thống có 2 dạng dropdown Blazor hoàn toàn khác nhau: DxComboBox (static/dynamic list) và DxDropDownBox (FK lookup với popup grid + template phức tạp). Cần typed ControlProps models, WPF dedicated panels, và Blazor renderer thật thay placeholder.
@@ -33,7 +56,7 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 #### WAVE 4 — Backend API
 
 - [x] **T14** — `POST /api/v1/lookups/query-dynamic` trong `LookupController.cs` + `IDynamicLookupRepository` + `DynamicLookupRepository` Dapper + CQRS handler _(2026-03-28)_
-- [ ] **DB** — Chạy migration `014_ui_field_lookup_add_cols.sql` trên DB thật
+- [x] **DB** — Chạy migration `014_ui_field_lookup_add_cols.sql` trên DB thật _(xác nhận 2026-04-25: schema canonical 000_create_schema.sql)_
 
 #### WAVE 5 — Bug Fix: Migration 014 columns bị bỏ quên (2026-03-30)
 
@@ -61,25 +84,21 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
-## 🟠 Kế hoạch — Field Config Schema Fix (2026-03-26)
+## ✅ Done — Field Config Schema Fix (2026-03-26)
 
 > **Bối cảnh:** Phân tích lại schema phát hiện inconsistency: `Is_ReadOnly` là cột trong `Ui_Field` nhưng `Is_Required` lại được lưu như `Val_Rule`. Quyết định ADR-010: cả 3 (`Is_Visible`, `Is_ReadOnly`, `Is_Required`) phải là cột tĩnh trong `Ui_Field`.
 > Đồng thời bổ sung `Is_Enabled` (disabled ≠ readonly), 2 rule type mới (`Length`, `Compare`), 3 action type mới (`SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`).
 
-### Wave A — Database Migration
+### Wave A — Database Migration ✅ (2026-04-25)
 
-- [ ] Tạo `db/migrations/010_field_behavior_columns.sql`
+- [x] Tạo `db/migrations/010_field_behavior_columns.sql` _(gộp vào 000_create_schema.sql)_
   - `ALTER TABLE Ui_Field ADD Is_Required bit NOT NULL DEFAULT 0`
   - `ALTER TABLE Ui_Field ADD Is_Enabled  bit NOT NULL DEFAULT 1`
-  - Comment rõ: Is_Required tĩnh (luôn bắt buộc); SET_REQUIRED event = dynamic
-- [ ] Tạo `db/migrations/011_add_rule_types.sql`
-  - INSERT `Val_Rule_Type`: `Length` — kiểm tra `len(value)` trong khoảng min..max
-  - INSERT `Val_Rule_Type`: `Compare` — so sánh với field khác (`value >= {OtherField}`)
-- [ ] Tạo `db/migrations/012_add_action_types.sql`
-  - INSERT `Evt_Action_Type`: `SET_ENABLED`  — `{"targetField":"string","conditionExpression":"ast"}`
-  - INSERT `Evt_Action_Type`: `CLEAR_VALUE`   — `{"targetField":"string"}`
-  - INSERT `Evt_Action_Type`: `SHOW_MESSAGE`  — `{"messageKey":"string","severity":"info|warn|error"}`
-- [ ] **Chạy migrations 010–012 trên DB thật**
+- [x] Tạo `db/migrations/011_add_rule_types.sql` _(gộp vào 001_seed_all.sql)_
+  - INSERT `Val_Rule_Type`: `Length` + `Compare`
+- [x] Tạo `db/migrations/012_add_action_types.sql` _(gộp vào 001_seed_all.sql)_
+  - INSERT `Evt_Action_Type`: `SET_ENABLED`, `CLEAR_VALUE`, `SHOW_MESSAGE`
+- [x] **Chạy migrations 010–012 trên DB thật** _(xác nhận Wave C commit 707c882)_
 
 ### Wave B — Backend ✅ (2026-03-26)
 

@@ -1,137 +1,185 @@
-version: 1
+version: 2
 project: ICare247_Core
-last_updated: "2026-03-03"
+last_updated: "2026-04-26"
 owners:
-  - claude
-  - codex
+  - claude   # Claude Code: backend .NET 9 + Blazor WASM + docs/spec
+  - codex    # Codex: ConfigStudio WPF + tests + DB migrations
 
 workflow_rules:
-  - "Only one owner can be in_progress for a task."
-  - "Update AI_HANDOFF.md when status changes."
-  - "If scope changes, update AI_DECISIONS.md."
-  - "Do not edit files outside files_allowed without a decision record."
+  - "Chỉ 1 agent in_progress cho 1 task tại 1 thời điểm."
+  - "Cập nhật AI_HANDOFF.md khi bàn giao hoặc block."
+  - "Quyết định kiến trúc → ghi vào AI_DECISIONS.md."
+  - "Không sửa file ngoài files_allowed mà không có decision record."
+  - "Đọc BRAIN.md đầu tiên trước khi bắt đầu bất kỳ task nào."
+
+# ──────────────────────────────────────────
+# BACKEND (Claude Code)
+# ──────────────────────────────────────────
 
 tasks:
-  - id: CORE-001
-    title: "Define shared cache key helper"
-    goal: "Create CacheKeys.cs and replace hardcoded cache key usage."
-    owner: codex
+  - id: BE-001
+    title: "Implement IMetadataEngine"
+    agent: claude
     status: todo
     priority: P0
-    in_scope:
-      - "Add CacheKeys class in Application or Core shared location."
-      - "Use tenant-aware key format."
-    out_of_scope:
-      - "Redis performance tuning."
+    goal: "Hoàn thiện MetadataEngine — layer orchestration giữa FormRepo + FieldRepo + CacheService."
     files_allowed:
-      - "src/backend/src/ICare247.Application/**"
-      - "src/backend/src/ICare247.Infrastructure/**"
-    constraints:
-      - "No hardcoded cache key string in consuming code."
-      - "Tenant must be embedded in key."
+      - "src/ICare247.Application/Engines/**"
+      - "src/ICare247.Infrastructure/Engines/**"
+      - "src/ICare247.Api/Controllers/**"
     acceptance_criteria:
-      - "All new cache key creation goes through CacheKeys helper."
-      - "Build passes for modified projects."
+      - "RuntimeController dùng IMetadataEngine thay FormRepository trực tiếp"
+      - "Build 0 error, 0 warning"
+      - "Unit test cover các path chính"
     dependencies: []
-    notes: ""
+    notes: "RuntimeController đã có injection point — chỉ cần implement"
 
-  - id: APP-001
-    title: "Add repository and db abstractions"
-    goal: "Create interfaces: IDbConnectionFactory, IFormRepository, IFieldRepository."
-    owner: codex
+  - id: BE-002
+    title: "Integration tests — backend engines"
+    agent: claude
     status: todo
-    priority: P0
-    in_scope:
-      - "Define interfaces and method signatures with async + cancellation token."
-    out_of_scope:
-      - "Full repository implementation."
+    priority: P1
+    goal: "Viết integration tests cho ValidationEngine + EventEngine + MetadataEngine với DB thật."
     files_allowed:
-      - "src/backend/src/ICare247.Application/**"
-    constraints:
-      - "No sync-over-async."
+      - "tests/**"
     acceptance_criteria:
-      - "Interfaces compile and match naming conventions."
-    dependencies: []
-    notes: ""
-
-  - id: INF-001
-    title: "Implement SqlConnectionFactory"
-    goal: "Add concrete SQL connection factory and DI registration."
-    owner: codex
-    status: todo
-    priority: P0
-    in_scope:
-      - "Implement SqlConnectionFactory."
-      - "Register via Infrastructure DependencyInjection."
-    out_of_scope:
-      - "Connection resiliency policy."
-    files_allowed:
-      - "src/backend/src/ICare247.Infrastructure/**"
-    constraints:
-      - "Do not instantiate infrastructure classes in Api directly."
-    acceptance_criteria:
-      - "Factory resolves from DI and app starts."
+      - "Test hit real DB (không mock)"
+      - "Cover: load form, validate field, apply event action, cache invalidation"
+      - "CI pass"
     dependencies:
-      - APP-001
+      - BE-001
+    notes: "Dùng TestContainers hoặc localDB — xem .claude-rules/dapper-patterns.md"
+
+  - id: BE-003
+    title: "Test Blazor end-to-end với API + DB thật"
+    agent: claude
+    status: todo
+    priority: P1
+    goal: "Verify FormRunner hoạt động đúng với form thật: load → render → interact → validate."
+    files_allowed:
+      - "src/ICare247.Blazor.WASM/**"
+    acceptance_criteria:
+      - "Form load hiển thị đúng fields"
+      - "ComboBox/LookupBox/TreePicker render đúng data"
+      - "Validation rule chạy đúng"
+      - "Event action (SET_VISIBLE, SET_ENABLED) hoạt động"
+    dependencies:
+      - BE-001
+    notes: "Dùng form sys_UI_Design làm test case"
+
+  - id: BE-004
+    title: "Apply Design System tokens vào Blazor components"
+    agent: claude
+    status: todo
+    priority: P2
+    goal: "Áp dụng CSS tokens từ docs/design-system/tokens.css vào FormRunner + FieldRenderers."
+    files_allowed:
+      - "src/ICare247.Blazor.WASM/**"
+      - "docs/design-system/**"
+    acceptance_criteria:
+      - "Blazor dùng CSS custom properties (không hardcode color/spacing)"
+      - "Theme swap hoạt động khi đổi token values"
+    dependencies: []
     notes: ""
 
-  - id: API-001
-    title: "Add global exception handling middleware"
-    goal: "Centralize RFC7807 error responses and avoid swallowed exceptions."
-    owner: claude
+# ──────────────────────────────────────────
+# WPF ConfigStudio (Codex)
+# ──────────────────────────────────────────
+
+  - id: WPF-10
+    title: "ValidationRuleEditor — Compare rule field list dropdown"
+    agent: codex
     status: todo
     priority: P0
-    in_scope:
-      - "Create ExceptionHandlingMiddleware."
-      - "Wire middleware in Program.cs."
-    out_of_scope:
-      - "Custom domain-specific error catalog."
+    goal: "Đổi EditCompareField từ TextBox thủ công → ComboBoxEdit với danh sách fields trong form."
     files_allowed:
-      - "src/backend/src/ICare247.Api/**"
-    constraints:
-      - "Preserve exception bubbling from engine/application."
+      - "src/ICare247.ConfigStudio.WPF/ViewModels/ValidationRuleEditorViewModel.cs"
+      - "src/ICare247.ConfigStudio.WPF/Views/ValidationRuleEditorView.xaml"
     acceptance_criteria:
-      - "Unhandled exceptions return ProblemDetails format."
+      - "AvailableFieldCodes load từ IRuleDataService.GetFieldCodesInFormAsync(formId)"
+      - "UI hiện ComboBoxEdit thay TextEdit trong Compare section"
+    dependencies: []
+    notes: "Ước lượng ~45 phút"
+
+  - id: WPF-11
+    title: "FormSummaryDto — thêm EventCount"
+    agent: codex
+    status: todo
+    priority: P1
+    goal: "FormSummaryDto.EventCount hiển thị đúng số events trong FormManager grid."
+    files_allowed:
+      - "src/ICare247.ConfigStudio.WPF/Core/Data/**"
+      - "src/ICare247.ConfigStudio.WPF/ViewModels/FormManagerViewModel.cs"
+    acceptance_criteria:
+      - "FormSummaryDto có field EventCount : int"
+      - "SQL thêm subquery COUNT(*) từ Ui_Field_Event"
+      - "FormManager grid hiển thị đúng"
+    dependencies: []
+    notes: "Ước lượng ~30 phút. File: FormManagerViewModel.cs line 383"
+
+  - id: WPF-12
+    title: "I18n Manager — Export/Import CSV/JSON"
+    agent: codex
+    status: todo
+    priority: P1
+    goal: "Implement ExecuteExport() và ExecuteImport() trong I18nManagerViewModel."
+    files_allowed:
+      - "src/ICare247.ConfigStudio.WPF/ViewModels/I18nManagerViewModel.cs"
+    acceptance_criteria:
+      - "Export: SaveFileDialog → CSV/JSON với columns Key, VI, EN, ..."
+      - "Import: OpenFileDialog → parse → merge Entries → confirm overwrite"
+    dependencies: []
+    notes: "Ước lượng ~1.5 giờ. Line 373-374 là TODO empty methods"
+
+  - id: WPF-13
+    title: "Pass tableCode khi navigate FieldConfig → I18nManager"
+    agent: codex
+    status: todo
+    priority: P0
+    goal: "I18nManager nhận tableCode từ FieldConfig để filter đúng keys theo bảng."
+    files_allowed:
+      - "src/ICare247.ConfigStudio.WPF/ViewModels/FieldConfigViewModel.cs"
+      - "src/ICare247.ConfigStudio.WPF/ViewModels/I18nManagerViewModel.cs"
+    acceptance_criteria:
+      - "NavigationParameters truyền tableCode khi mở I18nManager"
+      - "I18nManager filter keys theo tableCode nhận được"
     dependencies: []
     notes: ""
 
-  - id: UXP0-001
-    title: "Convert P0 UX plan into implementation-ready stories"
-    goal: "Create technical stories per module from UX P0 backlog."
-    owner: claude
-    status: done
-    priority: P0
-    in_scope:
-      - "Break down UX-01..UX-04 into module tasks."
-    out_of_scope:
-      - "Actual WPF implementation."
+  - id: WPF-14
+    title: "Test LookupBox end-to-end (GioiTinh + PhongBanID)"
+    agent: codex
+    status: todo
+    priority: P1
+    goal: "Verify LookupBoxRenderer hoạt động với 2 field test: GioiTinh (Sys_Lookup) + PhongBanID (FK)."
     files_allowed:
-      - "docs/ICare247 Config Studio/**"
-    constraints:
-      - "Keep mapping to screens 01-11."
+      - "src/ICare247.ConfigStudio.WPF/**"
     acceptance_criteria:
-      - "Dedicated tech-task document exists and is reviewable."
+      - "GioiTinh: popup grid hiển thị options từ Sys_Lookup"
+      - "PhongBanID: popup grid load từ FK table"
+      - "Chọn item → value binding đúng"
     dependencies: []
-    notes: "Output file: docs/ICare247 Config Studio/UX_P0_TECH_TASKS_BY_MODULE.md"
+    notes: ""
+
+# ──────────────────────────────────────────
+# DONE (để tham khảo)
+# ──────────────────────────────────────────
 
   - id: GOV-001
-    title: "Set up dual-agent governance files"
-    goal: "Provide shared project brief, task board, handoff log, and decision log."
-    owner: codex
+    title: "Dual-agent governance — BRAIN.md + dual memory"
+    agent: claude
     status: done
     priority: P0
-    in_scope:
-      - "Create AI_PROJECT_BRIEF.md, AI_TASKS.yaml, AI_HANDOFF.md, AI_DECISIONS.md."
-    out_of_scope:
-      - "Automation scripts for synchronization."
+    goal: "Rebuild toàn bộ AI config: BRAIN.md, slim CLAUDE.md/AGENTS.md, .codex/memory/, MACHINE_SWITCH.md."
     files_allowed:
-      - "./AI_PROJECT_BRIEF.md"
-      - "./AI_TASKS.yaml"
-      - "./AI_HANDOFF.md"
-      - "./AI_DECISIONS.md"
-    constraints:
-      - "Files must be immediately usable as templates."
+      - "BRAIN.md"
+      - "CLAUDE.md"
+      - "AGENTS.md"
+      - ".codex/memory/**"
+      - "MACHINE_SWITCH.md"
     acceptance_criteria:
-      - "All four files exist with clear structure."
+      - "BRAIN.md là single source of truth"
+      - "Cả 2 agent có memory riêng"
+      - "Protocol đổi máy được document"
     dependencies: []
-    notes: ""
+    notes: "Hoàn thành 2026-04-25, commit 142d356"
