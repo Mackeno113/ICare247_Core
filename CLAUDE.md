@@ -1,49 +1,34 @@
-# ICare247 Core Platform — AI Agent Configuration
+# CLAUDE.md — ICare247 Core Platform (Claude Code)
 
 <!--
   FILE: CLAUDE.md
-  MỤC ĐÍCH: Router cấu hình cho Claude Code — chỉ chứa tổng quan + pointer.
-  Agent đọc thêm file chi tiết trong .claude-rules/ và docs/spec/ KHI CẦN.
-
-  ĐỒNG BỘ: Mọi config nằm trong repo → git sync qua nhiều máy.
-  - .claude/settings.json     → team settings (git-tracked)
-  - .claude/settings.local.json → per-machine (gitignored qua *.local.json)
-  - .claude/commands/          → slash commands (git-tracked)
-  - .claude/memory/            → agent memory (git-tracked)
-  - .claude-rules/             → coding rules (git-tracked)
+  MỤC ĐÍCH: Config riêng cho Claude Code. Mọi rule chung → đọc BRAIN.md.
+  ĐỒNG BỘ: Git-tracked → tự động sync qua nhiều máy khi git pull/push.
 -->
 
-## Project Identity
+## ĐỌC ĐẦU TIÊN
 
-- **Dự án:** ICare247 Core Platform — Enterprise metadata-driven low-code form engine
-- **Code:** C# (.NET 9) | **Comment:** Tiếng Việt (bắt buộc) | **Pattern:** Clean Architecture + CQRS + Metadata-driven
+> **[BRAIN.md](BRAIN.md)** — Single source of truth: project identity, tech stack,
+> hard constraints, architecture, ownership map. Đọc trước khi làm bất cứ thứ gì.
 
-## Tech Stack
+---
 
-| Thành phần  | Dùng                            | KHÔNG dùng                  |
-| ----------- | ------------------------------- | --------------------------- |
-| Backend     | .NET 9 / ASP.NET Core 9         | -                           |
-| Frontend    | Blazor WASM + DevExpress        | -                           |
-| DB          | MS SQL Server                   | MySQL, PostgreSQL           |
-| Data Access | **Dapper**                      | **EF Core (cấm tuyệt đối)** |
-| Cache       | MemoryCache + Redis             | -                           |
-| Logging     | Serilog + OpenTelemetry         | Console.WriteLine           |
-| Auth        | JWT + Policy-based              | -                           |
+## Session Protocol (Claude Code)
 
-## Luật bất biến (KHÔNG ngoại lệ)
+1. Đọc `BRAIN.md` — nắm project context + ownership
+2. Đọc `.claude/memory/last_session.md` — biết session trước làm gì
+3. Đọc `.claude/memory/project_current_phase.md` — biết phase hiện tại
+4. Đọc `TASKS.md` — biết việc cần làm
+5. Tóm tắt cho user + hỏi: "Hôm nay làm task nào?"
+6. Đọc `.claude-rules/` liên quan đến task (xem bảng bên dưới)
+7. Đọc `docs/spec/` nếu cần tra cứu schema/API
+8. Code → build verify → commit
+9. Cập nhật `TASKS.md` + `.claude/memory/last_session.md`
+10. Nếu có quyết định quan trọng → `/save-memory`
 
-1. Domain layer = pure C#, không import gì
-2. Application chỉ import Domain
-3. Infrastructure import Application
-4. Api KHÔNG import Infrastructure trực tiếp (trừ composition root)
-5. KHÔNG dùng EF Core — chỉ Dapper
-6. Mọi SQL = parameterized (không string interpolation)
-7. Mọi query/cache key phải có Tenant_Id
-8. Async/await xuyên suốt — không .Result, không .Wait()
-9. CancellationToken truyền xuyên suốt tất cả async method
-10. Không eval / dynamic compile — chỉ AST-based execution
+---
 
-## Quy tắc chi tiết → đọc file tương ứng khi cần
+## Coding Rules → đọc file tương ứng khi cần
 
 | File | Nội dung |
 |---|---|
@@ -54,7 +39,7 @@
 | `.claude-rules/ast-grammar.md` | AST nodes, operators, functions, null rules |
 | `.claude-rules/api-response.md` | Response format, ProblemDetails, RFC 7807 |
 | `.claude-rules/comment-rules.md` | File header, class/method/logic block comments |
-| `.claude-rules/wpf-configstudio.md` | Prism 9, MaterialDesign, MVVM, navigation |
+| `.claude-rules/wpf-configstudio.md` | Prism 9, DevExpress WPF, MVVM, navigation |
 
 ## Specification → đọc khi cần tra cứu
 
@@ -70,23 +55,24 @@
 | `docs/spec/07_API_CONTRACT.md` | API endpoints, request/response schemas |
 | `docs/spec/08_CONVENTIONS.md` | Cache keys, Dapper patterns, comment rules |
 
-> **Khi có câu hỏi về spec** → tra cứu docs/spec/ trước khi tự suy luận.
+---
 
-## Memory (Git-tracked — đồng bộ qua nhiều máy)
+## Memory (Git-tracked — sync qua nhiều máy)
 
 | File | Mục đích |
 |---|---|
 | `.claude/memory/MEMORY.md` | Index tất cả memory files |
-| `.claude/memory/last_session.md` | Session trước làm gì → đọc ĐẦU TIÊN mỗi session |
+| `.claude/memory/last_session.md` | Session trước làm gì → đọc ĐẦU TIÊN |
 | `.claude/memory/project_current_phase.md` | Phase hiện tại, priorities |
 | `.claude/memory/architecture_decisions.md` | ADR — quyết định kiến trúc |
 | `.claude/memory/coding_style_feedback.md` | User corrections |
 | `.claude/memory/user_profile.md` | Preferences của user |
 
-> **Quy tắc memory:** Khi có quyết định quan trọng hoặc feedback → ghi vào file tương ứng.
-> Khi kết thúc session → cập nhật `last_session.md`.
+> Khi kết thúc session → commit memory files + push để sync máy khác.
 
-## Slash Commands (dùng `/command-name` trong chat)
+---
+
+## Slash Commands
 
 | Command | Mô tả |
 |---|---|
@@ -96,23 +82,17 @@
 | `/review-changes` | Review `git diff` theo checklist ICare247 rules |
 | `/save-memory` | Lưu quyết định/feedback vào memory |
 
+---
+
 ## Task Tracking
 
-- **Backend tasks:** `TASKS.md` (git root)
-- **ConfigStudio WPF tasks:** `docs/ICare247 Config Studio/TASKS_WPF.md`
-- Khi bắt đầu task → move sang 🔴 In Progress
-- Khi hoàn thành → move sang ✅ Done + commit
-- Mọi quyết định thiết kế quan trọng → ghi vào Decisions Log + memory
-- Commit sau mỗi task hoàn chỉnh (không commit code dở)
+- **Backend + Blazor:** `TASKS.md` (git root)
+- **ConfigStudio WPF:** `docs/ICare247 Config Studio/TASKS_WPF.md`
+- Khi bắt đầu task → 🔴 In Progress | Hoàn thành → ✅ Done + commit
+- Commit sau mỗi task hoàn chỉnh — không commit code dở
 
-## Session Protocol
+---
 
-1. Đọc `.claude/memory/last_session.md` — biết session trước làm gì
-2. Đọc `.claude/memory/project_current_phase.md` — biết đang ở đâu
-3. Đọc `TASKS.md` — biết việc cần làm
-4. Tóm tắt cho user + hỏi: "Hôm nay làm task nào?"
-5. Đọc `.claude-rules/` liên quan đến task
-6. Đọc `docs/spec/` nếu cần tra cứu schema/API
-7. Code → build verify → commit
-8. Cập nhật TASKS.md + `.claude/memory/last_session.md`
-9. Nếu có quyết định quan trọng → `/save-memory`
+## File Sync (Multi-machine)
+
+> Xem [MACHINE_SWITCH.md](MACHINE_SWITCH.md) để biết protocol khi đổi máy.
