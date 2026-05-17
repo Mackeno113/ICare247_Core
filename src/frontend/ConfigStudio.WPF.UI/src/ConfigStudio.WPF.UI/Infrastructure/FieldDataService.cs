@@ -45,7 +45,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Is_Visible         AS IsVisible,
                    fi.Is_ReadOnly        AS IsReadOnly,
                    fi.Is_Required        AS IsRequired,
-                   fi.Is_Enabled         AS IsEnabled,
+                   fi.Lock_On_Edit       AS LockOnEdit,
                    fi.Order_No           AS OrderNo,
                    fi.Control_Props_Json AS ControlPropsJson,
                    fi.Col_Span           AS ColSpan,
@@ -166,13 +166,13 @@ public sealed class FieldDataService : IFieldDataService
                     INSERT INTO dbo.Ui_Field
                            (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key,
                             Placeholder_Key, Tooltip_Key, Required_Error_Key,
-                            Is_Visible, Is_ReadOnly, Is_Required, Is_Enabled,
+                            Is_Visible, Is_ReadOnly, Is_Required, Lock_On_Edit,
                             Order_No, Control_Props_Json, Col_Span, Lookup_Source,
                             Lookup_Code, Version, Updated_At, Description)
                     OUTPUT INSERTED.Field_Id
                     VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
                             @PlaceholderKey, @TooltipKey, @RequiredErrorKey,
-                            @IsVisible, @IsReadOnly, @IsRequired, @IsEnabled,
+                            @IsVisible, @IsReadOnly, @IsRequired, @LockOnEdit,
                             @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
                             @LookupCode, 1, GETDATE(), @Description)
                     """;
@@ -196,7 +196,7 @@ public sealed class FieldDataService : IFieldDataService
                            Is_Visible        = @IsVisible,
                            Is_ReadOnly       = @IsReadOnly,
                            Is_Required       = @IsRequired,
-                           Is_Enabled        = @IsEnabled,
+                           Lock_On_Edit      = @LockOnEdit,
                            Order_No          = @OrderNo,
                            Control_Props_Json = @ControlPropsJson,
                            Col_Span          = @ColSpan,
@@ -348,7 +348,7 @@ public sealed class FieldDataService : IFieldDataService
         f.IsVisible,
         f.IsReadOnly,
         f.IsRequired,
-        f.IsEnabled,
+        f.LockOnEdit,
         f.OrderNo,
         // LookupBox lưu config vào Ui_Field_Lookup — Control_Props_Json chứa props khác
         ControlPropsJson = f.LookupSource == "dynamic" ? null : f.ControlPropsJson,

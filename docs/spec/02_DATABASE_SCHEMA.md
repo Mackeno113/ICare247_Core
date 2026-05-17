@@ -417,7 +417,7 @@
 | Is_Visible | bit | NOT NULL DEFAULT 1 | |
 | Is_ReadOnly | bit | NOT NULL DEFAULT 0 | Field hiển thị giá trị, không cho sửa, vẫn submit |
 | Is_Required | bit | NOT NULL DEFAULT 0 | Bắt buộc nhập — cột DB, không phải Val_Rule |
-| Is_Enabled | bit | NOT NULL DEFAULT 1 | false = grayout, không tương tác, KHÔNG submit |
+| Lock_On_Edit | bit | NOT NULL DEFAULT 0 | true = readonly khi form ở Edit mode, editable khi Create (ADR-017) |
 | Order_No | int | NOT NULL DEFAULT 0 | Thứ tự trong section |
 | Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng grid 4-col: 1=1/4, 2=half, 3=3/4, 4=full |
 | Lookup_Source | nvarchar(20) | NULL | NULL / 'static' / 'dynamic' |
@@ -434,10 +434,11 @@
 
 **Indexes:** `IX_Ui_Field_Form (Form_Id, Is_Visible, Order_No)`
 
-> **ADR-010:** `Is_Required` và `Is_Enabled` là **cột DB** trên `Ui_Field` — đồng nhất với `Is_Visible` và `Is_ReadOnly`.
+> **ADR-010 (revised by ADR-017):** `Is_Required` là cột DB trên `Ui_Field` — đồng nhất với `Is_Visible` và `Is_ReadOnly`.
 > **ADR-013:** `Col_Span` đổi từ 3-column sang **4-column** grid (Migration 013). Mapping: cũ 3(full)→mới 4(full). Thêm giá trị 3=3/4 (mới). Blazor CSS: `grid-template-columns: repeat(4, 1fr)` + `grid-column: span X` per field.
+> **ADR-017 (Migration 017):** Bỏ `Is_Enabled` (semantics overlap với ReadOnly + Visible, ICare247 chưa có partial-update API). Thay bằng `Lock_On_Edit` phục vụ pattern key/code/audit field.
 > `Is_ReadOnly = true`: field hiển thị giá trị, không chỉnh sửa được, **vẫn submit** lên server.
-> `Is_Enabled = false`: field bị grayout, không tương tác, **KHÔNG submit** — dùng cho trường phụ thuộc điều kiện nghiệp vụ.
+> `Lock_On_Edit = true`: field readonly khi `FormMode = Edit`, **editable khi Create**. EffectiveReadOnly = `Is_ReadOnly OR (Lock_On_Edit AND IsEditMode)`.
 
 ---
 

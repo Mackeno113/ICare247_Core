@@ -847,15 +847,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     public bool HasRequiredErrorKeyPreview => !string.IsNullOrEmpty(_requiredErrorKeyPreview);
 
-    private bool _isEnabled = true;
+    private bool _lockOnEdit;
     /// <summary>
-    /// Field có được tương tác không. False = grayout hoàn toàn + không submit.
-    /// Khác IsReadOnly: readonly vẫn hiện giá trị và submit; disabled thì không.
+    /// ADR-017: Khóa field khi form mở ở chế độ Edit (record đã tồn tại).
+    /// Cho phép nhập lúc tạo, không cho sửa khi update — pattern key/code/audit field.
+    /// EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND FormMode=Edit).
     /// </summary>
-    public bool IsEnabled
+    public bool LockOnEdit
     {
-        get => _isEnabled;
-        set { if (SetProperty(ref _isEnabled, value)) IsDirty = true; }
+        get => _lockOnEdit;
+        set { if (SetProperty(ref _lockOnEdit, value)) IsDirty = true; }
     }
 
     // ── Layout ───────────────────────────────────────────────
@@ -1102,7 +1103,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     RaisePropertyChanged(nameof(IsRequiredExpanded));
                     if (!string.IsNullOrEmpty(_requiredErrorKey))
                         _ = ResolveI18nPreviewAsync(_requiredErrorKey, v => RequiredErrorKeyPreview = v);
-                    IsEnabled              = field.IsEnabled;
+                    LockOnEdit             = field.LockOnEdit;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
                     // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
@@ -2089,7 +2090,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsReadOnly         = IsReadOnly,
                 IsRequired         = IsRequired,
                 RequiredErrorKey   = IsRequired ? (string.IsNullOrWhiteSpace(RequiredErrorKey) ? null : RequiredErrorKey) : null,
-                IsEnabled          = IsEnabled,
+                LockOnEdit         = LockOnEdit,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,

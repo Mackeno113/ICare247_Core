@@ -633,7 +633,7 @@
                                 <TextBlock Text="Behavior" Style="{StaticResource SectionTitleStyle}"
                                            Margin="0,0,0,14" />
 
-                                <!-- Grid 2×2: IsVisible / IsReadOnly / IsRequired / IsEnabled -->
+                                <!-- Grid 2×2: IsVisible / IsReadOnly / IsRequired / LockOnEdit (ADR-017) -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -695,19 +695,19 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- IsEnabled -->
+                                    <!-- LockOnEdit (ADR-017): khoa field khi form mo o che do Edit -->
                                     <Border Grid.Column="2" Grid.Row="2"
                                             BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
-                                                <dxe:ToggleSwitchEdit IsChecked="{Binding IsEnabled}"
+                                                <dxe:ToggleSwitchEdit IsChecked="{Binding LockOnEdit}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
                                                            Foreground="#374151" VerticalAlignment="Center">
-                                                    <Run Text="🚫" /><Run Text=" Vô hiệu hóa" />
+                                                    <Run Text="🔒" /><Run Text=" Khóa khi sửa" />
                                                 </TextBlock>
                                             </DockPanel>
-                                            <TextBlock Text="Grayout + không tính vào submit."
+                                            <TextBlock Text="Cho nhập khi tạo, không cho đổi khi update (key/code/audit field)."
                                                        FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>

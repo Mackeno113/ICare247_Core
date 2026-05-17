@@ -76,11 +76,11 @@ public sealed class FieldMetadata
     public bool IsRequired { get; init; }
 
     /// <summary>
-    /// Field có thể tương tác hay không (Ui_Field.Is_Enabled — ADR-012).
-    /// false = grayout, không nhập được, không submit giá trị.
-    /// Có thể override runtime qua UiDelta SET_ENABLED.
+    /// Field bị khóa khi đang sửa (FormMode=Edit) — Ui_Field.Lock_On_Edit (ADR-017).
+    /// Phục vụ pattern "field nhập lúc tạo, không cho sửa khi update" (key/code/audit field).
+    /// EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND FormMode=Edit).
     /// </summary>
-    public bool IsEnabled { get; init; } = true;
+    public bool LockOnEdit { get; init; }
 
     /// <summary>
     /// Độ rộng field trong grid layout 4-column (Ui_Field.Col_Span).

@@ -1316,8 +1316,8 @@
                                         </dxg:GridColumn.EditSettings>
                                     </dxg:GridColumn>
 
-                                    <!-- IsEnabled (check) -->
-                                    <dxg:GridColumn Header="Enabled" FieldName="IsEnabled" Width="80">
+                                    <!-- LockOnEdit (check) — ADR-017 -->
+                                    <dxg:GridColumn Header="Lock@Edit" FieldName="LockOnEdit" Width="95">
                                         <dxg:GridColumn.EditSettings>
                                             <dxe:CheckEditSettings />
                                         </dxg:GridColumn.EditSettings>
@@ -1409,10 +1409,10 @@
                                    IsChecked="{Binding SelectedNode.IsReadOnly, UpdateSourceTrigger=PropertyChanged}"
                                    Margin="0,0,12,0" FontSize="12"
                                    ToolTip="Chỉ xem, không sửa được" />
-                    <dxe:CheckEdit Content="Enabled"
-                                   IsChecked="{Binding SelectedNode.IsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                    <dxe:CheckEdit Content="Lock@Edit"
+                                   IsChecked="{Binding SelectedNode.LockOnEdit, UpdateSourceTrigger=PropertyChanged}"
                                    FontSize="12"
-                                   ToolTip="Cho phép tương tác" />
+                                   ToolTip="Khóa khi sửa (cho nhập lúc tạo, không cho đổi khi update)" />
                 </StackPanel>
 
                 <!-- Spacer column 6 (empty) -->
@@ -1513,9 +1513,9 @@
                                    IsThreeState="True"
                                    IsChecked="{Binding BulkIsReadOnly, UpdateSourceTrigger=PropertyChanged}"
                                    Margin="0,0,12,0" FontSize="12" />
-                    <dxe:CheckEdit Content="Enabled"
+                    <dxe:CheckEdit Content="Lock@Edit"
                                    IsThreeState="True"
-                                   IsChecked="{Binding BulkIsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                   IsChecked="{Binding BulkLockOnEdit, UpdateSourceTrigger=PropertyChanged}"
                                    FontSize="12" />
                 </StackPanel>
 

@@ -59,8 +59,10 @@ public class FormTreeNode : BindableBase
     private bool _isReadOnly;
     public bool IsReadOnly { get => _isReadOnly; set => SetProperty(ref _isReadOnly, value); }
 
-    private bool _isEnabled = true;
-    public bool IsEnabled { get => _isEnabled; set => SetProperty(ref _isEnabled, value); }
+    // ADR-017: thay Is_Enabled bang Lock_On_Edit.
+    private bool _lockOnEdit;
+    /// <summary>Khoa field khi FormMode=Edit. Visual identical readonly trong Edit mode.</summary>
+    public bool LockOnEdit { get => _lockOnEdit; set => SetProperty(ref _lockOnEdit, value); }
 
     private byte _colSpan = 1;
     /// <summary>Grid 4-col: 1 = 1/4, 2 = half, 3 = 3/4, 4 = full.</summary>

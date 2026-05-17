@@ -157,7 +157,7 @@ public sealed class FormRepository : IFormRepository
                    fi.Is_Visible                             AS IsVisible,
                    fi.Is_ReadOnly                            AS IsReadOnly,
                    fi.Is_Required                            AS IsRequired,
-                   fi.Is_Enabled                             AS IsEnabled,
+                   fi.Lock_On_Edit                           AS LockOnEdit,
                    fi.Control_Props_Json                     AS ControlPropsJson,
                    fi.Col_Span                               AS ColSpan,
                    fi.Lookup_Source                          AS LookupSource,
@@ -479,7 +479,7 @@ public sealed class FormRepository : IFormRepository
         const string sqlCloneFields = """
             INSERT INTO dbo.Ui_Field
                    (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key, Placeholder_Key,
-                    Tooltip_Key, Is_Visible, Is_ReadOnly, Is_Required, Is_Enabled,
+                    Tooltip_Key, Is_Visible, Is_ReadOnly, Is_Required, Lock_On_Edit,
                     Order_No, Col_Span, Lookup_Source, Lookup_Code, Control_Props_Json,
                     Version, Updated_At, Description)
             SELECT @NewFormId,
@@ -488,7 +488,7 @@ public sealed class FormRepository : IFormRepository
                     WHERE ns.Form_Id = @NewFormId AND ns.Section_Code =
                       (SELECT os.Section_Code FROM dbo.Ui_Section os WHERE os.Section_Id = f.Section_Id)),
                    f.Column_Id, f.Editor_Type, f.Label_Key, f.Placeholder_Key,
-                   f.Tooltip_Key, f.Is_Visible, f.Is_ReadOnly, f.Is_Required, f.Is_Enabled,
+                   f.Tooltip_Key, f.Is_Visible, f.Is_ReadOnly, f.Is_Required, f.Lock_On_Edit,
                    f.Order_No, f.Col_Span, f.Lookup_Source, f.Lookup_Code, f.Control_Props_Json,
                    1, GETDATE(), f.Description
             FROM   dbo.Ui_Field f

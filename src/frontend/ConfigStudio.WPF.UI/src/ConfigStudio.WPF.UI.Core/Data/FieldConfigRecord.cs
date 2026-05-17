@@ -26,8 +26,12 @@ public sealed class FieldConfigRecord
     /// Pattern: {tableCode}.val.{fieldCode}.required. Lưu vào Ui_Field.Required_Error_Key.
     /// </summary>
     public string? RequiredErrorKey { get; init; }
-    /// <summary>Field có được tương tác không. False = grayout + không submit. Lưu vào Ui_Field.Is_Enabled.</summary>
-    public bool IsEnabled { get; init; } = true;
+    /// <summary>
+    /// Khóa field khi form mở ở chế độ Edit (record đã có Id). Lưu vào Ui_Field.Lock_On_Edit (ADR-017).
+    /// Dùng cho key/code/audit field: cho nhập lúc tạo mới, không cho sửa khi update.
+    /// EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND FormMode=Edit).
+    /// </summary>
+    public bool LockOnEdit { get; init; }
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
     /// <summary>Độ rộng grid 4-column: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>

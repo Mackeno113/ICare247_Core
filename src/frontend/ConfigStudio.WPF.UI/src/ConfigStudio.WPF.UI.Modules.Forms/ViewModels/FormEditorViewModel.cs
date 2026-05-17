@@ -140,8 +140,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public bool? BulkIsVisible { get => _bulkIsVisible; set => SetProperty(ref _bulkIsVisible, value); }
     private bool? _bulkIsReadOnly;
     public bool? BulkIsReadOnly { get => _bulkIsReadOnly; set => SetProperty(ref _bulkIsReadOnly, value); }
-    private bool? _bulkIsEnabled;
-    public bool? BulkIsEnabled { get => _bulkIsEnabled; set => SetProperty(ref _bulkIsEnabled, value); }
+    private bool? _bulkLockOnEdit;
+    public bool? BulkLockOnEdit { get => _bulkLockOnEdit; set => SetProperty(ref _bulkLockOnEdit, value); }
 
     private string _bulkEditorType = "";
     /// <summary>Empty string = giu nguyen, khac empty = doi sang editor type do.</summary>
@@ -492,7 +492,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
     }
 
-    // D1 — Lay du lieu chi tiet field (IsRequired, IsEnabled, ColSpan...) tu cache hoac DB,
+    // D1 — Lay du lieu chi tiet field (IsRequired, LockOnEdit, ColSpan...) tu cache hoac DB,
     // populate vao FormTreeNode de QPB binding hien thi dung gia tri thuc.
     private async Task HydrateSelectedFieldAsync(FormTreeNode field)
     {
@@ -522,7 +522,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             field.IsRequired = record.IsRequired;
             field.IsVisible  = record.IsVisible;
             field.IsReadOnly = record.IsReadOnly;
-            field.IsEnabled  = record.IsEnabled;
+            field.LockOnEdit = record.LockOnEdit;
             field.ColSpan    = record.ColSpan == 0 ? (byte)1 : record.ColSpan;
             field.EditorType = record.EditorType;
             field.LabelKey   = record.LabelKey;
@@ -555,7 +555,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             && e.PropertyName is nameof(FormTreeNode.IsRequired)
                                 or nameof(FormTreeNode.IsVisible)
                                 or nameof(FormTreeNode.IsReadOnly)
-                                or nameof(FormTreeNode.IsEnabled)
+                                or nameof(FormTreeNode.LockOnEdit)
                                 or nameof(FormTreeNode.ColSpan)
                                 or nameof(FormTreeNode.EditorType))
         {
@@ -2155,7 +2155,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         BulkIsRequired = null;
         BulkIsVisible  = null;
         BulkIsReadOnly = null;
-        BulkIsEnabled  = null;
+        BulkLockOnEdit = null;
         BulkEditorType = "";
         BulkColSpan    = 0;
     }
@@ -2183,7 +2183,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 if (_bulkIsRequired.HasValue) f.IsRequired = _bulkIsRequired.Value;
                 if (_bulkIsVisible.HasValue)  f.IsVisible  = _bulkIsVisible.Value;
                 if (_bulkIsReadOnly.HasValue) f.IsReadOnly = _bulkIsReadOnly.Value;
-                if (_bulkIsEnabled.HasValue)  f.IsEnabled  = _bulkIsEnabled.Value;
+                if (_bulkLockOnEdit.HasValue) f.LockOnEdit = _bulkLockOnEdit.Value;
                 if (!string.IsNullOrWhiteSpace(_bulkEditorType)) f.EditorType = _bulkEditorType;
                 if (_bulkColSpan is >= 1 and <= 4) f.ColSpan = _bulkColSpan;
             }
@@ -2250,7 +2250,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsReadOnly       = field.IsReadOnly,
             IsRequired       = field.IsRequired,
             RequiredErrorKey = cached.RequiredErrorKey,
-            IsEnabled        = field.IsEnabled,
+            LockOnEdit       = field.LockOnEdit,
             OrderNo          = cached.OrderNo,
             ControlPropsJson = cached.ControlPropsJson,
             ColSpan          = field.ColSpan,

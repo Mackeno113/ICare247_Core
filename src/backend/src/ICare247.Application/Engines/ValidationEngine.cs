@@ -125,10 +125,10 @@ public sealed class ValidationEngine : IValidationEngine
         {
             var failures = new List<ValidationResult>();
 
-            // Check Is_Required: field disabled (Is_Enabled=false) → bỏ qua required check
+            // Check Is_Required: ADR-017 bỏ Is_Enabled — chỉ skip required check khi field ẩn.
             if (fieldMetaMap.TryGetValue(fieldCode, out var meta)
                 && meta.IsRequired
-                && meta.IsEnabled
+                && meta.IsVisible
                 && IsEmpty(context.GetValue(fieldCode)))
             {
                 // Resolve thông báo lỗi qua ResourceResolver

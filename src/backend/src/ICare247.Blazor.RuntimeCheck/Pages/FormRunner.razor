@@ -229,7 +229,7 @@ else if (_form is not null)
                 IsVisible    = f.IsVisible,
                 IsReadOnly   = f.IsReadOnly,
                 IsRequired   = f.IsRequired,
-                IsEnabled    = f.IsEnabled,
+                LockOnEdit   = f.LockOnEdit,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
                 ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
                 LookupSource    = f.LookupSource,
@@ -406,14 +406,11 @@ else if (_form is not null)
                         fs.IsReadOnly = ToBool(ro);
                     break;
 
+                // ADR-017: SET_ENABLED bị bỏ. Dùng SET_READONLY hoặc SET_VISIBLE thay thế.
+                // Giữ alias backward-compat: ánh xạ sang SET_READONLY (enabled=false → readOnly=true).
                 case "SET_ENABLED":
-                    // false = grayout + không submit (ADR-010)
                     if (delta.Data.TryGetValue("enabled", out var en))
-                    {
-                        fs.IsEnabled = ToBool(en);
-                        // Khi disable field, xóa errors để không block submit
-                        if (!fs.IsEnabled) fs.Errors.Clear();
-                    }
+                        fs.IsReadOnly = !ToBool(en);
                     break;
 
                 case "CLEAR_VALUE":
@@ -441,7 +438,7 @@ else if (_form is not null)
         foreach (var fieldCode in fieldsToValidate)
         {
             var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
-            if (fs is null || !fs.IsEnabled) continue;
+            if (fs is null) continue;
 
             var result = await RuntimeApi.ValidateFieldAsync(
                 FormCode, fieldCode, fs.Value, BuildContext(), LangCode);
@@ -464,13 +461,10 @@ else if (_form is not null)
 
     /// <summary>
     /// Snapshot context toàn form — dùng để gửi lên API.
-    /// ADR-010: field IsEnabled=false KHÔNG được submit → loại khỏi context.
-    /// Field IsVisible=false nhưng còn Enabled vẫn giữ trong context (hidden field).
+    /// ADR-017: ReadOnly/LockOnEdit fields VẪN submit (giữ giá trị hiện tại).
     /// </summary>
     private Dictionary<string, object?> BuildContext()
-        => _fieldStates
-            .Where(f => f.IsEnabled)
-            .ToDictionary(f => f.FieldCode, f => f.Value);
+        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
 
     private static object? ParseDefaultValue(string? json)
     {
