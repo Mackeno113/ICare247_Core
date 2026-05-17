@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"terminal.integrated.defaultProfile.windows": "Git Bash",
+		"terminal.integrated.fontSize": 12,
+		"omnisharp.enableEditorConfigSupport": true,
+		"dotnet.inlayHints.enableInlayHintsForParameters": true,
+		"dotnet.inlayHints.enableInlayHintsForLiteralParameters": true,
+		"git.confirmSync": false,
+		"dotnet.formatting.organizeImportsOnFormat": true,
+		"claudeCode.useTerminal": true
+	}
+}
