@@ -53,6 +53,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     // ── P0 UX Services ────────────────────────────────────────
     private AutoSaveService? _autoSave;
     private readonly UndoRedoService<string> _undoRedo = new();
+
+    // D1 — Quick Property Bar: cache FieldConfigRecord per field + dedicated auto-save
+    private readonly Dictionary<int, FieldConfigRecord> _fieldRecordCache = new();
+    private AutoSaveService? _fieldQuickSave;
+    private bool _isHydratingField;
+    private FormTreeNode? _pendingQuickSaveField;
     private LintingService? _linting;
 
     // ── Auto-save status ──────────────────────────────────────
@@ -79,6 +85,40 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         get => _autoSaveError;
         private set => SetProperty(ref _autoSaveError, value);
     }
+
+    // D1 — Quick Property Bar save status
+    private AutoSaveStatus _fieldQuickSaveStatus = AutoSaveStatus.Idle;
+    /// <summary>Trang thai save cua Quick Property Bar.</summary>
+    public AutoSaveStatus FieldQuickSaveStatus
+    {
+        get => _fieldQuickSaveStatus;
+        private set
+        {
+            if (SetProperty(ref _fieldQuickSaveStatus, value))
+                RaisePropertyChanged(nameof(FieldQuickSaveStatusText));
+        }
+    }
+
+    /// <summary>Text hien thi tren QPB cho trang thai luu.</summary>
+    public string FieldQuickSaveStatusText => FieldQuickSaveStatus switch
+    {
+        AutoSaveStatus.Pending => "Sẽ tự lưu...",
+        AutoSaveStatus.Saving  => "Đang lưu...",
+        AutoSaveStatus.Saved   => "Đã lưu",
+        AutoSaveStatus.Error   => "Lỗi lưu",
+        _ => ""
+    };
+
+    /// <summary>Danh sach editor types co the chon trong Quick Property Bar va FieldConfig.</summary>
+    public List<string> AvailableEditorTypes { get; } =
+    [
+        "TextBox", "NumericBox", "ComboBox", "DatePicker",
+        "RadioGroup", "LookupComboBox", "LookupBox", "TextArea",
+        "CheckBox", "ToggleSwitch", "TreePicker"
+    ];
+
+    /// <summary>4 lua chon ColSpan cho QPB combo.</summary>
+    public List<byte> ColSpanOptions { get; } = [1, 2, 3, 4];
 
     // ── Undo/Redo state ───────────────────────────────────────
     private bool _canUndo;
@@ -344,6 +384,14 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     ValidateSectionCode();
                     _ = LoadSectionResourcesAsync(_selectedNode);
                 }
+                else if (_selectedNode?.NodeType == FormNodeType.Field)
+                {
+                    // D1 — Quick Property Bar: hydrate full FieldConfigRecord vao node
+                    _ = HydrateSelectedFieldAsync(_selectedNode);
+                    _originalTitleKey = "";
+                    SectionCodeError  = "";
+                    RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+                }
                 else
                 {
                     _originalTitleKey = "";
@@ -351,6 +399,47 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     RaisePropertyChanged(nameof(SectionTitleKeyPreview));
                 }
             }
+        }
+    }
+
+    // D1 — Lay du lieu chi tiet field (IsRequired, IsEnabled, ColSpan...) tu cache hoac DB,
+    // populate vao FormTreeNode de QPB binding hien thi dung gia tri thuc.
+    private async Task HydrateSelectedFieldAsync(FormTreeNode field)
+    {
+        if (_fieldDataService is null || _appConfig is not { IsConfigured: true } || field.Id <= 0)
+            return;
+
+        FieldConfigRecord? record;
+        if (!_fieldRecordCache.TryGetValue(field.Id, out record))
+        {
+            try
+            {
+                record = await _fieldDataService.GetFieldDetailAsync(field.Id, _appConfig.TenantId);
+                if (record is null) return;
+                _fieldRecordCache[field.Id] = record;
+            }
+            catch
+            {
+                // Loi load → khong block UI, QPB se hien default.
+                return;
+            }
+        }
+
+        // Set _isHydratingField de OnSelectedNodePropertyChanged khong trigger save.
+        _isHydratingField = true;
+        try
+        {
+            field.IsRequired = record.IsRequired;
+            field.IsVisible  = record.IsVisible;
+            field.IsReadOnly = record.IsReadOnly;
+            field.IsEnabled  = record.IsEnabled;
+            field.ColSpan    = record.ColSpan == 0 ? (byte)1 : record.ColSpan;
+            field.EditorType = record.EditorType;
+            field.LabelKey   = record.LabelKey;
+        }
+        finally
+        {
+            _isHydratingField = false;
         }
     }
 
@@ -366,6 +455,24 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                             or nameof(FormTreeNode.ResourceVi)
                             or nameof(FormTreeNode.ResourceEn))
             return;
+
+        // D1 — bo qua hydrate-time changes
+        if (_isHydratingField) return;
+
+        // D1 — Khi field quick-edit props thay doi → save field rieng qua _fieldQuickSave,
+        // khong dirty form metadata (Ui_Form).
+        if (sender is FormTreeNode { NodeType: FormNodeType.Field } fieldNode
+            && e.PropertyName is nameof(FormTreeNode.IsRequired)
+                                or nameof(FormTreeNode.IsVisible)
+                                or nameof(FormTreeNode.IsReadOnly)
+                                or nameof(FormTreeNode.IsEnabled)
+                                or nameof(FormTreeNode.ColSpan)
+                                or nameof(FormTreeNode.EditorType))
+        {
+            _pendingQuickSaveField = fieldNode;
+            _fieldQuickSave?.NotifyDirty();
+            return;
+        }
 
         // Khi Section Code thay đổi → enforce lowercase + cập nhật TitleKey preview
         if (e.PropertyName == nameof(FormTreeNode.Code)
@@ -814,10 +921,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                             NodeType    = FormNodeType.Field,
                             Code        = f.ColumnCode,
                             TitleKey    = f.LabelKey,
+                            LabelKey    = f.LabelKey,
                             DisplayName = fieldDisplay,
                             FieldType   = "text",          // load chi tiết khi mở FieldConfig
                             EditorType  = f.EditorType,
-                            IsRequired  = false,           // load chi tiết khi mở FieldConfig
+                            IsRequired  = false,           // QPB se hydrate khi field duoc chon
+                            IsVisible   = f.IsVisible,
+                            IsReadOnly  = f.IsReadOnly,
                             SortOrder   = f.OrderNo
                         });
                     }
@@ -1873,6 +1983,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             AutoSaveError = _autoSave.ErrorMessage;
         };
 
+        // D1 — Quick-save cho field props (debounce 800ms — phan ung nhanh hon form save).
+        _fieldQuickSave = new AutoSaveService(
+            async ct => await SaveQuickFieldAsync(_pendingQuickSaveField, ct),
+            TimeSpan.FromMilliseconds(800));
+        _fieldQuickSave.StatusChanged += (_, _) => FieldQuickSaveStatus = _fieldQuickSave.Status;
+
         // Linting: debounce 500ms, validate form metadata + structure
         _linting = new LintingService(ct => Task.FromResult(RunFormLint()));
         _linting.IssuesChanged += (_, _) =>
@@ -1886,8 +2002,51 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         _autoSave?.Dispose();
         _autoSave = null;
+        _fieldQuickSave?.Dispose();
+        _fieldQuickSave = null;
+        _pendingQuickSaveField = null;
+        _fieldRecordCache.Clear();
         _linting?.Dispose();
         _linting = null;
+    }
+
+    // D1 — Save quick-edit props cua field do user thay doi qua QPB.
+    private async Task SaveQuickFieldAsync(FormTreeNode? field, CancellationToken ct)
+    {
+        if (field is null || _fieldDataService is null || _appConfig is not { IsConfigured: true })
+            return;
+        if (!_fieldRecordCache.TryGetValue(field.Id, out var cached))
+            return;
+
+        // Build record moi tu cache + override quick-edit props tu node.
+        var updated = new FieldConfigRecord
+        {
+            FieldId          = cached.FieldId,
+            FormId           = cached.FormId,
+            SectionId        = cached.SectionId,
+            ColumnId         = cached.ColumnId,
+            ColumnCode       = cached.ColumnCode,
+            SectionCode      = cached.SectionCode,
+            EditorType       = field.EditorType,
+            LabelKey         = cached.LabelKey,
+            PlaceholderKey   = cached.PlaceholderKey,
+            TooltipKey       = cached.TooltipKey,
+            IsVisible        = field.IsVisible,
+            IsReadOnly       = field.IsReadOnly,
+            IsRequired       = field.IsRequired,
+            RequiredErrorKey = cached.RequiredErrorKey,
+            IsEnabled        = field.IsEnabled,
+            OrderNo          = cached.OrderNo,
+            ControlPropsJson = cached.ControlPropsJson,
+            ColSpan          = field.ColSpan,
+            LookupSource     = cached.LookupSource,
+            LookupCode       = cached.LookupCode,
+            Version          = cached.Version,
+            Description      = cached.Description,
+        };
+
+        await _fieldDataService.SaveFieldAsync(updated, _appConfig.TenantId, ct: ct);
+        _fieldRecordCache[field.Id] = updated;
     }
 
     /// <summary>

@@ -52,6 +52,24 @@ public class FormTreeNode : BindableBase
     private bool _isActive = true;
     public bool IsActive { get => _isActive; set => SetProperty(ref _isActive, value); }
 
+    // ── Quick-edit props (D1 — Quick Property Bar) ───────────
+    private bool _isVisible = true;
+    public bool IsVisible { get => _isVisible; set => SetProperty(ref _isVisible, value); }
+
+    private bool _isReadOnly;
+    public bool IsReadOnly { get => _isReadOnly; set => SetProperty(ref _isReadOnly, value); }
+
+    private bool _isEnabled = true;
+    public bool IsEnabled { get => _isEnabled; set => SetProperty(ref _isEnabled, value); }
+
+    private byte _colSpan = 1;
+    /// <summary>Grid 4-col: 1 = 1/4, 2 = half, 3 = 3/4, 4 = full.</summary>
+    public byte ColSpan { get => _colSpan; set => SetProperty(ref _colSpan, value); }
+
+    private string _labelKey = "";
+    /// <summary>Label_Key trong Ui_Field — resource key. Khi field moi tao, fallback ve Code.</summary>
+    public string LabelKey { get => _labelKey; set => SetProperty(ref _labelKey, value); }
+
     private int _sortOrder;
     public int SortOrder { get => _sortOrder; set => SetProperty(ref _sortOrder, value); }
 
