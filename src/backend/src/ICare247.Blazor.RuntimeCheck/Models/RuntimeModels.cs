@@ -100,6 +100,18 @@ public sealed class FieldState
     public bool    IsReadOnly { get; set; }
     /// <summary>true = khóa khi FormMode=Edit (ADR-017). Effective ReadOnly = IsReadOnly OR (LockOnEdit AND IsEditMode).</summary>
     public bool    LockOnEdit { get; set; }
+
+    /// <summary>
+    /// Form đang ở chế độ Edit (record đã tồn tại, RecordId > 0). Cùng giá trị cho mọi FieldState
+    /// của 1 form — copy từ FormRunner. Dùng để compute EffectiveReadOnly với LockOnEdit.
+    /// </summary>
+    public bool    IsEditMode { get; set; }
+
+    /// <summary>
+    /// ADR-017: Trạng thái ReadOnly hiệu lực sau khi áp dụng quy tắc Lock_On_Edit.
+    /// Renderer dùng cờ này thay cho IsReadOnly để hiển thị/disable input.
+    /// </summary>
+    public bool EffectiveReadOnly => IsReadOnly || (LockOnEdit && IsEditMode);
     public List<string> Errors { get; set; } = [];
 
     /// <summary>null | "static" | "dynamic" — phân loại nguồn dữ liệu lookup.</summary>

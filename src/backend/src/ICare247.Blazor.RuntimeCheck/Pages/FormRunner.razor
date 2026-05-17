@@ -188,6 +188,12 @@ else if (_form is not null)
     [Parameter] public string? DebugParam { get; set; }
     private bool DebugMode => DebugParam is "1" or "true" or "True";
 
+    // ?recordId=N — Form mở ở chế độ Edit (record đã tồn tại). Không truyền hoặc 0 = Create mode.
+    // ADR-017: Lock_On_Edit chỉ active khi IsEditMode = true.
+    [SupplyParameterFromQuery(Name = "recordId")]
+    [Parameter] public int? RecordId { get; set; }
+    private bool IsEditMode => RecordId is > 0;
+
     private FormMetadataDto?            _form;
     private List<FieldState>            _fieldStates    = [];
     private bool                        _loading        = true;
@@ -230,6 +236,7 @@ else if (_form is not null)
                 IsReadOnly   = f.IsReadOnly,
                 IsRequired   = f.IsRequired,
                 LockOnEdit   = f.LockOnEdit,
+                IsEditMode   = IsEditMode,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
                 ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
                 LookupSource    = f.LookupSource,

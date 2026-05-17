@@ -26,7 +26,7 @@
                     Width="100%"
                     InputId="@($"field_{State!.FieldCode}")"
 
-                    ReadOnly="@(State?.IsReadOnly ?? false)" />
+                    ReadOnly="@(State?.EffectiveReadOnly ?? false)" />
     }
     else
     {
@@ -34,7 +34,7 @@
         <input id="field_@State!.FieldCode"
                type="text" class="field-input"
                value="@State.ValueString"
-               disabled="@(State.IsReadOnly)"
+               disabled="@(State.EffectiveReadOnly)"
                placeholder="(lookup options not loaded)"
                @onchange="HandleFallbackChange"
                @onblur="HandleFallbackBlur" />

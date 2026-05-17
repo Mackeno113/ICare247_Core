@@ -18,7 +18,7 @@
             Alignment="CheckBoxContentAlignment.Center"
             LabelPosition="@_labelPosition"
             LabelWrapMode="@_labelWrapMode"
-            ReadOnly="@(State?.IsReadOnly ?? false)"
+            ReadOnly="@(State?.EffectiveReadOnly ?? false)"
             ValidationEnabled="true"
             InputId="@($"field_{State!.FieldCode}")">
     @State!.Label@(State.IsRequired ? " *" : "")
