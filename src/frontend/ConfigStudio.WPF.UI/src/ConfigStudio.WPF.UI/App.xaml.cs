@@ -49,6 +49,7 @@ public partial class App : PrismApplication
     protected override void RegisterTypes(IContainerRegistry containerRegistry)
     {
         containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
+        containerRegistry.RegisterSingleton<INavigationHistoryService, NavigationHistoryService>();
 
         // ── Infrastructure: DB config + data services ────────
         // Singleton vì AppConfigService giữ trạng thái IsConfigured sau LoadAsync()

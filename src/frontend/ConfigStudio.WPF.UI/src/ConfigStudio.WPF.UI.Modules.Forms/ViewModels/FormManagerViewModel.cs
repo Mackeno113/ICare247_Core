@@ -9,6 +9,7 @@ using System.IO;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -27,6 +28,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly IDialogService _dialogService;
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
+    private readonly INavigationHistoryService? _history;
     private static readonly string ErrorLogPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ICare247", "ConfigStudio", "logs", "form-manager-errors.log");
@@ -157,12 +159,14 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
         IRegionManager regionManager,
         IDialogService dialogService,
         IFormDataService? formDataService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager   = regionManager;
         _dialogService   = dialogService;
         _formDataService = formDataService;
         _appConfig       = appConfig;
+        _history         = history;
 
         FormsView = CollectionViewSource.GetDefaultView(Forms);
         FormsView.Filter = ApplyFilter;
@@ -187,6 +191,10 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
+        _history?.RegisterNavigation(
+            new NavigationCrumb { ViewName = ViewNames.FormManager, Title = "Forms", Icon = "📄" },
+            isHierarchical: false);
+
         // NOTE: fire-and-forget — WPF không hỗ trợ async navigation callback
         _ = LoadDataSafeAsync();
     }

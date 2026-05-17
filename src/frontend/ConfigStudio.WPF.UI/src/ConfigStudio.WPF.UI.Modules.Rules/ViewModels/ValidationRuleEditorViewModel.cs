@@ -8,6 +8,7 @@ using System.Windows;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Rules.Models;
 using System.Collections.Generic;
@@ -304,13 +305,16 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
+    private readonly INavigationHistoryService? _history;
+
     public ValidationRuleEditorViewModel(
         IRegionManager regionManager,
         IDialogService dialogService,
         IRuleDataService? ruleService = null,
         II18nDataService? i18nService = null,
         IAppConfigService? appConfig = null,
-        IFormDetailDataService? formDetailService = null)
+        IFormDetailDataService? formDetailService = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager     = regionManager;
         _dialogService     = dialogService;
@@ -318,6 +322,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         _i18nService       = i18nService;
         _appConfig         = appConfig;
         _formDetailService = formDetailService;
+        _history           = history;
 
         AddRuleCommand = new DelegateCommand(ExecuteAddRule);
         EditRuleCommand = new DelegateCommand(ExecuteEditRule, () => IsRuleSelected);
@@ -344,6 +349,19 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         SectionName = navigationContext.Parameters.GetValue<string>("sectionName") ?? "";
         var mode    = navigationContext.Parameters.GetValue<string>("mode")        ?? "";
         RaisePropertyChanged(nameof(AutoErrorKey));
+
+        // Hierarchical neu mo tu Field/Form (co param), root neu mo tu sidebar.
+        var hasContext = FieldId > 0 || FormId > 0;
+        var title = !string.IsNullOrEmpty(FieldCode) ? $"Rules: {FieldCode}" : "Validation Rules";
+        _history?.RegisterNavigation(
+            new NavigationCrumb
+            {
+                ViewName = ViewNames.ValidationRuleEditor,
+                Title = title,
+                Icon = "✓",
+                Parameters = navigationContext.Parameters,
+            },
+            isHierarchical: hasContext);
 
         if (FieldId == 0) FieldId = 5;
         if (FormId == 0) FormId = 1;

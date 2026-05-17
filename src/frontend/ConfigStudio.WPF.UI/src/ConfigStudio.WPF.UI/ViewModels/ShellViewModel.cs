@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Models;
 using ConfigStudio.WPF.UI.Services;
@@ -20,14 +21,20 @@ public class ShellViewModel : ViewModelBase
 {
     private readonly IRegionManager? _regionManager;
     private readonly IThemeService? _themeService;
+    private readonly INavigationHistoryService? _history;
     private NavigationItem? _selectedItem;
     private bool _isSidebarCollapsed;
     private string _currentThemeDisplayName = "Light Ocean";
 
-    public ShellViewModel(IRegionManager? regionManager = null, IThemeService? themeService = null)
+    public ShellViewModel(
+        IRegionManager? regionManager = null,
+        IThemeService? themeService = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager = regionManager;
         _themeService = themeService;
+        _history = history;
+        if (_history is not null) _history.Changed += OnHistoryChanged;
 
         NavigationItems = [];
 
@@ -40,6 +47,9 @@ public class ShellViewModel : ViewModelBase
         NavigateCommand = new DelegateCommand<NavigationItem?>(Navigate);
         NavigateByViewNameCommand = new DelegateCommand<string?>(NavigateByViewName);
         ToggleSidebarCommand = new DelegateCommand(ToggleSidebar);
+        GoBackCommand    = new DelegateCommand(() => _history?.GoBack(),    () => _history?.CanGoBack    == true);
+        GoForwardCommand = new DelegateCommand(() => _history?.GoForward(), () => _history?.CanGoForward == true);
+        JumpToCrumbCommand = new DelegateCommand<NavigationCrumb?>(c => { if (c is not null) _history?.JumpToCrumb(c); });
         WindowMinimizeCommand = new DelegateCommand<Window?>(MinimizeWindow);
         WindowMaximizeCommand = new DelegateCommand<Window?>(MaximizeWindow);
         WindowCloseCommand = new DelegateCommand<Window?>(CloseWindow);
@@ -97,6 +107,25 @@ public class ShellViewModel : ViewModelBase
     public DelegateCommand<Window?> WindowCloseCommand { get; }
 
     public DelegateCommand<string?> ChangeThemeCommand { get; }
+
+    public DelegateCommand GoBackCommand    { get; }
+    public DelegateCommand GoForwardCommand { get; }
+    public DelegateCommand<NavigationCrumb?> JumpToCrumbCommand { get; }
+
+    public IReadOnlyList<NavigationCrumb> Breadcrumbs => _history?.Crumbs ?? [];
+    public bool CanGoBack    => _history?.CanGoBack    == true;
+    public bool CanGoForward => _history?.CanGoForward == true;
+    public bool HasBreadcrumbs => Breadcrumbs.Count > 0;
+
+    private void OnHistoryChanged(object? sender, System.EventArgs e)
+    {
+        RaisePropertyChanged(nameof(Breadcrumbs));
+        RaisePropertyChanged(nameof(CanGoBack));
+        RaisePropertyChanged(nameof(CanGoForward));
+        RaisePropertyChanged(nameof(HasBreadcrumbs));
+        GoBackCommand.RaiseCanExecuteChanged();
+        GoForwardCommand.RaiseCanExecuteChanged();
+    }
 
     private void InitNavigationItems()
     {

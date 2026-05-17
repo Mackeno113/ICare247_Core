@@ -37,6 +37,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private readonly IDialogService? _dialogService;
     private readonly II18nDataService? _i18nService;
     private readonly IFieldDataService? _fieldDataService;
+    private readonly INavigationHistoryService? _history;
 
     // ── Schema diff state ─────────────────────────────────────
     private SchemaDiffResult _lastDiff = SchemaDiffResult.Empty;
@@ -555,7 +556,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         ISchemaInspectorService? schemaInspector = null,
         IDialogService? dialogService = null,
         II18nDataService? i18nService = null,
-        IFieldDataService? fieldDataService = null)
+        IFieldDataService? fieldDataService = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager    = regionManager;
         _formDataService  = formDataService;
@@ -565,6 +567,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _dialogService    = dialogService;
         _i18nService      = i18nService;
         _fieldDataService = fieldDataService;
+        _history          = history;
 
         // Tree manipulation
         AddSectionCommand = new DelegateCommand(ExecuteAddSection);
@@ -638,6 +641,18 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     {
         InitP0Services();
         FormId = navigationContext.Parameters.GetValue<int>("formId");
+
+        // Dang ky breadcrumb — luon hierarchical (child cua FormManager).
+        var crumbTitle = FormId == 0 ? "Tạo Form mới" : $"Form: {navigationContext.Parameters.GetValue<string>("formCode") ?? FormId.ToString()}";
+        _history?.RegisterNavigation(
+            new NavigationCrumb
+            {
+                ViewName = ViewNames.FormEditor,
+                Title = crumbTitle,
+                Icon = "✎",
+                Parameters = navigationContext.Parameters,
+            },
+            isHierarchical: true);
 
         // ── Phân nhánh: tạo mới hay edit ────────────────────
         if (FormId == 0)

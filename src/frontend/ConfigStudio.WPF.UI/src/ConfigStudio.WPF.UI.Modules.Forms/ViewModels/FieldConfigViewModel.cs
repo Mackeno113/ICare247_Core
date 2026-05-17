@@ -8,6 +8,7 @@ using System.Text.Json;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -34,6 +35,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private readonly IAppConfigService? _appConfig;
     private readonly IDialogService? _dialogService;
     private readonly IFormDetailDataService? _formDetailService;
+    private readonly INavigationHistoryService? _history;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params ────────────────────────────────────
@@ -921,7 +923,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ISysLookupDataService? lookupService = null,
         IAppConfigService? appConfig = null,
         IDialogService? dialogService = null,
-        IFormDetailDataService? formDetailService = null)
+        IFormDetailDataService? formDetailService = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager     = regionManager;
         _fieldService      = fieldService;
@@ -932,6 +935,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _appConfig         = appConfig;
         _dialogService     = dialogService;
         _formDetailService = formDetailService;
+        _history           = history;
 
         SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
@@ -979,6 +983,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         TableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
         FormCode  = navigationContext.Parameters.GetValue<string>("formCode")  ?? "";
         FormName  = navigationContext.Parameters.GetValue<string>("formName")  ?? "";
+
+        // Dang ky breadcrumb — hierarchical (child cua FormEditor).
+        var fieldCode = navigationContext.Parameters.GetValue<string>("fieldCode") ?? "";
+        _history?.RegisterNavigation(
+            new NavigationCrumb
+            {
+                ViewName = ViewNames.FieldConfig,
+                Title = string.IsNullOrEmpty(fieldCode) ? $"Field #{FieldId}" : $"Field: {fieldCode}",
+                Icon = "⚙",
+                Parameters = navigationContext.Parameters,
+            },
+            isHierarchical: true);
 
         await LoadDataAsync();
     }

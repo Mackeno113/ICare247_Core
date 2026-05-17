@@ -10,7 +10,9 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Data;
+using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.I18n.Models;
 using Microsoft.Win32;
@@ -117,10 +119,16 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     private IRegionNavigationJournal? _journal;
 
-    public I18nManagerViewModel(II18nDataService? i18nService = null, IAppConfigService? appConfig = null)
+    private readonly INavigationHistoryService? _history;
+
+    public I18nManagerViewModel(
+        II18nDataService? i18nService = null,
+        IAppConfigService? appConfig = null,
+        INavigationHistoryService? history = null)
     {
         _i18nService = i18nService;
         _appConfig   = appConfig;
+        _history     = history;
 
         EntriesView        = CollectionViewSource.GetDefaultView(Entries);
         EntriesView.Filter = ApplyFilter;
@@ -151,6 +159,10 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     public async void OnNavigatedTo(NavigationContext navigationContext)
     {
+        _history?.RegisterNavigation(
+            new NavigationCrumb { ViewName = ViewNames.I18nManager, Title = "i18n Keys", Icon = "🌐" },
+            isHierarchical: false);
+
         _journal = navigationContext.NavigationService.Journal;
         RaisePropertyChanged(nameof(CanGoBack));
 

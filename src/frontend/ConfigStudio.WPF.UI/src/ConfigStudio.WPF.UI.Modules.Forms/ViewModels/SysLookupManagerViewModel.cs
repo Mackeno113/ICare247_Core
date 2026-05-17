@@ -4,8 +4,10 @@
 // Purpose : ViewModel cho màn hình Sys_Lookup Manager — quản lý danh mục dùng chung.
 
 using System.Collections.ObjectModel;
+using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using Prism.Commands;
 using Prism.Navigation.Regions;
@@ -166,12 +168,16 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
     public DelegateCommand                 SaveItemCommand   { get; }
     public DelegateCommand                 CancelEditCommand { get; }
 
+    private readonly INavigationHistoryService? _history;
+
     public SysLookupManagerViewModel(
         ISysLookupDataService lookupService,
-        IAppConfigService appConfig)
+        IAppConfigService appConfig,
+        INavigationHistoryService? history = null)
     {
         _lookupService = lookupService;
         _appConfig     = appConfig;
+        _history       = history;
 
         RefreshCommand    = new DelegateCommand(async () => await LoadCodesAsync());
         AddCodeCommand    = new DelegateCommand(ExecuteAddCode,    () => !string.IsNullOrWhiteSpace(NewCodeText));
@@ -399,6 +405,9 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
 
     public void OnNavigatedTo(NavigationContext ctx)
     {
+        _history?.RegisterNavigation(
+            new NavigationCrumb { ViewName = ViewNames.SysLookupManager, Title = "Sys Lookup", Icon = "📋" },
+            isHierarchical: false);
         _cts = new CancellationTokenSource();
         _ = LoadCodesAsync();
     }

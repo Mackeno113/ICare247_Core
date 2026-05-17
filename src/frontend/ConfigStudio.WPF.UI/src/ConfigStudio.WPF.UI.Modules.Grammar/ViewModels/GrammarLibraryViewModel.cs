@@ -6,7 +6,9 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Grammar.Models;
 using Prism.Commands;
@@ -103,10 +105,16 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, I
     public DelegateCommand DeleteOperatorCommand { get; }
     public DelegateCommand RefreshCommand { get; }
 
-    public GrammarLibraryViewModel(IGrammarDataService? grammarService = null, IAppConfigService? appConfig = null)
+    private readonly INavigationHistoryService? _history;
+
+    public GrammarLibraryViewModel(
+        IGrammarDataService? grammarService = null,
+        IAppConfigService? appConfig = null,
+        INavigationHistoryService? history = null)
     {
         _grammarService = grammarService;
         _appConfig = appConfig;
+        _history = history;
 
         FunctionsView = CollectionViewSource.GetDefaultView(Functions);
         FunctionsView.Filter = FilterFunctions;
@@ -126,7 +134,13 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, I
     // Giu state search/filter + tab da chon khi user roi man hinh.
     public bool KeepAlive => true;
 
-    public async void OnNavigatedTo(NavigationContext navigationContext) => await LoadDataAsync();
+    public async void OnNavigatedTo(NavigationContext navigationContext)
+    {
+        _history?.RegisterNavigation(
+            new NavigationCrumb { ViewName = ViewNames.GrammarLibrary, Title = "Grammar", Icon = "f()" },
+            isHierarchical: false);
+        await LoadDataAsync();
+    }
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {

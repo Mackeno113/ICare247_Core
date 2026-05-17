@@ -6,8 +6,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
+using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using Prism.Commands;
 using Prism.Navigation.Regions;
@@ -198,12 +200,16 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public DelegateCommand NewCommand { get; }
     public DelegateCommand SaveCommand { get; }
 
+    private readonly INavigationHistoryService? _history;
+
     public SysTableManagerViewModel(
         IFormDataService? formDataService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        INavigationHistoryService? history = null)
     {
         _formDataService = formDataService;
         _appConfig = appConfig;
+        _history = history;
 
         TablesView = CollectionViewSource.GetDefaultView(Tables);
         TablesView.Filter = ApplyFilter;
@@ -220,6 +226,9 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {
+        _history?.RegisterNavigation(
+            new NavigationCrumb { ViewName = ViewNames.SysTableManager, Title = "Sys Table", Icon = "⌗" },
+            isHierarchical: false);
         _ = LoadDataSafeAsync();
     }
 

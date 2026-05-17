@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Events.Models;
 using Prism.Commands;
@@ -101,16 +102,20 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
+    private readonly INavigationHistoryService? _history;
+
     public EventEditorViewModel(
         IRegionManager regionManager,
         IDialogService dialogService,
         IEventDataService? eventService = null,
-        IAppConfigService? appConfig = null)
+        IAppConfigService? appConfig = null,
+        INavigationHistoryService? history = null)
     {
         _regionManager = regionManager;
         _dialogService = dialogService;
         _eventService = eventService;
         _appConfig = appConfig;
+        _history = history;
 
         AddEventCommand = new DelegateCommand(ExecuteAddEvent);
         DeleteEventCommand = new DelegateCommand(async () => await ExecuteDeleteEventAsync(), () => IsEventSelected);
@@ -128,6 +133,19 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     {
         FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
         FormId = navigationContext.Parameters.GetValue<int>("formId");
+        var fieldCode = navigationContext.Parameters.GetValue<string>("fieldCode") ?? "";
+
+        var hasContext = FieldId > 0 || FormId > 0;
+        var title = !string.IsNullOrEmpty(fieldCode) ? $"Events: {fieldCode}" : "Events";
+        _history?.RegisterNavigation(
+            new NavigationCrumb
+            {
+                ViewName = ViewNames.EventEditor,
+                Title = title,
+                Icon = "⚡",
+                Parameters = navigationContext.Parameters,
+            },
+            isHierarchical: hasContext);
 
         if (FieldId == 0) FieldId = 5;
         if (FormId == 0) FormId = 1;
