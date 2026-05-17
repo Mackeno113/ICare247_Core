@@ -1,6 +1,54 @@
 # Last Session Summary
 
-> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D.1/D.2 UX ConfigStudio WPF)
+> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D đầy đủ UX ConfigStudio WPF)
+
+## Đã làm — Wave D.3: Grid-edit Mode tab (commit `b79f074`)
+
+Tab mới "Bảng Fields" trong FormEditor TabControl phải: DevExpress GridControl edit-mode
+hiển thị toàn bộ field của form theo nhóm Section. User có thể đổi nhanh 6 prop nóng
+(EditorType / ColSpan / Required / Visible / ReadOnly / Enabled) trên all field cùng lúc
+mà không cần chọn từng row trong TreeView.
+
+**Đặc tính then chốt:**
+- **Same instance binding**: Grid và Tree cùng bind vào identical `FormTreeNode` → edit Grid
+  → Tree update real-time, không cần manual sync (chỉ work vì WPF dùng reference equality)
+- **Hydrate lazy per row**: cell edit đầu tiên trên row chưa có trong `_fieldRecordCache`
+  → await `HydrateSelectedFieldAsync(node)` → save. Cell sau cùng row dùng cache, save ngay
+- **Reuse `_fieldQuickSave`** (D1 infra) — debounce 800ms, không tạo service mới
+- **Auto-sync `AllFields`**: subscribe `Sections.CollectionChanged` + per-section
+  `Children.CollectionChanged` → bất kỳ thao tác nào thêm/xoá field/section → AllFields
+  rebuild tự động. Xử lý Reset action cho `.Clear()` (re-subscribe toàn bộ)
+
+**Code changes:**
+- `FormTreeNode.ParentSectionCode` (new) — gán khi RebuildAllFields, dùng cho cột Group
+- `FormEditorViewModel`:
+  - `AllFields: ObservableCollection<FormTreeNode>` flat từ Sections.Children
+  - `RebuildAllFields()` — clear + lấp đầy + gán ParentSectionCode
+  - `WireSectionsAutoSync()` — subscribe CollectionChanged, gọi trong constructor
+  - `OnSectionChildrenChanged` handler
+  - `OnGridCellChangedAsync(node)` public — hydrate cache + NotifyDirty
+- `FormEditorView.xaml`:
+  - TabItem mới cuối TabControl, header "⊞ Bảng Fields" + badge `{Binding TotalFields}`
+  - DXGridControl 8 cột: Section (GroupIndex=0), # (OrderNo), Field Code,
+    Tên (vi), Editor (ComboBoxEditSettings), ColSpan (ComboBoxEditSettings),
+    Required/Visible/ReadOnly/Enabled (CheckEditSettings)
+  - `NavigationStyle="Cell"`, `AllowEditing="True"`, `EditorShowMode="MouseDownFocused"`
+  - Banner hint xanh trên đầu giải thích Tab/Enter/F2 + auto-save
+- `FormEditorView.xaml.cs`:
+  - `OnFieldsGridCellValueChanged` — forward-only call sang VM (5 dòng)
+
+**Quyết định D3:**
+- **Lazy hydrate vs eager**: chọn lazy — eager fetch toàn bộ field khi mở tab sẽ chậm cho form
+  có 50+ field. Lazy chỉ trễ ~100-200ms lần đầu edit per row, sau đó cache. Trade-off OK.
+- **Auto-sync via CollectionChanged thay vì manual call**: tránh phải remember gọi
+  `RebuildAllFields()` ở mọi nơi thay đổi Sections (ExecuteAddField, ExecuteDeleteNode,
+  AutoGenerateFields, SyncSchema, ...). Subscribe 1 lần trong constructor.
+- **Không validate input trong grid edit**: combo binding tự enforce valid values. CheckEdit
+  thuần bool. Free-text columns đều readonly. Risk thấp.
+- **Skip Label inline edit**: requires i18n service interaction (SaveResourceAsync) — phức
+  tạp hơn 6 prop hiện tại. Để wave sau nếu cần.
+
+---
 
 ## Đã làm — Wave D.1 + D.2: Power editing cho FormEditor
 
@@ -136,7 +184,8 @@ Issue fix: `NavigationCrumb.Parameters` ban đầu là `NavigationParameters?` n
 ## Trạng thái hiện tại
 
 - **Branch:** `master`
-- **Commits:** `0322cb2` Wave A.1, `7e8b173` Wave A.2, `60ccee3` memory A, `8261a41` D.1, `d1ab936` D.2
+- **Commits:** `0322cb2` Wave A.1, `7e8b173` Wave A.2, `60ccee3` memory A,
+  `8261a41` D.1, `d1ab936` D.2, `c109138` memory D.1+D.2, `b79f074` D.3
 - **Build:** `dotnet build` 0 errors / 0 warnings cho ConfigStudio.WPF.UI sau mỗi wave
 - **Chưa test trên app thật** — chỉ verify build
 
@@ -150,15 +199,52 @@ Issue fix: `NavigationCrumb.Parameters` ban đầu là `NavigationParameters?` n
 
 ## Plan tiếp theo (đã chốt với user)
 
-Wave D — Power editing:
+Wave D — Power editing: ✅ **HOÀN TẤT**
 1. ✅ **D1 — Quick Property Bar** (commit `8261a41`)
 2. ✅ **D2 — Multi-select Bulk Editor** (commit `d1ab936`)
-3. **D3 — Grid-edit Mode FieldConfig** (~3 ngày): tab mới ở FormEditor — `dxg:GridControl`
-   editing-mode với toàn bộ field như Excel: Tab/Enter điều hướng, F2 edit, Ctrl+D fill-down,
-   Ctrl+V paste từ clipboard, auto-save per cell.
+3. ✅ **D3 — Grid-edit Mode tab** (commit `b79f074`)
+
+### Wave 017 — Cleanup `Is_Enabled` (chưa làm)
+
+Discussion: user nhận xét `Is_Enabled` semantics overlap với `Is_ReadOnly + Is_Visible`.
+Khác biệt duy nhất: ReadOnly **vẫn submit**, Disabled **KHÔNG submit**. Nhưng ICare247:
+- BE chưa có partial-update / @FormMode infrastructure
+- % case dùng Is_Enabled thực sự = nhỏ
+
+→ **Quyết định**: bỏ `Is_Enabled`, thêm `Lock_On_Edit` (bool) — phục vụ case phổ biến
+"field key/code nhập lúc create, khóa khi update". Migration 017.
+
+**Plan migration 017:**
+```sql
+ALTER TABLE Ui_Field DROP COLUMN Is_Enabled;
+ALTER TABLE Ui_Field ADD Lock_On_Edit BIT NOT NULL DEFAULT 0;
+```
+
+Logic render: `effectiveReadOnly = Is_ReadOnly || (Lock_On_Edit && FormMode == Edit)`.
+
+UI Behavior section đổi thành:
+```
+☐ Hiển thị      ☐ Bắt buộc
+☐ Chỉ đọc
+   └─ ☐ chỉ khi cập nhật  (Lock_On_Edit)
+```
+
+Hoặc gộp thành RadioGroup 3 trạng thái:
+```
+Quyền sửa:
+  ⦿ Toàn quyền   ○ Chỉ đọc khi update  ○ Chỉ đọc luôn
+```
+
+**Impact areas (cần audit):**
+- Backend: FieldDto, FieldRepository, FormRepository, Blazor renderers
+- WPF: FieldConfigRecord, FormTreeNode (IsEnabled), QPB IsEnabled, Bulk BulkIsEnabled,
+  Grid-edit Enabled column, FieldConfigViewModel
+- DB: migration script + data migration nếu có data thật
 
 ## Task tiếp theo gợi ý
 
-1. **Test D1+D2 trên app thật** trước khi tiến D3 (xác nhận hydrate + bulk apply hoạt động OK)
-2. **Code D3** — Grid-edit Mode (Excel-like spreadsheet view cho field list)
-3. **Polish nhỏ Wave A** — ẩn `›` cuối breadcrumb, hoặc thêm Recent items vào Dashboard
+1. **Test D1+D2+D3 trên app thật** — xác nhận hydrate + bulk apply + grid edit auto-save OK
+2. **Wave 017** — Cleanup `Is_Enabled` + thêm `Lock_On_Edit` (đã thống nhất với user)
+3. **Polish Wave A** — ẩn `›` cuối breadcrumb, Recent items trên Dashboard (optional)
+4. **D4+ Power editing tiếp theo** — Field Templates, Smart Sync Schema, Find & Replace,
+   Live Preview docked (đề xuất ban đầu nhưng chưa implement)
