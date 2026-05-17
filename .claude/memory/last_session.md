@@ -1,6 +1,72 @@
 # Last Session Summary
 
-> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D đầy đủ UX ConfigStudio WPF)
+> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D + Wave 017 cleanup Is_Enabled)
+
+## Đã làm — Wave 017: Cleanup `Is_Enabled` → thêm `Lock_On_Edit`
+
+**Lý do (đã thảo luận với user):**
+- User nhận xét `Is_Enabled` overlap với `Is_ReadOnly + Is_Visible`
+- Khác biệt duy nhất: ReadOnly **vẫn submit**, Disabled **KHÔNG submit**
+- Nhưng ICare247: BE chưa có partial-update API + % case dùng nhỏ → không xứng giữ
+- Pattern cần thực sự: "field nhập lúc create, khóa khi update" (key/code/audit field)
+  → đáng có cờ riêng `Lock_On_Edit` thay vì invest infra `@FormMode` cho Event engine
+
+**Migration 017:**
+```sql
+ALTER TABLE Ui_Field DROP COLUMN Is_Enabled;
+ALTER TABLE Ui_Field ADD Lock_On_Edit BIT NOT NULL DEFAULT 0;
+```
+
+**File đã đổi (17 file):**
+
+Backend:
+- `Domain/Entities/Form/FieldMetadata.cs`: `IsEnabled` → `LockOnEdit`
+- `Infrastructure/Repositories/FieldRepository.cs`: SQL SELECT 3 nơi, 2 mapper
+- `Infrastructure/Repositories/FormRepository.cs`: SELECT + INSERT clone fields
+- `Application/Engines/ValidationEngine.cs`: required check — `IsEnabled` → `IsVisible`
+- `Blazor.RuntimeCheck/Models/RuntimeModels.cs`: `FieldState.IsEnabled` → `LockOnEdit`
+- `Blazor.RuntimeCheck/Models/FormMetadataDto.cs`: same
+- `Blazor.RuntimeCheck/Pages/FormRunner.razor`: 4 chỗ
+  - State mapping: `IsEnabled = f.IsEnabled` → `LockOnEdit = f.LockOnEdit`
+  - SET_ENABLED action: alias sang SET_READONLY (backward compat)
+  - Validate trigger: bỏ `!fs.IsEnabled` filter
+  - BuildContext: bỏ `.Where(f => f.IsEnabled)` — tất cả submit
+- 8 renderer (TextBox, NumericBox, Memo, CheckBox, ComboBox, DatePicker, LookupBox,
+  LookupComboBox): bỏ attribute `Enabled="@(State?.IsEnabled ?? true)"` — chỉ giữ ReadOnly
+
+WPF:
+- `Core/Data/FieldConfigRecord.cs`: `IsEnabled` → `LockOnEdit`
+- `Modules.Forms/Models/FormTreeNode.cs`: `IsEnabled` → `LockOnEdit`
+- `Infrastructure/FieldDataService.cs`: SQL SELECT/INSERT/UPDATE + BuildFieldParam
+- `Modules.Forms/ViewModels/FieldConfigViewModel.cs`: prop + Load + Save
+- `Modules.Forms/ViewModels/FormEditorViewModel.cs`:
+  - `_bulkIsEnabled` → `_bulkLockOnEdit` + BulkLockOnEdit
+  - Hydrate: `field.IsEnabled = record.IsEnabled` → `field.LockOnEdit = record.LockOnEdit`
+  - OnSelectedNodePropertyChanged filter
+  - SaveQuickFieldAsync mapping
+  - ExecuteClearBulkSelection + ExecuteApplyBulkAsync
+- `Modules.Forms/Views/FieldConfigView.xaml`: Behavior section 4 — "Vô hiệu hóa" 🚫
+  → "Khóa khi sửa" 🔒
+- `Modules.Forms/Views/FormEditorView.xaml`:
+  - QPB single: checkbox "Enabled" → "Lock@Edit"
+  - QPB bulk: 3-state checkbox same đổi
+  - Grid-edit tab: cột "Enabled"/IsEnabled → "Lock@Edit"/LockOnEdit
+
+Docs:
+- `docs/spec/02_DATABASE_SCHEMA.md`: bảng Ui_Field + footnote ADR
+- `db/017_lock_on_edit_replace_is_enabled.sql` (new migration)
+
+**Quyết định Wave 017:**
+- **SET_ENABLED Blazor action giữ alias backward-compat**: chuyển sang SET_READONLY thay vì
+  xóa hẳn (tránh break seed data hiện có nếu có rule dùng action này)
+- **EffectiveReadOnly logic ở Blazor**: chưa implement (cần FormMode runtime context).
+  Tạm thời `Lock_On_Edit` chỉ là cờ DB, Blazor render dùng IsReadOnly + IsRequired thông
+  thường. Khi FormRunner có `IsEditMode` flag → bổ sung compute. Để dành cho session sau.
+- **ValidationEngine**: thay điều kiện skip required từ `!IsEnabled` sang `!IsVisible` —
+  field ẩn vẫn không bắt buộc nhập (logic gần đúng nhất, vì IsEnabled không còn tồn tại)
+- **Build cả backend + WPF**: 0 errors / 0 warnings sau migration
+
+---
 
 ## Đã làm — Wave D.3: Grid-edit Mode tab (commit `b79f074`)
 

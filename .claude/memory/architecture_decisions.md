@@ -39,16 +39,30 @@
 - **Caller pattern:** Các handler không cần label chỉ cần thêm `ct:` named arg
 - **Query chain:** FormController → GetFormByCodeQuery.LangCode → QueryHandler → Repository → SQL @LangCode
 
-## ADR-010: Is_Required và Is_Enabled là cột trong Ui_Field (2026-03-26)
+## ADR-010 (revised by ADR-017): Is_Required là cột trong Ui_Field (2026-03-26)
 - **Context:** `Is_ReadOnly` đã là cột `bit` trong `Ui_Field`. `Is_Required` lại được lưu như `Val_Rule` với `Rule_Type_Code='Required'` — không nhất quán.
-- **Decision:** Thêm `Is_Required bit DEFAULT 0` và `Is_Enabled bit DEFAULT 1` vào `Ui_Field`.
-  - `Is_Visible`, `Is_ReadOnly`, `Is_Required`, `Is_Enabled` = 4 cột tĩnh trong `Ui_Field` (luôn đúng bất kể điều kiện)
-  - Hành vi **động** (ẩn/hiện/readonly/required theo điều kiện) → `Evt_Action` (`SET_VISIBLE`, `SET_READONLY`, `SET_REQUIRED`, `SET_ENABLED`)
-  - `Val_Rule` type `Required` → **deprecated** / xóa khỏi seed (không cần nếu đã có cột field)
-- **Phân biệt `Is_ReadOnly` vs `Is_Enabled`:**
-  - `Is_ReadOnly`: hiển thị giá trị, không sửa được, **vẫn submit**
-  - `Is_Enabled = false`: grayout, không tương tác, **không tính vào submit**
-- **Migration:** `010_field_behavior_columns.sql`
+- **Decision (original 2026-03-26):** Thêm `Is_Required bit DEFAULT 0` và `Is_Enabled bit DEFAULT 1` vào `Ui_Field`.
+- **Revised (2026-05-17 — ADR-017):** Bỏ `Is_Enabled` (semantics overlap với ReadOnly + Visible).
+  - `Is_Visible`, `Is_ReadOnly`, `Is_Required` = 3 cột tĩnh trong `Ui_Field`
+  - `Lock_On_Edit` (mới) = readonly khi FormMode=Edit, editable khi Create
+  - `Val_Rule` type `Required` → **deprecated**
+- **Migration:** `010_field_behavior_columns.sql` (add) + `017_lock_on_edit_replace_is_enabled.sql` (revise)
+
+## ADR-017: Bỏ Is_Enabled, thêm Lock_On_Edit (2026-05-17)
+- **Context:** Sau khi review thực tế, `Is_Enabled` chỉ khác `Is_ReadOnly` ở một điểm:
+  ReadOnly **vẫn submit**, Disabled **KHÔNG submit**. Nhưng ICare247:
+  1. BE chưa có partial-update API (PATCH) → ReadOnly+full update vẫn ghi value cũ OK
+  2. % case dùng Is_Enabled thực sự nhỏ
+  3. Pattern thường gặp là "field nhập lúc create, khóa khi update" — cần riêng cờ này
+- **Decision:**
+  - Drop `Ui_Field.Is_Enabled`
+  - Add `Ui_Field.Lock_On_Edit bit DEFAULT 0`
+  - EffectiveReadOnly = `Is_ReadOnly OR (Lock_On_Edit AND FormMode=Edit)`
+  - Blazor SET_ENABLED action → alias sang SET_READONLY (backward compat seed)
+  - ValidationEngine required check skip → đổi từ `!IsEnabled` sang `!IsVisible`
+- **Tradeoff:** Bỏ khả năng "field hiện thấy nhưng không submit" runtime. Khi cần sẽ
+  invest @FormMode infra cho Event engine sau (Wave riêng).
+- **Migration:** `017_lock_on_edit_replace_is_enabled.sql`
 
 ## ADR-011: Val_Rule type bổ sung — Length và Compare (2026-03-26)
 - **Context:** Hiện có Required/Range/Regex/Numeric/Custom. Thiếu 2 type phổ biến.
