@@ -99,6 +99,11 @@ public class FormTreeNode : BindableBase
     private bool _isMultiChecked;
     public bool IsMultiChecked { get => _isMultiChecked; set => SetProperty(ref _isMultiChecked, value); }
 
+    // D3 — Grid-edit mode: SectionCode cua section cha (de Grid group/show cot Section).
+    // Field chi su dung; Section node de trong.
+    private string _parentSectionCode = "";
+    public string ParentSectionCode { get => _parentSectionCode; set => SetProperty(ref _parentSectionCode, value); }
+
     /// <summary>Danh sách field con (chỉ dùng khi NodeType = Section).</summary>
     public ObservableCollection<FormTreeNode> Children { get; } = [];
 

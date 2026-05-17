@@ -6,6 +6,7 @@
 using System.Windows.Controls;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
+using DevExpress.Xpf.Grid;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.Views;
 
@@ -37,5 +38,13 @@ public partial class FormEditorView : UserControl
         {
             vm.ToggleBulkSelectionCommand.Execute(node);
         }
+    }
+
+    // D3 — Grid-edit tab: forward cell value change sang VM de hydrate cache + trigger debounced save.
+    private async void OnFieldsGridCellValueChanged(object sender, CellValueChangedEventArgs e)
+    {
+        if (DataContext is not FormEditorViewModel vm) return;
+        if (e.Row is not FormTreeNode node) return;
+        await vm.OnGridCellChangedAsync(node);
     }
 }

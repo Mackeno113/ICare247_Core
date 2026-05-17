@@ -391,6 +391,55 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>Danh sách sections (root nodes) của form.</summary>
     public ObservableCollection<FormTreeNode> Sections { get; } = [];
 
+    /// <summary>
+    /// D3 — Flat danh sach tat ca field (tu Sections.Children) cho Grid-edit tab.
+    /// Reference identity giu nguyen voi tree: edit grid → tree update ngay (cung 1 instance).
+    /// Goi RebuildAllFields() khi Sections / Section.Children thay doi.
+    /// </summary>
+    public ObservableCollection<FormTreeNode> AllFields { get; } = [];
+
+    private void RebuildAllFields()
+    {
+        AllFields.Clear();
+        foreach (var section in Sections)
+        {
+            foreach (var field in section.Children)
+            {
+                field.ParentSectionCode = section.Code;
+                AllFields.Add(field);
+            }
+        }
+        RaisePropertyChanged(nameof(TotalFields));
+    }
+
+    // D3 — Auto-rebuild AllFields khi Sections / Section.Children thay doi.
+    // Goi tu constructor de subscribe vinh vien (VM song = subscription song).
+    private void WireSectionsAutoSync()
+    {
+        Sections.CollectionChanged += (_, e) =>
+        {
+            if (e.OldItems is not null)
+                foreach (FormTreeNode s in e.OldItems)
+                    s.Children.CollectionChanged -= OnSectionChildrenChanged;
+            if (e.NewItems is not null)
+                foreach (FormTreeNode s in e.NewItems)
+                    s.Children.CollectionChanged += OnSectionChildrenChanged;
+            // Reset (Clear+populate) → re-subscribe toan bo
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+                foreach (var s in Sections)
+                {
+                    s.Children.CollectionChanged -= OnSectionChildrenChanged;
+                    s.Children.CollectionChanged += OnSectionChildrenChanged;
+                }
+            RebuildAllFields();
+        };
+    }
+
+    private void OnSectionChildrenChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        RebuildAllFields();
+    }
+
     private FormTreeNode? _selectedNode;
     /// <summary>Node đang được chọn trong TreeView.</summary>
     public FormTreeNode? SelectedNode
@@ -745,6 +794,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             ClearBulkSelectionCommand.RaiseCanExecuteChanged();
         };
 
+        // D3 — Sync AllFields voi Sections.Children tu dong
+        WireSectionsAutoSync();
+
         // Form actions
         SaveFormCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty && !IsLoading)
             .ObservesProperty(() => IsDirty)
@@ -1016,6 +1068,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
             // ── 5. Permissions: load từ Sys_Role (WPF-06) ────────
             await LoadPermissionsAsync(ct);
+
+            // D3 — Flatten field list cho Grid-edit tab
+            RebuildAllFields();
 
             RaisePropertyChanged(nameof(TotalSections));
             RaisePropertyChanged(nameof(TotalFields));
@@ -1531,6 +1586,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _autoSave?.NotifyDirty();
         _linting?.NotifyChanged();
         RaisePropertyChanged(nameof(TotalFields));
+        RebuildAllFields();
     }
 
     private void ExecuteDeleteNode()
@@ -1568,6 +1624,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         IsDirty = true;
         _autoSave?.NotifyDirty();
         _linting?.NotifyChanged();
+        RebuildAllFields();
     }
 
 
@@ -2152,6 +2209,20 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         // Sau khi apply → clear de tranh apply nham lan sau.
         ExecuteClearBulkSelection();
+    }
+
+    // D3 — Goi tu code-behind FormEditorView khi user edit cell trong Grid-edit tab.
+    // Bao dam cache duoc hydrate truoc khi trigger save (avoid race condition: edit field chua tung chon).
+    public async Task OnGridCellChangedAsync(FormTreeNode? node)
+    {
+        if (node is null || node.NodeType != FormNodeType.Field) return;
+        if (_fieldDataService is null || _appConfig is not { IsConfigured: true }) return;
+
+        if (!_fieldRecordCache.ContainsKey(node.Id))
+            await HydrateSelectedFieldAsync(node);
+
+        _pendingQuickSaveField = node;
+        _fieldQuickSave?.NotifyDirty();
     }
 
     // D1 — Save quick-edit props cua field do user thay doi qua QPB.

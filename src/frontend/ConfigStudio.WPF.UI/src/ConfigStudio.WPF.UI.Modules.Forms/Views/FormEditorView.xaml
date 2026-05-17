@@ -1208,6 +1208,125 @@
                         </Grid>
                     </TabItem>
 
+                    <!-- ── Tab D3: Grid-edit Mode (Excel-like) ──────── -->
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⊞" FontSize="14"
+                                           VerticalAlignment="Center" />
+                                <TextBlock Text="Bảng Fields" Margin="6,0,0,0"
+                                           VerticalAlignment="Center" />
+                                <Border Style="{StaticResource TabBadgeStyle}">
+                                    <TextBlock Text="{Binding TotalFields}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource AccentDarkBrush}" />
+                                </Border>
+                            </StackPanel>
+                        </TabItem.Header>
+
+                        <DockPanel>
+                            <!-- Header hint -->
+                            <Border DockPanel.Dock="Top" Margin="14,12,14,6" Padding="10,7"
+                                    Background="#EFF6FF"
+                                    BorderBrush="#BFDBFE" BorderThickness="1"
+                                    CornerRadius="5">
+                                <TextBlock FontSize="11"
+                                           Foreground="#1E40AF"
+                                           TextWrapping="Wrap">
+                                    <Run Text="ℹ" />
+                                    <Run Text=" Edit trực tiếp trên bảng — Tab/Enter chuyển ô, F2 vào edit mode, mỗi ô tự lưu sau 800ms. Sửa đồng bộ với TreeView." />
+                                </TextBlock>
+                            </Border>
+
+                            <dxg:GridControl Margin="14,0,14,14"
+                                             ItemsSource="{Binding AllFields}"
+                                             AutoPopulateColumns="False">
+                                <dxg:GridControl.View>
+                                    <dxg:TableView x:Name="FieldsGridView"
+                                                   NavigationStyle="Cell"
+                                                   ShowGroupPanel="True"
+                                                   AllowPerPixelScrolling="True"
+                                                   AllowEditing="True"
+                                                   EditorShowMode="MouseDownFocused"
+                                                   CellValueChanged="OnFieldsGridCellValueChanged" />
+                                </dxg:GridControl.View>
+
+                                <dxg:GridControl.Columns>
+                                    <!-- Section (grouped) -->
+                                    <dxg:GridColumn Header="Section" FieldName="ParentSectionCode"
+                                                    Width="120" AllowEditing="False"
+                                                    GroupIndex="0" />
+
+                                    <!-- # OrderNo (readonly) -->
+                                    <dxg:GridColumn Header="#" FieldName="SortOrder"
+                                                    Width="50" AllowEditing="False" />
+
+                                    <!-- ColumnCode (readonly) -->
+                                    <dxg:GridColumn Header="Field Code" FieldName="Code"
+                                                    Width="160" AllowEditing="False">
+                                        <dxg:GridColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Row.Code}"
+                                                           FontFamily="Cascadia Code, Consolas"
+                                                           FontSize="12"
+                                                           VerticalAlignment="Center"
+                                                           Margin="6,0" />
+                                            </DataTemplate>
+                                        </dxg:GridColumn.CellTemplate>
+                                    </dxg:GridColumn>
+
+                                    <!-- Display name (readonly, resolved from i18n) -->
+                                    <dxg:GridColumn Header="Tên (vi)" FieldName="DisplayName"
+                                                    Width="*" AllowEditing="False" />
+
+                                    <!-- EditorType (combo edit) -->
+                                    <dxg:GridColumn Header="Editor" FieldName="EditorType" Width="130">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:ComboBoxEditSettings IsTextEditable="False"
+                                                                      ItemsSource="{Binding DataContext.AvailableEditorTypes, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+
+                                    <!-- ColSpan (combo edit) -->
+                                    <dxg:GridColumn Header="ColSpan" FieldName="ColSpan" Width="80">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:ComboBoxEditSettings IsTextEditable="False"
+                                                                      ItemsSource="{Binding DataContext.ColSpanOptions, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+
+                                    <!-- IsRequired (check) -->
+                                    <dxg:GridColumn Header="Required" FieldName="IsRequired" Width="80">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:CheckEditSettings />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+
+                                    <!-- IsVisible (check) -->
+                                    <dxg:GridColumn Header="Visible" FieldName="IsVisible" Width="75">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:CheckEditSettings />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+
+                                    <!-- IsReadOnly (check) -->
+                                    <dxg:GridColumn Header="ReadOnly" FieldName="IsReadOnly" Width="85">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:CheckEditSettings />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+
+                                    <!-- IsEnabled (check) -->
+                                    <dxg:GridColumn Header="Enabled" FieldName="IsEnabled" Width="80">
+                                        <dxg:GridColumn.EditSettings>
+                                            <dxe:CheckEditSettings />
+                                        </dxg:GridColumn.EditSettings>
+                                    </dxg:GridColumn>
+                                </dxg:GridControl.Columns>
+                            </dxg:GridControl>
+                        </DockPanel>
+                    </TabItem>
+
                 </TabControl>
             </Border>
         </Grid>
