@@ -95,6 +95,10 @@ public class FormTreeNode : BindableBase
     private bool _isSelected;
     public bool IsSelected { get => _isSelected; set => SetProperty(ref _isSelected, value); }
 
+    // D2 — Bulk multi-select: tick rieng cho moi field, doc lap voi IsSelected (single select cua TreeView).
+    private bool _isMultiChecked;
+    public bool IsMultiChecked { get => _isMultiChecked; set => SetProperty(ref _isMultiChecked, value); }
+
     /// <summary>Danh sách field con (chỉ dùng khi NodeType = Section).</summary>
     public ObservableCollection<FormTreeNode> Children { get; } = [];
 

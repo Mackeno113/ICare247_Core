@@ -120,6 +120,47 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>4 lua chon ColSpan cho QPB combo.</summary>
     public List<byte> ColSpanOptions { get; } = [1, 2, 3, 4];
 
+    // ── D2 — Bulk multi-select state ──────────────────────────
+    /// <summary>Danh sach field dang duoc tick trong tree (IsMultiChecked).</summary>
+    public ObservableCollection<FormTreeNode> BulkSelectedFields { get; } = [];
+
+    /// <summary>True khi co tu 2 field tro len duoc tick → QPB chuyen sang bulk mode.</summary>
+    public bool IsBulkMode => BulkSelectedFields.Count >= 2;
+
+    /// <summary>So field dang chon trong bulk mode (de hien thi "Apply to N fields").</summary>
+    public int BulkCount => BulkSelectedFields.Count;
+
+    /// <summary>True khi single field selected va khong phai bulk mode (de toggle QPB content).</summary>
+    public bool IsSingleFieldEditMode => IsFieldSelected && !IsBulkMode;
+
+    // Bulk props (nullable = "giu nguyen"). User set → khi Apply, gan vao tat ca field.
+    private bool? _bulkIsRequired;
+    public bool? BulkIsRequired { get => _bulkIsRequired; set => SetProperty(ref _bulkIsRequired, value); }
+    private bool? _bulkIsVisible;
+    public bool? BulkIsVisible { get => _bulkIsVisible; set => SetProperty(ref _bulkIsVisible, value); }
+    private bool? _bulkIsReadOnly;
+    public bool? BulkIsReadOnly { get => _bulkIsReadOnly; set => SetProperty(ref _bulkIsReadOnly, value); }
+    private bool? _bulkIsEnabled;
+    public bool? BulkIsEnabled { get => _bulkIsEnabled; set => SetProperty(ref _bulkIsEnabled, value); }
+
+    private string _bulkEditorType = "";
+    /// <summary>Empty string = giu nguyen, khac empty = doi sang editor type do.</summary>
+    public string BulkEditorType { get => _bulkEditorType; set => SetProperty(ref _bulkEditorType, value); }
+
+    private byte _bulkColSpan;
+    /// <summary>0 = giu nguyen, 1..4 = doi sang ColSpan do.</summary>
+    public byte BulkColSpan { get => _bulkColSpan; set => SetProperty(ref _bulkColSpan, value); }
+
+    public List<string> BulkEditorTypeOptions { get; } =
+    [
+        "",  // giu nguyen
+        "TextBox", "NumericBox", "ComboBox", "DatePicker",
+        "RadioGroup", "LookupComboBox", "LookupBox", "TextArea",
+        "CheckBox", "ToggleSwitch", "TreePicker"
+    ];
+
+    public List<byte> BulkColSpanOptions { get; } = [0, 1, 2, 3, 4]; // 0 = giu nguyen
+
     // ── Undo/Redo state ───────────────────────────────────────
     private bool _canUndo;
     public bool CanUndoAction { get => _canUndo; private set => SetProperty(ref _canUndo, value); }
@@ -624,6 +665,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand MoveDownCommand { get; }
     public DelegateCommand OpenFieldConfigCommand { get; }
 
+    // D2 — Bulk multi-select commands
+    public DelegateCommand<FormTreeNode?> ToggleBulkSelectionCommand { get; }
+    public DelegateCommand ApplyBulkCommand { get; }
+    public DelegateCommand ClearBulkSelectionCommand { get; }
+
     // Form actions
     public DelegateCommand SaveFormCommand { get; }
     public DelegateCommand PublishCommand { get; }
@@ -683,6 +729,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         MoveUpCommand = new DelegateCommand(ExecuteMoveUp, () => IsNodeSelected);
         MoveDownCommand = new DelegateCommand(ExecuteMoveDown, () => IsNodeSelected);
         OpenFieldConfigCommand = new DelegateCommand(ExecuteOpenFieldConfig, () => IsFieldSelected);
+
+        // D2 — Bulk
+        ToggleBulkSelectionCommand = new DelegateCommand<FormTreeNode?>(ExecuteToggleBulkSelection);
+        ApplyBulkCommand           = new DelegateCommand(async () => await ExecuteApplyBulkAsync(),
+                                         () => BulkSelectedFields.Count >= 2);
+        ClearBulkSelectionCommand  = new DelegateCommand(ExecuteClearBulkSelection,
+                                         () => BulkSelectedFields.Count > 0);
+        BulkSelectedFields.CollectionChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(IsBulkMode));
+            RaisePropertyChanged(nameof(BulkCount));
+            RaisePropertyChanged(nameof(IsSingleFieldEditMode));
+            ApplyBulkCommand.RaiseCanExecuteChanged();
+            ClearBulkSelectionCommand.RaiseCanExecuteChanged();
+        };
 
         // Form actions
         SaveFormCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty && !IsLoading)
@@ -2008,6 +2069,89 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _fieldRecordCache.Clear();
         _linting?.Dispose();
         _linting = null;
+    }
+
+    // D2 — Toggle 1 field vao/khoi bulk selection. Goi tu CheckBox click trong tree.
+    private void ExecuteToggleBulkSelection(FormTreeNode? node)
+    {
+        if (node is null || node.NodeType != FormNodeType.Field) return;
+
+        if (node.IsMultiChecked)
+        {
+            if (!BulkSelectedFields.Contains(node))
+                BulkSelectedFields.Add(node);
+        }
+        else
+        {
+            BulkSelectedFields.Remove(node);
+        }
+    }
+
+    // D2 — Clear bulk selection: untick het + xoa khoi collection.
+    private void ExecuteClearBulkSelection()
+    {
+        foreach (var f in BulkSelectedFields.ToList())
+            f.IsMultiChecked = false;
+        BulkSelectedFields.Clear();
+
+        // Reset bulk props ve trang thai "giu nguyen".
+        BulkIsRequired = null;
+        BulkIsVisible  = null;
+        BulkIsReadOnly = null;
+        BulkIsEnabled  = null;
+        BulkEditorType = "";
+        BulkColSpan    = 0;
+    }
+
+    // D2 — Apply bulk props vao tat ca field trong BulkSelectedFields. Hydrate cache truoc khi save.
+    private async Task ExecuteApplyBulkAsync()
+    {
+        if (BulkSelectedFields.Count < 2) return;
+        if (_fieldDataService is null || _appConfig is not { IsConfigured: true }) return;
+
+        var fields = BulkSelectedFields.ToList();
+
+        // Hydrate cache cho moi field truoc khi save (de SaveQuickFieldAsync co cached record).
+        foreach (var f in fields)
+        {
+            if (!_fieldRecordCache.ContainsKey(f.Id))
+                await HydrateSelectedFieldAsync(f);
+        }
+
+        _isHydratingField = true;
+        try
+        {
+            foreach (var f in fields)
+            {
+                if (_bulkIsRequired.HasValue) f.IsRequired = _bulkIsRequired.Value;
+                if (_bulkIsVisible.HasValue)  f.IsVisible  = _bulkIsVisible.Value;
+                if (_bulkIsReadOnly.HasValue) f.IsReadOnly = _bulkIsReadOnly.Value;
+                if (_bulkIsEnabled.HasValue)  f.IsEnabled  = _bulkIsEnabled.Value;
+                if (!string.IsNullOrWhiteSpace(_bulkEditorType)) f.EditorType = _bulkEditorType;
+                if (_bulkColSpan is >= 1 and <= 4) f.ColSpan = _bulkColSpan;
+            }
+        }
+        finally
+        {
+            _isHydratingField = false;
+        }
+
+        // Save tung field theo cached record (synchronous loop — moi field ~50-100ms).
+        FieldQuickSaveStatus = AutoSaveStatus.Saving;
+        try
+        {
+            foreach (var f in fields)
+                await SaveQuickFieldAsync(f, CancellationToken.None);
+
+            FieldQuickSaveStatus = AutoSaveStatus.Saved;
+        }
+        catch
+        {
+            FieldQuickSaveStatus = AutoSaveStatus.Error;
+        }
+
+        // Sau khi apply → clear de tranh apply nham lan sau.
+        ExecuteClearBulkSelection();
     }
 
     // D1 — Save quick-edit props cua field do user thay doi qua QPB.

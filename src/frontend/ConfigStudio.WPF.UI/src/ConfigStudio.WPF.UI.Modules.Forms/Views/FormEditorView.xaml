@@ -436,6 +436,7 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Icon -->
@@ -469,6 +470,24 @@
                                         <TextBlock Text="*" Foreground="{StaticResource DangerBrush}"
                                                    FontSize="11" FontWeight="Bold" />
                                     </Border>
+
+                                    <!-- D2 — Bulk multi-select checkbox (chi hien tren field) -->
+                                    <CheckBox Grid.Column="3" Margin="6,0,2,0"
+                                              IsChecked="{Binding IsMultiChecked, Mode=TwoWay}"
+                                              Click="OnFieldBulkChecked"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Chọn để bulk edit">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding NodeType}" Value="Field">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                    </CheckBox>
                                 </Grid>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>
@@ -1194,15 +1213,16 @@
         </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════════
-             ROW 3: Quick Property Bar (D1) — hien khi 1 field duoc chon
+             ROW 3: Quick Property Bar (D1 single + D2 bulk)
              ═══════════════════════════════════════════════════════════════ -->
+        <!-- Single-field mode (D1) -->
         <Border Grid.Row="3"
                 Margin="16,8,16,0" Padding="14,10"
                 Background="{StaticResource SurfaceBrush}"
                 BorderBrush="{StaticResource AccentBrush}" BorderThickness="1"
                 CornerRadius="8"
                 Effect="{StaticResource CardShadow}"
-                Visibility="{Binding IsFieldSelected, Converter={StaticResource BoolToVis}}">
+                Visibility="{Binding IsSingleFieldEditMode, Converter={StaticResource BoolToVis}}">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -1296,6 +1316,116 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚙" FontSize="13" VerticalAlignment="Center" />
                         <TextBlock Text="Chi tiết" Margin="5,0,0,0" FontSize="11" />
+                    </StackPanel>
+                </dx:SimpleButton>
+            </Grid>
+        </Border>
+
+        <!-- Bulk-edit mode (D2) — visible khi ≥ 2 field duoc tick -->
+        <Border Grid.Row="3"
+                Margin="16,8,16,0" Padding="14,10"
+                Background="#FFFBEB"
+                BorderBrush="#F59E0B" BorderThickness="1"
+                CornerRadius="8"
+                Effect="{StaticResource CardShadow}"
+                Visibility="{Binding IsBulkMode, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Bulk count badge -->
+                <Border Grid.Column="0"
+                        Background="#F59E0B"
+                        CornerRadius="4" Padding="8,3" Margin="0,0,12,0"
+                        VerticalAlignment="Center">
+                    <TextBlock VerticalAlignment="Center">
+                        <Run Text="⚡ Bulk edit:" Foreground="White" FontSize="11" FontWeight="SemiBold" />
+                        <Run Text="{Binding BulkCount, Mode=OneWay}" Foreground="White" FontSize="12" FontWeight="Bold" />
+                        <Run Text="field" Foreground="White" FontSize="11" />
+                    </TextBlock>
+                </Border>
+
+                <!-- Editor type — "" = giu nguyen -->
+                <TextBlock Grid.Column="1" Text="Editor:" FontSize="11"
+                           Margin="4,0,4,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource MutedBrush}" />
+                <dxe:ComboBoxEdit Grid.Column="2"
+                                  Width="130" Height="28"
+                                  ItemsSource="{Binding BulkEditorTypeOptions}"
+                                  EditValue="{Binding BulkEditorType, UpdateSourceTrigger=PropertyChanged}"
+                                  IsTextEditable="False"
+                                  NullText="(giữ nguyên)"
+                                  Margin="0,0,12,0" VerticalAlignment="Center"
+                                  ToolTip="Trống = giữ nguyên cho mỗi field" />
+
+                <!-- ColSpan — 0 = giu nguyen -->
+                <TextBlock Grid.Column="3" Text="ColSpan:" FontSize="11"
+                           Margin="0,0,4,0" VerticalAlignment="Center"
+                           Foreground="{StaticResource MutedBrush}" />
+                <dxe:ComboBoxEdit Grid.Column="4"
+                                  Width="78" Height="28"
+                                  ItemsSource="{Binding BulkColSpanOptions}"
+                                  EditValue="{Binding BulkColSpan, UpdateSourceTrigger=PropertyChanged}"
+                                  IsTextEditable="False"
+                                  Margin="0,0,14,0" VerticalAlignment="Center"
+                                  ToolTip="0 = giữ nguyên, 1..4 = đổi sang ColSpan đó" />
+
+                <!-- 3-state checkboxes: null = giu nguyen, true/false = doi cho tat ca -->
+                <StackPanel Grid.Column="5" Orientation="Horizontal" VerticalAlignment="Center">
+                    <dxe:CheckEdit Content="Required"
+                                   IsThreeState="True"
+                                   IsChecked="{Binding BulkIsRequired, UpdateSourceTrigger=PropertyChanged}"
+                                   Margin="0,0,12,0" FontSize="12"
+                                   ToolTip="Trạng thái xám = giữ nguyên" />
+                    <dxe:CheckEdit Content="Visible"
+                                   IsThreeState="True"
+                                   IsChecked="{Binding BulkIsVisible, UpdateSourceTrigger=PropertyChanged}"
+                                   Margin="0,0,12,0" FontSize="12" />
+                    <dxe:CheckEdit Content="ReadOnly"
+                                   IsThreeState="True"
+                                   IsChecked="{Binding BulkIsReadOnly, UpdateSourceTrigger=PropertyChanged}"
+                                   Margin="0,0,12,0" FontSize="12" />
+                    <dxe:CheckEdit Content="Enabled"
+                                   IsThreeState="True"
+                                   IsChecked="{Binding BulkIsEnabled, UpdateSourceTrigger=PropertyChanged}"
+                                   FontSize="12" />
+                </StackPanel>
+
+                <!-- Spacer column 6 -->
+                <Border Grid.Column="6" Width="14" />
+
+                <!-- Apply button -->
+                <dx:SimpleButton Grid.Column="7"
+                                 Command="{Binding ApplyBulkCommand}"
+                                 Height="28" Padding="14,0" Margin="0,0,6,0"
+                                 ToolTip="Áp dụng các thay đổi vào tất cả field đã chọn">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✓" FontSize="13" VerticalAlignment="Center"
+                                   FontWeight="Bold" Foreground="#16A34A" />
+                        <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold">
+                            <Run Text="Apply (" /><Run Text="{Binding BulkCount, Mode=OneWay}" /><Run Text=")" />
+                        </TextBlock>
+                    </StackPanel>
+                </dx:SimpleButton>
+
+                <!-- Clear button -->
+                <dx:SimpleButton Grid.Column="8"
+                                 Command="{Binding ClearBulkSelectionCommand}"
+                                 Height="28" Padding="10,0"
+                                 ToolTip="Bỏ chọn tất cả">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="✕" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}" />
+                        <TextBlock Text="Clear" Margin="5,0,0,0" FontSize="11" />
                     </StackPanel>
                 </dx:SimpleButton>
             </Grid>

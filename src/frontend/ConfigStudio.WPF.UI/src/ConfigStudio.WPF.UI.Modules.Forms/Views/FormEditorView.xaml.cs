@@ -27,4 +27,15 @@ public partial class FormEditorView : UserControl
             vm.SelectedNode = e.NewValue as FormTreeNode;
         }
     }
+
+    // D2 — CheckBox click tren field tree item: forward sang ToggleBulkSelectionCommand.
+    private void OnFieldBulkChecked(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (sender is CheckBox { DataContext: FormTreeNode node }
+            && DataContext is FormEditorViewModel vm
+            && vm.ToggleBulkSelectionCommand.CanExecute(node))
+        {
+            vm.ToggleBulkSelectionCommand.Execute(node);
+        }
+    }
 }
