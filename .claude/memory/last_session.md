@@ -1,6 +1,54 @@
 # Last Session Summary
 
-> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D + Wave 017 cleanup Is_Enabled)
+> Cập nhật: 2026-05-18 (session 28 — Wave A + Wave D + Wave 017 + Effective ReadOnly Blazor)
+
+## Trạng thái cuối session
+
+- **Branch:** `master`
+- **Commit cuối:** `45fe1cc` Effective ReadOnly Blazor
+- **Build:** `dotnet build ICare247.slnx` → 0 errors / 0 warnings
+- **Cần làm khi đổi máy:** chạy migration `db/017_lock_on_edit_replace_is_enabled.sql` trên DB
+  trước khi run app, vì ADR-017 đã đổi schema (drop Is_Enabled + add Lock_On_Edit)
+
+## Task tiếp theo gợi ý
+
+1. **Test E2E Wave 017** trên DB thật:
+   - Run migration 017 → verify schema thay đổi đúng
+   - Trong ConfigStudio, set `Lock_On_Edit=true` cho 1 field (vd `ma_khach_hang`)
+   - Trong Blazor: `/form/UI_KHACH_HANG` (create) → editable; `/form/UI_KHACH_HANG?recordId=5` (edit) → readonly
+2. **D4+ Power editing** — Field Templates, Smart Sync Schema, Find & Replace, Live Preview docked
+3. **BE-001** Implement `IMetadataEngine` (orchestration FormRepo + FieldRepo + Cache) — đã pending từ session trước
+
+---
+
+## Đã làm — Effective ReadOnly Logic Blazor (commit `45fe1cc`, 2026-05-17)
+
+ADR-017 phase 2: kích hoạt `Lock_On_Edit` thực sự ở runtime Blazor.
+
+**Cơ chế:**
+- `FormRunner.razor` đọc query string `?recordId=N` (`SupplyParameterFromQuery`)
+  - `RecordId > 0` → `IsEditMode = true`
+  - Không truyền hoặc `= 0` → Create mode
+- `FieldState.IsEditMode` được set khi build state từ metadata
+- `FieldState.EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND IsEditMode)` (computed)
+- 8 renderer (TextBox / NumericBox / Memo / CheckBox / ComboBox / DatePicker / LookupBox /
+  LookupComboBox) chuyển từ `State.IsReadOnly` sang `State.EffectiveReadOnly` cho attribute
+  ReadOnly / disabled / class readonly / TogglePopup guard
+
+**Truth table:**
+| IsReadOnly | LockOnEdit | IsEditMode | Effective |
+|---|---|---|---|
+| ✅ | * | * | ✅ |
+| ❌ | ✅ | ✅ | ✅ |
+| ❌ | ✅ | ❌ | ❌ |
+| ❌ | ❌ | * | ❌ |
+
+**Quyết định:**
+- Runtime SET_READONLY action vẫn đụng `IsReadOnly` trực tiếp (không đụng LockOnEdit).
+- `LockOnEdit` = structural lock (designer chọn), SET_READONLY = dynamic adjust (event engine)
+  → kết hợp qua OR. Muốn unlock LockOnEdit runtime cần action mới (chưa scope).
+
+---
 
 ## Đã làm — Wave 017: Cleanup `Is_Enabled` → thêm `Lock_On_Edit`
 

@@ -1,6 +1,16 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-03-23
+> Cập nhật lần cuối: 2026-05-18
+
+## Đợt mới nhất — Wave A + D + 017 (session 28, 2026-05-17/18)
+
+| Wave | Status | Mô tả |
+|---|---|---|
+| Wave A — Navigation UX | ✅ Done | Double-click, Context menu, Shortcuts, KeepAlive, Breadcrumb |
+| Wave D — Power editing | ✅ Done | Quick Property Bar, Bulk Editor, Grid-edit Mode (FormEditor) |
+| Wave 017 — ADR-017 | ✅ Done | Drop Is_Enabled, add Lock_On_Edit + EffectiveReadOnly Blazor logic |
+
+→ **Migration 017 cần chạy trên DB trước khi run app sau khi pull.**
 
 ## Backend (.NET 9) — Hoàn thành Phase 1-5
 

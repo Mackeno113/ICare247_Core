@@ -6,6 +6,38 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (Wave UX ConfigStudio + Wave 017 — 2026-05-17)
+
+### Wave A — Navigation Quick Wins ✅ (2026-05-17)
+Commits: `0322cb2` (A.1) + `7e8b173` (A.2)
+- [x] A1 — Double-click row mở Editor (FormManager, SysLookup, ValidationRule, EventEditor)
+- [x] A2 — Right-click context menu trên grid (4 manager view, DevExpress pattern PlacementTarget chain)
+- [x] A3 — Keyboard shortcuts global (Alt+1..9, Ctrl+B/N/S/F/Z/Y/F5/Esc) + per-view
+- [x] A4 — `IRegionMemberLifetime.KeepAlive` cho 5 Manager VM → giữ filter khi navigate qua lại
+- [x] A5 — Breadcrumb bar + Back/Forward + Alt+←/→ (INavigationHistoryService + chain hierarchical/root)
+
+### Wave D — Power editing FormEditor ✅ (2026-05-17)
+Commits: `8261a41` (D.1) + `d1ab936` (D.2) + `b79f074` (D.3)
+- [x] D.1 — Quick Property Bar (QPB Row 3 dưới FormEditor, edit 6 prop nóng không cần FieldConfig đầy đủ)
+- [x] D.2 — Multi-select Bulk Editor (tick N field → panel cam → IsThreeState toggle → Apply hàng loạt)
+- [x] D.3 — Grid-edit Mode tab ("Bảng Fields", DevExpress Grid edit-mode group theo Section, lazy hydrate)
+
+### Wave 017 — Cleanup Is_Enabled + thêm Lock_On_Edit ✅ (2026-05-17, ADR-017)
+Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
+- [x] Migration `017_lock_on_edit_replace_is_enabled.sql`
+- [x] Backend: Domain `FieldMetadata`, `FieldRepository`, `FormRepository`, `ValidationEngine`
+- [x] Blazor: `RuntimeModels.FieldState`, `FormMetadataDto`, `FormRunner.razor`, 8 renderer
+- [x] WPF: `FieldConfigRecord`, `FormTreeNode`, `FieldDataService`, `FieldConfigViewModel`, `FormEditorViewModel`, QPB/Bulk/Grid XAML
+- [x] Docs: `02_DATABASE_SCHEMA.md`, `architecture_decisions.md` (ADR-010 revised + ADR-017 added)
+- [x] Effective ReadOnly logic: `FieldState.EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND IsEditMode)`, FormRunner đọc `?recordId` query param → set IsEditMode, 8 renderer migrate sang `EffectiveReadOnly`
+
+**Decisions Log:**
+- ADR-017: bỏ `Is_Enabled` vì overlap với ReadOnly+Visible và % case dùng thực nhỏ. Thay bằng `Lock_On_Edit` phục vụ pattern key/code/audit field. `SET_ENABLED` action alias sang `SET_READONLY` (backward compat seed).
+- D.1/D.2 hydrate cache lazy `Dictionary<int, FieldConfigRecord>` per FormEditor instance, fetch lần đầu khi user chọn/edit, dùng lại cho mọi save sau đó.
+- D.3 same-instance binding: Grid + Tree + QPB cùng bind `FormTreeNode` reference → sửa 1 chỗ update 3 chỗ, không cần manual sync.
+
+---
+
 ## 🟠 Kế hoạch (Next Up)
 
 ### Backend — Claude Code
