@@ -1,119 +1,108 @@
 # Last Session Summary
 
-> Cập nhật: 2026-04-20 (session 27 — chuyển máy)
+> Cập nhật: 2026-05-17 (session 28 — Wave A UX nâng cấp ConfigStudio WPF)
 
-## Đã làm — Wave 016: Dynamic Tree Control + Multi-Trigger Cascading
+## Đã làm — Wave A: Navigation Quick Wins cho ConfigStudio WPF
 
-### Mục tiêu
-Xây dựng 2 tính năng mới cho form engine:
-1. **TreePicker** — dropdown dạng cây phân cấp (flat data + build client-side tree)
-2. **Multi-Trigger Cascading** — 1 field có thể cascade-reload khi nhiều field thay đổi (thay vì chỉ 1)
-3. **WPF ConfigStudio** — UI cấu hình cho cả 2 tính năng
+### Mục tiêu (theo phân tích UX)
+User phản hồi "đang phải click quá nhiều" trên ConfigStudio WPF.
+Phân tích 13 view + ViewModels → ra 11 friction điểm. Thiết kế plan 2 wave:
+- **Wave A** — Navigation quick wins (~2 ngày)
+- **Wave D** — Power editing (Quick Property Bar + Bulk Editor + Grid-edit, ~6 ngày)
 
----
-
-### Migration 016
-
-**File:** `docs/migrations/016_dynamic_tree_multi_trigger.sql` + `db/016_dynamic_tree_multi_trigger.sql`
-
-Thêm 5 cột vào `Ui_Field_Lookup`:
-```sql
-Reload_Trigger_Fields  NVARCHAR(500)  NULL   -- multi-trigger: "ProvinceId,DistrictId"
-Tree_Parent_Column     NVARCHAR(100)  NULL   -- tên cột ParentId trong source table
-Tree_Root_Filter       NVARCHAR(500)  NULL   -- WHERE filter node gốc
-Tree_Selectable_Level  NVARCHAR(20)   DEFAULT 'all'        -- all|leaf|branch
-Tree_Load_Mode         NVARCHAR(20)   DEFAULT 'all_at_once' -- all_at_once|lazy
-```
+User chốt: làm Wave A trước, plan chi tiết trước rồi code, commit từng wave nhỏ.
 
 ---
 
-### Backend / Blazor (commit 85ad585 trên `claude/dynamic-tree-control-bLerc`)
+### Wave A.1 (commit `0322cb2`)
 
-**Domain:**
-- `FieldLookupConfig.cs`: thêm `ReloadTriggerFieldsRaw` (Dapper-mapped), computed `ReloadTriggerFields` (backward-compat fallback về `ReloadTriggerField` đơn lẻ), `TreeParentColumn`, `TreeRootFilter`, `TreeSelectableLevel`, `TreeLoadMode`
+**A1 — Double-click row mở editor:**
+- `FormManagerView.xaml + .cs` — `RowDoubleClick="OnRowDoubleClick"` → `OpenFormCommand`
+- `SysLookupManagerView.xaml + .cs` — items grid → `EditItemCommand`
+- `ValidationRuleEditorView.xaml + .cs` — rules grid → `EditRuleCommand`
+- `EventEditorView.xaml + .cs` — events grid → set `SelectedEvent` + `EditConditionCommand`
+- Pattern: code-behind forward-only call (5-7 dòng), không vi phạm MVVM thuần
 
-**DTOs:**
-- `FormMetadataDto.cs / FieldLookupConfigDto`: thêm `List<string> ReloadTriggerFields`, 4 tree props
+**A2 — Right-click context menu trên grid:**
+- 4 manager views — `dxg:TableView.RowStyle` setter `ContextMenu` với MenuItem binding qua `PlacementTarget.View.DataControl.DataContext.{Command}` (đúng pattern cho DevExpress GridControl + ContextMenu cross visual tree)
+- FormManager menu: Mở Editor / Xem chi tiết / Preview / Sửa info / Nhân bản / Vô hiệu / Khôi phục
+- Rule + Event + Lookup tương ứng
 
-**Repositories:**
-- `FieldRepository.cs` — 2 SQL queries (bulk + single): thêm 5 alias cột mới
-- `FormRepository.cs` — `sqlLookupConfigs`: thêm 5 alias cột mới
-- `DynamicLookupRepository.cs` — `cfgSql` thêm `Tree_Parent_Column`, `LookupCfgRow` thêm prop, `BuildSelectColumns` auto-include TreeParentColumn khi configured
+**A3 — Keyboard shortcuts:**
+- `MainWindow.xaml` — `Window.InputBindings`: Ctrl+B (sidebar), F1 (Settings), Alt+1..9 (navigate root sections), Alt+←/→ (back/forward)
+- `ShellViewModel` — thêm `NavigateByViewNameCommand<string?>` resolve viewName → NavigationItem qua `Flatten()`
+- Per-view: FormManager Ctrl+N/F5/Ctrl+F (Ctrl+F focus search box qua code-behind); FormEditor Ctrl+S/Z/Y; FieldConfig Ctrl+S/Esc; SysTable Ctrl+N/S/F5; SysLookup Ctrl+N/S/F5; Grammar F5; Rule Ctrl+N/S/Alt+↑↓; Event Ctrl+N/S
 
-**Blazor Renderers:**
-- `ComboBoxRenderer.razor` — đổi `_lastTriggerValue` → `_lastTriggerSnapshot (List<object?>)`, `SnapshotEquals` helper, multi-trigger detection
-- `LookupBoxRenderer.razor` — same multi-trigger pattern
-- `TreePickerRenderer.razor` (NEW) — dropdown cây phân cấp hoàn chỉnh:
-  - Load flat data qua `ILookupQueryService.QueryAsync`
-  - `BuildTree()` — flat → node map → children → roots
-  - Recursive `RenderNode(TreeNode, depth)` → `RenderFragment`
-  - `TreeSelectableLevel`: all/leaf/branch
-  - Multi-trigger cascade support
-  - Inner class `TreeNode { Value, Label, ParentId, Children, IsExpanded }`
-- `FieldRenderer.razor` — thêm `case "treepicker": <TreePickerRenderer .../>`
+**A4 — `IRegionMemberLifetime.KeepAlive = true`:**
+- 5 Manager VMs: FormManager, SysTable, SysLookup, GrammarLibrary, I18n
+- Giữ SearchText/PlatformFilter/TableFilter/SelectedItem khi navigate đi và quay lại
+- Editor VMs (FormEditor, FieldConfig, ValidationRule, EventEditor) **KHÔNG** KeepAlive vì cần reload theo nav params
 
 ---
 
-### WPF ConfigStudio (commit 5c2e9e0 trên `claude/dynamic-tree-control-bLerc`)
+### Wave A.2 (commit `7e8b173`)
 
-**Core Data:**
-- `FieldLookupConfigRecord.cs` — thêm: `ReloadTriggerFields`, `TreeParentColumn`, `TreeRootFilter`, `TreeSelectableLevel = "all"`, `TreeLoadMode = "all_at_once"`
+**A5 — Breadcrumb + Back/Forward:**
 
-**Infrastructure:**
-- `FieldDataService.cs` — `GetFieldLookupConfigAsync` SELECT + `SaveFieldAsync` UPSERT: thêm 5 cột mới
+3 file mới trong `Core/Services/`:
+- `NavigationCrumb.cs` — POCO {ViewName, Title, Icon, INavigationParameters? Parameters}
+- `INavigationHistoryService.cs` — interface với `Crumbs`, `CanGoBack/Forward`, `RegisterNavigation(crumb, isHierarchical)`, `GoBack/Forward/JumpToCrumb`, event `Changed`
+- `NavigationHistoryService.cs` — 2 stack `_back` + `_forward` + `_current`. `_isNavigatingProgrammatically` flag tránh re-push khi GoBack/Forward
 
-**ViewModel:**
-- `FieldConfigViewModel.cs`:
-  - `AvailableEditorTypes` thêm "TreePicker"
-  - `IsTreePickerEditor => SelectedEditorType == "TreePicker"`
-  - `IsDynamicDataEditor` include TreePicker
-  - Backing fields + props: `ReloadTriggerFields`, `TreeParentColumn`, `TreeRootFilter`, `TreeSelectableLevel`, `TreeLoadMode`
-  - `TreeSelectableLevelOptions = ["all", "leaf", "branch"]`
-  - `TreeLoadModeOptions = ["all_at_once", "lazy"]`
-  - Restore block cho TreePicker (đọc từ `GetFieldLookupConfigAsync`)
-  - `ExecuteSaveAsync`: `lookupSource = "dynamic"` cho TreePicker, tree props vào `FieldLookupConfigRecord`
+Logic:
+- `isHierarchical=false` (root nav) → clear cả _back và _forward, set _current
+- `isHierarchical=true` → push _current vào _back, set _current = new crumb
+- Skip nếu trùng viewName (reload không push)
 
-**Views:**
-- `LookupBoxPropsPanel.xaml` — thay `ReloadTriggerField` TextEdit → `ReloadTriggerFields` (multi-trigger, NullText "VD: ProvinceId hoặc ProvinceId,DistrictId")
-- `TreePickerPropsPanel.xaml` (NEW) — 4 section:
-  1. Nguồn dữ liệu (QueryMode radio, Value/Display cols, Table/TVF/SQL panels, OrderBy)
-  2. Cấu hình cây (TreeParentColumn, TreeRootFilter, TreeSelectableLevel ComboBox, TreeLoadMode ComboBox)
-  3. Cascading Reload (ReloadTriggerFields + ví dụ xanh lá)
-  4. Kiểm tra & Diễn giải (ExplainConfigCommand + ConfigExplanation)
-- `TreePickerPropsPanel.xaml.cs` (NEW) — code-behind tối giản
-- `FieldConfigView.xaml` — thêm `<panels:TreePickerPropsPanel Visibility="{Binding IsTreePickerEditor, ...}" />`
+Đăng ký Singleton trong `App.xaml.cs`.
+
+ShellViewModel:
+- Inject `INavigationHistoryService? history` (optional cho design-time)
+- `Breadcrumbs`, `CanGoBack/Forward`, `HasBreadcrumbs` properties
+- `GoBackCommand`, `GoForwardCommand`, `JumpToCrumbCommand<NavigationCrumb?>`
+- Subscribe `_history.Changed` → raise OnPropertyChanged
+
+MainWindow.xaml:
+- Thêm Border 36px ngay trên Status Bar (DockPanel.Dock="Top" sau title bar)
+- ItemsControl bind `Breadcrumbs` với `StackPanel Horizontal` ItemsPanel
+- Mỗi crumb là Button (JumpToCrumb) + `›` separator
+- Nút `←` `→` bên trái, tooltip "Alt+←", "Alt+→"
+- Visibility theo `HasBreadcrumbs`
+
+Wiring vào VM:
+- `DashboardViewModel` — đổi từ plain class sang implement `INavigationAware`, register "Dashboard" root
+- `FormManagerViewModel`, `SysTableManagerViewModel`, `SysLookupManagerViewModel`, `GrammarLibraryViewModel`, `I18nManagerViewModel` — register root (`isHierarchical: false`)
+- `FormEditorViewModel`, `FieldConfigViewModel` — register hierarchical, title "Form: {FormCode}" / "Field: {FieldCode}"
+- `ValidationRuleEditorViewModel`, `EventEditorViewModel` — register **conditional hierarchical**: chỉ hierarchical khi có FieldId/FormId param (tức là mở từ FieldConfig), root khi mở từ sidebar
+
+Issue fix: `NavigationCrumb.Parameters` ban đầu là `NavigationParameters?` nhưng `NavigationContext.Parameters` trả `INavigationParameters` → đổi field type sang `INavigationParameters?`. `NavigationHistoryService.NavigateTo` copy sang `NavigationParameters` concrete trước khi gọi `RequestNavigate`.
 
 ---
 
 ## Trạng thái hiện tại
 
-- **Branch:** `claude/dynamic-tree-control-bLerc`
-- **Commits:** `85ad585` (backend/Blazor) + `5c2e9e0` (WPF) ✅
-- **Migration 016:** File tạo xong, **chưa chạy trên DB thật**
-- **Build backend:** Chưa verify (dotnet không available trong env, review tĩnh OK)
-- **Build WPF:** Chưa verify (review tĩnh OK)
+- **Branch:** `master`
+- **Commits sạch:** `0322cb2` Wave A.1 + `7e8b173` Wave A.2 (push pending)
+- **Build:** `dotnet build` 0 errors / 0 warnings cho ConfigStudio.WPF.UI
+- **Chưa test trên app thật** — chỉ verify build
 
 ## Quyết định quan trọng
 
-- **Backward compat single trigger:** `FieldLookupConfig.ReloadTriggerFields` (computed) fallback về `[ReloadTriggerField]` nếu `ReloadTriggerFieldsRaw` null → không breaking change
-- **Dapper mapping List<string>:** Tránh bằng cách dùng `ReloadTriggerFieldsRaw (string)` làm Dapper-mapped, `ReloadTriggerFields (List<string>)` là computed
-- **Không cần API endpoint mới cho TreePicker:** Reuse `POST /api/v1/lookups/query-dynamic` — `DynamicLookupRepository.BuildSelectColumns` tự include TreeParentColumn
-- **TreePicker render:** Custom CSS tree (không dùng DxTreeView vì không có trong codebase), consistent với LookupBoxRenderer pattern
+- **Code-behind pragmatic:** Forward-only event handler cho UI-only concerns (focus, double-click, row hit-test) — chấp nhận theo `.claude-rules/wpf-configstudio.md`, vì là 5-7 dòng không có business logic
+- **DevExpress GridControl + ContextMenu pattern:** Dùng `RelativeSource AncestorType=ContextMenu` + `PlacementTarget.View.DataControl.DataContext.{Command}` chain — duy nhất pattern đúng cho ContextMenu cross visual tree với DevExpress
+- **Breadcrumb logic phân hierarchical vs root:** mỗi VM tự quyết định trong OnNavigatedTo (`isHierarchical` flag) thay vì shell tự suy đoán — đơn giản, không cần parent map hardcode
+- **`NavigationCrumb.Parameters` dùng `INavigationParameters` interface** thay vì concrete `NavigationParameters` để khớp với `NavigationContext.Parameters` API
+- **Skip "tab/MDI multi-window"** (đề xuất P1 ban đầu) — quá lớn, để dành cho wave sau
 
-## Session 27 (2026-04-20) — Chuyển máy
+## Plan tiếp theo (đã chốt với user)
 
-Không code. Chỉ sync memory:
-- Commit memory files lên **master** (quy tắc mới: memory luôn ở master)
-- Ghi nhớ rule: memory files → commit master, không phải feature branch
-- Branch hiện tại: `claude/dynamic-tree-control-bLerc` (up to date)
-
----
+Wave D — Power editing (~6 ngày, đúng mục tiêu "cấu hình UI nhanh + bulk edit"):
+1. **D1 — Quick Property Bar** (1 ngày): bar 36px đáy FormEditor luôn hiển thị 6 thuộc tính nóng (Label / Width / Required / Visible / ReadOnly / EditorType) của field đang chọn → sửa inline không cần mở FieldConfig
+2. **D2 — Multi-select Bulk Editor** (2 ngày): Ctrl/Shift+Click chọn N field trong TreeView/TreeList, panel sang "Bulk mode" với `MixedOr<T>` placeholder cho ô có giá trị khác nhau, Apply lan ra tất cả
+3. **D3 — Grid-edit Mode FieldConfig** (3 ngày): tab mới ở FormEditor — `dxg:GridControl` editing-mode với toàn bộ field như Excel: Tab/Enter điều hướng, F2 edit, Ctrl+D fill-down, Ctrl+V paste từ clipboard, auto-save per cell
 
 ## Task tiếp theo gợi ý
 
-1. **Chạy Migration 016** trên DB thật (`db/016_dynamic_tree_multi_trigger.sql`)
-2. **Test end-to-end TreePicker** trong Blazor với dữ liệu thật (DM_TinhThanh / DM_QuanHuyen)
-3. **Test Multi-Trigger cascading** — 2 field trigger → field con reload đúng
-4. **NumericBoxRenderer + DatePickerRenderer** — 2 renderer còn pending trong Blazor
-5. **DB migrations 010–012** — vẫn pending từ nhiều session trước
-6. **Merge branch** `claude/dynamic-tree-control-bLerc` → main khi test xong
+1. **Push 2 commits Wave A lên remote** để sync máy khác (đang làm)
+2. **Code Wave D.1** — Quick Property Bar
+3. **Test thử Wave A trên app thật** trước khi tiến Wave D (optional, build đã sạch)
