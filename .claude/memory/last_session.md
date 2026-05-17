@@ -1,6 +1,60 @@
 # Last Session Summary
 
-> Cập nhật: 2026-05-17 (session 28 — Wave A UX nâng cấp ConfigStudio WPF)
+> Cập nhật: 2026-05-17 (session 28 — Wave A + Wave D.1/D.2 UX ConfigStudio WPF)
+
+## Đã làm — Wave D.1 + D.2: Power editing cho FormEditor
+
+### Wave D.1 (commit `8261a41`) — Quick Property Bar
+
+QPB Row 3 dưới FormEditor, visible khi 1 field được chọn trong TreeView. Cho phép edit
+6 thuộc tính nóng (EditorType / ColSpan / IsRequired / IsVisible / IsReadOnly / IsEnabled)
+mà không cần mở FieldConfig.
+
+- `FormTreeNode` mở rộng: IsVisible, IsReadOnly, IsEnabled, ColSpan, LabelKey
+- `FormEditorViewModel`:
+  - `_fieldRecordCache: Dictionary<int, FieldConfigRecord>` lưu full record sau lần fetch đầu
+  - `HydrateSelectedFieldAsync`: khi chọn field → fetch + populate node + set `_isHydratingField` flag
+  - `_fieldQuickSave: AutoSaveService` debounce 800ms (tách khỏi `_autoSave` form-level)
+  - `SaveQuickFieldAsync`: merge node values + cached record → `IFieldDataService.SaveFieldAsync`
+  - `FieldQuickSaveStatus` + `FieldQuickSaveStatusText` ("Đang lưu" / "Đã lưu")
+  - `AvailableEditorTypes` (11 options), `ColSpanOptions [1..4]`
+  - `OnSelectedNodePropertyChanged`: tách field-level changes → NotifyDirty `_fieldQuickSave`,
+    không dirty form metadata
+
+### Wave D.2 (commit `d1ab936`) — Multi-select Bulk Editor
+
+Tick N field trong TreeView → QPB chuyển panel cam (bulk mode) → chỉnh props chung → Apply.
+
+- `FormTreeNode.IsMultiChecked` độc lập với `IsSelected`
+- TreeView item: CheckBox cột 4 (Style trigger Visibility theo NodeType=Field)
+- `FormEditorViewModel`:
+  - `BulkSelectedFields: ObservableCollection<FormTreeNode>`
+  - `IsBulkMode` (≥ 2), `IsSingleFieldEditMode`, `BulkCount`
+  - 6 bulk props nullable ("(giữ nguyên)"): `BulkIsRequired/Visible/ReadOnly/Enabled (bool?)`
+    + `BulkEditorType (string)` "" = keep + `BulkColSpan (byte)` 0 = keep
+  - 3 command: `ToggleBulkSelectionCommand`, `ApplyBulkCommand`, `ClearBulkSelectionCommand`
+  - `ExecuteApplyBulkAsync`: hydrate cache → set props → save lần lượt → auto-clear
+- QPB Row 3 split: panel xanh (single, `IsSingleFieldEditMode`) + panel cam (bulk, `IsBulkMode`)
+  cùng `Grid.Row="3"`, mutually exclusive Visibility
+- IsThreeState `CheckEdit` cho 4 toggle (null state = giữ nguyên)
+- Code-behind: `OnFieldBulkChecked` forward CheckBox click → `ToggleBulkSelectionCommand`
+
+### Quyết định D1+D2
+
+- **Field-level save tách khỏi form-level**: 2 AutoSaveService instance khác nhau, debounce
+  khác (800ms vs 3s). QPB save không trigger form `IsDirty`.
+- **Cache `FieldConfigRecord` trong ViewModel**: tránh re-fetch mỗi lần edit, đủ giữ context cho
+  merge save. Clear khi navigate ra (DisposeP0Services).
+- **`_isHydratingField` flag**: ngăn `OnSelectedNodePropertyChanged` trigger save trong lúc
+  populate dữ liệu DB vào node.
+- **Bulk MVP — không Mixed display**: thay vì hiện giá trị chung khi tất cả field giống nhau,
+  default tất cả ô về "(giữ nguyên)". Đơn giản, không phải so sánh giá trị real-time. User
+  chủ động set ô nào → ô đó áp lan. Đủ dùng cho 90% use case.
+- **3-state CheckEdit cho bulk bool props**: null = không đổi, true/false = áp tất cả.
+- **Bulk apply sequential**: loop SaveQuickFieldAsync — không parallel để tránh DB lock + dễ
+  troubleshoot. Lương ~50-100ms/field acceptable cho 5-20 field/lần.
+
+---
 
 ## Đã làm — Wave A: Navigation Quick Wins cho ConfigStudio WPF
 
@@ -82,8 +136,8 @@ Issue fix: `NavigationCrumb.Parameters` ban đầu là `NavigationParameters?` n
 ## Trạng thái hiện tại
 
 - **Branch:** `master`
-- **Commits sạch:** `0322cb2` Wave A.1 + `7e8b173` Wave A.2 (push pending)
-- **Build:** `dotnet build` 0 errors / 0 warnings cho ConfigStudio.WPF.UI
+- **Commits:** `0322cb2` Wave A.1, `7e8b173` Wave A.2, `60ccee3` memory A, `8261a41` D.1, `d1ab936` D.2
+- **Build:** `dotnet build` 0 errors / 0 warnings cho ConfigStudio.WPF.UI sau mỗi wave
 - **Chưa test trên app thật** — chỉ verify build
 
 ## Quyết định quan trọng
@@ -96,13 +150,15 @@ Issue fix: `NavigationCrumb.Parameters` ban đầu là `NavigationParameters?` n
 
 ## Plan tiếp theo (đã chốt với user)
 
-Wave D — Power editing (~6 ngày, đúng mục tiêu "cấu hình UI nhanh + bulk edit"):
-1. **D1 — Quick Property Bar** (1 ngày): bar 36px đáy FormEditor luôn hiển thị 6 thuộc tính nóng (Label / Width / Required / Visible / ReadOnly / EditorType) của field đang chọn → sửa inline không cần mở FieldConfig
-2. **D2 — Multi-select Bulk Editor** (2 ngày): Ctrl/Shift+Click chọn N field trong TreeView/TreeList, panel sang "Bulk mode" với `MixedOr<T>` placeholder cho ô có giá trị khác nhau, Apply lan ra tất cả
-3. **D3 — Grid-edit Mode FieldConfig** (3 ngày): tab mới ở FormEditor — `dxg:GridControl` editing-mode với toàn bộ field như Excel: Tab/Enter điều hướng, F2 edit, Ctrl+D fill-down, Ctrl+V paste từ clipboard, auto-save per cell
+Wave D — Power editing:
+1. ✅ **D1 — Quick Property Bar** (commit `8261a41`)
+2. ✅ **D2 — Multi-select Bulk Editor** (commit `d1ab936`)
+3. **D3 — Grid-edit Mode FieldConfig** (~3 ngày): tab mới ở FormEditor — `dxg:GridControl`
+   editing-mode với toàn bộ field như Excel: Tab/Enter điều hướng, F2 edit, Ctrl+D fill-down,
+   Ctrl+V paste từ clipboard, auto-save per cell.
 
 ## Task tiếp theo gợi ý
 
-1. **Push 2 commits Wave A lên remote** để sync máy khác (đang làm)
-2. **Code Wave D.1** — Quick Property Bar
-3. **Test thử Wave A trên app thật** trước khi tiến Wave D (optional, build đã sạch)
+1. **Test D1+D2 trên app thật** trước khi tiến D3 (xác nhận hydrate + bulk apply hoạt động OK)
+2. **Code D3** — Grid-edit Mode (Excel-like spreadsheet view cho field list)
+3. **Polish nhỏ Wave A** — ẩn `›` cuối breadcrumb, hoặc thêm Recent items vào Dashboard
