@@ -38,6 +38,7 @@ public class ShellViewModel : ViewModelBase
         AppVersion = GetAppVersion();
 
         NavigateCommand = new DelegateCommand<NavigationItem?>(Navigate);
+        NavigateByViewNameCommand = new DelegateCommand<string?>(NavigateByViewName);
         ToggleSidebarCommand = new DelegateCommand(ToggleSidebar);
         WindowMinimizeCommand = new DelegateCommand<Window?>(MinimizeWindow);
         WindowMaximizeCommand = new DelegateCommand<Window?>(MaximizeWindow);
@@ -83,6 +84,9 @@ public class ShellViewModel : ViewModelBase
     public string AppVersion { get; }
 
     public DelegateCommand<NavigationItem?> NavigateCommand { get; }
+
+    // Navigate bang ViewName (vd: "Dashboard", "FormManager") — dung cho keyboard shortcut.
+    public DelegateCommand<string?> NavigateByViewNameCommand { get; }
 
     public DelegateCommand ToggleSidebarCommand { get; }
 
@@ -238,6 +242,15 @@ public class ShellViewModel : ViewModelBase
                 SidebarEntries.Add(new SidebarEntry { Title = item.Title, Icon = item.Icon, NavItem = item });
             }
         }
+    }
+
+    // Tim NavigationItem theo ViewName (depth-first qua ca Children) va navigate toi.
+    private void NavigateByViewName(string? viewName)
+    {
+        if (string.IsNullOrWhiteSpace(viewName)) return;
+        var target = Flatten(NavigationItems)
+            .FirstOrDefault(n => string.Equals(n.NavigateTo, viewName, StringComparison.Ordinal));
+        if (target is not null) Navigate(target);
     }
 
     private void Navigate(NavigationItem? item)

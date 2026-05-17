@@ -16,7 +16,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// Quản lý <c>Sys_Lookup</c>: trái = danh sách Lookup_Code, phải = items của code đang chọn.
 /// Hỗ trợ thêm/sửa/xóa item, thêm lookup code mới.
 /// </summary>
-public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware
+public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware, IRegionMemberLifetime
 {
     private readonly ISysLookupDataService? _lookupService;
     private readonly IAppConfigService? _appConfig;
@@ -393,6 +393,9 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware
     }
 
     // ── Navigation ────────────────────────────────────────────
+
+    // Giu state code da chon + items khi user roi va quay lai man hinh.
+    public bool KeepAlive => true;
 
     public void OnNavigatedTo(NavigationContext ctx)
     {

@@ -25,7 +25,7 @@ namespace ConfigStudio.WPF.UI.Modules.I18n.ViewModels;
 /// Khi DB đã cấu hình → load dữ liệu thật qua II18nDataService.
 /// Khi chưa cấu hình → hiển thị danh sách rỗng.
 /// </summary>
-public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
+public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IRegionMemberLifetime
 {
     private readonly II18nDataService? _i18nService;
     private readonly IAppConfigService? _appConfig;
@@ -145,6 +145,9 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware
     }
 
     // ── INavigationAware ─────────────────────────────────────
+
+    // Giu state search/filter khi user roi va quay lai man hinh.
+    public bool KeepAlive => true;
 
     public async void OnNavigatedTo(NavigationContext navigationContext)
     {

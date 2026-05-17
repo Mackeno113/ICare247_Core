@@ -11,6 +11,11 @@
              d:DesignWidth="1000"
              mc:Ignorable="d">
 
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding AddEventCommand}" />
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveAllCommand}" />
+    </UserControl.InputBindings>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
@@ -97,7 +102,26 @@
                                      AutoPopulateColumns="False">
                         <dxg:GridControl.View>
                             <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
-                                           AllowPerPixelScrolling="True" />
+                                           AllowPerPixelScrolling="True"
+                                           RowDoubleClick="OnEventRowDoubleClick">
+                                <dxg:TableView.RowStyle>
+                                    <Style TargetType="dxg:RowControl">
+                                        <Setter Property="ContextMenu">
+                                            <Setter.Value>
+                                                <ContextMenu>
+                                                    <MenuItem Header="Sửa Condition" InputGestureText="Enter"
+                                                              Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.EditConditionCommand}" />
+                                                    <MenuItem Header="Thêm Action"
+                                                              Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.AddActionCommand}" />
+                                                    <Separator />
+                                                    <MenuItem Header="Xóa Event" InputGestureText="Delete"
+                                                              Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.DeleteEventCommand}" />
+                                                </ContextMenu>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </dxg:TableView.RowStyle>
+                            </dxg:TableView>
                         </dxg:GridControl.View>
                         <dxg:GridControl.Columns>
                             <dxg:GridColumn Header="#" FieldName="OrderNo" Width="40" />

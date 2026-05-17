@@ -17,6 +17,11 @@
              mc:Ignorable="d"
              Background="#F1F5F9">
 
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveFieldCommand}" />
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}" />
+    </UserControl.InputBindings>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <coreconv:InverseBoolToVisConverter x:Key="InvBoolToVis" />

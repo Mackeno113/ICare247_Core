@@ -17,7 +17,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// <summary>
 /// Quản lý danh sách và nhập liệu bảng <c>Sys_Table</c> theo tenant hiện tại.
 /// </summary>
-public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
+public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, IRegionMemberLifetime
 {
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
@@ -214,6 +214,9 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware
 
         ResetEditorForNew();
     }
+
+    // Giu state search/filter khi user roi va quay lai man hinh.
+    public bool KeepAlive => true;
 
     public void OnNavigatedTo(NavigationContext navigationContext)
     {

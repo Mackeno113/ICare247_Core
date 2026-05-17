@@ -18,6 +18,21 @@
         AllowsTransparency="False"
         WindowStartupLocation="CenterScreen">
 
+    <!-- Global keyboard shortcuts shell -->
+    <Window.InputBindings>
+        <KeyBinding Modifiers="Control" Key="B" Command="{Binding ToggleSidebarCommand}" />
+        <KeyBinding Key="F1" Command="{Binding NavigateByViewNameCommand}" CommandParameter="Settings" />
+        <KeyBinding Modifiers="Alt" Key="D1" Command="{Binding NavigateByViewNameCommand}" CommandParameter="Dashboard" />
+        <KeyBinding Modifiers="Alt" Key="D2" Command="{Binding NavigateByViewNameCommand}" CommandParameter="SysTableManager" />
+        <KeyBinding Modifiers="Alt" Key="D3" Command="{Binding NavigateByViewNameCommand}" CommandParameter="SysLookupManager" />
+        <KeyBinding Modifiers="Alt" Key="D4" Command="{Binding NavigateByViewNameCommand}" CommandParameter="FormManager" />
+        <KeyBinding Modifiers="Alt" Key="D5" Command="{Binding NavigateByViewNameCommand}" CommandParameter="ValidationRuleEditor" />
+        <KeyBinding Modifiers="Alt" Key="D6" Command="{Binding NavigateByViewNameCommand}" CommandParameter="EventEditor" />
+        <KeyBinding Modifiers="Alt" Key="D7" Command="{Binding NavigateByViewNameCommand}" CommandParameter="GrammarLibrary" />
+        <KeyBinding Modifiers="Alt" Key="D8" Command="{Binding NavigateByViewNameCommand}" CommandParameter="I18nManager" />
+        <KeyBinding Modifiers="Alt" Key="D9" Command="{Binding NavigateByViewNameCommand}" CommandParameter="Settings" />
+    </Window.InputBindings>
+
     <Border BorderBrush="{DynamicResource ShellWindowBorderBrush}"
             BorderThickness="1"
             Background="{DynamicResource ShellWindowBackgroundBrush}">

@@ -12,6 +12,10 @@
              d:DesignWidth="1000"
              mc:Ignorable="d">
 
+    <UserControl.InputBindings>
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+    </UserControl.InputBindings>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

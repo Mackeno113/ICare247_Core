@@ -11,6 +11,12 @@
              d:DesignHeight="700" d:DesignWidth="1200"
              mc:Ignorable="d">
 
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding AddItemCommand}" />
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveItemCommand}" />
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+    </UserControl.InputBindings>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
@@ -155,7 +161,24 @@
                             <dxg:GridControl.View>
                                 <dxg:TableView AllowEditing="False"
                                                ShowGroupPanel="False"
-                                               AutoWidth="True"/>
+                                               AutoWidth="True"
+                                               RowDoubleClick="OnItemRowDoubleClick">
+                                    <dxg:TableView.RowStyle>
+                                        <Style TargetType="dxg:RowControl">
+                                            <Setter Property="ContextMenu">
+                                                <Setter.Value>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Sửa Item" InputGestureText="Enter"
+                                                                  Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.EditItemCommand}" />
+                                                        <Separator />
+                                                        <MenuItem Header="Xóa Item" InputGestureText="Delete"
+                                                                  Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.DeleteItemCommand}" />
+                                                    </ContextMenu>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </dxg:TableView.RowStyle>
+                                </dxg:TableView>
                             </dxg:GridControl.View>
                             <dxg:GridControl.Columns>
                                 <dxg:GridColumn FieldName="ItemCode"  Header="Item Code"  Width="140"/>

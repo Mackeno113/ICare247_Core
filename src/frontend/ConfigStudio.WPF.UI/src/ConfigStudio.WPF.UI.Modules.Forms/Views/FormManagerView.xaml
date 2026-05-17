@@ -13,6 +13,11 @@
              d:DesignWidth="1100"
              mc:Ignorable="d">
 
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding CreateFormCommand}" />
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+    </UserControl.InputBindings>
+
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <conv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
@@ -143,8 +148,9 @@
                 <!-- Filter bar -->
                 <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
                     <!-- Search box -->
-                    <dxe:TextEdit Width="260"
-                                  NullText="Tìm theo mã hoặc tên form..."
+                    <dxe:TextEdit x:Name="SearchBox"
+                                  Width="260"
+                                  NullText="Tìm theo mã hoặc tên form... (Ctrl+F)"
                                   EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                                   Margin="0,0,10,0" />
 
@@ -197,8 +203,9 @@
                 <dxg:GridControl.View>
                     <dxg:TableView NavigationStyle="Row"
                                    ShowGroupPanel="False"
-                                   AllowPerPixelScrolling="True">
-                        <!-- NOTE: Row mờ khi IsActive = false -->
+                                   AllowPerPixelScrolling="True"
+                                   RowDoubleClick="OnRowDoubleClick">
+                        <!-- NOTE: Row mờ khi IsActive = false + ContextMenu chuột phải -->
                         <dxg:TableView.RowStyle>
                             <Style TargetType="dxg:RowControl">
                                 <Style.Triggers>
@@ -206,6 +213,36 @@
                                         <Setter Property="Opacity" Value="0.45" />
                                     </DataTrigger>
                                 </Style.Triggers>
+                                <Setter Property="ContextMenu">
+                                    <Setter.Value>
+                                        <!-- PlacementTarget = RowControl; .DataContext.Row = FormSummaryDto; .View.DataControl.DataContext = VM -->
+                                        <ContextMenu>
+                                            <MenuItem Header="Mở Form Editor" InputGestureText="Enter"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.OpenFormCommand}"
+                                                      CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row}" />
+                                            <MenuItem Header="Xem chi tiết"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.ViewDetailCommand}"
+                                                      CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row}" />
+                                            <Separator />
+                                            <MenuItem Header="Xem trước (Preview)" InputGestureText="Space"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.PreviewFormCommand}"
+                                                      CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row}" />
+                                            <MenuItem Header="Sửa thông tin"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.EditFormCommand}" />
+                                            <MenuItem Header="Nhân bản"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.DuplicateFormCommand}" />
+                                            <Separator />
+                                            <MenuItem Header="Vô hiệu hóa" InputGestureText="Delete"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.DeactivateFormCommand}"
+                                                      CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row}"
+                                                      Visibility="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row.IsActive, Converter={StaticResource BoolToVis}}" />
+                                            <MenuItem Header="Khôi phục"
+                                                      Command="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.View.DataControl.DataContext.RestoreFormCommand}"
+                                                      CommandParameter="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row}"
+                                                      Visibility="{Binding RelativeSource={RelativeSource AncestorType=ContextMenu}, Path=PlacementTarget.DataContext.Row.IsActive, Converter={StaticResource InvBoolToVis}}" />
+                                        </ContextMenu>
+                                    </Setter.Value>
+                                </Setter>
                             </Style>
                         </dxg:TableView.RowStyle>
                     </dxg:TableView>

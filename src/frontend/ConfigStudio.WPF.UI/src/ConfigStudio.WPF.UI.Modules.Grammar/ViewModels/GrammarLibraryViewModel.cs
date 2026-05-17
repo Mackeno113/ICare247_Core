@@ -20,7 +20,7 @@ namespace ConfigStudio.WPF.UI.Modules.Grammar.ViewModels;
 /// Khi DB đã cấu hình → load dữ liệu thật qua IGrammarDataService.
 /// Khi chưa cấu hình → hiển thị danh sách rỗng.
 /// </summary>
-public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware
+public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, IRegionMemberLifetime
 {
     private readonly IGrammarDataService? _grammarService;
     private readonly IAppConfigService? _appConfig;
@@ -122,6 +122,9 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware
     }
 
     // ── INavigationAware ─────────────────────────────────────
+
+    // Giu state search/filter + tab da chon khi user roi man hinh.
+    public bool KeepAlive => true;
 
     public async void OnNavigatedTo(NavigationContext navigationContext) => await LoadDataAsync();
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;

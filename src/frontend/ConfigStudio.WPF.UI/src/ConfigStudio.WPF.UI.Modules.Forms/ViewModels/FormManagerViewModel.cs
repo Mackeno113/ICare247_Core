@@ -21,7 +21,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// ViewModel cho màn hình Form Manager (Screen 02).
 /// Hiển thị DataGrid danh sách form, search/filter, navigate đến Form Detail và Form Editor.
 /// </summary>
-public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
+public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IRegionMemberLifetime
 {
     private readonly IRegionManager _regionManager;
     private readonly IDialogService _dialogService;
@@ -178,6 +178,10 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware
         DeactivateFormCommand = new DelegateCommand<FormSummaryDto>(ExecuteDeactivate);
         RestoreFormCommand   = new DelegateCommand<FormSummaryDto>(ExecuteRestore);
     }
+
+    // ── IRegionMemberLifetime ────────────────────────────────
+    // Giu state filter/search khi nguoi dung roi man hinh va quay lai.
+    public bool KeepAlive => true;
 
     // ── INavigationAware ─────────────────────────────────────
 
