@@ -42,18 +42,18 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 
 ### Backend — Claude Code
 
-- [ ] **BE-001** — Implement `IMetadataEngine` (orchestration FormRepo + FieldRepo + Cache)
-- [ ] **BE-002** — Integration tests: ValidationEngine + EventEngine + MetadataEngine
-- [ ] **BE-003** — Test Blazor end-to-end với API + DB thật (form sys_UI_Design)
-- [ ] **BE-004** — Apply Design System tokens vào Blazor components
+- [x] **BE-001** — ~~Implement `IMetadataEngine`~~ ✅ Done — MetadataEngine.cs đã implement đầy đủ (verified 2026-05-31)
+- [ ] **BE-002** — Integration tests: ValidationEngine + EventEngine + MetadataEngine ❌ **Chưa làm**
+- [ ] **BE-003** — Test Blazor end-to-end với API + DB thật ⏳ Manual test
+- [ ] **BE-004** — Apply Design System tokens vào Blazor components ❌ **Chưa làm**
 
-### WPF ConfigStudio — Codex
+### WPF ConfigStudio
 
-- [ ] **WPF-13** ⭐ — Pass `tableCode` khi navigate FieldConfig → I18nManager
-- [ ] **WPF-10** ⭐ — ValidationRuleEditor: Compare rule field list → ComboBoxEdit (~45 phút)
-- [ ] **WPF-11** — FormSummaryDto: thêm EventCount subquery (~30 phút)
-- [ ] **WPF-12** — I18n Manager: Export/Import CSV/JSON (~1.5 giờ)
-- [ ] **WPF-14** — Test LookupBox end-to-end (GioiTinh + PhongBanID)
+- [x] **WPF-13** — ~~Pass `tableCode` khi navigate FieldConfig → I18nManager~~ ✅ Done (code đã có, verified 2026-05-31)
+- [x] **WPF-10** — ~~ValidationRuleEditor: Compare rule field list → ComboBoxEdit~~ ✅ Done (commit 044219e)
+- [x] **WPF-11** — ~~FormSummaryDto: thêm EventCount subquery~~ ✅ Done (verified 2026-05-31)
+- [x] **WPF-12** — ~~I18n Manager: Export/Import CSV/JSON~~ ✅ Done (commit 037bc34)
+- [ ] **WPF-14** — Test LookupBox end-to-end (GioiTinh + PhongBanID) ⏳ Manual test
 
 ---
 

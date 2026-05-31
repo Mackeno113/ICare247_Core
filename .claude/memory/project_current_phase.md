@@ -26,8 +26,9 @@
 | DB Seed — Lookup data (001_seed_lookup_data.sql) | ✅ Done |
 
 **Remaining backend tasks:**
-- MetadataEngine implementation (IMetadataEngine)
-- Integration tests
+- ~~MetadataEngine implementation~~ ✅ Done (verified 2026-05-31)
+- Integration tests (BE-002) ❌ Chưa làm — không có test file nào
+- Apply Design System tokens vào Blazor (BE-004) ❌ Chưa làm
 
 ## ConfigStudio (WPF) — Hoàn thành
 
@@ -111,10 +112,9 @@
 | FieldType `fklookup` — placeholder text input | ✅ Done (session 7) |
 | Test end-to-end (labels, field values, debug mode, select options) | 🔴 Pending |
 
-## Next Priorities
-1. **MetadataEngine** — implement IMetadataEngine (backend)
-2. **Integration tests** — backend
-3. **Wire Impact Preview** vào DependencyViewer UI (ConfigStudio)
-4. **Test Blazor end-to-end** — form có select field + Sys_Lookup options
-5. **Apply Design System tokens** vào Blazor components
-6. **Màn hình quản lý Sys_Lookup** trong ConfigStudio
+## Next Priorities (cập nhật 2026-05-31 sau audit)
+
+1. **BE-002 Integration tests** — backend (ValidationEngine + EventEngine + MetadataEngine) ❌ Chưa làm
+2. **BE-004 Apply Design System tokens** — vào Blazor components ❌ Chưa làm
+3. **BE-003 / WPF-14** — Manual E2E test (cần DB thật): Blazor FormRunner + WPF LookupBox ⏳
+4. **DefaultValueJson** — orphan property trên FieldMetadata (DB chưa có cột) — quyết định thêm migration hoặc xóa
