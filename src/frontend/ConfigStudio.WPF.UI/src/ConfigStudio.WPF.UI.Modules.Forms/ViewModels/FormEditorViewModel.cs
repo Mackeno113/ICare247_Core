@@ -2496,7 +2496,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     /// <summary>
     /// Mở SyncSchemaDialog với diff đã tính.
-    /// Sau khi user confirm → thêm fields mới + xóa field mồ côi.
+    /// Sau khi user confirm → thêm fields mới vào tree + persist DB,
+    /// xóa field mồ côi khỏi tree + DB.
     /// </summary>
     private async Task ExecuteSyncSchemaAsync()
     {
@@ -2524,11 +2525,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             return new OrphanedFieldItem(field) { SectionName = sectionName };
         }).ToList();
 
-        // ── Bọc columnsToAdd thành AutoGenerateColumnItem ─────
-        var columnItems = _lastDiff.ColumnsToAdd
-            .Select(c => new AutoGenerateColumnItem(c))
-            .ToList();
-
         var parameters = new DialogParameters
         {
             { "diffResult", new SchemaDiffResult
@@ -2541,85 +2537,196 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             { "sections", (IReadOnlyList<SectionOptionItem>)sectionOptions }
         };
 
+        // Capture kết quả từ dialog (ShowDialog là synchronous/modal trong WPF)
+        List<ColumnSchemaDto> confirmedColumnsToAdd = [];
+        List<FormTreeNode>    confirmedFieldsToRemove = [];
+        string targetSectionCode = "";
+        bool applied = false;
+
         _dialogService.ShowDialog(ViewNames.SyncSchemaDialog, parameters, result =>
         {
             if (result.Result != ButtonResult.OK) return;
+            applied = true;
 
-            var columnsToAdd = result.Parameters
-                .GetValue<IReadOnlyList<ColumnSchemaDto>>("columnsToAdd");
-            var fieldsToRemove = result.Parameters
-                .GetValue<IReadOnlyList<FormTreeNode>>("fieldsToRemove");
-            var targetSectionCode = result.Parameters
-                .GetValue<string>("targetSectionCode") ?? "";
+            confirmedColumnsToAdd = (result.Parameters
+                .GetValue<IReadOnlyList<ColumnSchemaDto>>("columnsToAdd") ?? []).ToList();
+            confirmedFieldsToRemove = (result.Parameters
+                .GetValue<IReadOnlyList<FormTreeNode>>("fieldsToRemove") ?? []).ToList();
+            targetSectionCode = result.Parameters.GetValue<string>("targetSectionCode") ?? "";
 
-            // ── Thêm fields mới ───────────────────────────────
-            if (columnsToAdd?.Count > 0)
+            // ── Cập nhật tree in-memory ngay lập tức ─────────
+            var targetSection = Sections
+                .FirstOrDefault(s => s.Code.Equals(targetSectionCode,
+                                                    StringComparison.OrdinalIgnoreCase))
+                ?? Sections.LastOrDefault();
+
+            if (targetSection is not null && confirmedColumnsToAdd.Count > 0)
             {
-                var targetSection = Sections
-                    .FirstOrDefault(s => s.Code.Equals(targetSectionCode,
-                                                        StringComparison.OrdinalIgnoreCase))
-                    ?? Sections.LastOrDefault();
+                var nextOrder = targetSection.Children.Count > 0
+                    ? targetSection.Children.Max(f => f.SortOrder) + 1
+                    : 1;
 
-                if (targetSection is not null)
+                var tempIdBase = -(Sections.SelectMany(s => s.Children)
+                    .Where(f => f.Id < 0).Select(f => f.Id)
+                    .DefaultIfEmpty(0).Min() + 1);
+
+                foreach (var col in confirmedColumnsToAdd)
                 {
-                    var nextOrder = targetSection.Children.Count > 0
-                        ? targetSection.Children.Max(f => f.SortOrder) + 1
-                        : 1;
+                    bool alreadyExists = Sections
+                        .SelectMany(s => s.Children)
+                        .Any(f => f.Code.Equals(col.ColumnName, StringComparison.OrdinalIgnoreCase));
+                    if (alreadyExists) continue;
 
-                    var tempIdBase = -(Sections.SelectMany(s => s.Children)
-                        .Where(f => f.Id < 0).Select(f => f.Id)
-                        .DefaultIfEmpty(0).Min() + 1);
-
-                    foreach (var col in columnsToAdd)
+                    targetSection.Children.Add(new FormTreeNode
                     {
-                        bool alreadyExists = Sections
-                            .SelectMany(s => s.Children)
-                            .Any(f => f.Code.Equals(col.ColumnName,
-                                                     StringComparison.OrdinalIgnoreCase));
-                        if (alreadyExists) continue;
-
-                        targetSection.Children.Add(new FormTreeNode
-                        {
-                            Id          = --tempIdBase,
-                            NodeType    = FormNodeType.Field,
-                            Code        = col.ColumnName,
-                            DisplayName = col.ColumnName,
-                            FieldType   = col.NetType,
-                            EditorType  = col.DefaultEditorType,
-                            IsRequired  = !col.IsNullable,
-                            SortOrder   = nextOrder++,
-                            IsActive    = true
-                        });
-                    }
+                        Id          = --tempIdBase,
+                        NodeType    = FormNodeType.Field,
+                        Code        = col.ColumnName,
+                        DisplayName = col.ColumnName,
+                        FieldType   = col.NetType,
+                        EditorType  = col.DefaultEditorType,
+                        IsRequired  = !col.IsNullable,
+                        SortOrder   = nextOrder++,
+                        IsActive    = true
+                    });
                 }
             }
 
-            // ── Xóa field mồ côi ──────────────────────────────
-            if (fieldsToRemove?.Count > 0)
+            if (confirmedFieldsToRemove.Count > 0)
             {
-                var removeIds = fieldsToRemove.Select(f => f.Id).ToHashSet();
+                var removeIds = confirmedFieldsToRemove.Select(f => f.Id).ToHashSet();
                 foreach (var section in Sections)
                 {
                     var toRemove = section.Children
-                        .Where(f => removeIds.Contains(f.Id))
-                        .ToList();
+                        .Where(f => removeIds.Contains(f.Id)).ToList();
                     foreach (var f in toRemove)
                         section.Children.Remove(f);
                 }
             }
 
-            // ── Reset diff sau khi áp dụng ────────────────────
             _lastDiff = SchemaDiffResult.Empty;
             SchemaSyncBadgeCount = 0;
             SyncSchemaCommand.RaiseCanExecuteChanged();
-
             PushUndoState("Đồng bộ schema DB");
-            IsDirty = true;
-            _autoSave?.NotifyDirty();
-            _linting?.NotifyChanged();
             RaisePropertyChanged(nameof(TotalFields));
         });
 
-        await Task.CompletedTask;
+        if (!applied) return;
+
+        // ── Persist DB sau khi ShowDialog trả về ─────────────
+        await PersistSyncSchemaAsync(confirmedColumnsToAdd, confirmedFieldsToRemove, targetSectionCode);
+    }
+
+    /// <summary>
+    /// Lưu kết quả đồng bộ schema vào DB:
+    /// - INSERT Ui_Field cho từng cột mới (node có temp Id âm).
+    /// - DELETE Ui_Field cho field mồ côi.
+    /// </summary>
+    private async Task PersistSyncSchemaAsync(
+        List<ColumnSchemaDto> columnsToAdd,
+        List<FormTreeNode>    fieldsToRemove,
+        string                targetSectionCode)
+    {
+        if (_fieldDataService is null || _appConfig is null) return;
+
+        IsLoading    = true;
+        ErrorMessage = "";
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var tableId = SelectedTable?.TableId ?? 0;
+
+            var targetSection = Sections
+                .FirstOrDefault(s => s.Code.Equals(targetSectionCode,
+                                                    StringComparison.OrdinalIgnoreCase))
+                ?? Sections.LastOrDefault();
+
+            // ── 1. Persist section nếu chưa có trong DB ──────
+            if (targetSection is not null && targetSection.Id <= 0 && _detailService is not null)
+            {
+                var req = new SectionUpsertRequest(
+                    FormId:      FormId,
+                    SectionId:   0,
+                    SectionCode: targetSection.Code,
+                    TitleKey:    targetSection.TitleKey ?? "",
+                    OrderNo:     targetSection.SortOrder,
+                    IsActive:    targetSection.IsActive,
+                    OldTitleKey: "");
+                targetSection.Id = await _detailService.UpsertSectionAsync(req, cts.Token);
+            }
+
+            // ── 2. INSERT field mới ───────────────────────────
+            foreach (var col in columnsToAdd)
+            {
+                // Tìm node vừa thêm vào tree (temp Id âm)
+                var node = Sections
+                    .SelectMany(s => s.Children)
+                    .FirstOrDefault(f => f.Code.Equals(col.ColumnName,
+                                                        StringComparison.OrdinalIgnoreCase)
+                                      && f.Id < 0);
+                if (node is null) continue;
+
+                var columnId = tableId > 0
+                    ? await _fieldDataService.EnsureColumnExistsAsync(tableId, col, cts.Token)
+                    : 0;
+
+                if (columnId <= 0)
+                {
+                    ErrorMessage = $"Không thể xác định Column_Id cho '{col.ColumnName}' — field bị bỏ qua.";
+                    continue;
+                }
+
+                var record = new FieldConfigRecord
+                {
+                    FieldId    = 0,
+                    FormId     = FormId,
+                    SectionId  = targetSection?.Id > 0 ? targetSection.Id : null,
+                    ColumnId   = columnId,
+                    ColumnCode = col.ColumnName,
+                    EditorType = col.DefaultEditorType,
+                    LabelKey   = col.ColumnName,
+                    IsVisible  = true,
+                    IsReadOnly = false,
+                    IsRequired = !col.IsNullable,
+                    OrderNo    = node.SortOrder,
+                };
+
+                var fieldId = await _fieldDataService.SaveFieldAsync(
+                    record, _appConfig.TenantId, ct: cts.Token);
+
+                // Thay temp Id âm bằng Id thật
+                node.Id = fieldId;
+
+                // Auto-generate i18n label (PascalCase → display name)
+                if (_i18nService is not null && fieldId > 0)
+                {
+                    var displayName = SplitPascalCase(col.ColumnName);
+                    var labelKey    = $"{FormCode}.field.{col.ColumnName.ToLower()}";
+                    node.LabelKey    = labelKey;
+                    node.TitleKey    = labelKey;
+                    node.DisplayName = displayName;
+                    await _i18nService.SaveResourceAsync(labelKey, "vi", displayName, cts.Token);
+                }
+            }
+
+            // ── 3. DELETE field mồ côi ────────────────────────
+            foreach (var field in fieldsToRemove)
+            {
+                if (field.Id > 0)
+                    await _fieldDataService.DeleteFieldAsync(field.Id, cts.Token);
+            }
+
+            IsDirty = true;
+            _autoSave?.NotifyDirty();
+            _linting?.NotifyChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Đồng bộ schema thất bại: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 }

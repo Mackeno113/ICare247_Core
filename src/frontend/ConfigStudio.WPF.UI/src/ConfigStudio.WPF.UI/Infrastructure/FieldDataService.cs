@@ -333,6 +333,37 @@ public sealed class FieldDataService : IFieldDataService
             }, cancellationToken: ct));
     }
 
+    /// <inheritdoc />
+    public async Task DeleteFieldAsync(int fieldId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Xóa lookup config trước (FK constraint)
+            await conn.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId",
+                    new { FieldId = fieldId }, transaction: tx, cancellationToken: ct));
+
+            await conn.ExecuteAsync(
+                new CommandDefinition(
+                    "DELETE FROM dbo.Ui_Field WHERE Field_Id = @FieldId",
+                    new { FieldId = fieldId }, transaction: tx, cancellationToken: ct));
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     /// <summary>Build anonymous param object cho INSERT/UPDATE Ui_Field.</summary>

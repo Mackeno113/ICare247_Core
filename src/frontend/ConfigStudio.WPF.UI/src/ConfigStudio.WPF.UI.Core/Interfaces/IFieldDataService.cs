@@ -33,4 +33,10 @@ public interface IFieldDataService
     /// Đảm bảo cột tồn tại trong Sys_Column (INSERT nếu chưa có), trả về Column_Id.
     /// </summary>
     Task<int> EnsureColumnExistsAsync(int tableId, ColumnSchemaDto col, CancellationToken ct = default);
+
+    /// <summary>
+    /// Xóa field khỏi Ui_Field + Ui_Field_Lookup trong cùng transaction.
+    /// Dùng khi đồng bộ schema — field mồ côi (cột đã bị xóa khỏi DB thật).
+    /// </summary>
+    Task DeleteFieldAsync(int fieldId, CancellationToken ct = default);
 }
