@@ -46,9 +46,9 @@
 - ~~Control Props JSON preview sidebar~~ ✅ Done (commit c5027b2, 2026-03-29)
 - ~~TreePickerPropsPanel — UI cấu hình TreePicker (tree config + cascading)~~ ✅ Done (session 25-26, Migration 016)
 - ~~LookupBoxPropsPanel multi-trigger — ReloadTriggerFields thay ReloadTriggerField~~ ✅ Done (session 25-26)
-- Pass `tableCode` khi navigate từ FieldConfig → I18nManager
-- Test LookupBox end-to-end (cấu hình GioiTinh + PhongBanID)
-- WPF-10: ValidationRuleEditor Compare rule field list dropdown
+- ~~Pass `tableCode` khi navigate từ FieldConfig → I18nManager~~ ✅ Done (code đã có từ trước, verified 2026-05-31)
+- ~~WPF-10: ValidationRuleEditor Compare rule field list dropdown~~ ✅ Done (commit 044219e + follow-up 2026-05-31)
+- Test LookupBox end-to-end (cấu hình GioiTinh + PhongBanID) — **manual test**, cần chạy app + DB thật
 
 ## Blazor RuntimeCheck — Đang hoàn thiện
 
