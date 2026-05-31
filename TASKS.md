@@ -43,6 +43,7 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 ### Backend — Claude Code
 
 - [x] **BE-001** — ~~Implement `IMetadataEngine`~~ ✅ Done — MetadataEngine.cs đã implement đầy đủ (verified 2026-05-31)
+- [x] **BE-005** — ~~Is_Virtual field~~ ✅ Done (commit 49f9daf, 2026-05-31) — db/018, Domain, FieldRepository, FormRepository, Blazor, WPF
 - [ ] **BE-002** — Integration tests: ValidationEngine + EventEngine + MetadataEngine ❌ **Chưa làm**
 - [ ] **BE-003** — Test Blazor end-to-end với API + DB thật ⏳ Manual test
 - [ ] **BE-004** — Apply Design System tokens vào Blazor components ❌ **Chưa làm**
