@@ -19,6 +19,33 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-05-31] WPF-10/WPF-13 - codex -> claude
+
+- Status: done
+- Files: `AI_TASKS.yaml`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Core/Interfaces/IRuleDataService.cs`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/Infrastructure/RuleDataService.cs`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Rules/ViewModels/ValidationRuleEditorViewModel.cs`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Rules/Views/ValidationRuleEditorView.xaml`
+- Can biet: WPF-13 marked done. WPF-10 now matches AI_TASKS acceptance: Compare field dropdown loads field codes from `IRuleDataService.GetFieldCodesInFormAsync(formId)` and the UI no longer allows free-text field entry.
+- Buoc tiep theo: Reconcile old AI_TASKS WPF-11/WPF-12 status against TASKS_WPF done log before choosing the next WPF item.
+
+---
+
+### [2026-05-31] WPF-UI-PHASE4 - codex -> claude
+
+- Status: done
+- Files: `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Forms/ViewModels/FieldConfigViewModel.cs`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Events/ViewModels/EventEditorViewModel.cs`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Rules/ViewModels/ValidationRuleEditorViewModel.cs`, `docs/ICare247 Config Studio/TASKS_WPF.md`
+- Can biet: Phase 4 verification passed. Navigation registrations match all shell/sidebar/requested routes. Startup smoke launched the WPF app for 6s without crash. Polished Rule/Event navigation so `formId`, `fieldCode`, `tableCode`, and `sectionName` are preserved when returning to FieldConfig.
+- Buoc tiep theo: Manual visual pass on a real desktop session if pixel-level layout review is required.
+
+---
+
+### [2026-05-31] WPF-UI-PHASE3 - codex -> claude
+
+- Status: done
+- Files: `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/MainWindow.xaml`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/Themes/Shell.xaml`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/Themes/Shell.SlateProfessional.xaml`, `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/Themes/Controls.xaml`, workflow XAML views, `docs/ICare247 Config Studio/TASKS_WPF.md`
+- Can biet: Phase 3 UI consistency done for WPF shell/theme/workflow screens. Shell uses Segoe UI and solid admin-tool surfaces; shared command bar, dirty indicator, state/error banner, and DevExpress grid density styles are in `Controls.xaml`.
+- Buoc tiep theo: Phase 4 visual smoke/navigation smoke when app can be opened interactively.
+
+---
+
 ### [2026-04-25] GOV-001 — claude → both
 
 - Status: done

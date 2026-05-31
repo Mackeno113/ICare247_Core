@@ -89,7 +89,7 @@ tasks:
   - id: WPF-10
     title: "ValidationRuleEditor — Compare rule field list dropdown"
     agent: codex
-    status: todo
+    status: done
     priority: P0
     goal: "Đổi EditCompareField từ TextBox thủ công → ComboBoxEdit với danh sách fields trong form."
     files_allowed:
@@ -99,7 +99,7 @@ tasks:
       - "AvailableFieldCodes load từ IRuleDataService.GetFieldCodesInFormAsync(formId)"
       - "UI hiện ComboBoxEdit thay TextEdit trong Compare section"
     dependencies: []
-    notes: "Ước lượng ~45 phút"
+    notes: "Done 2026-05-31: Compare field dung ComboBoxEdit, ItemsSource load tu IRuleDataService.GetFieldCodesInFormAsync(formId), khong cho go tu do."
 
   - id: WPF-11
     title: "FormSummaryDto — thêm EventCount"
@@ -134,7 +134,7 @@ tasks:
   - id: WPF-13
     title: "Pass tableCode khi navigate FieldConfig → I18nManager"
     agent: codex
-    status: todo
+    status: done
     priority: P0
     goal: "I18nManager nhận tableCode từ FieldConfig để filter đúng keys theo bảng."
     files_allowed:
@@ -144,7 +144,7 @@ tasks:
       - "NavigationParameters truyền tableCode khi mở I18nManager"
       - "I18nManager filter keys theo tableCode nhận được"
     dependencies: []
-    notes: ""
+    notes: "Done 2026-05-31: FieldConfig truyen tableCode sang I18nManager; I18nManager auto-filter theo tableCode nhan duoc."
 
   - id: WPF-14
     title: "Test LookupBox end-to-end (GioiTinh + PhongBanID)"

@@ -25,6 +25,16 @@
 
 ---
 
+## Encoding Safety (Codex)
+
+- File `.xaml`, `.cs`, `.md`, `.yaml`, `.sql` phai giu UTF-8. Tuyet doi khong rewrite toan file bang PowerShell `Get-Content` + `Set-Content` mac dinh neu file co tieng Viet.
+- Khi sua XAML/CS co tieng Viet: uu tien `apply_patch` de giu encoding va chi thay doi dung dong can sua.
+- Neu bat buoc dung script bulk rewrite: doc/ghi UTF-8 tuong minh, kiem tra lai bang scan mojibake truoc khi build.
+- Sau khi cham vao XAML co tieng Viet, bat buoc scan cac pattern loi encoding nhu `Ã`, `Â`, `â€`, `ðŸ`, `áº`, `á»`, `Ä‘`, `Æ°` trong cac file da sua.
+- Neu phat hien mojibake tren UI, khoi phuc file bi anh huong tu git/backup truoc, sau do reapply thay doi bang patch nho.
+
+---
+
 ## Ownership Codex (xem đầy đủ trong BRAIN.md § Ownership)
 
 Codex **chịu trách nhiệm chính** (không cần hỏi Claude Code):

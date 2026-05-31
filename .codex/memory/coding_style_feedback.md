@@ -10,6 +10,8 @@
 - Không string interpolation vào SQL
 - Async/await xuyên suốt — không .Result, không .Wait()
 - CancellationToken truyền xuyên suốt
+- Encoding safety: file `.xaml`, `.cs`, `.md`, `.yaml`, `.sql` phải giữ UTF-8; không dùng PowerShell `Get-Content` + `Set-Content` mặc định để rewrite toàn file có tiếng Việt.
+- Khi sửa XAML/CS có tiếng Việt, ưu tiên `apply_patch`; nếu phải bulk rewrite thì đọc/ghi UTF-8 tường minh và scan mojibake (`Ã`, `Â`, `â€`, `ðŸ`, `áº`, `á»`, `Ä‘`, `Æ°`) trước khi build.
 
 ## WPF-specific (ConfigStudio)
 

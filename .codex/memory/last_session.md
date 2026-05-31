@@ -1,6 +1,30 @@
 # Codex Last Session
 
-> Cập nhật lần cuối: 2026-04-25
+## 2026-05-31 - WPF UI Phase 3
+
+- Completed Phase 3 UX consistency for `ConfigStudio.WPF.UI`.
+- Shell now uses Segoe UI, solid content surfaces, and no radial orb decoration in the main content host.
+- Added shared WPF styles for command bar host, dirty indicator pill, state/error banners, and DevExpress grid density in `Themes/Controls.xaml`.
+- Applied command bar/state styles to the main workflow screens touched in the UI optimization roadmap.
+- Verification: `dotnet build src\frontend\ConfigStudio.WPF.UI\ConfigStudio.WPF.UI.slnx -v:minimal` passed with 0 warnings and 0 errors. A prior clean/build in this Phase 3 run also passed.
+- Encoding guard: touched XAML files were edited with small patches and scanned for mojibake patterns after build.
+
+## 2026-05-31 - WPF UI Phase 4
+
+- Completed Phase 4 verification and polish for WPF UI optimization.
+- Clean/build verification: `dotnet clean src\frontend\ConfigStudio.WPF.UI\ConfigStudio.WPF.UI.slnx -v:minimal; dotnet build src\frontend\ConfigStudio.WPF.UI\ConfigStudio.WPF.UI.slnx -m:1 -v:minimal` passed with 0 warnings and 0 errors.
+- Startup smoke launched `ConfigStudio.WPF.UI.exe` for 6 seconds; app did not exit early and the process was stopped cleanly.
+- Static navigation smoke confirmed all requested/sidebar route names are registered.
+- Polished Rule/Event navigation context so FieldConfig, RuleEditor, EventEditor keep `formId`, `fieldCode`, `tableCode`, and `sectionName` through open/back flows.
+- `dotnet test` on the WPF slnx returned exit code 0, but no test projects were present in that solution.
+
+## 2026-05-31 - WPF-10 / WPF-13 tracker cleanup
+
+- Marked WPF-13 done in `AI_TASKS.yaml`; Phase 4 already implemented FieldConfig -> I18nManager `tableCode` navigation and I18n auto-filter.
+- Completed WPF-10 contract cleanup: `IRuleDataService.GetFieldCodesInFormAsync(formId)` now supplies Compare rule dropdown values.
+- `ValidationRuleEditorView.xaml` uses DevExpress `ComboBoxEdit` for `EditCompareField` and disallows free typing.
+
+> Cập nhật lần cuối: 2026-05-31
 
 ## Session vừa rồi (Codex)
 

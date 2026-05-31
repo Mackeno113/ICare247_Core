@@ -27,6 +27,50 @@
 
 ---
 
+## UI Optimization Roadmap (2026-05-31)
+
+> Muc tieu: toi uu giao dien `src/frontend/ConfigStudio.WPF.UI/ConfigStudio.WPF.UI.slnx`
+> theo huong design system hoa WPF, giam style lap lai, giu dung stack DevExpress WPF + Prism 9.
+
+### Phase 0 — Baseline build
+- [x] Chay build rieng module Grammar de xac nhan loi BAML/generated XAML.
+- [x] Chay `dotnet clean` + `dotnet build` toan solution WPF.
+- [x] Ket qua: `ConfigStudio.WPF.UI.slnx` build pass 0 error, 0 warning.
+- [x] Ghi chu: loi cu `GrammarLibraryView.baml cannot be found` khong tai hien sau clean/build lai.
+
+### Phase 1 — Shared UI resources
+- [x] Tao resource dictionary chung cho design tokens: color, typography, spacing, shadow.
+- [x] Tao resource dictionary chung cho controls: section card, field label, help text, icon button, toolbar separator, badge.
+- [x] Merge resource dictionaries vao `App.xaml`/theme shell de cac module dung chung.
+- [x] Migrate `SettingsView` lam man hinh mau: cards, inputs, password boxes, primary/outline buttons dung shared resources.
+- [x] Build verify: `ConfigStudio.WPF.UI.slnx` pass 0 error, 0 warning.
+
+### Phase 2 — Main workflow screens
+- [x] Migrate `FormEditorView.xaml` sang shared resources, giu nguyen binding/ViewModel.
+- [x] Migrate `FieldConfigView.xaml` sang shared resources, tach bot style cuc bo.
+- [x] Migrate `ValidationRuleEditorView.xaml`, `EventEditorView.xaml`, `I18nManagerView.xaml` theo cung pattern.
+- [x] Build verify: `ConfigStudio.WPF.UI.slnx` pass 0 error, 0 warning sau clean/build.
+- [x] Fix encoding: restore cac XAML workflow bi mojibake ve UTF-8 dung va reapply style bang patch nho.
+- [ ] Visual smoke test UI o kich thuoc toi thieu `1024x640`.
+
+### Phase 3 — UX consistency
+- [x] Chuan hoa shell theo admin tool: giam trang tri gradient/orb, tang do ro cua content area.
+- [x] Chuan hoa command bar, dirty indicator, empty/loading/error states.
+- [x] Chuan hoa DevExpress Grid density, column sizing, context menu va toolbar action.
+- [x] Chuan hoa font: Segoe UI/system default; monospace chi dung cho code/id/json.
+- [x] Build verify: `ConfigStudio.WPF.UI.slnx` pass 0 error, 0 warning sau Phase 3.
+
+### Phase 4 — Verification and polish
+- [x] Build WPF solution 0 error, 0 warning sau moi batch migrate.
+- [x] Smoke test navigation: Dashboard -> FormManager -> FormEditor -> FieldConfig -> Rule/Event/I18n.
+- [x] Kiem tra theme switch, breadcrumb/back-forward, status bar.
+- [x] Cap nhat note/AI handoff neu co thay doi anh huong Claude Code.
+- [x] Startup smoke: launch WPF app 6s, khong crash, stop process sach.
+- [x] Polish: giu `formId/fieldCode/tableCode/sectionName` khi FieldConfig -> EventEditor va khi Rule/Event quay ve FieldConfig.
+- [x] Encoding scan: touched XAML/CS khong co mojibake pattern.
+
+---
+
 ### ✅ Bug Fix — ControlProps TextBox blank (2026-03-27)
 
 **File:** `FieldConfigViewModel.cs`
@@ -128,6 +172,7 @@
 | WPF-12 | 037bc34 | I18n Export/Import CSV/JSON — RFC 4180 + System.Text.Json |
 | WPF-09 | 9059747 | ColumnPickerDialog — Browse Column popup với search/filter |
 | WPF-10 | 044219e | ValidationRuleEditor Compare field dropdown — IFormDetailDataService |
+| WPF-10 follow-up | 2026-05-31 | Chuan hoa Compare field dropdown sang `IRuleDataService.GetFieldCodesInFormAsync(formId)` theo AI_TASKS |
 | WPF-11 | 044219e | FormSummaryDto EventCount — subquery COUNT Evt_Definition |
 | T4-T8 (Wave CB) | (session) | ComboBoxPropsPanel + LookupBoxPropsPanel hoàn chỉnh + tích hợp FieldConfigView |
 | Bug: ControlProps TextBox blank | 2026-03-27 | Fix `LoadControlPropSchema` không được gọi khi field là TextBox (default) + restore values từ JSON |

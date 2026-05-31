@@ -6,7 +6,7 @@
 | ------------- | ---------------------- | -------------------------------- |
 | WPF Framework | .NET 9 / `net9.0-windows` | `<UseWPF>true</UseWPF>`      |
 | DI + Nav      | `Prism.Unity` 9.x     | `PrismApplication`, `IRegionManager` |
-| UI Toolkit    | `MaterialDesignThemes` 5.x | Dark theme, Indigo/LightBlue |
+| UI Toolkit    | `DevExpress.Wpf.*` 25.x + pure WPF | Khong dung MaterialDesignThemes / PackIcon |
 | MVVM          | Prism `BindableBase` + `DelegateCommand` | KHÔNG dùng CommunityToolkit |
 
 ## Naming
