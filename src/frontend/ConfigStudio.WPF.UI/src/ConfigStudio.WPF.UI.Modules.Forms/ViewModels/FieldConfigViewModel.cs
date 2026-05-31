@@ -2080,6 +2080,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
+            // Non-virtual field bắt buộc phải chọn cột (Column_Id FK constraint)
+            if (!IsVirtual && (SelectedColumn is null || SelectedColumn.ColumnId <= 0))
+            {
+                SaveError = "Chưa chọn cột DB. Vui lòng chọn cột hoặc bật 'Field ảo' nếu không cần lưu DB.";
+                return;
+            }
+
             // Xác định LookupSource theo EditorType
             var lookupSource = IsLookupEditor    ? "static"
                              : IsFkLookupEditor  ? "dynamic"

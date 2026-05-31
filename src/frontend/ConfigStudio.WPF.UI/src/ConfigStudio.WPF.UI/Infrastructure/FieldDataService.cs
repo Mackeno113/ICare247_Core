@@ -372,7 +372,8 @@ public sealed class FieldDataService : IFieldDataService
         FieldId          = fieldId,
         f.FormId,
         f.SectionId,
-        f.ColumnId,
+        // ColumnId = 0 nghĩa là chưa chọn cột (virtual field) → gửi NULL tránh FK violation
+        ColumnId         = f.ColumnId > 0 ? (int?)f.ColumnId : null,
         f.EditorType,
         f.LabelKey,
         f.PlaceholderKey,
