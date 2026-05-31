@@ -523,6 +523,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             field.IsVisible  = record.IsVisible;
             field.IsReadOnly = record.IsReadOnly;
             field.LockOnEdit = record.LockOnEdit;
+            field.IsVirtual  = record.IsVirtual;
             field.ColSpan    = record.ColSpan == 0 ? (byte)1 : record.ColSpan;
             field.EditorType = record.EditorType;
             field.LabelKey   = record.LabelKey;
@@ -556,6 +557,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                                 or nameof(FormTreeNode.IsVisible)
                                 or nameof(FormTreeNode.IsReadOnly)
                                 or nameof(FormTreeNode.LockOnEdit)
+                                or nameof(FormTreeNode.IsVirtual)
                                 or nameof(FormTreeNode.ColSpan)
                                 or nameof(FormTreeNode.EditorType))
         {
@@ -1564,15 +1566,18 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             targetSection = Sections.Last();
         }
 
-        var newId = Sections.SelectMany(s => s.Children).DefaultIfEmpty()
-            .Max(f => f?.Id ?? 0) + 1;
+        // Dùng Id âm làm temp marker (chưa lưu DB). ExecuteOpenFieldConfig detect Id <= 0 → mode: "new".
+        var lowestTempId = Sections.SelectMany(s => s.Children)
+            .Where(f => f.Id < 0).Select(f => f.Id)
+            .DefaultIfEmpty(0).Min();
+        var newId = lowestTempId - 1; // -1, -2, -3, ...
 
         var field = new FormTreeNode
         {
             Id = newId,
             NodeType = FormNodeType.Field,
-            Code = $"FIELD_NEW_{newId}",
-            DisplayName = $"Field Mới {newId}",
+            Code = $"FIELD_NEW_{-newId}",
+            DisplayName = $"Field Mới {-newId}",
             FieldType = "text",
             EditorType = "TextBox",
             SortOrder = targetSection.Children.Count + 1
@@ -1671,15 +1676,17 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         if (SelectedNode is null || SelectedNode.NodeType != FormNodeType.Field) return;
 
         var parentSection = FindParentSection(SelectedNode);
+        // Id <= 0 = field mới chưa lưu DB → mode "new" + fieldId = 0 để FieldConfigViewModel INSERT
+        var isNew = SelectedNode.Id <= 0;
         var p = new NavigationParameters
         {
-            { "fieldId",   SelectedNode.Id },
+            { "fieldId",   isNew ? 0 : SelectedNode.Id },
             { "formId",    FormId },
             { "sectionId", parentSection?.Id ?? 0 },
             { "tableCode", SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
             { "formCode",  FormCode },
             { "formName",  FormName },
-            { "mode",      "edit" }
+            { "mode",      isNew ? "new" : "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }
@@ -2251,6 +2258,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsRequired       = field.IsRequired,
             RequiredErrorKey = cached.RequiredErrorKey,
             LockOnEdit       = field.LockOnEdit,
+            IsVirtual        = field.IsVirtual,
             OrderNo          = cached.OrderNo,
             ControlPropsJson = cached.ControlPropsJson,
             ColSpan          = field.ColSpan,

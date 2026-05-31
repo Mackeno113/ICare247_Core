@@ -2157,7 +2157,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             try
             {
                 SaveError = null;
-                await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
+                var savedId = await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
+                // INSERT trả về Id thật — cập nhật FieldId để navigate back đúng
+                if (_mode == "new" && savedId > 0)
+                {
+                    FieldId = savedId;
+                    _mode   = "edit";
+                }
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại (captionKeys + LabelKey...)
                 await RegisterI18nKeysAsync(_cts.Token);
                 IsDirty = false;

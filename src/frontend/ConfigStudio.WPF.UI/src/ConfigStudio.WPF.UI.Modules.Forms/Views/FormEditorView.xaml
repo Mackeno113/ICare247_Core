@@ -966,6 +966,11 @@
                                                                IsReadOnly="True"
                                                                FontSize="13"
                                                                Margin="0,4,0,0" />
+                                                <dxe:CheckEdit Content="Field ảo (Virtual)"
+                                                               IsChecked="{Binding SelectedNode.IsVirtual, Mode=OneWay}"
+                                                               IsReadOnly="True"
+                                                               FontSize="13"
+                                                               Margin="0,2,0,0" />
                                             </StackPanel>
                                         </Border>
 

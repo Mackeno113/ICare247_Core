@@ -64,6 +64,10 @@ public class FormTreeNode : BindableBase
     /// <summary>Khoa field khi FormMode=Edit. Visual identical readonly trong Edit mode.</summary>
     public bool LockOnEdit { get => _lockOnEdit; set => SetProperty(ref _lockOnEdit, value); }
 
+    private bool _isVirtual;
+    /// <summary>Field UI-only, khong map toi cot DB. Save layer bo qua khi ghi DB.</summary>
+    public bool IsVirtual { get => _isVirtual; set => SetProperty(ref _isVirtual, value); }
+
     private byte _colSpan = 1;
     /// <summary>Grid 4-col: 1 = 1/4, 2 = half, 3 = 3/4, 4 = full.</summary>
     public byte ColSpan { get => _colSpan; set => SetProperty(ref _colSpan, value); }
