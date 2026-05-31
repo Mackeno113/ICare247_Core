@@ -71,8 +71,8 @@
 | FieldType `combobox` — ComboBoxRenderer (dynamic data) | ✅ Done (session 8) |
 | FieldType `treepicker` — TreePickerRenderer (dropdown cây, flat→tree, multi-trigger) | ✅ Done (session 25, Migration 016) |
 | Multi-trigger cascading — ComboBoxRenderer + LookupBoxRenderer dùng snapshot list | ✅ Done (session 25, Migration 016) |
-| NumericBoxRenderer (DxSpinEdit) | 🔴 Pending |
-| DatePickerRenderer (DxDateEdit) | 🔴 Pending |
+| NumericBoxRenderer (DxSpinEdit) | ✅ Done (verified 2026-05-31) |
+| DatePickerRenderer (DxDateEdit) | ✅ Done (verified 2026-05-31) |
 | Test end-to-end FormRunner với API + DB thật | 🔴 Pending |
 
 ## Design System — Khởi động (session 5)
