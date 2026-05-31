@@ -69,6 +69,33 @@ public sealed class RuleDataService : IRuleDataService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetFieldCodesInFormAsync(
+        int formId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || formId <= 0) return [];
+
+        const string sql = """
+            SELECT DISTINCT sc.Column_Code
+            FROM   dbo.Ui_Field fi
+            JOIN   dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            JOIN   dbo.Ui_Form f ON f.Form_Id = fi.Form_Id
+            JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
+            WHERE  fi.Form_Id = @FormId
+              AND  (st.Tenant_Id = @TenantId OR st.Tenant_Id IS NULL)
+              AND  ISNULL(sc.Column_Code, '') <> ''
+            ORDER BY sc.Column_Code
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        var items = await conn.QueryAsync<string>(
+            new CommandDefinition(
+                sql,
+                new { FormId = formId, TenantId = _config.TenantId },
+                cancellationToken: ct));
+        return items.AsList();
+    }
+
+    /// <inheritdoc />
     public async Task<int> SaveRuleAsync(RuleItemRecord rule, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return 0;

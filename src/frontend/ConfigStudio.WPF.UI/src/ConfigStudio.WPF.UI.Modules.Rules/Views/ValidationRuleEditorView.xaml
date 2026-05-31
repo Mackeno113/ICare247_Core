@@ -10,7 +10,9 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="640"
              d:DesignWidth="1100"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
 
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="N" Command="{Binding AddRuleCommand}" />
@@ -21,19 +23,19 @@
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <Style x:Key="HelpText" TargetType="TextBlock">
+        <Style x:Key="HelpText" TargetType="TextBlock" BasedOn="{StaticResource AppHelpTextStyle}">
             <Setter Property="FontSize" Value="11" />
             <Setter Property="Foreground" Value="#64748B" />
             <Setter Property="Margin" Value="0,3,0,0" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
-        <Style x:Key="FieldLabel" TargetType="TextBlock">
+        <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource AppFieldLabelStyle}">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Foreground" Value="#374151" />
             <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
-        <Style x:Key="FieldGroup" TargetType="StackPanel">
+        <Style x:Key="FieldGroup" TargetType="StackPanel" BasedOn="{StaticResource AppFieldGroupStyle}">
             <Setter Property="Margin" Value="0,0,0,14" />
         </Style>
     </UserControl.Resources>
@@ -49,8 +51,9 @@
              ROW 0: Header — breadcrumb + toolbar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16,14"
-                Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                Style="{DynamicResource AppCommandBarHostStyle}"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
             <DockPanel>
                 <!-- Left: back + context -->
                 <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
@@ -123,7 +126,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Rules Grid -->
-            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border Grid.Column="0" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
                 <dxg:GridControl ItemsSource="{Binding Rules}"
                                  SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
                                  AutoPopulateColumns="False">
@@ -244,7 +247,7 @@
 
             <!-- Edit Panel -->
             <Border Grid.Column="1" Width="340" Margin="10,0,0,0"
-                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
+                    BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6"
                     Padding="18,16"
                     Visibility="{Binding IsEditPanelOpen, Converter={StaticResource BoolToVis}}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -395,11 +398,10 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Field Code" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
-                                    <!-- IsTextEditable=True: cho phép gõ tay nếu list chưa load -->
                                     <dxe:ComboBoxEdit ItemsSource="{Binding AvailableCompareFields}"
                                                       EditValue="{Binding EditCompareField, UpdateSourceTrigger=PropertyChanged}"
-                                                      IsTextEditable="True"
-                                                      NullText="Chọn hoặc nhập field code" />
+                                                      IsTextEditable="False"
+                                                      NullText="Chọn field code" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Toán tử" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />

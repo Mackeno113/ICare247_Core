@@ -2296,9 +2296,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         var p = new NavigationParameters
         {
-            { "fieldId", FieldId },
-            { "formId", FormId },
-            { "mode", "new" }
+            { "fieldId",     FieldId     },
+            { "formId",      FormId      },
+            { "fieldCode",   ColumnCode  },
+            { "tableCode",   TableCode   },
+            { "sectionName", SectionName },
+            { "mode",        "new"       }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, p);
     }
@@ -2330,8 +2333,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (evt is null) return;
         var p = new NavigationParameters
         {
-            { "eventId", evt.EventId },
-            { "fieldId", FieldId }
+            { "eventId",     evt.EventId },
+            { "fieldId",     FieldId     },
+            { "formId",      FormId      },
+            { "fieldCode",   ColumnCode  },
+            { "tableCode",   TableCode   },
+            { "sectionName", SectionName }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, p);
     }

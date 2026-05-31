@@ -423,45 +423,13 @@
                 </Border>
 
                 <!-- Content Area -->
-                <Grid Grid.Column="1" Margin="14">
-                    <Border CornerRadius="16"
-                            Background="{DynamicResource ShellContentBackgroundBrush}" />
-
-                    <Canvas IsHitTestVisible="False">
-                        <Ellipse Width="280"
-                                 Height="280"
-                                 Canvas.Left="-70"
-                                 Canvas.Top="-90">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush>
-                                    <GradientStop Color="#66BAE6FD" Offset="0" />
-                                    <GradientStop Color="#00BAE6FD" Offset="1" />
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
-
-                        <Ellipse Width="220"
-                                 Height="220"
-                                 HorizontalAlignment="Right"
-                                 VerticalAlignment="Bottom"
-                                 Canvas.Right="-40"
-                                 Canvas.Bottom="-60">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush>
-                                    <GradientStop Color="#55C7D2FE" Offset="0" />
-                                    <GradientStop Color="#00C7D2FE" Offset="1" />
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
-                    </Canvas>
-
-                    <Border Margin="14"
-                            Padding="6"
-                            CornerRadius="12"
-                            Background="#AAFFFFFF"
+                <Grid Grid.Column="1" Margin="12">
+                    <Border CornerRadius="8"
+                            Background="{DynamicResource ShellContentBackgroundBrush}"
                             BorderThickness="1"
-                            BorderBrush="#E0ECFB">
-                        <ContentControl prism:RegionManager.RegionName="{x:Static core:RegionNames.Content}" />
+                            BorderBrush="{DynamicResource ShellContentHostBorderBrush}">
+                        <ContentControl Margin="8"
+                                        prism:RegionManager.RegionName="{x:Static core:RegionNames.Content}" />
                     </Border>
                 </Grid>
             </Grid>

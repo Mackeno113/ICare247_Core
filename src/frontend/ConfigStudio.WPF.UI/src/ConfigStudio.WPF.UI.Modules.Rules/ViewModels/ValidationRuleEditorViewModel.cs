@@ -31,7 +31,6 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     private readonly IRuleDataService? _ruleService;
     private readonly II18nDataService? _i18nService;
     private readonly IAppConfigService? _appConfig;
-    private readonly IFormDetailDataService? _formDetailService;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params / Context ───────────────────────────
@@ -313,7 +312,6 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         IRuleDataService? ruleService = null,
         II18nDataService? i18nService = null,
         IAppConfigService? appConfig = null,
-        IFormDetailDataService? formDetailService = null,
         INavigationHistoryService? history = null)
     {
         _regionManager     = regionManager;
@@ -321,7 +319,6 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         _ruleService       = ruleService;
         _i18nService       = i18nService;
         _appConfig         = appConfig;
-        _formDetailService = formDetailService;
         _history           = history;
 
         AddRuleCommand = new DelegateCommand(ExecuteAddRule);
@@ -404,15 +401,13 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     /// </summary>
     private async Task LoadAvailableCompareFieldsAsync()
     {
-        if (_formDetailService is null || _appConfig is not { IsConfigured: true }) return;
+        if (_ruleService is null || _appConfig is not { IsConfigured: true }) return;
 
         try
         {
-            var tenantId = _appConfig.TenantId;
-            var fields   = await _formDetailService.GetFieldsByFormAsync(FormId, tenantId, _cts.Token);
+            var fields = await _ruleService.GetFieldCodesInFormAsync(FormId, _cts.Token);
 
             AvailableCompareFields = fields
-                .Select(f => f.ColumnCode)
                 .Where(code => !string.IsNullOrWhiteSpace(code)
                                && !code.Equals(FieldCode, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(code => code)
@@ -683,9 +678,12 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     {
         var p = new NavigationParameters
         {
-            { "fieldId", FieldId },
-            { "formId", FormId },
-            { "mode", "edit" }
+            { "fieldId",     FieldId },
+            { "formId",      FormId },
+            { "fieldCode",   FieldCode },
+            { "tableCode",   TableCode },
+            { "sectionName", SectionName },
+            { "mode",        "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }

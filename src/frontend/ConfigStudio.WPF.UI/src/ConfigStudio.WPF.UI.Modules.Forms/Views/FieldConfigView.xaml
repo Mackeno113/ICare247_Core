@@ -15,7 +15,8 @@
              d:DesignHeight="700"
              d:DesignWidth="950"
              mc:Ignorable="d"
-             Background="#F1F5F9">
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
 
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveFieldCommand}" />
@@ -240,8 +241,8 @@
         <!-- ═══════════════════════════════════════════════════════════════
              ROW 0: Header Bar — back + field info + dirty indicator
              ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
+        <Border Grid.Row="0" Grid.ColumnSpan="2"
+                Style="{DynamicResource AppCommandBarHostStyle}"
                 Padding="20,12">
             <DockPanel>
                 <!-- ← Back -->
@@ -320,8 +321,7 @@
              BANNER: Lỗi load dữ liệu (chỉ hiện khi HasLoadError = true)
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.ColumnSpan="2"
-                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="0,0,0,1"
-                Padding="16,8"
+                Style="{DynamicResource AppErrorBannerStyle}"
                 Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="⚠" FontSize="14" Foreground="#DC2626"
@@ -336,8 +336,8 @@
              BANNER: Lỗi save (chỉ hiện khi HasSaveError = true)
              ═══════════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Grid.ColumnSpan="2"
-                Background="#FFF7ED" BorderBrush="#FED7AA" BorderThickness="0,0,0,1"
-                Padding="16,8" Margin="0,32,0,0"
+                Style="{DynamicResource AppStateBannerStyle}"
+                Margin="0,32,0,0"
                 Visibility="{Binding HasSaveError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="💾" FontSize="14" Foreground="#C2410C"

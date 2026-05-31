@@ -1,32 +1,18 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <FontFamily x:Key="ShellFontFamily">Bahnschrift</FontFamily>
+    <FontFamily x:Key="ShellFontFamily">Segoe UI</FontFamily>
 
     <SolidColorBrush x:Key="ShellWindowBackgroundBrush" Color="#0F172A" />
     <SolidColorBrush x:Key="ShellWindowBorderBrush" Color="#1E293B" />
 
-    <LinearGradientBrush x:Key="ShellContentBackgroundBrush"
-                         StartPoint="0,0"
-                         EndPoint="1,1">
-        <GradientStop Color="#111B2E" Offset="0" />
-        <GradientStop Color="#0B1528" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellContentBackgroundBrush" Color="#0F172A" />
+    <SolidColorBrush x:Key="ShellContentHostBorderBrush" Color="#334155" />
 
-    <LinearGradientBrush x:Key="ShellTitleBarBackgroundBrush"
-                         StartPoint="0,0"
-                         EndPoint="1,0">
-        <GradientStop Color="#1D4ED8" Offset="0" />
-        <GradientStop Color="#0F766E" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellTitleBarBackgroundBrush" Color="#1D4ED8" />
 
     <SolidColorBrush x:Key="ShellStatusBarBackgroundBrush" Color="#122033" />
 
-    <LinearGradientBrush x:Key="ShellSidebarBackgroundBrush"
-                         StartPoint="0,0"
-                         EndPoint="0,1">
-        <GradientStop Color="#16243A" Offset="0" />
-        <GradientStop Color="#101D30" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellSidebarBackgroundBrush" Color="#111827" />
 
     <SolidColorBrush x:Key="ShellTitleBarTextBrush" Color="#FFFFFF" />
     <SolidColorBrush x:Key="ShellStatusBarTextBrush" Color="#CBD5E1" />

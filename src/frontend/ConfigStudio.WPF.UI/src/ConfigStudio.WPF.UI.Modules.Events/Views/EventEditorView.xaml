@@ -9,7 +9,9 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="600"
              d:DesignWidth="1000"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
 
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="N" Command="{Binding AddEventCommand}" />
@@ -31,8 +33,9 @@
              ROW 0: Header + Toolbar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                Style="{DynamicResource AppCommandBarHostStyle}"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
                     <Button Command="{Binding BackCommand}" ToolTip="Quay lại Field Config"
@@ -92,7 +95,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Events GridControl -->
-            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border Grid.Column="0" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Events" Margin="12,12,12,8"
                                FontSize="14" FontWeight="SemiBold"
@@ -159,7 +162,7 @@
                           HorizontalAlignment="Center" VerticalAlignment="Stretch" />
 
             <!-- Actions panel -->
-            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border Grid.Column="2" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
                 <DockPanel>
                     <DockPanel DockPanel.Dock="Top" Margin="12,12,12,8">
                         <TextBlock Text="Actions" DockPanel.Dock="Left"

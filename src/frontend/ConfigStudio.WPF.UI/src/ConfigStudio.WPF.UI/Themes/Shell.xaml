@@ -2,24 +2,17 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!-- ── Fonts ──────────────────────────────────────────────────── -->
-    <FontFamily x:Key="ShellFontFamily">Bahnschrift</FontFamily>
+    <FontFamily x:Key="ShellFontFamily">Segoe UI</FontFamily>
 
     <!-- ── Window / Background Brushes ───────────────────────────── -->
     <SolidColorBrush x:Key="ShellWindowBackgroundBrush"    Color="#F4F8FF" />
     <SolidColorBrush x:Key="ShellWindowBorderBrush"        Color="#D6E2F3" />
 
-    <LinearGradientBrush x:Key="ShellContentBackgroundBrush"
-                         StartPoint="0,0" EndPoint="1,1">
-        <GradientStop Color="#F8FBFF" Offset="0" />
-        <GradientStop Color="#EEF5FF" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellContentBackgroundBrush" Color="#F8FAFC" />
+    <SolidColorBrush x:Key="ShellContentHostBorderBrush" Color="#D6E2F3" />
 
     <!-- ── Title Bar Brushes ──────────────────────────────────────── -->
-    <LinearGradientBrush x:Key="ShellTitleBarBackgroundBrush"
-                         StartPoint="0,0" EndPoint="1,0">
-        <GradientStop Color="#2563EB" Offset="0" />
-        <GradientStop Color="#0891B2" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellTitleBarBackgroundBrush" Color="#1D4ED8" />
 
     <SolidColorBrush x:Key="ShellTitleBarTextBrush"          Color="#FFFFFF" />
 
@@ -34,11 +27,7 @@
     <SolidColorBrush x:Key="ShellTenantBadgeTextBrush"       Color="#1E40AF" />
 
     <!-- ── Sidebar Brushes ───────────────────────────────────────── -->
-    <LinearGradientBrush x:Key="ShellSidebarBackgroundBrush"
-                         StartPoint="0,0" EndPoint="0,1">
-        <GradientStop Color="#F3F8FF" Offset="0" />
-        <GradientStop Color="#EAF2FF" Offset="1" />
-    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ShellSidebarBackgroundBrush" Color="#F3F8FF" />
 
     <SolidColorBrush x:Key="ShellSidebarItemTextBrush"          Color="#1E293B" />
     <SolidColorBrush x:Key="ShellSidebarIconBrush"              Color="#2563EB" />

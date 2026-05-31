@@ -13,7 +13,8 @@
              d:DesignHeight="700"
              d:DesignWidth="1200"
              mc:Ignorable="d"
-             Background="#F1F5F9">
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
 
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveFormCommand}" />
@@ -237,7 +238,7 @@
                 <Border DockPanel.Dock="Left" Margin="12,0,0,0"
                         VerticalAlignment="Center"
                         Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}">
-                    <Border Background="#FEF3C7" CornerRadius="10" Padding="8,3">
+                    <Border Style="{DynamicResource AppDirtyIndicatorPillStyle}">
                         <TextBlock Text="Chưa lưu" FontSize="11" FontWeight="SemiBold"
                                    Foreground="#D97706" />
                     </Border>
@@ -290,9 +291,7 @@
         <!-- ═══════════════════════════════════════════════════════════════
              ROW 1: Toolbar — structure editing
              ═══════════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}"
-                BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                Padding="20,6">
+        <Border Grid.Row="1" Style="{DynamicResource AppCommandBarHostStyle}">
             <StackPanel Orientation="Horizontal">
                 <dx:SimpleButton Command="{Binding AddSectionCommand}" Height="28"
                                  Padding="10,0" Margin="0,0,4,0">

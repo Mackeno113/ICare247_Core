@@ -40,6 +40,12 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     private string _fieldCode = "";
     public string FieldCode { get => _fieldCode; set => SetProperty(ref _fieldCode, value); }
 
+    private string _tableCode = "";
+    public string TableCode { get => _tableCode; set => SetProperty(ref _tableCode, value); }
+
+    private string _sectionName = "";
+    public string SectionName { get => _sectionName; set => SetProperty(ref _sectionName, value); }
+
     // ── Events list ──────────────────────────────────────────
     public ObservableCollection<EventItemDto> Events { get; } = [];
 
@@ -131,12 +137,14 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
 
     public async void OnNavigatedTo(NavigationContext navigationContext)
     {
-        FieldId = navigationContext.Parameters.GetValue<int>("fieldId");
-        FormId = navigationContext.Parameters.GetValue<int>("formId");
-        var fieldCode = navigationContext.Parameters.GetValue<string>("fieldCode") ?? "";
+        FieldId     = navigationContext.Parameters.GetValue<int>("fieldId");
+        FormId      = navigationContext.Parameters.GetValue<int>("formId");
+        FieldCode   = navigationContext.Parameters.GetValue<string>("fieldCode")   ?? "";
+        TableCode   = navigationContext.Parameters.GetValue<string>("tableCode")   ?? "";
+        SectionName = navigationContext.Parameters.GetValue<string>("sectionName") ?? "";
 
         var hasContext = FieldId > 0 || FormId > 0;
-        var title = !string.IsNullOrEmpty(fieldCode) ? $"Events: {fieldCode}" : "Events";
+        var title = !string.IsNullOrEmpty(FieldCode) ? $"Events: {FieldCode}" : "Events";
         _history?.RegisterNavigation(
             new NavigationCrumb
             {
@@ -401,9 +409,12 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     {
         var p = new NavigationParameters
         {
-            { "fieldId", FieldId },
-            { "formId", FormId },
-            { "mode", "edit" }
+            { "fieldId",     FieldId },
+            { "formId",      FormId },
+            { "fieldCode",   FieldCode },
+            { "tableCode",   TableCode },
+            { "sectionName", SectionName },
+            { "mode",        "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }

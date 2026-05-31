@@ -19,6 +19,9 @@ public interface IRuleDataService
     /// <summary>Danh sách loại rule từ Val_Rule_Type.</summary>
     Task<IReadOnlyList<RuleTypeRecord>> GetRuleTypesAsync(CancellationToken ct = default);
 
+    /// <summary>Danh sách FieldCode trong cùng form, dùng cho Compare rule dropdown.</summary>
+    Task<IReadOnlyList<string>> GetFieldCodesInFormAsync(int formId, CancellationToken ct = default);
+
     /// <summary>
     /// Thêm mới hoặc cập nhật 1 rule. FieldId lấy từ <see cref="RuleItemRecord.FieldId"/>.
     /// Trả về Rule_Id sau khi lưu.

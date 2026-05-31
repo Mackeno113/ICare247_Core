@@ -6,7 +6,9 @@
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="680" d:DesignWidth="720"
-             mc:Ignorable="d">
+             mc:Ignorable="d"
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
 
     <UserControl.Resources>
 
@@ -204,7 +206,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- DB CONNECTION CARD                              -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Border Grid.Row="2" Style="{StaticResource CardStyle}">
+            <Border Grid.Row="2" Style="{StaticResource AppCardStyle}">
                 <StackPanel>
 
                     <!-- Section title -->
@@ -215,15 +217,15 @@
                     </StackPanel>
 
                     <!-- Server -->
-                    <TextBlock Text="Server" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Server" Style="{StaticResource AppFieldLabelStyle}" />
                     <TextBox Text="{Binding Server, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource FieldInputStyle}"
+                             Style="{StaticResource AppFieldInputStyle}"
                              Margin="0,0,0,14" />
 
                     <!-- Database -->
-                    <TextBlock Text="Database" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Database" Style="{StaticResource AppFieldLabelStyle}" />
                     <TextBox Text="{Binding Database, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource FieldInputStyle}"
+                             Style="{StaticResource AppFieldInputStyle}"
                              Margin="0,0,0,14" />
 
                     <!-- Username + Password (2 columns) -->
@@ -236,16 +238,16 @@
 
                         <!-- Username -->
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource AppFieldLabelStyle}" />
                             <TextBox Text="{Binding UserId, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource FieldInputStyle}" />
+                                     Style="{StaticResource AppFieldInputStyle}" />
                         </StackPanel>
 
                         <!-- Password -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Mật khẩu" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="Mật khẩu" Style="{StaticResource AppFieldLabelStyle}" />
                             <PasswordBox x:Name="DbPasswordBox"
-                                         Style="{StaticResource FieldPasswordStyle}"
+                                         Style="{StaticResource AppFieldPasswordStyle}"
                                          PasswordChanged="DbPasswordBox_PasswordChanged" />
                         </StackPanel>
                     </Grid>
@@ -263,7 +265,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- TARGET DB CARD                                  -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Border Grid.Row="4" Style="{StaticResource CardStyle}">
+            <Border Grid.Row="4" Style="{StaticResource AppCardStyle}">
                 <StackPanel>
 
                     <!-- Section title + badge -->
@@ -279,15 +281,15 @@
                     </StackPanel>
 
                     <!-- Server -->
-                    <TextBlock Text="Server" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Server" Style="{StaticResource AppFieldLabelStyle}" />
                     <TextBox Text="{Binding TargetServer, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource FieldInputStyle}"
+                             Style="{StaticResource AppFieldInputStyle}"
                              Margin="0,0,0,14" />
 
                     <!-- Database -->
-                    <TextBlock Text="Database" Style="{StaticResource FieldLabelStyle}" />
+                    <TextBlock Text="Database" Style="{StaticResource AppFieldLabelStyle}" />
                     <TextBox Text="{Binding TargetDatabase, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource FieldInputStyle}"
+                             Style="{StaticResource AppFieldInputStyle}"
                              Margin="0,0,0,14" />
 
                     <!-- Username + Password (2 columns) -->
@@ -300,16 +302,16 @@
 
                         <!-- Username -->
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="Tên đăng nhập" Style="{StaticResource AppFieldLabelStyle}" />
                             <TextBox Text="{Binding TargetUserId, UpdateSourceTrigger=PropertyChanged}"
-                                     Style="{StaticResource FieldInputStyle}" />
+                                     Style="{StaticResource AppFieldInputStyle}" />
                         </StackPanel>
 
                         <!-- Password -->
                         <StackPanel Grid.Column="2">
-                            <TextBlock Text="Mật khẩu" Style="{StaticResource FieldLabelStyle}" />
+                            <TextBlock Text="Mật khẩu" Style="{StaticResource AppFieldLabelStyle}" />
                             <PasswordBox x:Name="TargetPasswordBox"
-                                         Style="{StaticResource FieldPasswordStyle}"
+                                         Style="{StaticResource AppFieldPasswordStyle}"
                                          PasswordChanged="TargetPasswordBox_PasswordChanged" />
                         </StackPanel>
                     </Grid>
@@ -325,7 +327,7 @@
                     <StackPanel Orientation="Horizontal">
                         <Button Content="🔌  Test Target DB"
                                 Command="{Binding TestTargetConnectionCommand}"
-                                Style="{StaticResource TargetTestButtonStyle}"
+                                Style="{StaticResource AppTargetTestButtonStyle}"
                                 Foreground="#059669" />
 
                         <!-- Inline status cho Target DB -->
@@ -375,7 +377,7 @@
             <!-- ═══════════════════════════════════════════════ -->
             <!-- TENANT CARD                                     -->
             <!-- ═══════════════════════════════════════════════ -->
-            <Border Grid.Row="6" Style="{StaticResource CardStyle}">
+            <Border Grid.Row="6" Style="{StaticResource AppCardStyle}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -391,7 +393,7 @@
 
                     <TextBox Grid.Column="1"
                              Text="{Binding TenantId, UpdateSourceTrigger=PropertyChanged}"
-                             Style="{StaticResource FieldInputStyle}"
+                             Style="{StaticResource AppFieldInputStyle}"
                              Width="90" VerticalAlignment="Center"
                              TextAlignment="Center" />
                 </Grid>
@@ -413,14 +415,14 @@
                 <Button Grid.Column="0"
                         Content="🔌  Test Kết Nối"
                         Command="{Binding TestConnectionCommand}"
-                        Style="{StaticResource TestButtonStyle}"
+                        Style="{StaticResource AppTestButtonStyle}"
                         Foreground="#2563EB" />
 
                 <!-- Save button -->
                 <Button Grid.Column="2"
                         Content="💾  Lưu Cài Đặt"
                         Command="{Binding SaveCommand}"
-                        Style="{StaticResource ActionButtonStyle}"
+                        Style="{StaticResource AppActionButtonStyle}"
                         Background="#2563EB" Foreground="White" />
 
                 <!-- Busy spinner placeholder (visible when IsBusy) -->
