@@ -49,6 +49,8 @@ public sealed class FieldMetadataDto
     public bool    IsRequired       { get; set; }
     /// <summary>true = khóa khi FormMode=Edit (ADR-017). EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND IsEditMode).</summary>
     public bool    LockOnEdit       { get; set; }
+    /// <summary>true = field UI-only, không map tới cột DB. Save layer bỏ qua field này.</summary>
+    public bool    IsVirtual        { get; set; }
     public int     SortOrder        { get; set; }
     /// <summary>Độ rộng grid 4-col: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>
     public byte    ColSpan          { get; set; } = 1;

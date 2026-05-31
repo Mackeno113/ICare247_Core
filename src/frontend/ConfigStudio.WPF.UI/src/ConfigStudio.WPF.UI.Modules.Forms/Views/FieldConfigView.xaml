@@ -633,7 +633,7 @@
                                 <TextBlock Text="Behavior" Style="{StaticResource SectionTitleStyle}"
                                            Margin="0,0,0,14" />
 
-                                <!-- Grid 2×2: IsVisible / IsReadOnly / IsRequired / LockOnEdit (ADR-017) -->
+                                <!-- Grid 3×2: IsVisible / IsReadOnly / IsRequired / LockOnEdit (ADR-017) / IsVirtual -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -641,6 +641,8 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="8" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="8" />
                                         <RowDefinition Height="Auto" />
@@ -708,6 +710,23 @@
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Cho nhập khi tạo, không cho đổi khi update (key/code/audit field)."
+                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- IsVirtual: field UI-only, khong luu DB -->
+                                    <Border Grid.Column="0" Grid.Row="4"
+                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <dxe:ToggleSwitchEdit IsChecked="{Binding IsVirtual}"
+                                                                       DockPanel.Dock="Right" HorizontalAlignment="Right" />
+                                                <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                    <Run Text="🔮" /><Run Text=" Field ảo" />
+                                                </TextBlock>
+                                            </DockPanel>
+                                            <TextBlock Text="UI-only, không lưu DB. Dùng cho helper field cascading (ví dụ: TinhThanh lọc XaPhuong)."
                                                        FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>

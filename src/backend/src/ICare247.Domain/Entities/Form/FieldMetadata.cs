@@ -83,6 +83,13 @@ public sealed class FieldMetadata
     public bool LockOnEdit { get; init; }
 
     /// <summary>
+    /// Field UI-only — không map tới cột DB thực (Ui_Field.Is_Virtual).
+    /// Dùng cho helper field như TinhThanh (lọc cascading XaPhuong) mà không cần lưu DB.
+    /// FormRunner / save layer bỏ qua field này khi build payload ghi DB.
+    /// </summary>
+    public bool IsVirtual { get; init; }
+
+    /// <summary>
     /// Độ rộng field trong grid layout 4-column (Ui_Field.Col_Span).
     /// 1 = 1/4 width (narrow, default), 2 = 2/4 (half),
     /// 3 = 3/4 width, 4 = full width (textarea, subgrid).

@@ -859,6 +859,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _lockOnEdit, value)) IsDirty = true; }
     }
 
+    private bool _isVirtual;
+    /// <summary>
+    /// Field UI-only, không map tới cột DB. Save layer bỏ qua field này khi ghi DB.
+    /// Dùng cho helper field cascading (ví dụ: TinhThanh lọc XaPhuong).
+    /// </summary>
+    public bool IsVirtual
+    {
+        get => _isVirtual;
+        set { if (SetProperty(ref _isVirtual, value)) IsDirty = true; }
+    }
+
     // ── Layout ───────────────────────────────────────────────
 
     private byte _colSpan = 1;
@@ -1104,6 +1115,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     if (!string.IsNullOrEmpty(_requiredErrorKey))
                         _ = ResolveI18nPreviewAsync(_requiredErrorKey, v => RequiredErrorKeyPreview = v);
                     LockOnEdit             = field.LockOnEdit;
+                    IsVirtual              = field.IsVirtual;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
                     // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
@@ -2091,6 +2103,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsRequired         = IsRequired,
                 RequiredErrorKey   = IsRequired ? (string.IsNullOrWhiteSpace(RequiredErrorKey) ? null : RequiredErrorKey) : null,
                 LockOnEdit         = LockOnEdit,
+                IsVirtual          = IsVirtual,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,

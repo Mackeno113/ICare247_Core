@@ -100,6 +100,8 @@ public sealed class FieldState
     public bool    IsReadOnly { get; set; }
     /// <summary>true = khóa khi FormMode=Edit (ADR-017). Effective ReadOnly = IsReadOnly OR (LockOnEdit AND IsEditMode).</summary>
     public bool    LockOnEdit { get; set; }
+    /// <summary>true = field UI-only, không map cột DB. BuildContext vẫn include (cần cho rule eval), save layer loại bỏ.</summary>
+    public bool    IsVirtual  { get; init; }
 
     /// <summary>
     /// Form đang ở chế độ Edit (record đã tồn tại, RecordId > 0). Cùng giá trị cho mọi FieldState

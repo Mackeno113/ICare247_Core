@@ -44,7 +44,8 @@ public sealed class FieldRepository : IFieldRepository
                    fi.Control_Props_Json                    AS ControlPropsJson,
                    fi.Col_Span                              AS ColSpan,
                    fi.Lookup_Source                         AS LookupSource,
-                   fi.Lookup_Code                           AS LookupCode
+                   fi.Lookup_Code                           AS LookupCode,
+                   fi.Is_Virtual                            AS IsVirtual
             FROM   dbo.Ui_Field fi
             JOIN   dbo.Ui_Form f      ON f.Form_Id      = fi.Form_Id
             JOIN   dbo.Sys_Table t    ON t.Table_Id     = f.Table_Id
@@ -87,7 +88,8 @@ public sealed class FieldRepository : IFieldRepository
                    fi.Control_Props_Json   AS ControlPropsJson,
                    fi.Col_Span             AS ColSpan,
                    fi.Lookup_Source        AS LookupSource,
-                   fi.Lookup_Code          AS LookupCode
+                   fi.Lookup_Code          AS LookupCode,
+                   fi.Is_Virtual           AS IsVirtual
             FROM   dbo.Ui_Field fi
             JOIN   dbo.Ui_Form f   ON f.Form_Id   = fi.Form_Id
             JOIN   dbo.Sys_Table t ON t.Table_Id  = f.Table_Id
@@ -115,6 +117,7 @@ public sealed class FieldRepository : IFieldRepository
             Label = field.Label, ControlPropsJson = field.ControlPropsJson,
             DefaultValueJson = field.DefaultValueJson, IsVisible = field.IsVisible,
             IsReadOnly = field.IsReadOnly, IsRequired = field.IsRequired, LockOnEdit = field.LockOnEdit,
+            IsVirtual = field.IsVirtual,
             SortOrder = field.SortOrder, ColSpan = field.ColSpan,
             LookupSource = field.LookupSource, LookupCode = field.LookupCode,
             LookupConfig = cfg
@@ -140,7 +143,8 @@ public sealed class FieldRepository : IFieldRepository
                    fi.Control_Props_Json   AS ControlPropsJson,
                    fi.Col_Span             AS ColSpan,
                    fi.Lookup_Source        AS LookupSource,
-                   fi.Lookup_Code          AS LookupCode
+                   fi.Lookup_Code          AS LookupCode,
+                   fi.Is_Virtual           AS IsVirtual
             FROM   dbo.Ui_Field fi
             JOIN   dbo.Ui_Form f   ON f.Form_Id   = fi.Form_Id
             JOIN   dbo.Sys_Table t ON t.Table_Id  = f.Table_Id
@@ -217,6 +221,7 @@ public sealed class FieldRepository : IFieldRepository
                     Label = f.Label, ControlPropsJson = f.ControlPropsJson,
                     DefaultValueJson = f.DefaultValueJson, IsVisible = f.IsVisible,
                     IsReadOnly = f.IsReadOnly, IsRequired = f.IsRequired, LockOnEdit = f.LockOnEdit,
+                    IsVirtual = f.IsVirtual,
                     SortOrder = f.SortOrder, ColSpan = f.ColSpan,
                     LookupSource = f.LookupSource, LookupCode = f.LookupCode,
                     LookupConfig = cfg

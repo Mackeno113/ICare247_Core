@@ -236,6 +236,7 @@ else if (_form is not null)
                 IsReadOnly   = f.IsReadOnly,
                 IsRequired   = f.IsRequired,
                 LockOnEdit   = f.LockOnEdit,
+                IsVirtual    = f.IsVirtual,
                 IsEditMode   = IsEditMode,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
                 ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,

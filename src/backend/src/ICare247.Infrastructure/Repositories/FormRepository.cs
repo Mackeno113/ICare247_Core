@@ -158,6 +158,7 @@ public sealed class FormRepository : IFormRepository
                    fi.Is_ReadOnly                            AS IsReadOnly,
                    fi.Is_Required                            AS IsRequired,
                    fi.Lock_On_Edit                           AS LockOnEdit,
+                   fi.Is_Virtual                             AS IsVirtual,
                    fi.Control_Props_Json                     AS ControlPropsJson,
                    fi.Col_Span                               AS ColSpan,
                    fi.Lookup_Source                          AS LookupSource,
@@ -230,6 +231,7 @@ public sealed class FormRepository : IFormRepository
                     Label = f.Label, ControlPropsJson = f.ControlPropsJson,
                     DefaultValueJson = f.DefaultValueJson, IsVisible = f.IsVisible,
                     IsReadOnly = f.IsReadOnly, IsRequired = f.IsRequired,
+                    IsVirtual = f.IsVirtual,
                     SortOrder = f.SortOrder, ColSpan = f.ColSpan,
                     LookupSource = f.LookupSource, LookupCode = f.LookupCode,
                     LookupConfig = cfg

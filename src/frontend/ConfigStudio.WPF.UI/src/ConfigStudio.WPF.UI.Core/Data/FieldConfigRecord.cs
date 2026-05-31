@@ -32,6 +32,11 @@ public sealed class FieldConfigRecord
     /// EffectiveReadOnly = IsReadOnly OR (LockOnEdit AND FormMode=Edit).
     /// </summary>
     public bool LockOnEdit { get; init; }
+    /// <summary>
+    /// Field UI-only, không map tới cột DB (Ui_Field.Is_Virtual).
+    /// Dùng cho helper field như TinhThanh lọc cascading XaPhuong mà không cần lưu DB.
+    /// </summary>
+    public bool IsVirtual { get; init; }
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
     /// <summary>Độ rộng grid 4-column: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>
