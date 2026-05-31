@@ -1586,12 +1586,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         targetSection.Children.Add(field);
         targetSection.IsExpanded = true;
         SelectedNode = field;
-        PushUndoState("Thêm field");
-        IsDirty = true;
-        _autoSave?.NotifyDirty();
-        _linting?.NotifyChanged();
         RaisePropertyChanged(nameof(TotalFields));
-        RebuildAllFields();
+
+        // Tự động mở FieldConfigView để user cấu hình + lưu ngay.
+        // Field chỉ tồn tại trong DB sau khi user click "Lưu Field" trong FieldConfigView.
+        ExecuteOpenFieldConfig();
     }
 
     private void ExecuteDeleteNode()
@@ -1680,13 +1679,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         var isNew = SelectedNode.Id <= 0;
         var p = new NavigationParameters
         {
-            { "fieldId",   isNew ? 0 : SelectedNode.Id },
-            { "formId",    FormId },
-            { "sectionId", parentSection?.Id ?? 0 },
-            { "tableCode", SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
-            { "formCode",  FormCode },
-            { "formName",  FormName },
-            { "mode",      isNew ? "new" : "edit" }
+            { "fieldId",    isNew ? 0 : SelectedNode.Id },
+            { "formId",     FormId },
+            { "sectionId",  parentSection?.Id ?? 0 },
+            { "tableCode",  SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
+            { "formCode",   FormCode },
+            { "formName",   FormName },
+            { "mode",       isNew ? "new" : "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }
