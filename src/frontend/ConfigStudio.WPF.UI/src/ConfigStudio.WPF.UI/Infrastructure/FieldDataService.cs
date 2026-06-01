@@ -35,7 +35,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Form_Id            AS FormId,
                    fi.Section_Id         AS SectionId,
                    fi.Column_Id          AS ColumnId,
-                   sc.Column_Code        AS ColumnCode,
+                   ISNULL(sc.Column_Code, '') AS ColumnCode,
                    ISNULL(se.Section_Code, '') AS SectionCode,
                    fi.Editor_Type        AS EditorType,
                    fi.Label_Key          AS LabelKey,
@@ -55,7 +55,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Version,
                    fi.Description
             FROM   dbo.Ui_Field fi
-            JOIN   dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             LEFT JOIN dbo.Ui_Section se ON se.Section_Id = fi.Section_Id
             JOIN   dbo.Ui_Form f ON f.Form_Id = fi.Form_Id
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
