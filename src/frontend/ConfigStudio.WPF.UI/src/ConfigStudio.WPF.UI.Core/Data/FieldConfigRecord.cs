@@ -12,6 +12,11 @@ public sealed class FieldConfigRecord
     public int? SectionId { get; init; }
     public int ColumnId { get; init; }
     public string ColumnCode { get; init; } = "";
+    /// <summary>
+    /// Field_Code lưu trực tiếp trên Ui_Field — dùng cho virtual field không có Sys_Column.
+    /// FieldCode hiệu lực = COALESCE(FieldCode, ColumnCode).
+    /// </summary>
+    public string? FieldCode { get; init; }
     public string SectionCode { get; init; } = "";
     public string EditorType { get; init; } = "TextBox";
     public string LabelKey { get; init; } = "";

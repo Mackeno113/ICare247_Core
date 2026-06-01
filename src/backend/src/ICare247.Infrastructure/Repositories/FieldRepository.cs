@@ -33,7 +33,7 @@ public sealed class FieldRepository : IFieldRepository
             SELECT fi.Field_Id                              AS FieldId,
                    fi.Form_Id                               AS FormId,
                    fi.Section_Id                            AS SectionId,
-                   sc.Column_Code                           AS FieldCode,
+                   COALESCE(fi.Field_Code, sc.Column_Code)  AS FieldCode,
                    fi.Editor_Type                           AS FieldType,
                    COALESCE(r.Resource_Value, fi.Label_Key) AS Label,
                    fi.Order_No                              AS SortOrder,

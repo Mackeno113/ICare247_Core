@@ -70,6 +70,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private string _columnCode = "";
     public string ColumnCode { get => _columnCode; set => SetProperty(ref _columnCode, value); }
 
+    private string _fieldCode = "";
+    /// <summary>
+    /// Field_Code lưu trực tiếp — bắt buộc với virtual field (không có Sys_Column).
+    /// FieldCode hiệu lực = FieldCode nếu có, ngược lại dùng ColumnCode.
+    /// </summary>
+    public string FieldCode
+    {
+        get => _fieldCode;
+        set { if (SetProperty(ref _fieldCode, value)) IsDirty = true; }
+    }
+
     private string _sectionName = "";
     public string SectionName { get => _sectionName; set => SetProperty(ref _sectionName, value); }
 
@@ -1145,6 +1156,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     SectionName        = field.SectionCode;
                     SelectedColumn     = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
                     ColumnCode         = field.ColumnCode;
+                    FieldCode          = field.FieldCode ?? "";
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
                     // để LoadControlPropSchema() có thể restore giá trị từ DB
                     _controlPropsJson      = field.ControlPropsJson ?? "{}";
@@ -2154,6 +2166,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
+            // Virtual field: bắt buộc phải có FieldCode để tham chiếu trong rules/events
+            if (IsVirtual && string.IsNullOrWhiteSpace(FieldCode))
+            {
+                SaveError = "Field ảo bắt buộc phải có Field Code (dùng để tham chiếu trong rules/events).";
+                return;
+            }
+
             // Non-virtual field: cần Column_Id hợp lệ
             if (!IsVirtual && (SelectedColumn is null || SelectedColumn.ColumnId <= 0))
             {
@@ -2215,6 +2234,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 SectionId        = SectionId > 0 ? SectionId : null,
                 ColumnId         = SelectedColumn?.ColumnId ?? 0,
                 ColumnCode       = ColumnCode,
+                FieldCode        = IsVirtual && !string.IsNullOrWhiteSpace(FieldCode) ? FieldCode : null,
                 SectionCode      = SectionName,
                 EditorType       = SelectedEditorType,
                 LabelKey         = LabelKey,

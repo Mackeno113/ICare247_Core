@@ -500,6 +500,22 @@
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
 
+                                <!-- Field Code (chỉ hiện khi IsVirtual = true) -->
+                                <StackPanel Style="{StaticResource FieldGroupStyle}"
+                                            Visibility="{Binding IsVirtual, Converter={StaticResource BoolToVis}}">
+                                    <DockPanel>
+                                        <TextBlock DockPanel.Dock="Right" Text=" *" Foreground="#EF4444"
+                                                   FontWeight="Bold" VerticalAlignment="Center" />
+                                        <TextBlock Text="Field Code" Style="{StaticResource FieldLabelStyle}" />
+                                    </DockPanel>
+                                    <dxe:TextEdit EditValue="{Binding FieldCode, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="vd: NoiSinh_TinhThanh" />
+                                    <TextBlock Style="{StaticResource HelpTextStyle}">
+                                        <Run Text="Mã định danh field trong rules/events. Phải unique trong form." />
+                                        <Run Text=" Bắt buộc với field ảo." Foreground="#EF4444" />
+                                    </TextBlock>
+                                </StackPanel>
+
                                 <!-- Net Type (readonly) -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Net Type" Style="{StaticResource FieldLabelStyle}" />

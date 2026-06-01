@@ -36,6 +36,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Section_Id         AS SectionId,
                    fi.Column_Id          AS ColumnId,
                    ISNULL(sc.Column_Code, '') AS ColumnCode,
+                   fi.Field_Code              AS FieldCode,
                    ISNULL(se.Section_Code, '') AS SectionCode,
                    fi.Editor_Type        AS EditorType,
                    fi.Label_Key          AS LabelKey,
@@ -169,13 +170,13 @@ public sealed class FieldDataService : IFieldDataService
                             Placeholder_Key, Tooltip_Key, Required_Error_Key,
                             Is_Visible, Is_ReadOnly, Is_Required, Lock_On_Edit, Is_Virtual,
                             Order_No, Control_Props_Json, Col_Span, Lookup_Source,
-                            Lookup_Code, Version, Updated_At, Description)
+                            Lookup_Code, Field_Code, Version, Updated_At, Description)
                     OUTPUT INSERTED.Field_Id
                     VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
                             @PlaceholderKey, @TooltipKey, @RequiredErrorKey,
                             @IsVisible, @IsReadOnly, @IsRequired, @LockOnEdit, @IsVirtual,
                             @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
-                            @LookupCode, 1, GETDATE(), @Description)
+                            @LookupCode, @FieldCode, 1, GETDATE(), @Description)
                     """;
 
                 fieldId = await conn.ExecuteScalarAsync<int>(
@@ -199,6 +200,7 @@ public sealed class FieldDataService : IFieldDataService
                            Is_Required       = @IsRequired,
                            Lock_On_Edit      = @LockOnEdit,
                            Is_Virtual        = @IsVirtual,
+                           Field_Code        = @FieldCode,
                            Order_No          = @OrderNo,
                            Control_Props_Json = @ControlPropsJson,
                            Col_Span          = @ColSpan,
@@ -374,6 +376,8 @@ public sealed class FieldDataService : IFieldDataService
         f.SectionId,
         // ColumnId = 0 nghĩa là chưa chọn cột (virtual field) → gửi NULL tránh FK violation
         ColumnId         = f.ColumnId > 0 ? (int?)f.ColumnId : null,
+        // FieldCode: lưu trực tiếp cho virtual field; null cho field thường (dùng Sys_Column)
+        FieldCode        = string.IsNullOrWhiteSpace(f.FieldCode) ? null : f.FieldCode,
         f.EditorType,
         f.LabelKey,
         f.PlaceholderKey,
