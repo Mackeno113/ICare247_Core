@@ -60,6 +60,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     public ObservableCollection<ColumnInfoDto> AvailableColumns { get; } = [];
 
+    /// <summary>True khi có cột trong danh sách → hiện combo pick.</summary>
+    public bool HasAvailableColumns => AvailableColumns.Count > 0;
+    /// <summary>True khi list rỗng → hiện hint vàng.</summary>
+    public bool IsColumnListEmpty   => AvailableColumns.Count == 0 && !IsVirtual;
+    /// <summary>Hiện TextEdit gõ tay khi list rỗng hoặc IsVirtual (virtual field không cần cột).</summary>
+    public bool CanTypeColumnCode   => AvailableColumns.Count == 0 || IsVirtual;
+
     private ColumnInfoDto? _selectedColumn;
     public ColumnInfoDto? SelectedColumn
     {
@@ -867,7 +874,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool IsVirtual
     {
         get => _isVirtual;
-        set { if (SetProperty(ref _isVirtual, value)) IsDirty = true; }
+        set
+        {
+            if (SetProperty(ref _isVirtual, value))
+            {
+                IsDirty = true;
+                RaisePropertyChanged(nameof(IsColumnListEmpty));
+                RaisePropertyChanged(nameof(CanTypeColumnCode));
+            }
+        }
     }
 
     // ── Layout ───────────────────────────────────────────────
@@ -1072,6 +1087,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         IsNullable = c.IsNullable
                     });
                 }
+                // Cập nhật visibility binding sau khi load xong
+                RaisePropertyChanged(nameof(HasAvailableColumns));
+                RaisePropertyChanged(nameof(IsColumnListEmpty));
+                RaisePropertyChanged(nameof(CanTypeColumnCode));
             }
 
             if (_mode == "new")
@@ -2062,6 +2081,29 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ConfigExplanation = sb.ToString();
     }
 
+    /// <summary>Ánh xạ EditorType → SQL DataType mặc định cho EnsureColumnExistsAsync.</summary>
+    private static string MapEditorTypeToSqlType(string editorType) => editorType switch
+    {
+        "NumericBox" or "SpinEdit"              => "int",
+        "DecimalBox"                            => "decimal",
+        "DatePicker" or "DateEdit"              => "date",
+        "DateTimePicker" or "DateTimeEdit"      => "datetime2",
+        "CheckBox" or "ToggleSwitch"            => "bit",
+        "TextArea" or "Memo"                    => "nvarchar",
+        _                                       => "nvarchar",   // TextBox, ComboBox, LookupBox,...
+    };
+
+    /// <summary>Ánh xạ EditorType → .NET type tương ứng.</summary>
+    private static string MapEditorTypeToNetType(string editorType) => editorType switch
+    {
+        "NumericBox" or "SpinEdit"              => "int",
+        "DecimalBox"                            => "decimal",
+        "DatePicker" or "DateEdit"              => "DateTime",
+        "DateTimePicker" or "DateTimeEdit"      => "DateTime",
+        "CheckBox" or "ToggleSwitch"            => "bool",
+        _                                       => "string",
+    };
+
     private void ReindexRuleOrders()
     {
         for (int i = 0; i < LinkedRules.Count; i++)
@@ -2080,11 +2122,52 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
-            // Non-virtual field bắt buộc phải chọn cột (Column_Id FK constraint)
+            // Non-virtual field: cần Column_Id hợp lệ
             if (!IsVirtual && (SelectedColumn is null || SelectedColumn.ColumnId <= 0))
             {
-                SaveError = "Chưa chọn cột DB. Vui lòng chọn cột hoặc bật 'Field ảo' nếu không cần lưu DB.";
-                return;
+                if (string.IsNullOrWhiteSpace(ColumnCode))
+                {
+                    SaveError = "Chưa chọn cột DB. Nhập tên cột hoặc bật 'Field ảo' nếu không cần lưu DB.";
+                    return;
+                }
+
+                // User nhập tên cột thủ công → auto-create vào Sys_Column
+                var tableId = await _fieldService!.GetTableIdByFormAsync(FormId, _appConfig.TenantId, _cts.Token);
+                if (tableId <= 0)
+                {
+                    SaveError = "Form chưa liên kết Table. Vui lòng chọn Table trong Thông tin Form.";
+                    return;
+                }
+
+                var colDto = new ColumnSchemaDto
+                {
+                    ColumnName = ColumnCode,
+                    DataType   = MapEditorTypeToSqlType(SelectedEditorType),
+                    NetType    = MapEditorTypeToNetType(SelectedEditorType),
+                    IsNullable = true,
+                };
+                var createdId = await _fieldService.EnsureColumnExistsAsync(tableId, colDto, _cts.Token);
+                if (createdId <= 0)
+                {
+                    SaveError = $"Không thể tạo cột '{ColumnCode}' trong Sys_Column.";
+                    return;
+                }
+
+                // Tạo SelectedColumn in-memory để record lấy ColumnId đúng
+                var newCol = new ColumnInfoDto
+                {
+                    ColumnId   = createdId,
+                    ColumnCode = ColumnCode,
+                    DataType   = colDto.DataType,
+                    NetType    = colDto.NetType,
+                    IsNullable = true
+                };
+                AvailableColumns.Add(newCol);
+                _selectedColumn = newCol; // set backing field trực tiếp, tránh raise thêm event
+                RaisePropertyChanged(nameof(SelectedColumn));
+                RaisePropertyChanged(nameof(HasAvailableColumns));
+                RaisePropertyChanged(nameof(IsColumnListEmpty));
+                RaisePropertyChanged(nameof(CanTypeColumnCode));
             }
 
             // Xác định LookupSource theo EditorType

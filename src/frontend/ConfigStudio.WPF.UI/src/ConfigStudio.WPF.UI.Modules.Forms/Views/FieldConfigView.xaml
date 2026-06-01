@@ -454,7 +454,9 @@
                                 <!-- Column (DB) -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Column (DB)" Style="{StaticResource FieldLabelStyle}" />
-                                    <DockPanel>
+
+                                    <!-- Khi có danh sách cột → combo pick -->
+                                    <DockPanel Visibility="{Binding HasAvailableColumns, Converter={StaticResource BoolToVis}}">
                                         <Button DockPanel.Dock="Right" Command="{Binding BrowseColumnCommand}"
                                                 ToolTip="Browse columns" Style="{StaticResource IconBtnStyle}"
                                                 Margin="6,0,0,0">
@@ -465,7 +467,23 @@
                                                           DisplayMember="DisplayName"
                                                           NullText="Chọn column..." />
                                     </DockPanel>
-                                    <TextBlock Text="Cột DB mà field này bind vào. Quyết định kiểu dữ liệu và constraint."
+
+                                    <!-- Khi list rỗng hoặc IsVirtual → gõ tên cột thủ công -->
+                                    <dxe:TextEdit EditValue="{Binding ColumnCode, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="Nhập tên cột (ví dụ: HoVaTen)..."
+                                                  Visibility="{Binding CanTypeColumnCode, Converter={StaticResource BoolToVis}}" />
+
+                                    <!-- Hint khi list rỗng -->
+                                    <Border Background="#FEF9C3" CornerRadius="4" Padding="8,6" Margin="0,4,0,0"
+                                            BorderBrush="#FDE68A" BorderThickness="1"
+                                            Visibility="{Binding IsColumnListEmpty, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
+                                            <Run Text="⚠" /><Run Text=" Chưa có cột trong Sys_Column. Nhập tên cột thủ công — sẽ tự tạo khi lưu. Hoặc chạy " />
+                                            <Run Text="Đồng bộ Schema" FontWeight="SemiBold" /><Run Text=" trước." />
+                                        </TextBlock>
+                                    </Border>
+
+                                    <TextBlock Text="Cột DB mà field này bind vào. Bỏ trống nếu bật 'Field ảo'."
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
 
