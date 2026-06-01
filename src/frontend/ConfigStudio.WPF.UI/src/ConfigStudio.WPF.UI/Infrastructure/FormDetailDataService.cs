@@ -80,17 +80,18 @@ public sealed class FormDetailDataService : IFormDetailDataService
         if (!_config.IsConfigured) return [];
 
         const string sql = """
-            SELECT fi.Field_Id     AS FieldId,
-                   fi.Order_No     AS OrderNo,
-                   sc.Column_Code  AS ColumnCode,
-                   ISNULL(se.Section_Code, '') AS SectionCode,
-                   fi.Editor_Type  AS EditorType,
-                   ISNULL(fi.Label_Key, '')    AS LabelKey,
-                   fi.Is_Visible   AS IsVisible,
-                   fi.Is_ReadOnly  AS IsReadOnly,
+            SELECT fi.Field_Id                     AS FieldId,
+                   fi.Order_No                     AS OrderNo,
+                   ISNULL(sc.Column_Code, '')      AS ColumnCode,
+                   ISNULL(se.Section_Code, '')     AS SectionCode,
+                   fi.Editor_Type                  AS EditorType,
+                   ISNULL(fi.Label_Key, '')        AS LabelKey,
+                   fi.Is_Visible                   AS IsVisible,
+                   fi.Is_ReadOnly                  AS IsReadOnly,
+                   fi.Is_Virtual                   AS IsVirtual,
                    (SELECT COUNT(*) FROM dbo.Val_Rule vr WHERE vr.Field_Id = fi.Field_Id) AS RuleCount
             FROM   dbo.Ui_Field fi
-            JOIN   dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             LEFT JOIN dbo.Ui_Section se ON se.Section_Id = fi.Section_Id
             WHERE  fi.Form_Id = @FormId
             ORDER BY fi.Order_No
