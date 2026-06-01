@@ -48,6 +48,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private int _sectionId;
     public int SectionId { get => _sectionId; set => SetProperty(ref _sectionId, value); }
 
+    // ── Section picker ───────────────────────────────────────
+    public ObservableCollection<SectionOptionItem> AvailableSections { get; } = [];
+
+    private SectionOptionItem? _selectedSection;
+    public SectionOptionItem? SelectedSection
+    {
+        get => _selectedSection;
+        set
+        {
+            if (SetProperty(ref _selectedSection, value) && value is not null)
+            {
+                SectionId   = value.Id;
+                SectionName = value.DisplayName;
+                IsDirty     = true;
+            }
+        }
+    }
+
     // ── Basic tab ────────────────────────────────────────────
     private string _columnCode = "";
     public string ColumnCode { get => _columnCode; set => SetProperty(ref _columnCode, value); }
@@ -1069,6 +1087,20 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         try
         {
+            // ── 0. Sections (cho ComboBox chọn section) ───────────────────
+            if (_formDetailService is not null)
+            {
+                var sections = await _formDetailService.GetSectionsByFormAsync(FormId, tenantId, ct);
+                AvailableSections.Clear();
+                foreach (var s in sections)
+                    AvailableSections.Add(new SectionOptionItem(s.SectionCode, s.TitleKey ?? s.SectionCode)
+                        { Id = s.SectionId });
+
+                // Restore selection sau khi load
+                _selectedSection = AvailableSections.FirstOrDefault(s => s.Id == SectionId);
+                RaisePropertyChanged(nameof(SelectedSection));
+            }
+
             // ── 1. Columns (cần cho ComboBox chọn column) ─────────────────
             var tableId = await _fieldService!.GetTableIdByFormAsync(FormId, tenantId, ct);
             if (tableId > 0)

@@ -451,39 +451,52 @@
                             <StackPanel>
                                 <TextBlock Text="Thông Tin Cơ Bản" Style="{StaticResource SectionTitleStyle}" />
 
+                                <!-- Section -->
+                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                    <TextBlock Text="Section" Style="{StaticResource FieldLabelStyle}" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding AvailableSections}"
+                                                      EditValue="{Binding SelectedSection}"
+                                                      DisplayMember="Label"
+                                                      NullText="Chọn section..." />
+                                    <TextBlock Text="Section chứa field này trong form."
+                                               Style="{StaticResource HelpTextStyle}" />
+                                </StackPanel>
+
                                 <!-- Column (DB) -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Column (DB)" Style="{StaticResource FieldLabelStyle}" />
 
-                                    <!-- Khi có danh sách cột → combo pick -->
-                                    <DockPanel Visibility="{Binding HasAvailableColumns, Converter={StaticResource BoolToVis}}">
+                                    <!-- Luôn hiện TextEdit để nhập/xem Column Code -->
+                                    <DockPanel>
                                         <Button DockPanel.Dock="Right" Command="{Binding BrowseColumnCommand}"
-                                                ToolTip="Browse columns" Style="{StaticResource IconBtnStyle}"
-                                                Margin="6,0,0,0">
+                                                ToolTip="Chọn từ danh sách cột" Style="{StaticResource IconBtnStyle}"
+                                                Margin="6,0,0,0"
+                                                Visibility="{Binding HasAvailableColumns, Converter={StaticResource BoolToVis}}">
                                             <TextBlock Text="🔍" FontSize="13" />
                                         </Button>
                                         <dxe:ComboBoxEdit ItemsSource="{Binding AvailableColumns}"
                                                           EditValue="{Binding SelectedColumn}"
                                                           DisplayMember="DisplayName"
-                                                          NullText="Chọn column..." />
+                                                          NullText="Chọn từ danh sách..."
+                                                          Visibility="{Binding HasAvailableColumns, Converter={StaticResource BoolToVis}}" />
                                     </DockPanel>
 
-                                    <!-- Khi list rỗng hoặc IsVirtual → gõ tên cột thủ công -->
+                                    <!-- TextEdit luôn hiển thị để nhập/sửa Column Code trực tiếp -->
                                     <dxe:TextEdit EditValue="{Binding ColumnCode, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="Nhập tên cột (ví dụ: HoVaTen)..."
-                                                  Visibility="{Binding CanTypeColumnCode, Converter={StaticResource BoolToVis}}" />
+                                                  Margin="0,4,0,0" />
 
-                                    <!-- Hint khi list rỗng -->
+                                    <!-- Hint khi list rỗng và không phải virtual -->
                                     <Border Background="#FEF9C3" CornerRadius="4" Padding="8,6" Margin="0,4,0,0"
                                             BorderBrush="#FDE68A" BorderThickness="1"
                                             Visibility="{Binding IsColumnListEmpty, Converter={StaticResource BoolToVis}}">
                                         <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
-                                            <Run Text="⚠" /><Run Text=" Chưa có cột trong Sys_Column. Nhập tên cột thủ công — sẽ tự tạo khi lưu. Hoặc chạy " />
+                                            <Run Text="⚠" /><Run Text=" Sys_Column chưa có cột. Nhập tên cột — sẽ tự tạo khi lưu. Hoặc chạy " />
                                             <Run Text="Đồng bộ Schema" FontWeight="SemiBold" /><Run Text=" trước." />
                                         </TextBlock>
                                     </Border>
 
-                                    <TextBlock Text="Cột DB mà field này bind vào. Bỏ trống nếu bật 'Field ảo'."
+                                    <TextBlock Text="Cột DB mà field này bind vào. Bỏ trống nếu bật 'Field ảo' trong tab Behavior."
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
 

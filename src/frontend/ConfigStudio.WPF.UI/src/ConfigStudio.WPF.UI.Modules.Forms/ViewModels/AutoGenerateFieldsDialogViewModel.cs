@@ -258,5 +258,7 @@ public sealed class AutoGenerateFieldsDialogViewModel : ViewModelBase, IDialogAw
 /// </summary>
 public sealed record SectionOptionItem(string Code, string DisplayName)
 {
+    /// <summary>Section_Id trong DB — 0 nếu chưa lưu.</summary>
+    public int Id { get; init; }
     public string Label => $"{DisplayName}  [{Code}]";
 }
