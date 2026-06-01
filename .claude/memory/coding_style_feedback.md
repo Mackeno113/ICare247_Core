@@ -73,6 +73,20 @@ DebugLogger.Error("LocalConfig",$"Lỗi đọc file: {ex.Message}");
 - Nếu đang trên feature branch → cherry-pick commit memory sang master
 - KHÔNG commit memory files trực tiếp lên feature branch
 
+## [2026-06-01] KHÔNG tự ý sửa code — phải trình bày và chờ user chốt
+
+**Why:** User cần kiểm soát mọi thay đổi code. Tự ý sửa gây khó debug, mất context, và tạo ra thay đổi ngoài ý muốn.
+
+**How to apply:**
+- Khi phát hiện bug hoặc cần thay đổi code → **DỪNG LẠI**
+- Trình bày đầy đủ theo thứ tự:
+  1. **Nguyên nhân** — root cause cụ thể (file, dòng, logic sai ở đâu)
+  2. **Cách xử lý** — phương án đề xuất, có thể đề xuất nhiều phương án nếu có trade-off
+  3. **Các bước thực hiện** — liệt kê rõ từng file sẽ thay đổi, thay đổi gì
+- **Chờ user xác nhận** ("ok", "làm đi", "dùng phương án X") rồi mới bắt đầu code
+- Rule áp dụng cho: mọi thay đổi code, SQL, config, XAML — dù nhỏ hay lớn
+- NGOẠI LỆ: chỉ tự sửa ngay khi user nói rõ "sửa luôn", "fix đi", hoặc tương đương
+
 ## [2026-03-20] Run.Text binding trong XAML phải dùng Mode=OneWay
 
 WPF `<Run Text="{Binding Prop}" />` mặc định là **TwoWay**. Nếu property có `private set` → throw `InvalidOperationException` runtime.
