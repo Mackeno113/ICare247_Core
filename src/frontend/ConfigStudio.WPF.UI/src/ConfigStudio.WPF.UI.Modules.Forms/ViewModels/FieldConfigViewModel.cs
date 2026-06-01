@@ -2248,15 +2248,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             {
                 SaveError = null;
                 var savedId = await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
-                // INSERT trả về Id thật — cập nhật FieldId để navigate back đúng
+
+                // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
+                await RegisterI18nKeysAsync(_cts.Token);
+                IsDirty = false;
+
+                // INSERT mode "new": cập nhật FieldId rồi navigate thẳng về FormEditor
+                // để user thấy field mới trong tree ngay (không cần bấm Hủy thủ công).
                 if (_mode == "new" && savedId > 0)
                 {
                     FieldId = savedId;
                     _mode   = "edit";
+                    var backParams = new NavigationParameters
+                    {
+                        { "formId",          FormId  },
+                        { "selectedFieldId", savedId },
+                    };
+                    _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, backParams);
                 }
-                // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại (captionKeys + LabelKey...)
-                await RegisterI18nKeysAsync(_cts.Token);
-                IsDirty = false;
             }
             catch (Exception ex)
             {
