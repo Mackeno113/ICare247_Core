@@ -4,6 +4,7 @@
 // Purpose : ViewModel cho Expression Builder Dialog (Screen 07) — dùng chung từ Rule/Event Editor.
 
 using System.Collections.ObjectModel;
+using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Grammar.Models;
@@ -51,7 +52,20 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         set
         {
             if (SetProperty(ref _selectedNode, value))
+            {
                 RaisePropertyChanged(nameof(HasSelectedNode));
+                RaisePropertyChanged(nameof(IsLiteralSelected));
+                ApplyLiteralCommand?.RaiseCanExecuteChanged();
+
+                // Sync Literal Editor fields khi chọn node Literal
+                if (value?.Node.Type == AstNodeType.Literal)
+                {
+                    _literalNetType = value.Node.NetType ?? "String";
+                    _literalValue   = LiteralValueToString(value.Node.Value, _literalNetType);
+                    RaisePropertyChanged(nameof(LiteralNetType));
+                    RaisePropertyChanged(nameof(LiteralValue));
+                }
+            }
         }
     }
 
@@ -126,6 +140,26 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         set => SetProperty(ref _isLoadingPalette, value);
     }
 
+    // ── Literal Editor (hiện khi SelectedNode là Literal) ────
+    public bool IsLiteralSelected => SelectedNode?.Node.Type == AstNodeType.Literal;
+
+    private string _literalValue = "";
+    public string LiteralValue
+    {
+        get => _literalValue;
+        set => SetProperty(ref _literalValue, value);
+    }
+
+    private string _literalNetType = "String";
+    public string LiteralNetType
+    {
+        get => _literalNetType;
+        set => SetProperty(ref _literalNetType, value);
+    }
+
+    public List<string> LiteralNetTypeOptions { get; } =
+        ["String", "Int32", "Decimal", "Boolean", "DateTime"];
+
     // ── Commands ─────────────────────────────────────────────
     public DelegateCommand<PaletteItem> InsertOperatorCommand { get; }
     public DelegateCommand<PaletteItem> InsertFunctionCommand { get; }
@@ -133,6 +167,7 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
     public DelegateCommand DeleteSelectedNodeCommand { get; }
     public DelegateCommand WrapInBinaryCommand { get; }
     public DelegateCommand WrapInUnaryCommand { get; }
+    public DelegateCommand ApplyLiteralCommand { get; }
     public DelegateCommand ApplyCommand { get; }
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand ResetCommand { get; }
@@ -156,6 +191,8 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
             .ObservesProperty(() => HasSelectedNode);
         WrapInUnaryCommand = new DelegateCommand(ExecuteWrapInUnary, () => HasSelectedNode)
             .ObservesProperty(() => HasSelectedNode);
+        ApplyLiteralCommand = new DelegateCommand(ExecuteApplyLiteral, () => IsLiteralSelected)
+            .ObservesProperty(() => IsLiteralSelected);
         ApplyCommand = new DelegateCommand(ExecuteApply, () => IsValid)
             .ObservesProperty(() => IsValid);
         CancelCommand = new DelegateCommand(ExecuteCancel);
@@ -177,7 +214,7 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         ContextInfo = parameters.GetValue<string>("contextInfo") ?? "";
 
         // ── Load fields từ caller (form context) ─────────────
-        var fields = parameters.GetValue<List<FieldInfo>>("formFields");
+        var fields = parameters.GetValue<List<ExpressionFieldInfo>>("formFields");
         if (fields is not null)
         {
             FieldItems.Clear();
@@ -596,4 +633,44 @@ public sealed class ExpressionBuilderDialogViewModel : ViewModelBase, IDialogAwa
         if (!string.IsNullOrEmpty(JsonOutput))
             System.Windows.Clipboard.SetText(JsonOutput);
     }
+
+    /// <summary>
+    /// Áp dụng giá trị literal đang nhập vào node đang chọn trong AST Tree.
+    /// Parse value theo NetType rồi ghi vào Node.Value + Node.NetType.
+    /// </summary>
+    private void ExecuteApplyLiteral()
+    {
+        if (SelectedNode?.Node.Type != AstNodeType.Literal) return;
+
+        var node = SelectedNode.Node;
+        node.NetType = LiteralNetType;
+        node.Value   = ParseLiteralValue(LiteralValue, LiteralNetType);
+
+        SelectedNode.RefreshDisplay();
+        ValidateExpression();
+    }
+
+    /// <summary>Parse chuỗi nhập từ UI thành object đúng kiểu.</summary>
+    private static object? ParseLiteralValue(string raw, string netType)
+    {
+        if (string.IsNullOrEmpty(raw)) return null;
+        return netType switch
+        {
+            "Int32"    => int.TryParse(raw, out var i)       ? i       : (object?)raw,
+            "Decimal"  => decimal.TryParse(raw, System.Globalization.NumberStyles.Any,
+                              System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : (object?)raw,
+            "Boolean"  => raw.Trim().ToLowerInvariant() is "true" or "1" or "có" or "yes",
+            "DateTime" => DateTime.TryParse(raw, out var dt) ? dt.ToString("O") : (object?)raw,
+            _          => raw   // String — giữ nguyên
+        };
+    }
+
+    /// <summary>Chuyển object value của node thành chuỗi hiển thị trong TextBox.</summary>
+    private static string LiteralValueToString(object? value, string netType) =>
+        value switch
+        {
+            null                => "",
+            bool b              => b ? "true" : "false",
+            _                   => value.ToString() ?? ""
+        };
 }

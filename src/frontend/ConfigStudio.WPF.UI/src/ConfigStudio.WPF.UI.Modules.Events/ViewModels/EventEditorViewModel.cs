@@ -28,7 +28,11 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     private readonly IDialogService _dialogService;
     private readonly IEventDataService? _eventService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IFormDetailDataService? _formDetailService;
     private CancellationTokenSource _cts = new();
+
+    /// <summary>Cache danh sách field của form — load 1 lần, dùng cho mọi lần mở Expression Builder.</summary>
+    private List<ExpressionFieldInfo> _formFieldsCache = [];
 
     // ── Navigation params ─────────────────────────────────────
     private int _fieldId;
@@ -115,13 +119,15 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         IDialogService dialogService,
         IEventDataService? eventService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IFormDetailDataService? formDetailService = null)
     {
         _regionManager = regionManager;
         _dialogService = dialogService;
         _eventService = eventService;
         _appConfig = appConfig;
         _history = history;
+        _formDetailService = formDetailService;
 
         AddEventCommand = new DelegateCommand(ExecuteAddEvent);
         DeleteEventCommand = new DelegateCommand(async () => await ExecuteDeleteEventAsync(), () => IsEventSelected);
@@ -194,6 +200,9 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         try
         {
             var ct = _cts.Token;
+
+            // Load danh sách field của form → cache cho Expression Builder
+            await LoadFormFieldsCacheAsync(ct);
 
             // Load trigger types từ DB (nếu có) → cập nhật TriggerOptions
             var triggerTypes = await _eventService!.GetTriggerTypesAsync(ct);
@@ -319,8 +328,11 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
 
         var p = new DialogParameters
         {
-            { "expressionJson", SelectedEvent.ConditionJson },
-            { "fieldCode", FieldCode }
+            { "expressionJson",    SelectedEvent.ConditionJson },
+            { "fieldCode",         FieldCode },
+            { "expectedReturnType", "Boolean" },
+            { "contextInfo",       $"Condition của event {SelectedEvent.TriggerCode} — field {FieldCode}" },
+            { "formFields",        _formFieldsCache }
         };
 
         _dialogService.ShowDialog(ViewNames.ExpressionBuilderDialog, p, result =>
@@ -420,6 +432,35 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     }
 
     // ── Helpers ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Load danh sách field trong form vào cache — dùng cho Expression Builder FIELD palette.
+    /// NetType được suy ra từ EditorType vì FieldDetailRecord không chứa NetType.
+    /// </summary>
+    private async Task LoadFormFieldsCacheAsync(CancellationToken ct)
+    {
+        if (_formDetailService is null || _appConfig is not { IsConfigured: true }) return;
+        try
+        {
+            var fields = await _formDetailService.GetFieldsByFormAsync(FormId, _appConfig.TenantId, ct);
+            _formFieldsCache = fields
+                .Select(f => new ExpressionFieldInfo(
+                    code:    f.FieldCode ?? f.ColumnCode,
+                    netType: InferNetType(f.EditorType)))
+                .Where(f => !string.IsNullOrEmpty(f.Code))
+                .ToList();
+        }
+        catch { /* lỗi load fields → palette rỗng, không crash */ }
+    }
+
+    /// <summary>Suy ra NetType từ EditorType khi không có thông tin từ DB.</summary>
+    private static string InferNetType(string editorType) => editorType switch
+    {
+        "NumericBox"                 => "Decimal",
+        "DatePicker"                 => "DateTime",
+        "CheckBox" or "ToggleSwitch" => "Boolean",
+        _                            => "String"
+    };
 
     private void ReindexEvents()
     {

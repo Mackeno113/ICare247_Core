@@ -1,38 +1,56 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-01 (session 31 — Bug fixes: Sync Schema + AddField + Is_Virtual)
+> Cập nhật: 2026-06-01 (session 32 — Bug fixes: AddField flow + Is_Virtual full stack)
 
 ## Trạng thái cuối session
 
 - **Branch:** `master`
-- **Commit cuối:** `dcc42f6` fix: + Field tự động mở Chi tiết để cấu hình và lưu
+- **Commit cuối:** `913b117` ux: chuyen Field Code vao tab Behavior - inline duoi toggle Field ao
 - **Build:** Backend 0/0, WPF Release 0/0
 
 ## Đã làm trong session này
 
-1. **BE-005 Is_Virtual** (commit `49f9daf`) — toàn bộ stack (DB migration 018, Domain, Repositories, Blazor, WPF)
+1. **Fix: Đồng bộ Schema không lưu DB** (commit `ba7e2ac`)
+   - Root cause: `ExecuteSyncSchemaAsync` chỉ update tree in-memory
+   - Fix: `DeleteFieldAsync` + `PersistSyncSchemaAsync` async sau ShowDialog
 
-2. **Fix: Đồng bộ Schema không lưu DB** (commit `ba7e2ac`)
-   - Root cause: `ExecuteSyncSchemaAsync` chỉ update tree in-memory, không gọi `SaveFieldAsync`/`DeleteFieldAsync`
-   - Fix: thêm `DeleteFieldAsync` + `PersistSyncSchemaAsync` async sau khi `ShowDialog` trả về
+2. **Fix: + Field không lưu / FK violation / không đổi tên** (commits `d93539e`, `2d244d1`, `dcc42f6`)
+   - Temp Id âm + mode:"new" + auto-open FieldConfigView
+   - Migration 019: `Column_Id INT NULL` (virtual field không cần cột)
+   - `BuildFieldParam`: ColumnId=0 → NULL
 
-3. **Fix: + Field không lưu được / FK violation / không đổi tên được** (commits `d93539e`, `2d244d1`, `dcc42f6`)
-   - Bug 1: `ExecuteAddField` dùng fake positive Id → UPDATE row không tồn tại → silent fail
-   - Fix: dùng negative temp Id + detect `Id <= 0` → `mode:"new"` + `fieldId:0` → INSERT
-   - Bug 2: `FieldConfigViewModel.ExecuteSaveAsync` không capture return value → `FieldId` vẫn 0 sau save
-   - Fix: `savedId = await SaveFieldAsync(...)` → update `FieldId` + switch mode `"edit"`
-   - Bug 3: `Column_Id NOT NULL` → FK violation khi virtual field không chọn cột
-   - Fix: migration 019 (Column_Id nullable) + `BuildFieldParam` gửi null khi `ColumnId = 0`
-   - Bug 4: QPB read-only → user không thể sửa gì
-   - Fix: `ExecuteAddField` tự động mở `FieldConfigView` mode:new ngay khi thêm field
+3. **Fix: field mới không hiển thị sau lưu** (commit `b7f4b3b`)
+   - Sau save mode:"new" → auto-navigate về FormEditor với `selectedFieldId=savedId`
 
-4. **FormTreeNode.IsVirtual** + WPF plumbing: QPB display, hydrate, quick-save
+4. **Fix: Sys_Column rỗng → không chọn được cột** (commit `25071c5`)
+   - TextEdit gõ tay ColumnCode khi list rỗng
+   - Auto-create Sys_Column khi save (`EnsureColumnExistsAsync`)
+
+5. **Fix: INNER JOIN Sys_Column sau migration 019** (commits `d5a1a2f`, `baf5455`)
+   - `FormDetailDataService.GetFieldsByFormAsync`: JOIN → LEFT JOIN
+   - `FieldDataService.GetFieldDetailAsync`: JOIN → LEFT JOIN
+
+6. **Cải thiện FieldConfigView UX** (commit `b9360a6`)
+   - Thêm Section picker (ComboBox) — có thể thay đổi section
+   - Column: ComboBox + TextEdit luôn hiện (không chỉ khi list rỗng)
+
+7. **feat: Field_Code cho virtual field** (commit `0790370`)
+   - Migration 020: `ALTER TABLE Ui_Field ADD Field_Code NVARCHAR(100) NULL`
+   - Backend: `COALESCE(fi.Field_Code, sc.Column_Code) AS FieldCode`
+   - WPF full stack: FieldConfigRecord, FieldDataService, ViewModel, View
+
+8. **UX: Field Code inline trong tab Behavior** (commit `913b117`)
+   - Bật "Field ảo" → Field Code TextEdit xuất hiện ngay bên dưới (không cần đổi tab)
+
+9. **Rule mới** (commit `8248a60`)
+   - Không tự ý sửa code — phải trình bày nguyên nhân/cách xử lý/các bước và chờ user chốt
 
 ## DB cần chạy trước khi run app
 
-- `db/017_lock_on_edit_replace_is_enabled.sql` (nếu chưa chạy)
-- `db/018_add_is_virtual_field.sql` (BE-005)
-- `db/019_ui_field_column_id_nullable.sql` (Column_Id nullable cho virtual field)
+- `db/017_lock_on_edit_replace_is_enabled.sql`
+- `db/018_add_is_virtual_field.sql`
+- `db/019_ui_field_column_id_nullable.sql` ← Column_Id nullable
+- `db/020_ui_field_add_field_code.sql` ← Field_Code mới
 
 ## Pending tiếp theo
 
@@ -42,3 +60,4 @@
 | **BE-004** Apply Design System tokens Blazor | ❌ Chưa làm |
 | **BE-003 / WPF-14** Manual E2E test | ⏳ Cần DB thật |
 | `DefaultValueJson` orphan property | 🤔 Cần quyết định |
+| Verify toàn bộ flow AddField end-to-end | ⏳ Cần test thực tế |

@@ -15,11 +15,15 @@
     <prism:Dialog.WindowStyle>
         <Style TargetType="Window">
             <Setter Property="Width" Value="900" />
-            <Setter Property="Height" Value="650" />
+            <Setter Property="Height" Value="700" />
             <Setter Property="ResizeMode" Value="CanResize" />
             <Setter Property="Title" Value="Expression Builder" />
         </Style>
     </prism:Dialog.WindowStyle>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+    </UserControl.Resources>
 
     <DockPanel>
         <!-- ── TitleBar / Context ─────────────────────────────── -->
@@ -191,8 +195,9 @@
             <Grid Grid.Column="2" Margin="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />  <!-- Literal Editor -->
+                    <RowDefinition Height="Auto" />  <!-- Preview & Validation -->
+                    <RowDefinition Height="Auto" />  <!-- JSON Output -->
                 </Grid.RowDefinitions>
 
                 <!-- AST Tree -->
@@ -244,8 +249,57 @@
                     </DockPanel>
                 </Border>
 
-                <!-- Preview & Validation -->
+                <!-- ── Literal Editor — hiện khi chọn node Literal ── -->
                 <Border Grid.Row="1" Padding="12" Margin="0,0,0,8"
+                        BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6"
+                        Background="#FFFBEB"
+                        Visibility="{Binding IsLiteralSelected, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="✏ Nhập giá trị Literal" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="#92400E" Margin="0,0,0,10" />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="130" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="80" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Value input -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Giá trị" FontSize="11" Foreground="#92400E" Margin="0,0,0,3" />
+                                <dxe:TextEdit EditValue="{Binding LiteralValue, UpdateSourceTrigger=PropertyChanged}"
+                                             NullText='vd: "nv001"  hoặc  10  hoặc  true'
+                                             Height="32" />
+                            </StackPanel>
+
+                            <!-- NetType selector -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Kiểu dữ liệu" FontSize="11" Foreground="#92400E" Margin="0,0,0,3" />
+                                <dxe:ComboBoxEdit ItemsSource="{Binding LiteralNetTypeOptions}"
+                                                 EditValue="{Binding LiteralNetType}"
+                                                 IsTextEditable="False"
+                                                 Height="32" />
+                            </StackPanel>
+
+                            <!-- Apply button -->
+                            <dx:SimpleButton Grid.Column="4"
+                                             Command="{Binding ApplyLiteralCommand}"
+                                             VerticalAlignment="Bottom" Height="32">
+                                <TextBlock Text="✓ Áp dụng" FontSize="12" />
+                            </dx:SimpleButton>
+                        </Grid>
+
+                        <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="#A16207" TextWrapping="Wrap">
+                            <Run Text="💡 Ví dụ: " FontWeight="SemiBold" />
+                            <Run Text='String → "nv001"   ·   Int32 → 10   ·   Boolean → true / false   ·   DateTime → 2026-01-31' />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Preview & Validation -->
+                <Border Grid.Row="2" Padding="12" Margin="0,0,0,8"
                         BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
                     <StackPanel>
                         <TextBlock Text="Preview &amp; Validation" FontSize="13" FontWeight="SemiBold"
@@ -325,7 +379,7 @@
                 </Border>
 
                 <!-- JSON Output (collapsed) -->
-                <Expander Grid.Row="2" Header="JSON Output" IsExpanded="False">
+                <Expander Grid.Row="3" Header="JSON Output" IsExpanded="False">
                     <TextBox Text="{Binding JsonOutput, Mode=OneWay}"
                              IsReadOnly="True"
                              FontFamily="Consolas" FontSize="12"
