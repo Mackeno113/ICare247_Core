@@ -24,4 +24,13 @@ public interface ILookupQueryService
         int fieldId,
         Dictionary<string, object?> contextValues,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy rows dữ liệu dạng cây cho TreeLookupBox.
+    /// Mỗi row có thêm key <c>__parentId</c> để client build hierarchy.
+    /// </summary>
+    Task<List<Dictionary<string, object?>>> QueryTreeAsync(
+        int fieldId,
+        Dictionary<string, object?> contextValues,
+        CancellationToken ct = default);
 }

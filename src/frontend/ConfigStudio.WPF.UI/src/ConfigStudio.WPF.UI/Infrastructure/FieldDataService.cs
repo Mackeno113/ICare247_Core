@@ -90,7 +90,8 @@ public sealed class FieldDataService : IFieldDataService
                    fl.Code_Field            AS CodeField,
                    ISNULL(fl.DropDown_Width,  600)      AS DropDownWidth,
                    ISNULL(fl.DropDown_Height, 400)      AS DropDownHeight,
-                   fl.Reload_Trigger_Field  AS ReloadTriggerField
+                   fl.Reload_Trigger_Field  AS ReloadTriggerField,
+                   fl.Parent_Column         AS ParentColumn
             FROM   dbo.Ui_Field_Lookup fl
             WHERE  fl.Field_Id = @FieldId
             """;
@@ -239,6 +240,7 @@ public sealed class FieldDataService : IFieldDataService
                                DropDown_Width        = @DropDownWidth,
                                DropDown_Height       = @DropDownHeight,
                                Reload_Trigger_Field  = @ReloadTriggerField,
+                               Parent_Column         = @ParentColumn,
                                Updated_At            = GETDATE()
                         WHERE  Field_Id = @FieldId
                     ELSE
@@ -247,12 +249,12 @@ public sealed class FieldDataService : IFieldDataService
                                 Display_Column, Filter_Sql, Order_By, Search_Enabled,
                                 Popup_Columns_Json, EditBox_Mode, Code_Field,
                                 DropDown_Width, DropDown_Height, Reload_Trigger_Field,
-                                Updated_At)
+                                Parent_Column, Updated_At)
                         VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
                                 @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
                                 @PopupColumnsJson, @EditBoxMode, @CodeField,
                                 @DropDownWidth, @DropDownHeight, @ReloadTriggerField,
-                                GETDATE())
+                                @ParentColumn, GETDATE())
                     """;
 
                 await conn.ExecuteAsync(
@@ -271,7 +273,8 @@ public sealed class FieldDataService : IFieldDataService
                         lookupConfig.CodeField,
                         lookupConfig.DropDownWidth,
                         lookupConfig.DropDownHeight,
-                        lookupConfig.ReloadTriggerField
+                        lookupConfig.ReloadTriggerField,
+                        lookupConfig.ParentColumn
                     }, transaction: tx, cancellationToken: ct));
             }
             else
@@ -357,6 +360,31 @@ public sealed class FieldDataService : IFieldDataService
                     "DELETE FROM dbo.Ui_Field WHERE Field_Id = @FieldId",
                     new { FieldId = fieldId }, transaction: tx, cancellationToken: ct));
 
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    public async Task UpdateFieldOrderAsync(IReadOnlyList<(int FieldId, int OrderNo)> items,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || items.Count == 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        try
+        {
+            foreach (var (fieldId, orderNo) in items)
+                await conn.ExecuteAsync(
+                    new CommandDefinition(
+                        "UPDATE dbo.Ui_Field SET Order_No = @OrderNo WHERE Field_Id = @FieldId",
+                        new { FieldId = fieldId, OrderNo = orderNo },
+                        transaction: tx, cancellationToken: ct));
             await tx.CommitAsync(ct);
         }
         catch

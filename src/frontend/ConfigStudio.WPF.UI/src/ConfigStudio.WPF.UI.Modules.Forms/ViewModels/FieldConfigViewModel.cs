@@ -45,6 +45,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private int _formId;
     public int FormId { get => _formId; set => SetProperty(ref _formId, value); }
 
+    /// <summary>FormId đã load vào FieldNavigatorGroups — tránh reload khi chỉ đổi field trong cùng form.</summary>
+    private int _navigatorLoadedFormId = -1;
+
     private int _sectionId;
     public int SectionId { get => _sectionId; set => SetProperty(ref _sectionId, value); }
 
@@ -136,7 +139,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     [
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox",
-        "LookupBox", "TextArea", "CheckBox", "ToggleSwitch"
+        "LookupBox", "TreeLookupBox", "TextArea", "CheckBox", "ToggleSwitch"
     ];
 
     private string _selectedEditorType = "TextBox";
@@ -172,6 +175,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 RaisePropertyChanged(nameof(IsRadioGroupEditor));
                 RaisePropertyChanged(nameof(IsLookupOrComboBoxEditor));
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
+                RaisePropertyChanged(nameof(IsTreeLookupEditor));
                 RaisePropertyChanged(nameof(IsComboBoxEditor));
                 RaisePropertyChanged(nameof(IsDynamicDataEditor));
                 RaisePropertyChanged(nameof(EditorTypeGuide));
@@ -199,17 +203,20 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool IsLookupOrComboBoxEditor =>
         SelectedEditorType is "LookupComboBox" or "ComboBox";
 
-    // ── FK Lookup editor (LookupBox) ─────────────────────────
+    // ── FK Lookup editor (LookupBox / TreeLookupBox) ─────────
 
-    /// <summary>True khi EditorType là LookupBox (FK tham chiếu bảng nghiệp vụ).</summary>
-    public bool IsFkLookupEditor => SelectedEditorType == "LookupBox";
+    /// <summary>True khi EditorType là LookupBox hoặc TreeLookupBox.</summary>
+    public bool IsFkLookupEditor => SelectedEditorType is "LookupBox" or "TreeLookupBox";
+
+    /// <summary>True khi EditorType là TreeLookupBox — hiện thêm input ParentColumn.</summary>
+    public bool IsTreeLookupEditor => SelectedEditorType == "TreeLookupBox";
 
     /// <summary>True khi EditorType là ComboBox (dynamic data từ Bảng/TVF/SQL, dùng DxComboBox).</summary>
     public bool IsComboBoxEditor => SelectedEditorType == "ComboBox";
 
     /// <summary>
     /// True khi EditorType cần cấu hình nguồn dữ liệu động từ Ui_Field_Lookup
-    /// (LookupBox hoặc ComboBox — dùng chung bộ props FkTableName/FkFilter...).
+    /// (LookupBox, TreeLookupBox hoặc ComboBox).
     /// </summary>
     public bool IsDynamicDataEditor => IsFkLookupEditor || IsComboBoxEditor;
 
@@ -336,6 +343,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("(cấu hình tại tab Control Props)", "→ mục FK Lookup"),
             ]),
 
+        "TreeLookupBox" => new(
+            Icon:       "🌳",
+            Title:      "TreeLookupBox — Danh sách dạng cây (cha/con)",
+            WhenToUse:  "Phòng ban theo cấp, danh mục có phân cấp cha/con...",
+            ColumnType: "int (FK)",
+            Props:
+            [
+                new("Source Table",    "Tên bảng nguồn có cột Parent_Id (VD: DM_PhongBan)"),
+                new("Value Field",     "Cột lưu vào DB (VD: PhongBan_Id)"),
+                new("Display Field",   "Cột hiển thị trong ô và trên cây (VD: Ten_PhongBan)"),
+                new("Parent Column",   "Tên cột chứa Parent Id — bắt buộc (VD: Parent_Id)"),
+                new("Filter SQL",      "Điều kiện lọc, hỗ trợ @TenantId, @FieldRef (VD: ChiNhanh_Id = @ChiNhanhId)"),
+                new("Reload OnChange", "FieldCode trigger reload cây khi thay đổi"),
+                new("(cấu hình tại tab Control Props)", "→ mục FK Lookup + ParentColumn"),
+            ]),
+
         _ => new(
             Icon:       "ℹ️",
             Title:      editorType,
@@ -376,6 +399,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _dropDownWidth        = 600;
         _dropDownHeight       = 400;
         _reloadTriggerField   = "";
+        // TreeLookupBox (Migration 021)
+        _parentColumn         = "";
         _isRebuildingProps = false;
         // Raise tất cả property liên quan
         RaisePropertyChanged(nameof(QueryMode));
@@ -585,6 +610,19 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
     public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
+
+    // ── TreeLookupBox props (Migration 021) ───────────────────────────
+
+    /// <summary>
+    /// Tên cột Parent Id trong bảng nguồn — bắt buộc với TreeLookupBox.
+    /// VD: "Parent_Id". Lưu vào Ui_Field_Lookup.Parent_Column.
+    /// </summary>
+    private string _parentColumn = "";
+    public string ParentColumn
+    {
+        get => _parentColumn;
+        set { if (SetProperty(ref _parentColumn, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+    }
 
     // ── ComboBox / LookupComboBox display props ───────────────────────
 
@@ -969,6 +1007,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand GenerateTooltipKeyCommand { get; }
     public DelegateCommand GenerateRequiredErrorKeyCommand { get; }
     public DelegateCommand<FieldNavItem> NavigateToFieldCommand { get; }
+    public DelegateCommand RefreshNavigatorCommand { get; }
+    public DelegateCommand<FieldNavItem> MoveFieldUpCommand { get; }
+    public DelegateCommand<FieldNavItem> MoveFieldDownCommand { get; }
 
     public FieldConfigViewModel(
         IRegionManager regionManager,
@@ -1009,6 +1050,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         GenerateTooltipKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey         = k));
         GenerateRequiredErrorKeyCommand = new DelegateCommand(async () => await ExecuteGenerateRequiredErrorKeyAsync());
         NavigateToFieldCommand         = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
+        RefreshNavigatorCommand        = new DelegateCommand(async () => await LoadFieldNavigatorAsync(_cts.Token));
+        MoveFieldUpCommand   = new DelegateCommand<FieldNavItem>(async item => await ExecuteMoveFieldAsync(item, -1));
+        MoveFieldDownCommand = new DelegateCommand<FieldNavItem>(async item => await ExecuteMoveFieldAsync(item, +1));
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
@@ -1036,6 +1080,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         FormId    = navigationContext.Parameters.GetValue<int>("formId");
         SectionId = navigationContext.Parameters.GetValue<int>("sectionId");
         FieldId   = navigationContext.Parameters.GetValue<int>("fieldId");
+        UpdateNavigatorSelection(FieldId);
         TableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
         FormCode  = navigationContext.Parameters.GetValue<string>("formCode")  ?? "";
         FormName  = navigationContext.Parameters.GetValue<string>("formName")  ?? "";
@@ -1055,7 +1100,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         await LoadDataAsync();
     }
 
-    public bool IsNavigationTarget(NavigationContext navigationContext) => false;
+    // Tái sử dụng VM instance khi navigate giữa các field → giữ FieldNavigatorGroups, tránh reload list.
+    public bool IsNavigationTarget(NavigationContext navigationContext) => true;
 
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
@@ -1248,10 +1294,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             _dropDownWidth      = cfg.DropDownWidth;
                             _dropDownHeight     = cfg.DropDownHeight;
                             _reloadTriggerField = cfg.ReloadTriggerField ?? "";
+                            _parentColumn       = cfg.ParentColumn ?? "";
 
                             _isRebuildingProps = false;
                             // Raise LookupBox new props sau khi _isRebuildingProps = false
                             RaisePropertyChanged(nameof(EditBoxMode));
+                            RaisePropertyChanged(nameof(ParentColumn));
                             RaisePropertyChanged(nameof(IsCodeAndNameMode));
                             RaisePropertyChanged(nameof(CodeField));
                             RaisePropertyChanged(nameof(DropDownWidth));
@@ -1406,8 +1454,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             catch { /* Events load thất bại — bỏ qua, không hiện lỗi */ }
         }
 
-        // ── 5. Field Navigator (phụ — không ảnh hưởng main flow) ─────────
-        await LoadFieldNavigatorAsync(_cts.Token);
+        // ── 5. Field Navigator — chỉ load khi đổi form, refresh thủ công qua nút ────
+        if (_navigatorLoadedFormId != FormId)
+            await LoadFieldNavigatorAsync(_cts.Token);
 
         // Refresh JSON preview — RebuildControlPropsJson đã gọi khi set SelectedEditorType,
         // nhưng FK/ComboBox config được load sau (async) → cần gọi lại để JSON phản ánh đúng
@@ -1451,11 +1500,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// </summary>
     private async Task ExecuteGenerateKeyAsync(string qualifier, Action<string> setter)
     {
-        var columnCode = ColumnCode.ToLowerInvariant();
-        var tableCode  = TableCode.ToLowerInvariant();
-        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
+        var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
+        var tableCode     = TableCode.ToLowerInvariant();
+        if (string.IsNullOrEmpty(effectiveCode) || string.IsNullOrEmpty(tableCode)) return;
 
-        var key = $"{tableCode}.field.{columnCode}.{qualifier}";
+        var key = $"{tableCode}.field.{effectiveCode}.{qualifier}";
 
         // Kiểm tra key đã tồn tại trong DB chưa
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
@@ -1562,14 +1611,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         group.Fields.Add(new FieldNavItem
                         {
                             FieldId        = f.FieldId,
+                            SortOrder      = f.OrderNo,
                             ColumnCode     = f.ColumnCode,
+                            FieldCode      = f.FieldCode,
                             EditorType     = f.EditorType,
+                            IsVirtual      = f.IsVirtual,
                             IsCurrentField = f.FieldId == FieldId
                         });
                 }
                 if (group.Fields.Count > 0)
                     FieldNavigatorGroups.Add(group);
             }
+            _navigatorLoadedFormId = FormId;
         }
         catch (OperationCanceledException) { /* bỏ qua */ }
         catch { /* navigator load lỗi → bỏ qua, không ảnh hưởng main form */ }
@@ -1592,6 +1645,50 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             { "mode",      "edit" }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
+    }
+
+    // ── Field Navigator selection sync ───────────────────────
+
+    /// <summary>Cập nhật IsCurrentField cho tất cả item — không reload list.</summary>
+    private void UpdateNavigatorSelection(int currentFieldId)
+    {
+        foreach (var group in FieldNavigatorGroups)
+            foreach (var item in group.Fields)
+                item.IsCurrentField = item.FieldId == currentFieldId;
+    }
+
+    // ── Field Navigator move up/down ─────────────────────────
+
+    /// <summary>
+    /// Di chuyển <paramref name="item"/> lên (<paramref name="direction"/>=-1)
+    /// hoặc xuống (+1) trong group chứa nó, rồi persist Order_No (1, 3, 5...).
+    /// </summary>
+    private async Task ExecuteMoveFieldAsync(FieldNavItem? item, int direction)
+    {
+        if (item is null) return;
+
+        var group = FieldNavigatorGroups.FirstOrDefault(g => g.Fields.Contains(item));
+        if (group is null) return;
+
+        var idx    = group.Fields.IndexOf(item);
+        var newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= group.Fields.Count) return;
+
+        group.Fields.Move(idx, newIdx);
+
+        // Gán lại Order_No: bắt đầu 1, bước +2 → 1, 3, 5, 7...
+        var orderItems = new List<(int FieldId, int OrderNo)>();
+        for (var i = 0; i < group.Fields.Count; i++)
+        {
+            group.Fields[i].SortOrder = 1 + i * 2;
+            orderItems.Add((group.Fields[i].FieldId, group.Fields[i].SortOrder));
+        }
+
+        if (_fieldService is not null)
+        {
+            try { await _fieldService.UpdateFieldOrderAsync(orderItems, _cts.Token); }
+            catch { /* lỗi persist — bấm Refresh để revert */ }
+        }
     }
 
     // ── Control prop schema loader ───────────────────────────
@@ -2293,6 +2390,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     DropDownHeight      = IsFkLookupEditor ? _dropDownHeight     : 400,
                     ReloadTriggerField  = !string.IsNullOrWhiteSpace(_reloadTriggerField)
                                           ? _reloadTriggerField : null,
+                    // TreeLookupBox (Migration 021)
+                    ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(_parentColumn)
+                                          ? _parentColumn : null,
                 };
             }
 

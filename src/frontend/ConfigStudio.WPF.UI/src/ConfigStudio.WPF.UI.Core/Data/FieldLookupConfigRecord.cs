@@ -62,4 +62,12 @@ public sealed class FieldLookupConfigRecord
     /// Null = không có cascading.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    // ── TreeLookupBox — thêm từ Migration 021 ─────────────────────────────
+
+    /// <summary>
+    /// Tên cột chứa Parent Id trong bảng nguồn — dùng để build hierarchy.
+    /// VD: "Parent_Id". Null = không phải tree (LookupBox thông thường).
+    /// </summary>
+    public string? ParentColumn { get; init; }
 }

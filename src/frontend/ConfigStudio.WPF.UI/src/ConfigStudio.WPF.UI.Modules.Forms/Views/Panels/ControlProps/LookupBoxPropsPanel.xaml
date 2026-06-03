@@ -371,6 +371,29 @@
                 <TextBlock FontSize="10" Foreground="#64748B" Opacity="0.75" Margin="0,4,0,0"
                            TextWrapping="Wrap"
                            Text="Khi field này thay đổi giá trị: SelectedId bị xóa + load lại data source. Để trống = không có cascading." />
+
+                <!-- ── TreeLookupBox: Parent Column — chỉ hiện khi IsTreeLookupEditor ── -->
+                <Border Margin="0,14,0,0" Padding="12,10"
+                        Background="#F0FDF4" CornerRadius="6"
+                        BorderBrush="#BBF7D0" BorderThickness="1"
+                        Visibility="{Binding IsTreeLookupEditor, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,6">
+                            <TextBlock Text="🌳" FontSize="14" VerticalAlignment="Center"
+                                       DockPanel.Dock="Left" Margin="0,0,8,0" />
+                            <TextBlock Text="Cấu hình Tree — TreeLookupBox"
+                                       FontSize="12" FontWeight="SemiBold" Foreground="#166534"
+                                       VerticalAlignment="Center" />
+                        </DockPanel>
+                        <TextBlock Text="Cột cha (Parent Column) *" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#374151" Margin="0,0,0,4" />
+                        <dxe:TextEdit Text="{Binding ParentColumn, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" FontFamily="Consolas"
+                                      NullText="VD: Parent_Id — tên cột chứa ID cha trong bảng nguồn" />
+                        <TextBlock FontSize="10" Foreground="#166534" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Bắt buộc. Bảng nguồn phải có cột này để build hierarchy cha/con." />
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </Border>
 

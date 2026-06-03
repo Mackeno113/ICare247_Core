@@ -59,7 +59,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                    fl.Filter_Sql                           AS FilterSql,
                    fl.Order_By                             AS OrderBy,
                    fl.Popup_Columns_Json                   AS PopupColumnsJson,
-                   fl.Code_Field                           AS CodeField
+                   fl.Code_Field                           AS CodeField,
+                   fl.Parent_Column                        AS ParentColumn
             FROM   dbo.Ui_Field_Lookup fl
             JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
             JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
@@ -134,12 +135,13 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         }
 
         // Validate column names
-        if (!IsValidColumnList(cfg.ValueColumn, out var colErr))
+        if (!IsValidColumnExpr(cfg.ValueColumn, strict: true, out var colErr))
         {
             error = $"ValueColumn: {colErr}";
             return null;
         }
-        if (!IsValidColumnList(cfg.DisplayColumn, out colErr))
+        // DisplayColumn cho phép SQL expression (CONCAT, alias...) — chỉ block DDL/DML
+        if (!IsValidColumnExpr(cfg.DisplayColumn, strict: false, out colErr))
         {
             error = $"DisplayColumn: {colErr}";
             return null;
@@ -181,11 +183,11 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// </summary>
     private static string BuildSelectColumns(LookupCfgRow cfg)
     {
-        // Dùng LinkedHashSet để giữ thứ tự + không trùng
         var cols = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        void AddCol(string? name)
+        // Cột đơn giản — phải pass SafeIdentifierRegex
+        void AddSimpleCol(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) return;
             var col = name.Trim();
@@ -193,12 +195,29 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 cols.Add(col);
         }
 
-        // Luôn có ValueColumn và DisplayColumn
-        AddCol(cfg.ValueColumn);
-        AddCol(cfg.DisplayColumn);
+        // Expression hoặc cột — nếu là expression (có dấu ngoặc/space) thêm thẳng,
+        // nếu là cột đơn thì check identifier. Key = alias (nếu có) để dedup chính xác.
+        void AddColOrExpr(string? expr)
+        {
+            if (string.IsNullOrWhiteSpace(expr)) return;
+            var col = expr.Trim();
+            // Dedup theo alias: "CONCAT(...) AS TenTinh" và "TenTinh" coi là cùng cột
+            var key = ExtractAliasKey(col).ToUpperInvariant();
+            if (!seen.Add(key)) return;
+            // Expression: chứa '(' hoặc space → thêm thẳng (đã validate không có DDL/DML)
+            if (col.Contains('(') || col.Contains(' ') || col.Contains('\''))
+                cols.Add(col);
+            else if (SafeIdentifierRegex().IsMatch(col))
+                cols.Add(col);
+        }
+
+        // ValueColumn: luôn là cột đơn (lưu vào DB)
+        AddSimpleCol(cfg.ValueColumn);
+        // DisplayColumn: có thể là expression như CONCAT(...)
+        AddColOrExpr(cfg.DisplayColumn);
 
         // CodeField — dùng khi EditBoxMode = CodeAndName
-        AddCol(cfg.CodeField);
+        AddSimpleCol(cfg.CodeField);
 
         // Popup columns từ JSON: [{"fieldName":"MaPhongBan","caption":"Mã",...}, ...]
         if (!string.IsNullOrWhiteSpace(cfg.PopupColumnsJson))
@@ -208,7 +227,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var popupCols = JsonSerializer.Deserialize<List<PopupColEntry>>(cfg.PopupColumnsJson, opts);
                 foreach (var pc in popupCols ?? [])
-                    AddCol(pc.Column);
+                    AddSimpleCol(pc.Column);
             }
             catch
             {
@@ -219,25 +238,61 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         return string.Join(", ", cols);
     }
 
-    private static bool IsValidColumnList(string? cols, out string? err)
+    /// <summary>
+    /// Validate column/expression.
+    /// strict=true (ValueColumn): phải là identifier đơn [a-zA-Z0-9_.].
+    /// strict=false (DisplayColumn): cho phép SQL expression — chỉ block DDL/DML keyword.
+    /// </summary>
+    private static bool IsValidColumnExpr(string? expr, bool strict, out string? err)
     {
         err = null;
-        if (string.IsNullOrWhiteSpace(cols))
+        if (string.IsNullOrWhiteSpace(expr))
         {
             err = "Tên cột rỗng.";
             return false;
         }
-        // Hỗ trợ nhiều cột cách nhau dấu phẩy: "MaPhong, TenPhong"
-        foreach (var part in cols.Split(','))
+
+        if (ContainsDangerousKeyword(expr))
         {
-            var col = part.Trim();
-            if (!SafeIdentifierRegex().IsMatch(col))
+            err = $"'{expr}' chứa keyword DDL/DML không được phép.";
+            return false;
+        }
+
+        if (strict)
+        {
+            // ValueColumn: identifier đơn hoặc danh sách identifier
+            foreach (var part in expr.Split(','))
             {
-                err = $"Tên cột '{col}' chứa ký tự không hợp lệ.";
-                return false;
+                var col = part.Trim();
+                if (!SafeIdentifierRegex().IsMatch(col))
+                {
+                    err = $"Tên cột '{col}' chứa ký tự không hợp lệ.";
+                    return false;
+                }
             }
         }
+
         return true;
+    }
+
+    /// <summary>
+    /// Trích alias để dedup cột trong SELECT.
+    /// "CONCAT(...) AS TenTinh" → "TenTinh"
+    /// "CONCAT(...) TenTinh"    → "TenTinh"
+    /// "TenTinh"                → "TenTinh"
+    /// </summary>
+    private static string ExtractAliasKey(string expr)
+    {
+        var t = expr.Trim();
+        var asMatch = System.Text.RegularExpressions.Regex.Match(
+            t, @"\bAS\s+(\w+)\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (asMatch.Success) return asMatch.Groups[1].Value;
+        if (t.Contains('('))
+        {
+            var lastSpace = t.LastIndexOf(' ');
+            if (lastSpace >= 0) return t[(lastSpace + 1)..].Trim();
+        }
+        return t;
     }
 
     private static bool ContainsDangerousKeyword(string? sql)
@@ -245,6 +300,131 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (string.IsNullOrWhiteSpace(sql)) return false;
         var upper = sql.ToUpperInvariant();
         return DangerousKeywords.Any(kw => upper.Contains(kw));
+    }
+
+    // ── QueryTreeAsync ────────────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<IDictionary<string, object>>> QueryTreeAsync(
+        int fieldId,
+        int tenantId,
+        Dictionary<string, object?> contextValues,
+        CancellationToken ct = default)
+    {
+        using var configConn = _configDb.CreateConnection();
+        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
+            new CommandDefinition(
+                // Dùng lại cfgSql constant — định nghĩa inline vì method khác scope
+                """
+                SELECT fl.Query_Mode       AS QueryMode,
+                       fl.Source_Name      AS SourceName,
+                       fl.Value_Column     AS ValueColumn,
+                       fl.Display_Column   AS DisplayColumn,
+                       fl.Filter_Sql       AS FilterSql,
+                       fl.Order_By        AS OrderBy,
+                       fl.Popup_Columns_Json AS PopupColumnsJson,
+                       fl.Code_Field      AS CodeField,
+                       fl.Parent_Column   AS ParentColumn
+                FROM   dbo.Ui_Field_Lookup fl
+                JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
+                JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
+                JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
+                WHERE  fl.Field_Id = @FieldId
+                  AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
+                """,
+                new { FieldId = fieldId, TenantId = tenantId },
+                cancellationToken: ct));
+
+        if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
+            return [];
+
+        // ParentColumn bắt buộc phải có với TreeLookupBox
+        if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
+
+        if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
+
+        // Build SQL giống QueryAsync nhưng inject thêm ParentColumn vào SELECT
+        var cfgWithParent = cfg; // đã có ParentColumn
+        var querySql = BuildSafeSqlForTree(cfgWithParent, out var error);
+        if (querySql is null)
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
+
+        var dp = new DynamicParameters();
+        dp.Add("TenantId", tenantId);
+        foreach (var (key, val) in contextValues)
+        {
+            if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
+                dp.Add(key, val);
+        }
+
+        using var dataConn = _dataDb.CreateConnection();
+        var rows = await dataConn.QueryAsync(
+            new CommandDefinition(querySql, dp, cancellationToken: ct));
+
+        // Thêm key chuẩn __parentId vào mỗi row để client không cần biết tên cột gốc
+        var parentCol = cfg.ParentColumn;
+        return rows
+            .Select(r =>
+            {
+                var dict = (IDictionary<string, object>)r;
+                var parentVal = dict.TryGetValue(parentCol, out var pv) ? pv : null;
+                dict["__parentId"] = parentVal!;
+                return dict;
+            })
+            .ToList()
+            .AsReadOnly();
+    }
+
+    /// <summary>
+    /// Tương tự BuildSafeSql nhưng bổ sung ParentColumn vào danh sách SELECT.
+    /// </summary>
+    private static string? BuildSafeSqlForTree(LookupCfgRow cfg, out string? error)
+    {
+        error = null;
+
+        if (!SafeIdentifierRegex().IsMatch(cfg.SourceName ?? ""))
+        {
+            error = $"SourceName '{cfg.SourceName}' chứa ký tự không hợp lệ.";
+            return null;
+        }
+        if (!IsValidColumnExpr(cfg.ValueColumn, strict: true, out var colErr))
+        { error = $"ValueColumn: {colErr}"; return null; }
+        if (!IsValidColumnExpr(cfg.DisplayColumn, strict: false, out colErr))
+        { error = $"DisplayColumn: {colErr}"; return null; }
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql) && ContainsDangerousKeyword(cfg.FilterSql))
+        { error = "FilterSql chứa keyword DDL/DML không được phép."; return null; }
+        if (!string.IsNullOrWhiteSpace(cfg.OrderBy) && ContainsDangerousKeyword(cfg.OrderBy))
+        { error = "OrderBy chứa keyword DDL/DML không được phép."; return null; }
+
+        // Build SELECT — thêm ParentColumn vào danh sách cột
+        var cols = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddCol(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            var c = name.Trim();
+            if (SafeIdentifierRegex().IsMatch(c) && seen.Add(c.ToUpperInvariant())) cols.Add(c);
+        }
+        AddCol(cfg.ValueColumn);
+        if (!string.IsNullOrWhiteSpace(cfg.DisplayColumn))
+        {
+            var d = cfg.DisplayColumn.Trim();
+            var key = ExtractAliasKey(d).ToUpperInvariant();
+            if (seen.Add(key)) cols.Add(d);
+        }
+        AddCol(cfg.ParentColumn);   // cột quan trọng nhất của tree
+        AddCol(cfg.CodeField);
+
+        var selectCols = string.Join(", ", cols);
+        var sql = $"SELECT {selectCols} FROM {cfg.SourceName}";
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql)) sql += $" WHERE {cfg.FilterSql}";
+        if (!string.IsNullOrWhiteSpace(cfg.OrderBy))   sql += $" ORDER BY {cfg.OrderBy}";
+        return sql;
     }
 
     // ── Internal DTOs ─────────────────────────────────────────────────────────
@@ -261,6 +441,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         public string? PopupColumnsJson { get; init; }
         /// <summary>Cột code — dùng khi EditBoxMode = CodeAndName (Migration 014).</summary>
         public string? CodeField        { get; init; }
+        /// <summary>Cột chứa Parent Id — dùng khi EditorType = TreeLookupBox (Migration 021).</summary>
+        public string? ParentColumn     { get; init; }
     }
 
     /// <summary>

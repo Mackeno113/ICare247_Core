@@ -5,6 +5,7 @@
 
 using ICare247.Application.Features.Lookups.Queries.GetLookupByCode;
 using ICare247.Application.Features.Lookups.Queries.QueryDynamic;
+using ICare247.Application.Features.Lookups.Queries.QueryTree;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
@@ -90,6 +91,34 @@ public sealed class LookupController : ControllerBase
         var query  = new QueryDynamicLookupQuery(body.FieldId, GetTenantId(), body.ContextValues);
         var result = await _mediator.Send(query, ct);
 
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Truy vấn dữ liệu dạng cây cho TreeLookupBox.
+    /// Trả flat list có thêm key <c>__parentId</c> để client build hierarchy.
+    /// </summary>
+    /// <remarks>
+    /// POST /api/v1/lookups/query-tree
+    /// Body: { "fieldId": 42, "contextValues": { "ChiNhanhId": 1 } }
+    /// Response: [{ "PhongBan_Id": 1, "Ten_PhongBan": "Công ty", "Parent_Id": null, "__parentId": null }, ...]
+    /// </remarks>
+    [HttpPost("query-tree")]
+    public async Task<IActionResult> QueryTree(
+        [FromBody] QueryDynamicRequest body,
+        CancellationToken ct = default)
+    {
+        if (body.FieldId <= 0)
+            return BadRequest(new ProblemDetails
+            {
+                Type   = "https://tools.ietf.org/html/rfc7807",
+                Title  = "FieldId không hợp lệ",
+                Status = 400,
+                Detail = "FieldId phải lớn hơn 0."
+            });
+
+        var query  = new QueryTreeLookupQuery(body.FieldId, GetTenantId(), body.ContextValues);
+        var result = await _mediator.Send(query, ct);
         return Ok(result);
     }
 

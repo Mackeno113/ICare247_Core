@@ -34,4 +34,22 @@ public interface IDynamicLookupRepository
         int tenantId,
         Dictionary<string, object?> contextValues,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Truy vấn dữ liệu cho TreeLookupBox — trả về flat list có thêm cột ParentId.
+    /// Client tự build hierarchy từ danh sách phẳng này.
+    /// </summary>
+    /// <param name="fieldId">Field_Id trong Ui_Field.</param>
+    /// <param name="tenantId">Tenant_Id từ header.</param>
+    /// <param name="contextValues">Giá trị các field khác — dùng cho FilterSql cascading.</param>
+    /// <param name="ct"></param>
+    /// <returns>
+    /// Danh sách rows; mỗi row đảm bảo có key <c>__parentId</c> (nullable object)
+    /// ánh xạ từ cột <c>Parent_Column</c> trong config.
+    /// </returns>
+    Task<IReadOnlyList<IDictionary<string, object>>> QueryTreeAsync(
+        int fieldId,
+        int tenantId,
+        Dictionary<string, object?> contextValues,
+        CancellationToken ct = default);
 }

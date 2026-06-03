@@ -86,6 +86,52 @@ public sealed class LookupQueryService : ILookupQueryService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<List<Dictionary<string, object?>>> QueryTreeAsync(
+        int fieldId,
+        Dictionary<string, object?> contextValues,
+        CancellationToken ct = default)
+    {
+        const string url = "/api/v1/lookups/query-tree";
+
+        var body = new { fieldId, contextValues };
+
+        _logger.LogDebug(
+            "LookupQueryService.QueryTreeAsync → POST {Url} FieldId={FieldId}",
+            url, fieldId);
+
+        try
+        {
+            var response = await _http.PostAsJsonAsync(url, body, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await TryReadErrorAsync(response);
+                _logger.LogError(
+                    "QueryTree lỗi {Status} — FieldId={FieldId} | {Detail}",
+                    (int)response.StatusCode, fieldId, detail);
+                return [];
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var rows = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(json, _jsonOpts);
+            if (rows is null) return [];
+
+            return rows.Select(r =>
+                r.ToDictionary(
+                    kv => kv.Key,
+                    kv => (object?)UnwrapJsonElement(kv.Value),
+                    StringComparer.OrdinalIgnoreCase))
+                .ToList();
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "LookupQueryService.QueryTreeAsync exception — FieldId={FieldId}", fieldId);
+            return [];
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>Chuyển JsonElement về .NET primitive để renderer dùng.</summary>

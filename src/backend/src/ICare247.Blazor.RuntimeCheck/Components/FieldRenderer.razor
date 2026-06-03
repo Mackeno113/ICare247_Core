@@ -97,6 +97,14 @@
                                    Context="Context" />
                 break;
 
+            case "treelookup":
+                @* TreeLookupBox — dropdown cây expand/collapse, hỗ trợ cascade filter *@
+                <TreeLookupBoxRenderer State="State"
+                                       OnChange="OnChange"
+                                       OnBlur="OnBlur"
+                                       Context="Context" />
+                break;
+
             default:
                 @* text và mọi type không nhận dạng được → DxTextBox *@
                 <TextBoxRenderer State="State"
