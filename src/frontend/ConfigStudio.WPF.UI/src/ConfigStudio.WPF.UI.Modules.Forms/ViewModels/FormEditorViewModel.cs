@@ -1023,18 +1023,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     foreach (var f in fields)
                     {
                         // Resolve tên hiển thị từ Sys_Resource ưu tiên "vi", fallback về ColumnCode
-                        var fieldDisplay = f.ColumnCode;
+                        var effectiveCode = !string.IsNullOrEmpty(f.FieldCode) ? f.FieldCode : f.ColumnCode;
+                        var fieldDisplay = effectiveCode;
                         if (_i18nService is not null && !string.IsNullOrEmpty(f.LabelKey))
                         {
                             var vi = await _i18nService.ResolveKeyAsync(f.LabelKey, "vi", ct);
-                            fieldDisplay = !string.IsNullOrWhiteSpace(vi) ? vi : f.ColumnCode;
+                            fieldDisplay = !string.IsNullOrWhiteSpace(vi) ? vi : effectiveCode;
                         }
 
                         sectionNode.Children.Add(new FormTreeNode
                         {
                             Id          = f.FieldId,
                             NodeType    = FormNodeType.Field,
-                            Code        = f.ColumnCode,
+                            Code        = effectiveCode,
                             TitleKey    = f.LabelKey,
                             LabelKey    = f.LabelKey,
                             DisplayName = fieldDisplay,
@@ -1043,6 +1044,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                             IsRequired  = false,           // QPB se hydrate khi field duoc chon
                             IsVisible   = f.IsVisible,
                             IsReadOnly  = f.IsReadOnly,
+                            IsVirtual   = f.IsVirtual,
                             SortOrder   = f.OrderNo
                         });
                     }
@@ -2100,11 +2102,13 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 IsDirty = false;
             }
         });
+        var autoSaveRef = _autoSave;
         _autoSave.StatusChanged += (_, _) =>
         {
-            AutoSaveStatus = _autoSave.Status;
-            LastSavedAt = _autoSave.LastSavedAt;
-            AutoSaveError = _autoSave.ErrorMessage;
+            if (_autoSave is null) return;
+            AutoSaveStatus = autoSaveRef.Status;
+            LastSavedAt    = autoSaveRef.LastSavedAt;
+            AutoSaveError  = autoSaveRef.ErrorMessage;
         };
 
         // D1 — Quick-save cho field props (debounce 800ms — phan ung nhanh hon form save).
