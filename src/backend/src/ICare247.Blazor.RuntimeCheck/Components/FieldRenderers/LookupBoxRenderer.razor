@@ -136,7 +136,8 @@
         {
             // Fallback: chỉ hiển thị DisplayColumn
             var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
-            return [new PopupColDef { Column = displayCol, Title = displayCol }];
+            var displayKey = ExtractColumnKey(displayCol);
+            return [new PopupColDef { Column = displayKey, Title = displayKey }];
         }
 
         try
@@ -159,7 +160,7 @@
                 return State?.DynamicRows ?? [];
 
             var term = _searchText.ToLower();
-            var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+            var displayCol = ExtractColumnKey(State?.LookupConfig?.DisplayColumn ?? "");
             return (State?.DynamicRows ?? [])
                 .Where(r => GetColValue(r, displayCol).ToLower().Contains(term))
                 .ToList();
@@ -278,8 +279,37 @@
     private static string GetColValue(Dictionary<string, object?> row, string col)
     {
         if (string.IsNullOrWhiteSpace(col)) return "";
-        var kv = row.FirstOrDefault(p => p.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        // Expression có alias (VD: "CONCAT(a, b) TenHienThi") → dùng alias làm key
+        var key = ExtractColumnKey(col);
+        var kv  = row.FirstOrDefault(p => p.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
         return kv.Value?.ToString() ?? "";
+    }
+
+    /// <summary>
+    /// Trích key thực tế để lookup trong result dictionary.
+    /// "CONCAT(MaTinh, ' - ', TenTinh) AS TenTinh" → "TenTinh"  (AS alias)
+    /// "CONCAT(MaTinh, ' - ', TenTinh) TenTinh"    → "TenTinh"  (implicit alias)
+    /// "TenTinh"                                    → "TenTinh"  (identifier đơn)
+    /// </summary>
+    private static string ExtractColumnKey(string col)
+    {
+        var trimmed = col.Trim();
+
+        // Kiểm tra pattern "... AS aliasName" (case-insensitive)
+        var asMatch = System.Text.RegularExpressions.Regex.Match(
+            trimmed, @"\bAS\s+(\w+)\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (asMatch.Success)
+            return asMatch.Groups[1].Value;
+
+        // Nếu có dấu '(' → là expression → lấy token cuối cùng sau dấu ngoặc làm alias
+        if (trimmed.Contains('('))
+        {
+            var lastSpace = trimmed.LastIndexOf(' ');
+            if (lastSpace >= 0)
+                return trimmed[(lastSpace + 1)..].Trim();
+        }
+
+        return trimmed;
     }
 
     // ── Inner types ───────────────────────────────────────────────────────────

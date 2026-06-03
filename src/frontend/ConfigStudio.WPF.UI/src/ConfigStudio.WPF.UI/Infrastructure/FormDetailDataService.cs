@@ -83,6 +83,7 @@ public sealed class FormDetailDataService : IFormDetailDataService
             SELECT fi.Field_Id                     AS FieldId,
                    fi.Order_No                     AS OrderNo,
                    ISNULL(sc.Column_Code, '')      AS ColumnCode,
+                   fi.Field_Code                   AS FieldCode,
                    ISNULL(se.Section_Code, '')     AS SectionCode,
                    fi.Editor_Type                  AS EditorType,
                    ISNULL(fi.Label_Key, '')        AS LabelKey,

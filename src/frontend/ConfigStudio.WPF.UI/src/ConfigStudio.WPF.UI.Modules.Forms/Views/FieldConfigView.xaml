@@ -358,9 +358,19 @@
                 <!-- Panel header -->
                 <Border DockPanel.Dock="Top" Background="#F8FAFC"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
-                        Padding="12,8">
-                    <TextBlock Text="Fields" FontSize="11" FontWeight="SemiBold"
-                               Foreground="{StaticResource MutedBrush}" />
+                        Padding="12,6">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right"
+                                Command="{Binding RefreshNavigatorCommand}"
+                                ToolTip="Tải lại danh sách fields"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="4" Cursor="Hand">
+                            <dx:DXImage Source="{dx:DXImage Image=Refresh_16x16.png}" Width="14" Height="14" />
+                        </Button>
+                        <TextBlock Text="Fields" FontSize="11" FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Foreground="{StaticResource MutedBrush}" />
+                    </DockPanel>
                 </Border>
                 <!-- Field list grouped by section -->
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -379,45 +389,96 @@
                                     <ItemsControl ItemsSource="{Binding Fields}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Button Command="{Binding DataContext.NavigateToFieldCommand,
-                                                                  RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"
-                                                        Background="Transparent" BorderThickness="0"
-                                                        Cursor="Hand" HorizontalContentAlignment="Stretch"
-                                                        Padding="0">
-                                                    <Border Padding="12,7,8,7">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
+                                                <Grid Background="Transparent" Tag="hidden">
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter Property="Tag" Value="visible" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <!-- Field name + editor type -->
+                                                    <Button Grid.Column="0"
+                                                            Command="{Binding DataContext.NavigateToFieldCommand,
+                                                                      RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"
+                                                            Background="Transparent" BorderThickness="0"
+                                                            Cursor="Hand" HorizontalContentAlignment="Stretch"
+                                                            Padding="0">
+                                                        <Border Padding="12,7,4,7">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsCurrentField}" Value="True">
+                                                                            <Setter Property="Background" Value="{StaticResource AccentLightBrush}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding EffectiveCode}"
+                                                                           FontSize="12"
+                                                                           FontFamily="Cascadia Code, Consolas"
+                                                                           TextTrimming="CharacterEllipsis">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Foreground" Value="#374151" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsCurrentField}" Value="True">
+                                                                                    <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
+                                                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                                <TextBlock Text="{Binding EditorType}"
+                                                                           FontSize="10"
+                                                                           Foreground="{StaticResource MutedBrush}" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Button>
+
+                                                    <!-- Nút ↑↓ — chỉ hiện khi hover -->
+                                                    <StackPanel Grid.Column="1" Orientation="Vertical"
+                                                                VerticalAlignment="Center" Margin="0,0,4,0">
+                                                        <StackPanel.Style>
+                                                            <Style TargetType="StackPanel">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding IsCurrentField}" Value="True">
-                                                                        <Setter Property="Background" Value="{StaticResource AccentLightBrush}" />
+                                                                    <DataTrigger Binding="{Binding Tag,
+                                                                        RelativeSource={RelativeSource AncestorType=Grid}}"
+                                                                                 Value="visible">
+                                                                        <Setter Property="Visibility" Value="Visible" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
-                                                        </Border.Style>
-                                                        <StackPanel>
-                                                            <TextBlock Text="{Binding ColumnCode}"
-                                                                       FontSize="12"
-                                                                       FontFamily="Cascadia Code, Consolas"
-                                                                       TextTrimming="CharacterEllipsis">
-                                                                <TextBlock.Style>
-                                                                    <Style TargetType="TextBlock">
-                                                                        <Setter Property="Foreground" Value="#374151" />
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding IsCurrentField}" Value="True">
-                                                                                <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
-                                                                                <Setter Property="FontWeight" Value="SemiBold" />
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </TextBlock.Style>
-                                                            </TextBlock>
-                                                            <TextBlock Text="{Binding EditorType}"
-                                                                       FontSize="10"
+                                                        </StackPanel.Style>
+                                                        <Button Command="{Binding DataContext.MoveFieldUpCommand,
+                                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="Transparent" BorderThickness="0"
+                                                                Padding="2" Cursor="Hand" ToolTip="Lên">
+                                                            <TextBlock Text="▲" FontSize="8"
                                                                        Foreground="{StaticResource MutedBrush}" />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </Button>
+                                                        </Button>
+                                                        <Button Command="{Binding DataContext.MoveFieldDownCommand,
+                                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                CommandParameter="{Binding}"
+                                                                Background="Transparent" BorderThickness="0"
+                                                                Padding="2" Cursor="Hand" ToolTip="Xuống">
+                                                            <TextBlock Text="▼" FontSize="8"
+                                                                       Foreground="{StaticResource MutedBrush}" />
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

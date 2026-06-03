@@ -61,6 +61,27 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 
 ---
 
+## ✅ Done (Session 33 — Expression Builder + TreeLookupBox — 2026-06-04)
+
+- [x] **BUG-EB1** — Fix Expression Builder: FIELD context trống (commit `89d368f`)
+  - EventEditorViewModel inject IFormDetailDataService, load + cache formFields, truyền vào DialogParameters
+  - ExpressionFieldInfo.cs thêm Core.Data (dùng chung Events + Grammar)
+- [x] **BUG-EB2** — Fix Expression Builder: không nhập được Literal (commit `89d368f`)
+  - Thêm Literal Editor panel (TextBox + NetType ComboBox + Áp dụng) hiện khi chọn node Literal
+- [x] **FEAT-TLB** — Implement TreeLookupBox editor type (commit `bd157b6`)
+  - Migration 021: Parent_Column vào Ui_Field_Lookup
+  - Backend: QueryTreeAsync + POST /api/v1/lookups/query-tree
+  - Blazor: TreeLookupBoxRenderer.razor (tree expand/collapse, search, cascade)
+  - WPF: AvailableEditorTypes, ParentColumn prop, LookupBoxPropsPanel panel xanh
+- [x] **BUG-AS1** — Fix NullReferenceException AutoSave StatusChanged lambda (commit `f230f97`)
+  - Guard `if (_autoSave is null) return` trong lambda sau DisposeP0Services
+
+**Decisions Log:**
+- TreeLookupBox dùng flat list + `__parentId` key (inject bởi repository) — client build tree. Không thay đổi DB query pattern, tận dụng lại QueryDynamic infrastructure.
+- FieldInfo.cs trong Grammar giữ lại dưới dạng global alias → backward compat (không breaking change).
+
+---
+
 ## ✅ Done (Wave ComboBox/LookupBox System — 2026-03-28)
 
 ### Wave — ComboBox/LookupBox System (2026-03-28)

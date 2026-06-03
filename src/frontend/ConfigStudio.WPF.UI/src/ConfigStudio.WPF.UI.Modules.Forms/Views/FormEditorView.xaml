@@ -1,4 +1,4 @@
-<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.FormEditorView"
+﻿<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.FormEditorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -450,28 +450,8 @@
                                                    Foreground="{StaticResource AccentDarkBrush}" />
                                     </Border>
 
-                                    <!-- Name + SubText -->
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0"
-                                                VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding DisplayName}"
-                                                   FontSize="13" FontWeight="Medium"
-                                                   Foreground="#1E293B" />
-                                        <TextBlock Text="{Binding SubText}"
-                                                   FontSize="11"
-                                                   Foreground="{StaticResource MutedBrush}" />
-                                    </StackPanel>
-
-                                    <!-- Required badge -->
-                                    <Border Grid.Column="2" Background="#FEE2E2"
-                                            CornerRadius="4" Padding="4,1"
-                                            VerticalAlignment="Center"
-                                            Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="*" Foreground="{StaticResource DangerBrush}"
-                                                   FontSize="11" FontWeight="Bold" />
-                                    </Border>
-
                                     <!-- D2 — Bulk multi-select checkbox (chi hien tren field) -->
-                                    <CheckBox Grid.Column="3" Margin="6,0,2,0"
+                                    <CheckBox Grid.Column="1" Margin="6,0,2,0"
                                               IsChecked="{Binding IsMultiChecked, Mode=TwoWay}"
                                               Click="OnFieldBulkChecked"
                                               VerticalAlignment="Center"
@@ -487,6 +467,27 @@
                                             </Style>
                                         </CheckBox.Style>
                                     </CheckBox>
+                                    <!-- Name + SubText -->
+                                    <StackPanel Grid.Column="2" Margin="8,0,0,0"
+                                                VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="13" FontWeight="Medium"
+                                                   Foreground="#1E293B" />
+                                        <TextBlock Text="{Binding SubText}"
+                                                   FontSize="11"
+                                                   Foreground="{StaticResource MutedBrush}" />
+                                    </StackPanel>
+
+                                    <!-- Required badge -->
+                                    <Border Grid.Column="3" Background="#FEE2E2"
+                                            CornerRadius="4" Padding="4,1"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="*" Foreground="{StaticResource DangerBrush}"
+                                                   FontSize="11" FontWeight="Bold" />
+                                    </Border>
+
+
                                 </Grid>
                             </HierarchicalDataTemplate>
                         </TreeView.Resources>

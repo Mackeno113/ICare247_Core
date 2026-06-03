@@ -8,8 +8,55 @@
 
 ## 1. Tổng quan
 
-Mọi thông báo lỗi validation đều lưu trong bảng `Sys_Resource` thay vì hardcode trong code.
+Mọi text hiển thị (label, placeholder, tooltip, thông báo validation) đều lưu trong bảng `Sys_Resource` thay vì hardcode trong code.
 Mục tiêu: **đa ngôn ngữ**, **tùy chỉnh per-form**, **fallback tự động**.
+
+---
+
+## 1b. Field Display Keys (Label / Placeholder / Tooltip)
+
+### Convention
+
+```
+{formCode}.field.{fieldCode}.{qualifier}
+```
+
+| Phần | Mô tả | Ví dụ |
+|------|-------|-------|
+| `formCode` | `Ui_Form.Form_Code` viết thường | `nhanvien` |
+| `field` | cố định — phân biệt namespace với `val` | `field` |
+| `fieldCode` | `Ui_Field.Column_Code` viết thường | `manhanvien` |
+| `qualifier` | `label` / `placeholder` / `tooltip` | `label` |
+
+### Ví dụ — field `MaNhanVien` trong form `NhanVien`
+
+| Key | Nội dung |
+|-----|---------|
+| `nhanvien.field.manhanvien.label` | `"Mã nhân viên"` |
+| `nhanvien.field.manhanvien.placeholder` | `"Nhập mã nhân viên..."` |
+| `nhanvien.field.manhanvien.tooltip` | `"Mã định danh duy nhất"` |
+
+### Auto-generate Key (nút "+ Tạo key")
+
+Khi user nhấn **+ Tạo key** trong FieldConfigView:
+1. Hệ thống build key theo pattern: `{formCode}.field.{fieldCode}.{qualifier}`
+2. Pre-fill vào input — user có thể sửa trước khi lưu
+3. Nếu key đã tồn tại trong `Sys_Resource` → cảnh báo, cho phép dùng tiếp hoặc hủy
+4. Label Key tạo xong → Placeholder + Tooltip key tự gợi ý theo (chỉ thay qualifier), user có thể tách biệt nếu cần
+
+### Fallback
+
+Nếu `Label_Key` để trống hoặc không tìm thấy trong `Sys_Resource`:
+- Fallback về `Column_Code` / `Column_Name` của cột DB
+- Không throw error — luôn có giá trị hiển thị
+
+### Cột lưu trong `Ui_Field`
+
+| Cột | Qualifier |
+|-----|-----------|
+| `Label_Key` | `label` |
+| `Placeholder_Key` | `placeholder` |
+| `Tooltip_Key` | `tooltip` |
 
 ---
 

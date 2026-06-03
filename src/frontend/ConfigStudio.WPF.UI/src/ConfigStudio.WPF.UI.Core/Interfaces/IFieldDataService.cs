@@ -39,4 +39,11 @@ public interface IFieldDataService
     /// Dùng khi đồng bộ schema — field mồ côi (cột đã bị xóa khỏi DB thật).
     /// </summary>
     Task DeleteFieldAsync(int fieldId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cập nhật Order_No hàng loạt cho danh sách field trong cùng section.
+    /// items = [(fieldId, newOrder)] — thứ tự bắt đầu từ 1, bước nhảy +2 (1,3,5...).
+    /// </summary>
+    Task UpdateFieldOrderAsync(IReadOnlyList<(int FieldId, int OrderNo)> items,
+        CancellationToken ct = default);
 }

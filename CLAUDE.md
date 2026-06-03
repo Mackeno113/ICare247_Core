@@ -54,6 +54,8 @@
 | `docs/spec/06_SOLUTION_STRUCTURE.md` | Folder structure, naming conventions |
 | `docs/spec/07_API_CONTRACT.md` | API endpoints, request/response schemas |
 | `docs/spec/08_CONVENTIONS.md` | Cache keys, Dapper patterns, comment rules |
+| `docs/spec/09_FIELD_CONFIG_GUIDE.md` | Field config UI — behavior, layout, i18n |
+| `docs/spec/10_RESOURCE_KEY_CONVENTION.md` | i18n key convention: validation + field display (label/placeholder/tooltip) |
 
 ---
 

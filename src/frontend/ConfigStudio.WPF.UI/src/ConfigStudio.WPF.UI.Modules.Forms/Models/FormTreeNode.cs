@@ -1,4 +1,4 @@
-// File    : FormTreeNode.cs
+﻿// File    : FormTreeNode.cs
 // Module  : Forms
 // Layer   : Presentation
 // Purpose : Node dùng chung cho TreeView hiển thị cấu trúc Form > Section > Field.
@@ -136,6 +136,6 @@ public class FormTreeNode : BindableBase
 
     /// <summary>Text hiển thị kèm type info cho field.</summary>
     public string SubText => NodeType == FormNodeType.Field
-        ? $"{FieldType} · {EditorType}"
+        ?  $"{EditorType} · {Code}" 
         : $"{Children.Count} fields";
 }
