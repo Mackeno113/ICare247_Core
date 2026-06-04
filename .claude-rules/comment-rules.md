@@ -19,7 +19,17 @@
 public class FormRepository : IFormRepository
 ```
 
-## Public Method
+## Public Method — Bắt buộc bằng Tiếng Việt
+
+Mỗi hàm C# **phải có** XML doc comment gồm đủ 4 phần:
+
+1. `<summary>` — Ý nghĩa của hàm (làm gì, tại sao tồn tại)
+2. `<param>` — Giải thích từng tham số
+3. `<returns>` — Giá trị trả về và các trường hợp (null, empty, v.v.)
+4. `<remarks>` (**bắt buộc nếu có side-effect**) — Sự kiện/hành động xảy ra SAU khi hàm chạy:
+   - Raise event nào? (`IsDirty = true`, `PropertyChanged`, domain event...)
+   - Trigger gì? (reload UI, gọi command, publish message...)
+   - Thay đổi state nào? (cache bị xóa, flag bị set...)
 
 ```csharp
 /// <summary>
@@ -28,8 +38,40 @@ public class FormRepository : IFormRepository
 /// <param name="formCode">Ui_Form.Form_Code — unique identifier của form.</param>
 /// <param name="ct">Cancellation token để hủy query nếu request bị cancel.</param>
 /// <returns><see cref="FormMetadata"/> nếu tìm thấy; <c>null</c> nếu không tồn tại.</returns>
+/// <remarks>
+/// Sau khi load thành công: set <c>_cache[formCode]</c> → các lần gọi tiếp theo lấy từ cache.
+/// Không raise event; caller tự quyết định notify UI.
+/// </remarks>
 /// <exception cref="SqlException">Throw khi DB lỗi — không swallow.</exception>
 public async Task<FormMetadata?> GetByCodeAsync(string formCode, CancellationToken ct = default)
+```
+
+### Ví dụ hàm có side-effect / trigger
+
+```csharp
+/// <summary>
+/// Gán EditorType mới cho field đang chọn.
+/// </summary>
+/// <param name="value">Tên editor type mới (vd: "LookupBox", "TextBox").</param>
+/// <remarks>
+/// Sự kiện theo sau:
+/// - Gọi <see cref="LoadControlPropSchema"/> → reload tab Control Props.
+/// - Set <c>IsDirty = true</c> → kích hoạt nút Save.
+/// - Nếu đổi từ LookupBox sang loại khác: hiện dialog xác nhận → xóa FK config nếu đồng ý.
+/// </remarks>
+public string SelectedEditorType { get => ...; set => ... }
+```
+
+### Ví dụ hàm không có side-effect
+
+```csharp
+/// <summary>
+/// Tính tổng số field đang active trong section.
+/// </summary>
+/// <param name="sectionId">ID của section cần đếm.</param>
+/// <returns>Số lượng field có <c>Is_Active = 1</c>.</returns>
+/// <remarks>Không có side-effect. Không thay đổi state.</remarks>
+public int CountActiveFields(int sectionId)
 ```
 
 ## Logic Block trong Method

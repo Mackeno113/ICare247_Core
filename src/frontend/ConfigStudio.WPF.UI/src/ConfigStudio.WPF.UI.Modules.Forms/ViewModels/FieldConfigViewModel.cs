@@ -1145,9 +1145,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         try
         {
             // ── 0. Sections (cho ComboBox chọn section) ───────────────────
+            System.Diagnostics.Debug.WriteLine($"[FieldConfig] LoadSections: FormId={FormId}, TenantId={tenantId}, IsConfigured={_appConfig?.IsConfigured}, ServiceNull={_formDetailService is null}");
             if (_formDetailService is not null)
             {
                 var sections = await _formDetailService.GetSectionsByFormAsync(FormId, tenantId, ct);
+                System.Diagnostics.Debug.WriteLine($"[FieldConfig] Sections count = {sections.Count}");
                 AvailableSections.Clear();
                 foreach (var s in sections)
                     AvailableSections.Add(new SectionOptionItem(s.SectionCode, s.TitleKey ?? s.SectionCode)
@@ -1604,7 +1606,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             FieldNavigatorGroups.Clear();
             foreach (var sec in sections.OrderBy(s => s.OrderNo))
             {
-                var group = new FieldNavGroup { SectionCode = sec.SectionCode };
+                var group = new FieldNavGroup { SectionId = sec.SectionId, SectionCode = sec.SectionCode };
                 if (fieldsBySec.TryGetValue(sec.SectionCode, out var secFields))
                 {
                     foreach (var f in secFields)
@@ -1634,11 +1636,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (item is null || item.FieldId == FieldId) return;
 
+        // Tìm section chứa field này để truyền đúng sectionId → dropdown Section không bị mất khi navigate
+        var sectionId = FieldNavigatorGroups
+            .FirstOrDefault(g => g.Fields.Any(f => f.FieldId == item.FieldId))
+            ?.SectionId ?? 0;
+
         var p = new NavigationParameters
         {
             { "fieldId",   item.FieldId },
             { "formId",    FormId },
-            { "sectionId", 0 },
+            { "sectionId", sectionId },
             { "tableCode", TableCode },
             { "formCode",  FormCode },
             { "formName",  FormName },

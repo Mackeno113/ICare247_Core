@@ -11,6 +11,7 @@ using ICare247.Application.Features.Forms.Commands.UpdateForm;
 using ICare247.Application.Features.Forms.Queries.GetFormAuditLog;
 using ICare247.Application.Features.Forms.Queries.GetFormByCode;
 using ICare247.Application.Features.Forms.Queries.GetFormsList;
+using ICare247.Domain.Engine;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,12 +26,14 @@ namespace ICare247.Api.Controllers;
 public sealed class FormController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IMetadataEngine _metadataEngine;
     private readonly ILogger<FormController> _logger;
 
-    public FormController(IMediator mediator, ILogger<FormController> logger)
+    public FormController(IMediator mediator, IMetadataEngine metadataEngine, ILogger<FormController> logger)
     {
-        _mediator = mediator;
-        _logger = logger;
+        _mediator        = mediator;
+        _metadataEngine  = metadataEngine;
+        _logger          = logger;
     }
 
     // ── Queries ──────────────────────────────────────────────────────────────
@@ -206,6 +209,24 @@ public sealed class FormController : ControllerBase
             nameof(GetByCode),
             new { code = body.NewFormCode },
             new { FormId = newFormId, FormCode = body.NewFormCode });
+    }
+
+    /// <summary>
+    /// Xóa cache metadata của form — L1 MemoryCache + L2 Redis.
+    /// Gọi sau khi admin thay đổi cấu hình field, i18n resource, hoặc popup columns.
+    /// </summary>
+    /// <remarks>
+    /// Sự kiện theo sau: lần gọi <c>GetFormMetadata</c> tiếp theo sẽ load lại từ DB
+    /// và cache lại với dữ liệu mới nhất.
+    /// </remarks>
+    [HttpPost("{code}/invalidate-cache")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> InvalidateCache(string code)
+    {
+        var tenantId = GetTenantId();
+        await _metadataEngine.InvalidateFormCacheAsync(code, tenantId);
+        _logger.LogInformation("Cache invalidated qua API — FormCode={FormCode}, TenantId={TenantId}", code, tenantId);
+        return NoContent();
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

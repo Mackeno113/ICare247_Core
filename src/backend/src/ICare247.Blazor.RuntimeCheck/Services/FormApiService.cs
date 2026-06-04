@@ -92,6 +92,32 @@ public sealed class FormApiService
         return result?.Items ?? [];
     }
 
+    /// <summary>
+    /// Xóa cache metadata của form — gọi sau khi thay đổi i18n resource hoặc cấu hình field.
+    /// </summary>
+    /// <remarks>
+    /// Sự kiện theo sau: lần load form tiếp theo sẽ fetch lại từ DB với dữ liệu mới nhất.
+    /// </remarks>
+    public async Task InvalidateCacheAsync(string formCode, CancellationToken ct = default)
+    {
+        var url = $"/api/v1/config/forms/{Uri.EscapeDataString(formCode)}/invalidate-cache";
+
+        _logger.LogDebug("InvalidateCache → POST {Url}", url);
+
+        var response = await _http.PostAsync(url, content: null, ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await ReadProblemDetailAsync(response);
+            _logger.LogError(
+                "InvalidateCache lỗi {Status} — FormCode={FormCode} | {Detail}",
+                (int)response.StatusCode, formCode, detail);
+            throw new HttpRequestException($"[{(int)response.StatusCode}] {detail}");
+        }
+
+        _logger.LogInformation("InvalidateCache OK — FormCode={FormCode}", formCode);
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>

@@ -47,6 +47,10 @@ else if (_form is not null)
             </div>
             <div class="header-actions">
                 <button class="btn btn-secondary btn-sm" @onclick="ResetForm">↺ Reset</button>
+                <button class="btn btn-warning btn-sm" @onclick="InvalidateCacheAsync"
+                        disabled="@_invalidating" title="Xóa cache metadata — reload lại từ DB">
+                    @(_invalidating ? "⏳ Clearing..." : "🗑 Clear Cache")
+                </button>
                 <button class="btn btn-primary" @onclick="SubmitForm" disabled="@_submitting">
                     @(_submitting ? "Đang kiểm tra..." : "✓ Submit & Validate")
                 </button>
@@ -199,6 +203,7 @@ else if (_form is not null)
     private bool                        _loading        = true;
     private string?                     _error;
     private bool                        _submitting;
+    private bool                        _invalidating;
     private FormValidationResponseDto?  _submitResult;
     private bool                        _showDebug;
     private int                         _lastDeltaCount;
@@ -338,6 +343,32 @@ else if (_form is not null)
     }
 
     private async Task ResetForm() => await LoadFormAsync();
+
+    /// <summary>
+    /// Xóa cache metadata của form (L1 + L2) rồi reload lại.
+    /// Dùng sau khi thay đổi i18n resource hoặc cấu hình field trong ConfigStudio.
+    /// </summary>
+    /// <remarks>
+    /// Sự kiện theo sau: gọi LoadFormAsync() → fetch lại metadata mới nhất từ DB.
+    /// </remarks>
+    private async Task InvalidateCacheAsync()
+    {
+        if (_invalidating) return;
+        _invalidating = true;
+        try
+        {
+            await FormApi.InvalidateCacheAsync(FormCode);
+            await LoadFormAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Clear cache thất bại: {ex.Message}";
+        }
+        finally
+        {
+            _invalidating = false;
+        }
+    }
 
     private void GoBack()     => Nav.NavigateTo("/");
     private void ToggleDebug() => _showDebug = !_showDebug;
@@ -540,6 +571,8 @@ else if (_form is not null)
             or "radiogroup" or "lookupcombobox"                         => "select",
         // LookupBox = FK popup grid
         "lookupbox"                                                     => "fklookup",
+        // TreeLookupBox = dropdown cây expand/collapse
+        "treelookupbox" or "treelookup"                                 => "treelookup",
         _                                                               => "text"
     };
 

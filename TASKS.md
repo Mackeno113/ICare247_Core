@@ -61,6 +61,39 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 
 ---
 
+## ✅ Done (Session 34 — LookupBox UX + Cache API + Bug fixes — 2026-06-05)
+
+### WPF Bug Fix
+- [x] **BUG-FC1** — Fix Section dropdown mất khi navigate field trong Left Panel
+  - Root cause: `ExecuteNavigateToField` hardcode `sectionId = 0` → `OnNavigatedTo` set SectionId=0 → restore tìm không ra → dropdown trắng
+  - Fix: thêm `SectionId` vào `FieldNavGroup`, populate khi build navigator, tìm group chứa item → truyền đúng sectionId
+
+### Backend — Cache Invalidate API
+- [x] **BE-CACHE** — Thêm endpoint `POST /api/v1/config/forms/{code}/invalidate-cache`
+  - `FormController` inject `IMetadataEngine`, gọi `InvalidateFormCacheAsync` (xóa L1 + L2)
+
+### Blazor — LookupBox UX Redesign
+- [x] **BLZ-LB1** — Redesign LookupBox thành searchable combobox
+  - Bỏ popup grid có header → input trực tiếp + dropdown list đơn giản
+  - `onmousedown` để SelectRow chạy trước `onblur` (tránh race)
+  - Sync `_inputText` ↔ display value khi focus/blur/select
+- [x] **BLZ-LB2** — Thêm nút "🗑 Clear Cache" trên FormRunner header
+  - `FormApiService.InvalidateCacheAsync` → gọi API invalidate → reload form
+- [x] **BLZ-LB3** — Redesign CSS dropdown list item
+  - Header tiêu đề (State.Label, uppercase 11px)
+  - Padding `9px 14px`, margin `1px 6px`, border-radius `6px`
+  - Selected: màu tím + dấu `✓`; Hover: background xám nhạt
+
+### Comment Rules
+- [x] Cập nhật `.claude-rules/comment-rules.md` — bắt buộc XML doc tiếng Việt + `<remarks>` ghi sự kiện theo sau mỗi hàm
+
+**Decisions Log:**
+- LookupBox chuyển sang pattern "searchable combobox" — bỏ popup grid vì header không cần thiết, UX gõ thẳng tự nhiên hơn
+- `onmousedown` thay `onclick` cho SelectRow để tránh blur đóng popup trước khi chọn được item
+- Cache invalidate endpoint đặt trong `FormController` (không `RuntimeController`) vì đây là admin operation
+
+---
+
 ## ✅ Done (Session 33 — Expression Builder + TreeLookupBox — 2026-06-04)
 
 - [x] **BUG-EB1** — Fix Expression Builder: FIELD context trống (commit `89d368f`)

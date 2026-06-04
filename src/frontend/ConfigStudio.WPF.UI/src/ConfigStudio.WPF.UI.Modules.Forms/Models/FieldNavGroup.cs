@@ -15,6 +15,7 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.Models;
 /// </summary>
 public sealed class FieldNavGroup
 {
+    public int    SectionId   { get; set; }
     public string SectionCode { get; set; } = "";
     public ObservableCollection<FieldNavItem> Fields { get; } = [];
 }
