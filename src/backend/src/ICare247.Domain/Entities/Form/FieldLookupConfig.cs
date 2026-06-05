@@ -88,4 +88,16 @@ public sealed class FieldLookupConfig
     /// Null = không có trigger.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    /// <summary>
+    /// Cho phép mở dialog "thêm mới" entity ngay trên control LookupBox.
+    /// Mặc định false.
+    /// </summary>
+    public bool AllowAddNew { get; init; }
+
+    /// <summary>
+    /// Form_Code của Ui_Form dùng render dialog nhập liệu khi thêm mới.
+    /// Null khi AllowAddNew = false.
+    /// </summary>
+    public string? AddFormCode { get; init; }
 }

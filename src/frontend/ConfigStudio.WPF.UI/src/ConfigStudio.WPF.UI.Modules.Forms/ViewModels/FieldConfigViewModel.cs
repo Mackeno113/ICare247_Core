@@ -401,6 +401,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _reloadTriggerField   = "";
         // TreeLookupBox (Migration 021)
         _parentColumn         = "";
+        // Thêm mới entity (Migration 022)
+        _allowAddNew          = false;
+        _addFormCode          = "";
         _isRebuildingProps = false;
         // Raise tất cả property liên quan
         RaisePropertyChanged(nameof(QueryMode));
@@ -610,6 +613,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
     public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
+
+    // ── Thêm mới entity từ LookupBox (Migration 022) ──────────────────
+
+    private bool _allowAddNew;
+    /// <summary>Bật nút "➕ Thêm mới" trên LookupBox runtime → lưu Ui_Field_Lookup.Allow_Add_New.</summary>
+    public bool AllowAddNew
+    {
+        get => _allowAddNew;
+        set { if (SetProperty(ref _allowAddNew, value)) IsDirty = true; }
+    }
+
+    private string _addFormCode = "";
+    /// <summary>Form_Code của Ui_Form render dialog thêm mới → lưu Ui_Field_Lookup.Add_Form_Code.</summary>
+    public string AddFormCode
+    {
+        get => _addFormCode;
+        set { if (SetProperty(ref _addFormCode, value)) IsDirty = true; }
+    }
 
     // ── TreeLookupBox props (Migration 021) ───────────────────────────
 
@@ -1297,6 +1318,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             _dropDownHeight     = cfg.DropDownHeight;
                             _reloadTriggerField = cfg.ReloadTriggerField ?? "";
                             _parentColumn       = cfg.ParentColumn ?? "";
+                            _allowAddNew        = cfg.AllowAddNew;
+                            _addFormCode        = cfg.AddFormCode ?? "";
 
                             _isRebuildingProps = false;
                             // Raise LookupBox new props sau khi _isRebuildingProps = false
@@ -1307,6 +1330,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             RaisePropertyChanged(nameof(DropDownWidth));
                             RaisePropertyChanged(nameof(DropDownHeight));
                             RaisePropertyChanged(nameof(ReloadTriggerField));
+                            RaisePropertyChanged(nameof(AllowAddNew));
+                            RaisePropertyChanged(nameof(AddFormCode));
                             skipFkRestore:;
                         }
                         catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }
@@ -2400,6 +2425,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     // TreeLookupBox (Migration 021)
                     ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(_parentColumn)
                                           ? _parentColumn : null,
+                    // Thêm mới entity (Migration 022) — chỉ lưu khi bật + có form code
+                    AllowAddNew         = IsFkLookupEditor && _allowAddNew
+                                          && !string.IsNullOrWhiteSpace(_addFormCode),
+                    AddFormCode         = IsFkLookupEditor && _allowAddNew
+                                          && !string.IsNullOrWhiteSpace(_addFormCode)
+                                          ? _addFormCode.Trim() : null,
                 };
             }
 

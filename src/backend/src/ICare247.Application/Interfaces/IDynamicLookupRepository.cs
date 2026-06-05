@@ -52,4 +52,23 @@ public interface IDynamicLookupRepository
         int tenantId,
         Dictionary<string, object?> contextValues,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Insert một bản ghi mới vào bảng nguồn của field lookup (dùng cho "thêm mới" trên LookupBox).
+    /// Chỉ áp dụng khi <c>Query_Mode = 'table'</c>. Mỗi cặp key/value trong <paramref name="values"/>
+    /// được map thẳng thành cột → tham số Dapper (key phải là identifier hợp lệ).
+    /// </summary>
+    /// <param name="fieldId">Field_Id của LookupBox — xác định bảng nguồn + Value/Display column.</param>
+    /// <param name="tenantId">Tenant hiện tại — verify ownership qua Ui_Form → Sys_Table.</param>
+    /// <param name="values">Cặp Cột↔Giá trị từ dialog thêm mới (key = tên cột DB).</param>
+    /// <param name="ct"></param>
+    /// <returns>
+    /// Dictionary gồm <c>value</c> (khóa vừa insert, từ OUTPUT INSERTED) và <c>display</c>
+    /// (giá trị cột Display nếu có trong <paramref name="values"/>). Null nếu insert thất bại.
+    /// </returns>
+    Task<IDictionary<string, object?>?> InsertAsync(
+        int fieldId,
+        int tenantId,
+        Dictionary<string, object?> values,
+        CancellationToken ct = default);
 }

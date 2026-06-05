@@ -91,4 +91,8 @@ public sealed class FieldLookupConfigDto
     public string? ReloadTriggerField { get; set; }
     /// <summary>Số ký tự tối thiểu để kích hoạt filter. 0 = filter ngay từ ký tự đầu tiên.</summary>
     public int FilterMinLength { get; set; } = 0;
+    /// <summary>Cho phép mở dialog "thêm mới" entity ngay trên LookupBox.</summary>
+    public bool AllowAddNew { get; set; }
+    /// <summary>Form_Code của Ui_Form render dialog nhập liệu khi thêm mới.</summary>
+    public string? AddFormCode { get; set; }
 }

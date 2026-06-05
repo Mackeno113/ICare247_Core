@@ -91,7 +91,9 @@ public sealed class FieldDataService : IFieldDataService
                    ISNULL(fl.DropDown_Width,  600)      AS DropDownWidth,
                    ISNULL(fl.DropDown_Height, 400)      AS DropDownHeight,
                    fl.Reload_Trigger_Field  AS ReloadTriggerField,
-                   fl.Parent_Column         AS ParentColumn
+                   fl.Parent_Column         AS ParentColumn,
+                   ISNULL(fl.Allow_Add_New, 0) AS AllowAddNew,
+                   fl.Add_Form_Code         AS AddFormCode
             FROM   dbo.Ui_Field_Lookup fl
             WHERE  fl.Field_Id = @FieldId
             """;
@@ -241,6 +243,8 @@ public sealed class FieldDataService : IFieldDataService
                                DropDown_Height       = @DropDownHeight,
                                Reload_Trigger_Field  = @ReloadTriggerField,
                                Parent_Column         = @ParentColumn,
+                               Allow_Add_New         = @AllowAddNew,
+                               Add_Form_Code         = @AddFormCode,
                                Updated_At            = GETDATE()
                         WHERE  Field_Id = @FieldId
                     ELSE
@@ -249,12 +253,12 @@ public sealed class FieldDataService : IFieldDataService
                                 Display_Column, Filter_Sql, Order_By, Search_Enabled,
                                 Popup_Columns_Json, EditBox_Mode, Code_Field,
                                 DropDown_Width, DropDown_Height, Reload_Trigger_Field,
-                                Parent_Column, Updated_At)
+                                Parent_Column, Allow_Add_New, Add_Form_Code, Updated_At)
                         VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
                                 @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
                                 @PopupColumnsJson, @EditBoxMode, @CodeField,
                                 @DropDownWidth, @DropDownHeight, @ReloadTriggerField,
-                                @ParentColumn, GETDATE())
+                                @ParentColumn, @AllowAddNew, @AddFormCode, GETDATE())
                     """;
 
                 await conn.ExecuteAsync(
@@ -274,7 +278,9 @@ public sealed class FieldDataService : IFieldDataService
                         lookupConfig.DropDownWidth,
                         lookupConfig.DropDownHeight,
                         lookupConfig.ReloadTriggerField,
-                        lookupConfig.ParentColumn
+                        lookupConfig.ParentColumn,
+                        lookupConfig.AllowAddNew,
+                        lookupConfig.AddFormCode
                     }, transaction: tx, cancellationToken: ct));
             }
             else

@@ -185,6 +185,24 @@
     color: var(--color-error, #EF4444);
 }
 
+/* ── Nút thêm mới (footer dropdown) ─────────────────────────────────────── */
+
+.popup-addnew {
+    margin: 4px 6px 2px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--border-default, #E2E8F0);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-primary, #845EF7);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.1s;
+}
+
+.popup-addnew:hover {
+    background: var(--table-row-hover, #F1F5F9);
+}
+
 /* ── Overlay ─────────────────────────────────────────────────────────────── */
 
 .lookupbox-overlay {

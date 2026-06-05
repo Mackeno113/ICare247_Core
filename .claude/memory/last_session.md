@@ -1,10 +1,38 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-05 (session 35 — Cascade LookupBox fix + keyboard nav + lọc trực tiếp)
+> Cập nhật: 2026-06-05 (session 36 — LookupBox "thêm mới entity" full-stack)
 
 ## Trạng thái cuối session
 
 - **Branch:** `master`
+- **Build:** API / Application / Infrastructure / Domain / RuntimeCheck / WPF Modules.Forms đều 0/0
+
+## Session 36 — Thêm mới entity trên LookupBox (full 3 tầng + WPF)
+
+Tính năng: dropdown LookupBox có nút "➕ Thêm mới" → mở dialog render Ui_Form (AddFormCode)
+→ nhập liệu → POST insert vào bảng nguồn → auto-select bản ghi mới. Bật/tắt theo từng field.
+
+**Cơ chế then chốt:**
+1. Config 2 cột `Ui_Field_Lookup`: `Allow_Add_New` + `Add_Form_Code` (migration 022).
+2. Backend đọc `Source_Name` theo `fieldId` (KHÔNG nhận bảng từ client) → verify tenant → insert parameterized + `OUTPUT INSERTED`.
+3. `FieldCode = COALESCE(Field_Code, Column_Code)` → FieldCode = tên cột DB → map insert trực tiếp.
+4. `LookupAddDialog` tái dùng `FieldRenderer` (như FormRunner) → tự hỗ trợ mọi control + cascade lồng.
+5. `OnAddSaved`: reload + set Value → OnChange fire → cascade con reload theo ReloadTriggerField.
+
+**File chính:** DynamicLookupRepository.InsertAsync, InsertLookupCommand/handler, LookupController POST insert,
+LookupAddDialog.razor(+css), LookupBoxRenderer (CanAddNew/OpenAddDialog/OnAddSaved),
+FieldDataService + FieldConfigViewModel + LookupBoxPropsPanel.xaml (WPF config).
+
+**Setup để chạy:** (1) chạy db/022; (2) tạo Ui_Form bound bảng nguồn, field code = cột DB;
+(3) ConfigStudio → bật "Cho phép thêm mới" + nhập Form Code.
+
+**Caveat:** insert chưa chạy ValidationEngine server-side (chỉ check required client); field virtual bị loại;
+chưa test runtime (cần DB + Ui_Form đích) — mới verify compile.
+
+---
+
+## Session 35 (trước đó)
+
 - **Build:** RuntimeCheck 0/0, Infrastructure 0/0, API 0/0
 
 ## Đã làm trong session này
@@ -37,6 +65,7 @@
 - `db/019_ui_field_column_id_nullable.sql`
 - `db/020_ui_field_add_field_code.sql`
 - `db/021_ui_field_lookup_add_parent_column.sql`
+- `db/022_ui_field_lookup_add_addnew.sql`
 
 ## Pending tiếp theo
 

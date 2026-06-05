@@ -3,6 +3,7 @@
 // Layer   : Api
 // Purpose : REST endpoint lấy Sys_Lookup items và query dynamic lookup data.
 
+using ICare247.Application.Features.Lookups.Commands.InsertLookup;
 using ICare247.Application.Features.Lookups.Queries.GetLookupByCode;
 using ICare247.Application.Features.Lookups.Queries.QueryDynamic;
 using ICare247.Application.Features.Lookups.Queries.QueryTree;
@@ -122,6 +123,56 @@ public sealed class LookupController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// Thêm mới một entity vào bảng nguồn của LookupBox (tính năng "➕ Thêm mới" trên control).
+    /// Backend đọc bảng đích từ <c>Ui_Field_Lookup</c> theo <c>fieldId</c> — client chỉ gửi cặp cột↔giá trị.
+    /// </summary>
+    /// <remarks>
+    /// POST /api/v1/lookups/insert
+    /// Body: { "fieldId": 42, "values": { "Ten_Xa": "Xã ABC", "TinhId": 68 } }
+    /// Response: { "value": 123, "display": "Xã ABC" }
+    /// </remarks>
+    [HttpPost("insert")]
+    public async Task<IActionResult> Insert(
+        [FromBody] InsertLookupRequest body,
+        CancellationToken ct = default)
+    {
+        if (body.FieldId <= 0)
+            return BadRequest(new ProblemDetails
+            {
+                Type   = "https://tools.ietf.org/html/rfc7807",
+                Title  = "FieldId không hợp lệ",
+                Status = 400,
+                Detail = "FieldId phải lớn hơn 0."
+            });
+
+        if (body.Values is null || body.Values.Count == 0)
+            return BadRequest(new ProblemDetails
+            {
+                Type   = "https://tools.ietf.org/html/rfc7807",
+                Title  = "Thiếu dữ liệu",
+                Status = 400,
+                Detail = "Cần ít nhất một cột để thêm mới."
+            });
+
+        try
+        {
+            var command = new InsertLookupCommand(body.FieldId, GetTenantId(), body.Values);
+            var result  = await _mediator.Send(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Type   = "https://tools.ietf.org/html/rfc7807",
+                Title  = "Không thể thêm mới",
+                Status = 400,
+                Detail = ex.Message
+            });
+        }
+    }
+
     private int GetTenantId()
     {
         if (Request.Headers.TryGetValue("X-Tenant-Id", out var values)
@@ -145,4 +196,16 @@ public sealed class QueryDynamicRequest
     /// </summary>
     [JsonPropertyName("contextValues")]
     public Dictionary<string, object?> ContextValues { get; init; } = [];
+}
+
+/// <summary>Request body cho POST /api/v1/lookups/insert.</summary>
+public sealed class InsertLookupRequest
+{
+    /// <summary>Field_Id của LookupBox — xác định bảng nguồn để insert.</summary>
+    [JsonPropertyName("fieldId")]
+    public int FieldId { get; init; }
+
+    /// <summary>Cặp Cột↔Giá trị từ dialog thêm mới (key = tên cột DB).</summary>
+    [JsonPropertyName("values")]
+    public Dictionary<string, object?> Values { get; init; } = [];
 }

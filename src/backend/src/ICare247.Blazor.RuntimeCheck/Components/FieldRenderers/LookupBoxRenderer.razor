@@ -66,8 +66,27 @@
                     }
                 </div>
             }
+
+            @* ── Footer: nút thêm mới (khi AllowAddNew) ── *@
+            @if (CanAddNew)
+            {
+                <div class="popup-addnew"
+                     @onmousedown="OpenAddDialog"
+                     @onmousedown:preventDefault="true">
+                    ➕ Thêm mới@(string.IsNullOrWhiteSpace(_searchText) ? "" : $" \"{_searchText}\"")
+                </div>
+            }
         </div>
         <div class="lookupbox-overlay" @onclick="ClosePopup"></div>
+    }
+
+    @* ── Dialog thêm mới entity ── *@
+    @if (_showAddDialog && State?.LookupConfig?.AddFormCode is { Length: > 0 } addFormCode)
+    {
+        <LookupAddDialog FormCode="@addFormCode"
+                         FieldId="State.FieldId"
+                         OnSaved="OnAddSaved"
+                         OnClose="CloseAddDialog" />
     }
 </div>
 
@@ -84,6 +103,13 @@
     private string  _inputText   = "";   // text hiển thị trong input (display value hoặc search term)
     private object? _lastTriggerValue;
     private int     _highlightIndex = -1; // index dòng đang được highlight để chọn bằng Enter / phím mũi tên
+    private bool    _showAddDialog;       // mở dialog "thêm mới" entity
+
+    /// <summary>True khi field bật AllowAddNew + có AddFormCode hợp lệ + không readonly.</summary>
+    private bool CanAddNew =>
+        State?.EffectiveReadOnly != true
+        && State?.LookupConfig?.AllowAddNew == true
+        && !string.IsNullOrWhiteSpace(State?.LookupConfig?.AddFormCode);
 
     // ── Popup columns từ PopupColumnsJson ────────────────────────────────────
 
@@ -238,6 +264,40 @@
         _searchText   = "";
         _inputText    = GetSelectedDisplay();
         _highlightIndex = -1;
+    }
+
+    /// <summary>
+    /// Mở dialog thêm mới: đóng popup list, hiện modal LookupAddDialog.
+    /// Sự kiện theo sau: _showAddDialog = true → render LookupAddDialog.
+    /// </summary>
+    private void OpenAddDialog()
+    {
+        _popupVisible   = false;
+        _searchText     = "";
+        _highlightIndex = -1;
+        _showAddDialog  = true;
+    }
+
+    private void CloseAddDialog() => _showAddDialog = false;
+
+    /// <summary>
+    /// Sau khi dialog lưu thành công: reload data source để có bản ghi mới rồi auto-select.
+    /// Sự kiện theo sau: State.Value = id mới, OnChange + OnBlur fire để form cập nhật.
+    /// </summary>
+    private async Task OnAddSaved((string? Value, string? Display) res)
+    {
+        _showAddDialog = false;
+        if (State is null || string.IsNullOrEmpty(res.Value)) return;
+
+        await LoadDataAsync();            // nạp lại để dropdown có bản ghi mới
+        State.Value = res.Value;
+        var display = GetSelectedDisplay();
+        _inputText  = string.IsNullOrEmpty(display) || display == res.Value
+                      ? (res.Display ?? res.Value)
+                      : display;
+
+        await OnChange.InvokeAsync((State.FieldCode, (object?)res.Value));
+        await OnBlur.InvokeAsync(State.FieldCode);
     }
 
     /// <summary>

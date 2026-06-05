@@ -6,6 +6,24 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (Session 36 — LookupBox "thêm mới entity" full-stack — 2026-06-05)
+
+Tính năng: thêm mới bản ghi danh mục ngay trên control LookupBox (mở dialog Ui_Form → insert → auto-select). Bật/tắt theo từng field.
+
+- [x] **Tầng 1 — Config**: migration `022_ui_field_lookup_add_addnew.sql` (`Allow_Add_New` + `Add_Form_Code`); Domain `FieldLookupConfig`, RuntimeCheck `FieldLookupConfigDto`, `FormRepository.sqlLookupConfigs`.
+- [x] **Tầng 2 — Backend**: `DynamicLookupRepository.InsertAsync` (parameterized + verify tenant + safe identifier); `InsertLookupCommand`/handler; `POST /api/v1/lookups/insert` + `InsertLookupRequest`.
+- [x] **Tầng 3 — Frontend**: `ILookupQueryService.InsertAsync` (+`LookupInsertResult`); `LookupAddDialog.razor` (+css) tái dùng `FieldRenderer`; `LookupBoxRenderer` nút "➕ Thêm mới" + auto-select.
+- [x] **WPF config**: `FieldLookupConfigRecord`, `FieldDataService` (read+upsert), `FieldConfigViewModel`, `LookupBoxPropsPanel.xaml`.
+- [x] **Docs**: `docs/spec/13_LOOKUP_ADD_NEW_GUIDE.md`.
+
+**Decisions Log:**
+- Bảng đích đọc từ server (`Ui_Field_Lookup.Source_Name`) theo `fieldId`, **không** nhận từ client → bảo mật.
+- FieldCode = tên cột DB (`COALESCE(Field_Code, Column_Code)`) → insert map trực tiếp, không cần bảng ánh xạ.
+- Dialog tái dùng `FieldRenderer` → tự hỗ trợ mọi control + cascade lồng nhau.
+- ⏳ Pending: insert **chưa** chạy ValidationEngine server-side (chỉ check required client); chưa test runtime (cần DB + Ui_Form đích).
+
+---
+
 ## ✅ Done (Session 35 — Cascade LookupBox fix + keyboard nav — 2026-06-05)
 
 - [x] **Fix cascade bug** — `DynamicLookupRepository`: unwrap `JsonElement` → primitive trước khi add vào Dapper. Lỗi cũ: `NotSupportedException: member ... of type JsonElement cannot be used as a parameter value` khi cascade truyền `@FieldCode`. Áp dụng cho cả `QueryAsync` + `QueryTreeAsync`.

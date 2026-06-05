@@ -132,6 +132,50 @@ public sealed class LookupQueryService : ILookupQueryService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<LookupInsertResult> InsertAsync(
+        int fieldId,
+        Dictionary<string, object?> values,
+        CancellationToken ct = default)
+    {
+        const string url = "/api/v1/lookups/insert";
+
+        var body = new { fieldId, values };
+
+        try
+        {
+            var response = await _http.PostAsJsonAsync(url, body, ct);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await TryReadErrorAsync(response);
+                _logger.LogError(
+                    "InsertLookup lỗi {Status} — FieldId={FieldId} | {Detail}",
+                    (int)response.StatusCode, fieldId, detail);
+                return new LookupInsertResult(null, null, detail);
+            }
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var value = root.TryGetProperty("value", out var v) && v.ValueKind != JsonValueKind.Null
+                ? (v.ValueKind == JsonValueKind.String ? v.GetString() : v.GetRawText())
+                : null;
+            var display = root.TryGetProperty("display", out var d) && d.ValueKind == JsonValueKind.String
+                ? d.GetString()
+                : null;
+
+            return new LookupInsertResult(value, display, null);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "LookupQueryService.InsertAsync exception — FieldId={FieldId}", fieldId);
+            return new LookupInsertResult(null, null, ex.Message);
+        }
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     /// <summary>Chuyển JsonElement về .NET primitive để renderer dùng.</summary>

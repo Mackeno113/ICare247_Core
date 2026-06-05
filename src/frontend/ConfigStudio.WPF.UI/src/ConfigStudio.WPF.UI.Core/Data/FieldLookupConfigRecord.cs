@@ -70,4 +70,12 @@ public sealed class FieldLookupConfigRecord
     /// VD: "Parent_Id". Null = không phải tree (LookupBox thông thường).
     /// </summary>
     public string? ParentColumn { get; init; }
+
+    // ── Thêm mới entity từ LookupBox — Migration 022 ─────────────────────
+
+    /// <summary>Cho phép mở dialog "thêm mới" entity ngay trên LookupBox. Mặc định false.</summary>
+    public bool AllowAddNew { get; init; }
+
+    /// <summary>Form_Code của Ui_Form dùng render dialog nhập liệu. Null khi AllowAddNew = false.</summary>
+    public string? AddFormCode { get; init; }
 }

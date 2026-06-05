@@ -33,4 +33,25 @@ public interface ILookupQueryService
         int fieldId,
         Dictionary<string, object?> contextValues,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Thêm mới một entity vào bảng nguồn của LookupBox (tính năng "➕ Thêm mới").
+    /// </summary>
+    /// <param name="fieldId">Field_Id của LookupBox — xác định bảng đích.</param>
+    /// <param name="values">Cặp Cột↔Giá trị từ dialog (key = tên cột DB).</param>
+    /// <param name="ct"></param>
+    /// <returns>
+    /// Tuple <c>(value, display)</c> của bản ghi vừa tạo để LookupBox auto-select;
+    /// null nếu thất bại (có <paramref name="error"/> mô tả).
+    /// </returns>
+    Task<LookupInsertResult> InsertAsync(
+        int fieldId,
+        Dictionary<string, object?> values,
+        CancellationToken ct = default);
+}
+
+/// <summary>Kết quả insert lookup — value/display của bản ghi mới hoặc thông báo lỗi.</summary>
+public sealed record LookupInsertResult(string? Value, string? Display, string? Error)
+{
+    public bool Success => Error is null;
 }

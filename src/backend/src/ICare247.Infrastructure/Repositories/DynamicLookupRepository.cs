@@ -328,6 +328,90 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         };
     }
 
+    // ── InsertAsync (thêm mới entity từ LookupBox) ──────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<IDictionary<string, object?>?> InsertAsync(
+        int fieldId,
+        int tenantId,
+        Dictionary<string, object?> values,
+        CancellationToken ct = default)
+    {
+        // ── Đọc config + verify tenant (giống QueryAsync) ─────────────────────
+        const string cfgSql = """
+            SELECT fl.Query_Mode     AS QueryMode,
+                   fl.Source_Name    AS SourceName,
+                   fl.Value_Column   AS ValueColumn,
+                   fl.Display_Column AS DisplayColumn
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
+            JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
+            JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
+            WHERE  fl.Field_Id = @FieldId
+              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
+            """;
+
+        using var configConn = _configDb.CreateConnection();
+        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
+            new CommandDefinition(cfgSql, new { FieldId = fieldId, TenantId = tenantId },
+                cancellationToken: ct));
+
+        if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
+            throw new InvalidOperationException(
+                $"LookupInsert FieldId={fieldId}: không tìm thấy cấu hình hoặc thiếu Source_Name.");
+
+        // Chỉ insert vào bảng thực — TVF / custom_sql không hỗ trợ
+        if (!string.Equals(cfg.QueryMode ?? "table", "table", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"LookupInsert FieldId={fieldId}: chỉ hỗ trợ Query_Mode='table' (hiện: {cfg.QueryMode}).");
+
+        if (!SafeIdentifierRegex().IsMatch(cfg.SourceName))
+            throw new InvalidOperationException(
+                $"LookupInsert FieldId={fieldId}: Source_Name '{cfg.SourceName}' chứa ký tự không hợp lệ.");
+
+        var valueCol = (cfg.ValueColumn ?? "").Trim();
+        if (!SafeIdentifierRegex().IsMatch(valueCol))
+            throw new InvalidOperationException(
+                $"LookupInsert FieldId={fieldId}: Value_Column '{valueCol}' không hợp lệ.");
+
+        // ── Build INSERT parameterized — chỉ nhận cột có tên identifier hợp lệ ──
+        var cols = new List<string>();
+        var dp   = new DynamicParameters();
+        foreach (var (key, val) in values)
+        {
+            // Bỏ qua cột khóa (ValueColumn thường là identity) + tên không an toàn
+            if (!SafeIdentifierRegex().IsMatch(key)) continue;
+            if (key.Equals(valueCol, StringComparison.OrdinalIgnoreCase)) continue;
+            cols.Add(key);
+            dp.Add(key, UnwrapParamValue(val));
+        }
+
+        if (cols.Count == 0)
+            throw new InvalidOperationException(
+                $"LookupInsert FieldId={fieldId}: không có cột hợp lệ để insert.");
+
+        var colList   = string.Join(", ", cols);
+        var paramList = string.Join(", ", cols.Select(c => "@" + c));
+        var insertSql =
+            $"INSERT INTO {cfg.SourceName} ({colList}) " +
+            $"OUTPUT INSERTED.{valueCol} AS NewValue " +
+            $"VALUES ({paramList})";
+
+        using var dataConn = _dataDb.CreateConnection();
+        var newValue = await dataConn.ExecuteScalarAsync<object>(
+            new CommandDefinition(insertSql, dp, cancellationToken: ct));
+
+        // Display lấy từ chính giá trị vừa nhập (cột Display, theo alias key)
+        var displayKey = ExtractAliasKey(cfg.DisplayColumn ?? "");
+        var display = values.TryGetValue(displayKey, out var dv) ? UnwrapParamValue(dv) : null;
+
+        return new Dictionary<string, object?>
+        {
+            ["value"]   = newValue,
+            ["display"] = display
+        };
+    }
+
     // ── QueryTreeAsync ────────────────────────────────────────────────────────
 
     /// <inheritdoc />
