@@ -7,25 +7,28 @@
 @inject ILookupQueryService LookupQuerySvc
 
 <div class="treelookup-wrapper">
-    @* ── EditBox ── *@
+    @* ── EditBox — gõ trực tiếp để lọc (giống LookupBox) ── *@
     <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")">
-        <div class="lookupbox-display" @onclick="TogglePopup">
-            @if (string.IsNullOrEmpty(State?.ValueString))
-            {
-                <span class="lookupbox-placeholder">-- Chọn --</span>
-            }
-            else
-            {
-                <span>@GetSelectedDisplay()</span>
-            }
-        </div>
+        <input type="text"
+               class="lookupbox-search-input"
+               placeholder="-- Chọn --"
+               value="@_inputText"
+               disabled="@(State?.EffectiveReadOnly == true)"
+               @oninput="OnSearchInput"
+               @onfocus="OnFocus"
+               @onblur="OnInputBlur"
+               @onkeydown="OnKeyDown" />
         @if (State?.EffectiveReadOnly != true && !string.IsNullOrEmpty(State?.ValueString))
         {
-            <button class="lookupbox-clear" @onclick="ClearValue" title="Xóa">✕</button>
+            <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="Xóa">✕</button>
         }
         <button class="lookupbox-btn" @onclick="TogglePopup"
                 disabled="@(State?.EffectiveReadOnly == true)"
-                title="Mở cây">🌳</button>
+                title="Mở cây">
+            <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8 1v14M4 5h8M2 9h5M9 9h5" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+        </button>
     </div>
 
     @* ── Popup cây ── *@
@@ -33,14 +36,6 @@
     {
         <div class="lookupbox-popup treelookup-popup"
              style="width:@(State?.LookupConfig?.DropDownWidth ?? 500)px">
-
-            @* Search bar *@
-            <div class="popup-search">
-                <input type="text" class="popup-search-input"
-                       placeholder="Tìm kiếm..."
-                       value="@_searchText"
-                       @oninput="OnSearchInput" />
-            </div>
 
             @* Tree content *@
             @if (_loading)
@@ -59,15 +54,20 @@
             {
                 <div class="treelookup-tree"
                      style="max-height:@(State?.LookupConfig?.DropDownHeight ?? 400)px; overflow-y:auto">
+                    @{ var _nodeIdx = 0; }
                     @foreach (var node in GetDisplayNodes())
                     {
-                        <div class="tree-node @(State?.ValueString == node.Value ? "selected" : "")"
+                        var isActive = _nodeIdx == _highlightIndex;
+                        <div class="tree-node @(State?.ValueString == node.Value ? "selected" : "") @(isActive ? "highlight" : "")"
                              style="padding-left:@(node.Level * 16 + 8)px"
-                             @onclick="() => SelectNode(node)">
+                             @onmousedown="() => SelectNode(node)"
+                             @onmousedown:preventDefault="true">
                             @if (node.HasChildren)
                             {
-                                <span class="tree-toggle" @onclick:stopPropagation
-                                      @onclick="() => ToggleNode(node)">
+                                <span class="tree-toggle"
+                                      @onmousedown="() => ToggleNode(node)"
+                                      @onmousedown:stopPropagation="true"
+                                      @onmousedown:preventDefault="true">
                                     @(node.IsExpanded ? "▾" : "▸")
                                 </span>
                             }
@@ -75,8 +75,9 @@
                             {
                                 <span class="tree-leaf-indent">　</span>
                             }
-                            <span class="tree-label">@node.Label</span>
+                            <span class="tree-label">@((MarkupString)HighlightLabel(node.Label))</span>
                         </div>
+                        _nodeIdx++;
                     }
                 </div>
             }
@@ -95,7 +96,9 @@
     private bool    _loading;
     private string? _loadError;
     private string  _searchText = "";
+    private string  _inputText  = "";   // text trong ô input: display value hoặc search term đang gõ
     private object? _lastTriggerValue;
+    private int     _highlightIndex = -1; // index node đang highlight để chọn bằng Enter / phím ↑↓
 
     // ── Tree state ────────────────────────────────────────────────────────────
 
@@ -178,19 +181,60 @@
 
     // ── Hiển thị tree (flatten + filter + collapse) ───────────────────────────
 
+    private bool IsFilterActive =>
+        _searchText.Length >= Math.Max(1, State?.LookupConfig?.FilterMinLength ?? 0);
+
     private List<TreeNode> GetDisplayNodes()
     {
+        if (!string.IsNullOrWhiteSpace(_searchText) && IsFilterActive)
+        {
+            // Search mode: flatten toàn bộ, lọc contains, thêm ancestors để có ngữ cảnh
+            var term     = _searchText.ToLower();
+            var allNodes = new List<TreeNode>();
+            foreach (var root in _rootNodes)
+                FlattenAll(root, 0, allNodes);
+
+            var matched  = allNodes.Where(n => n.Label.ToLower().Contains(term)).ToHashSet();
+            var visible  = new HashSet<TreeNode>(matched);
+            foreach (var n in matched)
+            {
+                var p = n.Parent;
+                while (p is not null) { visible.Add(p); p = p.Parent; }
+            }
+
+            return allNodes.Where(n => visible.Contains(n)).ToList();
+        }
+
         var result = new List<TreeNode>();
         foreach (var root in _rootNodes)
             FlattenVisible(root, 0, result);
-
-        if (!string.IsNullOrWhiteSpace(_searchText))
-        {
-            var term = _searchText.ToLower();
-            result = result.Where(n => n.Label.ToLower().Contains(term)).ToList();
-        }
-
         return result;
+    }
+
+    // Wrap phần text khớp bằng <mark> — trả về HTML string an toàn
+    private string HighlightLabel(string label)
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(label);
+        if (!IsFilterActive || string.IsNullOrWhiteSpace(_searchText))
+            return escaped;
+
+        var term = System.Net.WebUtility.HtmlEncode(_searchText);
+        var idx  = escaped.IndexOf(term, StringComparison.OrdinalIgnoreCase);
+        if (idx < 0) return escaped;
+
+        return escaped[..idx]
+             + "<mark>" + escaped.Substring(idx, term.Length) + "</mark>"
+             + escaped[(idx + term.Length)..];
+    }
+
+    private void FlattenAll(TreeNode node, int level, List<TreeNode> result)
+    {
+        node.Level       = level;
+        node.HasChildren = node.Children.Count > 0;
+        node.IsExpanded  = true;
+        result.Add(node);
+        foreach (var child in node.Children)
+            FlattenAll(child, level + 1, result);
     }
 
     private void FlattenVisible(TreeNode node, int level, List<TreeNode> result)
@@ -211,14 +255,63 @@
     {
         if (State?.EffectiveReadOnly == true) return;
         _popupVisible = !_popupVisible;
-        if (_popupVisible && _rootNodes.Count == 0 && !_loading)
+
+        if (_popupVisible)
+        {
+            _searchText = "";
+            if (_rootNodes.Count == 0 && !_loading)
+                await LoadDataAsync();
+        }
+        else
+        {
+            // Đóng → khôi phục display text của node đang chọn
+            _inputText  = GetSelectedDisplay();
+            _searchText = "";
+        }
+    }
+
+    /// <summary>
+    /// Input được focus: xóa display để user gõ tìm kiếm, mở popup, load data nếu chưa có.
+    /// Sự kiện theo sau: _popupVisible = true, _inputText rỗng để gõ filter.
+    /// </summary>
+    private async Task OnFocus()
+    {
+        if (State?.EffectiveReadOnly == true) return;
+        _inputText    = "";
+        _searchText   = "";
+        _popupVisible = true;
+        if (_rootNodes.Count == 0 && !_loading)
             await LoadDataAsync();
+    }
+
+    /// <summary>
+    /// Input mất focus: đóng popup, khôi phục display text của node đang chọn.
+    /// Node/Toggle dùng onmousedown + preventDefault để chạy trước blur này.
+    /// </summary>
+    private void OnInputBlur()
+    {
+        _popupVisible   = false;
+        _searchText     = "";
+        _inputText      = GetSelectedDisplay();
+        _highlightIndex = -1;
     }
 
     private void ClosePopup()
     {
-        _popupVisible = false;
-        _searchText   = "";
+        _popupVisible   = false;
+        _searchText     = "";
+        _inputText      = GetSelectedDisplay();
+        _highlightIndex = -1;
+    }
+
+    /// <summary>
+    /// Khi State đổi từ bên ngoài mà popup đang đóng → sync display text.
+    /// Sự kiện theo sau: _inputText phản ánh giá trị đang chọn.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (!_popupVisible)
+            _inputText = GetSelectedDisplay();
     }
 
     private void ToggleNode(TreeNode node)
@@ -239,12 +332,55 @@
     private async Task ClearValue()
     {
         if (State is null) return;
-        State.Value = null;
+        State.Value     = null;
+        _inputText      = "";
+        _searchText     = "";
+        _highlightIndex = -1;
         await OnChange.InvokeAsync((State.FieldCode, null));
     }
 
     private void OnSearchInput(ChangeEventArgs e)
-        => _searchText = e.Value?.ToString() ?? "";
+    {
+        _inputText    = e.Value?.ToString() ?? "";
+        _searchText   = _inputText;
+        _popupVisible = true;
+        // Highlight node hiển thị đầu tiên để Enter chọn ngay sau khi gõ
+        _highlightIndex = GetDisplayNodes().Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>
+    /// Điều hướng cây bằng bàn phím trên danh sách node đang hiển thị:
+    /// ↓/↑ di chuyển highlight, Enter chọn node đang highlight, Escape đóng popup.
+    /// Sự kiện theo sau: SelectNode (Enter) hoặc ClosePopup (Escape) hoặc cập nhật _highlightIndex.
+    /// </summary>
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (State?.EffectiveReadOnly == true) return;
+
+        var nodes = GetDisplayNodes();
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (nodes.Count > 0)
+                    _highlightIndex = Math.Min(_highlightIndex + 1, nodes.Count - 1);
+                break;
+
+            case "ArrowUp":
+                if (nodes.Count > 0)
+                    _highlightIndex = Math.Max(_highlightIndex - 1, 0);
+                break;
+
+            case "Enter":
+                if (_highlightIndex >= 0 && _highlightIndex < nodes.Count)
+                    await SelectNode(nodes[_highlightIndex]);
+                break;
+
+            case "Escape":
+                ClosePopup();
+                break;
+        }
+    }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -253,18 +389,18 @@
         if (State is null) return "";
         var selectedVal = State.ValueString ?? "";
         // Tìm trong flat list toàn bộ nodes
-        var allNodes = FlattenAll(_rootNodes);
+        var allNodes = FlattenAllNodes(_rootNodes);
         var found = allNodes.FirstOrDefault(n =>
             string.Equals(n.Value, selectedVal, StringComparison.OrdinalIgnoreCase));
         return found?.Label ?? selectedVal;
     }
 
-    private static IEnumerable<TreeNode> FlattenAll(IEnumerable<TreeNode> nodes)
+    private static IEnumerable<TreeNode> FlattenAllNodes(IEnumerable<TreeNode> nodes)
     {
         foreach (var n in nodes)
         {
             yield return n;
-            foreach (var child in FlattenAll(n.Children))
+            foreach (var child in FlattenAllNodes(n.Children))
                 yield return child;
         }
     }

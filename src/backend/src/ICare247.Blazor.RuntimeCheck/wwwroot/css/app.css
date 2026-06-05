@@ -191,3 +191,41 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 .showcase-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 900px) { .showcase-grid { grid-template-columns: repeat(2, 1fr); } }
 .hint { font-size: 12px; color: #aaa; margin-top: 4px; font-family: monospace; }
+
+/* ── Normalize DX editors — cung height/border/radius cho moi loai ──── */
+/* DxTextBox, DxComboBox, DxDateEdit, DxMemo, DxSpinEdit deu truyen CssClass="field-dx" */
+.field-dx.dxbl-edit,
+.field-dx .dxbl-edit {
+    min-height: var(--input-height-md);
+    border-color: var(--input-border);
+    border-radius: var(--input-radius);
+    font-size: var(--input-font);
+    font-family: var(--font-body);
+    transition: var(--input-transition);
+}
+.field-dx.dxbl-edit:hover,
+.field-dx .dxbl-edit:hover {
+    border-color: var(--input-border-hover);
+}
+.field-dx.dxbl-edit:focus-within,
+.field-dx .dxbl-edit:focus-within {
+    border-color: var(--input-border-focus);
+    box-shadow: var(--input-shadow-focus);
+}
+.field-dx.dx-has-error.dxbl-edit,
+.field-dx.dx-has-error .dxbl-edit {
+    border-color: var(--input-border-error);
+    box-shadow: var(--input-shadow-error);
+}
+
+/* ── Override DX editor variables — phai dung selector .dxbl-text-edit */
+/* DX dinh nghia bien tren .dxbl-text-edit{} nen :root bi override */
+/* app.css load SAU blazing-berry.css nen cung selector se thang */
+.dxbl-text-edit {
+    --dxbl-text-edit-padding-y:          10px;
+    --dxbl-text-edit-border-color:       #E2E8F0;
+    --dxbl-text-edit-border-radius:      8px;
+    --dxbl-text-edit-focus-border-color: #845EF7;
+    --dxbl-text-edit-focus-shadow-color: rgba(132,94,247,.2);
+    --dxbl-text-edit-font-size:          14px;
+}

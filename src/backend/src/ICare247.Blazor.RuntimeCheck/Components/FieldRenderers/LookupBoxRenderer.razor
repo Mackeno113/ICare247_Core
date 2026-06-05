@@ -18,7 +18,8 @@
                disabled="@(State?.EffectiveReadOnly == true)"
                @oninput="OnSearchInput"
                @onfocus="OnFocus"
-               @onblur="OnInputBlur" />
+               @onblur="OnInputBlur"
+               @onkeydown="OnKeyDown" />
         @if (State?.EffectiveReadOnly != true && !string.IsNullOrEmpty(State?.ValueString))
         {
             <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="Xóa">✕</button>
@@ -52,13 +53,16 @@
                     <div class="popup-list-header">@State.Label</div>
                 }
                 <div class="popup-list" style="max-height:@(State?.LookupConfig?.DropDownHeight ?? 300)px">
+                    @{ var _rowIdx = 0; }
                     @foreach (var row in FilteredRows)
                     {
-                        var rowVal = GetVal(row);
-                        <div class="popup-list-item @(State?.ValueString == rowVal ? "selected" : "")"
+                        var rowVal   = GetVal(row);
+                        var isActive = _rowIdx == _highlightIndex;
+                        <div class="popup-list-item @(State?.ValueString == rowVal ? "selected" : "") @(isActive ? "highlight" : "")"
                              @onmousedown="() => SelectRow(row)">
                             @GetRowDisplayText(row)
                         </div>
+                        _rowIdx++;
                     }
                 </div>
             }
@@ -79,6 +83,7 @@
     private string  _searchText  = "";
     private string  _inputText   = "";   // text hiển thị trong input (display value hoặc search term)
     private object? _lastTriggerValue;
+    private int     _highlightIndex = -1; // index dòng đang được highlight để chọn bằng Enter / phím mũi tên
 
     // ── Popup columns từ PopupColumnsJson ────────────────────────────────────
 
@@ -232,6 +237,7 @@
         _popupVisible = false;
         _searchText   = "";
         _inputText    = GetSelectedDisplay();
+        _highlightIndex = -1;
     }
 
     /// <summary>
@@ -247,6 +253,7 @@
         _inputText  = GetSelectedDisplay();
         _popupVisible = false;
         _searchText   = "";
+        _highlightIndex = -1;
 
         await OnChange.InvokeAsync((State.FieldCode, val));
         await OnBlur.InvokeAsync(State.FieldCode);
@@ -274,6 +281,50 @@
         _inputText  = e.Value?.ToString() ?? "";
         _searchText = _inputText;
         _popupVisible = true;
+        // Khi gõ mới: highlight dòng kết quả đầu tiên để Enter chọn ngay
+        _highlightIndex = FilteredRows.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>
+    /// Điều hướng dropdown bằng bàn phím: ↓/↑ di chuyển highlight, Enter chọn dòng đang highlight,
+    /// Escape đóng popup. Nếu chưa highlight dòng nào, Enter chọn kết quả đầu tiên.
+    /// Sự kiện theo sau: SelectRow (Enter) hoặc ClosePopup (Escape) hoặc cập nhật _highlightIndex.
+    /// </summary>
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (State?.EffectiveReadOnly == true) return;
+
+        var rows = FilteredRows;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (!_popupVisible)
+                {
+                    _popupVisible = true;
+                    if (rows.Count == 0 && !_loading) { await LoadDataAsync(); rows = FilteredRows; }
+                }
+                if (rows.Count > 0)
+                    _highlightIndex = Math.Min(_highlightIndex + 1, rows.Count - 1);
+                break;
+
+            case "ArrowUp":
+                if (_popupVisible && rows.Count > 0)
+                    _highlightIndex = Math.Max(_highlightIndex - 1, 0);
+                break;
+
+            case "Enter":
+                if (_popupVisible && rows.Count > 0)
+                {
+                    var idx = _highlightIndex >= 0 && _highlightIndex < rows.Count ? _highlightIndex : 0;
+                    await SelectRow(rows[idx]);
+                }
+                break;
+
+            case "Escape":
+                ClosePopup();
+                break;
+        }
     }
 
     // ── Sync inputText khi State thay đổi từ bên ngoài ──────────────────────

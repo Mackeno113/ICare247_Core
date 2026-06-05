@@ -1,42 +1,34 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-05 (session 34 — LookupBox UX + Cache API + Bug fixes)
+> Cập nhật: 2026-06-05 (session 35 — Cascade LookupBox fix + keyboard nav + lọc trực tiếp)
 
 ## Trạng thái cuối session
 
 - **Branch:** `master`
-- **Build:** Backend 0/0, WPF 0/0
+- **Build:** RuntimeCheck 0/0, Infrastructure 0/0, API 0/0
 
 ## Đã làm trong session này
 
-1. **Thảo luận cascading dropdown (Tỉnh → Xã)** (không code)
-   - Phân tích vấn đề edit: DB chỉ có ward_id, cần province_id + district_id để pre-populate cascade
-   - Giải pháp: backend JOIN → trả đủ 3 ID trong DTO, frontend init top-down
-   - Cơ chế mapping DB↔UI qua DTO contract
+1. **Fix bug cascade lookup (root cause + giải pháp)**
+   - Lỗi: `NotSupportedException: member NoiSinh_TinhThanhID of type JsonElement cannot be used as a parameter value`
+   - Root cause: `QueryDynamicRequest.ContextValues` là `Dictionary<string,object?>` → System.Text.Json deserialize value thành `JsonElement`, truyền thẳng vào Dapper → nổ. Lần đầu (query không `@param`) chạy 200, cascade mới nổ.
+   - Fix: helper `UnwrapParamValue()` trong `DynamicLookupRepository` — unwrap JsonElement → string/long/double/bool/null. Áp dụng `QueryAsync` + `QueryTreeAsync`.
 
-2. **Fix WPF: Section dropdown mất khi navigate field**
-   - Root cause: `ExecuteNavigateToField` hardcode `sectionId = 0`
-   - Fix: thêm `SectionId` vào `FieldNavGroup`, populate trong `LoadFieldNavigatorAsync`, truyền đúng khi navigate
+2. **Cơ chế cascade runtime (đã verify trong mã)**
+   - `@param` trong filterSql **phải trùng FieldCode** field cha — repo bind context key (= FieldCode) trực tiếp vào Dapper param cùng tên.
+   - Reload do `ReloadTriggerField` (đơn, lưu `Ui_Field_Lookup`) — renderer đọc trường này.
+   - `filterParams` (panel ⚡) + `reloadOnChange` (tag 🔄) trong Control_Props **KHÔNG** được RuntimeCheck renderer tiêu thụ → chỉ cần Filter SQL + ReloadTriggerField.
 
-3. **Thêm API endpoint invalidate cache**
-   - `POST /api/v1/config/forms/{code}/invalidate-cache` trong `FormController`
-   - Xóa L1 MemoryCache + L2 Redis
+3. **Keyboard nav cho LookupBox + TreeLookupBox**
+   - ↑/↓ di chuyển highlight, Enter chọn dòng highlight, Escape đóng.
+   - `_highlightIndex` + class `.highlight` (viền trái màu primary). Gõ → highlight dòng 0.
 
-4. **Thêm nút "Clear Cache" trên Blazor FormRunner**
-   - `FormApiService.InvalidateCacheAsync` → gọi API → reload form
-   - Nút "🗑 Clear Cache" trong header-actions
+4. **TreeLookupBox lọc trực tiếp trên control (mirror LookupBox)**
+   - EditBox `<div>` → `<input>` gõ thẳng; bỏ thanh search riêng trong popup.
+   - Node `@onclick` → `@onmousedown` (chạy trước blur); toggle ▸▾ `@onmousedown` + `preventDefault` để không làm input blur → popup giữ mở khi expand.
+   - CSS: thêm `.lookupbox-search-input` + `:focus-within` vào tree css (CSS isolation), xóa `.popup-search`.
 
-5. **Redesign LookupBox → searchable combobox**
-   - Bỏ popup grid (có header table) → input tìm kiếm trực tiếp + dropdown list đơn giản
-   - `onmousedown` cho SelectRow tránh race với `onblur`
-   - Thêm header tiêu đề (State.Label) trong dropdown
-
-6. **CSS redesign dropdown list**
-   - Padding `9px 14px`, margin `1px 6px`, border-radius `6px`
-   - Header uppercase, selected có `✓`, hover màu tím nhạt
-
-7. **Cập nhật comment rules**
-   - `.claude-rules/comment-rules.md`: XML doc tiếng Việt bắt buộc + `<remarks>` sự kiện theo sau
+5. **Docs** — tạo `docs/spec/12_CASCADE_LOOKUP_GUIDE.md` (hướng dẫn cấu hình Tỉnh→Xã + 3 cấp + lỗi thường gặp).
 
 ## DB cần chạy trước khi run app
 

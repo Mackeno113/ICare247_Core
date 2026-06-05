@@ -93,7 +93,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         {
             // Chỉ thêm param nếu tên an toàn — ngăn override @TenantId từ client
             if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                dp.Add(key, val);
+                dp.Add(key, UnwrapParamValue(val));
         }
 
         // ── Bước 4: Execute query trên Data DB (DB nghiệp vụ — DM_PhongBan, v.v.) ──
@@ -302,6 +302,32 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         return DangerousKeywords.Any(kw => upper.Contains(kw));
     }
 
+    /// <summary>
+    /// Chuyển giá trị context về kiểu nguyên thuỷ mà Dapper bind được.
+    /// ContextValues từ API là <see cref="Dictionary{TKey,TValue}"/> giá trị object?,
+    /// nhưng System.Text.Json deserialize mỗi value thành <see cref="JsonElement"/> —
+    /// Dapper ném NotSupportedException nếu add thẳng. Hàm này unwrap về string/long/double/bool/null.
+    /// Giá trị không phải JsonElement (đã là primitive) được giữ nguyên.
+    /// Sự kiện theo sau: kết quả được add vào <c>DynamicParameters</c> cho câu lookup parameterized.
+    /// </summary>
+    private static object? UnwrapParamValue(object? val)
+    {
+        if (val is not JsonElement el) return val;
+
+        return el.ValueKind switch
+        {
+            JsonValueKind.String    => el.GetString(),
+            JsonValueKind.Number    => el.TryGetInt64(out var i)  ? i
+                                     : el.TryGetDouble(out var d) ? d
+                                     : (object?)el.GetRawText(),
+            JsonValueKind.True      => true,
+            JsonValueKind.False     => false,
+            JsonValueKind.Null      => null,
+            JsonValueKind.Undefined => null,
+            _                       => el.GetRawText()
+        };
+    }
+
     // ── QueryTreeAsync ────────────────────────────────────────────────────────
 
     /// <inheritdoc />
@@ -359,7 +385,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         foreach (var (key, val) in contextValues)
         {
             if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                dp.Add(key, val);
+                dp.Add(key, UnwrapParamValue(val));
         }
 
         using var dataConn = _dataDb.CreateConnection();

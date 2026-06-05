@@ -89,4 +89,6 @@ public sealed class FieldLookupConfigDto
     public int     DropDownHeight { get; set; } = 400;
     /// <summary>FieldCode của field trigger cascading reload.</summary>
     public string? ReloadTriggerField { get; set; }
+    /// <summary>Số ký tự tối thiểu để kích hoạt filter. 0 = filter ngay từ ký tự đầu tiên.</summary>
+    public int FilterMinLength { get; set; } = 0;
 }

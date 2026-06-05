@@ -6,6 +6,19 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (Session 35 — Cascade LookupBox fix + keyboard nav — 2026-06-05)
+
+- [x] **Fix cascade bug** — `DynamicLookupRepository`: unwrap `JsonElement` → primitive trước khi add vào Dapper. Lỗi cũ: `NotSupportedException: member ... of type JsonElement cannot be used as a parameter value` khi cascade truyền `@FieldCode`. Áp dụng cho cả `QueryAsync` + `QueryTreeAsync`.
+- [x] **Keyboard nav LookupBox** — ↑/↓ di chuyển highlight, Enter chọn, Escape đóng. Dòng đầu tự highlight khi gõ.
+- [x] **Keyboard nav TreeLookupBox** — ↑/↓/Enter/Escape trên danh sách node hiển thị.
+- [x] **TreeLookupBox lọc trực tiếp trên control** — bỏ thanh search trong popup, EditBox `<div>` → `<input>` gõ thẳng (mirror LookupBox). Node/toggle dùng `onmousedown` + `preventDefault` để không nuốt click khi blur.
+- [x] **Docs** — `docs/spec/12_CASCADE_LOOKUP_GUIDE.md`: hướng dẫn cấu hình Tỉnh→Xã (filterSql `@FieldCode` + ReloadTriggerField), verify đúng theo runtime.
+
+**Decisions Log:**
+- Cascade runtime: `@param` trong filterSql **phải trùng FieldCode** field cha (repo bind context key = FieldCode trực tiếp, không qua bảng ánh xạ). Reload do `ReloadTriggerField` (đơn) quyết định — `filterParams`/`reloadOnChange` trong Control_Props **không** được RuntimeCheck renderer tiêu thụ.
+
+---
+
 ## ✅ Done (Wave UX ConfigStudio + Wave 017 — 2026-05-17)
 
 ### Wave A — Navigation Quick Wins ✅ (2026-05-17)

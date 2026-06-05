@@ -147,9 +147,15 @@
     margin: 1px 6px;
 }
 
-.popup-list-item:hover {
+.popup-list-item:hover,
+.popup-list-item.highlight {
     background: var(--table-row-hover, #F1F5F9);
     color: var(--color-primary, #845EF7);
+}
+
+/* Dòng đang được điều hướng bằng phím ↑/↓ — viền trái để phân biệt với hover */
+.popup-list-item.highlight {
+    box-shadow: inset 2px 0 0 var(--color-primary, #845EF7);
 }
 
 .popup-list-item.selected {

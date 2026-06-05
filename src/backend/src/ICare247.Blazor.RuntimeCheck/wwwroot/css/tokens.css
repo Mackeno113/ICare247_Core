@@ -406,7 +406,17 @@
   --dx-color-primary-darker:      var(--color-violet-700);
   --dx-color-primary-light:       var(--color-violet-50);
 
-  /* Editors (TextBox, DateEdit, ComboBox...) */
+  /* Editors — override DX internal variables (dxbl-text-edit covers TextBox/ComboBox/DateEdit/SpinEdit) */
+  /* padding-y: 10px → height = 10*2 + line-height(20px) + border(2px) = 42px, đồng nhất với custom controls */
+  --dxbl-text-edit-padding-y:         10px;
+  --dxbl-text-edit-border-color:      #E2E8F0;      /* var(--border-default) */
+  --dxbl-text-edit-border-radius:     8px;           /* var(--radius-md) */
+  --dxbl-text-edit-focus-border-color: #845EF7;     /* var(--color-violet-500) */
+  --dxbl-text-edit-focus-shadow-color: rgba(132,94,247,.2);
+  --dxbl-text-edit-font-size:         14px;
+  --dxbl-text-edit-font-family:       'Inter', -apple-system, sans-serif;
+
+  /* Fallback — tên cũ, không dùng bởi DX theme nhưng giữ lại cho các override khác */
   --dx-editor-border-color:       var(--border-default);
   --dx-editor-border-radius:      var(--radius-md);
   --dx-editor-focused-border:     var(--color-violet-500);
