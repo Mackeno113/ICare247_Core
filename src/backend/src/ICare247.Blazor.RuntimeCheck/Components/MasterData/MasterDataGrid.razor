@@ -1,0 +1,65 @@
+@* File    : MasterDataGrid.razor
+   Purpose : Lưới danh sách bản ghi danh mục — cột theo Show_In_List, mỗi dòng có Sửa/Xóa. *@
+
+@using ICare247.Blazor.RuntimeCheck.Services
+
+<div class="md-grid-wrap">
+    <table class="md-grid">
+        <thead>
+            <tr>
+                @foreach (var col in Columns)
+                {
+                    <th>@(col.Label.Length > 0 ? col.Label : col.ColumnCode)</th>
+                }
+                <th class="md-grid-actions-col">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (Items.Count == 0)
+            {
+                <tr><td class="md-grid-empty" colspan="@(Columns.Count + 1)">Không có bản ghi nào.</td></tr>
+            }
+            else
+            {
+                @foreach (var row in Items)
+                {
+                    var pk = GetCell(row, PkColumn);
+                    <tr>
+                        @foreach (var col in Columns)
+                        {
+                            <td>@DisplayCell(GetCell(row, col.ColumnCode), col.NetType)</td>
+                        }
+                        <td class="md-grid-actions">
+                            <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
+                            <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public List<MasterDataColumnDto> Columns { get; set; } = [];
+    [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
+    [Parameter] public string PkColumn { get; set; } = "";
+    [Parameter] public EventCallback<object?> OnEdit { get; set; }
+    [Parameter] public EventCallback<object?> OnDelete { get; set; }
+
+    private static object? GetCell(Dictionary<string, object?> row, string col)
+    {
+        var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
+    }
+
+    private static string DisplayCell(object? value, string netType)
+    {
+        if (value is null) return "";
+        var s = value.ToString() ?? "";
+        // bool → ✓/✗ cho dễ đọc
+        if (netType.Equals("bool", StringComparison.OrdinalIgnoreCase)
+            && bool.TryParse(s, out var b)) return b ? "✓" : "";
+        return s;
+    }
+}

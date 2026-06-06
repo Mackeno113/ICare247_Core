@@ -366,12 +366,15 @@
 | Form_Code | nvarchar(100) | UNIQUE NOT NULL | Mã định danh form |
 | Table_Id | int | NOT NULL FK→Sys_Table | Business table form này thao tác |
 | Platform | nvarchar(50) | NOT NULL | 'web', 'mobile', 'wpf' |
-| Layout_Engine | nvarchar(50) | NOT NULL DEFAULT 'Grid' | Engine render layout |
+| Layout_Engine | nvarchar(50) | NOT NULL DEFAULT 'Grid' | ⚠️ Deprecated — không engine nào đọc (Grid/Flex/Custom). Giữ để tương thích; thay bằng Display_Mode |
+| Display_Mode | nvarchar(20) | NOT NULL DEFAULT 'Popup' | Cách render form Thêm/Sửa danh mục: 'Popup' (modal) / 'Tab' (routed page SPA). *(Migration 023)* |
 | Version | int | NOT NULL DEFAULT 1 | |
 | Checksum | nvarchar(64) | NULL | |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 | Updated_At | datetime | DEFAULT getdate() | |
 | Description | nvarchar(500) | NULL | |
+
+**Constraints:** `CHK_Ui_Form_Display_Mode`: `Display_Mode IN ('Popup','Tab')` *(Migration 023)*
 
 **Indexes:** `IX_Ui_Form_Table (Table_Id, Is_Active)`
 
@@ -422,6 +425,7 @@
 | Col_Span | tinyint | NOT NULL DEFAULT 1 | Độ rộng grid 4-col: 1=1/4, 2=half, 3=3/4, 4=full |
 | Lookup_Source | nvarchar(20) | NULL | NULL / 'static' / 'dynamic' |
 | Lookup_Code | nvarchar(50) | NULL | Tham chiếu Sys_Lookup.Lookup_Code (khi Lookup_Source='static') |
+| Show_In_List | bit | NOT NULL DEFAULT 0 | Hiện cột này trong lưới List danh mục (Master Data). Tách khỏi Is_Visible (form). *(Migration 024)* |
 | Control_Props_Json | nvarchar(max) | NULL | Props UI của component (JSON): placeholder, maxLength, format,... |
 | Version | int | NOT NULL DEFAULT 1 | |
 | Updated_At | datetime | DEFAULT getdate() | |

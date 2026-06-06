@@ -638,15 +638,15 @@
                                                                Text="Bảng nguồn dữ liệu từ Sys_Table. Form sẽ đọc/ghi vào bảng này. Đồng thời xác định tenant (phân quyền dữ liệu theo đơn vị)." />
                                                 </StackPanel>
 
-                                                <!-- Layout Engine -->
+                                                <!-- Display Mode -->
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Layout Engine"
+                                                    <TextBlock Text="Chế độ mở form"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:ComboBoxEdit ItemsSource="{Binding LayoutEngineOptions}"
-                                                                      EditValue="{Binding LayoutEngine}"
-                                                                      ToolTip="Kiểu bố cục để render form: Grid (dạng lưới), Stack (xếp chồng), hoặc Flex." />
+                                                    <dxe:ComboBoxEdit ItemsSource="{Binding DisplayModeOptions}"
+                                                                      EditValue="{Binding DisplayMode}"
+                                                                      ToolTip="Popup: mở dialog inline trên trang danh sách. Tab: mở sang tab riêng." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
-                                                               Text="Cách sắp xếp các field trên giao diện. Grid = dạng lưới (mặc định), thích hợp cho form nhập liệu nhiều cột." />
+                                                               Text="Popup = dialog trực tiếp trên lưới danh mục. Tab = điều hướng sang trang riêng (phù hợp form nhiều section)." />
                                                 </StackPanel>
 
                                                 <!-- Is Active -->

@@ -955,6 +955,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _lockOnEdit, value)) IsDirty = true; }
     }
 
+    private bool _showInList;
+    /// <summary>
+    /// Hiển thị cột này trong lưới danh sách Master Data (Ui_Field.Show_In_List).
+    /// Mặc định false — chỉ hiện trong form chi tiết.
+    /// Sự kiện theo sau: cột sẽ được lấy bởi MasterDataRepository.GetListAsync khi render lưới.
+    /// </summary>
+    public bool ShowInList
+    {
+        get => _showInList;
+        set { if (SetProperty(ref _showInList, value)) IsDirty = true; }
+    }
+
     private bool _isVirtual;
     /// <summary>
     /// Field UI-only, không map tới cột DB. Save layer bỏ qua field này khi ghi DB.
@@ -1250,6 +1262,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     if (!string.IsNullOrEmpty(_requiredErrorKey))
                         _ = ResolveI18nPreviewAsync(_requiredErrorKey, v => RequiredErrorKeyPreview = v);
                     LockOnEdit             = field.LockOnEdit;
+                    ShowInList             = field.ShowInList;
                     IsVirtual              = field.IsVirtual;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
@@ -2403,6 +2416,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsRequired         = IsRequired,
                 RequiredErrorKey   = IsRequired ? (string.IsNullOrWhiteSpace(RequiredErrorKey) ? null : RequiredErrorKey) : null,
                 LockOnEdit         = LockOnEdit,
+                ShowInList         = ShowInList,
                 IsVirtual          = IsVirtual,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,

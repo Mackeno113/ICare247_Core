@@ -51,6 +51,7 @@ public sealed class FieldDataService : IFieldDataService
                    fi.Order_No           AS OrderNo,
                    fi.Control_Props_Json AS ControlPropsJson,
                    fi.Col_Span           AS ColSpan,
+                   fi.Show_In_List       AS ShowInList,
                    fi.Lookup_Source      AS LookupSource,
                    fi.Lookup_Code        AS LookupCode,
                    fi.Version,
@@ -172,14 +173,14 @@ public sealed class FieldDataService : IFieldDataService
                            (Form_Id, Section_Id, Column_Id, Editor_Type, Label_Key,
                             Placeholder_Key, Tooltip_Key, Required_Error_Key,
                             Is_Visible, Is_ReadOnly, Is_Required, Lock_On_Edit, Is_Virtual,
-                            Order_No, Control_Props_Json, Col_Span, Lookup_Source,
-                            Lookup_Code, Field_Code, Version, Updated_At, Description)
+                            Order_No, Control_Props_Json, Col_Span, Show_In_List,
+                            Lookup_Source, Lookup_Code, Field_Code, Version, Updated_At, Description)
                     OUTPUT INSERTED.Field_Id
                     VALUES (@FormId, @SectionId, @ColumnId, @EditorType, @LabelKey,
                             @PlaceholderKey, @TooltipKey, @RequiredErrorKey,
                             @IsVisible, @IsReadOnly, @IsRequired, @LockOnEdit, @IsVirtual,
-                            @OrderNo, @ControlPropsJson, @ColSpan, @LookupSource,
-                            @LookupCode, @FieldCode, 1, GETDATE(), @Description)
+                            @OrderNo, @ControlPropsJson, @ColSpan, @ShowInList,
+                            @LookupSource, @LookupCode, @FieldCode, 1, GETDATE(), @Description)
                     """;
 
                 fieldId = await conn.ExecuteScalarAsync<int>(
@@ -207,6 +208,7 @@ public sealed class FieldDataService : IFieldDataService
                            Order_No          = @OrderNo,
                            Control_Props_Json = @ControlPropsJson,
                            Col_Span          = @ColSpan,
+                           Show_In_List      = @ShowInList,
                            Lookup_Source     = @LookupSource,
                            Lookup_Code       = @LookupCode,
                            Version           = Version + 1,
@@ -438,6 +440,7 @@ public sealed class FieldDataService : IFieldDataService
         // LookupBox lưu config vào Ui_Field_Lookup — Control_Props_Json chứa props khác
         ControlPropsJson = f.LookupSource == "dynamic" ? null : f.ControlPropsJson,
         f.ColSpan,
+        f.ShowInList,
         f.LookupSource,
         f.LookupCode,
         f.Description

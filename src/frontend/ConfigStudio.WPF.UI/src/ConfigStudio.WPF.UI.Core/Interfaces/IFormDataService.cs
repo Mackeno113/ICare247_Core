@@ -45,6 +45,7 @@ public interface IFormDataService
         string platform,
         int tenantId,
         int? tableId = null,
+        string displayMode = "Popup",
         CancellationToken ct = default);
 
     /// <summary>
@@ -114,6 +115,7 @@ public interface IFormDataService
         string formName,
         string platform,
         string layoutEngine,
+        string displayMode,
         string? description,
         bool isActive,
         int? tableId,

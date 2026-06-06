@@ -2,7 +2,53 @@
 
 ## 🔴 Đang làm (In Progress)
 
-_(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
+<!-- không có task nào đang chạy -->
+
+---
+
+## ✅ Done (Session 38 — Master Data CRUD full-stack — 2026-06-06)
+
+> Màn List bản ghi danh mục + Thêm/Sửa/Xóa. Form Thêm/Sửa render **Popup** hoặc **Tab** (nội bộ SPA)
+> theo cấu hình `Ui_Form.Display_Mode` do WPF quyết định. Lưới List hiện cột theo `Ui_Field.Show_In_List`.
+> Xóa = **xóa cứng** nhưng **chặn nếu đang bị tham chiếu** (soft-check theo quy ước tên PK).
+
+**Quyết định đã chốt:**
+- `Display_Mode`: **cột mới** trên Ui_Form (Popup|Tab), không repurpose Layout_Engine.
+- Xóa: **cứng** (DELETE row), KHÔNG soft-delete.
+- Cột List: **cờ mới** `Ui_Field.Show_In_List`.
+- "New Tab": **tab nội bộ SPA** (routed page), không browser tab.
+- Soft-check FK: **theo quy ước tên** — PK `CongTyID` → cột tham chiếu `CongTyID` hoặc `%_CongTyID`.
+  Quét `Sys_Column` **KHÔNG lọc Is_Active** (bắt cả dữ liệu cũ). Log rõ bảng.cột + số dòng bị khóa.
+
+#### Tầng 0 — Database ✅
+- [x] **DB-1** — `db/023_ui_form_display_mode.sql` (Display_Mode + CHK constraint)
+- [x] **DB-2** — `db/024_ui_field_show_in_list.sql` (Show_In_List)
+- [x] **DB-3** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (2 cột mới + constraint)
+- [ ] **DB-RUN** — Chạy 023 + 024 trên DB thật ⏳ (manual step)
+
+#### Tầng 1 — Backend (generic CRUD + soft-check) ✅ (build 0/0)
+- [x] **BE-1** — `IMasterDataRepository` + `MasterDataRepository`: GetFormInfo/GetList/GetById/Insert/Update/Delete (tên bảng `[Schema_Name].[Table_Code]` đọc từ Ui_Form→Sys_Table ở server, parameterized, verify tenant, safe identifier regex)
+- [x] **BE-1b** — `IReferenceCheckService` + `ReferenceCheckService`: soft-check quy ước tên PK (`CongTyID` hoặc `%[_]CongTyID`), quét Sys_Column **không lọc Is_Active**, try/catch từng candidate, trả `ReferenceUsage[]` {schema,table,column,rowCount,isLegacy}, log chi tiết nơi khóa
+- [x] **BE-2** — CQRS `Features/MasterData/`: GetFormInfo/GetList/GetRecord/CheckUsage query; Save (Insert|Update, **chạy ValidationEngine server-side**); Delete (soft-check enforce). Result DTOs: MasterDataSaveResult/DeleteResult
+- [x] **BE-3** — `MasterDataController`: GET info, GET list, GET {id}, GET {id}/usage, POST, PUT, DELETE. Validation fail → 422; bị tham chiếu → 409 + blockedBy[]
+- [x] **BE-4** — DI (IMasterDataRepository + IReferenceCheckService scoped) + build verify ICare247.slnx 0/0
+
+#### Tầng 2 — Blazor (List + CRUD + Popup/Tab) ✅ (build 0/0 + verify live DB thật)
+- [x] **BZ-1** — `Services/MasterDataApiService.cs` (7 endpoint + DTOs; xử lý 422 validation, 409 blockedBy)
+- [x] **BZ-2** — `Pages/MasterData/MasterDataListPage.razor` (`@page "/master/{FormCode}"`) — container, list/search/active filter, switch Popup↔Tab theo Display_Mode
+- [x] **BZ-3** — `Components/MasterData/MasterDataGrid.razor` — lưới cột theo Show_In_List (fallback all) + nút Sửa/Xóa
+- [x] **BZ-4** — Form host: logic switch Display_Mode nằm trong ListPage (Popup = modal inline; Tab = NavigateTo) — gộp, không tách component riêng
+- [x] **BZ-5** — `MasterDataForm.razor` (tái dùng FieldRenderer + lưới responsive) + `MasterDataTabPage.razor` (`@page "/master/{FormCode}/edit/{Id?}"`)
+- [x] **BZ-6** — `ConfirmDeleteDialog.razor` — soft-check khi mở, liệt kê schema.table.column + số dòng + nhãn "dữ liệu cũ", ẩn nút Xóa khi bị tham chiếu
+- [x] **BE-fix** — PK resolve: `Sys_Column.Is_PK` không đáng tin (DB thật toàn False, PK không đăng ký field) → fallback đọc PK **vật lý** từ Data DB INFORMATION_SCHEMA (cả MasterDataRepository + ReferenceCheckService). Label resolve qua Sys_Resource.
+- [x] **Verify live** (API↔DB QLNS_Demo): info+PK vật lý (NhanVienID/TrinhDoVanHoaID), list 7 bản ghi + label tiếng Việt, getById, soft-check usage; UI List grid + Popup form 12 field lưới 4 cột responsive.
+
+> ⚠️ Live test phải tạm trỏ Blazor BaseUrl sang http://localhost:5215 (https 7130 không bind trong sandbox) — **đã revert** về https://localhost:7130.
+
+#### Tầng 3 — WPF ConfigStudio (cấu hình) ✅ (build 0/0)
+- [x] **WPF-1** — FormEditor: `Display_Mode` dropdown (Popup/Tab) thay `Layout_Engine`. `IFormDataService.UpdateFormMetadataAsync` + `CreateFormAsync` thêm `displayMode` param. `FormDataService` thêm SET clause `Display_Mode = @DisplayMode`. `FormDetailRecord` + `FormDetailDataService` thêm `DisplayMode`. ViewModel: `DisplayMode` property + `DisplayModeOptions`. XAML: "Chế độ mở form" ComboBox.
+- [x] **WPF-2** — FieldConfig: `ShowInList` (bool). `FieldConfigRecord` thêm property. `FieldDataService` thêm `Show_In_List` vào SELECT/INSERT/UPDATE + `BuildFieldParam`. `FieldConfigViewModel` thêm property + load/save. `FieldConfigView.xaml` thêm ToggleSwitch "📋 Hiện trong danh sách" vào Behavior grid (Col 2, Row 4).
+- [x] **WPF-3** — Build verify WPF ConfigStudio.WPF.UI.slnx: 0 Warning, 0 Error ✅
 
 ---
 
@@ -684,6 +730,11 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 
 | Ngày       | Quyết định                                                                 | Lý do                                                     |
 | ---------- | -------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 2026-06-06 | Master Data CRUD: tên bảng đọc từ `Ui_Form→Sys_Table` server-side, không nhận từ client. Mọi identifier validate SafeIdentifierRegex, mọi giá trị qua Dapper param | Security: tránh SQL injection qua tên bảng/cột |
+| 2026-06-06 | Soft-check FK theo quy ước tên: PK `CongTyID` → cột tham chiếu `CongTyID` hoặc `%_CongTyID`. Quét Sys_Column KHÔNG lọc Is_Active để bắt dữ liệu cũ | DB không có FK vật lý, quy ước tên là duy nhất để detect dependency |
+| 2026-06-06 | PK resolve: ưu tiên `Sys_Column.Is_PK=1`, fallback INFORMATION_SCHEMA.TABLE_CONSTRAINTS khi metadata chưa set (DB thật toàn Is_PK=False) | Metadata không đáng tin → phải có fallback vật lý |
+| 2026-06-06 | `Display_Mode` là cột mới trên Ui_Form (không repurpose `Layout_Engine`). WPF cấu hình, engine đọc để quyết định Popup vs Tab. `Layout_Engine` giữ nguyên (deprecated nhưng không xóa) | Tách biệt concern, backward compat |
+| 2026-06-06 | `Show_In_List` cờ trên Ui_Field; fallback: nếu 0 field bật → hiện tất cả (áp dụng cả FE + BE) | Tránh lưới rỗng khi cấu hình chưa setup |
 | 2026-03-03 | Api.csproj giữ reference đến Infrastructure                                | Program.cs cần gọi AddInfrastructure() — chấp nhận exception này cho composition root |
 | 2026-03-03 | Dùng Scalar thay vì Swagger UI                                             | Scalar hiện đại hơn, tích hợp tốt với .NET 9 OpenAPI     |
 | 2026-03-03 | Docs spec đặt trong docs/spec/ (không phải docs/ trực tiếp)               | docs/ đã có files AI config, tách biệt để rõ ràng hơn    |

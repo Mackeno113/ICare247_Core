@@ -93,6 +93,8 @@ public static class DependencyInjection
         services.AddScoped<ILookupRepository, LookupRepository>();
         services.AddScoped<IDynamicLookupRepository, DynamicLookupRepository>();
         services.AddScoped<IResourceRepository, ResourceRepository>();
+        services.AddScoped<IMasterDataRepository, MasterDataRepository>();
+        services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
 
         // ── OpenTelemetry ─────────────────────────────────────────────────────
         services.AddOpenTelemetry()

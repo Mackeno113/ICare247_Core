@@ -307,6 +307,14 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _layoutEngine, value)) IsDirty = true; }
     }
 
+    private string _displayMode = "Popup";
+    /// <summary>Cách mở màn hình danh mục: "Popup" (dialog inline) hoặc "Tab" (tab riêng).</summary>
+    public string DisplayMode
+    {
+        get => _displayMode;
+        set { if (SetProperty(ref _displayMode, value)) IsDirty = true; }
+    }
+
     private string _description = "";
     public string Description
     {
@@ -335,6 +343,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public ObservableCollection<TableLookupRecord> TableLookupItems { get; } = [];
     public List<string> PlatformOptions { get; } = ["web", "mobile", "wpf"];
     public List<string> LayoutEngineOptions { get; } = ["Grid", "Flex", "Custom"];
+    /// <summary>Cách mở form detail: Popup = dialog, Tab = tab mới.</summary>
+    public List<string> DisplayModeOptions { get; } = ["Popup", "Tab"];
 
     // ── FormCode validation ───────────────────────────────────
     private string _formCodeError = "";
@@ -889,6 +899,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             FormName           = "";
             Platform           = "web";
             LayoutEngine       = "Grid";
+            DisplayMode        = "Popup";
             Description        = "";
             IsFormActive       = true;
             SelectedTable      = null;
@@ -978,6 +989,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             FormName     = detail.FormCode; // DB không có FormName riêng — dùng FormCode
             Platform     = detail.Platform;
             LayoutEngine = detail.LayoutEngine;
+            DisplayMode  = detail.DisplayMode;
             Description  = detail.Description ?? "";
             Version      = detail.Version;
             Checksum     = detail.Checksum ?? "";
@@ -1961,7 +1973,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 normalizedName,
                 Platform,
                 _appConfig.TenantId,
-                SelectedTable.TableId);
+                SelectedTable.TableId,
+                DisplayMode);
 
             // ── 4. Navigate sang editor với formId vừa tạo ───
             var p = new NavigationParameters
@@ -1999,6 +2012,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 formName:       FormName,
                 platform:       Platform,
                 layoutEngine:   LayoutEngine,
+                displayMode:    DisplayMode,
                 description:    string.IsNullOrWhiteSpace(Description) ? null : Description,
                 isActive:       IsFormActive,
                 tableId:        SelectedTable?.TableId,
@@ -2197,6 +2211,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 formName:       FormName,
                 platform:       Platform,
                 layoutEngine:   LayoutEngine,
+                displayMode:    DisplayMode,
                 description:    string.IsNullOrWhiteSpace(Description) ? null : Description,
                 isActive:       IsFormActive,
                 tableId:        SelectedTable?.TableId,

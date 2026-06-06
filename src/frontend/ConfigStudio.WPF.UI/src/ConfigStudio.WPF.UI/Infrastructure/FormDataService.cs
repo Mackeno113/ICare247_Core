@@ -492,6 +492,7 @@ public sealed class FormDataService : IFormDataService
         string platform,
         int tenantId,
         int? tableId = null,
+        string displayMode = "Popup",
         CancellationToken ct = default)
     {
         if (!_config.IsConfigured)
@@ -597,6 +598,12 @@ public sealed class FormDataService : IFormDataService
             insertVals.Add("'system'");
         }
 
+        if (formCols.Contains("Display_Mode"))
+        {
+            insertCols.Add("Display_Mode");
+            insertVals.Add("@DisplayMode");
+        }
+
         var sql = "INSERT INTO dbo.Ui_Form ("
                 + string.Join(", ", insertCols) + ")\n"
                 + "VALUES ("
@@ -606,7 +613,7 @@ public sealed class FormDataService : IFormDataService
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, FormCode = formCode, FormName = formName, Platform = platform, TableId = tableIdForInsert },
+                new { TenantId = tenantId, FormCode = formCode, FormName = formName, Platform = platform, TableId = tableIdForInsert, DisplayMode = displayMode },
                 cancellationToken: ct));
     }
 
@@ -982,6 +989,7 @@ public sealed class FormDataService : IFormDataService
         string formName,
         string platform,
         string layoutEngine,
+        string displayMode,
         string? description,
         bool isActive,
         int? tableId,
@@ -1016,6 +1024,9 @@ public sealed class FormDataService : IFormDataService
         if (formCols.Contains("Layout_Engine"))
             setClauses.Add("Layout_Engine = @LayoutEngine");
 
+        if (formCols.Contains("Display_Mode"))
+            setClauses.Add("Display_Mode = @DisplayMode");
+
         if (formCols.Contains("Description") && description is not null)
             setClauses.Add("Description = @Description");
 
@@ -1042,6 +1053,7 @@ public sealed class FormDataService : IFormDataService
                     FormName       = formName,
                     Platform       = platform,
                     LayoutEngine   = layoutEngine,
+                    DisplayMode    = displayMode,
                     Description    = description,
                     IsActive       = isActive ? 1 : 0,
                     TableId        = tableId,

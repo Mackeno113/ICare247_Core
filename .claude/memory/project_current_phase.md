@@ -1,8 +1,14 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-05-18
+> Cập nhật lần cuối: 2026-06-06
 
-## Đợt mới nhất — Wave A + D + 017 (session 28, 2026-05-17/18)
+## Đợt mới nhất — Master Data CRUD full-stack (session 38, 2026-06-06)
+
+Feature metadata-driven CRUD cho màn hình danh mục: Tầng 0 (DB migrations 023+024) + Tầng 1 (backend generic CRUD + soft-check FK) + Tầng 2 (Blazor List/Form/Delete Popup↔Tab) + Tầng 3 (WPF Display_Mode dropdown + Show_In_List checkbox). Build backend 0/0, WPF 0/0.
+
+→ **Migrations 023+024 cần chạy trên DB trước khi run app sau khi pull.**
+
+## Đợt trước — Wave A + D + 017 (session 28, 2026-05-17/18)
 
 | Wave | Status | Mô tả |
 |---|---|---|
@@ -112,9 +118,10 @@
 | FieldType `fklookup` — placeholder text input | ✅ Done (session 7) |
 | Test end-to-end (labels, field values, debug mode, select options) | 🔴 Pending |
 
-## Next Priorities (cập nhật 2026-05-31 sau audit)
+## Next Priorities (cập nhật 2026-06-06)
 
-1. **BE-002 Integration tests** — backend (ValidationEngine + EventEngine + MetadataEngine) ❌ Chưa làm
-2. **BE-004 Apply Design System tokens** — vào Blazor components ❌ Chưa làm
-3. **BE-003 / WPF-14** — Manual E2E test (cần DB thật): Blazor FormRunner + WPF LookupBox ⏳
-4. **DefaultValueJson** — orphan property trên FieldMetadata (DB chưa có cột) — quyết định thêm migration hoặc xóa
+1. **DB-RUN** — Chạy `db/023_ui_form_display_mode.sql` + `db/024_ui_field_show_in_list.sql` trên DB thật
+2. **E2E test Master Data** — sau khi chạy migrations, test Blazor `/master/{FormCode}` với DB thật
+3. **BE-002 Integration tests** — backend (ValidationEngine + EventEngine + MetadataEngine) ❌ Chưa làm
+4. **BE-004 Apply Design System tokens** — vào Blazor components ❌ Chưa làm
+5. **WPF-14** — Manual E2E test LookupBox (GioiTinh + PhongBanID) ⏳ Cần DB thật

@@ -212,6 +212,53 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 @media (max-width: 900px) { .showcase-grid { grid-template-columns: repeat(2, 1fr); } }
 .hint { font-size: 12px; color: #aaa; margin-top: 4px; font-family: monospace; }
 
+/* ── Master Data — List + Grid ────────────────────────── */
+.md-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.md-list-header h2 { margin: 0; font-size: 20px; }
+.md-list-sub { font-size: 12px; color: #6b7280; }
+.md-list-toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.md-search { flex: 0 0 320px; max-width: 100%; padding: 8px 12px; border: 1px solid #d5deed; border-radius: 6px; font-size: 14px; }
+.md-active-filter { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; }
+.md-list-footer { margin-top: 10px; font-size: 12px; color: #6b7280; }
+
+.md-grid-wrap { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+.md-grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+.md-grid thead th { text-align: left; padding: 10px 12px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #374151; }
+.md-grid tbody td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; }
+.md-grid tbody tr:hover { background: #f9fafb; }
+.md-grid-empty { text-align: center; color: #9ca3af; padding: 24px !important; }
+.md-grid-actions-col { width: 90px; }
+.md-grid-actions { white-space: nowrap; }
+.btn-icon { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px; }
+.btn-icon:hover { background: #eef2ff; }
+.btn-icon-danger:hover { background: #fee2e2; }
+
+/* ── Master Data — Form ───────────────────────────────── */
+.md-form { padding: 4px; }
+.md-form-title { margin: 0 0 14px; font-size: 17px; font-weight: 600; }
+.md-form-banner { margin-bottom: 12px; }
+.md-form-loading { display: flex; align-items: center; gap: 10px; color: #6b7280; padding: 16px; }
+.md-form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+.md-legacy-tag { color: #92400e; background: #fef3c7; border-radius: 4px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+
+/* ── Master Data — Modal (Popup mode + delete dialog) ─── */
+.md-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 16px; }
+.md-modal { background: #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.25); width: 720px; max-width: 100%; max-height: 90vh; overflow: auto; }
+.md-modal-sm { width: 460px; }
+.md-modal-header { padding: 14px 18px; font-size: 16px; font-weight: 600; border-bottom: 1px solid #eef2f7; }
+.md-modal-body { padding: 18px; }
+.md-modal-footer { padding: 12px 18px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eef2f7; }
+.btn-danger { background: #dc2626; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-danger:disabled { opacity: .6; cursor: default; }
+
+/* Popup mode: modal có thể chứa lưới field — đảm bảo responsive bên trong */
+@media (max-width: 767px) {
+    .md-modal { width: 100%; }
+    .md-list-header { flex-direction: column; align-items: stretch; gap: 8px; }
+    .md-search { flex-basis: auto; }
+}
+
 /* ── Normalize DX editors — cung height/border/radius cho moi loai ──── */
 /* DxTextBox, DxComboBox, DxDateEdit, DxMemo, DxSpinEdit deu truyen CssClass="field-dx" */
 .field-dx.dxbl-edit,

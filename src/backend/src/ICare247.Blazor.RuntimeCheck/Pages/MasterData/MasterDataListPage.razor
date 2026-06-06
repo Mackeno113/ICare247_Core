@@ -1,0 +1,160 @@
+@* File    : MasterDataListPage.razor
+   Purpose : Màn List danh mục — Thêm/Sửa/Xóa. Form Thêm/Sửa render Popup (modal inline)
+             hoặc Tab (điều hướng routed page) theo Ui_Form.Display_Mode. *@
+
+@page "/master/{FormCode}"
+@using ICare247.Blazor.RuntimeCheck.Services
+@using ICare247.Blazor.RuntimeCheck.Components.MasterData
+@inject MasterDataApiService MasterApi
+@inject NavigationManager Nav
+
+<PageTitle>@(_info?.FormCode ?? FormCode) — Danh mục</PageTitle>
+
+<div class="page-container">
+    @if (_loading)
+    {
+        <div class="md-form-loading"><div class="spinner"></div><span>Đang tải danh mục…</span></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="error-banner"><strong>⚠ Lỗi:</strong> @_error</div>
+    }
+    else if (_info is not null)
+    {
+        <div class="md-list-header">
+            <div>
+                <h2>Quản lý: @FormCode</h2>
+                <span class="md-list-sub">Bảng @_info.SchemaName.@_info.TableName · chế độ @_info.DisplayMode</span>
+            </div>
+            <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ Thêm mới</button>
+        </div>
+
+        <div class="md-list-toolbar">
+            <input class="md-search" placeholder="🔍 Tìm kiếm…" value="@_search"
+                   @onchange="OnSearchChanged" />
+            <label class="md-active-filter">
+                <input type="checkbox" checked="@_activeOnly" @onchange="OnActiveToggled" />
+                Chỉ Active
+            </label>
+        </div>
+
+        <MasterDataGrid Columns="_listColumns"
+                        Items="_items"
+                        PkColumn="@_info.PkColumn"
+                        OnEdit="(id) => OpenForm(id)"
+                        OnDelete="OpenDelete" />
+
+        <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+    }
+</div>
+
+@* ── Popup form (chỉ khi Display_Mode = Popup) ── *@
+@if (_showPopup && _info is not null)
+{
+    <div class="md-modal-backdrop" @onclick="CloseForm">
+        <div class="md-modal" @onclick:stopPropagation="true">
+            <div class="md-modal-body">
+                <MasterDataForm FormCode="@FormCode" Id="_editId"
+                                OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Confirm delete dialog ── *@
+@if (_deleteId is not null && _info is not null)
+{
+    <ConfirmDeleteDialog FormCode="@FormCode" Id="_deleteId"
+                         OnDeleted="OnRecordDeleted" OnClosed="() => _deleteId = null" />
+}
+
+@code {
+    [Parameter] public string FormCode { get; set; } = "";
+
+    private MasterDataFormInfoDto? _info;
+    private List<MasterDataColumnDto> _listColumns = [];
+    private List<Dictionary<string, object?>> _items = [];
+    private int _total;
+    private bool _loading = true;
+    private string? _error;
+
+    private string? _search;
+    private bool _activeOnly;
+
+    private bool _showPopup;
+    private object? _editId;
+    private object? _deleteId;
+
+    protected override async Task OnParametersSetAsync() => await InitAsync();
+
+    private async Task InitAsync()
+    {
+        _loading = true; _error = null;
+        try
+        {
+            _info = await MasterApi.GetInfoAsync(FormCode);
+            if (_info is null) { _error = $"Không tìm thấy form danh mục '{FormCode}'."; return; }
+
+            // Cột lưới = Show_In_List; fallback toàn bộ cột nếu chưa cấu hình cờ nào
+            _listColumns = _info.Columns.Where(c => c.ShowInList).ToList();
+            if (_listColumns.Count == 0) _listColumns = _info.Columns.ToList();
+
+            await ReloadListAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task ReloadListAsync()
+    {
+        var result = await MasterApi.GetListAsync(FormCode, _search, _activeOnly ? true : null);
+        _items = result.Items;
+        _total = result.TotalCount;
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        await ReloadListAsync();
+    }
+
+    private async Task OnActiveToggled(ChangeEventArgs e)
+    {
+        _activeOnly = e.Value is bool b && b;
+        await ReloadListAsync();
+    }
+
+    /// <summary>Mở form Thêm (id null) / Sửa — Popup inline hoặc điều hướng Tab theo Display_Mode.</summary>
+    private void OpenForm(object? id)
+    {
+        if (_info is null) return;
+
+        if (_info.DisplayMode.Equals("Tab", StringComparison.OrdinalIgnoreCase))
+        {
+            var url = id is null
+                ? $"/master/{Uri.EscapeDataString(FormCode)}/edit"
+                : $"/master/{Uri.EscapeDataString(FormCode)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}";
+            Nav.NavigateTo(url);
+            return;
+        }
+
+        _editId = id;
+        _showPopup = true;
+    }
+
+    private void CloseForm() { _showPopup = false; _editId = null; }
+
+    private async Task OnFormSaved(object? _)
+    {
+        CloseForm();
+        await ReloadListAsync();
+    }
+
+    private void OpenDelete(object? id) => _deleteId = id;
+
+    private async Task OnRecordDeleted()
+    {
+        _deleteId = null;
+        await ReloadListAsync();
+    }
+}

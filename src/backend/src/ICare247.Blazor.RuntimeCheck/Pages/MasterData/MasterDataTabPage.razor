@@ -1,0 +1,28 @@
+@* File    : MasterDataTabPage.razor
+   Purpose : Trang Thêm/Sửa danh mục dạng routed page (Display_Mode = Tab — tab nội bộ SPA).
+             Điều hướng: List → Detail → Save/Cancel → Back List. *@
+
+@page "/master/{FormCode}/edit"
+@page "/master/{FormCode}/edit/{Id}"
+@using ICare247.Blazor.RuntimeCheck.Components.MasterData
+@inject NavigationManager Nav
+
+<PageTitle>@FormCode — @(string.IsNullOrEmpty(Id) ? "Thêm mới" : "Sửa")</PageTitle>
+
+<div class="page-container">
+    <button class="btn-back" @onclick="BackToList">← Danh sách</button>
+    <MasterDataForm FormCode="@FormCode" Id="@IdValue"
+                    OnSaved="OnSaved" OnCancelled="BackToList" />
+</div>
+
+@code {
+    [Parameter] public string FormCode { get; set; } = "";
+    /// <summary>PK dạng string từ route; null/empty = Thêm mới.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    private object? IdValue => string.IsNullOrEmpty(Id) ? null : Id;
+
+    private void BackToList() => Nav.NavigateTo($"/master/{Uri.EscapeDataString(FormCode)}");
+
+    private void OnSaved(object? _) => BackToList();
+}

@@ -47,6 +47,12 @@ public sealed class FieldConfigRecord
     /// <summary>Độ rộng grid 4-column: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>
     public byte ColSpan { get; init; } = 1;
 
+    /// <summary>
+    /// Hiển thị cột này trong lưới danh sách của màn hình Master Data.
+    /// Lưu vào Ui_Field.Show_In_List. Mặc định false (chỉ hiện trong form chi tiết).
+    /// </summary>
+    public bool ShowInList { get; init; }
+
     /// <summary>null = thường | "static" = Sys_Lookup | "dynamic" = Ui_Field_Lookup</summary>
     public string? LookupSource { get; init; }
 
