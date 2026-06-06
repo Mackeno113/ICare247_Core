@@ -26,6 +26,7 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, I
 {
     private readonly IGrammarDataService? _grammarService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     // ── Functions ─────────────────────────────────────────────
@@ -110,11 +111,13 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, I
     public GrammarLibraryViewModel(
         IGrammarDataService? grammarService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _grammarService = grammarService;
         _appConfig = appConfig;
         _history = history;
+        _logger = logger;
 
         FunctionsView = CollectionViewSource.GetDefaultView(Functions);
         FunctionsView.Filter = FilterFunctions;
@@ -206,8 +209,9 @@ public sealed class GrammarLibraryViewModel : ViewModelBase, INavigationAware, I
             }
         }
         catch (OperationCanceledException) { /* Navigation away */ }
-        catch
+        catch (Exception ex)
         {
+            _logger?.Capture(ex, "GrammarLibrary.LoadData");
             Functions.Clear();
             Operators.Clear();
         }

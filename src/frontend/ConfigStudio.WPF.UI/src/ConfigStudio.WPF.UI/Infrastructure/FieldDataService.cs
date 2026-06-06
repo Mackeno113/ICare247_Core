@@ -400,6 +400,18 @@ public sealed class FieldDataService : IFieldDataService
         }
     }
 
+    /// <inheritdoc />
+    public async Task MoveFieldToSectionAsync(int fieldId, int sectionId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0 || sectionId <= 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE dbo.Ui_Field SET Section_Id = @SectionId WHERE Field_Id = @FieldId",
+                new { FieldId = fieldId, SectionId = sectionId }, cancellationToken: ct));
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     /// <summary>Build anonymous param object cho INSERT/UPDATE Ui_Field.</summary>

@@ -31,6 +31,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
 {
     private readonly II18nDataService? _i18nService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     // ── Data ──────────────────────────────────────────────────
@@ -124,11 +125,13 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
     public I18nManagerViewModel(
         II18nDataService? i18nService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _i18nService = i18nService;
         _appConfig   = appConfig;
         _history     = history;
+        _logger      = logger;
 
         EntriesView        = CollectionViewSource.GetDefaultView(Entries);
         EntriesView.Filter = ApplyFilter;
@@ -331,6 +334,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "I18nManager.Save");
             SaveError = $"Lưu thất bại: {ex.Message}";
         }
     }
@@ -422,6 +426,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "I18nManager.Export");
             MessageBox.Show($"Xuất thất bại: {ex.Message}", "Lỗi",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -528,6 +533,7 @@ public sealed class I18nManagerViewModel : ViewModelBase, INavigationAware, IReg
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "I18nManager.Import");
             MessageBox.Show($"Import thất bại: {ex.Message}", "Lỗi",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }

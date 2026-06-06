@@ -1,11 +1,32 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-05 (session 36 — LookupBox "thêm mới entity" full-stack)
+> Cập nhật: 2026-06-06 (session 37 — Responsive form grid + SysTable UX polish)
 
 ## Trạng thái cuối session
 
 - **Branch:** `master`
-- **Build:** API / Application / Infrastructure / Domain / RuntimeCheck / WPF Modules.Forms đều 0/0
+- **Build:** backend `ICare247.slnx` 0/0, WPF `ConfigStudio.WPF.UI.slnx` 0/0
+
+## Session 37 — Responsive form grid (Blazor) + dọn UX Sys_Table
+
+**1. Blazor FormRunner responsive (verified live trên app thật, form SYS_UI_DESIGN 13 field):**
+- Vấn đề: `.fields-grid` cố định `repeat(4,1fr)`, KHÔNG media query → mobile vẫn ép 4 cột → vỡ. `Col_Span` (1-4 trên lưới 4 cột) render cứng `grid-column: span {ColSpan}`.
+- Fix `app.css`: lưới dùng biến `--cols` (4→2→1 theo breakpoint) + `.field-wrapper { grid-column: span min(var(--col-span), var(--cols)) }` để clamp.
+- Fix `FieldRenderer.razor`: đổi inline `grid-column: span @ColSpan` → `--col-span: @ColSpan` (để CSS clamp được).
+- Breakpoint: Desktop ≥992 = 4 cột, Tablet 768–991 = 2 cột, Mobile ≤767 = 1 cột. Canh theo **Bootstrap 5** (md=768/lg=992) vì app nạp theme DevExpress `blazing-berry.bs5.min.css`.
+- Verified bằng preview_eval computed style: 1280px→4 cột (span-4 full), 768px→2 cột, 375px→1 cột (mọi field clamp về 1).
+
+**2. SysTableManagerView (WPF) — dọn UX:**
+- Bỏ nút "+ Bản ghi mới" góc trên (trùng `NewCommand` với "Làm mới form nhập" trong form).
+- `SaveButtonText`: "Tạo mới" → "Lưu" (vẫn auto đổi "Cập nhật" khi IsEditMode).
+- Bọc `ScrollViewer MaxHeight=80` cho khối LoadErrorMessage (TextBlock không tự scroll).
+- `AutoPopulateColumns="False"` (obsolete warning XLS1111) → `AutoGenerateColumns="None"`.
+
+**Nguyên tắc chốt:** metadata (`Col_Span`) = ý đồ bố cục logic; render engine chịu trách nhiệm reflow + clamp theo thiết bị. Metadata cố định cột KHÔNG tự responsive.
+
+**Phát hiện phụ (chưa xử lý):** `Ui_Form.Layout_Engine` (Grid/Flex/Custom) là **field chết** — `FormMetadataDto` không có, FormRunner luôn render 1 layout, validator chỉ check NotEmpty. Bàn thiết kế MasterDataTemplate: mọi danh mục chỉ 2 chế độ hiển thị Popup/Tab do WPF cấu hình → ứng viên repurpose `Layout_Engine` thành `Display_Mode`.
+
+---
 
 ## Session 36 — Thêm mới entity trên LookupBox (full 3 tầng + WPF)
 

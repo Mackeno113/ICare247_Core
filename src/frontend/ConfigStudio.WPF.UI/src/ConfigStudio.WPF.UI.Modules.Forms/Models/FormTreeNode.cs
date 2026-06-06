@@ -136,6 +136,11 @@ public class FormTreeNode : BindableBase
 
     /// <summary>Text hiển thị kèm type info cho field.</summary>
     public string SubText => NodeType == FormNodeType.Field
-        ?  $"{EditorType} · {Code}" 
+        ?  $"{EditorType} · {Code}"
         : $"{Children.Count} fields";
+
+    /// <summary>Tooltip cho node trong cây — gợi ý thao tác double-click cho field.</summary>
+    public string NodeTooltip => NodeType == FormNodeType.Field
+        ? $"{DisplayName} ({EditorType})\nDouble-click để cấu hình field"
+        : $"Section '{DisplayName}' — {Children.Count} field";
 }

@@ -28,4 +28,17 @@ public interface IFormDetailDataService
     /// Khi OldTitleKey khác TitleKey → rename Resource_Key trong Sys_Resource.
     /// </summary>
     Task<int> UpsertSectionAsync(SectionUpsertRequest req, CancellationToken ct = default);
+
+    /// <summary>
+    /// Xóa hẳn một Section khỏi Ui_Section cùng toàn bộ field con
+    /// (Ui_Field + Ui_Field_Lookup) trong một transaction.
+    /// </summary>
+    Task DeleteSectionAsync(int sectionId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Cập nhật Order_No hàng loạt cho danh sách section trong cùng form.
+    /// items = [(sectionId, newOrder)] — thứ tự bắt đầu từ 1.
+    /// </summary>
+    Task UpdateSectionOrderAsync(IReadOnlyList<(int SectionId, int OrderNo)> items,
+        CancellationToken ct = default);
 }

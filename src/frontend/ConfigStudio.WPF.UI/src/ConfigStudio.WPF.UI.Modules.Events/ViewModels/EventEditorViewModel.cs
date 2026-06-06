@@ -29,6 +29,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     private readonly IEventDataService? _eventService;
     private readonly IAppConfigService? _appConfig;
     private readonly IFormDetailDataService? _formDetailService;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     /// <summary>Cache danh sách field của form — load 1 lần, dùng cho mọi lần mở Expression Builder.</summary>
@@ -120,7 +121,8 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         IEventDataService? eventService = null,
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
-        IFormDetailDataService? formDetailService = null)
+        IFormDetailDataService? formDetailService = null,
+        IAppLogger? logger = null)
     {
         _regionManager = regionManager;
         _dialogService = dialogService;
@@ -128,6 +130,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         _appConfig = appConfig;
         _history = history;
         _formDetailService = formDetailService;
+        _logger = logger;
 
         AddEventCommand = new DelegateCommand(ExecuteAddEvent);
         DeleteEventCommand = new DelegateCommand(async () => await ExecuteDeleteEventAsync(), () => IsEventSelected);
@@ -244,8 +247,9 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
             IsDirty = false;
         }
         catch (OperationCanceledException) { /* Navigation away */ }
-        catch
+        catch (Exception ex)
         {
+            _logger?.Capture(ex, "EventEditor.LoadEvents");
             Events.Clear();
             Actions.Clear();
         }
@@ -277,8 +281,9 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
                 }
             }
             catch (OperationCanceledException) { /* Navigation away */ }
-            catch
+            catch (Exception ex)
             {
+                _logger?.Capture(ex, "EventEditor.LoadActions");
                 Actions.Clear();
             }
         }
@@ -450,7 +455,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
                 .Where(f => !string.IsNullOrEmpty(f.Code))
                 .ToList();
         }
-        catch { /* lỗi load fields → palette rỗng, không crash */ }
+        catch (Exception ex) { _logger?.Capture(ex, "EventEditor.LoadFields"); }
     }
 
     /// <summary>Suy ra NetType từ EditorType khi không có thông tin từ DB.</summary>

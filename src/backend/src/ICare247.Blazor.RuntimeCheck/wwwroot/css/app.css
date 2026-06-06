@@ -144,9 +144,29 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 }
 
 .fields-grid {
+    /* --cols = số cột nền của lưới, đổi theo breakpoint (engine quyết định reflow).
+       Metadata chỉ cấu hình Col_Span (ý đồ trên cơ sở 4 cột desktop). */
+    --cols: 4;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(var(--cols), 1fr);
     gap: 14px;
+}
+
+/* Clamp span: field không bao giờ rộng quá số cột hiện có.
+   --col-span do FieldRenderer set từ Ui_Field.Col_Span (1..4). */
+.fields-grid > .field-wrapper {
+    grid-column: span min(var(--col-span, 1), var(--cols));
+}
+
+/* Tablet → 2 cột. Field span 3-4 tự co về full (2), span 1-2 giữ tỉ lệ.
+   Ngưỡng 991px = dưới Bootstrap 5 lg (992px), đồng bộ theme DevExpress bs5. */
+@media (max-width: 991px) {
+    .fields-grid { --cols: 2; }
+}
+
+/* Mobile → 1 cột. Mọi field xếp dọc full-width. */
+@media (max-width: 767px) {
+    .fields-grid { --cols: 1; }
 }
 
 /* ── Field wrapper (label + DX control + errors) ──────── */

@@ -29,9 +29,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
     private readonly INavigationHistoryService? _history;
-    private static readonly string ErrorLogPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "ICare247", "ConfigStudio", "logs", "form-manager-errors.log");
+    private readonly IAppLogger? _logger;
 
     // ── Data ──────────────────────────────────────────────────
     public ObservableCollection<FormSummaryDto> Forms { get; } = [];
@@ -160,13 +158,15 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
         IDialogService dialogService,
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _regionManager   = regionManager;
         _dialogService   = dialogService;
         _formDataService = formDataService;
         _appConfig       = appConfig;
         _history         = history;
+        _logger          = logger;
 
         FormsView = CollectionViewSource.GetDefaultView(Forms);
         FormsView.Filter = ApplyFilter;
@@ -515,31 +515,9 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
     }
 
     /// <summary>
-    /// Ghi lỗi load dữ liệu ra file local để dễ truy vết sự cố production.
+    /// Ghi lỗi load dữ liệu qua logger trung tâm (tự tách SQL vs C# ra 2 file).
     /// </summary>
-    private static void LogLoadError(Exception ex)
-    {
-        try
-        {
-            var dir = Path.GetDirectoryName(ErrorLogPath);
-            if (!string.IsNullOrWhiteSpace(dir))
-                Directory.CreateDirectory(dir);
-
-            var log = $"""
-                [{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] LoadFormsError
-                Message: {ex.Message}
-                StackTrace:
-                {ex.StackTrace}
-                ----------------------------------------
-                """;
-
-            File.AppendAllText(ErrorLogPath, log + Environment.NewLine);
-        }
-        catch
-        {
-            // NOTE: Không để logging failure làm sập luồng UI.
-        }
-    }
+    private void LogLoadError(Exception ex) => _logger?.Capture(ex, "FormManager.LoadForms");
 
     /// <summary>
     /// Đảm bảo đã load appsettings trước khi kiểm tra IsConfigured/TenantId.

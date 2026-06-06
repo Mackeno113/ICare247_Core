@@ -31,6 +31,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
     private readonly IRuleDataService? _ruleService;
     private readonly II18nDataService? _i18nService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params / Context ───────────────────────────
@@ -312,7 +313,8 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         IRuleDataService? ruleService = null,
         II18nDataService? i18nService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _regionManager     = regionManager;
         _dialogService     = dialogService;
@@ -320,6 +322,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
         _i18nService       = i18nService;
         _appConfig         = appConfig;
         _history           = history;
+        _logger            = logger;
 
         AddRuleCommand = new DelegateCommand(ExecuteAddRule);
         EditRuleCommand = new DelegateCommand(ExecuteEditRule, () => IsRuleSelected);
@@ -416,9 +419,10 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
             RaisePropertyChanged(nameof(AvailableCompareFields));
         }
         catch (OperationCanceledException) { }
-        catch
+        catch (Exception ex)
         {
             // Không block UI nếu load field list thất bại
+            _logger?.Capture(ex, "ValidationRuleEditor.LoadCompareFields");
             AvailableCompareFields = [];
         }
     }
@@ -453,8 +457,9 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
             IsDirty = false;
         }
         catch (OperationCanceledException) { /* Navigation away */ }
-        catch
+        catch (Exception ex)
         {
+            _logger?.Capture(ex, "ValidationRuleEditor.LoadRules");
             Rules.Clear();
         }
     }
@@ -511,6 +516,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
             }
             catch (Exception ex)
             {
+                _logger?.Capture(ex, "ValidationRuleEditor.DeleteRule");
                 MessageBox.Show(
                     $"Xóa thất bại: {ex.Message}",
                     "Lỗi",
@@ -639,7 +645,7 @@ public sealed class ValidationRuleEditorViewModel : ViewModelBase, INavigationAw
             catch (Exception ex)
             {
                 // Ghi lỗi vào status — không crash UI
-                _ = ex;
+                _logger?.Capture(ex, "ValidationRuleEditor.SaveAll");
             }
         }
 

@@ -23,6 +23,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 {
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IAppLogger? _logger;
     private bool _isProgrammaticEditorUpdate;
 
     public ObservableCollection<SysTableRecord> Tables { get; } = [];
@@ -141,7 +142,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 
     public bool IsEditMode => SelectedTable is not null && EditTableId.HasValue;
 
-    public string SaveButtonText => IsEditMode ? "Cập nhật" : "Tạo mới";
+    public string SaveButtonText => IsEditMode ? "Cập nhật" : "Lưu";
 
     private bool _isBusy;
     public bool IsBusy
@@ -205,11 +206,13 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public SysTableManagerViewModel(
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _formDataService = formDataService;
         _appConfig = appConfig;
         _history = history;
+        _logger = logger;
 
         TablesView = CollectionViewSource.GetDefaultView(Tables);
         TablesView.Filter = ApplyFilter;
@@ -257,6 +260,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysTableManager.Load");
             LoadErrorMessage = $"Không thể tải dữ liệu Sys_Table: {ex.Message}";
         }
     }
@@ -316,6 +320,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
             Tables.Clear();
             RaisePropertyChanged(nameof(TotalTables));
             RaisePropertyChanged(nameof(FilteredCount));
+            _logger?.Capture(ex, "SysTableManager.LoadDataSafe");
             LoadErrorMessage = $"Không thể tải dữ liệu Sys_Table: {ex.Message}";
         }
         finally
@@ -424,6 +429,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysTableManager.Save");
             SetSaveError($"Lỗi lưu Sys_Table: {ex.Message}");
         }
         finally

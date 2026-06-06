@@ -21,6 +21,9 @@
     <!-- DB access — Dapper + SqlClient cho Infrastructure layer -->
     <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.*" />
+    <!-- Logging — Serilog: tách 2 file log SQL vs C# (xem Infrastructure\Logging) -->
+    <PackageReference Include="Serilog" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.*" />
   </ItemGroup>
 
   <ItemGroup>

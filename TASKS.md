@@ -6,6 +6,20 @@ _(Trống — chọn task tiếp theo từ 🟠 Kế hoạch)_
 
 ---
 
+## ✅ Done (Session 37 — Responsive form grid + SysTable UX polish — 2026-06-06)
+
+UI/UX fixes: lưới field FormRunner responsive theo thiết bị + dọn vài điểm UX màn Sys_Table.
+
+- [x] **Blazor responsive grid** — `.fields-grid` đổi từ `repeat(4,1fr)` cứng (không media query) sang dùng biến `--cols` + media query: Desktop ≥992px = 4 cột, Tablet 768–991px = 2 cột, Mobile ≤767px = 1 cột. `FieldRenderer` đổi `grid-column: span {ColSpan}` cứng → `--col-span` để CSS clamp `span min(--col-span,--cols)`. Ngưỡng đồng bộ Bootstrap 5 (theme DevExpress bs5). Verified live 1280/768/375px.
+- [x] **SysTableManager UX** — bỏ nút "+ Bản ghi mới" (trùng NewCommand với "Làm mới form nhập"); đổi `SaveButtonText` "Tạo mới" → "Lưu"; bọc `ScrollViewer MaxHeight=80` cho LoadErrorMessage; `AutoPopulateColumns="False"` (obsolete XLS1111) → `AutoGenerateColumns="None"`.
+
+**Decisions Log:**
+- Nguyên tắc responsive: **metadata (`Col_Span`) = ý đồ logic bố cục, render engine = reflow + clamp số cột theo breakpoint**. Metadata cố định cột KHÔNG tự responsive — trách nhiệm reflow thuộc engine, không thuộc metadata.
+- Breakpoint canh theo Bootstrap 5 (md=768, lg=992) vì app nạp theme `blazing-berry.bs5.min.css` của DevExpress (xây trên Bootstrap 5).
+- Phát hiện phụ: cột `Ui_Form.Layout_Engine` (Grid/Flex/Custom) hiện là **field chết** — không DTO/engine nào đọc; FormRunner luôn render cùng 1 layout. Ứng viên: repurpose thành Display_Mode (Popup/Tab) khi triển khai MasterDataTemplate.
+
+---
+
 ## ✅ Done (Session 36 — LookupBox "thêm mới entity" full-stack — 2026-06-05)
 
 Tính năng: thêm mới bản ghi danh mục ngay trên control LookupBox (mở dialog Ui_Form → insert → auto-select). Bật/tắt theo từng field.

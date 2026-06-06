@@ -36,6 +36,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private readonly IDialogService? _dialogService;
     private readonly IFormDetailDataService? _formDetailService;
     private readonly INavigationHistoryService? _history;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     // ── Navigation params ────────────────────────────────────
@@ -808,7 +809,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         catch (Exception ex)
         {
             // Log lỗi — thường do bảng Sys_Lookup chưa được tạo (migration 004 chưa chạy)
-            System.Diagnostics.Debug.WriteLine($"[FieldConfig] LoadLookupCodes lỗi: {ex.Message}");
+            _logger?.Capture(ex, "FieldConfig.LoadLookupCodes");
         }
     }
 
@@ -1042,7 +1043,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IAppConfigService? appConfig = null,
         IDialogService? dialogService = null,
         IFormDetailDataService? formDetailService = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _regionManager     = regionManager;
         _fieldService      = fieldService;
@@ -1054,6 +1056,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _dialogService     = dialogService;
         _formDetailService = formDetailService;
         _history           = history;
+        _logger            = logger;
 
         SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
@@ -1419,6 +1422,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         catch (Exception ex)
         {
             // Lỗi load dữ liệu chính → báo lỗi rõ ràng, KHÔNG fallback mock
+            _logger?.Capture(ex, $"FieldConfig.Load field #{FieldId}");
             LoadError = $"Lỗi tải thông tin field #{FieldId}: {ex.Message}";
             RaisePropertyChanged(nameof(HasLoadError));
             IsLoading = false;
@@ -1450,6 +1454,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             catch (Exception ex)
             {
                 // Rules load thất bại (VD: chưa chạy migration 003) → warning nhỏ
+                _logger?.Capture(ex, $"FieldConfig.LoadRules field #{FieldId}");
                 LoadError = string.IsNullOrEmpty(LoadError)
                     ? $"Không tải được validation rules: {ex.Message}"
                     : LoadError;
@@ -1478,7 +1483,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 }
             }
             catch (OperationCanceledException) { return; }
-            catch { /* Events load thất bại — bỏ qua, không hiện lỗi */ }
+            catch (Exception ex) { _logger?.Capture(ex, $"FieldConfig.LoadEvents field #{FieldId}"); }
         }
 
         // ── 5. Field Navigator — chỉ load khi đổi form, refresh thủ công qua nút ────
@@ -1652,7 +1657,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             _navigatorLoadedFormId = FormId;
         }
         catch (OperationCanceledException) { /* bỏ qua */ }
-        catch { /* navigator load lỗi → bỏ qua, không ảnh hưởng main form */ }
+        catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.LoadFieldNavigator"); }
     }
 
     // ── Field Navigator command ───────────────────────────────
@@ -1719,7 +1724,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (_fieldService is not null)
         {
             try { await _fieldService.UpdateFieldOrderAsync(orderItems, _cts.Token); }
-            catch { /* lỗi persist — bấm Refresh để revert */ }
+            catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.PersistFieldOrder"); }
         }
     }
 
@@ -1768,6 +1773,30 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>
     /// Rebuild JSON từ danh sách <see cref="ControlProps"/> hiện tại.
     /// </summary>
+    /// <summary>
+    /// Ép giá trị prop về đúng kiểu trước khi serialize JSON.
+    /// DevExpress TextEdit trả EditValue dạng string ("2") nên prop kiểu Number
+    /// phải parse về số — nếu không Blazor renderer (int/double) sẽ deserialize lỗi.
+    /// </summary>
+    private static object? CoercePropValue(ControlPropValue p)
+    {
+        if (p.Definition.PropType != "Number") return p.Value;
+
+        return p.Value switch
+        {
+            null                                                    => null,
+            string s when string.IsNullOrWhiteSpace(s)              => null,
+            // Số nguyên thì giữ long, có phần thập phân thì giữ double
+            string s when long.TryParse(s, out var l)               => l,
+            string s when double.TryParse(s,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var d)                                          => d,
+            string s when double.TryParse(s, out var d)             => d,
+            _                                                       => p.Value
+        };
+    }
+
     private void RebuildControlPropsJson()
     {
         _isRebuildingProps = true;
@@ -1775,7 +1804,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             var dict = ControlProps.ToDictionary(
                 p => p.Definition.PropName,
-                p => (object?)p.Value);
+                p => CoercePropValue(p));
 
             // Sys_Lookup: đưa lookupCode vào JSON
             if (IsLookupEditor && !string.IsNullOrWhiteSpace(_lookupCode))
@@ -2459,6 +2488,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             }
             catch (Exception ex)
             {
+                _logger?.Capture(ex, $"FieldConfig.Save field #{FieldId} ({FieldCode})");
                 SaveError = $"Lưu thất bại: {ex.Message}";
             }
         }

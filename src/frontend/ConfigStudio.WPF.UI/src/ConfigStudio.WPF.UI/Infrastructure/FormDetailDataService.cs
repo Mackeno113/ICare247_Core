@@ -245,6 +245,71 @@ public sealed class FormDetailDataService : IFormDetailDataService
     }
 
     /// <inheritdoc />
+    public async Task DeleteSectionAsync(int sectionId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || sectionId <= 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Xóa lookup config của các field thuộc section (FK constraint)
+            await conn.ExecuteAsync(new CommandDefinition(
+                """
+                DELETE FROM dbo.Ui_Field_Lookup
+                WHERE  Field_Id IN (SELECT Field_Id FROM dbo.Ui_Field WHERE Section_Id = @SectionId)
+                """,
+                new { SectionId = sectionId }, transaction: tx, cancellationToken: ct));
+
+            // Xóa field con
+            await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM dbo.Ui_Field WHERE Section_Id = @SectionId",
+                new { SectionId = sectionId }, transaction: tx, cancellationToken: ct));
+
+            // Xóa section
+            await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM dbo.Ui_Section WHERE Section_Id = @SectionId",
+                new { SectionId = sectionId }, transaction: tx, cancellationToken: ct));
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task UpdateSectionOrderAsync(IReadOnlyList<(int SectionId, int OrderNo)> items,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || items.Count == 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            foreach (var (sectionId, orderNo) in items)
+                await conn.ExecuteAsync(new CommandDefinition(
+                    "UPDATE dbo.Ui_Section SET Order_No = @OrderNo WHERE Section_Id = @SectionId",
+                    new { SectionId = sectionId, OrderNo = orderNo },
+                    transaction: tx, cancellationToken: ct));
+
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task DeactivateFormAsync(int formId, int tenantId, CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return;

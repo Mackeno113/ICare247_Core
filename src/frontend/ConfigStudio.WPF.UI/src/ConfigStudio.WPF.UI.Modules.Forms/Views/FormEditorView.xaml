@@ -424,12 +424,14 @@
                     <!-- TreeView -->
                     <TreeView ItemsSource="{Binding Sections}"
                               SelectedItemChanged="OnTreeSelectedItemChanged"
+                              MouseDoubleClick="OnTreeMouseDoubleClick"
                               BorderThickness="0" Padding="6,4"
                               Background="Transparent">
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type models:FormTreeNode}"
                                                        ItemsSource="{Binding Children}">
                                 <Grid Margin="2,4"
+                                      ToolTip="{Binding NodeTooltip}"
                                       Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />

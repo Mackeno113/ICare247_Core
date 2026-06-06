@@ -7,6 +7,7 @@
 using System.IO;
 using System.Text.Json;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Infrastructure.Logging;
 using Microsoft.Data.SqlClient;
 
 namespace ConfigStudio.WPF.UI.Infrastructure;
@@ -23,6 +24,11 @@ public sealed class AppConfigService : IAppConfigService
         "ICare247", "ConfigStudio");
 
     private static readonly string ConfigPath = Path.Combine(ConfigDir, "appsettings.json");
+
+    private readonly IAppLogger? _logger;
+
+    /// <param name="logger">Optional — null khi khởi tạo design-time/không qua DI.</param>
+    public AppConfigService(IAppLogger? logger = null) => _logger = logger;
 
     // ── IAppConfigService ────────────────────────────────────
     public string? ConnectionString       { get; private set; }
@@ -49,9 +55,10 @@ public sealed class AppConfigService : IAppConfigService
             ApplyJson(json);
             return IsConfigured;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // NOTE: JSON lỗi → trả false, không crash app
+            _logger?.Capture(ex, "AppConfig.LoadAsync — đọc/parse appsettings.json");
             return false;
         }
     }
@@ -79,7 +86,11 @@ public sealed class AppConfigService : IAppConfigService
         }
         catch (Exception ex)
         {
-            // NOTE: Trả message gốc để admin biết lỗi cụ thể (sai pass, sai host, ...)
+            // Log lỗi (SqlException → file sql-errors) để chẩn đoán; trả message gốc cho user.
+            _logger?.Capture(ex, "AppConfig.TestConnectionAsync");
+            // SqlException có thể map sang thông báo thân thiện hơn message mặc định.
+            if (DbErrorClassifier.TryGetSqlException(ex, out var sql) && sql is not null)
+                return DbErrorClassifier.ToFriendlyMessage(sql) ?? ex.Message;
             return ex.Message;
         }
     }

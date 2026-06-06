@@ -123,8 +123,14 @@
             if (string.IsNullOrWhiteSpace(json)) return new();
             try
             {
+                // NumberHandling: ConfigStudio (DevExpress TextEdit) lưu prop number dưới dạng
+                // chuỗi (vd "2"). AllowReadingFromString để parse "2" -> int/double thay vì throw.
                 return JsonSerializer.Deserialize<NumericBoxProps>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true,
+                        NumberHandling = JsonNumberHandling.AllowReadingFromString
+                    }) ?? new();
             }
             catch { return new(); }
         }

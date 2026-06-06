@@ -22,6 +22,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
 {
     private readonly ISysLookupDataService? _lookupService;
     private readonly IAppConfigService? _appConfig;
+    private readonly IAppLogger? _logger;
     private CancellationTokenSource _cts = new();
 
     // ── Left panel — Lookup Codes ─────────────────────────────
@@ -173,11 +174,13 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
     public SysLookupManagerViewModel(
         ISysLookupDataService lookupService,
         IAppConfigService appConfig,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _lookupService = lookupService;
         _appConfig     = appConfig;
         _history       = history;
+        _logger        = logger;
 
         RefreshCommand    = new DelegateCommand(async () => await LoadCodesAsync());
         AddCodeCommand    = new DelegateCommand(ExecuteAddCode,    () => !string.IsNullOrWhiteSpace(NewCodeText));
@@ -213,6 +216,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysLookupManager.LoadCodes");
             StatusMessage = $"Lỗi: {ex.Message}";
         }
         finally { IsBusy = false; }
@@ -234,6 +238,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysLookupManager.LoadItems");
             StatusMessage = $"Lỗi load items: {ex.Message}";
         }
         finally { IsBusy = false; }
@@ -368,6 +373,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysLookupManager.SaveItem");
             EditorError = ex.Message;
         }
         finally { IsBusy = false; }
@@ -387,6 +393,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "SysLookupManager.Delete");
             StatusMessage = $"Lỗi xóa: {ex.Message}";
         }
         finally { IsBusy = false; }

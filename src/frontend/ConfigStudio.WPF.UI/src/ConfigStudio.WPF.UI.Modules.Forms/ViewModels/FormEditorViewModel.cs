@@ -38,6 +38,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private readonly II18nDataService? _i18nService;
     private readonly IFieldDataService? _fieldDataService;
     private readonly INavigationHistoryService? _history;
+    private readonly IAppLogger? _logger;
 
     // ── Schema diff state ─────────────────────────────────────
     private SchemaDiffResult _lastDiff = SchemaDiffResult.Empty;
@@ -761,7 +762,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         IDialogService? dialogService = null,
         II18nDataService? i18nService = null,
         IFieldDataService? fieldDataService = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IAppLogger? logger = null)
     {
         _regionManager    = regionManager;
         _formDataService  = formDataService;
@@ -772,13 +774,14 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _i18nService      = i18nService;
         _fieldDataService = fieldDataService;
         _history          = history;
+        _logger           = logger;
 
         // Tree manipulation
         AddSectionCommand = new DelegateCommand(ExecuteAddSection);
         AddFieldCommand = new DelegateCommand(ExecuteAddField);
-        DeleteNodeCommand = new DelegateCommand(ExecuteDeleteNode, () => IsNodeSelected);
-        MoveUpCommand = new DelegateCommand(ExecuteMoveUp, () => IsNodeSelected);
-        MoveDownCommand = new DelegateCommand(ExecuteMoveDown, () => IsNodeSelected);
+        DeleteNodeCommand = new DelegateCommand(async () => await ExecuteDeleteNodeAsync(), () => IsNodeSelected);
+        MoveUpCommand = new DelegateCommand(async () => await ExecuteMoveAsync(-1), () => IsNodeSelected);
+        MoveDownCommand = new DelegateCommand(async () => await ExecuteMoveAsync(+1), () => IsNodeSelected);
         OpenFieldConfigCommand = new DelegateCommand(ExecuteOpenFieldConfig, () => IsFieldSelected);
 
         // D2 — Bulk
@@ -1099,6 +1102,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         catch (OperationCanceledException) { /* Navigate away — bỏ qua */ }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.LoadData");
             ErrorMessage = $"Lỗi khi tải dữ liệu form: {ex.Message}";
         }
         finally
@@ -1248,6 +1252,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.SaveSection");
             ErrorMessage = $"Lưu Section thất bại: {ex.Message}";
         }
         finally
@@ -1514,6 +1519,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.SaveAutoFields");
             ErrorMessage = $"Lưu fields tự động thất bại: {ex.Message}";
         }
     }
@@ -1595,81 +1601,180 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         ExecuteOpenFieldConfig();
     }
 
-    private void ExecuteDeleteNode()
+    private async Task ExecuteDeleteNodeAsync()
     {
         if (SelectedNode is null) return;
 
         if (SelectedNode.NodeType == FormNodeType.Section)
         {
-            // WPF-04: Confirm trước khi xóa section vì kéo theo tất cả fields bên trong
-            var fieldCount = SelectedNode.Children.Count;
-            var msg = fieldCount > 0
-                ? $"Xóa section '{SelectedNode.DisplayName}' và {fieldCount} field bên trong?\nThao tác này không thể hoàn tác."
-                : $"Xóa section '{SelectedNode.DisplayName}'?\nThao tác này không thể hoàn tác.";
+            var section = SelectedNode;
+
+            // Nghiệp vụ: KHÔNG cho xóa section còn field — phải xóa/di chuyển field trước.
+            if (section.Children.Count > 0)
+            {
+                System.Windows.MessageBox.Show(
+                    $"Section '{section.DisplayName}' đang chứa {section.Children.Count} field.\n" +
+                    "Vui lòng xóa hoặc di chuyển hết field ra khỏi section trước khi xóa section.",
+                    "Không thể xóa section",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Warning);
+                return;
+            }
 
             var confirm = System.Windows.MessageBox.Show(
-                msg, "Xác nhận xóa section",
+                $"Xóa section '{section.DisplayName}'?\nThao tác này không thể hoàn tác.",
+                "Xác nhận xóa section",
                 System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Warning);
 
             if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
-            Sections.Remove(SelectedNode);
+            if (section.Id > 0 && _detailService is not null)
+                await SafeDbAsync(
+                    () => _detailService.DeleteSectionAsync(section.Id),
+                    $"FormEditor.DeleteSection section #{section.Id}");
+
+            Sections.Remove(section);
             RaisePropertyChanged(nameof(TotalSections));
             RaisePropertyChanged(nameof(TotalFields));
+            await PersistSectionsOrderAsync();
         }
         else
         {
-            var parent = FindParentSection(SelectedNode);
-            parent?.Children.Remove(SelectedNode);
+            var node   = SelectedNode;
+            var parent = FindParentSection(node);
+            parent?.Children.Remove(node);
             RaisePropertyChanged(nameof(TotalFields));
+
+            // Persist xóa field xuống DB + cập nhật lại Order_No các field còn lại.
+            await PersistFieldDeleteAsync(node);
+            if (parent is not null)
+                await PersistSectionOrderAsync(parent);
         }
 
         SelectedNode = null;
         PushUndoState("Xóa node");
         IsDirty = true;
-        _autoSave?.NotifyDirty();
         _linting?.NotifyChanged();
         RebuildAllFields();
     }
 
-
-    private void ExecuteMoveUp()
+    /// <summary>
+    /// Di chuyển node đang chọn lên (-1) / xuống (+1).
+    /// Field: reorder trong section; nếu đã ở đầu/cuối thì nhảy sang section liền kề.
+    /// Section: reorder trong danh sách sections. Mọi thay đổi đều persist xuống DB.
+    /// </summary>
+    private async Task ExecuteMoveAsync(int direction)
     {
         if (SelectedNode is null) return;
 
         if (SelectedNode.NodeType == FormNodeType.Section)
         {
-            MoveInCollection(Sections, SelectedNode, -1);
+            MoveInCollection(Sections, SelectedNode, direction);
+            ReindexSortOrders();
+            await PersistSectionsOrderAsync();
+            IsDirty = true;
+            return;
+        }
+
+        // ── Field ────────────────────────────────────────────────
+        var node   = SelectedNode;
+        var parent = FindParentSection(node);
+        if (parent is null) return;
+
+        int idx    = parent.Children.IndexOf(node);
+        int newIdx = idx + direction;
+
+        if (newIdx >= 0 && newIdx < parent.Children.Count)
+        {
+            // Reorder trong cùng section
+            parent.Children.Move(idx, newIdx);
+            ReindexSortOrders();
+            await PersistSectionOrderAsync(parent);
         }
         else
         {
-            var parent = FindParentSection(SelectedNode);
-            if (parent is not null)
-                MoveInCollection(parent.Children, SelectedNode, -1);
+            // Đã ở đầu/cuối → nhảy sang section liền kề (xuyên section)
+            int secIdx       = Sections.IndexOf(parent);
+            int targetSecIdx = secIdx + direction;
+            if (targetSecIdx < 0 || targetSecIdx >= Sections.Count) return; // không còn section
+
+            var target = Sections[targetSecIdx];
+            parent.Children.Remove(node);
+            if (direction < 0)
+                target.Children.Add(node);       // lên: xuống cuối section trên
+            else
+                target.Children.Insert(0, node); // xuống: lên đầu section dưới
+
+            ReindexSortOrders();
+
+            // Persist: đổi Section_Id của field + cập nhật Order_No cả 2 section
+            if (node.Id > 0 && target.Id > 0)
+                await SafeDbAsync(
+                    () => _fieldDataService!.MoveFieldToSectionAsync(node.Id, target.Id),
+                    $"FormEditor.MoveFieldToSection field #{node.Id} → section #{target.Id}");
+            await PersistSectionOrderAsync(parent);
+            await PersistSectionOrderAsync(target);
+
+            SelectedNode = node; // giữ field được chọn sau khi đổi section
+            RebuildAllFields();
         }
 
-        ReindexSortOrders();
         IsDirty = true;
     }
 
-    private void ExecuteMoveDown()
+    /// <summary>Xóa 1 field khỏi DB nếu đã lưu (Id &gt; 0). Field mới chỉ bỏ khỏi memory.</summary>
+    private async Task PersistFieldDeleteAsync(FormTreeNode field)
     {
-        if (SelectedNode is null) return;
+        if (_fieldDataService is null || field.Id <= 0) return;
+        await SafeDbAsync(
+            () => _fieldDataService.DeleteFieldAsync(field.Id),
+            $"FormEditor.DeleteField field #{field.Id}");
+    }
 
-        if (SelectedNode.NodeType == FormNodeType.Section)
-        {
-            MoveInCollection(Sections, SelectedNode, +1);
-        }
-        else
-        {
-            var parent = FindParentSection(SelectedNode);
-            if (parent is not null)
-                MoveInCollection(parent.Children, SelectedNode, +1);
-        }
+    /// <summary>Ghi lại Order_No của các section (đã lưu DB) theo thứ tự hiện tại.</summary>
+    private async Task PersistSectionsOrderAsync()
+    {
+        if (_detailService is null) return;
+        var items = Sections
+            .Where(s => s.Id > 0)
+            .Select(s => (s.Id, s.SortOrder))
+            .ToList();
+        if (items.Count == 0) return;
 
-        ReindexSortOrders();
-        IsDirty = true;
+        await SafeDbAsync(
+            () => _detailService.UpdateSectionOrderAsync(items),
+            "FormEditor.UpdateSectionOrder");
+    }
+
+    /// <summary>Ghi lại Order_No của các field (đã lưu DB) trong 1 section theo thứ tự hiện tại.</summary>
+    private async Task PersistSectionOrderAsync(FormTreeNode section)
+    {
+        if (_fieldDataService is null) return;
+        var items = section.Children
+            .Where(f => f.Id > 0)
+            .Select(f => (f.Id, f.SortOrder))
+            .ToList();
+        if (items.Count == 0) return;
+
+        await SafeDbAsync(
+            () => _fieldDataService.UpdateFieldOrderAsync(items),
+            $"FormEditor.UpdateFieldOrder section #{section.Id}");
+    }
+
+    /// <summary>Bọc thao tác DB: nuốt OperationCanceled, log lỗi khác, set ErrorMessage.</summary>
+    private async Task SafeDbAsync(Func<Task> op, string context)
+    {
+        try
+        {
+            await op();
+        }
+        catch (OperationCanceledException) { /* navigate away */ }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, context);
+            ErrorMessage = $"Lưu thay đổi thất bại: {ex.Message}";
+        }
     }
 
     private void ExecuteOpenFieldConfig()
@@ -1868,6 +1973,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.CreateForm");
             CreateErrorMessage = $"Lỗi tạo form: {ex.Message}";
         }
         finally
@@ -1913,6 +2019,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         catch (OperationCanceledException) { /* navigate away — bỏ qua */ }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.SaveForm");
             ErrorMessage = $"Lỗi khi lưu form: {ex.Message}";
         }
         finally
@@ -2383,6 +2490,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.LoadSysTables");
             CreateErrorMessage = $"Không thể tải danh sách Sys_Table: {ex.Message}";
         }
     }
@@ -2403,6 +2511,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.LoadSysTables");
             CreateErrorMessage = $"Không thể tải danh sách Sys_Table: {ex.Message}";
         }
     }
@@ -2733,6 +2842,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
         catch (Exception ex)
         {
+            _logger?.Capture(ex, "FormEditor.SyncSchema");
             ErrorMessage = $"Đồng bộ schema thất bại: {ex.Message}";
         }
         finally

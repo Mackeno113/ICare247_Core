@@ -46,4 +46,11 @@ public interface IFieldDataService
     /// </summary>
     Task UpdateFieldOrderAsync(IReadOnlyList<(int FieldId, int OrderNo)> items,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Chuyển field sang section khác (cập nhật Ui_Field.Section_Id).
+    /// Dùng khi di chuyển field xuyên section trong Form Editor.
+    /// Thứ tự (Order_No) được cập nhật riêng qua <see cref="UpdateFieldOrderAsync"/>.
+    /// </summary>
+    Task MoveFieldToSectionAsync(int fieldId, int sectionId, CancellationToken ct = default);
 }

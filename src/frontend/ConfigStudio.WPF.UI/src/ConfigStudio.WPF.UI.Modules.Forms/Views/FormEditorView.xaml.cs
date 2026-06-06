@@ -4,6 +4,7 @@
 // Purpose : Code-behind cho Form Editor — bind TreeView.SelectedItem vào ViewModel.
 
 using System.Windows.Controls;
+using System.Windows.Input;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 using DevExpress.Xpf.Grid;
@@ -26,6 +27,21 @@ public partial class FormEditorView : UserControl
         if (DataContext is FormEditorViewModel vm)
         {
             vm.SelectedNode = e.NewValue as FormTreeNode;
+        }
+    }
+
+    /// <summary>
+    /// Double-click trên field trong cây → mở nhanh màn Field Config.
+    /// Bỏ qua nếu đang chọn Section (double-click section chỉ expand/collapse).
+    /// </summary>
+    private void OnTreeMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (DataContext is FormEditorViewModel vm
+            && vm.IsFieldSelected
+            && vm.OpenFieldConfigCommand.CanExecute())
+        {
+            vm.OpenFieldConfigCommand.Execute();
+            e.Handled = true;
         }
     }
 
