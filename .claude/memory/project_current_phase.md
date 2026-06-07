@@ -1,8 +1,14 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-06
+> Cập nhật lần cuối: 2026-06-08
 
-## Đợt mới nhất — Master Data CRUD full-stack (session 38, 2026-06-06)
+## Đợt mới nhất — Master Data DxGrid + thiết kế Ui_View (session 41, 2026-06-08)
+
+Lưới danh mục chuyển sang DevExpress `DxGrid` (cấu hình qua `MasterDataGridConfig`/`MasterDataColumnDto`) + fix loại `Is_Virtual` khỏi lưới. **Chốt thiết kế kiến trúc `Ui_View`** (ADR-015): cụm 3 bảng cấu hình hiển thị danh sách (Grid/TreeList) tách khỏi form sửa, hỗ trợ datasource, render HTML vs export thuần, toolbar in/xuất (xlsx/csv client, pdf/docx server), i18n toàn bộ. Đã push master; handoff Codex làm VIEW-1 (migration + ConfigStudio).
+
+→ **Roadmap VIEW-0→VIEW-4c trong TASKS.md.** Đường tới hạn: Codex chạy migration `Ui_View` trước khi Claude wire backend (VIEW-2).
+
+## Đợt trước — Master Data CRUD full-stack (session 38, 2026-06-06)
 
 Feature metadata-driven CRUD cho màn hình danh mục: Tầng 0 (DB migrations 023+024) + Tầng 1 (backend generic CRUD + soft-check FK) + Tầng 2 (Blazor List/Form/Delete Popup↔Tab) + Tầng 3 (WPF Display_Mode dropdown + Show_In_List checkbox). Build backend 0/0, WPF 0/0.
 

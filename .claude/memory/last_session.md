@@ -1,6 +1,27 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-07 (session 39 — Tab tier + i18n popup + Layout config + Unique check + ConfigCache design)
+> Cập nhật: 2026-06-08 (session 41 — Master Data DxGrid + thiết kế Ui_View/ADR-015)
+
+## Session 41 (2026-06-08) — đã làm
+
+### 1. Lưới danh mục dùng DevExpress DxGrid + fix Is_Virtual (commit `1fb982b`, pushed)
+- `MasterDataGrid.razor`: HTML table → `DxGrid`, cấu hình qua `MasterDataGridConfig` (cấp lưới: paging/selector, filter row, group panel, selection, summary đếm) + `MasterDataColumnDto` mở rộng (Width/Align/DisplayFormat/AllowSort/Filter/Group). Cột động (Dictionary) đọc qua `CellDisplayTemplate` + `AsRow`.
+- **Fix bug:** `MasterDataRepository.GetFormInfoAsync` thêm `AND uf.Is_Virtual = 0` — trước đây virtual field có `Column_Id` lọt vào cột lưới/list/save.
+- `MasterDataApiService.GetListAsync`: unwrap `JsonElement` → kiểu CLR (long/decimal/bool/string) để DxGrid sort/filter/format đúng kiểu.
+- `MasterDataListPage` truyền `_gridConfig`. Build Blazor + slnx 0/0.
+
+### 2. Thiết kế Ui_View — cấu hình hiển thị danh sách tách khỏi form sửa (commit `8dad2ea`, pushed)
+- **3 bảng** (Config DB): `Ui_View` (header + datasource + hành vi + export/print + TreeList), `Ui_View_Column` (cột + render/export/format + conditional), `Ui_View_Action` (nút toolbar/row).
+- Quyết định: display ≠ edit; 1 bảng → N view; Grid+TreeList dùng chung; mọi text qua i18n scope `table_code`; **render giàu ≠ dữ liệu xuất** (export lấy giá trị thuần); pdf/docx server-side template, xlsx/csv DxGrid client.
+- Tài liệu: `docs/spec/14_VIEW_CONFIG_SPEC.md` (DDL đầy đủ), **ADR-015**, `docs/spec/10` §1d View Keys, `AI_HANDOFF.md` VIEW-0 (→ Codex), TASKS.md roadmap VIEW-0→VIEW-4c.
+
+### Trạng thái
+- Cả 2 commit đã push lên `origin/master` (`49738e7..8dad2ea`).
+- **VIEW-0 Done**; đường tới hạn: Codex chạy VIEW-1 (migration + seed view mặc định) → handoff → Claude vào VIEW-2 (backend).
+
+---
+
+## (Session trước) Cập nhật: 2026-06-07 (session 39 — Tab tier + i18n popup + Layout config + Unique check + ConfigCache design)
 
 ## Trạng thái cuối session
 - **Branch:** `master`
