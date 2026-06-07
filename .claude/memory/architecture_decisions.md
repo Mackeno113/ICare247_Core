@@ -106,3 +106,31 @@
   - **Bổ sung:** stampede lock per-key khi miss; negative cache (TTL ngắn) cho key không tồn tại.
 - **Anti-pattern cần dọn:** handler validation/trùng (`SaveMasterDataCommandHandler`, `InsertLookupCommandHandler`) đang gọi `IResourceRepository` thẳng → route qua `IConfigCache`. Lookup options (`LookupApiService`), permission tương tự.
 - **Lộ trình:** xem TASKS.md mục "ConfigCache facade".
+
+## ADR-015: Ui_View — cấu hình hiển thị danh sách tách khỏi form sửa (2026-06-07)
+- **Context:** Màn danh mục đang lấy cột lưới từ `Ui_Field.Show_In_List` — trộn 2 mối quan tâm
+  (form sửa vs hiển thị danh sách). Cần thêm TreeList, datasource tùy biến, thuộc tính cột giàu
+  (width/align/format/sort/filter/group/frozen), nút in/xuất file (xlsx/pdf/docx), render cột HTML.
+  `Ui_Field` không mô hình được quan hệ 1 bảng → N view, cũng không có chỗ cho hierarchy/toolbar.
+- **Decision:** Tạo cụm bảng cấu hình **view** generic trong Config DB — tách hẳn khỏi `Ui_Form`/`Ui_Field`:
+  - **`Ui_View`** (header): `View_Type` (Grid|TreeList|Cards), datasource (`Source_Type`/`Source_Object`:
+    Table|View|Sp|Api), `Edit_Form_Id` (link form Thêm/Sửa), hành vi lưới (paging/filter/group/search/
+    selection/CRUD), export/print, TreeList (`Key_Field`/`Parent_Field`/`Expand_Level`), master-detail.
+  - **`Ui_View_Column`**: cột + thuộc tính — `Render_Mode` (Text|Html|…), sort/filter/group, frozen,
+    conditional format (`Style_Rule_Json` qua Grammar V1 AST), và **export rule**.
+  - **`Ui_View_Action`**: nút toolbar/row — CRUD mở rộng, export, print, navigate, event, api.
+  - **i18n bắt buộc:** mọi text là `_Key` → `Sys_Resource`, **scope = `table_code`**, category `view`
+    (xem spec 10 §1d). Caption cột fallback về `Ui_Field.Label_Key` để không dịch trùng.
+  - **Render giàu ≠ dữ liệu xuất:** ô có thể render HTML; **export luôn lấy giá trị thuần**
+    (`Export_Format ?? Display_Format`, bỏ `Render_Mode`); cột HTML-only → `Allow_Export=0`.
+  - **Export engine:** xlsx/xls/csv = DxGrid client-side; **pdf/docx = server-side theo template**
+    (DxGrid không xuất docx); xuất toàn bộ (vượt trang) ⇒ bắt buộc server-side.
+- **Tương thích:** `Ui_Field.Show_In_List` bị thay; migration auto-sinh 1 Grid view mặc định cho mỗi
+  `Ui_Form` hiện có. Route `/master/{FormCode}` → `/view/{ViewCode}` (giữ alias chuyển tiếp).
+- **Runtime model:** `MasterDataGridConfig`/`MasterDataColumnDto` (đã code session này) là model runtime
+  mà `Ui_View*` map vào; component Blazor `DataView` chọn `DxGrid`/`DxTreeList` theo `View_Type`.
+- **Cache:** `IConfigCache.GetViewAsync(viewCode, tenant, lang)`, key `{tenant}:{lang}:v{n}` (ADR-014);
+  ResourceMap loader nạp thêm prefix `{tableCode}.view.%`.
+- **Ownership:** db + ConfigStudio = Codex; Domain/Application/Infrastructure/Api/Blazor = Claude.
+- **Chi tiết schema đầy đủ:** `docs/spec/14_VIEW_CONFIG_SPEC.md`.
+- **Status:** thiết kế chốt; triển khai chưa bắt đầu (cần handoff Codex).

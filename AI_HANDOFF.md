@@ -19,6 +19,34 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-07] VIEW-0 (Ui_View) — claude → codex
+
+- Status: in_progress (thiết kế chốt; chờ Codex làm DB + ConfigStudio)
+- Files (Codex sẽ tạo/sửa):
+  - `db/0xx_create_ui_view.sql` — migration tạo 3 bảng + seed view mặc định từ `Ui_Form`
+  - ConfigStudio WPF: module/màn "Quản lý View" (header + grid cột + actions) — đặt theo cấu trúc module hiện có
+  - `docs/ICare247 Config Studio/TASKS_WPF.md` — thêm task VIEW-0
+- Cần biết:
+  - **Thiết kế đã chốt** — đọc `docs/spec/14_VIEW_CONFIG_SPEC.md` (DDL đầy đủ 3 bảng) + **ADR-015** trong
+    `.claude/memory/architecture_decisions.md` + i18n convention `docs/spec/10_RESOURCE_KEY_CONVENTION.md` §1d.
+  - 3 bảng: `Ui_View` (header + datasource + hành vi + export/print + TreeList), `Ui_View_Column`
+    (cột + render/export/format), `Ui_View_Action` (nút toolbar/row).
+  - **DDL bám convention hiện có**: IDENTITY, `Tenant_Id` FK nullable, `Version`, `Is_Active`,
+    `Created_At/Updated_At`, unique index global/tenant (xem mẫu `Sys_Table` trong `db/000_create_schema.sql`).
+  - **Migration tương thích**: auto-sinh 1 Grid view mặc định cho mỗi `Ui_Form` đang có (lấy field
+    `Show_In_List`, `Edit_Form_Id` = chính form đó) → màn `/master/*` cũ không vỡ.
+  - **Mọi text là `_Key`** (i18n, scope `table_code`, category `view`); ConfigStudio cần nút "+ Tạo key"
+    + auto-seed vi+en như field/section/tab.
+  - Theo ADR-007: ConfigStudio đọc/ghi **trực tiếp DB qua Dapper**, không gọi API.
+  - Phần Domain/Application/Infrastructure/Api/Blazor (`IViewRepository`, `ViewController`, component
+    `DataView` chọn DxGrid/DxTreeList) **Claude sẽ làm sau** khi bảng DB sẵn sàng — Codex KHÔNG đụng backend.
+  - Lưu ý code đã có: `MasterDataGridConfig`/`MasterDataColumnDto` (Blazor RuntimeCheck) là runtime model
+    sẽ map vào `Ui_View*` — Claude lo việc nối, Codex không cần quan tâm.
+- Bước tiếp theo (Codex): viết migration `db/0xx_create_ui_view.sql` (3 bảng + seed view mặc định), chạy thử
+  trên DB, rồi báo lại qua handoff để Claude wire backend (`GetViewAsync` + `ViewController` + `DataView`).
+
+---
+
 ### [2026-05-31] WPF-10/WPF-13 - codex -> claude
 
 - Status: done

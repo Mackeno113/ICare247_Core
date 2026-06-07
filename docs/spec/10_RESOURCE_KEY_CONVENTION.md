@@ -189,6 +189,68 @@ INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
 
 ---
 
+## 1d. View Keys (Grid / TreeList — tiêu đề màn, cột, nút)
+
+> Áp cho cụm `Ui_View` / `Ui_View_Column` / `Ui_View_Action` (xem `14_VIEW_CONFIG_SPEC.md`).
+> **Scope = `table_code`** (giống Tab/Section/Form) → tái dùng bản dịch khi nhiều view bind cùng bảng.
+> Category cố định: **`view`**.
+
+### Convention
+
+```
+{tableCode}.view.{viewCode}.title                        -- tiêu đề màn
+{tableCode}.view.{viewCode}.col.{fieldName}.caption      -- tiêu đề cột
+{tableCode}.view.{viewCode}.action.{actionCode}.label    -- nhãn nút
+{tableCode}.view.{viewCode}.action.{actionCode}.tooltip  -- tooltip nút
+{tableCode}.view.{viewCode}.action.{actionCode}.confirm  -- xác nhận (vd Xóa)
+```
+
+| Phần | Mô tả | Ví dụ |
+|------|-------|-------|
+| `tableCode` | `Sys_Table.Table_Code` viết thường | `dm_nhanvien` |
+| `view` | cố định — namespace | `view` |
+| `viewCode` | `Ui_View.View_Code` viết thường | `ds_nhanvien` |
+| `fieldName` | `Ui_View_Column.Field_Name` viết thường | `manhanvien` |
+| `actionCode` | `Ui_View_Action.Action_Code` viết thường | `export` |
+
+### Ví dụ — Grid `DS_NhanVien` bind bảng `DM_NhanVien`
+
+| Key | vi | en |
+|-----|----|----|
+| `dm_nhanvien.view.ds_nhanvien.title` | `"Danh sách nhân viên"` | `"Employees"` |
+| `dm_nhanvien.view.ds_nhanvien.col.manhanvien.caption` | `"Mã NV"` | `"Emp. Code"` |
+| `dm_nhanvien.view.ds_nhanvien.action.export.label` | `"Xuất file"` | `"Export"` |
+
+### Cột lưu (đều là KEY — không literal)
+
+| Bảng | Cột text → key |
+|---|---|
+| `Ui_View` | `Title_Key`, `Export_File_Name_Key` |
+| `Ui_View_Column` | `Caption_Key`, `Export_Caption_Key`, `Cell_Template_Key` |
+| `Ui_View_Action` | `Label_Key`, `Tooltip_Key`, `Confirm_Key` |
+
+### Fallback — tiêu đề cột (tái dùng label field, tránh dịch trùng)
+
+```
+1. Caption_Key (override riêng cho view)          ← ưu tiên cao nhất
+2. Nếu cột bound → Ui_Field.Label_Key của field    ← tái dùng "Mã nhân viên" đã có
+3. Field_Name / Column_Code                         ← fallback cuối, không throw
+```
+
+> Mặc định `Caption_Key = NULL` ⇒ tự lấy `Label_Key` của field. Chỉ set khi muốn caption khác label form.
+
+### Export đa ngôn ngữ
+
+Header cột khi xuất file = resolve `Export_Caption_Key ?? Caption_Key` theo **đúng `langCode` đang chọn**
+→ file xlsx/pdf/docx có tiêu đề đúng ngôn ngữ. Ô dữ liệu vẫn lấy **giá trị thuần** (xem spec 14 §4).
+
+### Auto-generate + seed
+
+Giống nút "+ Tạo key": build sẵn theo pattern, pre-fill, cảnh báo nếu trùng, **auto seed vi+en** khi lưu
+(pattern `RegisterI18nKeysAsync`). ResourceMap loader (§5.1) nạp thêm prefix `{tableCode}.view.%`.
+
+---
+
 ## 2. Key Convention
 
 ### 2.1 Cấu trúc key

@@ -69,6 +69,49 @@
 
 ---
 
+## 📋 Roadmap — Ui_View (cấu hình hiển thị danh sách: Grid/TreeList) — ADR-015
+
+> Mục tiêu: cấu hình **hiển thị danh sách** (Grid/TreeList) metadata-driven, **tách khỏi form sửa**.
+> 3 bảng: `Ui_View` (header + datasource + hành vi + export/print + TreeList), `Ui_View_Column`
+> (cột + render/export/format), `Ui_View_Action` (nút toolbar/row). Mọi text qua i18n (scope `table_code`).
+> Thiết kế chốt: `docs/spec/14_VIEW_CONFIG_SPEC.md` + ADR-015 + spec 10 §1d. Handoff: `AI_HANDOFF.md` (VIEW-0).
+> Render giàu ≠ dữ liệu xuất: export lấy giá trị thuần; pdf/docx = server-side template, xlsx/csv = DxGrid.
+
+### Giai đoạn 0 — Thiết kế (✅ chốt 2026-06-07)
+- [x] **VIEW-0** — Chốt thiết kế 3 bảng + i18n + engine rules ✅ (spec 14, ADR-015, spec 10 §1d, handoff VIEW-0).
+
+### Giai đoạn 1 — Database + tương thích (owner: Codex)
+- [ ] **VIEW-1a** — Migration `db/0xx_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (bám convention `Sys_Table`: IDENTITY, Tenant FK, Version, Is_Active, unique global/tenant).
+- [ ] **VIEW-1b** — Seed **view Grid mặc định** cho mỗi `Ui_Form` đang có (cột từ field `Show_In_List`, `Edit_Form_Id` = chính form) → màn `/master/*` cũ không vỡ.
+- [ ] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (3 bảng mới).
+- [ ] **VIEW-1run** — Chạy migration trên DB thật ⏳ (manual). Sau đó báo handoff → Claude wire backend.
+
+### Giai đoạn 2 — Backend (owner: Claude)
+- [ ] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (Entities/View).
+- [ ] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): GetViewByCode (header + columns + actions), resolve i18n caption qua Sys_Resource theo langCode (fallback `Label_Key` field → Field_Name).
+- [ ] **VIEW-2c** — `IConfigCache.GetViewAsync(viewCode, tenant, lang)` + key `{tenant}:{lang}:v{n}` (ADR-014); ResourceMap loader nạp thêm prefix `{tableCode}.view.%`; `InvalidateViewAsync` + endpoint.
+- [ ] **VIEW-2d** — CQRS `Features/View/`: `GetViewQuery` (metadata) — data list tái dùng `MasterData` query theo `Source_Type` (Table trước, View/Sp/Api sau).
+- [ ] **VIEW-2e** — `ViewController`: GET `{viewCode}/info` (metadata), GET data (delegate master-data list), endpoint export server-side (pdf/docx theo template).
+
+### Giai đoạn 3 — Blazor runtime (owner: Claude)
+- [ ] **VIEW-3a** — Map `Ui_View*` → `MasterDataGridConfig`/`MasterDataColumnDto` (runtime model đã có); bổ sung `MasterDataViewActionDto`.
+- [ ] **VIEW-3b** — Component `DataView` chọn render `<DxGrid>` / `<DxTreeList>` theo `View_Type`; route `/view/{ViewCode}` (giữ alias `/master/*` chuyển tiếp).
+- [ ] **VIEW-3c** — Render cột theo `Render_Mode` (Text/Html/Image/Link/Badge/Boolean/Template) + conditional format (`Style_Rule_Json` qua AST).
+- [ ] **VIEW-3d** — Toolbar/row actions từ `Ui_View_Action`: CRUD (mở `Edit_Form_Id` popup/tab), export client (xlsx/csv qua DxGrid), gọi export server (pdf/docx), print.
+- [ ] **VIEW-3e** — Export rule: lấy **giá trị thuần** (`Export_Format ?? Display_Format`, bỏ `Render_Mode`); header export resolve theo langCode; `Allow_Export=0` cho cột HTML-only/command/selection.
+
+### Giai đoạn 4 — ConfigStudio WPF (owner: Codex)
+- [ ] **VIEW-4a** — Màn "Quản lý View": list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList).
+- [ ] **VIEW-4b** — Grid cấu hình cột (`Ui_View_Column`): order, width, align, format, render mode, sort/filter/group, export flags + nút "+ Tạo key" i18n.
+- [ ] **VIEW-4c** — Cấu hình `Ui_View_Action` (toolbar/row) + auto-seed i18n vi+en (pattern `RegisterI18nKeysAsync`).
+
+### Nguyên tắc cứng (review checklist)
+- Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.
+- Export = giá trị thuần (bỏ HTML); pdf/docx server-side; xlsx/csv client DxGrid.
+- Cache view qua `IConfigCache` (key có tenant + lang + version); ConfigStudio đọc/ghi DB trực tiếp (ADR-007).
+
+---
+
 ## ✅ Done (Session 38 — Master Data CRUD full-stack — 2026-06-06)
 
 > Màn List bản ghi danh mục + Thêm/Sửa/Xóa. Form Thêm/Sửa render **Popup** hoặc **Tab** (nội bộ SPA)
