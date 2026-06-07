@@ -54,12 +54,18 @@
 
 - ✅ Commit `98e699a` cụm CC-0/CC-1.
 - ✅ **CC-2**: `GetLookupByCodeQueryHandler` delegate `IConfigCache.GetLookupOptionsAsync` (xóa dead `CacheKeys.Lookup`). Thêm `InvalidateLookupAsync` + endpoint `POST /api/v1/lookups/{code}/invalidate-cache`. Build 0/0.
-- ✅ **CC-1b**: rà runtime i18n. Sửa 2 bug thật — `SaveMasterDataCommandHandler` (resourceMap null → lấy qua facade) + `EventEngine` TRIGGER_VALIDATION (thêm `FormCode`/`LangCode` vào `FormEvent`, inject `IConfigCache`). RuntimeController vốn đã OK. Build 0/0. _CC-2 + CC-1b chưa commit._
+- ✅ **CC-1b**: rà runtime i18n. Sửa 2 bug thật — `SaveMasterDataCommandHandler` (resourceMap null → lấy qua facade) + `EventEngine` TRIGGER_VALIDATION (thêm `FormCode`/`LangCode` vào `FormEvent`, inject `IConfigCache`). RuntimeController vốn đã OK. Build 0/0.
+
+## Commits session 40
+- `98e699a` — CC-0a/0b/0c/0d(DI) + CC-1a (facade nền tảng + dọn anti-pattern i18n).
+- `47f1e8d` — CC-2 (lookup options qua facade) + CC-1b (sửa 2 bug i18n runtime).
+
+> ⚠️ API đã bị **stop** để build verify — khởi động lại khi cần chạy app.
 
 ## ⏳ Việc cần làm ngay (đầu session sau)
-1. Commit CC-2 + CC-1b. Khởi động lại API nếu cần test runtime.
-2. **CC-3** — thêm repo `Sys_Permission` → `ConfigCache.GetFormPermissionsAsync` (hiện trả null) + endpoint invalidate permission.
-3. **CC-4b** — wire WPF gọi `invalidate-cache` (form + lookup) sau khi lưu config.
+1. **CC-3 (permission) — HOÃN**: chờ chốt schema bảng `Sys_Permission` (role/user × form × CRUD, tenant scope). Sub-task CC-3a→3d đã ghi trong TASKS.md. `GetFormPermissionsAsync` hiện trả null (deny-by-default), entity `FormPermission` là contract sẵn.
+2. **CC-4** — version-stamp scale-out + WPF wiring invalidate (chỉ cần khi ≥2 instance).
+3. Các việc tồn khác: BE-002 integration tests, BE-004 Design System tokens, E2E test Master Data với DB thật.
 
 ## Điểm vào việc tiếp theo
 - **CC-0a** (nếu code ConfigCache): tạo `ICare247.Application/Interfaces/IConfigCache.cs` + record `FormPermission` — chỉ interface, build vẫn xanh. Xem TASKS.md roadmap ConfigCache + ADR-014.
