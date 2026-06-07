@@ -41,6 +41,7 @@
         <MasterDataGrid Columns="_listColumns"
                         Items="_items"
                         PkColumn="@_info.PkColumn"
+                        Config="_gridConfig"
                         OnEdit="(id) => OpenForm(id)"
                         OnDelete="OpenDelete" />
 
@@ -80,6 +81,9 @@
 
     private string? _search;
     private bool _activeOnly;
+
+    // Cấu hình lưới DxGrid — default an toàn; sau này nạp per-form từ metadata.
+    private readonly MasterDataGridConfig _gridConfig = new();
 
     private bool _showPopup;
     private object? _editId;

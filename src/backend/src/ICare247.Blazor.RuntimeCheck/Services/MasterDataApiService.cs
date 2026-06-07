@@ -45,8 +45,30 @@ public sealed class MasterDataApiService
 
         var resp = await _http.GetAsync(url, ct);
         await EnsureOkAsync(resp, $"GetList {formCode}");
-        return await resp.Content.ReadFromJsonAsync<MasterDataListResultDto>(JsonOpts, ct)
-               ?? new MasterDataListResultDto();
+        var dto = await resp.Content.ReadFromJsonAsync<MasterDataListResultDto>(JsonOpts, ct)
+                  ?? new MasterDataListResultDto();
+
+        // Unwrap JsonElement → kiểu CLR thật (long/decimal/bool/string) để DxGrid
+        // sort/filter/format đúng kiểu thay vì so sánh trên JsonElement.
+        foreach (var row in dto.Items)
+            foreach (var key in row.Keys.ToList())
+                row[key] = UnwrapJson(row[key]);
+        return dto;
+    }
+
+    /// <summary>Mở JsonElement về kiểu CLR nguyên thủy; giữ nguyên giá trị không phải JsonElement.</summary>
+    private static object? UnwrapJson(object? value)
+    {
+        if (value is not JsonElement je) return value;
+        return je.ValueKind switch
+        {
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.String => je.GetString(),
+            JsonValueKind.True   => true,
+            JsonValueKind.False  => false,
+            JsonValueKind.Number => je.TryGetInt64(out var l) ? l : je.GetDecimal(),
+            _                    => je.ToString()
+        };
     }
 
     /// <summary>Lấy 1 bản ghi theo PK (cho form Sửa).</summary>
@@ -176,6 +198,46 @@ public sealed class MasterDataColumnDto
     public bool   ShowInList { get; set; }
     public bool   IsReadOnly { get; set; }
     public int    OrderNo    { get; set; }
+
+    // ── Cấu hình hiển thị cột trên DxGrid ─────────────────────────────────────────
+    // Backend có thể chưa gửi các field này → giữ default; sau này nạp từ Ui_Field.
+
+    /// <summary>Độ rộng cột, vd "120px". Rỗng = tự co theo nội dung.</summary>
+    public string? Width         { get; set; }
+    /// <summary>Căn lề: "left" | "center" | "right". Rỗng = suy theo NetType.</summary>
+    public string? Align         { get; set; }
+    /// <summary>Định dạng .NET, vd "n0", "#,##0", "dd/MM/yyyy". Rỗng = hiển thị thô.</summary>
+    public string? DisplayFormat { get; set; }
+    /// <summary>Cho phép sort. Mặc định true.</summary>
+    public bool    AllowSort     { get; set; } = true;
+    /// <summary>Cho phép filter (filter row). Mặc định true.</summary>
+    public bool    AllowFilter   { get; set; } = true;
+    /// <summary>Cho phép group theo cột. Mặc định false.</summary>
+    public bool    AllowGroup    { get; set; }
+}
+
+/// <summary>
+/// Cấu hình cấp lưới cho màn danh mục (ánh xạ tính năng DxGrid). Default an toàn để
+/// dùng ngay; sau này nạp per-form từ Ui_Form (vd cột Grid_Config_Json).
+/// </summary>
+public sealed class MasterDataGridConfig
+{
+    /// <summary>Số dòng mỗi trang. Bỏ qua khi VirtualScrolling = true.</summary>
+    public int    PageSize         { get; set; } = 20;
+    /// <summary>Hiện thanh phân trang.</summary>
+    public bool   PagerVisible     { get; set; } = true;
+    /// <summary>Hiện bộ chọn kích thước trang (10/20/50).</summary>
+    public bool   PageSizeSelector { get; set; } = true;
+    /// <summary>Hiện filter row (ô lọc dưới header).</summary>
+    public bool   ShowFilterRow    { get; set; } = true;
+    /// <summary>Hiện group panel (kéo cột để nhóm).</summary>
+    public bool   ShowGroupPanel   { get; set; }
+    /// <summary>Dùng virtual scrolling thay phân trang (data lớn).</summary>
+    public bool   VirtualScrolling { get; set; }
+    /// <summary>Chế độ chọn dòng: "none" | "single" | "multiple".</summary>
+    public string SelectionMode    { get; set; } = "none";
+    /// <summary>Hiện summary đếm tổng số dòng ở footer.</summary>
+    public bool   ShowCountSummary { get; set; } = true;
 }
 
 public sealed class MasterDataListResultDto

@@ -95,6 +95,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
                    ON r.Resource_Key = uf.Label_Key AND r.Lang_Code = 'vi'
             WHERE  uf.Form_Id = @FormId
               AND  uf.Is_Visible = 1
+              AND  uf.Is_Virtual = 0   -- virtual field UI-only, không map cột DB → loại khỏi lưới/list/save
             ORDER  BY uf.Order_No
             """;
         var cols = (await cfg.QueryAsync<MasterDataColumn>(
