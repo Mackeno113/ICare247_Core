@@ -91,6 +91,71 @@
 
 ## ⬜ Backlog
 
+### Priority 0 — Form Title i18n + Phân quyền Add-new (2026-06-07)
+
+**WPF-FORM-TITLE** 🟢 Done (full-stack):
+- `db/028`: `Ui_Form.Title_Key`. Convention `{table_code}.form.title` (spec 10 §1a).
+- Backend `FormRepository`: resolve Title_Key → `FormMetadata.FormName` theo Lang_Code.
+- Blazor: `LookupAddDialog` header "Thêm mới: {tên}"; FormRunner/MasterData dùng FormName sẵn.
+- WPF: `Ui_Form.Title_Key` đọc/lưu (FormDetailRecord, GetFormDetailAsync, UpdateFormMetadataAsync +titleKey); FormEditor card "TIÊU ĐỀ HIỂN THỊ" + nút 🌐 (tái dùng I18nEditorDialog).
+
+**WPF-PERMISSION** 🟡 Phần WPF done, runtime PENDING:
+- ✅ WPF lưu `Sys_Permission` (Object_Type='Form'): `FormPermissionRecord`, `GetFormPermissionsAsync`/`SaveFormPermissionsAsync`; FormEditor Permissions tab overlay khi load + save khi Lưu form.
+- **Design phân quyền add-new (chốt):**
+  - 2 tầng: `AllowAddNew` (config WPF, mọi user) **AND** `Sys_Permission.Can_Write` (per role, DB) → `canAddNew`.
+  - Can_Write trên Object_Type='Form', Object_Id=Form_Id (form AddFormCode).
+- [ ] **Runtime (chưa làm):** cần (1) context user/role đăng nhập; (2) API resolve permission theo form+role (tách khỏi metadata để giữ cache global); (3) **backend enforce** Can_Write ở API insert/save (403 nếu thiếu) — không tin client; (4) ẩn nút "Thêm mới" runtime theo canAddNew.
+
+
+### Priority 0 — Popup i18n dùng chung (2026-06-07)
+
+> **WPF-I18N-POPUP**: `I18nEditorDialog` — popup nhập bản dịch **mọi ngôn ngữ** (động theo
+> Sys_Language) cho 1 resource key, dùng chung khắp nơi có i18n. Thay 2 ô vi/en inline.
+
+**Trạng thái:** 🟡 Code xong (chưa build verify).
+
+- [x] `Modules.I18n`: `I18nValueRow` (model), `I18nEditorDialogViewModel` (IDialogAware), `I18nEditorDialog.xaml(.cs)`
+- [x] `ViewNames.I18nEditorDialog` + đăng ký `RegisterDialog` trong `I18nModule`
+- [x] Contract: in `key`/`contextLabel`/`seedValue`/`keyEditable`; out `key`/`primaryValue`
+- [x] **Section + Tab** (FormEditor): bỏ 2 ô vi/en inline → preview vi + nút 🌐 Dịch; bỏ lưu resource trong SaveSection/SaveTab (popup là chủ sở hữu bản dịch)
+- [x] **Field** (FieldConfigView): nút 🌐 cạnh Label/Placeholder/Tooltip + Required error key; `OpenI18nKeyCommand`; `ManageI18n` → popup khi đã có Label_Key
+- [x] **Event messageKey (SHOW_MESSAGE)** (2026-06-07): structured editor — `ActionItemDto` thêm `MessageKey`/`Severity` + parse/serialize ParamJson (`LoadParamsFromJson`/`SyncParamsToJson`); EventEditor thêm detail panel (ActionType/TargetField + block SHOW_MESSAGE: MessageKey + 🌐 + Severity); `OpenMessageKeyI18nCommand`; subscribe IsDirty.
+- [ ] **Build verify** — chưa chạy.
+- [ ] (Tùy chọn) `keyEditable=true` + UI sửa key cho trường hợp key tự do (hiện key readonly).
+
+---
+
+### Priority 0 — Tầng Tab cho FormEditor (DESIGN CHỐT 2026-06-06)
+
+> **WPF-TAB**: Thêm tầng **Tab** vào FormEditor. Hiện tree chỉ 2 tầng `Section → Field`;
+> DB đã sẵn `Ui_Tab.Title_Key` + `Ui_Section.Tab_Id` (nullable). Section i18n panel đã xong,
+> Tab mirror y hệt. **Convention key đã chốt** (xem `docs/spec/10_RESOURCE_KEY_CONVENTION.md` §1bb):
+> `{table_code}.tab.{tab_code}.title` — scope = **table_code**, có hậu tố `.title`.
+
+**Trạng thái:** 🟡 Đã code xong (2026-06-07) — hướng "Tab panel riêng + gán Section" (giữ tree 2 tầng).
+Chưa build verify (user yêu cầu skip build).
+
+**Quyết định kiến trúc:** KHÔNG dựng tree 3 tầng (đụng ~50 chỗ `Sections.SelectMany`).
+Thay vào đó: tab quản lý ở TabItem "📑 Tabs" riêng (master list + editor i18n) + dropdown
+"Thuộc Tab" trong panel Section để gán `Ui_Section.Tab_Id`.
+
+**Checklist:**
+- [x] Core/Data: `TabDetailRecord` + `TabUpsertRequest` (mới); `SectionUpsertRequest`/`SectionDetailRecord` thêm `int? TabId`
+- [x] `IFormDetailDataService`: `GetTabsByFormAsync`, `UpsertTabAsync`, `DeleteTabAsync`
+- [x] `FormDetailDataService`: implement 3 method tab (Dapper + tx, max-1-default, gỡ section khi xóa tab); Section SELECT/INSERT/UPDATE thêm `Tab_Id`
+- [x] `FormTabItem.cs` (model editable cho list+editor); `FormTreeNode` thêm `int? TabId`
+- [x] `FormEditorViewModel`: `Tabs`, `SelectedTab`, `IsTabSelected`, `TabTitleKeyPreview` (`{table_code}.tab.{code}.title`), `ValidateTabCode`, `Add/Save/Delete/CancelTabCommand`, load tab + set section.TabId, SaveSection truyền TabId
+- [x] `FormEditorView.xaml`: TabItem "📑 Tabs" (master-detail i18n) + combo "Thuộc Tab" trong panel Section
+- [x] **Clone form**: `CloneTabsAsync` + `CloneSectionsAsync` remap `Tab_Id` (tránh FK trỏ form gốc)
+- [x] **Migration `.title` cho Section** (2026-06-07): builder `SectionTitleKeyPreview` thêm `.title`
+      (`{table_code}.section.{code}.title`) + script `db/025_migrate_section_title_key_add_title_suffix.sql`
+      migrate data cũ (Ui_Section.Title_Key + Sys_Resource.Resource_Key, idempotent, guard NOT EXISTS).
+- [ ] **Build verify** — CHƯA chạy (skip theo yêu cầu)
+- [ ] **Chạy script db/025** trên các DB tenant đã có section data (deploy step).
+- [ ] (Bỏ) ~~tree 3 tầng + FormNodeType.Tab~~ — không làm theo quyết định kiến trúc.
+
+---
+
 ### Priority 1 — Bug / Thiếu logic trong màn hình cấu hình field
 
 ~~WPF-01, WPF-02 — moved to Done (2026-03-26)~~

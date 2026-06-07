@@ -16,6 +16,7 @@ public sealed class I18nModule : IModule
     public void RegisterTypes(IContainerRegistry containerRegistry)
     {
         containerRegistry.RegisterForNavigation<I18nManagerView, I18nManagerViewModel>(ViewNames.I18nManager);
+        containerRegistry.RegisterDialog<I18nEditorDialog, I18nEditorDialogViewModel>(ViewNames.I18nEditorDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

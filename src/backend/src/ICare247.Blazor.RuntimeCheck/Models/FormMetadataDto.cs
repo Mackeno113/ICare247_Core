@@ -14,6 +14,10 @@ public sealed class FormMetadataDto
     public string FormName { get; set; } = "";
     public int    Version  { get; set; }
     public string Platform { get; set; } = "web";
+    /// <summary>Bề rộng tối đa form (px). null = mặc định 880.</summary>
+    public int?   MaxWidth { get; set; }
+    /// <summary>Số cột lưới nền (1..4). null = mặc định 4. =1 → mỗi field 1 dòng.</summary>
+    public int?   Columns  { get; set; }
     public List<SectionMetadataDto> Sections { get; set; } = [];
     public List<FieldMetadataDto>   Fields   { get; set; } = [];
 }

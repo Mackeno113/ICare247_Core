@@ -664,6 +664,75 @@
                                     </StackPanel>
                                 </Border>
 
+                                <!-- ── Card: Tiêu đề hiển thị (đa ngôn ngữ) ── -->
+                                <Border Style="{StaticResource SectionCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="TIÊU ĐỀ HIỂN THỊ (ĐA NGÔN NGỮ)"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                    Padding="10,8" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding FormTitleVi}"
+                                                           FontSize="13" Foreground="#1E293B"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="Tiêu đề hiển thị tiếng Việt hiện tại" />
+                                            </Border>
+                                            <dx:SimpleButton Grid.Column="2"
+                                                             Command="{Binding OpenFormTitleI18nCommand}"
+                                                             Height="34" Padding="12,0"
+                                                             ToolTip="Nhập tiêu đề form cho tất cả ngôn ngữ">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="🌐" FontSize="13" VerticalAlignment="Center" />
+                                                    <TextBlock Text="Dịch" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                            </dx:SimpleButton>
+                                        </Grid>
+                                        <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                   Text="Hiển thị ở popup Thêm mới + header form cho người dùng. Cần chọn Business Table trước để sinh key. Nhấn Lưu thay đổi sau khi dịch." />
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ── Card: Bố cục hiển thị (Blazor runtime) ── -->
+                                <Border Style="{StaticResource SectionCardStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="BỐ CỤC HIỂN THỊ"
+                                                   Style="{StaticResource SectionTitleStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="20" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Style="{StaticResource FieldGroupStyle}">
+                                                <TextBlock Text="Bề rộng tối đa (px)"
+                                                           Style="{StaticResource FieldLabelStyle}" />
+                                                <dxe:TextEdit EditValue="{Binding MaxWidth, UpdateSourceTrigger=PropertyChanged}"
+                                                              NullText="Mặc định (880)"
+                                                              ToolTip="Giới hạn bề rộng form khi render. Trống = 880px." />
+                                                <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                           Text="Form không giãn quá số px này. Trống = mặc định 880px." />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2" Style="{StaticResource FieldGroupStyle}">
+                                                <TextBlock Text="Số cột"
+                                                           Style="{StaticResource FieldLabelStyle}" />
+                                                <dxe:ComboBoxEdit ItemsSource="{Binding FormColumnsOptions}"
+                                                                  EditValue="{Binding FormColumns}"
+                                                                  IsTextEditable="False"
+                                                                  NullText="Mặc định (4)"
+                                                                  ToolTip="Số cột lưới nền. Chọn 1 = mỗi field 1 dòng." />
+                                                <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                           Text="1 = mỗi field 1 dòng. Trống = 4 cột (mặc định)." />
+                                            </StackPanel>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- ── Card: Mô tả ─────────────────── -->
                                 <Border Style="{StaticResource SectionCardStyle}">
                                     <StackPanel>
@@ -844,35 +913,55 @@
                                                                        ToolTip="Bật/tắt section. Section bị tắt sẽ không render cho người dùng cuối." />
                                                     </StackPanel>
                                                 </Grid>
+
+                                                <!-- Thuộc Tab — gán section vào tab (Ui_Section.Tab_Id) -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Thuộc Tab"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:ComboBoxEdit ItemsSource="{Binding Tabs}"
+                                                                      EditValue="{Binding SelectedNode.TabId, Mode=TwoWay}"
+                                                                      ValueMember="TabId"
+                                                                      DisplayMember="DisplayLabel"
+                                                                      IsTextEditable="False"
+                                                                      NullText="(Không thuộc tab nào — form phẳng)"
+                                                                      ToolTip="Gán section vào một tab. Để trống = section không thuộc tab nào (render phẳng). Cần nhấn Lưu Section để áp dụng." />
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Tạo/sửa tab tại tab '📑 Tabs'. Đổi xong nhớ nhấn Lưu Section bên dưới." />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Card: Tên hiển thị (Sys_Resource) -->
+                                        <!-- Card: Tên hiển thị đa ngôn ngữ (popup) -->
                                         <Border Style="{StaticResource SectionCardStyle}">
                                             <StackPanel>
-                                                <TextBlock Text="TÊN HIỂN THỊ (SYS_RESOURCE)"
+                                                <TextBlock Text="TÊN HIỂN THỊ (ĐA NGÔN NGỮ)"
                                                            Style="{StaticResource SectionTitleStyle}" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="12" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                            Padding="10,8" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding SelectedNode.ResourceVi}"
+                                                                   FontSize="13" Foreground="#1E293B"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="Tên hiển thị tiếng Việt hiện tại" />
+                                                    </Border>
+                                                    <dx:SimpleButton Grid.Column="2"
+                                                                     Command="{Binding OpenSectionI18nCommand}"
+                                                                     Height="34" Padding="12,0"
+                                                                     ToolTip="Mở popup nhập bản dịch cho tất cả ngôn ngữ">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="🌐" FontSize="13" VerticalAlignment="Center" />
+                                                            <TextBlock Text="Dịch" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </dx:SimpleButton>
+                                                </Grid>
                                                 <TextBlock Style="{StaticResource HelpTextStyle}"
-                                                           Margin="0,0,0,12"
-                                                           Text="Nhập tên hiển thị cho từng ngôn ngữ. Lưu cùng lúc với Section khi nhấn Lưu Section bên dưới." />
-
-                                                <!-- Tiếng Việt (bắt buộc) -->
-                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Tiếng Việt (vi) *"
-                                                               Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.ResourceVi, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="VD: Thông tin cơ bản"
-                                                                  ToolTip="Tên hiển thị tiếng Việt — bắt buộc phải có." />
-                                                </StackPanel>
-
-                                                <!-- Tiếng Anh (tuỳ chọn) -->
-                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                                    <TextBlock Text="Tiếng Anh (en)"
-                                                               Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:TextEdit EditValue="{Binding SelectedNode.ResourceEn, UpdateSourceTrigger=PropertyChanged}"
-                                                                  NullText="VD: Basic Information"
-                                                                  ToolTip="Tên hiển thị tiếng Anh — tuỳ chọn." />
-                                                </StackPanel>
+                                                           Text="Nhấn 🌐 Dịch để nhập/sửa bản dịch mọi ngôn ngữ (lưu ngay). Cần đặt Section Code trước để sinh key." />
                                             </StackPanel>
                                         </Border>
 
@@ -1332,6 +1421,254 @@
                                 </dxg:GridControl.Columns>
                             </dxg:GridControl>
                         </DockPanel>
+                    </TabItem>
+
+                    <!-- ══════════════════════════════════════════════
+                         TAB 6: Tabs (Ui_Tab) — quản lý tab + i18n
+                         ══════════════════════════════════════════════ -->
+                    <TabItem>
+                        <TabItem.Header>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📑" FontSize="13" VerticalAlignment="Center" />
+                                <TextBlock Text="Tabs" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource TabBadgeStyle}">
+                                    <TextBlock Text="{Binding Tabs.Count}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               Foreground="{StaticResource AccentDarkBrush}" />
+                                </Border>
+                            </StackPanel>
+                        </TabItem.Header>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="240" MinWidth="200" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- ── Master list ───────────────────────── -->
+                            <DockPanel Grid.Column="0">
+                                <Border DockPanel.Dock="Top" Padding="12,8"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="0,0,0,1" Background="#FAFBFC">
+                                    <DockPanel>
+                                        <TextBlock Text="Danh sách Tab" FontSize="13"
+                                                   FontWeight="SemiBold" Foreground="#1E293B"
+                                                   VerticalAlignment="Center" />
+                                        <dx:SimpleButton DockPanel.Dock="Right"
+                                                         Command="{Binding AddTabCommand}"
+                                                         HorizontalAlignment="Right"
+                                                         Height="26" Padding="8,0"
+                                                         ToolTip="Thêm tab mới">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="＋" FontSize="13" FontWeight="Bold"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Text="Tab" Margin="4,0,0,0" FontSize="12" />
+                                            </StackPanel>
+                                        </dx:SimpleButton>
+                                    </DockPanel>
+                                </Border>
+
+                                <ListBox ItemsSource="{Binding Tabs}"
+                                         SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
+                                         BorderThickness="0" Background="Transparent"
+                                         Padding="6,4"
+                                         HorizontalContentAlignment="Stretch">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="2,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Width="24" Height="24"
+                                                        CornerRadius="5"
+                                                        Background="{StaticResource AccentLightBrush}"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="📑" FontSize="12"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Margin="8,0,0,0"
+                                                            VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding DisplayLabel}"
+                                                               FontSize="13" FontWeight="Medium"
+                                                               Foreground="#1E293B" />
+                                                    <TextBlock Text="{Binding TabCode}"
+                                                               FontSize="11"
+                                                               FontFamily="Cascadia Code, Consolas"
+                                                               Foreground="{StaticResource MutedBrush}" />
+                                                </StackPanel>
+                                                <Border Grid.Column="2" Background="#F0FDF4"
+                                                        CornerRadius="4" Padding="5,1"
+                                                        VerticalAlignment="Center"
+                                                        Visibility="{Binding IsDefault, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="mặc định" FontSize="10"
+                                                               Foreground="#16A34A" FontWeight="SemiBold" />
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </DockPanel>
+
+                            <!-- ── Detail editor ─────────────────────── -->
+                            <Grid Grid.Column="1">
+                                <!-- Empty state -->
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Visibility="{Binding IsTabSelected, Converter={StaticResource InvBoolToVis}}">
+                                    <Border Width="64" Height="64" CornerRadius="32"
+                                            Background="#F1F5F9"
+                                            HorizontalAlignment="Center" Margin="0,0,0,16">
+                                        <TextBlock Text="📑" FontSize="26"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center" />
+                                    </Border>
+                                    <TextBlock Text="Chọn hoặc thêm một tab"
+                                               FontSize="14" Foreground="{StaticResource MutedBrush}"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="để cấu hình tiêu đề đa ngôn ngữ"
+                                               FontSize="12" Foreground="{StaticResource MutedBrush}"
+                                               Opacity="0.7" HorizontalAlignment="Center"
+                                               Margin="0,4,0,0" />
+                                </StackPanel>
+
+                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                              Visibility="{Binding IsTabSelected, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Margin="24,20,24,24" MaxWidth="560">
+
+                                        <!-- Card: Thuộc tính tab -->
+                                        <Border Style="{StaticResource SectionCardStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="THUỘC TÍNH TAB"
+                                                           Style="{StaticResource SectionTitleStyle}" />
+
+                                                <!-- Tab Code -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Tab Code *"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <dxe:TextEdit EditValue="{Binding SelectedTab.TabCode, UpdateSourceTrigger=PropertyChanged}"
+                                                                  NullText="VD: thong_tin"
+                                                                  ToolTip="Mã định danh tab, duy nhất trong form. Chữ thường, số, dấu _." />
+                                                    <Border Background="#FEF2F2" CornerRadius="4" Padding="8,4"
+                                                            Margin="0,4,0,0"
+                                                            Visibility="{Binding HasTabCodeError, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="{Binding TabCodeError}"
+                                                                   Foreground="#DC2626" FontSize="11" />
+                                                    </Border>
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Chỉ a-z, 0-9, dấu gạch dưới (_). VD: thong_tin, bao_hiem" />
+                                                </StackPanel>
+
+                                                <!-- Title Key (auto preview) -->
+                                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                                    <TextBlock Text="Title Key (tự động)"
+                                                               Style="{StaticResource FieldLabelStyle}" />
+                                                    <Border Background="#F8FAFC" CornerRadius="6"
+                                                            BorderBrush="{StaticResource BorderBrush}"
+                                                            BorderThickness="1" Padding="10,7">
+                                                        <TextBlock Text="{Binding TabTitleKeyPreview}"
+                                                                   FontFamily="Cascadia Code, Consolas, monospace"
+                                                                   FontSize="11"
+                                                                   Foreground="{StaticResource MutedBrush}"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="{Binding TabTitleKeyPreview}" />
+                                                    </Border>
+                                                    <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                               Text="Tự sinh từ Table Code + tab + Tab Code. Dùng tra Sys_Resource." />
+                                                </StackPanel>
+
+                                                <!-- Icon Key + Thứ tự -->
+                                                <Grid Margin="0,0,0,18">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                        <ColumnDefinition Width="90" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="Icon Key"
+                                                                   Style="{StaticResource FieldLabelStyle}" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedTab.IconKey, UpdateSourceTrigger=PropertyChanged}"
+                                                                      NullText="VD: user, file-text"
+                                                                      ToolTip="Icon tùy chọn trên tab header (không phải text dịch)." />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Thứ tự"
+                                                                   Style="{StaticResource FieldLabelStyle}" />
+                                                        <dxe:TextEdit EditValue="{Binding SelectedTab.OrderNo, UpdateSourceTrigger=PropertyChanged}"
+                                                                      NullText="0"
+                                                                      ToolTip="Thứ tự hiển thị tab (trái → phải)." />
+                                                    </StackPanel>
+                                                </Grid>
+
+                                                <dxe:CheckEdit IsChecked="{Binding SelectedTab.IsDefault}"
+                                                               Content="Tab mặc định (mở đầu tiên khi load form)"
+                                                               FontSize="13"
+                                                               ToolTip="Tab tự mở khi form load. Tối đa 1 tab/form — bật tab này sẽ tắt tab khác." />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Card: Tên hiển thị đa ngôn ngữ (popup) -->
+                                        <Border Style="{StaticResource SectionCardStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="TÊN HIỂN THỊ (ĐA NGÔN NGỮ)"
+                                                           Style="{StaticResource SectionTitleStyle}" />
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="12" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                                            BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                            Padding="10,8" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding SelectedTab.ResourceVi}"
+                                                                   FontSize="13" Foreground="#1E293B"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   ToolTip="Tiêu đề tab tiếng Việt hiện tại" />
+                                                    </Border>
+                                                    <dx:SimpleButton Grid.Column="2"
+                                                                     Command="{Binding OpenTabI18nCommand}"
+                                                                     Height="34" Padding="12,0"
+                                                                     ToolTip="Mở popup nhập bản dịch cho tất cả ngôn ngữ">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="🌐" FontSize="13" VerticalAlignment="Center" />
+                                                            <TextBlock Text="Dịch" Margin="6,0,0,0" VerticalAlignment="Center" />
+                                                        </StackPanel>
+                                                    </dx:SimpleButton>
+                                                </Grid>
+                                                <TextBlock Style="{StaticResource HelpTextStyle}"
+                                                           Text="Nhấn 🌐 Dịch để nhập/sửa tiêu đề tab mọi ngôn ngữ (lưu ngay). Cần đặt Tab Code trước để sinh key." />
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Lưu / Hủy / Xóa -->
+                                        <Grid Margin="0,4,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="12" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <dx:SimpleButton Grid.Column="0"
+                                                             Command="{Binding DeleteTabCommand}"
+                                                             Content="Xóa Tab" Height="34" Padding="14,0"
+                                                             ToolTip="Xóa tab — section thuộc tab sẽ gỡ về dạng phẳng." />
+                                            <dx:SimpleButton Grid.Column="2"
+                                                             Command="{Binding SaveTabCommand}"
+                                                             Content="Lưu Tab" Height="34"
+                                                             ToolTip="Lưu Tab Code + Icon + Tên hiển thị vào DB." />
+                                            <dx:SimpleButton Grid.Column="4"
+                                                             Command="{Binding CancelTabCommand}"
+                                                             Content="Hủy" Height="34" Padding="16,0"
+                                                             ToolTip="Tải lại giá trị từ DB, hủy thay đổi chưa lưu." />
+                                        </Grid>
+
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
+                        </Grid>
                     </TabItem>
 
                 </TabControl>

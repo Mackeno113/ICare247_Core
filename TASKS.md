@@ -6,6 +6,62 @@
 
 ---
 
+## 📋 Roadmap — ConfigCache facade (đọc config qua cache, hạn chế chọc DB) — ADR-014
+
+> Mục tiêu: 1 facade `IConfigCache` đọc mọi *config* (metadata, i18n, lookup, permission) qua
+> L1(mem)+L2(Redis); web/handler chỉ dùng cache, miss mới đọc DB. Tách Config (cache) vs Data (không cache).
+> Invalidation: Version-stamp (scale-out) + Event-remove + TTL. Chi tiết: ADR-014.
+
+### Giai đoạn 0 — Nền tảng facade
+- [ ] **CC-0a** — `IConfigCache` (Application/Interfaces): `GetFormMetadata`, `GetResourceMap(scope,lang,tenant)`, `ResolveKey(key,lang,tenant)`, `GetLookupOptions(code,lang,tenant)`, `GetFormPermissions(formId,tenant)`.
+- [ ] **CC-0b** — Implement `ConfigCache` bọc `MetadataEngine` + repo config; cache-aside qua `ICacheService` (đã có L1/L2). Key chừa sẵn slot `:v{n}` (version-stamp ready).
+- [ ] **CC-0c** — Stampede lock per-key khi miss + negative cache (TTL ngắn) cho key không tồn tại.
+- [ ] **CC-0d** — DI đăng ký; convention: handler/web cấm inject repo config trực tiếp (chỉ `IConfigCache`).
+
+### Giai đoạn 1 — i18n resource (ưu tiên — dọn anti-pattern hiện tại)
+- [ ] **CC-1a** — `SaveMasterDataCommandHandler` + `InsertLookupCommandHandler`: bỏ gọi `IResourceRepository` thẳng → resolve message trùng/validation qua `IConfigCache.ResolveKey`.
+- [ ] **CC-1b** — Gom mọi resolve i18n runtime về facade (label/validation/unique/message).
+
+### Giai đoạn 2 — Lookup options
+- [ ] **CC-2** — Cache `Sys_Lookup` options theo `code+lang+tenant`; đọc qua facade. Invalidate khi sửa Sys_Lookup.
+
+### Giai đoạn 3 — Permission
+- [ ] **CC-3** — Cache `Sys_Permission` theo `form+tenant` (phục vụ runtime enforce). Invalidate khi sửa permission ở WPF.
+
+### Giai đoạn 4 — Invalidation nâng cấp (khi scale-out ≥2 instance)
+- [ ] **CC-4a** — Version-stamp: `cfgver:{tenant}:{form}` (metadata) / `cfgver:{tenant}` (i18n/lookup) trong Redis; key gắn `:v{n}`; version cache L1 TTL 10–30s.
+- [ ] **CC-4b** — ConfigStudio (WPF) write path → INCR version (hoặc gọi API invalidate) sau khi lưu cấu hình.
+- [ ] **CC-4c** — Bỏ dần Event-remove khi version-stamp ổn (giữ TTL làm lưới an toàn).
+
+### Nguyên tắc cứng (review checklist)
+- Config → cache; Data (bản ghi nghiệp vụ) → KHÔNG cache.
+- Web/Handler không đọc repo config trực tiếp — chỉ `IConfigCache`.
+- Mọi cache key có `{tenant}` (+ `{lang}` nếu i18n) (+ `:v{n}` version-ready).
+
+---
+
+## 📋 Roadmap — Tách `ICare247.ApiClient` SDK dùng chung cho web app
+
+> Bối cảnh: `ICare247.Blazor.RuntimeCheck` (WASM, chỉ là project test) tự viết `FormApiService`,
+> `MasterDataApiService`, `LookupApiService` (HttpClient) + DTO. Web app thật sau này cần y hệt
+> → tách thư viện client SDK dùng chung, tránh lặp code mỗi frontend.
+>
+> Kiến trúc: backend (Api @ :7130) giữ nguyên; mọi web app là CLIENT gọi API qua SDK này.
+> Cache/config nằm server-side sau API — client không tự cache config / không chọc DB.
+
+- [ ] **SDK-1** — Tạo project `ICare247.ApiClient` (class lib net9.0): các client `FormApiClient`,
+      `MasterDataApiClient`, `LookupApiClient`, `RuntimeApiClient` (validate/event) + helper gắn
+      `X-Tenant-Id` header và `?lang`.
+- [ ] **SDK-2** — Chuyển DTO chia sẻ vào SDK (FormMetadataDto, FieldMetadataDto, MasterData DTOs,
+      LookupItem…) — nguồn sự thật chung, khỏi viết lại mỗi web app.
+- [ ] **SDK-3** — Refactor `RuntimeCheck` dùng `ICare247.ApiClient` thay cho service/DTO nhúng riêng
+      (verify chạy lại như cũ).
+- [ ] **SDK-4** — Web app thật: tạo project presentation mới, reference `ICare247.ApiClient`, build UI.
+      (Backend KHÔNG sửa — chỉ thêm client.)
+- [ ] **SDK-note** — Cân nhắc generate client từ OpenAPI (Scalar/NSwag) thay vì viết tay nếu API ổn định.
+
+---
+
 ## ✅ Done (Session 38 — Master Data CRUD full-stack — 2026-06-06)
 
 > Màn List bản ghi danh mục + Thêm/Sửa/Xóa. Form Thêm/Sửa render **Popup** hoặc **Tab** (nội bộ SPA)

@@ -13,6 +13,7 @@ namespace ConfigStudio.WPF.UI.Core.Interfaces;
 public interface IFormDetailDataService
 {
     Task<FormDetailRecord?> GetFormDetailAsync(int formId, int tenantId, CancellationToken ct = default);
+    Task<IReadOnlyList<TabDetailRecord>> GetTabsByFormAsync(int formId, int tenantId, CancellationToken ct = default);
     Task<IReadOnlyList<SectionDetailRecord>> GetSectionsByFormAsync(int formId, int tenantId, CancellationToken ct = default);
     Task<IReadOnlyList<FieldDetailRecord>> GetFieldsByFormAsync(int formId, int tenantId, CancellationToken ct = default);
     Task<IReadOnlyList<EventSummaryRecord>> GetEventsSummaryByFormAsync(int formId, int tenantId, CancellationToken ct = default);
@@ -21,6 +22,16 @@ public interface IFormDetailDataService
     Task DeactivateFormAsync(int formId, int tenantId, CancellationToken ct = default);
     Task RestoreFormAsync(int formId, int tenantId, CancellationToken ct = default);
 
+    /// <summary>Đọc phân quyền form theo role (Sys_Permission, Object_Type='Form').</summary>
+    Task<IReadOnlyList<FormPermissionRecord>> GetFormPermissionsAsync(int formId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lưu phân quyền form theo role (upsert Sys_Permission Object_Type='Form', Object_Id=formId).
+    /// Row mọi quyền = false vẫn lưu (ghi nhận đã cấu hình "không cho phép").
+    /// </summary>
+    Task SaveFormPermissionsAsync(int formId, IReadOnlyList<FormPermissionRecord> permissions,
+        CancellationToken ct = default);
+
     /// <summary>
     /// Upsert một Section vào Ui_Section.
     /// Khi SectionId=0 → INSERT và trả về Section_Id mới sinh.
@@ -28,6 +39,21 @@ public interface IFormDetailDataService
     /// Khi OldTitleKey khác TitleKey → rename Resource_Key trong Sys_Resource.
     /// </summary>
     Task<int> UpsertSectionAsync(SectionUpsertRequest req, CancellationToken ct = default);
+
+    /// <summary>
+    /// Upsert một Tab vào Ui_Tab.
+    /// Khi TabId=0 → INSERT và trả về Tab_Id mới sinh.
+    /// Khi TabId>0 → UPDATE và trả về TabId truyền vào.
+    /// Khi OldTitleKey khác TitleKey → rename Resource_Key trong Sys_Resource.
+    /// Khi IsDefault=true → gỡ cờ default của các tab khác cùng form.
+    /// </summary>
+    Task<int> UpsertTabAsync(TabUpsertRequest req, CancellationToken ct = default);
+
+    /// <summary>
+    /// Xóa một Tab khỏi Ui_Tab. Các section đang gán tab này sẽ được set Tab_Id = NULL
+    /// (không xóa section) trong cùng một transaction.
+    /// </summary>
+    Task DeleteTabAsync(int tabId, CancellationToken ct = default);
 
     /// <summary>
     /// Xóa hẳn một Section khỏi Ui_Section cùng toàn bộ field con

@@ -32,7 +32,7 @@ else if (_error is not null)
 }
 else if (_form is not null)
 {
-    <div class="page-container">
+    <div class="page-container form-runner-page" style="@FormStyleAttr">
         @* Header *@
         <div class="form-header">
             <button class="btn-back" @onclick="GoBack">← Danh sách</button>
@@ -111,55 +111,78 @@ else if (_form is not null)
         }
 
         @* Form body — sections *@
+        @{
+            // Gom các section có field + nhóm orphan (field không thuộc section nào)
+            // NOTE: không dùng biến tên 'section' vì @section là Razor directive
+            var sectionGroups = _form.Sections
+                .Select(sec => new
+                {
+                    Name   = sec.SectionName,
+                    Fields = _fieldStates.Where(fs => sec.Fields.Any(f => f.FieldCode == fs.FieldCode)).ToList()
+                })
+                .Where(g => g.Fields.Count > 0)
+                .ToList();
+
+            var orphanFields = _fieldStates
+                .Where(fs => !_form.Sections.Any(s => s.Fields.Any(f => f.FieldCode == fs.FieldCode)))
+                .ToList();
+
+            // Số nhóm thực có nội dung. ≤1 → render phẳng (không khung group).
+            var groupCount = sectionGroups.Count + (orphanFields.Count > 0 ? 1 : 0);
+            var useGroups  = groupCount > 1;
+        }
+
         <div class="form-body">
-            @foreach (var sec in _form.Sections)
+            @if (useGroups)
             {
-                @* NOTE: không dùng biến tên 'section' vì @section là Razor directive *@
-                var secFields = _fieldStates
-                    .Where(fs => sec.Fields.Any(f => f.FieldCode == fs.FieldCode))
-                    .ToList();
-
-                if (secFields.Count == 0) continue;
-
-                <div class="section-card">
-                    @if (!string.IsNullOrWhiteSpace(sec.SectionName))
+                @foreach (var grp in sectionGroups)
+                {
+                    <div class="section-card">
+                        @if (!string.IsNullOrWhiteSpace(grp.Name))
+                        {
+                            <div class="section-title">@grp.Name</div>
+                        }
+                        <div class="fields-grid" style="@GridStyleAttr">
+                            @foreach (var fs in grp.Fields)
+                            {
+                                <FieldRenderer State="fs"
+                                               OnChange="OnFieldChanged"
+                                               OnBlur="OnFieldBlur"
+                                               Context="BuildContext()"
+                                               DebugMode="DebugMode" />
+                            }
+                        </div>
+                    </div>
+                }
+                @if (orphanFields.Count > 0)
+                {
+                    <div class="section-card">
+                        <div class="section-title">Các field khác</div>
+                        <div class="fields-grid" style="@GridStyleAttr">
+                            @foreach (var fs in orphanFields)
+                            {
+                                <FieldRenderer State="fs"
+                                               OnChange="OnFieldChanged"
+                                               OnBlur="OnFieldBlur"
+                                               Context="BuildContext()"
+                                               DebugMode="DebugMode" />
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                @* Chỉ 1 nhóm → render field phẳng, không bọc card group *@
+                <div class="fields-grid" style="@GridStyleAttr">
+                    @foreach (var fs in _fieldStates)
                     {
-                        <div class="section-title">@(sec.SectionName)</div>
+                        <FieldRenderer State="fs"
+                                       OnChange="OnFieldChanged"
+                                       OnBlur="OnFieldBlur"
+                                       Context="BuildContext()"
+                                       DebugMode="DebugMode" />
                     }
-                    <div class="fields-grid">
-                        @foreach (var fs in secFields)
-                        {
-                            <FieldRenderer State="fs"
-                                           OnChange="OnFieldChanged"
-                                           OnBlur="OnFieldBlur"
-                                           Context="BuildContext()"
-                                           DebugMode="DebugMode" />
-                        }
-                    </div>
-                </div>
-            }
-
-            @* Fields không có section *@
-            @{
-                var orphanFields = _fieldStates
-                    .Where(fs => !_form.Sections.Any(s =>
-                        s.Fields.Any(f => f.FieldCode == fs.FieldCode)))
-                    .ToList();
-            }
-            @if (orphanFields.Count > 0)
-            {
-                <div class="section-card">
-                    <div class="section-title">Các field khác</div>
-                    <div class="fields-grid">
-                        @foreach (var fs in orphanFields)
-                        {
-                            <FieldRenderer State="fs"
-                                           OnChange="OnFieldChanged"
-                                           OnBlur="OnFieldBlur"
-                                           Context="BuildContext()"
-                                           DebugMode="DebugMode" />
-                        }
-                    </div>
                 </div>
             }
         </div>
@@ -210,6 +233,12 @@ else if (_form is not null)
     /// <summary>Thông báo từ SHOW_MESSAGE delta — hiển thị cuối form.</summary>
     private List<FormMessage>           _messages       = [];
 
+    /// <summary>Inline style giới hạn bề rộng form (Ui_Form.Max_Width). Trống = dùng CSS mặc định 880px.</summary>
+    private string FormStyleAttr => _form?.MaxWidth is int w && w > 0 ? $"max-width:{w}px" : "";
+
+    /// <summary>Inline var số cột lưới per-form (Ui_Form.Form_Columns). Trống = CSS mặc định 4.</summary>
+    private string GridStyleAttr => _form?.Columns is int c && c > 0 ? $"--form-cols:{c}" : "";
+
     protected override async Task OnInitializedAsync()
         => await LoadFormAsync();
 
@@ -244,7 +273,8 @@ else if (_form is not null)
                 IsVirtual    = f.IsVirtual,
                 IsEditMode   = IsEditMode,
                 Value        = ParseDefaultValue(f.DefaultValueJson),
-                ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
+                // Default Half (2/4) khi field chưa cấu hình Col_Span → cân đối, không bị 1/4 loãng.
+                ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)2,
                 LookupSource    = f.LookupSource,
                 // Static: truyền LookupCode để load Sys_Lookup options
                 LookupCode      = f.LookupSource == "static" ? f.LookupCode : null,

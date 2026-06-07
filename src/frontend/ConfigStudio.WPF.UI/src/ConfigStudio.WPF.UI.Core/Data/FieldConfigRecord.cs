@@ -42,6 +42,8 @@ public sealed class FieldConfigRecord
     /// Dùng cho helper field như TinhThanh lọc cascading XaPhuong mà không cần lưu DB.
     /// </summary>
     public bool IsVirtual { get; init; }
+    /// <summary>Field phải duy nhất — backend chống trùng (Ui_Field.Is_Unique). Dùng cho mã định danh.</summary>
+    public bool IsUnique { get; init; }
     public int OrderNo { get; init; }
     public string? ControlPropsJson { get; init; }
     /// <summary>Độ rộng grid 4-column: 1 = 1/4, 2 = 2/4(half), 3 = 3/4, 4 = full.</summary>

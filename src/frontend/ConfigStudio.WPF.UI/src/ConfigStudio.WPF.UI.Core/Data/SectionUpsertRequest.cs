@@ -18,5 +18,6 @@ public sealed record SectionUpsertRequest(
     string TitleKey,
     int    OrderNo,
     bool   IsActive,
-    string OldTitleKey
+    string OldTitleKey,
+    int?   TabId = null
 );

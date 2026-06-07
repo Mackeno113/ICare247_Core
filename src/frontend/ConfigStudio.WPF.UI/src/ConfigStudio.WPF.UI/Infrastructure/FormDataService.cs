@@ -791,8 +791,9 @@ public sealed class FormDataService : IFormDataService
         await using var conn = new SqlConnection(_config.ConnectionString);
         await conn.OpenAsync(ct);
 
-        // Đọc schema 3 bảng
+        // Đọc schema 4 bảng
         var formCols    = await GetTableColumnsAsync(conn, "dbo", "Ui_Form",    ct);
+        var tabCols     = await GetTableColumnsAsync(conn, "dbo", "Ui_Tab",     ct);
         var sectionCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Section", ct);
         var fieldCols   = await GetTableColumnsAsync(conn, "dbo", "Ui_Field",   ct);
 
@@ -808,10 +809,15 @@ public sealed class FormDataService : IFormDataService
             var newFormId = await CloneFormRowAsync(
                 conn, tx, formCols, sourceFormId, newFormCode, newFormName, tenantId, hasTenantId, ct);
 
-            // ── Bước 2: Clone Ui_Section (lấy mapping oldId→newId) ──
+            // ── Bước 2a: Clone Ui_Tab (lấy mapping oldTabId→newTabId) ──
+            var tabMap = new Dictionary<int, int>();
+            if (tabCols.Count > 0 && tabCols.Contains("Tab_Id"))
+                tabMap = await CloneTabsAsync(conn, tx, tabCols, sourceFormId, newFormId, ct);
+
+            // ── Bước 2b: Clone Ui_Section (remap Tab_Id, lấy mapping oldId→newId) ──
             var sectionMap = new Dictionary<int, int>();
             if (sectionCols.Count > 0 && sectionCols.Contains("Section_Id"))
-                sectionMap = await CloneSectionsAsync(conn, tx, sectionCols, sourceFormId, newFormId, ct);
+                sectionMap = await CloneSectionsAsync(conn, tx, sectionCols, sourceFormId, newFormId, tabMap, ct);
 
             // ── Bước 3: Clone Ui_Field với remapped Section_Id ───
             if (fieldCols.Count > 0 && fieldCols.Contains("Field_Id"))
@@ -881,22 +887,79 @@ public sealed class FormDataService : IFormDataService
                 tx, cancellationToken: ct));
     }
 
-    /// <summary>Clone Ui_Section với new Form_Id. Trả về oldSectionId→newSectionId mapping.</summary>
-    private static async Task<Dictionary<int, int>> CloneSectionsAsync(
+    /// <summary>Clone Ui_Tab với new Form_Id. Trả về oldTabId→newTabId mapping.</summary>
+    private static async Task<Dictionary<int, int>> CloneTabsAsync(
         SqlConnection conn, SqlTransaction tx,
         HashSet<string> cols,
         int sourceFormId, int newFormId, CancellationToken ct)
     {
         var oldIds = (await conn.QueryAsync<int>(
             new CommandDefinition(
-                "SELECT Section_Id FROM dbo.Ui_Section WHERE Form_Id = @FormId",
+                "SELECT Tab_Id FROM dbo.Ui_Tab WHERE Form_Id = @FormId",
                 new { FormId = sourceFormId }, tx, cancellationToken: ct))).ToList();
 
         if (oldIds.Count == 0) return [];
 
-        var fixedCols   = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Section_Id", "Form_Id" };
+        var fixedCols   = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Tab_Id", "Form_Id" };
         var insertCols  = new List<string> { "Form_Id" };
         var selectExprs = new List<string> { "@NewFormId" };
+
+        foreach (var col in cols)
+        {
+            if (!fixedCols.Contains(col))
+            {
+                insertCols.Add(col);
+                selectExprs.Add("src." + col);
+            }
+        }
+
+        var sql = $"""
+            INSERT INTO dbo.Ui_Tab ({string.Join(", ", insertCols)})
+            SELECT {string.Join(", ", selectExprs)}
+            FROM dbo.Ui_Tab src
+            WHERE src.Tab_Id = @OldTabId;
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            """;
+
+        var map = new Dictionary<int, int>(oldIds.Count);
+        foreach (var oldId in oldIds)
+        {
+            var newId = await conn.ExecuteScalarAsync<int>(
+                new CommandDefinition(sql,
+                    new { NewFormId = newFormId, OldTabId = oldId },
+                    tx, cancellationToken: ct));
+            map[oldId] = newId;
+        }
+        return map;
+    }
+
+    /// <summary>
+    /// Clone Ui_Section với new Form_Id và remapped Tab_Id (từ tabMap).
+    /// Trả về oldSectionId→newSectionId mapping.
+    /// </summary>
+    private static async Task<Dictionary<int, int>> CloneSectionsAsync(
+        SqlConnection conn, SqlTransaction tx,
+        HashSet<string> cols,
+        int sourceFormId, int newFormId,
+        Dictionary<int, int> tabMap, CancellationToken ct)
+    {
+        var hasTabId = cols.Contains("Tab_Id");
+
+        var oldRows = (await conn.QueryAsync<(int SectionId, int? TabId)>(
+            new CommandDefinition(
+                hasTabId
+                    ? "SELECT Section_Id, Tab_Id FROM dbo.Ui_Section WHERE Form_Id = @FormId"
+                    : "SELECT Section_Id, CAST(NULL AS INT) AS Tab_Id FROM dbo.Ui_Section WHERE Form_Id = @FormId",
+                new { FormId = sourceFormId }, tx, cancellationToken: ct))).ToList();
+
+        if (oldRows.Count == 0) return [];
+
+        // Tab_Id remap qua tham số riêng @NewTabId (không pass-through từ src)
+        var fixedCols   = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Section_Id", "Form_Id", "Tab_Id" };
+        var insertCols  = new List<string> { "Form_Id" };
+        var selectExprs = new List<string> { "@NewFormId" };
+
+        if (hasTabId) { insertCols.Add("Tab_Id"); selectExprs.Add("@NewTabId"); }
 
         foreach (var col in cols)
         {
@@ -915,14 +978,19 @@ public sealed class FormDataService : IFormDataService
             SELECT CAST(SCOPE_IDENTITY() AS INT);
             """;
 
-        var map = new Dictionary<int, int>(oldIds.Count);
-        foreach (var oldId in oldIds)
+        var map = new Dictionary<int, int>(oldRows.Count);
+        foreach (var (oldSectionId, oldTabId) in oldRows)
         {
+            // Remap Tab_Id cũ → Tab_Id mới (nếu có trong mapping); giữ NULL nếu section không thuộc tab
+            int? newTabId = oldTabId.HasValue && tabMap.TryGetValue(oldTabId.Value, out var mapped)
+                ? mapped
+                : null;
+
             var newId = await conn.ExecuteScalarAsync<int>(
                 new CommandDefinition(sql,
-                    new { NewFormId = newFormId, OldSectionId = oldId },
+                    new { NewFormId = newFormId, NewTabId = newTabId, OldSectionId = oldSectionId },
                     tx, cancellationToken: ct));
-            map[oldId] = newId;
+            map[oldSectionId] = newId;
         }
         return map;
     }
@@ -994,6 +1062,9 @@ public sealed class FormDataService : IFormDataService
         bool isActive,
         int? tableId,
         int currentVersion,
+        int? maxWidth = null,
+        int? formColumns = null,
+        string? titleKey = null,
         CancellationToken ct = default)
     {
         if (!_config.IsConfigured)
@@ -1036,6 +1107,15 @@ public sealed class FormDataService : IFormDataService
         if (formCols.Contains("Table_Id") && tableId.HasValue)
             setClauses.Add("Table_Id = @TableId");
 
+        // Layout per-form (migration 027) — luôn set để cho phép clear về NULL
+        if (formCols.Contains("Max_Width"))
+            setClauses.Add("Max_Width = @MaxWidth");
+        if (formCols.Contains("Form_Columns"))
+            setClauses.Add("Form_Columns = @FormColumns");
+        // Tiêu đề hiển thị i18n (migration 028)
+        if (formCols.Contains("Title_Key"))
+            setClauses.Add("Title_Key = @TitleKey");
+
         var sql = $"""
             UPDATE dbo.Ui_Form
             SET    {string.Join(",\n           ", setClauses)}
@@ -1057,7 +1137,10 @@ public sealed class FormDataService : IFormDataService
                     Description    = description,
                     IsActive       = isActive ? 1 : 0,
                     TableId        = tableId,
-                    CurrentVersion = currentVersion
+                    CurrentVersion = currentVersion,
+                    MaxWidth       = maxWidth,
+                    FormColumns    = formColumns,
+                    TitleKey       = titleKey
                 },
                 cancellationToken: ct));
 

@@ -986,6 +986,50 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
     }
 
+    private bool _isUnique;
+    /// <summary>Field phải duy nhất — backend chống trùng (Ui_Field.Is_Unique). Dùng cho mã định danh.</summary>
+    public bool IsUnique
+    {
+        get => _isUnique;
+        set
+        {
+            if (SetProperty(ref _isUnique, value))
+            {
+                IsDirty = true;
+                RaisePropertyChanged(nameof(IsUniqueExpanded));
+                RaisePropertyChanged(nameof(UniqueErrorKey));
+                if (value) _ = ResolveI18nPreviewAsync(UniqueErrorKey, v => UniqueErrorKeyPreview = v);
+            }
+        }
+    }
+
+    /// <summary>True khi IsUnique = true — hiện section thông báo trùng bên dưới.</summary>
+    public bool IsUniqueExpanded => _isUnique;
+
+    /// <summary>
+    /// Key thông báo trùng (đa ngôn ngữ) — tự sinh theo pattern {tableCode}.val.{columnCode}.unique.
+    /// Khớp key backend emit khi phát hiện trùng. Readonly (deterministic).
+    /// </summary>
+    public string UniqueErrorKey
+    {
+        get
+        {
+            var t = TableCode.ToLowerInvariant();
+            var c = ColumnCode.ToLowerInvariant();
+            return string.IsNullOrEmpty(t) || string.IsNullOrEmpty(c) ? "" : $"{t}.val.{c}.unique";
+        }
+    }
+
+    private string _uniqueErrorKeyPreview = "";
+    /// <summary>Preview bản dịch (vi) của UniqueErrorKey.</summary>
+    public string UniqueErrorKeyPreview
+    {
+        get => _uniqueErrorKeyPreview;
+        set { if (SetProperty(ref _uniqueErrorKeyPreview, value)) RaisePropertyChanged(nameof(HasUniqueErrorKeyPreview)); }
+    }
+
+    public bool HasUniqueErrorKeyPreview => !string.IsNullOrWhiteSpace(_uniqueErrorKeyPreview);
+
     // ── Layout ───────────────────────────────────────────────
 
     private byte _colSpan = 1;
@@ -1040,6 +1084,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand GeneratePlaceholderKeyCommand { get; }
     public DelegateCommand GenerateTooltipKeyCommand { get; }
     public DelegateCommand GenerateRequiredErrorKeyCommand { get; }
+    public DelegateCommand<string> OpenI18nKeyCommand { get; }
     public DelegateCommand<FieldNavItem> NavigateToFieldCommand { get; }
     public DelegateCommand RefreshNavigatorCommand { get; }
     public DelegateCommand<FieldNavItem> MoveFieldUpCommand { get; }
@@ -1085,6 +1130,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         GeneratePlaceholderKeyCommand  = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("placeholder", k => PlaceholderKey     = k));
         GenerateTooltipKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey         = k));
         GenerateRequiredErrorKeyCommand = new DelegateCommand(async () => await ExecuteGenerateRequiredErrorKeyAsync());
+        OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
         NavigateToFieldCommand         = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
         RefreshNavigatorCommand        = new DelegateCommand(async () => await LoadFieldNavigatorAsync(_cts.Token));
         MoveFieldUpCommand   = new DelegateCommand<FieldNavItem>(async item => await ExecuteMoveFieldAsync(item, -1));
@@ -1264,6 +1310,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     LockOnEdit             = field.LockOnEdit;
                     ShowInList             = field.ShowInList;
                     IsVirtual              = field.IsVirtual;
+                    IsUnique               = field.IsUnique;
 
                     // ── Restore Sys_Lookup (RadioGroup / LookupComboBox) ──
                     // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
@@ -2418,6 +2465,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 LockOnEdit         = LockOnEdit,
                 ShowInList         = ShowInList,
                 IsVirtual          = IsVirtual,
+                IsUnique           = IsUnique,
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,
@@ -2556,6 +2604,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         foreach (var (key, defaultValue) in keys)
             await _i18nService.InitResourceIfMissingAsync(key, "vi", defaultValue, ct);
+
+        // ── Unique: auto-tạo key chống trùng (vi + en) khi bật cờ Duy nhất ──
+        // Key khớp backend emit: {tableCode}.val.{columnCode}.unique (xem SaveMasterDataCommandHandler).
+        if (IsUnique)
+        {
+            var tableCode  = TableCode.ToLowerInvariant();
+            var columnCode = ColumnCode.ToLowerInvariant();
+            if (!string.IsNullOrEmpty(tableCode) && !string.IsNullOrEmpty(columnCode))
+            {
+                var uniqueKey = $"{tableCode}.val.{columnCode}.unique";
+                var label     = string.IsNullOrWhiteSpace(LabelPreview) ? ColumnCode : LabelPreview;
+                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "vi", $"{label} đã tồn tại", ct);
+                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", $"{label} already exists", ct);
+            }
+        }
     }
 
     private void ExecuteCancel()
@@ -2586,11 +2649,64 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteManageI18n()
     {
+        // Nếu đã có Label_Key → mở popup dịch nhanh; chưa có → mở full I18n Manager.
+        if (!string.IsNullOrWhiteSpace(LabelKey))
+        {
+            ExecuteOpenI18nKey("label");
+            return;
+        }
         var p = new NavigationParameters
         {
             { "tableCode", TableCode }
         };
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.I18nManager, p);
+    }
+
+    /// <summary>
+    /// Mở popup I18nEditorDialog cho 1 trong các key của field:
+    /// "label" / "placeholder" / "tooltip" / "requiredError".
+    /// Popup tự lưu Sys_Resource; callback cập nhật preview tương ứng.
+    /// </summary>
+    private void ExecuteOpenI18nKey(string? which)
+    {
+        if (_dialogService is null) return;
+
+        string key, label, seed;
+        Action<string> refresh;
+        switch (which)
+        {
+            case "label":
+                key = LabelKey; label = "Nhãn field"; seed = LabelPreview;
+                refresh = v => LabelPreview = v; break;
+            case "placeholder":
+                key = PlaceholderKey; label = "Placeholder"; seed = PlaceholderPreview;
+                refresh = v => PlaceholderPreview = v; break;
+            case "tooltip":
+                key = TooltipKey; label = "Tooltip"; seed = TooltipPreview;
+                refresh = v => TooltipPreview = v; break;
+            case "requiredError":
+                key = RequiredErrorKey; label = "Thông báo bắt buộc"; seed = RequiredErrorKeyPreview;
+                refresh = v => RequiredErrorKeyPreview = v; break;
+            case "unique":
+                key = UniqueErrorKey; label = "Thông báo trùng"; seed = UniqueErrorKeyPreview;
+                refresh = v => UniqueErrorKeyPreview = v; break;
+            default:
+                return;
+        }
+
+        if (string.IsNullOrWhiteSpace(key)) return;
+
+        var p = new DialogParameters
+        {
+            { "key",          key },
+            { "contextLabel", label },
+            { "seedValue",    seed ?? "" }
+        };
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            refresh(result.Parameters.GetValue<string>("primaryValue") ?? "");
+        });
     }
 
     private void ExecuteAddRule()

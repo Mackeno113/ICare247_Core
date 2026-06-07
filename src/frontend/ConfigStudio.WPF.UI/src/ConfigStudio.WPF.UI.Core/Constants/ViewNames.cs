@@ -28,4 +28,5 @@ public static class ViewNames
     public const string SyncSchemaDialog             = nameof(SyncSchemaDialog);
     public const string ColumnPickerDialog           = nameof(ColumnPickerDialog);
     public const string FormPreviewDialog            = nameof(FormPreviewDialog);
+    public const string I18nEditorDialog             = nameof(I18nEditorDialog);
 }

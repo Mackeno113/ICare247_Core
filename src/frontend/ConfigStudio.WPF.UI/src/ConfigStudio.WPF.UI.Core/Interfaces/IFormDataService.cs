@@ -120,5 +120,8 @@ public interface IFormDataService
         bool isActive,
         int? tableId,
         int currentVersion,
+        int? maxWidth = null,
+        int? formColumns = null,
+        string? titleKey = null,
         CancellationToken ct = default);
 }

@@ -82,11 +82,39 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         get => _selectedAction;
         set
         {
+            var old = _selectedAction;
             if (SetProperty(ref _selectedAction, value))
             {
+                if (old is not null)
+                    old.PropertyChanged -= OnSelectedActionPropertyChanged;
+                if (_selectedAction is not null)
+                    _selectedAction.PropertyChanged += OnSelectedActionPropertyChanged;
+
                 DeleteActionCommand.RaiseCanExecuteChanged();
+                OpenMessageKeyI18nCommand.RaiseCanExecuteChanged();
+                RaisePropertyChanged(nameof(IsActionSelected));
             }
         }
+    }
+
+    /// <summary>True khi có 1 action đang chọn → hiện detail editor.</summary>
+    public bool IsActionSelected => SelectedAction is not null;
+
+    /// <summary>Mức độ thông báo cho SHOW_MESSAGE.</summary>
+    public List<string> SeverityOptions { get; } = ["info", "warn", "error"];
+
+    /// <summary>Đánh dấu dirty + cập nhật trạng thái nút khi user sửa field của action.</summary>
+    private void OnSelectedActionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(ActionItemDto.ActionType)
+            or nameof(ActionItemDto.TargetField)
+            or nameof(ActionItemDto.MessageKey)
+            or nameof(ActionItemDto.Severity)
+            or nameof(ActionItemDto.ParamJson))
+            IsDirty = true;
+
+        if (e.PropertyName == nameof(ActionItemDto.ActionType))
+            OpenMessageKeyI18nCommand.RaiseCanExecuteChanged();
     }
 
     // ── Trigger types ─────────────────────────────────────────
@@ -110,6 +138,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand EditConditionCommand { get; }
     public DelegateCommand AddActionCommand { get; }
     public DelegateCommand DeleteActionCommand { get; }
+    public DelegateCommand OpenMessageKeyI18nCommand { get; }
     public DelegateCommand SaveAllCommand { get; }
     public DelegateCommand BackCommand { get; }
 
@@ -137,6 +166,8 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         EditConditionCommand = new DelegateCommand(ExecuteEditCondition, () => IsEventSelected);
         AddActionCommand = new DelegateCommand(ExecuteAddAction, () => IsEventSelected);
         DeleteActionCommand = new DelegateCommand(ExecuteDeleteAction, () => SelectedAction is not null);
+        OpenMessageKeyI18nCommand = new DelegateCommand(ExecuteOpenMessageKeyI18n,
+            () => SelectedAction is { IsShowMessage: true });
         SaveAllCommand = new DelegateCommand(async () => await ExecuteSaveAllAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
         BackCommand = new DelegateCommand(ExecuteBack);
@@ -174,6 +205,9 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
+        if (_selectedAction is not null)
+            _selectedAction.PropertyChanged -= OnSelectedActionPropertyChanged;
+
         _cts.Cancel();
         _cts = new CancellationTokenSource();
     }
@@ -270,14 +304,16 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
                 var actions = await _eventService.GetActionsByEventAsync(SelectedEvent.EventId, _cts.Token);
                 foreach (var a in actions)
                 {
-                    Actions.Add(new ActionItemDto
+                    var dto = new ActionItemDto
                     {
                         ActionId = a.ActionId,
                         EventId = a.EventId,
                         ActionType = a.ActionCode,
                         ParamJson = a.ParamJson ?? "{}",
                         OrderNo = a.OrderNo
-                    });
+                    };
+                    dto.LoadParamsFromJson();   // parse messageKey/severity/targetField
+                    Actions.Add(dto);
                 }
             }
             catch (OperationCanceledException) { /* Navigation away */ }
@@ -355,6 +391,21 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         });
     }
 
+    /// <summary>Mở popup i18n nhập bản dịch cho messageKey của SHOW_MESSAGE.</summary>
+    private void ExecuteOpenMessageKeyI18n()
+    {
+        if (SelectedAction is not { IsShowMessage: true } action) return;
+        if (string.IsNullOrWhiteSpace(action.MessageKey)) return;
+
+        var p = new DialogParameters
+        {
+            { "key",          action.MessageKey },
+            { "contextLabel", "Thông báo (SHOW_MESSAGE)" },
+            { "seedValue",    "" }
+        };
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, _ => { });
+    }
+
     private void ExecuteAddAction()
     {
         if (SelectedEvent is null) return;
@@ -362,10 +413,12 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
         var action = new ActionItemDto
         {
             ActionId = newId, EventId = SelectedEvent.EventId,
-            ActionType = "SetValue", TargetField = "",
-            ParamJson = "{}", OrderNo = Actions.Count + 1
+            ActionType = "SET_VALUE", TargetField = "",
+            ParamJson = "{}", OrderNo = Actions.Count + 1,
+            Severity = "info"
         };
         Actions.Add(action);
+        SelectedAction = action;
         SelectedEvent.ActionsCount = Actions.Count;
         IsDirty = true;
     }
@@ -406,6 +459,7 @@ public sealed class EventEditorViewModel : ViewModelBase, INavigationAware
                 {
                     foreach (var action in Actions)
                     {
+                        action.SyncParamsToJson();   // serialize messageKey/severity → ParamJson (SHOW_MESSAGE)
                         var actionRecord = new ActionItemRecord
                         {
                             ActionId = action.ActionId,

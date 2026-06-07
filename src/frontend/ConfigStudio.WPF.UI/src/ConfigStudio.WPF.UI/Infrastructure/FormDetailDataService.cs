@@ -40,7 +40,10 @@ public sealed class FormDetailDataService : IFormDetailDataService
                    f.Checksum,
                    f.Is_Active     AS IsActive,
                    f.Updated_At    AS UpdatedAt,
-                   f.Description
+                   f.Description,
+                   f.Max_Width     AS MaxWidth,
+                   f.Form_Columns  AS FormColumns,
+                   f.Title_Key     AS TitleKey
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
             WHERE  f.Form_Id = @FormId
@@ -50,6 +53,30 @@ public sealed class FormDetailDataService : IFormDetailDataService
         await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.QueryFirstOrDefaultAsync<FormDetailRecord>(
             new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct));
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<TabDetailRecord>> GetTabsByFormAsync(int formId, int tenantId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+
+        const string sql = """
+            SELECT t.Tab_Id     AS TabId,
+                   t.Tab_Code   AS TabCode,
+                   t.Title_Key  AS TitleKey,
+                   t.Icon_Key   AS IconKey,
+                   t.Order_No   AS OrderNo,
+                   t.Is_Default AS IsDefault,
+                   (SELECT COUNT(*) FROM dbo.Ui_Section s WHERE s.Tab_Id = t.Tab_Id AND s.Is_Active = 1) AS SectionCount
+            FROM   dbo.Ui_Tab t
+            WHERE  t.Form_Id = @FormId
+            ORDER BY t.Order_No
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        var items = await conn.QueryAsync<TabDetailRecord>(
+            new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct));
+        return items.AsList();
     }
 
     /// <inheritdoc />
@@ -63,6 +90,7 @@ public sealed class FormDetailDataService : IFormDetailDataService
                    s.Title_Key    AS TitleKey,
                    s.Order_No     AS OrderNo,
                    s.Layout_Json  AS LayoutJson,
+                   s.Tab_Id       AS TabId,
                    (SELECT COUNT(*) FROM dbo.Ui_Field fi WHERE fi.Section_Id = s.Section_Id) AS FieldCount
             FROM   dbo.Ui_Section s
             WHERE  s.Form_Id = @FormId AND s.Is_Active = 1
@@ -208,13 +236,13 @@ public sealed class FormDetailDataService : IFormDetailDataService
             {
                 // ── INSERT mới ──────────────────────────────────────────────────────
                 const string insertSql = """
-                    INSERT INTO dbo.Ui_Section (Form_Id, Section_Code, Title_Key, Order_No, Is_Active)
+                    INSERT INTO dbo.Ui_Section (Form_Id, Section_Code, Title_Key, Order_No, Is_Active, Tab_Id)
                     OUTPUT INSERTED.Section_Id
-                    VALUES (@FormId, @SectionCode, @TitleKey, @OrderNo, @IsActive)
+                    VALUES (@FormId, @SectionCode, @TitleKey, @OrderNo, @IsActive, @TabId)
                     """;
                 resultId = await conn.QuerySingleAsync<int>(
                     new CommandDefinition(insertSql,
-                        new { req.FormId, req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive },
+                        new { req.FormId, req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive, req.TabId },
                         transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
             }
             else
@@ -225,18 +253,130 @@ public sealed class FormDetailDataService : IFormDetailDataService
                     SET    Section_Code = @SectionCode,
                            Title_Key    = @TitleKey,
                            Order_No     = @OrderNo,
-                           Is_Active    = @IsActive
+                           Is_Active    = @IsActive,
+                           Tab_Id       = @TabId
                     WHERE  Section_Id   = @SectionId
                     """;
                 await conn.ExecuteAsync(
                     new CommandDefinition(updateSql,
-                        new { req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive, req.SectionId },
+                        new { req.SectionCode, req.TitleKey, req.OrderNo, req.IsActive, req.TabId, req.SectionId },
                         transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
                 resultId = req.SectionId;
             }
 
             await tx.CommitAsync(ct);
             return resultId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> UpsertTabAsync(TabUpsertRequest req, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return 0;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // ── Rename Resource_Key nếu Title_Key thay đổi (user đổi Tab Code) ──
+            if (!string.IsNullOrEmpty(req.OldTitleKey) && req.OldTitleKey != req.TitleKey)
+            {
+                const string renameSql = """
+                    UPDATE dbo.Sys_Resource
+                    SET    Resource_Key = @NewKey, Updated_At = GETDATE()
+                    WHERE  Resource_Key = @OldKey
+                    """;
+                await conn.ExecuteAsync(
+                    new CommandDefinition(renameSql, new { OldKey = req.OldTitleKey, NewKey = req.TitleKey },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+            }
+
+            int resultId;
+
+            if (req.TabId == 0)
+            {
+                // ── INSERT mới ──────────────────────────────────────────────────────
+                const string insertSql = """
+                    INSERT INTO dbo.Ui_Tab (Form_Id, Tab_Code, Title_Key, Icon_Key, Order_No, Is_Default)
+                    OUTPUT INSERTED.Tab_Id
+                    VALUES (@FormId, @TabCode, @TitleKey, @IconKey, @OrderNo, @IsDefault)
+                    """;
+                resultId = await conn.QuerySingleAsync<int>(
+                    new CommandDefinition(insertSql,
+                        new { req.FormId, req.TabCode, req.TitleKey, req.IconKey, req.OrderNo, req.IsDefault },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+            }
+            else
+            {
+                // ── UPDATE bản ghi hiện có ──────────────────────────────────────────
+                const string updateSql = """
+                    UPDATE dbo.Ui_Tab
+                    SET    Tab_Code   = @TabCode,
+                           Title_Key  = @TitleKey,
+                           Icon_Key   = @IconKey,
+                           Order_No   = @OrderNo,
+                           Is_Default = @IsDefault
+                    WHERE  Tab_Id     = @TabId
+                    """;
+                await conn.ExecuteAsync(
+                    new CommandDefinition(updateSql,
+                        new { req.TabCode, req.TitleKey, req.IconKey, req.OrderNo, req.IsDefault, req.TabId },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+                resultId = req.TabId;
+            }
+
+            // ── Đảm bảo max 1 tab default/form: gỡ cờ default của các tab khác ──
+            if (req.IsDefault)
+            {
+                const string clearDefaultSql = """
+                    UPDATE dbo.Ui_Tab
+                    SET    Is_Default = 0
+                    WHERE  Form_Id = @FormId AND Tab_Id <> @TabId
+                    """;
+                await conn.ExecuteAsync(
+                    new CommandDefinition(clearDefaultSql, new { req.FormId, TabId = resultId },
+                        transaction: (System.Data.IDbTransaction)tx, cancellationToken: ct));
+            }
+
+            await tx.CommitAsync(ct);
+            return resultId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteTabAsync(int tabId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || tabId <= 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+
+        try
+        {
+            // Gỡ section khỏi tab (không xóa section) — tránh vi phạm FK
+            await conn.ExecuteAsync(new CommandDefinition(
+                "UPDATE dbo.Ui_Section SET Tab_Id = NULL WHERE Tab_Id = @TabId",
+                new { TabId = tabId }, transaction: tx, cancellationToken: ct));
+
+            // Xóa tab
+            await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM dbo.Ui_Tab WHERE Tab_Id = @TabId",
+                new { TabId = tabId }, transaction: tx, cancellationToken: ct));
+
+            await tx.CommitAsync(ct);
         }
         catch
         {
@@ -301,6 +441,61 @@ public sealed class FormDetailDataService : IFormDetailDataService
                     new { SectionId = sectionId, OrderNo = orderNo },
                     transaction: tx, cancellationToken: ct));
 
+            await tx.CommitAsync(ct);
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<FormPermissionRecord>> GetFormPermissionsAsync(int formId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+
+        const string sql = """
+            SELECT Role_Id    AS RoleId,
+                   Can_Read   AS CanRead,
+                   Can_Write  AS CanWrite,
+                   Can_Submit AS CanSubmit
+            FROM   dbo.Sys_Permission
+            WHERE  Object_Type = 'Form' AND Object_Id = @FormId
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        var items = await conn.QueryAsync<FormPermissionRecord>(
+            new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct));
+        return items.AsList();
+    }
+
+    /// <inheritdoc />
+    public async Task SaveFormPermissionsAsync(int formId, IReadOnlyList<FormPermissionRecord> permissions,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || formId <= 0 || permissions.Count == 0) return;
+
+        const string upsertSql = """
+            IF EXISTS (SELECT 1 FROM dbo.Sys_Permission
+                       WHERE Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId)
+                UPDATE dbo.Sys_Permission
+                SET    Can_Read = @CanRead, Can_Write = @CanWrite, Can_Submit = @CanSubmit
+                WHERE  Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId
+            ELSE
+                INSERT INTO dbo.Sys_Permission (Role_Id, Object_Type, Object_Id, Can_Read, Can_Write, Can_Submit)
+                VALUES (@RoleId, 'Form', @FormId, @CanRead, @CanWrite, @CanSubmit)
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        try
+        {
+            foreach (var p in permissions)
+                await conn.ExecuteAsync(new CommandDefinition(upsertSql,
+                    new { FormId = formId, p.RoleId, p.CanRead, p.CanWrite, p.CanSubmit },
+                    transaction: tx, cancellationToken: ct));
             await tx.CommitAsync(ct);
         }
         catch

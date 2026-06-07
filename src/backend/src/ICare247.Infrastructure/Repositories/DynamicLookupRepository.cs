@@ -398,6 +398,36 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             $"VALUES ({paramList})";
 
         using var dataConn = _dataDb.CreateConnection();
+
+        // ── Check trùng các cột Is_Unique của form gắn bảng đích (chống trùng mã) ──
+        const string uniqueColsSql = """
+            SELECT sc.Column_Code
+            FROM   dbo.Ui_Field  uf
+            JOIN   dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id
+            JOIN   dbo.Ui_Form   fm ON fm.Form_Id   = uf.Form_Id
+            JOIN   dbo.Sys_Table  t ON t.Table_Id    = fm.Table_Id
+            WHERE  uf.Is_Unique = 1
+              AND  t.Table_Code = @SourceName
+              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
+            """;
+        var uniqueCols = (await configConn.QueryAsync<string>(
+            new CommandDefinition(uniqueColsSql, new { cfg.SourceName, TenantId = tenantId },
+                cancellationToken: ct))).ToList();
+
+        foreach (var ucol in uniqueCols)
+        {
+            if (!SafeIdentifierRegex().IsMatch(ucol)) continue;
+            var hit  = values.FirstOrDefault(kv => kv.Key.Equals(ucol, StringComparison.OrdinalIgnoreCase));
+            var uval = UnwrapParamValue(hit.Value);
+            if (uval is null || string.IsNullOrWhiteSpace(uval.ToString())) continue;
+
+            var dupCount = await dataConn.ExecuteScalarAsync<int>(new CommandDefinition(
+                $"SELECT COUNT(*) FROM {cfg.SourceName} WHERE [{ucol}] = @Val",
+                new { Val = uval }, cancellationToken: ct));
+            if (dupCount > 0)
+                throw new ICare247.Domain.Exceptions.DuplicateValueException(cfg.SourceName, ucol);
+        }
+
         var newValue = await dataConn.ExecuteScalarAsync<object>(
             new CommandDefinition(insertSql, dp, cancellationToken: ct));
 

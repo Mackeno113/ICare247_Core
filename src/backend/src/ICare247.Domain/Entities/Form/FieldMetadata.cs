@@ -90,6 +90,12 @@ public sealed class FieldMetadata
     public bool IsVirtual { get; init; }
 
     /// <summary>
+    /// Field phải duy nhất (Ui_Field.Is_Unique) — backend check trùng trước Insert/Update.
+    /// Dùng cho mã định danh (vd Mã trình độ văn hóa). Nên kèm UNIQUE INDEX ở bảng dữ liệu.
+    /// </summary>
+    public bool IsUnique { get; init; }
+
+    /// <summary>
     /// Độ rộng field trong grid layout 4-column (Ui_Field.Col_Span).
     /// 1 = 1/4 width (narrow, default), 2 = 2/4 (half),
     /// 3 = 3/4 width, 4 = full width (textarea, subgrid).

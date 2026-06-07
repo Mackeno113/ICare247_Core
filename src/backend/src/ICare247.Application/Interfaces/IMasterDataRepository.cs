@@ -58,6 +58,14 @@ public interface IMasterDataRepository
     /// </summary>
     Task<int> DeleteAsync(
         string formCode, int tenantId, object id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kiểm tra giá trị đã tồn tại ở cột chưa (chống trùng — field Is_Unique).
+    /// excludeId = PK loại trừ khi Update. Trả false nếu value rỗng.
+    /// </summary>
+    Task<bool> ExistsValueAsync(
+        string formCode, int tenantId, string column, object? value, object? excludeId,
+        CancellationToken ct = default);
 }
 
 /// <summary>Thông tin bảng đích + cột của 1 form danh mục.</summary>
@@ -85,6 +93,7 @@ public sealed class MasterDataColumn
     public string Label      { get; init; } = "";
     public bool   ShowInList { get; init; }
     public bool   IsReadOnly { get; init; }
+    public bool   IsUnique   { get; init; }
     public int    OrderNo    { get; init; }
 }
 

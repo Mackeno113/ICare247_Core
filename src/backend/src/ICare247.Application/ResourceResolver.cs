@@ -72,6 +72,39 @@ public static class ResourceResolver
     }
 
     /// <summary>
+    /// Resolve thông báo "đã tồn tại / trùng" (field Is_Unique) theo fallback hierarchy:
+    /// <para>
+    /// 1. <c>{formCode}.val.{fieldCode}.Unique</c><br/>
+    /// 2. <c>sys.val.Unique</c> template → format(<paramref name="fieldLabel"/>)<br/>
+    /// 3. Hardcoded: "{fieldLabel} đã tồn tại" / "already exists"
+    /// </para>
+    /// </summary>
+    public static string ResolveUnique(
+        IReadOnlyDictionary<string, string>? map,
+        string formCode,
+        string fieldCode,
+        string fieldLabel,
+        string langCode)
+    {
+        if (map is not null)
+        {
+            var specificKey = $"{formCode}.val.{fieldCode}.Unique";
+            if (map.TryGetValue(specificKey, out var specific)
+                && !string.IsNullOrWhiteSpace(specific))
+                return specific;
+
+            if (map.TryGetValue("sys.val.Unique", out var template)
+                && !string.IsNullOrWhiteSpace(template))
+                return FormatTemplate(template, fieldLabel);
+        }
+
+        var label = string.IsNullOrWhiteSpace(fieldLabel) ? fieldCode : fieldLabel;
+        return langCode.Equals("en", StringComparison.OrdinalIgnoreCase)
+            ? $"{label} already exists"
+            : $"{label} đã tồn tại";
+    }
+
+    /// <summary>
     /// Resolve thông báo lỗi rule từ <c>Error_Key</c> (pattern: <c>{table}.val.{column}.{type}</c>).
     /// <para>
     /// 1. Tra trực tiếp <paramref name="errorKey"/> trong map<br/>

@@ -739,6 +739,8 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="8" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="8" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
                                     <!-- IsVisible -->
@@ -859,6 +861,23 @@
                                             </StackPanel>
                                         </StackPanel>
                                     </Border>
+
+                                    <!-- IsUnique: chống trùng mã (backend check + nên kèm UNIQUE INDEX) -->
+                                    <Border Grid.Column="0" Grid.Row="6"
+                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <dxe:ToggleSwitchEdit IsChecked="{Binding IsUnique}"
+                                                                       DockPanel.Dock="Right" HorizontalAlignment="Right" />
+                                                <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                    <Run Text="🔑" /><Run Text=" Duy nhất (chống trùng)" />
+                                                </TextBlock>
+                                            </DockPanel>
+                                            <TextBlock Text="Không cho phép trùng giá trị (vd: Mã). Backend kiểm tra trước khi lưu. Nên tạo thêm UNIQUE INDEX ở DB."
+                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                    </Border>
                                 </Grid>
 
                                 <!-- ── Required Error Key (chỉ hiện khi IsRequired = true) ── -->
@@ -871,18 +890,24 @@
                                                    Foreground="#DC2626">
                                             <Run Text="✱" /><Run Text=" Thông báo lỗi khi để trống (i18n)" />
                                         </TextBlock>
-                                        <!-- Key input + Tạo key button -->
-                                        <DockPanel Margin="0,0,0,4">
-                                            <Button DockPanel.Dock="Right"
-                                                    Command="{Binding GenerateRequiredErrorKeyCommand}"
+                                        <!-- Input full-width -->
+                                        <dxe:TextEdit EditValue="{Binding RequiredErrorKey, UpdateSourceTrigger=LostFocus}"
+                                                      NullText="vd: nhanvien.val.manhanvien.required"
+                                                      Margin="0,0,0,4" />
+                                        <!-- Buttons dưới (trái) -->
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                            <Button Command="{Binding GenerateRequiredErrorKeyCommand}"
                                                     Style="{StaticResource SmallSecondaryButtonStyle}"
-                                                    Margin="6,0,0,0"
                                                     ToolTip="Tạo key theo pattern {tableCode}.val.{fieldCode}.required">
                                                 <TextBlock Text="+ Tạo key" FontSize="11" />
                                             </Button>
-                                            <dxe:TextEdit EditValue="{Binding RequiredErrorKey, UpdateSourceTrigger=LostFocus}"
-                                                          NullText="vd: nhanvien.val.manhanvien.required" />
-                                        </DockPanel>
+                                            <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="requiredError"
+                                                    Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                    Margin="6,0,0,0"
+                                                    ToolTip="Nhập bản dịch đa ngôn ngữ cho thông báo lỗi này">
+                                                <TextBlock Text="🌐 Dịch" FontSize="11" />
+                                            </Button>
+                                        </StackPanel>
                                         <!-- Preview VI -->
                                         <Border Background="#FFF0F0" CornerRadius="4" Padding="8,5"
                                                 Visibility="{Binding HasRequiredErrorKeyPreview, Converter={StaticResource BoolToVis}}">
@@ -894,6 +919,42 @@
                                         <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#B91C1C"
                                                    FontFamily="Cascadia Code, Consolas">
                                             <Run Text="Pattern: {tableCode}.val.{fieldCode}.required" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- ── Unique Error Key (chỉ hiện khi IsUnique = true) ── -->
+                                <Border Margin="0,12,0,0" Padding="12,10"
+                                        Background="#F0F9FF" CornerRadius="6"
+                                        BorderBrush="#BAE6FD" BorderThickness="1"
+                                        Visibility="{Binding IsUniqueExpanded, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock Margin="0,0,0,8" FontSize="12" FontWeight="SemiBold"
+                                                   Foreground="#0369A1">
+                                            <Run Text="🔑" /><Run Text=" Thông báo khi trùng (i18n)" />
+                                        </TextBlock>
+                                        <!-- Input full-width (key tự sinh, readonly) -->
+                                        <dxe:TextEdit EditValue="{Binding UniqueErrorKey, Mode=OneWay}"
+                                                      IsReadOnly="True" Margin="0,0,0,4" />
+                                        <!-- Buttons dưới (trái) -->
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                            <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="unique"
+                                                    Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                    ToolTip="Nhập bản dịch thông báo trùng cho mọi ngôn ngữ">
+                                                <TextBlock Text="🌐 Dịch" FontSize="11" />
+                                            </Button>
+                                        </StackPanel>
+                                        <!-- Preview VI -->
+                                        <Border Background="#ECFEFF" CornerRadius="4" Padding="8,5"
+                                                Visibility="{Binding HasUniqueErrorKeyPreview, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock FontSize="11" Foreground="#155E75">
+                                                <Run Text="→ " />
+                                                <Run Text="{Binding UniqueErrorKeyPreview, Mode=OneWay}" FontWeight="SemiBold" />
+                                            </TextBlock>
+                                        </Border>
+                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#0369A1"
+                                                   FontFamily="Cascadia Code, Consolas">
+                                            <Run Text="Pattern: {tableCode}.val.{fieldCode}.unique — tự tạo khi lưu field" />
                                         </TextBlock>
                                     </StackPanel>
                                 </Border>
@@ -919,24 +980,28 @@
                                 <!-- Label Key -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Label Key" Style="{StaticResource FieldLabelStyle}" />
-                                    <DockPanel>
-                                        <Border DockPanel.Dock="Right" Background="#F0FDFA"
-                                                CornerRadius="4" Padding="8,5" Margin="8,0,0,0">
-                                            <TextBlock FontSize="11" Foreground="#0D9488">
-                                                <Run Text="→ " />
-                                                <Run Text="{Binding LabelPreview, Mode=OneWay}" FontWeight="SemiBold" />
-                                            </TextBlock>
-                                        </Border>
-                                        <dxe:TextEdit EditValue="{Binding LabelKey, UpdateSourceTrigger=LostFocus}"
-                                                      NullText="{Binding FormCode, StringFormat=vd: {0}.field.columncode.label}" />
-                                    </DockPanel>
-                                    <!-- "+ Tạo key" tự động theo cú pháp {formCode}.field.{columnCode}.label -->
-                                    <Button Command="{Binding GenerateLabelKeyCommand}"
-                                            Style="{StaticResource SmallSecondaryButtonStyle}"
-                                            HorizontalAlignment="Left" Margin="0,4,0,0"
-                                            ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.label">
-                                        <TextBlock Text="+ Tạo key" FontSize="11" />
-                                    </Button>
+                                    <dxe:TextEdit EditValue="{Binding LabelKey, UpdateSourceTrigger=LostFocus}"
+                                                  NullText="{Binding FormCode, StringFormat=vd: {0}.field.columncode.label}"
+                                                  Margin="0,0,0,4" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                        <Button Command="{Binding GenerateLabelKeyCommand}"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.label">
+                                            <TextBlock Text="+ Tạo key" FontSize="11" />
+                                        </Button>
+                                        <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="label"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                Margin="6,0,0,0"
+                                                ToolTip="Nhập bản dịch đa ngôn ngữ cho key này">
+                                            <TextBlock Text="🌐 Dịch" FontSize="11" />
+                                        </Button>
+                                    </StackPanel>
+                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                            <Run Text="→ " />
+                                            <Run Text="{Binding LabelPreview, Mode=OneWay}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                    </Border>
                                     <TextBlock Text="Key trong Sys_Resource. Preview hiển thị giá trị đã dịch sau khi rời ô nhập."
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
@@ -944,45 +1009,55 @@
                                 <!-- Placeholder Key -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Placeholder Key" Style="{StaticResource FieldLabelStyle}" />
-                                    <DockPanel>
-                                        <Border DockPanel.Dock="Right" Background="#F0FDFA"
-                                                CornerRadius="4" Padding="8,5" Margin="8,0,0,0">
-                                            <TextBlock FontSize="11" Foreground="#0D9488">
-                                                <Run Text="→ " />
-                                                <Run Text="{Binding PlaceholderPreview, Mode=OneWay}" FontWeight="SemiBold" />
-                                            </TextBlock>
-                                        </Border>
-                                        <dxe:TextEdit EditValue="{Binding PlaceholderKey, UpdateSourceTrigger=LostFocus}"
-                                                      NullText="vd: formcode.field.columncode.placeholder" />
-                                    </DockPanel>
-                                    <Button Command="{Binding GeneratePlaceholderKeyCommand}"
-                                            Style="{StaticResource SmallSecondaryButtonStyle}"
-                                            HorizontalAlignment="Left" Margin="0,4,0,0"
-                                            ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.placeholder">
-                                        <TextBlock Text="+ Tạo key" FontSize="11" />
-                                    </Button>
+                                    <dxe:TextEdit EditValue="{Binding PlaceholderKey, UpdateSourceTrigger=LostFocus}"
+                                                  NullText="vd: formcode.field.columncode.placeholder"
+                                                  Margin="0,0,0,4" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                        <Button Command="{Binding GeneratePlaceholderKeyCommand}"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.placeholder">
+                                            <TextBlock Text="+ Tạo key" FontSize="11" />
+                                        </Button>
+                                        <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="placeholder"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                Margin="6,0,0,0"
+                                                ToolTip="Nhập bản dịch đa ngôn ngữ cho key này">
+                                            <TextBlock Text="🌐 Dịch" FontSize="11" />
+                                        </Button>
+                                    </StackPanel>
+                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                            <Run Text="→ " />
+                                            <Run Text="{Binding PlaceholderPreview, Mode=OneWay}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                    </Border>
                                 </StackPanel>
 
                                 <!-- Tooltip Key -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Tooltip Key" Style="{StaticResource FieldLabelStyle}" />
-                                    <DockPanel>
-                                        <Border DockPanel.Dock="Right" Background="#F0FDFA"
-                                                CornerRadius="4" Padding="8,5" Margin="8,0,0,0">
-                                            <TextBlock FontSize="11" Foreground="#0D9488">
-                                                <Run Text="→ " />
-                                                <Run Text="{Binding TooltipPreview, Mode=OneWay}" FontWeight="SemiBold" />
-                                            </TextBlock>
-                                        </Border>
-                                        <dxe:TextEdit EditValue="{Binding TooltipKey, UpdateSourceTrigger=LostFocus}"
-                                                      NullText="vd: formcode.field.columncode.tooltip" />
-                                    </DockPanel>
-                                    <Button Command="{Binding GenerateTooltipKeyCommand}"
-                                            Style="{StaticResource SmallSecondaryButtonStyle}"
-                                            HorizontalAlignment="Left" Margin="0,4,0,0"
-                                            ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.tooltip">
-                                        <TextBlock Text="+ Tạo key" FontSize="11" />
-                                    </Button>
+                                    <dxe:TextEdit EditValue="{Binding TooltipKey, UpdateSourceTrigger=LostFocus}"
+                                                  NullText="vd: formcode.field.columncode.tooltip"
+                                                  Margin="0,0,0,4" />
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
+                                        <Button Command="{Binding GenerateTooltipKeyCommand}"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                ToolTip="Tự động tạo key theo cú pháp {formCode}.field.{columnCode}.tooltip">
+                                            <TextBlock Text="+ Tạo key" FontSize="11" />
+                                        </Button>
+                                        <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="tooltip"
+                                                Style="{StaticResource SmallSecondaryButtonStyle}"
+                                                Margin="6,0,0,0"
+                                                ToolTip="Nhập bản dịch đa ngôn ngữ cho key này">
+                                            <TextBlock Text="🌐 Dịch" FontSize="11" />
+                                        </Button>
+                                    </StackPanel>
+                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                            <Run Text="→ " />
+                                            <Run Text="{Binding TooltipPreview, Mode=OneWay}" FontWeight="SemiBold" />
+                                        </TextBlock>
+                                    </Border>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

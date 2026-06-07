@@ -10,7 +10,7 @@
 <div class="lookupadd-backdrop" @onclick="OnCancel">
     <div class="lookupadd-dialog" @onclick:stopPropagation>
         <div class="lookupadd-header">
-            <span>➕ Thêm mới</span>
+            <span>➕ Thêm mới@(string.IsNullOrWhiteSpace(_formTitle) ? "" : $": {_formTitle}")</span>
             <button class="lookupadd-close" @onclick="OnCancel" title="Đóng">✕</button>
         </div>
 
@@ -27,14 +27,9 @@
             {
                 @foreach (var fs in _fieldStates.Where(f => f.IsVisible && !f.IsVirtual))
                 {
+                    @* FieldRenderer tự render label + required mark + control + errors.
+                       KHÔNG render label thủ công ở đây để tránh trùng nhãn. *@
                     <div class="lookupadd-field">
-                        <label class="lookupadd-label">
-                            @fs.Label
-                            @if (fs.IsRequired)
-                            {
-                                <span class="lookupadd-req">*</span>
-                            }
-                        </label>
                         <FieldRenderer State="fs"
                                        Context="BuildContext()"
                                        OnChange="OnFieldChanged"
@@ -71,6 +66,8 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<FieldState> _fieldStates = [];
+    /// <summary>Tiêu đề form đã localize (FormMetadata.FormName) — hiển thị ở header dialog.</summary>
+    private string  _formTitle = "";
     private bool    _loading = true;
     private bool    _saving;
     private string? _error;
@@ -86,6 +83,8 @@
                 _error = $"Form '{FormCode}' không tồn tại trong tenant.";
                 return;
             }
+
+            _formTitle = form.FormName.Length > 0 ? form.FormName : form.FormCode;
 
             _fieldStates = form.Fields.Select(f => new FieldState
             {

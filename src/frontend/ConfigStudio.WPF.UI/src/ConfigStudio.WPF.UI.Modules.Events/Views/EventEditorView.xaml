@@ -179,6 +179,54 @@
                         </dx:SimpleButton>
                     </DockPanel>
 
+                    <!-- ── Detail editor cho action đang chọn ───────────── -->
+                    <Border DockPanel.Dock="Bottom" Margin="12,8,12,12" Padding="12"
+                            Background="#F8FAFC" CornerRadius="6"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            Visibility="{Binding IsActionSelected, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Text="Cấu hình Action" FontSize="13" FontWeight="SemiBold"
+                                       Margin="0,0,0,8"
+                                       Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+
+                            <TextBlock Text="Loại action" FontSize="12" Foreground="#64748B"
+                                       Margin="0,0,0,4" />
+                            <ComboBox ItemsSource="{Binding ActionTypeOptions}"
+                                      SelectedItem="{Binding SelectedAction.ActionType, Mode=TwoWay}"
+                                      Margin="0,0,0,10" Height="30" />
+
+                            <TextBlock Text="Target field" FontSize="12" Foreground="#64748B"
+                                       Margin="0,0,0,4" />
+                            <TextBox Text="{Binding SelectedAction.TargetField, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="30" VerticalContentAlignment="Center"
+                                     Margin="0,0,0,4" />
+
+                            <!-- ── SHOW_MESSAGE structured params ── -->
+                            <StackPanel Visibility="{Binding SelectedAction.IsShowMessage, Converter={StaticResource BoolToVis}}">
+                                <Border Height="1" Background="{DynamicResource AppBorderBrush}"
+                                        Margin="0,6,0,8" />
+                                <TextBlock Text="Message Key (i18n)" FontSize="12" Foreground="#64748B"
+                                           Margin="0,0,0,4" />
+                                <DockPanel Margin="0,0,0,10">
+                                    <Button DockPanel.Dock="Right"
+                                            Command="{Binding OpenMessageKeyI18nCommand}"
+                                            Margin="6,0,0,0" Padding="8,0" Height="30"
+                                            ToolTip="Nhập bản dịch đa ngôn ngữ cho message key">
+                                        <TextBlock Text="🌐 Dịch" FontSize="12" />
+                                    </Button>
+                                    <TextBox Text="{Binding SelectedAction.MessageKey, UpdateSourceTrigger=PropertyChanged}"
+                                             Height="30" VerticalContentAlignment="Center"
+                                             ToolTip="Resource key của nội dung thông báo, vd: donhang.warn.tong_tien_lon" />
+                                </DockPanel>
+                                <TextBlock Text="Mức độ (severity)" FontSize="12" Foreground="#64748B"
+                                           Margin="0,0,0,4" />
+                                <ComboBox ItemsSource="{Binding SeverityOptions}"
+                                          SelectedItem="{Binding SelectedAction.Severity, Mode=TwoWay}"
+                                          Height="30" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Actions GridControl -->
                     <dxg:GridControl ItemsSource="{Binding Actions}"
                                      SelectedItem="{Binding SelectedAction, Mode=TwoWay}"

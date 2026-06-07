@@ -17,15 +17,18 @@ public sealed class SaveMasterDataCommandHandler
 {
     private readonly IMasterDataRepository _repo;
     private readonly IValidationEngine     _validation;
+    private readonly IResourceRepository   _resources;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
     public SaveMasterDataCommandHandler(
         IMasterDataRepository repo,
         IValidationEngine validation,
+        IResourceRepository resources,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
         _repo       = repo;
         _validation = validation;
+        _resources  = resources;
         _logger     = logger;
     }
 
@@ -49,6 +52,29 @@ public sealed class SaveMasterDataCommandHandler
                            kv.Key,
                            kv.Value.Results.FirstOrDefault()?.Message ?? "Giá trị không hợp lệ."))
                        .ToList();
+
+        // ── Check trùng (field Is_Unique) — query DB trước khi ghi ──────────────
+        // Resolve key {table}.val.{column}.unique → text qua resource map (cache).
+        foreach (var col in info.Columns.Where(c => c.IsUnique))
+        {
+            if (!r.Values.TryGetValue(col.ColumnCode, out var val)
+                || val is null || string.IsNullOrWhiteSpace(val.ToString()))
+                continue;
+
+            if (await _repo.ExistsValueAsync(r.FormCode, r.TenantId, col.ColumnCode, val, r.Id, ct))
+            {
+                var key = $"{info.TableName.ToLowerInvariant()}.val.{col.ColumnCode.ToLowerInvariant()}.unique";
+                var map = await _resources.GetByKeysAsync([key, "sys.val.unique"], "vi", ct);
+                var label = col.Label.Length > 0 ? col.Label : col.ColumnCode;
+                // 1. per-field key → 2. sys.val.unique template({0}) → 3. hardcoded
+                var msg = map.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v)
+                    ? v
+                    : map.TryGetValue("sys.val.unique", out var tpl) && !string.IsNullOrWhiteSpace(tpl)
+                        ? tpl.Replace("{0}", label)
+                        : $"{label} đã tồn tại";
+                errors.Add(new MasterDataFieldError(col.ColumnCode, msg));
+            }
+        }
 
         if (errors.Count > 0)
         {

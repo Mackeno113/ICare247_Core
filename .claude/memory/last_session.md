@@ -1,84 +1,52 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-06 (session 38 — Master Data CRUD full-stack Tầng 0-3)
+> Cập nhật: 2026-06-07 (session 39 — Tab tier + i18n popup + Layout config + Unique check + ConfigCache design)
 
 ## Trạng thái cuối session
-
 - **Branch:** `master`
-- **Build:** backend `ICare247.slnx` 0/0 ✅, WPF `ConfigStudio.WPF.UI.slnx` 0/0 ✅
+- **Build:** ⚠️ CHƯA verify (user tự build). Nhiều thay đổi WPF + backend + Blazor.
+- **Migrations CHƯA chạy:** `db/025` → `db/030` (xem dưới) — phải chạy trên DB thật.
 
-## Session 38 — Master Data CRUD (Tầng 0→3 hoàn thành)
+## Đã làm (session 39)
 
-Feature metadata-driven CRUD cho màn hình danh mục: List bản ghi + Thêm/Sửa (Popup hoặc Tab) + Xóa cứng có soft-check FK.
+### 1. Spec resource key (docs/spec/10)
+- Convention i18n cho **Form/Tab/Section title**: `{table_code}.form|tab|section.{code}.title` + `sys.val.unique`.
 
-### Tầng 0 — DB Migrations
-- `db/023_ui_form_display_mode.sql`: cột `Display_Mode nvarchar(20) DEFAULT 'Popup'` + CHK constraint (Popup|Tab) trên Ui_Form
-- `db/024_ui_field_show_in_list.sql`: cột `Show_In_List bit DEFAULT 0` trên Ui_Field
-- `docs/spec/02_DATABASE_SCHEMA.md` cập nhật 2 cột mới
-- ⚠️ **DB-RUN**: chạy 023+024 trên DB thật (manual step chưa làm)
+### 2. Tầng Tab cho FormEditor (full-stack WPF)
+- Quyết định: KHÔNG dựng tree 3 tầng (đụng ~50 chỗ `Sections.SelectMany`). Thay bằng **TabItem "📑 Tabs" riêng** (master-detail) + dropdown "Thuộc Tab" trong panel Section.
+- DTO `TabDetailRecord`/`TabUpsertRequest`; `IFormDetailDataService` Get/Upsert/DeleteTab; `FormTabItem`; FormEditorViewModel + View. Clone form copy Ui_Tab (CloneTabsAsync + remap Tab_Id).
 
-### Tầng 1 — Backend (0/0)
-- `IMasterDataRepository` + `MasterDataRepository`: generic CRUD, tên bảng từ `[Schema_Name].[Table_Code]` (đọc server-side từ Ui_Form→Sys_Table), SafeIdentifierRegex, Dapper params
-- `IReferenceCheckService` + `ReferenceCheckService`: soft-check FK quy ước tên (PK → `%_PK`), quét Sys_Column không lọc Is_Active, try/catch per candidate, log chi tiết
-- CQRS `Features/MasterData/`: 4 query + 2 command + DTOs
-- `MasterDataController`: 7 endpoint, 422 validation fail, 409 conflict + blockedBy[]
-- Fix PK resolve: fallback INFORMATION_SCHEMA khi Sys_Column.Is_PK=0 (DB thật toàn False)
-- Fix label: LEFT JOIN Sys_Resource + COALESCE(Resource_Value, Label_Key)
-- DI registered, build 0/0
+### 3. I18nEditorDialog (popup i18n dùng chung) — Modules.I18n
+- `I18nValueRow` + `I18nEditorDialogViewModel` + `I18nEditorDialog.xaml`; `ViewNames.I18nEditorDialog`; RegisterDialog.
+- Nút 🌐 Dịch tích hợp: Section, Tab, Field (Label/Placeholder/Tooltip/Required), Event SHOW_MESSAGE (structured editor `ActionItemDto` messageKey/severity).
+- Form title i18n (`Ui_Form.Title_Key`) — backend resolve → FormMetadata.FormName → dialog "Thêm mới: {tên}".
 
-### Tầng 2 — Blazor (0/0 + verify live)
-- `Services/MasterDataApiService.cs`
-- `Pages/MasterData/MasterDataListPage.razor` (`@page "/master/{FormCode}"`) — switch Popup↔Tab
-- `Components/MasterData/MasterDataGrid.razor` — cột theo Show_In_List (fallback all)
-- `Components/MasterData/MasterDataForm.razor` — reuse FieldRenderer
-- `Pages/MasterData/MasterDataTabPage.razor` (`@page "/master/{FormCode}/edit/{Id?}"`)
-- `Components/MasterData/ConfirmDeleteDialog.razor` — soft-check on open + server-enforce 409
-- CSS classes `.md-list-*`, `.md-grid*`, `.md-form*`, `.md-modal*`
-- `Program.cs` DI: `MasterDataApiService`
-- Verified live với API↔DB QLNS_Demo: PK NhanVienID/TrinhDoVanHoaID, list 7 bản ghi, label tiếng Việt
+### 4. Layout form per-form (`db/027`)
+- `Ui_Form.Max_Width` + `Form_Columns`; backend FormMetadata + FormRunner áp `max-width` + `--form-cols` (responsive giữ qua `min()`). WPF card "BỐ CỤC HIỂN THỊ".
 
-### Tầng 3 — WPF (0/0)
-**WPF-1 (FormEditor — Display_Mode):**
-- `FormDetailRecord.cs`: thêm `DisplayMode` property
-- `FormDetailDataService.cs`: thêm `ISNULL(f.Display_Mode, 'Popup') AS DisplayMode` vào SELECT
-- `IFormDataService.cs`: thêm `displayMode` param vào `CreateFormAsync` + `UpdateFormMetadataAsync`
-- `FormDataService.cs`: thêm Display_Mode vào INSERT/SET clause
-- `FormEditorViewModel.cs`: thêm `DisplayMode` property + `DisplayModeOptions = ["Popup","Tab"]`; reset khi tạo mới; load từ DB; 3 call sites UpdateFormMetadataAsync đều thêm `displayMode:`
-- `FormEditorView.xaml`: thay block "Layout Engine" → "Chế độ mở form" ComboBox bind `DisplayMode`
+### 5. Blazor FormRunner/MasterData
+- 1 section → render phẳng; ≥2 → card group. Default ColSpan = Half.
+- **Fix bug:** LookupAddDialog render label 2 lần → bỏ label thủ công.
 
-**WPF-2 (FieldConfig — Show_In_List):**
-- `FieldConfigRecord.cs`: thêm `ShowInList bool`
-- `FieldDataService.cs`: thêm `fi.Show_In_List AS ShowInList` SELECT, `Show_In_List = @ShowInList` INSERT+UPDATE, `f.ShowInList` BuildFieldParam
-- `FieldConfigViewModel.cs`: thêm `ShowInList` property + load (field.ShowInList) + save (ShowInList = ShowInList)
-- `FieldConfigView.xaml`: thêm Border Col 2 Row 4 "📋 Hiện trong danh sách" ToggleSwitchEdit bind ShowInList
+### 6. Chống trùng mã (Is_Unique) — full-stack (`db/029`)
+- Cờ `Ui_Field.Is_Unique` + toggle "🔑 Duy nhất" + section "Thông báo khi trùng (i18n)" trong FieldConfig.
+- Backend check 2 đường: MasterData (`ExistsValueAsync`) + Lookup add-new (`DuplicateValueException`).
+- Message i18n: handler **resolve key→text server-side** qua `IResourceRepository` (key `{table}.val.{column}.unique`, fallback `sys.val.unique`), default `vi`. Auto-tạo key khi lưu field (RegisterI18nKeysAsync vi+en).
+- Chuẩn hóa UI: 5 section i18n key cùng layout (input → nút dưới → preview dưới).
 
----
+### 7. Thiết kế ConfigCache (ADR-014) + roadmap — CHỈ TÀI LIỆU
+- `IConfigCache` facade đọc config qua cache (L1/L2); web/handler cấm chọc repo config trực tiếp. Invalidation: Version-stamp + Event + TTL → ADR-014.
+- **Làm rõ kiến trúc:** RuntimeCheck chỉ là **Blazor WASM test client** gọi API; IConfigCache nằm tầng **Application (backend)**, viết 1 lần dùng chung cho mọi web app qua API. Web app thật = thêm 1 client.
+- Roadmap trong TASKS.md: ConfigCache (CC-0a→CC-4) + tách `ICare247.ApiClient` SDK (SDK-1→4).
 
-## Session 37 — Responsive form grid + SysTable UX polish (đã commit 7621c71)
+## ⏳ Việc cần làm ngay (đầu session sau)
+1. **Chạy migrations** `db/025`→`db/030`: 025 fix Section `.title`; 026 fix Sys_Language mojibake (Ti?ng Vi?t); 027 layout; 028 form title; 029 Is_Unique; 030 sys.val.unique.
+2. **Build verify** backend `ICare247.slnx` + WPF `ConfigStudio.WPF.UI.slnx`.
+3. Re-save field có Is_Unique để seed key i18n.
 
-1. Blazor responsive: `--cols` biến + media query (992/768px) + `min(--col-span,--cols)` clamp
-2. SysTableManagerView: bỏ nút trùng, SaveButtonText "Tạo mới"→"Lưu", ScrollViewer error, AutoGenerateColumns="None"
+## Điểm vào việc tiếp theo
+- **CC-0a** (nếu code ConfigCache): tạo `ICare247.Application/Interfaces/IConfigCache.cs` + record `FormPermission` — chỉ interface, build vẫn xanh. Xem TASKS.md roadmap ConfigCache + ADR-014.
+- **SDK-1** (nếu dựng web app mới): tạo `ICare247.ApiClient` class lib, gom client + DTO; refactor RuntimeCheck dùng SDK.
 
----
-
-## DB cần chạy trước khi run app
-
-- `db/017_lock_on_edit_replace_is_enabled.sql`
-- `db/018_add_is_virtual_field.sql`
-- `db/019_ui_field_column_id_nullable.sql`
-- `db/020_ui_field_add_field_code.sql`
-- `db/021_ui_field_lookup_add_parent_column.sql`
-- `db/022_ui_field_lookup_add_addnew.sql`
-- **`db/023_ui_form_display_mode.sql`** ← MỚI (session 38)
-- **`db/024_ui_field_show_in_list.sql`** ← MỚI (session 38)
-
-## Pending tiếp theo
-
-| Task | Status |
-|---|---|
-| **DB-RUN** Chạy 023+024 trên DB thật | ⏳ Manual step |
-| **BE-002** Integration tests ValidationEngine + EventEngine | ❌ Chưa làm |
-| **BE-004** Apply Design System tokens Blazor | ❌ Chưa làm |
-| **WPF-14** Test LookupBox end-to-end | ⏳ Cần DB thật |
-| Test Master Data CRUD end-to-end với DB thật | ⏳ Cần chạy DB migrations trước |
-| Cascade dropdown Tỉnh→Xã: backend JOIN + trả đủ hierarchy ID | ❌ Chưa implement |
+## Migrations tích lũy cần có trên DB (017→030)
+017 lock_on_edit · 018 is_virtual · 019 column_id_nullable · 020 field_code · 021 lookup_parent · 022 lookup_addnew · 023 display_mode · 024 show_in_list · **025 section .title** · **026 fix sys_language** · **027 form layout** · **028 form title_key** · **029 field is_unique** · **030 sys.val.unique**

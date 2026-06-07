@@ -101,13 +101,17 @@ public sealed class FormRepository : IFormRepository
         string formCode, int tenantId, string langCode = "vi", CancellationToken ct = default)
     {
         const string sqlForm = """
-            SELECT f.Form_Id    AS FormId,
-                   f.Form_Code  AS FormCode,
-                   ''           AS FormName,
+            SELECT f.Form_Id     AS FormId,
+                   f.Form_Code   AS FormCode,
+                   COALESCE(r.Resource_Value, '') AS FormName,
                    f.Version,
-                   f.Platform
+                   f.Platform,
+                   f.Max_Width    AS MaxWidth,
+                   f.Form_Columns AS Columns
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
+            LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = f.Title_Key
+                                        AND r.Lang_Code     = @LangCode
             WHERE  f.Form_Code = @FormCode
               AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
               AND  f.Is_Active = 1
@@ -159,6 +163,7 @@ public sealed class FormRepository : IFormRepository
                    fi.Is_Required                            AS IsRequired,
                    fi.Lock_On_Edit                           AS LockOnEdit,
                    fi.Is_Virtual                             AS IsVirtual,
+                   fi.Is_Unique                              AS IsUnique,
                    fi.Control_Props_Json                     AS ControlPropsJson,
                    fi.Col_Span                               AS ColSpan,
                    fi.Lookup_Source                          AS LookupSource,
@@ -200,7 +205,7 @@ public sealed class FormRepository : IFormRepository
 
         // ── Lấy form ────────────────────────────────────────────────────────
         var formDto = await conn.QueryFirstOrDefaultAsync<FormMetadata>(
-            new CommandDefinition(sqlForm, new { FormCode = formCode, TenantId = tenantId },
+            new CommandDefinition(sqlForm, new { FormCode = formCode, TenantId = tenantId, LangCode = langCode },
                 cancellationToken: ct));
 
         if (formDto is null) return null;
@@ -233,7 +238,7 @@ public sealed class FormRepository : IFormRepository
                     Label = f.Label, ControlPropsJson = f.ControlPropsJson,
                     DefaultValueJson = f.DefaultValueJson, IsVisible = f.IsVisible,
                     IsReadOnly = f.IsReadOnly, IsRequired = f.IsRequired,
-                    IsVirtual = f.IsVirtual,
+                    IsVirtual = f.IsVirtual, IsUnique = f.IsUnique,
                     SortOrder = f.SortOrder, ColSpan = f.ColSpan,
                     LookupSource = f.LookupSource, LookupCode = f.LookupCode,
                     LookupConfig = cfg
@@ -282,6 +287,8 @@ public sealed class FormRepository : IFormRepository
             FormName = formDto.FormName,
             Version = formDto.Version,
             Platform = formDto.Platform,
+            MaxWidth = formDto.MaxWidth,
+            Columns = formDto.Columns,
             Tabs = enrichedTabs,
             Sections = enrichedSections,
             Fields = allFields

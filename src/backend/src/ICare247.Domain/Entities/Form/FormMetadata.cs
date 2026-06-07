@@ -29,6 +29,12 @@ public sealed class FormMetadata
     /// <summary>Nền tảng hiển thị: 'web' hoặc 'mobile'.</summary>
     public string Platform { get; init; } = "web";
 
+    /// <summary>Bề rộng tối đa của form (px). NULL = mặc định do client quyết định.</summary>
+    public int? MaxWidth { get; init; }
+
+    /// <summary>Số cột lưới nền (1..4). NULL = mặc định 4. = 1 → mỗi field 1 dòng.</summary>
+    public int? Columns { get; init; }
+
     /// <summary>
     /// Danh sách tabs theo thứ tự Order_No.
     /// Rỗng = form không có tab → FormRunner render phẳng (backward compat).

@@ -94,6 +94,13 @@ public class FormTreeNode : BindableBase
     /// <summary>Giá trị Sys_Resource[TitleKey, 'en'] — tên hiển thị tiếng Anh.</summary>
     public string ResourceEn { get => _resourceEn; set => SetProperty(ref _resourceEn, value); }
 
+    private int? _tabId;
+    /// <summary>
+    /// Tab chứa section này (Ui_Section.Tab_Id). NULL = chưa gán tab (form phẳng).
+    /// Chỉ có ý nghĩa khi NodeType = Section.
+    /// </summary>
+    public int? TabId { get => _tabId; set => SetProperty(ref _tabId, value); }
+
     private bool _isExpanded = true;
     /// <summary>Trạng thái expand/collapse trong TreeView (chỉ Section).</summary>
     public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }

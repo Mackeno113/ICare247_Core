@@ -60,6 +60,135 @@ Nếu `Label_Key` để trống hoặc không tìm thấy trong `Sys_Resource`:
 
 ---
 
+## 1bb. Tab Title Keys (Tiêu đề tab)
+
+### Convention
+
+```
+{tableCode}.tab.{tabCode}.title
+```
+
+| Phần | Mô tả | Ví dụ |
+|------|-------|-------|
+| `tableCode` | `Sys_Table.Table_Code` viết thường — bảng nghiệp vụ gắn với form | `dm_trinhdovanhoa` |
+| `tab` | cố định — phân biệt namespace với `section` / `field` / `val` | `tab` |
+| `tabCode` | `Ui_Tab.Tab_Code` viết thường | `thongtin` |
+| `title` | cố định — tab chỉ có 1 qualifier hiển thị | `title` |
+
+> **Scope = `table_code`, KHÔNG phải `form_code`.** Vì section/tab gắn với bảng dữ liệu, key scope theo Table giúp tái sử dụng bản dịch khi nhiều form cùng bind 1 bảng.
+
+### Ví dụ — tab `ThongTin` (form `DS_TrinhDoVanHoa` bind bảng `DM_TrinhDoVanHoa`)
+
+| Key | Nội dung |
+|-----|---------|
+| `dm_trinhdovanhoa.tab.thongtin.title` | `"Thông tin"` |
+
+### Cột lưu trong `Ui_Tab`
+
+| Cột | Vai trò | Đa ngôn ngữ |
+|-----|---------|-------------|
+| `Tab_Code` | Mã kỹ thuật — unique trong form | ❌ cố định |
+| `Title_Key` | Resource key → `Sys_Resource` | ✅ qua key |
+| `Icon_Key` | Icon tùy chọn (không phải text dịch) | — |
+
+### Auto-generate Key (nút "+ Tạo key")
+
+Khi user nhấn **+ Tạo key** trong panel Thuộc tính của tab:
+1. Hệ thống build key theo pattern: `{formCode}.tab.{tabCode}.title`
+2. Pre-fill vào input — user có thể sửa trước khi lưu
+3. Nếu key đã tồn tại trong `Sys_Resource` → cảnh báo, cho phép dùng tiếp hoặc hủy
+
+### Fallback
+
+`Title_Key` cho phép **NULL**:
+- `NULL` → không hiện label tab (xem `Ui_Tab.Title_Key` schema)
+- Có key nhưng không tìm thấy trong `Sys_Resource` → fallback về `Tab_Code`
+- Không throw error
+
+### Seed Data Gợi ý
+
+```sql
+INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
+  ('dm_trinhdovanhoa.tab.thongtin.title', 'vi', N'Thông tin'),
+  ('dm_trinhdovanhoa.tab.thongtin.title', 'en', N'Information');
+```
+
+---
+
+## 1a. Form Title Key (Tiêu đề form)
+
+```
+{tableCode}.form.title
+```
+
+| Phần | Mô tả | Ví dụ |
+|------|-------|-------|
+| `tableCode` | `Sys_Table.Table_Code` viết thường | `dm_trinhdovanhoa` |
+| `form` | cố định | `form` |
+| `title` | cố định — form có 1 tiêu đề | `title` |
+
+- Lưu key ở `Ui_Form.Title_Key`; backend resolve → `FormMetadata.FormName` theo `Lang_Code`.
+- Hiển thị: popup "Thêm mới", header FormRunner, trang Master Data.
+- Cấu hình trong WPF (tab Thông tin Form) qua popup 🌐 I18nEditorDialog.
+
+Ví dụ: `dm_trinhdovanhoa.form.title` → vi "Trình độ văn hóa", en "Education Level".
+
+---
+
+## 1c. Section Title Keys (Tiêu đề group/panel)
+
+### Convention
+
+```
+{tableCode}.section.{sectionCode}.title
+```
+
+| Phần | Mô tả | Ví dụ |
+|------|-------|-------|
+| `tableCode` | `Sys_Table.Table_Code` viết thường — bảng nghiệp vụ gắn với form | `dm_trinhdovanhoa` |
+| `section` | cố định — phân biệt namespace với `tab` / `field` / `val` | `section` |
+| `sectionCode` | `Ui_Section.Section_Code` viết thường | `thongtinchung` |
+| `title` | cố định — section chỉ có 1 qualifier hiển thị | `title` |
+
+> **Scope = `table_code`, KHÔNG phải `form_code`** (giống Tab — xem §1bb).
+
+### Ví dụ — section `ThongTinChung` (form `DS_TrinhDoVanHoa` bind bảng `DM_TrinhDoVanHoa`)
+
+| Key | Nội dung |
+|-----|---------|
+| `dm_trinhdovanhoa.section.thongtinchung.title` | `"Thông tin chung"` |
+
+### Cột lưu trong `Ui_Section`
+
+| Cột | Vai trò | Đa ngôn ngữ |
+|-----|---------|-------------|
+| `Section_Code` | Mã kỹ thuật — unique trong form, dùng cho event (`SET_VISIBLE` target section) | ❌ cố định |
+| `Title_Key` | Resource key → `Sys_Resource` | ✅ qua key |
+
+### Auto-generate Key (nút "+ Tạo key")
+
+Khi user nhấn **+ Tạo key** trong panel Thuộc tính của section:
+1. Hệ thống build key theo pattern: `{formCode}.section.{sectionCode}.title`
+2. Pre-fill vào input — user có thể sửa trước khi lưu
+3. Nếu key đã tồn tại trong `Sys_Resource` → cảnh báo, cho phép dùng tiếp hoặc hủy
+
+### Fallback
+
+`Title_Key` cho phép **NULL**:
+- `NULL` → section không hiện thanh tiêu đề (group chỉ gom layout, không header)
+- Có key nhưng không tìm thấy trong `Sys_Resource` → fallback về `Section_Code`
+- Không throw error — luôn có giá trị hiển thị (hoặc không hiện header nếu NULL)
+
+### Seed Data Gợi ý
+
+```sql
+INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
+  ('dm_trinhdovanhoa.section.thongtinchung.title', 'vi', N'Thông tin chung'),
+  ('dm_trinhdovanhoa.section.thongtinchung.title', 'en', N'General Information');
+```
+
+---
+
 ## 2. Key Convention
 
 ### 2.1 Cấu trúc key
@@ -179,7 +308,10 @@ INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
   ('sys.val.Integer',  'vi', N'{0} chỉ được nhập số nguyên'),
   ('sys.val.Integer',  'en', N'{0} must be an integer'),
   ('sys.val.Length',   'vi', N'{0} không được vượt quá {1} ký tự'),
-  ('sys.val.Length',   'en', N'{0} must not exceed {1} characters');
+  ('sys.val.Length',   'en', N'{0} must not exceed {1} characters'),
+  -- Unique (field Is_Unique) — chống trùng. Override per-field: {form}.val.{field}.Unique
+  ('sys.val.Unique',   'vi', N'{0} đã tồn tại'),
+  ('sys.val.Unique',   'en', N'{0} already exists');
 
 -- Form-specific overrides (nhanvien)
 INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES

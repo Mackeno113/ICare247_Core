@@ -87,6 +87,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
                    COALESCE(r.Resource_Value, uf.Label_Key) AS Label,
                    uf.Show_In_List AS ShowInList,
                    uf.Is_ReadOnly  AS IsReadOnly,
+                   uf.Is_Unique    AS IsUnique,
                    uf.Order_No     AS OrderNo
             FROM   dbo.Ui_Field uf
             JOIN   dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id
@@ -110,6 +111,36 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
             DisplayMode = head.DisplayMode,
             Columns     = cols
         };
+    }
+
+    // ── Exists (unique check) ─────────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<bool> ExistsValueAsync(
+        string formCode, int tenantId, string column, object? value, object? excludeId,
+        CancellationToken ct = default)
+    {
+        if (value is null || string.IsNullOrWhiteSpace(value.ToString())) return false;
+
+        var info = await GetFormInfoAsync(formCode, tenantId, ct)
+                   ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        var table = QualifiedTable(info);
+        var col   = SafeCol(column, "column");
+        var pk    = SafeCol(info.PkColumn, "PK");
+
+        var dp = new DynamicParameters();
+        dp.Add("Val", value);
+        var sql = $"SELECT COUNT(*) FROM {table} WHERE {Bracket(col)} = @Val";
+        if (excludeId is not null)
+        {
+            sql += $" AND {Bracket(pk)} <> @ExcludeId";
+            dp.Add("ExcludeId", excludeId);
+        }
+
+        using var data = _dataDb.CreateConnection();
+        var count = await data.ExecuteScalarAsync<int>(
+            new CommandDefinition(sql, dp, cancellationToken: ct));
+        return count > 0;
     }
 
     // ── List ────────────────────────────────────────────────────────────────────

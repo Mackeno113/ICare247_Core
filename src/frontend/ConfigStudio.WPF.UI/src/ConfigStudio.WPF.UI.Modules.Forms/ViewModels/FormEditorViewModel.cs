@@ -49,6 +49,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     // TitleKey gốc của section đang chọn — dùng để detect rename khi user đổi Section Code
     private string _originalTitleKey = "";
+    // TitleKey gốc của tab đang chọn — dùng để detect rename khi user đổi Tab Code
+    private string _originalTabTitleKey = "";
     private string _originalFormCode = "";
 
     // ── P0 UX Services ────────────────────────────────────────
@@ -227,13 +229,86 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public bool IsSavingSection { get => _isSavingSection; private set => SetProperty(ref _isSavingSection, value); }
 
     /// <summary>
-    /// Title_Key tự động ghép realtime: {table_code}.section.{section_code} (chữ thường).
+    /// Title_Key tự động ghép realtime: {table_code}.section.{section_code}.title (chữ thường).
     /// Cập nhật mỗi khi SelectedTable.TableCode hoặc SelectedNode.Code thay đổi.
+    /// Hậu tố `.title` theo spec 10 §1c (đồng bộ với tab). DB cũ migrate qua db/025.
     /// </summary>
     public string SectionTitleKeyPreview =>
         SelectedNode?.NodeType == FormNodeType.Section && !string.IsNullOrEmpty(SelectedNode.Code)
             && !string.IsNullOrEmpty(SelectedTable?.TableCode)
-            ? $"{SelectedTable!.TableCode.ToLowerInvariant()}.section.{SelectedNode.Code.ToLowerInvariant()}"
+            ? $"{SelectedTable!.TableCode.ToLowerInvariant()}.section.{SelectedNode.Code.ToLowerInvariant()}.title"
+            : "";
+
+    // ── Tab management ────────────────────────────────────────
+
+    /// <summary>Danh sách tab của form. Dùng cho khu quản lý Tab + dropdown "Thuộc Tab" của section.</summary>
+    public ObservableCollection<FormTabItem> Tabs { get; } = [];
+
+    private FormTabItem? _selectedTab;
+    /// <summary>Tab đang chọn trong list — hiển thị trong editor bên phải.</summary>
+    public FormTabItem? SelectedTab
+    {
+        get => _selectedTab;
+        set
+        {
+            var old = _selectedTab;
+            if (SetProperty(ref _selectedTab, value))
+            {
+                if (old is not null)
+                    old.PropertyChanged -= OnSelectedTabPropertyChanged;
+                if (_selectedTab is not null)
+                    _selectedTab.PropertyChanged += OnSelectedTabPropertyChanged;
+
+                RaisePropertyChanged(nameof(IsTabSelected));
+                RaisePropertyChanged(nameof(TabTitleKeyPreview));
+                SaveTabCommand.RaiseCanExecuteChanged();
+                DeleteTabCommand.RaiseCanExecuteChanged();
+                CancelTabCommand.RaiseCanExecuteChanged();
+
+                if (_selectedTab is not null)
+                {
+                    _originalTabTitleKey = _selectedTab.TitleKey;
+                    ValidateTabCode();
+                    _ = LoadTabResourcesAsync(_selectedTab);
+                }
+                else
+                {
+                    _originalTabTitleKey = "";
+                    TabCodeError = "";
+                }
+            }
+        }
+    }
+
+    /// <summary>True khi có 1 tab đang chọn → hiện editor.</summary>
+    public bool IsTabSelected => SelectedTab is not null;
+
+    private bool _isSavingTab;
+    /// <summary>True khi đang gọi UpsertTabAsync — khoá nút Lưu tránh double-click.</summary>
+    public bool IsSavingTab { get => _isSavingTab; private set => SetProperty(ref _isSavingTab, value); }
+
+    private string _tabCodeError = "";
+    /// <summary>Thông báo lỗi định dạng Tab Code ([a-z0-9_]). Rỗng = hợp lệ.</summary>
+    public string TabCodeError
+    {
+        get => _tabCodeError;
+        private set
+        {
+            if (SetProperty(ref _tabCodeError, value))
+                RaisePropertyChanged(nameof(HasTabCodeError));
+        }
+    }
+
+    public bool HasTabCodeError => !string.IsNullOrEmpty(_tabCodeError);
+
+    /// <summary>
+    /// Title_Key tự động ghép realtime: {table_code}.tab.{tab_code}.title (chữ thường).
+    /// Cập nhật khi SelectedTable.TableCode hoặc SelectedTab.TabCode thay đổi.
+    /// </summary>
+    public string TabTitleKeyPreview =>
+        SelectedTab is not null && !string.IsNullOrEmpty(SelectedTab.TabCode)
+            && !string.IsNullOrEmpty(SelectedTable?.TableCode)
+            ? $"{SelectedTable!.TableCode.ToLowerInvariant()}.tab.{SelectedTab.TabCode.ToLowerInvariant()}.title"
             : "";
 
     // ── Form info ─────────────────────────────────────────────
@@ -296,6 +371,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 IsDirty = true;
                 RaisePropertyChanged(nameof(CanCreateNewForm));
                 RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+                RaisePropertyChanged(nameof(TabTitleKeyPreview));
+                RaisePropertyChanged(nameof(FormTitleKeyPreview));
             }
         }
     }
@@ -321,6 +398,39 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         get => _description;
         set { if (SetProperty(ref _description, value)) IsDirty = true; }
     }
+
+    private int? _maxWidth;
+    /// <summary>Bề rộng tối đa form (px) — Ui_Form.Max_Width. Null = mặc định (Blazor dùng 880).</summary>
+    public int? MaxWidth
+    {
+        get => _maxWidth;
+        set { if (SetProperty(ref _maxWidth, value)) IsDirty = true; }
+    }
+
+    private int? _formColumns;
+    /// <summary>Số cột lưới (1..4) — Ui_Form.Form_Columns. Null = mặc định 4. =1 → mỗi field 1 dòng.</summary>
+    public int? FormColumns
+    {
+        get => _formColumns;
+        set { if (SetProperty(ref _formColumns, value)) IsDirty = true; }
+    }
+
+    /// <summary>Tùy chọn số cột cho ComboBox (null qua NullText = mặc định 4).</summary>
+    public List<int> FormColumnsOptions { get; } = [1, 2, 3, 4];
+
+    private string _formTitleKey = "";
+    /// <summary>Resource key tiêu đề form (Ui_Form.Title_Key) — {table_code}.form.title.</summary>
+    public string FormTitleKey { get => _formTitleKey; set => SetProperty(ref _formTitleKey, value); }
+
+    private string _formTitleVi = "";
+    /// <summary>Preview tiêu đề (vi) cạnh nút Dịch.</summary>
+    public string FormTitleVi { get => _formTitleVi; set => SetProperty(ref _formTitleVi, value); }
+
+    /// <summary>Title_Key tự sinh: {table_code}.form.title (form có 1 tiêu đề duy nhất).</summary>
+    public string FormTitleKeyPreview =>
+        !string.IsNullOrEmpty(SelectedTable?.TableCode)
+            ? $"{SelectedTable!.TableCode.ToLowerInvariant()}.form.title"
+            : "";
 
     private bool _isFormActive = true;
     /// <summary>Is_Active của form — dùng tên IsFormActive để tránh trùng với FrameworkElement.IsActive.</summary>
@@ -763,6 +873,17 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand SaveSectionCommand { get; }
     public DelegateCommand CancelSectionCommand { get; }
 
+    // Tab management
+    public DelegateCommand AddTabCommand { get; }
+    public DelegateCommand SaveTabCommand { get; }
+    public DelegateCommand DeleteTabCommand { get; }
+    public DelegateCommand CancelTabCommand { get; }
+
+    // i18n popup (Section / Tab / Form title)
+    public DelegateCommand OpenSectionI18nCommand { get; }
+    public DelegateCommand OpenTabI18nCommand { get; }
+    public DelegateCommand OpenFormTitleI18nCommand { get; }
+
     public FormEditorViewModel(
         IRegionManager regionManager,
         IFormDataService? formDataService = null,
@@ -862,6 +983,31 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             () => IsSectionSelected)
             .ObservesProperty(() => IsSectionSelected);
 
+        // Tab management
+        AddTabCommand = new DelegateCommand(ExecuteAddTab);
+        SaveTabCommand = new DelegateCommand(
+            async () => await ExecuteSaveTabAsync(),
+            () => !IsSavingTab && IsTabSelected && !HasTabCodeError)
+            .ObservesProperty(() => IsSavingTab)
+            .ObservesProperty(() => IsTabSelected)
+            .ObservesProperty(() => HasTabCodeError);
+        DeleteTabCommand = new DelegateCommand(
+            async () => await ExecuteDeleteTabAsync(),
+            () => IsTabSelected)
+            .ObservesProperty(() => IsTabSelected);
+        CancelTabCommand = new DelegateCommand(ExecuteCancelTab,
+            () => IsTabSelected)
+            .ObservesProperty(() => IsTabSelected);
+
+        // i18n popup
+        OpenSectionI18nCommand = new DelegateCommand(ExecuteOpenSectionI18n,
+            () => IsSectionSelected)
+            .ObservesProperty(() => IsSectionSelected);
+        OpenTabI18nCommand = new DelegateCommand(ExecuteOpenTabI18n,
+            () => IsTabSelected)
+            .ObservesProperty(() => IsTabSelected);
+        OpenFormTitleI18nCommand = new DelegateCommand(ExecuteOpenFormTitleI18n);
+
         // ── Wire undo/redo state changed ─────────────────────
         _undoRedo.StateChanged += (_, _) =>
         {
@@ -901,6 +1047,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             LayoutEngine       = "Grid";
             DisplayMode        = "Popup";
             Description        = "";
+            MaxWidth           = null;
+            FormColumns        = null;
+            FormTitleKey       = "";
+            FormTitleVi        = "";
             IsFormActive       = true;
             SelectedTable      = null;
             Version            = 1;
@@ -910,6 +1060,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             IsCheckingFormCode = false;
             IsFormCodeDuplicate = false;
             Sections.Clear();
+            Tabs.Clear();
+            SelectedTab        = null;
             Events.Clear();
             _ = LoadPermissionsAsync();
             ActiveTabIndex     = 0; // Mở tab "Thông tin Form"
@@ -942,6 +1094,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         // Hủy subscribe node đang chọn để tránh memory leak khi navigate ra ngoài
         if (_selectedNode is not null)
             _selectedNode.PropertyChanged -= OnSelectedNodePropertyChanged;
+
+        // Hủy subscribe tab đang chọn (parity với node)
+        if (_selectedTab is not null)
+            _selectedTab.PropertyChanged -= OnSelectedTabPropertyChanged;
 
         _formCodeValidationCts?.Cancel();
         _formCodeValidationCts?.Dispose();
@@ -991,6 +1147,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             LayoutEngine = detail.LayoutEngine;
             DisplayMode  = detail.DisplayMode;
             Description  = detail.Description ?? "";
+            MaxWidth     = detail.MaxWidth;
+            FormColumns  = detail.FormColumns;
+            FormTitleKey = detail.TitleKey ?? "";
+            FormTitleVi  = _i18nService is not null && !string.IsNullOrEmpty(FormTitleKey)
+                ? await _i18nService.ResolveKeyAsync(FormTitleKey, "vi", ct) ?? ""
+                : "";
             Version      = detail.Version;
             Checksum     = detail.Checksum ?? "";
             IsFormActive = detail.IsActive;
@@ -1001,7 +1163,29 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableId == detail.TableId)
                             ?? TableLookupItems.FirstOrDefault();
 
-            // ── 3. Sections + Fields → build tree ─────────────
+            // ── 3a. Tabs ─────────────────────────────────────
+            var tabRecords = await _detailService.GetTabsByFormAsync(FormId, tenantId, ct);
+            Tabs.Clear();
+            SelectedTab = null;
+            foreach (var t in tabRecords.OrderBy(t => t.OrderNo))
+            {
+                var tabItem = new FormTabItem
+                {
+                    TabId        = t.TabId,
+                    TabCode      = t.TabCode,
+                    TitleKey     = t.TitleKey ?? "",
+                    IconKey      = t.IconKey ?? "",
+                    OrderNo      = t.OrderNo,
+                    IsDefault    = t.IsDefault,
+                    SectionCount = t.SectionCount
+                };
+                // Resolve tên hiển thị từ Sys_Resource (vi) cho list
+                if (_i18nService is not null && !string.IsNullOrEmpty(t.TitleKey))
+                    tabItem.ResourceVi = await _i18nService.ResolveKeyAsync(t.TitleKey, "vi", ct) ?? "";
+                Tabs.Add(tabItem);
+            }
+
+            // ── 3b. Sections + Fields → build tree ─────────────
             var sectionRecords = await _detailService.GetSectionsByFormAsync(FormId, tenantId, ct);
             var fieldRecords   = await _detailService.GetFieldsByFormAsync(FormId, tenantId, ct);
 
@@ -1030,6 +1214,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     TitleKey    = s.TitleKey ?? "",
                     DisplayName = resolvedTitle,
                     SortOrder   = s.OrderNo,
+                    TabId       = s.TabId,
                     IsExpanded  = true
                 };
 
@@ -1157,6 +1342,22 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                         CanWrite        = false,
                         CanSubmit       = false
                     });
+
+                // Overlay quyền đã lưu từ Sys_Permission (nếu form đã tồn tại)
+                if (_detailService is not null && FormId > 0)
+                {
+                    var saved = await _detailService.GetFormPermissionsAsync(FormId, ct);
+                    foreach (var perm in saved)
+                    {
+                        var row = Permissions.FirstOrDefault(p => p.RoleId == perm.RoleId);
+                        if (row is not null)
+                        {
+                            row.CanRead   = perm.CanRead;
+                            row.CanWrite  = perm.CanWrite;
+                            row.CanSubmit = perm.CanSubmit;
+                        }
+                    }
+                }
                 return;
             }
         }
@@ -1238,7 +1439,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 TitleKey:    newTitleKey,
                 OrderNo:     node.SortOrder,
                 IsActive:    node.IsActive,
-                OldTitleKey: _originalTitleKey
+                OldTitleKey: _originalTitleKey,
+                TabId:       node.TabId
             );
 
             var savedId = await _detailService.UpsertSectionAsync(req, _loadCts.Token);
@@ -1248,14 +1450,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             node.TitleKey = newTitleKey;
             _originalTitleKey = newTitleKey;
 
-            // Lưu Resource_Value vào Sys_Resource cho từng ngôn ngữ
-            if (_i18nService is not null)
-            {
-                if (!string.IsNullOrWhiteSpace(node.ResourceVi))
-                    await _i18nService.SaveResourceAsync(newTitleKey, "vi", node.ResourceVi, _loadCts.Token);
-                if (!string.IsNullOrWhiteSpace(node.ResourceEn))
-                    await _i18nService.SaveResourceAsync(newTitleKey, "en", node.ResourceEn, _loadCts.Token);
-            }
+            // Bản dịch (vi/en/…) do popup I18nEditorDialog quản lý — xem ExecuteOpenSectionI18n.
+            // Tại đây chỉ rename Resource_Key khi Section Code đổi (UpsertSectionAsync xử lý qua OldTitleKey).
 
             // Cập nhật DisplayName hiển thị trên TreeView
             node.DisplayName = string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi;
@@ -1281,6 +1477,221 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
         _ = LoadSectionResourcesAsync(node);
         RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+    }
+
+    // ── Tab inline editing ───────────────────────────────────
+
+    /// <summary>Khi user sửa Tab Code → re-validate + cập nhật preview key.</summary>
+    private void OnSelectedTabPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(FormTabItem.TabCode))
+        {
+            ValidateTabCode();
+            RaisePropertyChanged(nameof(TabTitleKeyPreview));
+            SaveTabCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// Validate Tab Code theo pattern [a-z0-9_]. Ghi kết quả vào <see cref="TabCodeError"/>.
+    /// Cảnh báo nếu trùng Tab Code với tab khác cùng form.
+    /// </summary>
+    private void ValidateTabCode()
+    {
+        if (SelectedTab is null)
+        {
+            TabCodeError = "";
+            return;
+        }
+        var code = SelectedTab.TabCode ?? "";
+        if (code.Length == 0)
+            TabCodeError = "Tab Code không được để trống";
+        else if (!SectionCodeRegex.IsMatch(code))
+            TabCodeError = "Chỉ dùng chữ thường, số và dấu gạch dưới (_)";
+        else if (Tabs.Any(t => !ReferenceEquals(t, SelectedTab)
+                               && string.Equals(t.TabCode, code, StringComparison.OrdinalIgnoreCase)))
+            TabCodeError = "Tab Code đã tồn tại trong form";
+        else
+            TabCodeError = "";
+    }
+
+    /// <summary>
+    /// Load ResourceVi / ResourceEn từ Sys_Resource theo TitleKey của tab.
+    /// </summary>
+    private async Task LoadTabResourcesAsync(FormTabItem tab)
+    {
+        if (_i18nService is null || string.IsNullOrEmpty(tab.TitleKey)) return;
+        tab.ResourceVi = await _i18nService.ResolveKeyAsync(tab.TitleKey, "vi") ?? "";
+        tab.ResourceEn = await _i18nService.ResolveKeyAsync(tab.TitleKey, "en") ?? "";
+    }
+
+    /// <summary>Thêm một tab mới (chưa lưu DB) và chọn nó để chỉnh sửa.</summary>
+    private void ExecuteAddTab()
+    {
+        var nextOrder = Tabs.Count > 0 ? Tabs.Max(t => t.OrderNo) + 1 : 1;
+        var tab = new FormTabItem
+        {
+            TabId     = 0,
+            TabCode   = $"tab_{nextOrder}",
+            OrderNo   = nextOrder,
+            IsDefault = Tabs.Count == 0   // tab đầu tiên → default
+        };
+        Tabs.Add(tab);
+        SelectedTab = tab;
+    }
+
+    /// <summary>
+    /// Lưu Tab: validate → upsert Ui_Tab → upsert Sys_Resource vi/en.
+    /// Nếu Tab Code đổi → TitleKey thay đổi → rename Resource_Key trong DB.
+    /// </summary>
+    private async Task ExecuteSaveTabAsync()
+    {
+        if (SelectedTab is null) return;
+        ValidateTabCode();
+        if (HasTabCodeError) return;
+        if (_detailService is null) return;
+
+        var newTitleKey = TabTitleKeyPreview;
+        if (string.IsNullOrEmpty(newTitleKey))
+        {
+            ErrorMessage = "Không thể lưu Tab: Table chưa được chọn hoặc Tab Code trống.";
+            return;
+        }
+
+        IsSavingTab = true;
+        try
+        {
+            var req = new TabUpsertRequest(
+                FormId:      FormId,
+                TabId:       SelectedTab.TabId,
+                TabCode:     SelectedTab.TabCode,
+                TitleKey:    newTitleKey,
+                IconKey:     string.IsNullOrWhiteSpace(SelectedTab.IconKey) ? null : SelectedTab.IconKey,
+                OrderNo:     SelectedTab.OrderNo,
+                IsDefault:   SelectedTab.IsDefault,
+                OldTitleKey: _originalTabTitleKey
+            );
+
+            var savedId = await _detailService.UpsertTabAsync(req, _loadCts.Token);
+
+            SelectedTab.TabId    = savedId;
+            SelectedTab.TitleKey = newTitleKey;
+            _originalTabTitleKey = newTitleKey;
+
+            // Bản dịch (vi/en/…) do popup I18nEditorDialog quản lý — xem ExecuteOpenTabI18n.
+            // UpsertTabAsync rename Resource_Key khi Tab Code đổi (qua OldTitleKey).
+
+            // Đồng bộ cờ default trên UI: chỉ 1 tab được default
+            if (SelectedTab.IsDefault)
+                foreach (var t in Tabs)
+                    if (!ReferenceEquals(t, SelectedTab))
+                        t.IsDefault = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "FormEditor.SaveTab");
+            ErrorMessage = $"Lưu Tab thất bại: {ex.Message}";
+        }
+        finally
+        {
+            IsSavingTab = false;
+        }
+    }
+
+    /// <summary>Xóa tab: gỡ section khỏi tab (Tab_Id=NULL) rồi xóa Ui_Tab.</summary>
+    private async Task ExecuteDeleteTabAsync()
+    {
+        if (SelectedTab is null) return;
+        var tab = SelectedTab;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Xóa tab '{tab.DisplayLabel}'?\n" +
+            (tab.SectionCount > 0
+                ? $"{tab.SectionCount} section đang thuộc tab này sẽ được gỡ về dạng phẳng (không bị xóa).\n"
+                : "") +
+            "Thao tác này không thể hoàn tác.",
+            "Xác nhận xóa tab",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (tab.TabId > 0 && _detailService is not null)
+            await SafeDbAsync(
+                () => _detailService.DeleteTabAsync(tab.TabId),
+                $"FormEditor.DeleteTab tab #{tab.TabId}");
+
+        // Gỡ liên kết trên các section node đang trỏ vào tab này
+        foreach (var s in Sections.Where(s => s.TabId == tab.TabId))
+            s.TabId = null;
+
+        Tabs.Remove(tab);
+        SelectedTab = Tabs.FirstOrDefault();
+    }
+
+    /// <summary>Hủy thay đổi tab: load lại resource values từ DB.</summary>
+    private void ExecuteCancelTab()
+    {
+        if (SelectedTab is null) return;
+        _ = LoadTabResourcesAsync(SelectedTab);
+        RaisePropertyChanged(nameof(TabTitleKeyPreview));
+    }
+
+    // ── i18n popup (dùng chung I18nEditorDialog) ─────────────
+
+    /// <summary>
+    /// Mở popup nhập bản dịch đa ngôn ngữ cho <paramref name="key"/>.
+    /// Popup tự lưu Sys_Resource; callback nhận bản dịch ngôn ngữ mặc định để cập nhật preview.
+    /// </summary>
+    private void OpenI18nDialog(string key, string contextLabel, string seedValue, Action<string> onSaved)
+    {
+        if (_dialogService is null) return;
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            ErrorMessage = "Chưa thể dịch: Table chưa được chọn hoặc Code còn trống.";
+            return;
+        }
+
+        var p = new DialogParameters
+        {
+            { "key",          key },
+            { "contextLabel", contextLabel },
+            { "seedValue",    seedValue ?? "" }
+        };
+
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            onSaved(result.Parameters.GetValue<string>("primaryValue") ?? "");
+        });
+    }
+
+    private void ExecuteOpenSectionI18n()
+    {
+        if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
+        OpenI18nDialog(SectionTitleKeyPreview, "Tiêu đề Section", node.ResourceVi, primary =>
+        {
+            node.ResourceVi   = primary;
+            node.DisplayName  = string.IsNullOrWhiteSpace(primary) ? node.Code : primary;
+            RaisePropertyChanged(nameof(TotalSections));
+        });
+    }
+
+    private void ExecuteOpenTabI18n()
+    {
+        if (SelectedTab is null) return;
+        OpenI18nDialog(TabTitleKeyPreview, "Tiêu đề Tab", SelectedTab.ResourceVi,
+            primary => SelectedTab.ResourceVi = primary);
+    }
+
+    private void ExecuteOpenFormTitleI18n()
+    {
+        OpenI18nDialog(FormTitleKeyPreview, "Tiêu đề Form", FormTitleVi, primary =>
+        {
+            FormTitleVi  = primary;
+            FormTitleKey = FormTitleKeyPreview;   // chốt key để lưu vào Ui_Form.Title_Key
+            IsDirty      = true;
+        });
     }
 
     // ── Filter / Search ──────────────────────────────────────
@@ -2017,6 +2428,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 isActive:       IsFormActive,
                 tableId:        SelectedTable?.TableId,
                 currentVersion: Version,
+                maxWidth:       MaxWidth,
+                formColumns:    FormColumns,
+                titleKey:       string.IsNullOrWhiteSpace(FormTitleKey) ? null : FormTitleKey,
                 ct:             _loadCts.Token);
 
             if (success)
@@ -2024,6 +2438,15 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 Version++;
                 IsDirty = false;
                 _undoRedo.Clear();
+
+                // Lưu phân quyền form (Sys_Permission) — Can_Write = quyền thêm mới/sửa
+                if (_detailService is not null && FormId > 0)
+                {
+                    var perms = Permissions
+                        .Select(p => new FormPermissionRecord(p.RoleId, p.CanRead, p.CanWrite, p.CanSubmit))
+                        .ToList();
+                    await _detailService.SaveFormPermissionsAsync(FormId, perms, _loadCts.Token);
+                }
             }
             else
             {
@@ -2216,6 +2639,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 isActive:       IsFormActive,
                 tableId:        SelectedTable?.TableId,
                 currentVersion: Version,
+                maxWidth:       MaxWidth,
+                formColumns:    FormColumns,
+                titleKey:       string.IsNullOrWhiteSpace(FormTitleKey) ? null : FormTitleKey,
                 ct:             ct);
 
             if (success)
