@@ -24,6 +24,7 @@ public sealed class EventEngine : IEventEngine
     private readonly IEventRepository _eventRepo;
     private readonly IAstEngine _astEngine;
     private readonly IValidationEngine _validationEngine;
+    private readonly IConfigCache _config;
     private readonly ILogger<EventEngine> _logger;
 
     /// <summary>
@@ -42,11 +43,13 @@ public sealed class EventEngine : IEventEngine
         IEventRepository eventRepo,
         IAstEngine astEngine,
         IValidationEngine validationEngine,
+        IConfigCache config,
         ILogger<EventEngine> logger)
     {
         _eventRepo = eventRepo;
         _astEngine = astEngine;
         _validationEngine = validationEngine;
+        _config = config;
         _logger = logger;
     }
 
@@ -405,12 +408,18 @@ public sealed class EventEngine : IEventEngine
 
         var deltas = new List<UiDelta>();
 
+        // Resource map qua facade (ADR-014) → message validation resolve i18n thay vì raw Error_Key.
+        var resourceMap = string.IsNullOrEmpty(formEvent.FormCode)
+            ? null
+            : await _config.GetResourceMapAsync(formEvent.FormCode, formEvent.LangCode, formEvent.TenantId, ct);
+
         foreach (var fieldCode in targetFields)
         {
             var value = context.GetValue(fieldCode);
             var response = await _validationEngine.ValidateFieldAsync(
                 formEvent.FormId, fieldCode, value, context,
-                formEvent.TenantId, langCode: "vi", ct: ct);
+                formEvent.TenantId, langCode: formEvent.LangCode,
+                resourceMap: resourceMap, formCode: formEvent.FormCode, ct: ct);
 
             // Tạo delta chứa validation errors
             var errors = response.Results

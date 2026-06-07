@@ -141,7 +141,8 @@ public sealed class RuntimeController : ControllerBase
         [FromBody] HandleEventRequest body,
         CancellationToken ct = default)
     {
-        // Dùng "vi" mặc định cho handle-event (không cần lang param vì delta không chứa message)
+        // Dùng "vi" mặc định cho handle-event. TRIGGER_VALIDATION có chứa message →
+        // EventEngine resolve i18n qua IConfigCache theo FormCode/LangCode truyền trong FormEvent.
         var form = await _metadataEngine.GetFormMetadataAsync(
             formCode, langCode: "vi", platform: "web", _tenant.TenantId, ct);
         if (form is null)
@@ -154,7 +155,9 @@ public sealed class RuntimeController : ControllerBase
             body.SourceField,
             form.FormId,
             _tenant.TenantId,
-            context);
+            context,
+            FormCode: form.FormCode,
+            LangCode: "vi");
 
         var result = await _eventEngine.HandleEventAsync(formEvent, ct);
 

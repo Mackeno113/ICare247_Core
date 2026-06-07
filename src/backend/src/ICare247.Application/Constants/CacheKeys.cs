@@ -53,13 +53,6 @@ public static class CacheKeys
         => $"icare:formlist:{tenantId}:{filterHash}";
 
     /// <summary>
-    /// Cache key cho Sys_Lookup items theo code + tenant + ngôn ngữ.
-    /// Prefix: icare:lookup:{tenantId}:{lookupCode}:lang:{langCode}
-    /// </summary>
-    public static string Lookup(string lookupCode, int tenantId, string langCode)
-        => $"icare:lookup:{tenantId}:{lookupCode.ToLowerInvariant()}:lang:{langCode}";
-
-    /// <summary>
     /// Cache key cho RuntimeFormContext (FormMetadata + ResourceMap) — dùng bởi MetadataEngine.
     /// Prefix: icare:meta:rt:{tenantId}:{formCode}:lang:{langCode}
     /// </summary>

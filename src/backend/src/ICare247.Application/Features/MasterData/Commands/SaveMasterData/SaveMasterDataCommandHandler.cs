@@ -42,10 +42,13 @@ public sealed class SaveMasterDataCommandHandler
                    ?? throw new InvalidOperationException($"MasterData: form '{r.FormCode}' không tồn tại.");
 
         // ── Validation server-side (vá caveat session 36: trước đây chỉ check client) ──
-        var context = new EvaluationContext(r.Values);
+        // Resource map lấy qua facade (ADR-014) → message validation resolve i18n đúng,
+        // trước đây truyền null nên rule message hiện ra raw Error_Key.
+        var context     = new EvaluationContext(r.Values);
+        var resourceMap = await _config.GetResourceMapAsync(r.FormCode, "vi", r.TenantId, ct);
         var vr = await _validation.ValidateFormAsync(
             info.FormId, context, r.TenantId, langCode: "vi",
-            resourceMap: null, formCode: r.FormCode, ct: ct);
+            resourceMap: resourceMap, formCode: r.FormCode, ct: ct);
 
         var errors = vr.Where(kv => !kv.Value.IsValid)
                        .Select(kv => new MasterDataFieldError(

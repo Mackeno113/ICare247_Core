@@ -48,6 +48,9 @@ public sealed class ConfigCache : IConfigCache
     // Slot version cho cache key — placeholder cho version-stamp (CC-4a).
     private const int CurrentVersion = 0;
 
+    // Ngôn ngữ phổ biến — xóa cache cho tất cả khi invalidate (giống MetadataEngine).
+    private static readonly string[] KnownLangCodes = ["vi", "en"];
+
     // Stampede lock per-key (in-process): khi nhiều request cùng miss 1 key, chỉ 1 request
     // chạm DB, số còn lại chờ rồi đọc lại cache. Key space hữu hạn (tenant×scope×lang) nên
     // không xóa entry — SemaphoreSlim không cấp OS handle nếu không truy cập AvailableWaitHandle.
@@ -122,6 +125,20 @@ public sealed class ConfigCache : IConfigCache
                 (await _lookupRepo.GetByCodeAsync(lookupCode, tenantId, langCode, token)).ToList(),
             isEmpty: list => list.Count == 0,
             ct: ct);
+    }
+
+    /// <inheritdoc />
+    public async Task InvalidateLookupAsync(string lookupCode, int tenantId)
+    {
+        foreach (var lang in KnownLangCodes)
+        {
+            var key = CacheKeys.ConfigLookup(lookupCode, lang, tenantId, CurrentVersion);
+            await _cache.RemoveAsync(key);
+        }
+
+        _logger.LogInformation(
+            "ConfigCache invalidated (lookup) — Code={Code}, TenantId={TenantId}",
+            lookupCode, tenantId);
     }
 
     /// <inheritdoc />

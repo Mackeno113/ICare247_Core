@@ -7,6 +7,7 @@ using ICare247.Application.Features.Lookups.Commands.InsertLookup;
 using ICare247.Application.Features.Lookups.Queries.GetLookupByCode;
 using ICare247.Application.Features.Lookups.Queries.QueryDynamic;
 using ICare247.Application.Features.Lookups.Queries.QueryTree;
+using ICare247.Application.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
@@ -21,9 +22,14 @@ namespace ICare247.Api.Controllers;
 [Route("api/v1/lookups")]
 public sealed class LookupController : ControllerBase
 {
-    private readonly IMediator _mediator;
+    private readonly IMediator    _mediator;
+    private readonly IConfigCache _config;
 
-    public LookupController(IMediator mediator) => _mediator = mediator;
+    public LookupController(IMediator mediator, IConfigCache config)
+    {
+        _mediator = mediator;
+        _config   = config;
+    }
 
     /// <summary>
     /// Lấy danh sách items của một lookup code.
@@ -171,6 +177,22 @@ public sealed class LookupController : ControllerBase
                 Detail = ex.Message
             });
         }
+    }
+
+    /// <summary>
+    /// Xóa cache options của một lookup code (L1 + L2, mọi ngôn ngữ đã biết).
+    /// Gọi sau khi admin sửa danh mục <c>Sys_Lookup</c> ở ConfigStudio.
+    /// </summary>
+    /// <remarks>
+    /// POST /api/v1/lookups/GENDER/invalidate-cache
+    /// Sự kiện theo sau: lần GET tiếp theo load lại từ DB và cache với dữ liệu mới.
+    /// </remarks>
+    [HttpPost("{code}/invalidate-cache")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> InvalidateCache(string code)
+    {
+        await _config.InvalidateLookupAsync(code.ToUpperInvariant(), GetTenantId());
+        return NoContent();
     }
 
     private int GetTenantId()

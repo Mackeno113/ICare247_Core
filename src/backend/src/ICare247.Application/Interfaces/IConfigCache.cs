@@ -93,6 +93,14 @@ public interface IConfigCache
         CancellationToken ct = default);
 
     /// <summary>
+    /// Xóa cache options của một <c>Sys_Lookup</c> code (mọi ngôn ngữ đã biết) — gọi sau khi admin
+    /// sửa danh mục ở ConfigStudio (CC-4b sẽ wire WPF gọi endpoint này).
+    /// </summary>
+    /// <param name="lookupCode">Sys_Lookup.Lookup_Code cần invalidate.</param>
+    /// <param name="tenantId">Tenant sở hữu danh mục.</param>
+    Task InvalidateLookupAsync(string lookupCode, int tenantId);
+
+    /// <summary>
     /// Lấy quyền của một form theo tenant để runtime enforce (xem/thêm/sửa/xóa) — CC-3.
     /// </summary>
     /// <param name="formId">Ui_Form.Form_Id.</param>

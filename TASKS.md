@@ -20,13 +20,20 @@
 
 ### Giai đoạn 1 — i18n resource (ưu tiên — dọn anti-pattern hiện tại)
 - [x] **CC-1a** — `SaveMasterDataCommandHandler` + `InsertLookupCommandHandler` ✅ (2026-06-07): bỏ inject `IResourceRepository`, resolve message trùng qua `IConfigCache.ResolveKeyAsync` (per-field key → `sys.val.unique` template → hardcode). Grep xác nhận 2 handler chỉ còn nhắc `IResourceRepository` trong comment. Build 0/0.
-- [ ] **CC-1b** — Gom mọi resolve i18n runtime về facade (label/validation/unique/message). _Label/validation đã đi qua MetadataEngine/ResourceMap (facade-internal); unique/message đã route (CC-1a). Còn lại: rà runtime path khác nếu có._
+- [x] **CC-1b** — Rà toàn bộ runtime path resolve i18n ✅ (2026-06-07). Khảo sát 3 caller Validate*: RuntimeController (đã truyền `form.ResourceMap` — OK). Phát hiện + sửa **2 bug i18n thật**: (1) `SaveMasterDataCommandHandler` truyền `resourceMap: null` → rule message hiện raw Error_Key; giờ lấy map qua `IConfigCache.GetResourceMapAsync`. (2) `EventEngine` TRIGGER_VALIDATION không truyền map → thêm `FormCode`+`LangCode` vào `FormEvent`, EventEngine inject `IConfigCache` lấy map. `ResourceResolver` = pure helper trên map có sẵn (không bypass); repo resolve label bằng SQL = data layer facade bọc (hợp lệ). Build 0/0.
 
 ### Giai đoạn 2 — Lookup options
-- [ ] **CC-2** — Cache `Sys_Lookup` options theo `code+lang+tenant`; đọc qua facade. Invalidate khi sửa Sys_Lookup.
+- [x] **CC-2** — Lookup options qua facade ✅ (2026-06-07). `GetLookupByCodeQueryHandler` bỏ tự cache-aside (key cũ `CacheKeys.Lookup` — đã xóa dead code) → delegate `IConfigCache.GetLookupOptionsAsync` (hưởng stampede+negative cache CC-0c). Thêm `IConfigCache.InvalidateLookupAsync` + endpoint `POST /api/v1/lookups/{code}/invalidate-cache` (mirror form invalidate). Build 0/0. _Wiring WPF gọi endpoint khi sửa Sys_Lookup = CC-4b._
 
-### Giai đoạn 3 — Permission
-- [ ] **CC-3** — Cache `Sys_Permission` theo `form+tenant` (phục vụ runtime enforce). Invalidate khi sửa permission ở WPF.
+### Giai đoạn 3 — Permission (⏸ HOÃN — chờ thiết kế schema DB)
+> **Lý do hoãn:** `GetFormPermissionsAsync` hiện trả `null` (deny-by-default) trong `ConfigCache`.
+> Triển khai thật cần chốt **cấu trúc bảng lưu quyền trước** (bảng `Sys_Permission` chưa tồn tại):
+> quyền theo user/role? cột nào (View/Create/Edit/Delete)? field-level hay chỉ form-level?
+> scope tenant/form. Làm sau khi có schema. Entity `FormPermission` (Domain) đã tạo sẵn làm contract.
+- [ ] **CC-3a** — Thiết kế + migration bảng `Sys_Permission` (role/user × form × CRUD, tenant scope). _Tiền đề._
+- [ ] **CC-3b** — `IPermissionRepository` + impl Dapper (đọc theo form+tenant, map sang `FormPermission`).
+- [ ] **CC-3c** — `ConfigCache.GetFormPermissionsAsync` đọc qua repo + cache key `ConfigPermission` (đã có) + `InvalidatePermissionAsync` + endpoint invalidate.
+- [ ] **CC-3d** — Runtime enforce: web/handler đọc `GetFormPermissions` → ẩn nút + chặn thao tác (deny-by-default).
 
 ### Giai đoạn 4 — Invalidation nâng cấp (khi scale-out ≥2 instance)
 - [ ] **CC-4a** — Version-stamp: `cfgver:{tenant}:{form}` (metadata) / `cfgver:{tenant}` (i18n/lookup) trong Redis; key gắn `:v{n}`; version cache L1 TTL 10–30s.

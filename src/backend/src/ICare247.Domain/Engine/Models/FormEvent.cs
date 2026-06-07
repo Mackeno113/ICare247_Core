@@ -18,9 +18,13 @@ namespace ICare247.Domain.Engine.Models;
 /// <param name="FormId">Form đang xử lý.</param>
 /// <param name="TenantId">Tenant — bắt buộc.</param>
 /// <param name="Context">Snapshot toàn bộ giá trị field tại thời điểm event.</param>
+/// <param name="FormCode">Form_Code — scope để resolve i18n (VD TRIGGER_VALIDATION) qua IConfigCache.</param>
+/// <param name="LangCode">Ngôn ngữ resolve message: 'vi' (mặc định), 'en'.</param>
 public sealed record FormEvent(
     string EventType,
     string? SourceField,
     int FormId,
     int TenantId,
-    EvaluationContext Context);
+    EvaluationContext Context,
+    string FormCode = "",
+    string LangCode = "vi");

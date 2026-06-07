@@ -52,10 +52,14 @@
 
 - ✅ Full backend build `ICare247.slnx` verify **0/0** (đã stop API rồi build lại).
 
+- ✅ Commit `98e699a` cụm CC-0/CC-1.
+- ✅ **CC-2**: `GetLookupByCodeQueryHandler` delegate `IConfigCache.GetLookupOptionsAsync` (xóa dead `CacheKeys.Lookup`). Thêm `InvalidateLookupAsync` + endpoint `POST /api/v1/lookups/{code}/invalidate-cache`. Build 0/0.
+- ✅ **CC-1b**: rà runtime i18n. Sửa 2 bug thật — `SaveMasterDataCommandHandler` (resourceMap null → lấy qua facade) + `EventEngine` TRIGGER_VALIDATION (thêm `FormCode`/`LangCode` vào `FormEvent`, inject `IConfigCache`). RuntimeController vốn đã OK. Build 0/0. _CC-2 + CC-1b chưa commit._
+
 ## ⏳ Việc cần làm ngay (đầu session sau)
-1. Commit cụm CC-0/CC-1 (chưa commit). Khởi động lại API nếu cần test runtime.
-2. **CC-2** — route lookup options runtime (`DynamicLookupRepository`/`LookupApiService` path) qua `IConfigCache.GetLookupOptions` + invalidate khi sửa Sys_Lookup.
-3. **CC-3** — thêm repo `Sys_Permission` → `ConfigCache.GetFormPermissionsAsync` (hiện trả null).
+1. Commit CC-2 + CC-1b. Khởi động lại API nếu cần test runtime.
+2. **CC-3** — thêm repo `Sys_Permission` → `ConfigCache.GetFormPermissionsAsync` (hiện trả null) + endpoint invalidate permission.
+3. **CC-4b** — wire WPF gọi `invalidate-cache` (form + lookup) sau khi lưu config.
 
 ## Điểm vào việc tiếp theo
 - **CC-0a** (nếu code ConfigCache): tạo `ICare247.Application/Interfaces/IConfigCache.cs` + record `FormPermission` — chỉ interface, build vẫn xanh. Xem TASKS.md roadmap ConfigCache + ADR-014.
