@@ -72,4 +72,29 @@ public static class CacheKeys
     /// </summary>
     public static string ResourceMap(string formCode, string langCode, int tenantId)
         => $"icare:resource:{tenantId}:{formCode.ToLowerInvariant()}:lang:{langCode}";
+
+    // ── ConfigCache facade keys (ADR-014) — gắn sẵn slot :v{version} (version-stamp ready) ──
+    // version hiện = 0 (1 instance, dùng event-remove). Khi scale-out (CC-4a): version đọc từ
+    // Redis cfgver:* → INCR khi sửa config → key đổi → mọi instance miss, KHÔNG cần pub/sub.
+
+    /// <summary>
+    /// ConfigCache — ResourceMap theo scope (form code / 'sys') + ngôn ngữ.
+    /// Prefix: icare:cfg:resource:{tenantId}:{scope}:v{version}:lang:{langCode}
+    /// </summary>
+    public static string ConfigResourceMap(string scope, string langCode, int tenantId, int version)
+        => $"icare:cfg:resource:{tenantId}:{scope.ToLowerInvariant()}:v{version}:lang:{langCode}";
+
+    /// <summary>
+    /// ConfigCache — Sys_Lookup options theo code + ngôn ngữ.
+    /// Prefix: icare:cfg:lookup:{tenantId}:{lookupCode}:v{version}:lang:{langCode}
+    /// </summary>
+    public static string ConfigLookup(string lookupCode, string langCode, int tenantId, int version)
+        => $"icare:cfg:lookup:{tenantId}:{lookupCode.ToLowerInvariant()}:v{version}:lang:{langCode}";
+
+    /// <summary>
+    /// ConfigCache — quyền form theo tenant.
+    /// Prefix: icare:cfg:perm:{tenantId}:{formId}:v{version}
+    /// </summary>
+    public static string ConfigPermission(int formId, int tenantId, int version)
+        => $"icare:cfg:perm:{tenantId}:{formId}:v{version}";
 }

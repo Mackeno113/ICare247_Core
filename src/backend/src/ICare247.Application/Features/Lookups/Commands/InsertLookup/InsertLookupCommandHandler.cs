@@ -14,17 +14,17 @@ public sealed class InsertLookupCommandHandler
     : IRequestHandler<InsertLookupCommand, IDictionary<string, object?>?>
 {
     private readonly IDynamicLookupRepository              _repo;
-    private readonly IResourceRepository                   _resources;
+    private readonly IConfigCache                          _config;
     private readonly ILogger<InsertLookupCommandHandler>   _logger;
 
     public InsertLookupCommandHandler(
         IDynamicLookupRepository repo,
-        IResourceRepository resources,
+        IConfigCache config,
         ILogger<InsertLookupCommandHandler> logger)
     {
-        _repo      = repo;
-        _resources = resources;
-        _logger    = logger;
+        _repo    = repo;
+        _config  = config;
+        _logger  = logger;
     }
 
     /// <summary>
@@ -46,18 +46,17 @@ public sealed class InsertLookupCommandHandler
         }
         catch (DuplicateValueException dup)
         {
-            // Resolve key {table}.val.{column}.unique → text qua resource map (cache).
-            var map = await _resources.GetByKeysAsync([dup.ResourceKey, "sys.val.unique"], "vi", ct);
-            var msg = map.TryGetValue(dup.ResourceKey, out var v) && !string.IsNullOrWhiteSpace(v)
-                ? v
-                : map.TryGetValue("sys.val.unique", out var tpl) && !string.IsNullOrWhiteSpace(tpl)
-                    ? tpl.Replace("{0}", dup.Column)
-                    : $"{dup.Column} đã tồn tại";
+            // Resolve message trùng qua IConfigCache (ADR-014) — KHÔNG chọc IResourceRepository thẳng.
+            // 1. per-field key {table}.val.{column}.unique → 2. sys.val.unique template({0}) → 3. hardcode.
+            var msg = await _config.ResolveKeyAsync(dup.ResourceKey, "vi", request.TenantId, ct)
+                ?? (await _config.ResolveKeyAsync("sys.val.unique", "vi", request.TenantId, ct))
+                    ?.Replace("{0}", dup.Column)
+                ?? $"{dup.Column} đã tồn tại";
             throw new InvalidOperationException(msg);
         }
 
         _logger.LogDebug("InsertLookup OK — FieldId={FieldId} NewValue={Value}",
-            request.FieldId, result?.TryGetValue("value", out var v) == true ? v : null);
+            request.FieldId, result?.TryGetValue("value", out var newValue) == true ? newValue : null);
 
         return result;
     }

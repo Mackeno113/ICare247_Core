@@ -13,14 +13,14 @@
 > Invalidation: Version-stamp (scale-out) + Event-remove + TTL. Chi tiết: ADR-014.
 
 ### Giai đoạn 0 — Nền tảng facade
-- [ ] **CC-0a** — `IConfigCache` (Application/Interfaces): `GetFormMetadata`, `GetResourceMap(scope,lang,tenant)`, `ResolveKey(key,lang,tenant)`, `GetLookupOptions(code,lang,tenant)`, `GetFormPermissions(formId,tenant)`.
-- [ ] **CC-0b** — Implement `ConfigCache` bọc `MetadataEngine` + repo config; cache-aside qua `ICacheService` (đã có L1/L2). Key chừa sẵn slot `:v{n}` (version-stamp ready).
-- [ ] **CC-0c** — Stampede lock per-key khi miss + negative cache (TTL ngắn) cho key không tồn tại.
-- [ ] **CC-0d** — DI đăng ký; convention: handler/web cấm inject repo config trực tiếp (chỉ `IConfigCache`).
+- [x] **CC-0a** — `IConfigCache` (Application/Interfaces): `GetFormMetadata`, `GetResourceMap(scope,lang,tenant)`, `ResolveKey(key,lang,tenant)`, `GetLookupOptions(code,lang,tenant)`, `GetFormPermissions(formId,tenant)`. ✅ (2026-06-07) + entity `FormPermission` (Domain/Entities/Permission, deny-by-default). Build backend+WPF 0/0. _Kèm fix build commit 49738e7: `InsertLookupCommandHandler` CS0136 (biến `v` trùng scope)._
+- [x] **CC-0b** — `ConfigCache` (Application/Engines) ✅ (2026-06-07). Form metadata ủy quyền `MetadataEngine` (không double-cache); i18n resource map + lookup options cache-aside qua `ICacheService`. `ResolveKeyAsync` derive scope = đoạn trước dấu `.` đầu → reuse resource map (gồm cả global `sys.*`). Key mới `ConfigResourceMap`/`ConfigLookup`/`ConfigPermission` gắn slot `:v{version}` (const 0, version-stamp ready CC-4a). Permission tạm trả null (đợi repo CC-3). Build 0/0.
+- [x] **CC-0d** (phần DI) — đăng ký `IConfigCache→ConfigCache` scoped trong `Application/DependencyInjection.cs` ✅. _Còn lại: enforce convention cấm inject repo config trực tiếp (làm cùng CC-1a)._
+- [x] **CC-0c** — Stampede lock per-key + negative cache ✅ (2026-06-07). Helper `GetOrLoadAsync<T>` trong `ConfigCache`: check cache → giành `SemaphoreSlim` per-key (`ConcurrentDictionary` static) → double-check → load → cache. Kết quả rỗng (`isEmpty`) dùng `NegTtl=30s` thay TTL dài (config mới xuất hiện sớm). Áp cho resource map + lookup options. Full backend build `ICare247.slnx` **0/0** (đã stop API rồi build lại).
 
 ### Giai đoạn 1 — i18n resource (ưu tiên — dọn anti-pattern hiện tại)
-- [ ] **CC-1a** — `SaveMasterDataCommandHandler` + `InsertLookupCommandHandler`: bỏ gọi `IResourceRepository` thẳng → resolve message trùng/validation qua `IConfigCache.ResolveKey`.
-- [ ] **CC-1b** — Gom mọi resolve i18n runtime về facade (label/validation/unique/message).
+- [x] **CC-1a** — `SaveMasterDataCommandHandler` + `InsertLookupCommandHandler` ✅ (2026-06-07): bỏ inject `IResourceRepository`, resolve message trùng qua `IConfigCache.ResolveKeyAsync` (per-field key → `sys.val.unique` template → hardcode). Grep xác nhận 2 handler chỉ còn nhắc `IResourceRepository` trong comment. Build 0/0.
+- [ ] **CC-1b** — Gom mọi resolve i18n runtime về facade (label/validation/unique/message). _Label/validation đã đi qua MetadataEngine/ResourceMap (facade-internal); unique/message đã route (CC-1a). Còn lại: rà runtime path khác nếu có._
 
 ### Giai đoạn 2 — Lookup options
 - [ ] **CC-2** — Cache `Sys_Lookup` options theo `code+lang+tenant`; đọc qua facade. Invalidate khi sửa Sys_Lookup.

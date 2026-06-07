@@ -7,6 +7,7 @@ using System.Reflection;
 using FluentValidation;
 using ICare247.Application.Behaviors;
 using ICare247.Application.Engines;
+using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +53,10 @@ public static class DependencyInjection
         // ── Metadata Engine — scoped vì phụ thuộc scoped repositories ──────────
         // Load FormMetadata + ResourceMap với L1+L2 cache — dùng cho RuntimeController.
         services.AddScoped<IMetadataEngine, MetadataEngine>();
+
+        // ── ConfigCache facade (ADR-014) — đọc mọi config qua cache-aside L1+L2 ────
+        // Bọc MetadataEngine + repo i18n/lookup. Handler/web CHỈ inject IConfigCache (CC-0d).
+        services.AddScoped<IConfigCache, ConfigCache>();
 
         return services;
     }

@@ -17,18 +17,18 @@ public sealed class SaveMasterDataCommandHandler
 {
     private readonly IMasterDataRepository _repo;
     private readonly IValidationEngine     _validation;
-    private readonly IResourceRepository   _resources;
+    private readonly IConfigCache          _config;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
     public SaveMasterDataCommandHandler(
         IMasterDataRepository repo,
         IValidationEngine validation,
-        IResourceRepository resources,
+        IConfigCache config,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
         _repo       = repo;
         _validation = validation;
-        _resources  = resources;
+        _config     = config;
         _logger     = logger;
     }
 
@@ -54,7 +54,7 @@ public sealed class SaveMasterDataCommandHandler
                        .ToList();
 
         // ── Check trùng (field Is_Unique) — query DB trước khi ghi ──────────────
-        // Resolve key {table}.val.{column}.unique → text qua resource map (cache).
+        // Resolve message trùng qua IConfigCache (ADR-014) — KHÔNG chọc IResourceRepository thẳng.
         foreach (var col in info.Columns.Where(c => c.IsUnique))
         {
             if (!r.Values.TryGetValue(col.ColumnCode, out var val)
@@ -64,14 +64,12 @@ public sealed class SaveMasterDataCommandHandler
             if (await _repo.ExistsValueAsync(r.FormCode, r.TenantId, col.ColumnCode, val, r.Id, ct))
             {
                 var key = $"{info.TableName.ToLowerInvariant()}.val.{col.ColumnCode.ToLowerInvariant()}.unique";
-                var map = await _resources.GetByKeysAsync([key, "sys.val.unique"], "vi", ct);
                 var label = col.Label.Length > 0 ? col.Label : col.ColumnCode;
                 // 1. per-field key → 2. sys.val.unique template({0}) → 3. hardcoded
-                var msg = map.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v)
-                    ? v
-                    : map.TryGetValue("sys.val.unique", out var tpl) && !string.IsNullOrWhiteSpace(tpl)
-                        ? tpl.Replace("{0}", label)
-                        : $"{label} đã tồn tại";
+                var msg = await _config.ResolveKeyAsync(key, "vi", r.TenantId, ct)
+                    ?? (await _config.ResolveKeyAsync("sys.val.unique", "vi", r.TenantId, ct))
+                        ?.Replace("{0}", label)
+                    ?? $"{label} đã tồn tại";
                 errors.Add(new MasterDataFieldError(col.ColumnCode, msg));
             }
         }

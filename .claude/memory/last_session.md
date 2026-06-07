@@ -39,10 +39,23 @@
 - **Làm rõ kiến trúc:** RuntimeCheck chỉ là **Blazor WASM test client** gọi API; IConfigCache nằm tầng **Application (backend)**, viết 1 lần dùng chung cho mọi web app qua API. Web app thật = thêm 1 client.
 - Roadmap trong TASKS.md: ConfigCache (CC-0a→CC-4) + tách `ICare247.ApiClient` SDK (SDK-1→4).
 
+## Session 40 (2026-06-07) — đã làm
+- ✅ Chạy migrations 025→030 trên DB thật (029 đã ổn — `ALTER ... ADD Is_Unique` trong batch riêng có `GO`, idempotent `IF NOT EXISTS`).
+- ✅ Build verify backend + WPF: **0/0**. Sửa lỗi build commit 49738e7 — `InsertLookupCommandHandler.cs` CS0136 (biến `v` trùng scope catch vs method) → đổi tên `newValue`.
+- ✅ Re-save field Is_Unique seed key i18n.
+- ✅ **CC-0a**: tạo `IConfigCache` (Application/Interfaces) + entity `FormPermission` (Domain/Entities/Permission, deny-by-default).
+- ✅ **CC-0b**: `ConfigCache` (Application/Engines) — form metadata ủy quyền `MetadataEngine`; resource map + lookup cache-aside; `ResolveKeyAsync` derive scope từ prefix key; key `ConfigResourceMap/ConfigLookup/ConfigPermission` gắn slot `:v{version}` (const 0). Permission tạm null (CC-3).
+- ✅ **CC-0d (DI)**: đăng ký `IConfigCache→ConfigCache` scoped. Build backend 0/0.
+
+- ✅ **CC-1a**: `InsertLookupCommandHandler` + `SaveMasterDataCommandHandler` bỏ inject `IResourceRepository`, resolve message trùng qua `IConfigCache.ResolveKeyAsync`. Build 0/0.
+- ✅ **CC-0c**: helper `GetOrLoadAsync<T>` trong `ConfigCache` — stampede lock `SemaphoreSlim` per-key + negative cache `NegTtl=30s` cho kết quả rỗng. Áp cho resource map + lookup. Application compile 0/0.
+
+- ✅ Full backend build `ICare247.slnx` verify **0/0** (đã stop API rồi build lại).
+
 ## ⏳ Việc cần làm ngay (đầu session sau)
-1. **Chạy migrations** `db/025`→`db/030`: 025 fix Section `.title`; 026 fix Sys_Language mojibake (Ti?ng Vi?t); 027 layout; 028 form title; 029 Is_Unique; 030 sys.val.unique.
-2. **Build verify** backend `ICare247.slnx` + WPF `ConfigStudio.WPF.UI.slnx`.
-3. Re-save field có Is_Unique để seed key i18n.
+1. Commit cụm CC-0/CC-1 (chưa commit). Khởi động lại API nếu cần test runtime.
+2. **CC-2** — route lookup options runtime (`DynamicLookupRepository`/`LookupApiService` path) qua `IConfigCache.GetLookupOptions` + invalidate khi sửa Sys_Lookup.
+3. **CC-3** — thêm repo `Sys_Permission` → `ConfigCache.GetFormPermissionsAsync` (hiện trả null).
 
 ## Điểm vào việc tiếp theo
 - **CC-0a** (nếu code ConfigCache): tạo `ICare247.Application/Interfaces/IConfigCache.cs` + record `FormPermission` — chỉ interface, build vẫn xanh. Xem TASKS.md roadmap ConfigCache + ADR-014.
