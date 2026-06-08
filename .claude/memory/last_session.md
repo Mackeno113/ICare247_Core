@@ -1,5 +1,22 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-09 (session 42 — WPF màn "Quản lý View" Grid/TreeGrid)
+
+## Session 42 (2026-06-09) — đã làm
+
+### Màn cấu hình Grid/Tree Grid trong ConfigStudio WPF (VIEW-4a/4b/4c) — Claude làm thay Codex
+- **Core/Data**: `ViewRecord` (header Ui_View), `ViewColumnRecord` + `ViewActionRecord` (BindableBase — editable inline trong GridControl), `ViewDetailRecord` (header+cột+action), `ViewUpsertRequest`.
+- **Core/Interfaces**: `IViewDataService` (GetViews / GetViewDetail / SaveView / DeactivateView).
+- **Infrastructure**: `ViewDataService` (Dapper, Config DB) — join Sys_Table lấy Table_Code; SaveView trong transaction (insert/update header optimistic-concurrency theo Version, xóa→ghi lại cột+action nguyên khối); `EnsureSchemaAsync` ném lỗi thân thiện nếu chưa có bảng Ui_View (migration VIEW-1 chưa chạy).
+- **Modules.Forms**: `ViewManagerViewModel` (master-detail, dropdown Table/Form + literal options, AddColumn/Remove/MoveUp-Down, AddAction/Remove, Save/New/Deactivate, filter search+inactive) + `ViewManagerView.xaml` (DXTabControl 6 tab: Cơ bản/Hành vi/Export-Print/Cây/Cột/Actions; 2 lưới con editable với combo cell qua x:Array resource).
+- **Wiring**: `ViewNames.ViewManager`; FormsModule `RegisterForNavigation`; App DI `IViewDataService→ViewDataService`; ShellViewModel thêm nav "Views (Grid/Tree)" dưới nhóm Forms.
+- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0**. (Đã dọn artifact stale: xóa `*_wpftmp.csproj` + obj/bin của Modules.Grammar — lỗi MC3074 DevExpress tag là do obj cũ, không liên quan code mới.)
+- **Còn lại (VIEW-4d)**: nút 🌐 i18n cho Title/Caption/Label key (tái dùng I18nEditorDialog) + column picker từ Sys_Column. ⚠️ Màn cần migration `Ui_View` (VIEW-1) chạy trên DB mới hoạt động thật.
+
+---
+
+## Session 41 (cũ)
+
 > Cập nhật: 2026-06-08 (session 41 — Master Data DxGrid + thiết kế Ui_View/ADR-015)
 
 ## Session 41 (2026-06-08) — đã làm

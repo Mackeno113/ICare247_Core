@@ -100,10 +100,11 @@
 - [ ] **VIEW-3d** — Toolbar/row actions từ `Ui_View_Action`: CRUD (mở `Edit_Form_Id` popup/tab), export client (xlsx/csv qua DxGrid), gọi export server (pdf/docx), print.
 - [ ] **VIEW-3e** — Export rule: lấy **giá trị thuần** (`Export_Format ?? Display_Format`, bỏ `Render_Mode`); header export resolve theo langCode; `Allow_Export=0` cho cột HTML-only/command/selection.
 
-### Giai đoạn 4 — ConfigStudio WPF (owner: Codex)
-- [ ] **VIEW-4a** — Màn "Quản lý View": list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList).
-- [ ] **VIEW-4b** — Grid cấu hình cột (`Ui_View_Column`): order, width, align, format, render mode, sort/filter/group, export flags + nút "+ Tạo key" i18n.
-- [ ] **VIEW-4c** — Cấu hình `Ui_View_Action` (toolbar/row) + auto-seed i18n vi+en (pattern `RegisterI18nKeysAsync`).
+### Giai đoạn 4 — ConfigStudio WPF (owner: Codex → Claude làm session 42)
+- [x] **VIEW-4a** — Màn "Quản lý View" (`ViewManagerView`/`ViewManagerViewModel`, module Forms): list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList) qua `IViewDataService`/`ViewDataService` (Dapper, transaction, optimistic concurrency). Build WPF 0/0.
+- [x] **VIEW-4b** — Lưới cấu hình cột (`Ui_View_Column`) editable: Field_Name, caption key, kind, render mode, width, align, format, visible, sort/filter/group, summary, export + up/down order.
+- [x] **VIEW-4c** — Lưới `Ui_View_Action` editable (code/type/scope/label key/icon/export format/engine/target/require-selection). Lưu cột+action nguyên khối cùng View.
+- [ ] **VIEW-4d** (còn lại) — nút "+ Tạo key" i18n (tái dùng `I18nEditorDialog`) cho Title_Key/Caption_Key/Label_Key + auto-seed vi+en; column picker từ `Sys_Column`. ⚠️ Màn chỉ chạy được sau khi chạy migration `Ui_View` (VIEW-1) — service ném lỗi thân thiện nếu thiếu bảng.
 
 ### Nguyên tắc cứng (review checklist)
 - Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.

@@ -65,6 +65,7 @@ public partial class App : PrismApplication
         containerRegistry.Register<IGrammarDataService, GrammarDataService>();
         containerRegistry.Register<II18nDataService, I18nDataService>();
         containerRegistry.Register<ISysLookupDataService, SysLookupDataService>();
+        containerRegistry.Register<IViewDataService, ViewDataService>();
         containerRegistry.Register<IPublishCheckService, PublishCheckService>();
         containerRegistry.Register<IImpactPreviewService, ImpactPreviewService>();
         containerRegistry.Register<ISchemaInspectorService, SchemaInspectorService>();

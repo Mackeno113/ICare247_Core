@@ -171,6 +171,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = "Views (Grid/Tree)",
+                    Icon = "▦",
+                    NavigateTo = ViewNames.ViewManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "New Form",
                     Icon = "+",
                     NavigateTo = ViewNames.FormEditor,
