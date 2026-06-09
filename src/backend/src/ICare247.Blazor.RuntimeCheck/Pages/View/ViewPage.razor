@@ -40,7 +40,13 @@
             </div>
         }
 
-        <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete" />
+        <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
+                  OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
+
+        @if (_notice is not null)
+        {
+            <div class="md-list-notice">@_notice</div>
+        }
 
         <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
     }
@@ -55,6 +61,7 @@
     private bool _loading = true;
     private string? _error;
     private string? _search;
+    private string? _notice;
 
     protected override async Task OnParametersSetAsync() => await InitAsync();
 
@@ -103,5 +110,13 @@
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
         Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}");
+    }
+
+    /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>
+    private void OnUnhandledAction(ViewActionDto a)
+    {
+        _notice = a.ActionType.Equals("Export", StringComparison.OrdinalIgnoreCase)
+            ? $"Xuất {a.ExportFormat} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau."
+            : $"Action '{a.ActionType}' ({a.ActionCode}) chưa được hỗ trợ ở runtime.";
     }
 }

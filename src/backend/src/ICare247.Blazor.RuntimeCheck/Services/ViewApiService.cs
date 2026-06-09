@@ -90,6 +90,7 @@ public sealed class ViewMetadataDto
     public string TableCode { get; set; } = "";
     public string? Title { get; set; }
     public string? EditFormCode { get; set; }
+    public string? ExportFileName { get; set; }
 
     public int PageSize { get; set; } = 20;
     public bool AllowPaging { get; set; } = true;
@@ -143,6 +144,8 @@ public sealed class ViewActionDto
     public string? Tooltip { get; set; }
     public string? Confirm { get; set; }
     public string? Icon { get; set; }
+    public string? ExportFormat { get; set; }
+    public string? ExportEngine { get; set; }
     public string? Target { get; set; }
     public bool RequireSelection { get; set; }
     public int OrderNo { get; set; }

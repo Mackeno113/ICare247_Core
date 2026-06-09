@@ -4,6 +4,7 @@
 
 @using System.Globalization
 @using ICare247.Blazor.RuntimeCheck.Services
+@inject NavigationManager Navigation
 
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
      && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
@@ -29,7 +30,23 @@
 }
 else
 {
-    <DxGrid Data="Items"
+    @if (ToolbarActions.Count > 0)
+    {
+        <div class="dv-toolbar">
+            @foreach (var a in ToolbarActions)
+            {
+                var act = a;
+                <button class="btn btn-light dv-action" title="@(act.Tooltip ?? act.Label ?? act.ActionCode)"
+                        @onclick="() => ExecuteActionAsync(act)">
+                    @if (!string.IsNullOrWhiteSpace(act.Icon)) { <span class="dv-action-icon">@act.Icon</span> }
+                    <span>@(act.Label ?? act.ActionCode)</span>
+                </button>
+            }
+        </div>
+    }
+
+    <DxGrid @ref="_grid"
+            Data="Items"
             ShowFilterRow="View.ShowFilterRow"
             ShowGroupPanel="View.ShowGroupPanel"
             VirtualScrollingEnabled="View.VirtualScroll"
@@ -90,6 +107,81 @@ else
     [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
     [Parameter] public EventCallback<object?> OnEdit { get; set; }
     [Parameter] public EventCallback<object?> OnDelete { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback<ViewActionDto> OnUnhandledAction { get; set; }
+
+    private IGrid? _grid;
+
+    /// <summary>Nút toolbar (Scope = Toolbar | Both), sắp theo Order_No.</summary>
+    private List<ViewActionDto> ToolbarActions => View.Actions
+        .Where(a => a.Scope.Equals("Toolbar", StringComparison.OrdinalIgnoreCase)
+                 || a.Scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(a => a.OrderNo)
+        .ToList();
+
+    /// <summary>Thực thi một action toolbar theo Action_Type / Action_Code.</summary>
+    private async Task ExecuteActionAsync(ViewActionDto a)
+    {
+        switch (a.ActionType.ToLowerInvariant())
+        {
+            case "export":
+                await ExportAsync(a.ExportFormat, a.ExportEngine);
+                return;
+            case "print":
+                // Print client-side đơn giản — server-side template làm sau (VIEW-2e/3d).
+                await OnUnhandledAction.InvokeAsync(a);
+                return;
+            case "navigate":
+                if (!string.IsNullOrWhiteSpace(a.Target))
+                    Navigation.NavigateTo(a.Target!);
+                return;
+            case "builtin":
+                await ExecuteBuiltInAsync(a.ActionCode);
+                return;
+            default: // Event | Api → chưa wire
+                await OnUnhandledAction.InvokeAsync(a);
+                return;
+        }
+    }
+
+    private async Task ExecuteBuiltInAsync(string code)
+    {
+        switch (code.ToLowerInvariant())
+        {
+            case "add":     await OnAdd.InvokeAsync(); break;
+            case "refresh": await OnRefresh.InvokeAsync(); break;
+            default:        break; // edit/delete/column-chooser ở row/grid, bỏ qua toolbar
+        }
+    }
+
+    /// <summary>
+    /// Export client qua DxGrid (giá trị thuần — DxGrid xuất theo FieldName, bỏ render template).
+    /// pdf/docx (Engine='Server') chưa hỗ trợ → báo lên caller.
+    /// </summary>
+    private async Task ExportAsync(string? format, string? engine)
+    {
+        if (_grid is null) return;
+
+        var fmt = (format ?? "xlsx").ToLowerInvariant();
+        var name = string.IsNullOrWhiteSpace(View.ExportFileName) ? View.ViewCode : View.ExportFileName!;
+
+        // Server-side (pdf/docx) chưa có endpoint → để caller xử lý/thông báo.
+        if (string.Equals(engine, "Server", StringComparison.OrdinalIgnoreCase)
+            || fmt is "pdf" or "docx")
+        {
+            await OnUnhandledAction.InvokeAsync(new ViewActionDto
+            {
+                ActionType = "Export", ExportFormat = fmt, ExportEngine = "Server"
+            });
+            return;
+        }
+
+        if (fmt == "csv")
+            await _grid.ExportToCsvAsync($"{name}.csv");
+        else
+            await _grid.ExportToXlsxAsync($"{name}.xlsx");
+    }
 
     /// <summary>Cột Data hiển thị (Column_Kind='Data', Is_Visible), sắp theo Order_No.</summary>
     private List<ViewColumnDto> DataColumns => View.Columns
