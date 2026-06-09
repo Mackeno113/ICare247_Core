@@ -90,4 +90,11 @@ public static class CacheKeys
     /// </summary>
     public static string ConfigPermission(int formId, int tenantId, int version)
         => $"icare:cfg:perm:{tenantId}:{formId}:v{version}";
+
+    /// <summary>
+    /// Cache key cho ViewMetadata (header + cột + action), đã localize theo ngôn ngữ.
+    /// Prefix: icare:view:{tenantId}:{viewCode}:v{version}:lang:{langCode}
+    /// </summary>
+    public static string View(string viewCode, int version, string langCode, int tenantId)
+        => $"icare:view:{tenantId}:{viewCode.ToLowerInvariant()}:v{version}:lang:{langCode}";
 }

@@ -81,17 +81,17 @@
 - [x] **VIEW-0** — Chốt thiết kế 3 bảng + i18n + engine rules ✅ (spec 14, ADR-015, spec 10 §1d, handoff VIEW-0).
 
 ### Giai đoạn 1 — Database + tương thích (owner: Codex)
-- [ ] **VIEW-1a** — Migration `db/0xx_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (bám convention `Sys_Table`: IDENTITY, Tenant FK, Version, Is_Active, unique global/tenant).
+- [x] **VIEW-1a** — Migration `db/031_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (idempotent IF OBJECT_ID/IF NOT EXISTS, FK Sys_Table/Ui_Form/Sys_Tenant/Sys_Column, unique global/tenant). Đã chạy DB dev + bổ sung repo (session 43, Claude).
 - [ ] **VIEW-1b** — Seed **view Grid mặc định** cho mỗi `Ui_Form` đang có (cột từ field `Show_In_List`, `Edit_Form_Id` = chính form) → màn `/master/*` cũ không vỡ.
 - [ ] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (3 bảng mới).
-- [ ] **VIEW-1run** — Chạy migration trên DB thật ⏳ (manual). Sau đó báo handoff → Claude wire backend.
+- [x] **VIEW-1run** — Migration đã chạy trên DB dev ✅ (user).
 
 ### Giai đoạn 2 — Backend (owner: Claude)
-- [ ] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (Entities/View).
-- [ ] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): GetViewByCode (header + columns + actions), resolve i18n caption qua Sys_Resource theo langCode (fallback `Label_Key` field → Field_Name).
-- [ ] **VIEW-2c** — `IConfigCache.GetViewAsync(viewCode, tenant, lang)` + key `{tenant}:{lang}:v{n}` (ADR-014); ResourceMap loader nạp thêm prefix `{tableCode}.view.%`; `InvalidateViewAsync` + endpoint.
-- [ ] **VIEW-2d** — CQRS `Features/View/`: `GetViewQuery` (metadata) — data list tái dùng `MasterData` query theo `Source_Type` (Table trước, View/Sp/Api sau).
-- [ ] **VIEW-2e** — `ViewController`: GET `{viewCode}/info` (metadata), GET data (delegate master-data list), endpoint export server-side (pdf/docx theo template).
+- [x] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (`Entities/View`) — text i18n resolve sẵn (Title/Caption/Label/...). Build backend 0/0.
+- [x] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): `GetByCodeAsync` (header + columns + actions), resolve i18n qua Sys_Resource theo langCode, ưu tiên bản tenant-specific hơn global; đăng ký DI. (Fallback caption `Label_Key` field → Field_Name để tầng Blazor VIEW-3 xử lý.)
+- [ ] **VIEW-2c** — `IConfigCache.GetViewAsync` facade + ResourceMap prefix `{tableCode}.view.%` + `InvalidateViewAsync` + endpoint. **Hiện dùng `ICacheService` cache-aside trực tiếp** (mirror `GetFormByCode`) — chưa qua facade ADR-014; migrate sau cùng cụm CC.
+- [~] **VIEW-2d** — CQRS `Features/Views/Queries/GetViewByCode` (metadata) ✅. Còn: data list tái dùng `MasterData` query theo `Source_Type`.
+- [~] **VIEW-2e** — `ViewController` GET `{viewCode}/info` (metadata) ✅. Còn: GET data (delegate master-data list) + endpoint export server-side (pdf/docx).
 
 ### Giai đoạn 3 — Blazor runtime (owner: Claude)
 - [ ] **VIEW-3a** — Map `Ui_View*` → `MasterDataGridConfig`/`MasterDataColumnDto` (runtime model đã có); bổ sung `MasterDataViewActionDto`.

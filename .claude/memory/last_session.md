@@ -19,7 +19,19 @@
 - **ColumnPickerDialog multi-select**: model `ColumnPickItem` (bọc DTO + IsSelected/IsAlreadyUsed); VM 2 chế độ (param `multiSelect`/`usedColumns`, trả `selectedColumns` list hoặc `selectedColumn`); XAML checkbox + badge "đã thêm" + nút "Chọn (N)". **Giữ tương thích single-select màn FieldConfig** (mặc định). Caller View truyền multiSelect=true + cột đã dùng → thêm nhiều dòng 1 lần.
 - **GridSplitter** kéo co giãn 2 panel master-detail (MinWidth trái 280 / phải 420).
 - **Build**: `ConfigStudio.WPF.UI.slnx` **0/0** (full solution, sau khi đóng app).
-- **Hết phần WPF cho cụm View** (VIEW-4a→4e done). Còn lại: VIEW-1 (migration `Ui_View`, owner Codex) + VIEW-2/3 (backend/Blazor, owner Claude) chờ migration.
+- **Hết phần WPF cho cụm View** (VIEW-4a→4e done).
+
+### VIEW-1a + VIEW-2 backend (cùng session 43) — Claude làm thay Codex
+- **VIEW-1a**: `db/031_create_ui_view.sql` idempotent (3 bảng theo spec 14) — bổ sung repo (user đã chạy DDL trên DB dev). Commit `b76036f`.
+- **VIEW-2a** Domain: `Entities/View/ViewMetadata` + `ViewColumn` + `ViewAction` (text i18n resolve sẵn).
+- **VIEW-2b** `IViewRepository`/`ViewRepository` (Dapper Config DB): `GetByCodeAsync` header+cột+action, resolve Sys_Resource theo langCode, ưu tiên tenant-specific > global (`ORDER BY Tenant_Id DESC`). DI đăng ký scoped. `CacheKeys.View`.
+- **VIEW-2d/2e** (metadata): `Features/Views/Queries/GetViewByCode` (cache-aside qua `ICacheService`, mirror `GetFormByCode`) + `ViewController` GET `api/v1/views/{code}/info` (header X-Tenant-Id).
+- **Chưa làm**: VIEW-2c (`IConfigCache.GetViewAsync` facade — hiện dùng ICacheService trực tiếp), VIEW-2d data-list (tái dùng MasterData theo Source_Type), VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, VIEW-3 Blazor.
+- **Build**: `src/backend/ICare247.slnx` **0 error** (2 warning DevExpress license pre-existing).
+
+### Việc tiếp theo gợi ý
+- VIEW-2d data-list: thêm endpoint GET data delegate `MasterData` query theo `Source_Type='Table'`.
+- VIEW-3 Blazor `DataView` (DxGrid/DxTreeList) map `Ui_View*` → `MasterDataGridConfig`.
 
 ---
 
