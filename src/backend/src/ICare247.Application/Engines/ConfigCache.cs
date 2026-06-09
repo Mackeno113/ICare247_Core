@@ -12,6 +12,7 @@ using ICare247.Domain.Engine;
 using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Lookup;
 using ICare247.Domain.Entities.Permission;
+using ICare247.Domain.Entities.View;
 using Microsoft.Extensions.Logging;
 
 namespace ICare247.Application.Engines;
@@ -34,6 +35,7 @@ public sealed class ConfigCache : IConfigCache
     private readonly IMetadataEngine     _metadataEngine;
     private readonly IResourceRepository _resourceRepo;
     private readonly ILookupRepository   _lookupRepo;
+    private readonly IViewRepository     _viewRepo;
     private readonly ICacheService       _cache;
     private readonly ILogger<ConfigCache> _logger;
 
@@ -60,12 +62,14 @@ public sealed class ConfigCache : IConfigCache
         IMetadataEngine     metadataEngine,
         IResourceRepository resourceRepo,
         ILookupRepository   lookupRepo,
+        IViewRepository     viewRepo,
         ICacheService       cache,
         ILogger<ConfigCache> logger)
     {
         _metadataEngine = metadataEngine;
         _resourceRepo   = resourceRepo;
         _lookupRepo     = lookupRepo;
+        _viewRepo       = viewRepo;
         _cache          = cache;
         _logger         = logger;
     }
@@ -148,6 +152,41 @@ public sealed class ConfigCache : IConfigCache
         // TODO (CC-3): inject permission repo + cache theo ConfigPermission key.
         // Hiện chưa có repo Sys_Permission → trả null; caller xử lý deny-by-default.
         return Task.FromResult<FormPermission?>(null);
+    }
+
+    /// <inheritdoc />
+    public async Task<ViewMetadata?> GetViewAsync(
+        string viewCode, string langCode, int tenantId, CancellationToken ct = default)
+    {
+        var cacheKey = CacheKeys.View(viewCode, CurrentVersion, langCode, tenantId);
+
+        var cached = await _cache.GetAsync<ViewMetadata>(cacheKey, ct);
+        if (cached is not null)
+            return cached;
+
+        var view = await _viewRepo.GetByCodeAsync(viewCode, tenantId, langCode, ct);
+
+        // Không cache kết quả null (View không tồn tại) — tránh giữ negative cho aggregate lớn;
+        // mã sai là trường hợp hiếm, để miss thẳng DB.
+        if (view is null)
+            return null;
+
+        await _cache.SetAsync(cacheKey, view, memoryTtl: L1Ttl, redisTtl: L2Ttl, ct: ct);
+        return view;
+    }
+
+    /// <inheritdoc />
+    public async Task InvalidateViewAsync(string viewCode, int tenantId)
+    {
+        foreach (var lang in KnownLangCodes)
+        {
+            var key = CacheKeys.View(viewCode, CurrentVersion, lang, tenantId);
+            await _cache.RemoveAsync(key);
+        }
+
+        _logger.LogInformation(
+            "ConfigCache invalidated (view) — Code={Code}, TenantId={TenantId}",
+            viewCode, tenantId);
     }
 
     // ── Cache-aside dùng chung: stampede lock per-key + negative cache ──────────

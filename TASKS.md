@@ -89,9 +89,9 @@
 ### Giai đoạn 2 — Backend (owner: Claude)
 - [x] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (`Entities/View`) — text i18n resolve sẵn (Title/Caption/Label/...). Build backend 0/0.
 - [x] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): `GetByCodeAsync` (header + columns + actions), resolve i18n qua Sys_Resource theo langCode, ưu tiên bản tenant-specific hơn global; đăng ký DI. (Fallback caption `Label_Key` field → Field_Name để tầng Blazor VIEW-3 xử lý.)
-- [ ] **VIEW-2c** — `IConfigCache.GetViewAsync` facade + ResourceMap prefix `{tableCode}.view.%` + `InvalidateViewAsync` + endpoint. **Hiện dùng `ICacheService` cache-aside trực tiếp** (mirror `GetFormByCode`) — chưa qua facade ADR-014; migrate sau cùng cụm CC.
-- [~] **VIEW-2d** — CQRS `Features/Views/Queries/GetViewByCode` (metadata) ✅. Còn: data list tái dùng `MasterData` query theo `Source_Type`.
-- [~] **VIEW-2e** — `ViewController` GET `{viewCode}/info` (metadata) ✅. Còn: GET data (delegate master-data list) + endpoint export server-side (pdf/docx).
+- [x] **VIEW-2c** — `IConfigCache.GetViewAsync` (cache-aside L1+L2, key `CacheKeys.View` slot `:v0`) + `InvalidateViewAsync`; `GetViewByCode` handler ủy quyền facade (đúng ADR-014); inject `IViewRepository` vào `ConfigCache`. (ResourceMap prefix `{tableCode}.view.%` chưa cần — caption resolve trực tiếp trong repo.)
+- [x] **VIEW-2d** — CQRS `Features/Views/Queries/`: `GetViewByCode` (metadata) + `GetViewData` (data, Source_Type='Table'): nạp metadata qua facade → `ViewRepository.GetDataAsync` SELECT cột Data (Field_Name whitelist) từ bảng nguồn (Data DB), search LIKE (CAST NVARCHAR) + paging. (View/Sp/Api source → `NotSupportedException`, làm sau.)
+- [~] **VIEW-2e** — `ViewController`: GET `{code}/info` (metadata) ✅, GET `{code}/data` (data list) ✅, POST `{code}/invalidate-cache` ✅. Còn: export server-side (pdf/docx theo template) — **hoãn**, cần template engine chưa có.
 
 ### Giai đoạn 3 — Blazor runtime (owner: Claude)
 - [ ] **VIEW-3a** — Map `Ui_View*` → `MasterDataGridConfig`/`MasterDataColumnDto` (runtime model đã có); bổ sung `MasterDataViewActionDto`.

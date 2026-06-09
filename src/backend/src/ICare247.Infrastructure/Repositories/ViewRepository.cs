@@ -4,6 +4,7 @@
 // Purpose : Dapper implementation của IViewRepository — đọc Ui_View + cột + action (Config DB),
 //           resolve text i18n (Title/Caption/Label/...) theo langCode.
 
+using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Entities.View;
@@ -15,14 +16,24 @@ namespace ICare247.Infrastructure.Repositories;
 /// Repository cho <c>Ui_View</c> + <c>Ui_View_Column</c> + <c>Ui_View_Action</c>.
 /// Ưu tiên bản tenant-specific hơn bản global (Tenant_Id NULL) khi trùng View_Code.
 /// </summary>
-public sealed class ViewRepository : IViewRepository
+/// <remarks>
+/// Metadata đọc ở Config DB; dữ liệu (<see cref="GetDataAsync"/>) đọc ở Data DB. An toàn injection:
+/// mọi identifier (schema/table/column) validate qua <see cref="SafeIdentifierRegex"/>, giá trị qua Dapper params.
+/// </remarks>
+public sealed partial class ViewRepository : IViewRepository
 {
     private readonly IDbConnectionFactory _db;
+    private readonly IDataDbConnectionFactory _dataDb;
     private readonly ILogger<ViewRepository> _logger;
 
-    public ViewRepository(IDbConnectionFactory db, ILogger<ViewRepository> logger)
+    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
+    private static partial Regex SafeIdentifierRegex();
+
+    public ViewRepository(
+        IDbConnectionFactory db, IDataDbConnectionFactory dataDb, ILogger<ViewRepository> logger)
     {
         _db = db;
+        _dataDb = dataDb;
         _logger = logger;
     }
 
@@ -209,5 +220,88 @@ public sealed class ViewRepository : IViewRepository
             Columns = columns,
             Actions = actions
         };
+    }
+
+    /// <inheritdoc />
+    public async Task<ViewDataResult> GetDataAsync(
+        ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default)
+    {
+        if (!string.Equals(view.SourceType, "Table", StringComparison.OrdinalIgnoreCase))
+            throw new NotSupportedException(
+                $"View '{view.ViewCode}': Source_Type='{view.SourceType}' chưa hỗ trợ (chỉ 'Table').");
+
+        // ── Bảng vật lý từ Sys_Table (Config DB) ──────────────────────────
+        TableRow? tbl;
+        using (var cfg = _db.CreateConnection())
+        {
+            tbl = await cfg.QueryFirstOrDefaultAsync<TableRow>(new CommandDefinition(
+                "SELECT Schema_Name AS SchemaName, Table_Code AS TableName FROM dbo.Sys_Table WHERE Table_Id = @TableId",
+                new { view.TableId }, cancellationToken: ct));
+        }
+        if (tbl is null)
+            throw new InvalidOperationException(
+                $"View '{view.ViewCode}': bảng nguồn Table_Id={view.TableId} không tồn tại.");
+
+        var schema = SafeIdentifierRegex().IsMatch(tbl.SchemaName ?? "") ? tbl.SchemaName! : "dbo";
+        if (string.IsNullOrWhiteSpace(tbl.TableName) || !SafeIdentifierRegex().IsMatch(tbl.TableName))
+            throw new InvalidOperationException($"View '{view.ViewCode}': tên bảng không hợp lệ.");
+        var table = $"{Bracket(schema)}.{Bracket(tbl.TableName)}";
+
+        // ── Cột Data (Field_Name) — whitelist ─────────────────────────────
+        var dataCols = view.Columns
+            .Where(c => string.Equals(c.ColumnKind, "Data", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.FieldName)
+            .Where(n => !string.IsNullOrWhiteSpace(n) && SafeIdentifierRegex().IsMatch(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (dataCols.Count == 0)
+            return new ViewDataResult();
+
+        // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET cần ORDER BY).
+        var orderCol = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField)
+            ? view.KeyField!
+            : dataCols[0];
+
+        var selectCols = string.Join(", ", dataCols.Select(Bracket));
+
+        var dp = new DynamicParameters();
+        var whereSql = "";
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            // CAST sang NVARCHAR để LIKE hoạt động trên mọi kiểu cột (không cần biết NetType).
+            whereSql = " WHERE (" + string.Join(" OR ",
+                dataCols.Select(c => $"CAST({Bracket(c)} AS NVARCHAR(4000)) LIKE @Search")) + ")";
+            dp.Add("Search", $"%{search.Trim()}%");
+        }
+
+        dp.Add("Skip", Math.Max(0, (page - 1) * pageSize));
+        dp.Add("Take", pageSize < 1 ? 50 : pageSize);
+
+        var listSql =
+            $"SELECT {selectCols} FROM {table}{whereSql} " +
+            $"ORDER BY {Bracket(orderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var countSql = $"SELECT COUNT(*) FROM {table}{whereSql}";
+
+        using var data = _dataDb.CreateConnection();
+        var rows = await data.QueryAsync(new CommandDefinition(listSql, dp, cancellationToken: ct));
+        var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, dp, cancellationToken: ct));
+
+        return new ViewDataResult
+        {
+            Items = rows.Select(r => (IDictionary<string, object?>)
+                            ((IDictionary<string, object>)r).ToDictionary(k => k.Key, v => (object?)v.Value))
+                        .ToList(),
+            TotalCount = total
+        };
+    }
+
+    /// <summary>Bọc identifier bằng [] (đã whitelist regex trước đó).</summary>
+    private static string Bracket(string ident) => "[" + ident.Replace("]", "]]") + "]";
+
+    /// <summary>Row tra cứu schema + tên bảng vật lý từ Sys_Table.</summary>
+    private sealed class TableRow
+    {
+        public string? SchemaName { get; init; }
+        public string? TableName { get; init; }
     }
 }

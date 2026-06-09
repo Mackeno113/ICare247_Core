@@ -26,12 +26,14 @@
 - **VIEW-2a** Domain: `Entities/View/ViewMetadata` + `ViewColumn` + `ViewAction` (text i18n resolve sẵn).
 - **VIEW-2b** `IViewRepository`/`ViewRepository` (Dapper Config DB): `GetByCodeAsync` header+cột+action, resolve Sys_Resource theo langCode, ưu tiên tenant-specific > global (`ORDER BY Tenant_Id DESC`). DI đăng ký scoped. `CacheKeys.View`.
 - **VIEW-2d/2e** (metadata): `Features/Views/Queries/GetViewByCode` (cache-aside qua `ICacheService`, mirror `GetFormByCode`) + `ViewController` GET `api/v1/views/{code}/info` (header X-Tenant-Id).
-- **Chưa làm**: VIEW-2c (`IConfigCache.GetViewAsync` facade — hiện dùng ICacheService trực tiếp), VIEW-2d data-list (tái dùng MasterData theo Source_Type), VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, VIEW-3 Blazor.
+- **VIEW-2c**: `IConfigCache.GetViewAsync` (cache-aside L1+L2, `CacheKeys.View`) + `InvalidateViewAsync`; inject `IViewRepository` vào `ConfigCache`; `GetViewByCode` handler ủy quyền facade (đúng ADR-014, bỏ ICacheService trực tiếp).
+- **VIEW-2d**: `Features/Views/Queries/GetViewData` — nạp metadata qua facade → `ViewRepository.GetDataAsync` SELECT cột Data (Field_Name whitelist regex) từ bảng nguồn (Data DB, resolve Sys_Table.Schema_Name+Table_Code), search LIKE CAST-NVARCHAR + OFFSET/FETCH. Source ≠ Table → NotSupportedException.
+- **VIEW-2e**: `ViewController` GET `{code}/info`, GET `{code}/data`, POST `{code}/invalidate-cache`. Export server-side (pdf/docx) **hoãn** (chưa có template engine).
 - **Build**: `src/backend/ICare247.slnx` **0 error** (2 warning DevExpress license pre-existing).
+- **Chưa làm**: VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, VIEW-3 Blazor (DataView DxGrid/DxTreeList map Ui_View* → MasterDataGridConfig).
 
 ### Việc tiếp theo gợi ý
-- VIEW-2d data-list: thêm endpoint GET data delegate `MasterData` query theo `Source_Type='Table'`.
-- VIEW-3 Blazor `DataView` (DxGrid/DxTreeList) map `Ui_View*` → `MasterDataGridConfig`.
+- VIEW-3 Blazor: component `DataView` route `/view/{ViewCode}` gọi `api/v1/views/{code}/info` + `/data`, render DxGrid/DxTreeList theo metadata.
 
 ---
 
