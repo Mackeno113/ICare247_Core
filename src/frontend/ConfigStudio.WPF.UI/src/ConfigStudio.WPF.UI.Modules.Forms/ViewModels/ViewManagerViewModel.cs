@@ -335,6 +335,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public DelegateCommand OpenExportFileNameI18nCommand { get; }
     public DelegateCommand OpenColumnCaptionI18nCommand { get; }
     public DelegateCommand OpenActionLabelI18nCommand { get; }
+    public DelegateCommand<ViewColumnRecord> OpenColumnCaptionI18nRowCommand { get; }
+    public DelegateCommand<ViewActionRecord> OpenActionLabelI18nRowCommand { get; }
 
     /// <summary>
     /// Khởi tạo ViewModel + thiết lập CollectionView (filter) và command.
@@ -381,6 +383,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         OpenExportFileNameI18nCommand = new DelegateCommand(ExecuteOpenExportFileNameI18n);
         OpenColumnCaptionI18nCommand = new DelegateCommand(ExecuteOpenColumnCaptionI18n, () => SelectedColumn is not null);
         OpenActionLabelI18nCommand = new DelegateCommand(ExecuteOpenActionLabelI18n, () => SelectedAction is not null);
+        OpenColumnCaptionI18nRowCommand = new DelegateCommand<ViewColumnRecord>(OpenColumnCaptionI18nForRow);
+        OpenActionLabelI18nRowCommand = new DelegateCommand<ViewActionRecord>(OpenActionLabelI18nForRow);
 
         ResetEditor();
     }
@@ -910,34 +914,42 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         OpenI18nDialog(EditExportFileNameKey, "Tên file xuất");
     }
 
-    /// <summary>Dịch Caption_Key của cột đang chọn — tự sinh key từ Field_Name nếu đang trống (như màn Form).</summary>
-    private void ExecuteOpenColumnCaptionI18n()
+    /// <summary>Dịch Caption_Key của cột đang chọn (nút toolbar).</summary>
+    private void ExecuteOpenColumnCaptionI18n() => OpenColumnCaptionI18nForRow(SelectedColumn);
+
+    /// <summary>Dịch Label_Key của action đang chọn (nút toolbar).</summary>
+    private void ExecuteOpenActionLabelI18n() => OpenActionLabelI18nForRow(SelectedAction);
+
+    /// <summary>Dịch Caption_Key của một cột — tự sinh key từ Field_Name nếu đang trống (như màn Form).</summary>
+    /// <param name="col">Dòng cột (từ nút 🌐 inline hoặc cột đang chọn).</param>
+    private void OpenColumnCaptionI18nForRow(ViewColumnRecord? col)
     {
-        if (SelectedColumn is null) return;
-        if (string.IsNullOrWhiteSpace(SelectedColumn.CaptionKey))
+        if (col is null) return;
+        if (string.IsNullOrWhiteSpace(col.CaptionKey))
         {
-            var field = SelectedColumn.FieldName?.Trim().ToLowerInvariant();
+            var field = col.FieldName?.Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(field)) { SetSaveError("Nhập Field_Name của cột trước khi tạo key caption."); return; }
             var key = BuildViewKey($"col.{field}.caption");
             if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            SelectedColumn.CaptionKey = key;
+            col.CaptionKey = key;
         }
-        OpenI18nDialog(SelectedColumn.CaptionKey!, $"Caption cột {SelectedColumn.FieldName}");
+        OpenI18nDialog(col.CaptionKey!, $"Caption cột {col.FieldName}");
     }
 
-    /// <summary>Dịch Label_Key của action đang chọn — tự sinh key từ Action_Code nếu đang trống (như màn Form).</summary>
-    private void ExecuteOpenActionLabelI18n()
+    /// <summary>Dịch Label_Key của một action — tự sinh key từ Action_Code nếu đang trống (như màn Form).</summary>
+    /// <param name="act">Dòng action (từ nút 🌐 inline hoặc action đang chọn).</param>
+    private void OpenActionLabelI18nForRow(ViewActionRecord? act)
     {
-        if (SelectedAction is null) return;
-        if (string.IsNullOrWhiteSpace(SelectedAction.LabelKey))
+        if (act is null) return;
+        if (string.IsNullOrWhiteSpace(act.LabelKey))
         {
-            var code = SelectedAction.ActionCode?.Trim().ToLowerInvariant();
+            var code = act.ActionCode?.Trim().ToLowerInvariant();
             if (string.IsNullOrEmpty(code)) { SetSaveError("Nhập Action_Code trước khi tạo key nhãn."); return; }
             var key = BuildViewKey($"action.{code}.label");
             if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            SelectedAction.LabelKey = key;
+            act.LabelKey = key;
         }
-        OpenI18nDialog(SelectedAction.LabelKey!, $"Nhãn action {SelectedAction.ActionCode}");
+        OpenI18nDialog(act.LabelKey!, $"Nhãn action {act.ActionCode}");
     }
 
     /// <summary>Nạp danh sách cột Sys_Column của bảng nguồn (1 lần / bảng).</summary>
@@ -978,23 +990,39 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             return;
         }
 
-        var p = new DialogParameters();
-        p.Add("columns", AvailableColumns.AsEnumerable());
+        var used = EditColumns
+            .Select(c => c.FieldName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList();
+
+        var p = new DialogParameters
+        {
+            { "columns", AvailableColumns.AsEnumerable() },
+            { "multiSelect", true },
+            { "usedColumns", used.AsEnumerable() }
+        };
 
         _dialogService.ShowDialog(ViewNames.ColumnPickerDialog, p, result =>
         {
             if (result.Result != ButtonResult.OK) return;
-            if (!result.Parameters.TryGetValue("selectedColumn", out ColumnInfoDto? col) || col is null) return;
+            if (!result.Parameters.TryGetValue("selectedColumns", out List<ColumnInfoDto>? cols) || cols is null) return;
 
-            var target = SelectedColumn;
-            if (target is null)
+            ViewColumnRecord? last = null;
+            foreach (var col in cols)
             {
-                target = new ViewColumnRecord { OrderNo = EditColumns.Count };
-                EditColumns.Add(target);
-                SelectedColumn = target;
+                // An toàn: bỏ qua cột đã có (picker vốn đã khóa, phòng hờ trùng).
+                if (EditColumns.Any(c => string.Equals(c.FieldName, col.ColumnCode, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                var row = new ViewColumnRecord
+                {
+                    OrderNo = EditColumns.Count,
+                    FieldName = col.ColumnCode,
+                    ColumnId = col.ColumnId
+                };
+                EditColumns.Add(row);
+                last = row;
             }
-            target.FieldName = col.ColumnCode;
-            target.ColumnId = col.ColumnId;
+            if (last is not null) SelectedColumn = last;
         });
     }
 

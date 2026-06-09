@@ -1,6 +1,6 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-09 (session 43 — WPF VIEW-4d: i18n + column picker)
+> Cập nhật: 2026-06-09 (session 43 — WPF VIEW-4d + 4e: i18n, column picker, polish UX)
 
 ## Session 43 (2026-06-09) — đã làm
 
@@ -9,8 +9,17 @@
   - `OpenTitleI18nCommand` / `OpenExportFileNameI18nCommand` / `OpenColumnCaptionI18nCommand` (cột đang chọn) / `OpenActionLabelI18nCommand` (action đang chọn) — mở `I18nEditorDialog` (tái dùng); **tự sinh key** theo convention `{tableCode}.view.{viewCode}.{suffix}` (spec 10 §1d: `title` / `export.filename` / `col.{field}.caption` / `action.{code}.label`) khi field key đang trống, rồi popup tự lưu Sys_Resource mọi ngôn ngữ.
   - `BrowseColumnCommand` — mở `ColumnPickerDialog` (tái dùng), nạp lười `AvailableColumns` theo `EditTable.TableId` (cache `_columnsLoadedForTableId`); chọn cột → set `FieldName`+`ColumnId` cho cột đang chọn (tạo dòng mới nếu chưa chọn).
 - **`ViewManagerView.xaml`**: nút 🌐 cạnh Title_Key + Export_File_Name_Key (DockPanel); toolbar tab Cột thêm "🔍 Chọn cột" + "🌐 Dịch caption"; toolbar tab Actions thêm "🌐 Dịch nhãn".
-- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0**. Commit `2c314b3`.
-- **Hết phần WPF cho cụm View** (VIEW-4a→4d done). Còn lại: VIEW-1 (migration `Ui_View`, owner Codex) + VIEW-2/3 (backend/Blazor, owner Claude) chờ migration.
+- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0**. Commit `2c314b3`, `c7db9ae`, `6266e73`, `4e79639`.
+
+### VIEW-4e — polish UX màn Quản lý View (cùng session 43)
+- **View_Code = `{View_Type}_` + hậu tố**: tách `EditViewCodeSuffix` + `ViewCodePrefix`, `EditViewCode` computed; badge tiền tố + dòng preview. Đổi View_Type giữ hậu tố. **Đổi View_Code tự rekey** mọi i18n key đã sinh qua `RekeyForViewCodeChange` (thay `.view.{cũ}.`→`.view.{mới}.` ở Title/Export + Caption/ExportCaption/CellTemplate cột + Label/Tooltip/Confirm action); guard `_suppressRekey` khi nạp/reset.
+- **Nút lưu** đổi nhãn "Lưu" (bỏ "Tạo View/Cập nhật View"); **"Tạo mới"** thêm `MessageBox` cảnh báo Yes/No trước khi xóa trắng.
+- **Thứ tự tab Cơ bản**: ① View_Type → ② View_Code → ③ Bảng nguồn → ④ Source (View_Type trước vì quyết định tiền tố).
+- **Caption_Key/Label_Key** trong grid Cột/Actions: đổi thành cột i18n **khóa gõ tay** + nút **🌐 mỗi dòng** (`OpenColumnCaptionI18nRowCommand`/`OpenActionLabelI18nRowCommand`, DelegateCommand<record> + CellTemplate `RowData.Row`).
+- **ColumnPickerDialog multi-select**: model `ColumnPickItem` (bọc DTO + IsSelected/IsAlreadyUsed); VM 2 chế độ (param `multiSelect`/`usedColumns`, trả `selectedColumns` list hoặc `selectedColumn`); XAML checkbox + badge "đã thêm" + nút "Chọn (N)". **Giữ tương thích single-select màn FieldConfig** (mặc định). Caller View truyền multiSelect=true + cột đã dùng → thêm nhiều dòng 1 lần.
+- **GridSplitter** kéo co giãn 2 panel master-detail (MinWidth trái 280 / phải 420).
+- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0** (full solution, sau khi đóng app).
+- **Hết phần WPF cho cụm View** (VIEW-4a→4e done). Còn lại: VIEW-1 (migration `Ui_View`, owner Codex) + VIEW-2/3 (backend/Blazor, owner Claude) chờ migration.
 
 ---
 

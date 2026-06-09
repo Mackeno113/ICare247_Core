@@ -139,10 +139,25 @@
         <!-- ── Master-detail ───────────────────────────────── -->
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1*" MinWidth="320" />
-                <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="1.6*" />
+                <ColumnDefinition Width="1*" MinWidth="280" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="1.6*" MinWidth="420" />
             </Grid.ColumnDefinitions>
+
+            <!-- Thanh kéo co giãn 2 panel -->
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Cursor="SizeWE" ToolTip="Kéo để chỉnh độ rộng 2 bên">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}">
+                            <Border Width="2" HorizontalAlignment="Center" CornerRadius="1"
+                                    Background="#CBD5E1" />
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
 
             <!-- Lưới danh sách View -->
             <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
@@ -183,7 +198,14 @@
                         <dx:DXTabItem Header="Cơ bản">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,8,0">
                                 <StackPanel>
-                                    <TextBlock Text="View_Code * (tự ghép: {View_Type}_ + phần bạn nhập)" Style="{StaticResource EditorLabel}" />
+                                    <!-- 1. View_Type — chọn trước vì quyết định tiền tố View_Code -->
+                                    <TextBlock Text="① View_Type * (quyết định tiền tố View_Code)" Style="{StaticResource EditorLabel}" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding ViewTypeOptions}"
+                                                      EditValue="{Binding EditViewType}"
+                                                      IsTextEditable="False" Margin="0,0,0,10" />
+
+                                    <!-- 2. View_Code = {View_Type}_ + phần user nhập -->
+                                    <TextBlock Text="② View_Code * (tự ghép: {View_Type}_ + phần bạn nhập)" Style="{StaticResource EditorLabel}" />
                                     <DockPanel Margin="0,0,0,2">
                                         <Border DockPanel.Dock="Left" Background="#EEF2FF" BorderBrush="#C7D2FE"
                                                 BorderThickness="1,1,0,1" CornerRadius="3,0,0,3" Padding="9,0">
@@ -196,28 +218,15 @@
                                     <TextBlock Text="{Binding EditViewCode, StringFormat=→ View_Code: {0}}"
                                                FontSize="11" Opacity="0.6" Margin="2,0,0,10" />
 
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="10" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="View_Type *" Style="{StaticResource EditorLabel}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding ViewTypeOptions}"
-                                                              EditValue="{Binding EditViewType}"
-                                                              IsTextEditable="False" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="Bảng nguồn (Table) *" Style="{StaticResource EditorLabel}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding Tables}"
-                                                              DisplayMember="DisplayText"
-                                                              SelectedItem="{Binding EditTable}"
-                                                              IsTextEditable="False"
-                                                              NullText="Chọn bảng..." />
-                                        </StackPanel>
-                                    </Grid>
+                                    <!-- 3. Bảng nguồn -->
+                                    <TextBlock Text="③ Bảng nguồn (Table) *" Style="{StaticResource EditorLabel}" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding Tables}"
+                                                      DisplayMember="DisplayText"
+                                                      SelectedItem="{Binding EditTable}"
+                                                      IsTextEditable="False"
+                                                      NullText="Chọn bảng..." Margin="0,0,0,10" />
 
+                                    <!-- 4. Nguồn nâng cao (khi ≠ Table) -->
                                     <Grid Margin="0,0,0,10">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -383,7 +392,22 @@
                                     </dxg:GridControl.View>
                                     <dxg:GridControl.Columns>
                                         <dxg:GridColumn Header="Field_Name *" FieldName="FieldName" Width="130" />
-                                        <dxg:GridColumn Header="Caption_Key" FieldName="CaptionKey" Width="130" />
+                                        <dxg:GridColumn Header="Caption (i18n)" FieldName="CaptionKey" Width="170" AllowEditing="False">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <DockPanel LastChildFill="True">
+                                                        <dx:SimpleButton DockPanel.Dock="Right" Content="🌐" Width="26" Padding="0"
+                                                                         ToolTip="Dịch / tạo key caption (i18n)"
+                                                                         Command="{Binding DataContext.OpenColumnCaptionI18nRowCommand,
+                                                                                   RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                         CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock Text="{Binding RowData.Row.CaptionKey}" VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis" Margin="2,0"
+                                                                   ToolTip="{Binding RowData.Row.CaptionKey}" />
+                                                    </DockPanel>
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Kind" FieldName="ColumnKind" Width="90">
                                             <dxg:GridColumn.EditSettings>
                                                 <dxe:ComboBoxEditSettings ItemsSource="{StaticResource ColumnKinds}" />
@@ -450,7 +474,22 @@
                                                 <dxe:ComboBoxEditSettings ItemsSource="{StaticResource ActionScopes}" />
                                             </dxg:GridColumn.EditSettings>
                                         </dxg:GridColumn>
-                                        <dxg:GridColumn Header="Label_Key" FieldName="LabelKey" Width="120" />
+                                        <dxg:GridColumn Header="Label (i18n)" FieldName="LabelKey" Width="160" AllowEditing="False">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <DockPanel LastChildFill="True">
+                                                        <dx:SimpleButton DockPanel.Dock="Right" Content="🌐" Width="26" Padding="0"
+                                                                         ToolTip="Dịch / tạo key nhãn (i18n)"
+                                                                         Command="{Binding DataContext.OpenActionLabelI18nRowCommand,
+                                                                                   RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                         CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock Text="{Binding RowData.Row.LabelKey}" VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis" Margin="2,0"
+                                                                   ToolTip="{Binding RowData.Row.LabelKey}" />
+                                                    </DockPanel>
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Icon" FieldName="Icon" Width="60" />
                                         <dxg:GridColumn Header="Export_Format" FieldName="ExportFormat" Width="90" />
                                         <dxg:GridColumn Header="Engine" FieldName="ExportEngine" Width="80">

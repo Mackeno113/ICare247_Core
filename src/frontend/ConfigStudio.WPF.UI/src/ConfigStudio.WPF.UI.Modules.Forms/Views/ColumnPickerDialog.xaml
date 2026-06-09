@@ -10,6 +10,8 @@
              Background="#F8FAFC">
 
     <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
         <!-- ── Action button ─────────────────────────────────── -->
         <Style x:Key="ActionBtnStyle" TargetType="Button">
             <Setter Property="Height"          Value="36" />
@@ -168,52 +170,90 @@
         <!-- ═══════════════════════════════════════════════════ -->
         <ListBox Grid.Row="2"
                  ItemsSource="{Binding FilteredColumns}"
-                 SelectedItem="{Binding SelectedColumn}"
+                 SelectedItem="{Binding SelectedItem}"
                  ItemContainerStyle="{StaticResource ColumnItemStyle}"
                  BorderThickness="0"
                  Background="White"
                  ScrollViewer.VerticalScrollBarVisibility="Auto">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <!-- Double-click → ExecuteSelect trực tiếp -->
+                    <!-- Double-click → ExecuteSelect (single); cột đã dùng thì mờ + khóa -->
                     <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAlreadyUsed}" Value="True">
+                                        <Setter Property="Opacity" Value="0.5" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
                         <Grid.InputBindings>
                             <MouseBinding MouseAction="LeftDoubleClick"
                                           Command="{Binding DataContext.SelectCommand,
                                                     RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         </Grid.InputBindings>
                         <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
+                        <!-- Checkbox (chỉ hiện khi multi-select) -->
+                        <CheckBox Grid.Column="0"
+                                  IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  VerticalAlignment="Center" Margin="0,0,10,0"
+                                  Visibility="{Binding DataContext.MultiSelect,
+                                               RelativeSource={RelativeSource AncestorType=UserControl},
+                                               Converter={StaticResource BoolToVis}}">
+                            <CheckBox.Style>
+                                <Style TargetType="CheckBox">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAlreadyUsed}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </CheckBox.Style>
+                        </CheckBox>
+
                         <!-- Column Code -->
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding ColumnCode}"
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Column.ColumnCode}"
                                    FontSize="13" FontWeight="SemiBold"
                                    Foreground="#1E293B"
                                    VerticalAlignment="Center" />
 
+                        <!-- Badge "đã thêm" -->
+                        <Border Grid.Column="2"
+                                Background="#E2E8F0" CornerRadius="4"
+                                Padding="7,2" VerticalAlignment="Center" Margin="0,0,6,0"
+                                Visibility="{Binding IsAlreadyUsed, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="đã thêm" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="#475569" />
+                        </Border>
+
                         <!-- DataType badge -->
-                        <Border Grid.Column="1"
+                        <Border Grid.Column="3"
                                 Background="#EFF6FF" CornerRadius="4"
                                 Padding="7,2" VerticalAlignment="Center"
-                                Margin="8,0,6,0">
-                            <TextBlock Text="{Binding DataType}"
+                                Margin="0,0,6,0">
+                            <TextBlock Text="{Binding Column.DataType}"
                                        FontSize="11" Foreground="#1D4ED8"
                                        FontFamily="Cascadia Code, Consolas" />
                         </Border>
 
                         <!-- Nullable badge -->
-                        <Border Grid.Column="2"
+                        <Border Grid.Column="4"
                                 CornerRadius="4" Padding="7,2"
                                 VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Background" Value="#FEF3C7" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsNullable}" Value="False">
+                                        <DataTrigger Binding="{Binding Column.IsNullable}" Value="False">
                                             <Setter Property="Background" Value="#F1F5F9" />
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -225,7 +265,7 @@
                                         <Setter Property="Text"       Value="NULL" />
                                         <Setter Property="Foreground" Value="#92400E" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsNullable}" Value="False">
+                                            <DataTrigger Binding="{Binding Column.IsNullable}" Value="False">
                                                 <Setter Property="Text"       Value="NOT NULL" />
                                                 <Setter Property="Foreground" Value="#475569" />
                                             </DataTrigger>
@@ -264,7 +304,7 @@
                         Background="#3B82F6" Foreground="White">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="✓" VerticalAlignment="Center" Margin="0,0,6,0" />
-                        <TextBlock Text="Chọn" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding SelectButtonText}" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </Grid>

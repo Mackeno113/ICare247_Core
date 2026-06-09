@@ -2,11 +2,11 @@
 
 > Cập nhật lần cuối: 2026-06-09
 
-## Đợt mới nhất — VIEW-4d: i18n + column picker (session 43, 2026-06-09)
+## Đợt mới nhất — VIEW-4d + 4e: i18n, column picker, polish UX (session 43, 2026-06-09)
 
-Hoàn tất phần WPF cụm View. **VIEW-4d**: `ViewManagerViewModel` thêm nút 🌐 mở `I18nEditorDialog` (tái dùng) cho Title_Key / Export_File_Name_Key / Caption_Key (cột chọn) / Label_Key (action chọn) — tự sinh key theo convention `{tableCode}.view.{viewCode}.{suffix}` khi trống; popup tự lưu Sys_Resource. Thêm `BrowseColumnCommand` mở `ColumnPickerDialog` nạp lười `Sys_Column` theo bảng nguồn. Build WPF slnx 0/0.
+Hoàn tất phần WPF cụm View. **VIEW-4d**: nút 🌐 mở `I18nEditorDialog` cho Title/Export/Caption/Label key — tự sinh key convention `{tableCode}.view.{viewCode}.{suffix}` khi trống; `BrowseColumnCommand` mở `ColumnPickerDialog` nạp lười `Sys_Column`. **VIEW-4e** (polish): View_Code = `{View_Type}_` + hậu tố (đổi code tự rekey i18n); nút "Lưu" + "Tạo mới" cảnh báo; thứ tự tab Cơ bản ①Type→②Code→③Bảng; Caption_Key/Label_Key thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng; `ColumnPickerDialog` multi-select + khóa cột đã có (giữ tương thích single-select FieldConfig); `GridSplitter` co giãn 2 panel. Build WPF slnx 0/0.
 
-→ **WPF cụm View xong (VIEW-4a→4d).** Đường tới hạn: VIEW-1 (migration `Ui_View`, owner Codex) phải chạy → handoff → Claude vào VIEW-2/3 (backend + Blazor runtime).
+→ **WPF cụm View xong (VIEW-4a→4e).** Đường tới hạn: VIEW-1 (migration `Ui_View`, owner Codex) phải chạy → handoff → Claude vào VIEW-2/3 (backend + Blazor runtime).
 
 ## Đợt trước — Màn cấu hình View Grid/TreeGrid trong WPF (session 42, 2026-06-09)
 
