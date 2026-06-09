@@ -38,6 +38,58 @@
                 el.focus();
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
             },
+            // setupNumericInput(inputId, locale) — format real-time khi user gõ vào DxSpinEdit.
+            // DxSpinEdit.DisplayFormat chỉ áp dụng ở display mode (blur); cần JS cho edit mode.
+            // locale: "vi"  → chuẩn VN  : 9.999,05  (chấm=nghìn, phẩy=thập phân)
+            //         ""    → quốc tế   : 9,999.05  (phẩy=nghìn, chấm=thập phân)  [default]
+            // Guard el._icareNumFmt tránh đăng ký listener trùng khi Blazor re-render.
+            setupNumericInput: function (inputId, locale) {
+                const el = document.getElementById(inputId);
+                if (!el || el._icareNumFmt) return;
+                el._icareNumFmt = true;
+
+                const isVi = locale === 'vi';
+                const tSep = isVi ? '.' : ',';   // thousand separator
+                const dSep = isVi ? ',' : '.';   // decimal separator
+                const tRe  = new RegExp('\\' + tSep, 'g');
+
+                // Chuỗi đã format → số thuần (dùng '.' làm decimal nội bộ)
+                function toRaw(str) {
+                    return str.replace(tRe, '').replace(dSep, '.');
+                }
+
+                // Số thuần → chuỗi format theo locale
+                function toFormatted(raw) {
+                    const neg   = raw.startsWith('-');
+                    const body  = neg ? raw.slice(1) : raw;
+                    const parts = body.split('.');
+                    parts[0]    = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, tSep);
+                    return (neg ? '-' : '') + parts.join(dSep);
+                }
+
+                el.addEventListener('input', function () {
+                    const sel    = this.selectionStart;
+                    const oldVal = this.value;
+                    const raw    = toRaw(oldVal);
+
+                    // Bỏ qua khi đang gõ dở: rỗng, dấu âm, decimal đứng cuối, không hợp lệ
+                    if (!raw || raw === '-' || raw.endsWith('.') || !/^-?\d*\.?\d*$/.test(raw)) return;
+
+                    const formatted = toFormatted(raw);
+                    if (formatted === oldVal) return;
+
+                    // Giữ cursor: đếm ký tự không phải thousand-sep trước cursor
+                    const charsBeforeCursor = oldVal.substring(0, sel).replace(tRe, '').length;
+                    this.value = formatted;
+
+                    let count = 0, newSel = formatted.length;
+                    for (let i = 0; i < formatted.length; i++) {
+                        if (formatted[i] !== tSep) count++;
+                        if (count === charsBeforeCursor) { newSel = i + 1; break; }
+                    }
+                    this.setSelectionRange(newSel, newSel);
+                });
+            },
             // downloadJson(filename, jsonText) — tạo blob và trigger download file .json
             downloadJson: function (filename, jsonText) {
                 const blob = new Blob([jsonText], { type: 'application/json' });

@@ -1,6 +1,20 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-08 (session 41 — Master Data DxGrid + thiết kế Ui_View/ADR-015)
+> Cập nhật: 2026-06-08 (session 42 — NumericBox locale format real-time)
+
+## Session 42 (2026-06-08) — đã làm
+
+### NumericBox real-time thousand separator + locale format
+- **Vấn đề:** `DxSpinEdit.DisplayFormat="N0"` chỉ format khi blur — khi đang gõ hiện raw số không có separator.
+- **Fix:**
+  - `index.html`: thêm `icare.setupNumericInput(inputId, locale)` — JS listener `input` event, format real-time giữ cursor đúng vị trí.
+  - `NumericBoxRenderer.razor`: inject `IJSRuntime`, gọi JS sau mỗi render. `DxSpinEdit` thêm `Culture` param. Prop `locale` trong `NumericBoxProps` (`""` = en-US, `"vi"` = vi-VN).
+  - Bỏ `UseThousandSeparator` (luôn format). `DisplayFormat` luôn `N{d}`.
+- **Kết quả:** `locale=""` → `9,999.05` real-time; `locale="vi"` → `9.999,05` real-time.
+- **TODO:** đọc `locale` mặc định từ system config (CC-config-number-format, làm sau).
+- Build 0/0. ✅
+
+---
 
 ## Session 41 (2026-06-08) — đã làm
 
