@@ -9,7 +9,7 @@
   - `OpenTitleI18nCommand` / `OpenExportFileNameI18nCommand` / `OpenColumnCaptionI18nCommand` (cột đang chọn) / `OpenActionLabelI18nCommand` (action đang chọn) — mở `I18nEditorDialog` (tái dùng); **tự sinh key** theo convention `{tableCode}.view.{viewCode}.{suffix}` (spec 10 §1d: `title` / `export.filename` / `col.{field}.caption` / `action.{code}.label`) khi field key đang trống, rồi popup tự lưu Sys_Resource mọi ngôn ngữ.
   - `BrowseColumnCommand` — mở `ColumnPickerDialog` (tái dùng), nạp lười `AvailableColumns` theo `EditTable.TableId` (cache `_columnsLoadedForTableId`); chọn cột → set `FieldName`+`ColumnId` cho cột đang chọn (tạo dòng mới nếu chưa chọn).
 - **`ViewManagerView.xaml`**: nút 🌐 cạnh Title_Key + Export_File_Name_Key (DockPanel); toolbar tab Cột thêm "🔍 Chọn cột" + "🌐 Dịch caption"; toolbar tab Actions thêm "🌐 Dịch nhãn".
-- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0**. Commit `<pending>`.
+- **Build**: `ConfigStudio.WPF.UI.slnx` **0/0**. Commit `2c314b3`.
 - **Hết phần WPF cho cụm View** (VIEW-4a→4d done). Còn lại: VIEW-1 (migration `Ui_View`, owner Codex) + VIEW-2/3 (backend/Blazor, owner Claude) chờ migration.
 
 ---
