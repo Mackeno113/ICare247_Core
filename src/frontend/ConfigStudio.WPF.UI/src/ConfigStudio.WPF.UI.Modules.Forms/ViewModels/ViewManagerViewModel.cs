@@ -796,6 +796,19 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     // ── VIEW-4d: i18n key + column picker ──────────────────────
 
     /// <summary>
+    /// Dựng key i18n theo convention <c>{tableCode}.view.{viewCode}.{suffix}</c> (spec 10 §1d).
+    /// </summary>
+    /// <param name="suffix">Hậu tố key (vd "title", "col.ma.caption", "action.add.label").</param>
+    /// <returns>Key đầy đủ, hoặc null nếu chưa đủ Table_Code + View_Code.</returns>
+    private string? BuildViewKey(string suffix)
+    {
+        var table = EditTable?.TableCode?.Trim().ToLowerInvariant();
+        var view = EditViewCode.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(table) || string.IsNullOrEmpty(view)) return null;
+        return $"{table}.view.{view}.{suffix}";
+    }
+
+    /// <summary>
     /// Mở popup <see cref="ViewNames.I18nEditorDialog"/> cho một resource key.
     /// Popup tự lưu Sys_Resource mọi ngôn ngữ; callback nhận bản dịch ngôn ngữ mặc định.
     /// </summary>
@@ -818,48 +831,56 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         });
     }
 
-    /// <summary>Dịch Title_Key của View — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
+    /// <summary>Dịch Title_Key của View — tự sinh key theo convention nếu đang trống (như màn Form).</summary>
     private void ExecuteOpenTitleI18n()
     {
         if (string.IsNullOrWhiteSpace(EditTitleKey))
         {
-            SetSaveError("Nhập Title_Key trước khi dịch.");
-            return;
+            var key = BuildViewKey("title");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            EditTitleKey = key;
         }
         OpenI18nDialog(EditTitleKey, "Tiêu đề màn View");
     }
 
-    /// <summary>Dịch Export_File_Name_Key — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
+    /// <summary>Dịch Export_File_Name_Key — tự sinh key theo convention nếu đang trống (như màn Form).</summary>
     private void ExecuteOpenExportFileNameI18n()
     {
         if (string.IsNullOrWhiteSpace(EditExportFileNameKey))
         {
-            SetSaveError("Nhập Export_File_Name_Key trước khi dịch.");
-            return;
+            var key = BuildViewKey("export.filename");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            EditExportFileNameKey = key;
         }
         OpenI18nDialog(EditExportFileNameKey, "Tên file xuất");
     }
 
-    /// <summary>Dịch Caption_Key của cột đang chọn — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
+    /// <summary>Dịch Caption_Key của cột đang chọn — tự sinh key từ Field_Name nếu đang trống (như màn Form).</summary>
     private void ExecuteOpenColumnCaptionI18n()
     {
         if (SelectedColumn is null) return;
         if (string.IsNullOrWhiteSpace(SelectedColumn.CaptionKey))
         {
-            SetSaveError("Nhập Caption_Key cho cột trước khi dịch.");
-            return;
+            var field = SelectedColumn.FieldName?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(field)) { SetSaveError("Nhập Field_Name của cột trước khi tạo key caption."); return; }
+            var key = BuildViewKey($"col.{field}.caption");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            SelectedColumn.CaptionKey = key;
         }
         OpenI18nDialog(SelectedColumn.CaptionKey!, $"Caption cột {SelectedColumn.FieldName}");
     }
 
-    /// <summary>Dịch Label_Key của action đang chọn — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
+    /// <summary>Dịch Label_Key của action đang chọn — tự sinh key từ Action_Code nếu đang trống (như màn Form).</summary>
     private void ExecuteOpenActionLabelI18n()
     {
         if (SelectedAction is null) return;
         if (string.IsNullOrWhiteSpace(SelectedAction.LabelKey))
         {
-            SetSaveError("Nhập Label_Key cho action trước khi dịch.");
-            return;
+            var code = SelectedAction.ActionCode?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(code)) { SetSaveError("Nhập Action_Code trước khi tạo key nhãn."); return; }
+            var key = BuildViewKey($"action.{code}.label");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            SelectedAction.LabelKey = key;
         }
         OpenI18nDialog(SelectedAction.LabelKey!, $"Nhãn action {SelectedAction.ActionCode}");
     }
