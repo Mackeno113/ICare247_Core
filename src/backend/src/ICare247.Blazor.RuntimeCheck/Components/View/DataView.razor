@@ -1,0 +1,167 @@
+@* File    : DataView.razor
+   Purpose : Lưới/cây hiển thị danh sách metadata-driven từ Ui_View. Chọn DxGrid (Grid) hoặc
+             DxTreeList (TreeList) theo View_Type; render ô theo Render_Mode (Text/Boolean/Html). *@
+
+@using System.Globalization
+@using ICare247.Blazor.RuntimeCheck.Services
+
+@if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
+     && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
+{
+    <DxTreeList Data="Items"
+                KeyFieldName="@View.KeyField"
+                ParentKeyFieldName="@View.ParentField"
+                ShowFilterRow="View.ShowFilterRow"
+                CssClass="dv-treelist">
+        <Columns>
+            @foreach (var col in DataColumns)
+            {
+                var c = col;
+                <DxTreeListDataColumn Caption="@c.DisplayCaption" FieldName="@c.FieldName"
+                                      Width="@c.Width" AllowSort="c.AllowSort">
+                    <CellDisplayTemplate>
+                        @RenderCell(GetCell(AsRow(context.DataItem), c.FieldName), c)
+                    </CellDisplayTemplate>
+                </DxTreeListDataColumn>
+            }
+        </Columns>
+    </DxTreeList>
+}
+else
+{
+    <DxGrid Data="Items"
+            ShowFilterRow="View.ShowFilterRow"
+            ShowGroupPanel="View.ShowGroupPanel"
+            VirtualScrollingEnabled="View.VirtualScroll"
+            PageSize="@(View.PageSize < 1 ? 20 : View.PageSize)"
+            PagerVisible="@(View.AllowPaging && !View.VirtualScroll)"
+            PageSizeSelectorVisible="View.AllowPaging"
+            PageSizeSelectorItems="@(new[] { 10, 20, 50 })"
+            SelectionMode="@SelectionModeOf()"
+            CssClass="dv-dxgrid"
+            TextWrapEnabled="false">
+        <Columns>
+            @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
+            {
+                <DxGridSelectionColumn Width="44px" />
+            }
+
+            @foreach (var col in DataColumns)
+            {
+                var c = col;
+                <DxGridDataColumn Caption="@c.DisplayCaption"
+                                  FieldName="@c.FieldName"
+                                  Width="@c.Width"
+                                  TextAlignment="@AlignOf(c)"
+                                  AllowSort="c.AllowSort"
+                                  AllowGroup="c.AllowGroup"
+                                  FilterRowCellVisible="c.AllowFilter">
+                    <CellDisplayTemplate>
+                        @RenderCell(GetCell(AsRow(context.DataItem), c.FieldName), c)
+                    </CellDisplayTemplate>
+                </DxGridDataColumn>
+            }
+
+            @if (HasRowActions)
+            {
+                <DxGridCommandColumn Width="110px" Caption="Thao tác">
+                    <CellDisplayTemplate>
+                        @{
+                            var key = string.IsNullOrWhiteSpace(View.KeyField)
+                                ? null : GetCell(AsRow(context.DataItem), View.KeyField!);
+                        }
+                        @if (View.AllowEdit && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                        {
+                            <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(key)">✏️</button>
+                        }
+                        @if (View.AllowDelete && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                        {
+                            <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(key)">🗑️</button>
+                        }
+                    </CellDisplayTemplate>
+                </DxGridCommandColumn>
+            }
+        </Columns>
+    </DxGrid>
+}
+
+@code {
+    [Parameter] public ViewMetadataDto View { get; set; } = new();
+    [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
+    [Parameter] public EventCallback<object?> OnEdit { get; set; }
+    [Parameter] public EventCallback<object?> OnDelete { get; set; }
+
+    /// <summary>Cột Data hiển thị (Column_Kind='Data', Is_Visible), sắp theo Order_No.</summary>
+    private List<ViewColumnDto> DataColumns => View.Columns
+        .Where(c => c.IsVisible && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase))
+        .Where(c => !string.IsNullOrWhiteSpace(c.FieldName))
+        .OrderBy(c => c.OrderNo)
+        .ToList();
+
+    /// <summary>Hiện cột lệnh sửa/xóa khi View cho phép + có form sửa.</summary>
+    private bool HasRowActions =>
+        !string.IsNullOrWhiteSpace(View.EditFormCode) && (View.AllowEdit || View.AllowDelete);
+
+    private GridSelectionMode SelectionModeOf() => View.SelectionMode?.ToLowerInvariant() switch
+    {
+        "multiple" => GridSelectionMode.Multiple,
+        _          => GridSelectionMode.Single
+    };
+
+    private static Dictionary<string, object?> AsRow(object? dataItem)
+        => dataItem as Dictionary<string, object?> ?? [];
+
+    private static object? GetCell(Dictionary<string, object?> row, string col)
+    {
+        var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
+    }
+
+    private static GridTextAlignment AlignOf(ViewColumnDto c) => (c.TextAlign ?? "").ToLowerInvariant() switch
+    {
+        "right"  => GridTextAlignment.Right,
+        "center" => GridTextAlignment.Center,
+        "left"   => GridTextAlignment.Left,
+        _        => IsNumeric(c.RenderMode) ? GridTextAlignment.Right : GridTextAlignment.Left
+    };
+
+    private static bool IsNumeric(string renderMode) => false; // suy theo dữ liệu ở DisplayCell
+
+    /// <summary>Render ô theo Render_Mode: Boolean → ✓; Html → markup; còn lại → text có format.</summary>
+    private RenderFragment RenderCell(object? value, ViewColumnDto col) => builder =>
+    {
+        if (value is null) return;
+
+        switch (col.RenderMode.ToLowerInvariant())
+        {
+            case "boolean":
+                var on = value is bool b ? b : bool.TryParse(value.ToString(), out var pb) && pb;
+                builder.AddContent(0, on ? "✓" : "");
+                break;
+            case "html":
+                builder.AddContent(0, (MarkupString)(value.ToString() ?? ""));
+                break;
+            default: // Text | Image | Link | Badge | Template (chưa render giàu — VIEW-3c)
+                builder.AddContent(0, FormatValue(value, col.DisplayFormat));
+                break;
+        }
+    };
+
+    private static string FormatValue(object value, string? fmt)
+    {
+        if (!string.IsNullOrWhiteSpace(fmt))
+        {
+            switch (value)
+            {
+                case long l:    return l.ToString(fmt, CultureInfo.CurrentCulture);
+                case int i:     return i.ToString(fmt, CultureInfo.CurrentCulture);
+                case decimal d: return d.ToString(fmt, CultureInfo.CurrentCulture);
+                case double db: return db.ToString(fmt, CultureInfo.CurrentCulture);
+                case string s when DateTime.TryParse(
+                        s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt):
+                    return dt.ToString(fmt, CultureInfo.CurrentCulture);
+            }
+        }
+        return value.ToString() ?? "";
+    }
+}

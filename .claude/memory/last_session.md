@@ -30,10 +30,17 @@
 - **VIEW-2d**: `Features/Views/Queries/GetViewData` — nạp metadata qua facade → `ViewRepository.GetDataAsync` SELECT cột Data (Field_Name whitelist regex) từ bảng nguồn (Data DB, resolve Sys_Table.Schema_Name+Table_Code), search LIKE CAST-NVARCHAR + OFFSET/FETCH. Source ≠ Table → NotSupportedException.
 - **VIEW-2e**: `ViewController` GET `{code}/info`, GET `{code}/data`, POST `{code}/invalidate-cache`. Export server-side (pdf/docx) **hoãn** (chưa có template engine).
 - **Build**: `src/backend/ICare247.slnx` **0 error** (2 warning DevExpress license pre-existing).
-- **Chưa làm**: VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, VIEW-3 Blazor (DataView DxGrid/DxTreeList map Ui_View* → MasterDataGridConfig).
+### VIEW-3 Blazor runtime (cùng session 43)
+- **VIEW-3a**: `ViewApiService` + DTO (`ViewMetadataDto`/`ViewColumnDto`/`ViewActionDto`/`ViewDataResultDto`) gọi `api/v1/views/{code}/info` + `/data` (unwrap JsonElement → CLR). Đăng ký DI Program.cs.
+- **VIEW-3b**: `Components/View/DataView.razor` render `DxGrid` (Grid) / `DxTreeList` (TreeList theo Key/Parent field); cột Data theo Order_No, command column Sửa/Xóa khi có Edit_Form. `Pages/View/ViewPage.razor` route `/view/{ViewCode}` (search + Add/Edit/Delete điều hướng route `/master/{editForm}/edit`).
+- **VIEW-3c** (một phần): Render_Mode Text/Boolean/Html (Html→MarkupString). Image/Link/Badge/Template + Style_Rule_Json AST chưa làm.
+- **VIEW-3d** (một phần): CRUD qua Edit_Form. Nút động từ Ui_View_Action + export client/server chưa làm.
+- **Build**: `ICare247.Blazor.RuntimeCheck.csproj` **0 error** (2 warning DevExpress license).
+- **Chưa làm**: VIEW-3c render giàu + conditional format, VIEW-3d nút động + export, VIEW-3e export rule, VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, alias `/master/*`→view.
 
 ### Việc tiếp theo gợi ý
-- VIEW-3 Blazor: component `DataView` route `/view/{ViewCode}` gọi `api/v1/views/{code}/info` + `/data`, render DxGrid/DxTreeList theo metadata.
+- Test E2E: tạo 1 View ở ConfigStudio (sau khi có data) → mở `/view/{code}` Blazor xem render thật.
+- VIEW-3e export client xlsx/csv qua DxGrid (giá trị thuần).
 
 ---
 

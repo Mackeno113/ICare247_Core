@@ -94,10 +94,10 @@
 - [~] **VIEW-2e** — `ViewController`: GET `{code}/info` (metadata) ✅, GET `{code}/data` (data list) ✅, POST `{code}/invalidate-cache` ✅. Còn: export server-side (pdf/docx theo template) — **hoãn**, cần template engine chưa có.
 
 ### Giai đoạn 3 — Blazor runtime (owner: Claude)
-- [ ] **VIEW-3a** — Map `Ui_View*` → `MasterDataGridConfig`/`MasterDataColumnDto` (runtime model đã có); bổ sung `MasterDataViewActionDto`.
-- [ ] **VIEW-3b** — Component `DataView` chọn render `<DxGrid>` / `<DxTreeList>` theo `View_Type`; route `/view/{ViewCode}` (giữ alias `/master/*` chuyển tiếp).
-- [ ] **VIEW-3c** — Render cột theo `Render_Mode` (Text/Html/Image/Link/Badge/Boolean/Template) + conditional format (`Style_Rule_Json` qua AST).
-- [ ] **VIEW-3d** — Toolbar/row actions từ `Ui_View_Action`: CRUD (mở `Edit_Form_Id` popup/tab), export client (xlsx/csv qua DxGrid), gọi export server (pdf/docx), print.
+- [x] **VIEW-3a** — `ViewApiService` + DTO (`ViewMetadataDto`/`ViewColumnDto`/`ViewActionDto`/`ViewDataResultDto`) gọi `api/v1/views/{code}/info` + `/data` (unwrap JsonElement → CLR). Component đọc metadata trực tiếp (không cần map sang MasterDataGridConfig).
+- [~] **VIEW-3b** — Component `DataView` render `<DxGrid>` / `<DxTreeList>` (theo `View_Type` + Key/Parent field) ✅; page `ViewPage` route `/view/{ViewCode}` (search + paging + Add/Edit/Delete điều hướng Edit_Form) ✅. Còn: alias `/master/*` chuyển tiếp sang view mặc định.
+- [~] **VIEW-3c** — Render `Render_Mode` Text/Boolean/Html ✅ (Html → MarkupString). Còn: Image/Link/Badge/Template + conditional format `Style_Rule_Json` qua AST.
+- [~] **VIEW-3d** — CRUD row/toolbar (Add/Edit/Delete mở `Edit_Form` qua route master/edit) ✅. Còn: render nút động từ `Ui_View_Action` (export/print/custom), export client xlsx/csv, gọi export server.
 - [ ] **VIEW-3e** — Export rule: lấy **giá trị thuần** (`Export_Format ?? Display_Format`, bỏ `Render_Mode`); header export resolve theo langCode; `Allow_Export=0` cho cột HTML-only/command/selection.
 
 ### Giai đoạn 4 — ConfigStudio WPF (owner: Codex → Claude làm session 42)
