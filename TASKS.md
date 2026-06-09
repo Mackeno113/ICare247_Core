@@ -82,8 +82,8 @@
 
 ### Giai đoạn 1 — Database + tương thích (owner: Codex)
 - [x] **VIEW-1a** — Migration `db/031_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (idempotent IF OBJECT_ID/IF NOT EXISTS, FK Sys_Table/Ui_Form/Sys_Tenant/Sys_Column, unique global/tenant). Đã chạy DB dev + bổ sung repo (session 43, Claude).
-- [ ] **VIEW-1b** — Seed **view Grid mặc định** cho mỗi `Ui_Form` đang có (cột từ field `Show_In_List`, `Edit_Form_Id` = chính form) → màn `/master/*` cũ không vỡ.
-- [ ] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (3 bảng mới).
+- [x] **VIEW-1b** — `db/032_seed_default_views.sql`: seed 1 Grid view (`Grid_{Form_Code}`) cho mỗi `Ui_Form` active, cột từ field `Show_In_List=1` (bỏ ảo, Field_Name=Column_Code, Caption_Key=Label_Key), `Edit_Form_Id`=chính form. Idempotent (NOT EXISTS). ⏳ Cần chạy trên DB.
+- [x] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md`: thêm `Ui_View` + `Ui_View_Column` + `Ui_View_Action` (cuối module UI, tham chiếu spec 14 + migration 031/032).
 - [x] **VIEW-1run** — Migration đã chạy trên DB dev ✅ (user).
 
 ### Giai đoạn 2 — Backend (owner: Claude)

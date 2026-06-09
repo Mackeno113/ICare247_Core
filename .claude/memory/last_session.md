@@ -37,7 +37,10 @@
 - **VIEW-3d**: toolbar render nút động từ `Ui_View_Action` (Scope Toolbar/Both, Order_No) — Export→client, BuiltIn add/refresh→callback, Navigate→Target; row Sửa/Xóa qua Edit_Form. Print/Event/Api/export-server → `OnUnhandledAction` báo chưa hỗ trợ (ViewPage `_notice`).
 - **VIEW-3e** (một phần): export client xlsx/csv qua `DxGrid.ExportToXlsxAsync/ExportToCsvAsync` (giá trị thuần theo FieldName); pdf/docx Engine=Server → báo chưa hỗ trợ. DTO thêm `ExportFileName` (header) + `ExportFormat`/`ExportEngine` (action). CSS `.dv-toolbar/.dv-action/.md-list-notice`.
 - **Build**: `ICare247.Blazor.RuntimeCheck.csproj` **0/0**.
-- **Chưa làm**: VIEW-3c render giàu + conditional format, VIEW-3e Allow_Export per-column + header langCode, VIEW-2e export server-side, VIEW-1b seed, VIEW-1c spec 02, alias `/master/*`→view.
+### VIEW-1b + VIEW-1c (cùng session 43)
+- **VIEW-1b**: `db/032_seed_default_views.sql` — seed 1 Grid view `Grid_{Form_Code}` / form active + cột từ `Show_In_List=1` (Field_Name=Column_Code, Caption_Key=Label_Key, Edit_Form=chính form). Idempotent. ⏳ cần chạy DB.
+- **VIEW-1c**: spec 02 thêm 3 bảng `Ui_View*` (cuối module UI, ref spec 14 + migration 031/032).
+- **Chưa làm**: VIEW-3c render Template token, VIEW-3e Allow_Export per-column + header langCode, VIEW-2e export server-side (pdf/docx), alias `/master/*`→view, E2E test với DB thật.
 
 ### Việc tiếp theo gợi ý
 - E2E: seed 1 View (VIEW-1b) → mở `/view/{code}` Blazor xem render + export thật.
