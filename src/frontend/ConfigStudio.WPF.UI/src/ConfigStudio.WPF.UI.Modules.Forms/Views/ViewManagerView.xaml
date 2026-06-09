@@ -228,8 +228,13 @@
                                     </Grid>
 
                                     <TextBlock Text="Title_Key (i18n tiêu đề màn)" Style="{StaticResource EditorLabel}" />
-                                    <dxe:TextEdit EditValue="{Binding EditTitleKey, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: khach_hang.view.grid.title" Margin="0,0,0,10" />
+                                    <DockPanel Margin="0,0,0,10">
+                                        <dx:SimpleButton DockPanel.Dock="Right" Content="🌐 Dịch" Width="64" Margin="6,0,0,0"
+                                                         Command="{Binding OpenTitleI18nCommand}"
+                                                         ToolTip="Tạo/sửa bản dịch Title_Key (tự sinh key theo convention nếu trống)" />
+                                        <dxe:TextEdit EditValue="{Binding EditTitleKey, UpdateSourceTrigger=PropertyChanged}"
+                                                      NullText="VD: khach_hang.view.grid.title" />
+                                    </DockPanel>
 
                                     <TextBlock Text="Form Thêm/Sửa (Edit_Form — null = chỉ đọc)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding Forms}" DisplayMember="FormCode"
@@ -298,8 +303,13 @@
                                                   NullText="xlsx,csv" Margin="0,0,0,10" />
 
                                     <TextBlock Text="Export_File_Name_Key (i18n — null = View_Code)" Style="{StaticResource EditorLabel}" />
-                                    <dxe:TextEdit EditValue="{Binding EditExportFileNameKey, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: khach_hang.view.export.filename" Margin="0,0,0,10" />
+                                    <DockPanel Margin="0,0,0,10">
+                                        <dx:SimpleButton DockPanel.Dock="Right" Content="🌐 Dịch" Width="64" Margin="6,0,0,0"
+                                                         Command="{Binding OpenExportFileNameI18nCommand}"
+                                                         ToolTip="Tạo/sửa bản dịch tên file xuất (tự sinh key nếu trống)" />
+                                        <dxe:TextEdit EditValue="{Binding EditExportFileNameKey, UpdateSourceTrigger=PropertyChanged}"
+                                                      NullText="VD: khach_hang.view.export.filename" />
+                                    </DockPanel>
 
                                     <dxe:CheckEdit Content="Allow_Print — cho in" IsChecked="{Binding EditAllowPrint}" Margin="0,2" />
 
@@ -348,7 +358,11 @@
                                     <dx:SimpleButton Command="{Binding AddColumnCommand}" Content="+ Thêm cột" Margin="0,0,8,0" />
                                     <dx:SimpleButton Command="{Binding RemoveColumnCommand}" Content="− Xóa cột" Margin="0,0,8,0" />
                                     <dx:SimpleButton Command="{Binding MoveColumnUpCommand}" Content="↑" Width="32" Margin="0,0,4,0" />
-                                    <dx:SimpleButton Command="{Binding MoveColumnDownCommand}" Content="↓" Width="32" />
+                                    <dx:SimpleButton Command="{Binding MoveColumnDownCommand}" Content="↓" Width="32" Margin="0,0,12,0" />
+                                    <dx:SimpleButton Command="{Binding BrowseColumnCommand}" Content="🔍 Chọn cột" Margin="0,0,8,0"
+                                                     ToolTip="Chọn cột từ Sys_Column của bảng nguồn" />
+                                    <dx:SimpleButton Command="{Binding OpenColumnCaptionI18nCommand}" Content="🌐 Dịch caption"
+                                                     ToolTip="Tạo/sửa bản dịch Caption_Key cho cột đang chọn" />
                                 </StackPanel>
                                 <dxg:GridControl Grid.Row="1" ItemsSource="{Binding EditColumns}"
                                                  SelectedItem="{Binding SelectedColumn, Mode=TwoWay}"
@@ -403,7 +417,9 @@
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
                                     <dx:SimpleButton Command="{Binding AddActionCommand}" Content="+ Thêm action" Margin="0,0,8,0" />
-                                    <dx:SimpleButton Command="{Binding RemoveActionCommand}" Content="− Xóa action" />
+                                    <dx:SimpleButton Command="{Binding RemoveActionCommand}" Content="− Xóa action" Margin="0,0,12,0" />
+                                    <dx:SimpleButton Command="{Binding OpenActionLabelI18nCommand}" Content="🌐 Dịch nhãn"
+                                                     ToolTip="Tạo/sửa bản dịch Label_Key cho action đang chọn" />
                                 </StackPanel>
                                 <dxg:GridControl Grid.Row="1" ItemsSource="{Binding EditActions}"
                                                  SelectedItem="{Binding SelectedAction, Mode=TwoWay}"

@@ -2,11 +2,15 @@
 
 > Cập nhật lần cuối: 2026-06-09
 
-## Đợt mới nhất — Màn cấu hình View Grid/TreeGrid trong WPF (session 42, 2026-06-09)
+## Đợt mới nhất — VIEW-4d: i18n + column picker (session 43, 2026-06-09)
+
+Hoàn tất phần WPF cụm View. **VIEW-4d**: `ViewManagerViewModel` thêm nút 🌐 mở `I18nEditorDialog` (tái dùng) cho Title_Key / Export_File_Name_Key / Caption_Key (cột chọn) / Label_Key (action chọn) — tự sinh key theo convention `{tableCode}.view.{viewCode}.{suffix}` khi trống; popup tự lưu Sys_Resource. Thêm `BrowseColumnCommand` mở `ColumnPickerDialog` nạp lười `Sys_Column` theo bảng nguồn. Build WPF slnx 0/0.
+
+→ **WPF cụm View xong (VIEW-4a→4d).** Đường tới hạn: VIEW-1 (migration `Ui_View`, owner Codex) phải chạy → handoff → Claude vào VIEW-2/3 (backend + Blazor runtime).
+
+## Đợt trước — Màn cấu hình View Grid/TreeGrid trong WPF (session 42, 2026-06-09)
 
 Hoàn thành **VIEW-4a/4b/4c**: màn "Quản Lý View" trong ConfigStudio WPF (module Forms) — CRUD `Ui_View` + 2 lưới con editable `Ui_View_Column`/`Ui_View_Action`, lưu nguyên khối trong transaction (optimistic-concurrency theo Version), guard báo lỗi khi chưa có bảng. Mới: `IViewDataService`/`ViewDataService`, 5 record Core, `ViewManagerViewModel`/`ViewManagerView` (DXTabControl 6 tab). Build WPF slnx 0/0. Commit `c05e55b` đã push master.
-
-→ **Còn lại:** VIEW-1 (migration tạo bảng `Ui_View`, owner Codex) phải chạy để màn hoạt động với DB thật; VIEW-4d (nút 🌐 i18n + column picker từ Sys_Column). Hai nhánh backend VIEW-2/3 chờ migration.
 
 ## Đợt trước — Master Data DxGrid + thiết kế Ui_View (session 41, 2026-06-08)
 

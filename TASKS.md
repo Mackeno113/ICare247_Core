@@ -104,7 +104,7 @@
 - [x] **VIEW-4a** — Màn "Quản lý View" (`ViewManagerView`/`ViewManagerViewModel`, module Forms): list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList) qua `IViewDataService`/`ViewDataService` (Dapper, transaction, optimistic concurrency). Build WPF 0/0.
 - [x] **VIEW-4b** — Lưới cấu hình cột (`Ui_View_Column`) editable: Field_Name, caption key, kind, render mode, width, align, format, visible, sort/filter/group, summary, export + up/down order.
 - [x] **VIEW-4c** — Lưới `Ui_View_Action` editable (code/type/scope/label key/icon/export format/engine/target/require-selection). Lưu cột+action nguyên khối cùng View.
-- [ ] **VIEW-4d** (còn lại) — nút "+ Tạo key" i18n (tái dùng `I18nEditorDialog`) cho Title_Key/Caption_Key/Label_Key + auto-seed vi+en; column picker từ `Sys_Column`. ⚠️ Màn chỉ chạy được sau khi chạy migration `Ui_View` (VIEW-1) — service ném lỗi thân thiện nếu thiếu bảng.
+- [x] **VIEW-4d** — nút "🌐 Dịch" i18n (tái dùng `I18nEditorDialog`) cho Title_Key (tab Cơ bản), Export_File_Name_Key (tab Export), Caption_Key (toolbar tab Cột — cột đang chọn), Label_Key (toolbar tab Actions — action đang chọn) + tự sinh key theo convention `{tableCode}.view.{viewCode}.{suffix}` (spec 10 §1d) khi trống; column picker từ `Sys_Column` (`ColumnPickerDialog`, nạp lười theo bảng nguồn). Build WPF 0/0. ⚠️ Màn chỉ chạy được sau khi chạy migration `Ui_View` (VIEW-1) — service ném lỗi thân thiện nếu thiếu bảng.
 
 ### Nguyên tắc cứng (review checklist)
 - Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.

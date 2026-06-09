@@ -11,7 +11,9 @@ using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
+using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Navigation.Regions;
 
 namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
@@ -24,10 +26,15 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
 {
     private readonly IViewDataService? _viewData;
     private readonly IFormDataService? _formData;
+    private readonly IFieldDataService? _fieldData;
+    private readonly IDialogService? _dialogService;
     private readonly IAppConfigService? _appConfig;
     private readonly INavigationHistoryService? _history;
     private readonly IAppLogger? _logger;
     private bool _isProgrammaticSelect;
+
+    /// <summary>Table_Id đã nạp danh sách cột (tránh nạp lại Sys_Column thừa).</summary>
+    private int _columnsLoadedForTableId = -1;
 
     // ── Dropdown sources (literal — không i18n) ────────────────
     public IReadOnlyList<string> ViewTypeOptions { get; } = ["Grid", "TreeList", "Cards"];
@@ -44,6 +51,9 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     public ObservableCollection<TableLookupRecord> Tables { get; } = [];
     public ObservableCollection<FormRecord> Forms { get; } = [];
+
+    /// <summary>Danh sách cột Sys_Column của bảng nguồn — nạp lười khi mở column picker.</summary>
+    public ObservableCollection<ColumnInfoDto> AvailableColumns { get; } = [];
 
     // ── Master list ────────────────────────────────────────────
     public ObservableCollection<ViewRecord> Views { get; } = [];
@@ -74,6 +84,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
                 RemoveColumnCommand.RaiseCanExecuteChanged();
                 MoveColumnUpCommand.RaiseCanExecuteChanged();
                 MoveColumnDownCommand.RaiseCanExecuteChanged();
+                OpenColumnCaptionI18nCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -85,7 +96,10 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         set
         {
             if (SetProperty(ref _selectedAction, value))
+            {
                 RemoveActionCommand.RaiseCanExecuteChanged();
+                OpenActionLabelI18nCommand.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -144,7 +158,14 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public TableLookupRecord? EditTable
     {
         get => _editTable;
-        set { if (SetProperty(ref _editTable, value)) SaveCommand.RaiseCanExecuteChanged(); }
+        set
+        {
+            if (SetProperty(ref _editTable, value))
+            {
+                SaveCommand.RaiseCanExecuteChanged();
+                BrowseColumnCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     private string _editSourceType = "Table";
@@ -275,24 +296,35 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public DelegateCommand MoveColumnDownCommand { get; }
     public DelegateCommand AddActionCommand { get; }
     public DelegateCommand RemoveActionCommand { get; }
+    public DelegateCommand BrowseColumnCommand { get; }
+    public DelegateCommand OpenTitleI18nCommand { get; }
+    public DelegateCommand OpenExportFileNameI18nCommand { get; }
+    public DelegateCommand OpenColumnCaptionI18nCommand { get; }
+    public DelegateCommand OpenActionLabelI18nCommand { get; }
 
     /// <summary>
     /// Khởi tạo ViewModel + thiết lập CollectionView (filter) và command.
     /// </summary>
     /// <param name="viewData">Service truy vấn Ui_View.</param>
     /// <param name="formData">Service tra cứu Sys_Table + Ui_Form cho dropdown.</param>
+    /// <param name="fieldData">Service tra cứu cột Sys_Column cho column picker.</param>
+    /// <param name="dialogService">Mở popup i18n + column picker.</param>
     /// <param name="appConfig">Cấu hình DB + tenant.</param>
     /// <param name="history">Lịch sử điều hướng (breadcrumb).</param>
     /// <param name="logger">Ghi log lỗi.</param>
     public ViewManagerViewModel(
         IViewDataService? viewData = null,
         IFormDataService? formData = null,
+        IFieldDataService? fieldData = null,
+        IDialogService? dialogService = null,
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
         IAppLogger? logger = null)
     {
         _viewData = viewData;
         _formData = formData;
+        _fieldData = fieldData;
+        _dialogService = dialogService;
         _appConfig = appConfig;
         _history = history;
         _logger = logger;
@@ -310,6 +342,11 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         MoveColumnDownCommand = new DelegateCommand(() => MoveColumn(1), () => SelectedColumn is not null);
         AddActionCommand = new DelegateCommand(ExecuteAddAction);
         RemoveActionCommand = new DelegateCommand(ExecuteRemoveAction, () => SelectedAction is not null);
+        BrowseColumnCommand = new DelegateCommand(async () => await ExecuteBrowseColumnAsync(), () => EditTable is not null);
+        OpenTitleI18nCommand = new DelegateCommand(ExecuteOpenTitleI18n);
+        OpenExportFileNameI18nCommand = new DelegateCommand(ExecuteOpenExportFileNameI18n);
+        OpenColumnCaptionI18nCommand = new DelegateCommand(ExecuteOpenColumnCaptionI18n, () => SelectedColumn is not null);
+        OpenActionLabelI18nCommand = new DelegateCommand(ExecuteOpenActionLabelI18n, () => SelectedAction is not null);
 
         ResetEditor();
     }
@@ -708,6 +745,156 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     {
         SaveStatusMessage = message;
         IsSaveStatusError = true;
+    }
+
+    // ── VIEW-4d: i18n key + column picker ──────────────────────
+
+    /// <summary>
+    /// Dựng key i18n theo convention <c>{tableCode}.view.{viewCode}.{suffix}</c> (spec 10 §1d).
+    /// </summary>
+    /// <param name="suffix">Hậu tố key (vd "title", "col.ma.caption", "action.add.label").</param>
+    /// <returns>Key đầy đủ, hoặc null nếu chưa đủ Table_Code + View_Code.</returns>
+    private string? BuildViewKey(string suffix)
+    {
+        var table = EditTable?.TableCode?.Trim().ToLowerInvariant();
+        var view = EditViewCode?.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(table) || string.IsNullOrEmpty(view)) return null;
+        return $"{table}.view.{view}.{suffix}";
+    }
+
+    /// <summary>
+    /// Mở popup <see cref="ViewNames.I18nEditorDialog"/> cho một resource key.
+    /// Popup tự lưu Sys_Resource mọi ngôn ngữ; callback nhận bản dịch ngôn ngữ mặc định.
+    /// </summary>
+    /// <param name="key">Resource key cần dịch (đã đảm bảo không rỗng).</param>
+    /// <param name="contextLabel">Nhãn ngữ cảnh hiển thị trên header popup.</param>
+    /// <param name="onSaved">Callback cập nhật preview sau khi lưu (optional).</param>
+    private void OpenI18nDialog(string key, string contextLabel, Action<string>? onSaved = null)
+    {
+        if (_dialogService is null || string.IsNullOrWhiteSpace(key)) return;
+
+        var p = new DialogParameters
+        {
+            { "key", key },
+            { "contextLabel", contextLabel }
+        };
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            onSaved?.Invoke(result.Parameters.GetValue<string>("primaryValue") ?? "");
+        });
+    }
+
+    /// <summary>Dịch Title_Key của View — tự sinh key theo convention nếu đang trống.</summary>
+    private void ExecuteOpenTitleI18n()
+    {
+        if (string.IsNullOrWhiteSpace(EditTitleKey))
+        {
+            var key = BuildViewKey("title");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            EditTitleKey = key;
+        }
+        OpenI18nDialog(EditTitleKey, "Tiêu đề màn View");
+    }
+
+    /// <summary>Dịch Export_File_Name_Key — tự sinh key theo convention nếu đang trống.</summary>
+    private void ExecuteOpenExportFileNameI18n()
+    {
+        if (string.IsNullOrWhiteSpace(EditExportFileNameKey))
+        {
+            var key = BuildViewKey("export.filename");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            EditExportFileNameKey = key;
+        }
+        OpenI18nDialog(EditExportFileNameKey, "Tên file xuất");
+    }
+
+    /// <summary>Dịch Caption_Key của cột đang chọn — tự sinh key từ Field_Name nếu đang trống.</summary>
+    private void ExecuteOpenColumnCaptionI18n()
+    {
+        if (SelectedColumn is null) return;
+        if (string.IsNullOrWhiteSpace(SelectedColumn.CaptionKey))
+        {
+            var field = SelectedColumn.FieldName?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(field)) { SetSaveError("Nhập Field_Name của cột trước khi tạo key caption."); return; }
+            var key = BuildViewKey($"col.{field}.caption");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            SelectedColumn.CaptionKey = key;
+        }
+        OpenI18nDialog(SelectedColumn.CaptionKey!, $"Caption cột {SelectedColumn.FieldName}");
+    }
+
+    /// <summary>Dịch Label_Key của action đang chọn — tự sinh key từ Action_Code nếu đang trống.</summary>
+    private void ExecuteOpenActionLabelI18n()
+    {
+        if (SelectedAction is null) return;
+        if (string.IsNullOrWhiteSpace(SelectedAction.LabelKey))
+        {
+            var code = SelectedAction.ActionCode?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(code)) { SetSaveError("Nhập Action_Code trước khi tạo key nhãn."); return; }
+            var key = BuildViewKey($"action.{code}.label");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            SelectedAction.LabelKey = key;
+        }
+        OpenI18nDialog(SelectedAction.LabelKey!, $"Nhãn action {SelectedAction.ActionCode}");
+    }
+
+    /// <summary>Nạp danh sách cột Sys_Column của bảng nguồn (1 lần / bảng).</summary>
+    private async Task EnsureColumnsLoadedAsync()
+    {
+        if (_fieldData is null || EditTable is null) return;
+        if (_columnsLoadedForTableId == EditTable.TableId && AvailableColumns.Count > 0) return;
+
+        var cols = await _fieldData.GetColumnsByTableAsync(EditTable.TableId);
+        AvailableColumns.Clear();
+        foreach (var c in cols)
+            AvailableColumns.Add(new ColumnInfoDto
+            {
+                ColumnId = c.ColumnId,
+                ColumnCode = c.ColumnCode,
+                DataType = c.DataType,
+                NetType = c.NetType,
+                MaxLength = c.MaxLength,
+                IsNullable = c.IsNullable
+            });
+        _columnsLoadedForTableId = EditTable.TableId;
+    }
+
+    /// <summary>
+    /// Mở column picker chọn cột từ Sys_Column; gán vào cột đang chọn (hoặc tạo dòng mới).
+    /// </summary>
+    /// <remarks>Side-effect: nạp lười AvailableColumns; set FieldName + ColumnId của cột.</remarks>
+    private async Task ExecuteBrowseColumnAsync()
+    {
+        if (_dialogService is null) return;
+        if (EditTable is null) { SetSaveError("Chọn bảng nguồn trước khi chọn cột."); return; }
+
+        try { await EnsureColumnsLoadedAsync(); }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "ViewManager.LoadColumns");
+            SetSaveError($"Không thể nạp danh sách cột: {ex.Message}");
+            return;
+        }
+
+        var p = new DialogParameters();
+        p.Add("columns", AvailableColumns.AsEnumerable());
+
+        _dialogService.ShowDialog(ViewNames.ColumnPickerDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            if (!result.Parameters.TryGetValue("selectedColumn", out ColumnInfoDto? col) || col is null) return;
+
+            var target = SelectedColumn;
+            if (target is null)
+            {
+                target = new ViewColumnRecord { OrderNo = EditColumns.Count };
+                EditColumns.Add(target);
+                SelectedColumn = target;
+            }
+            target.FieldName = col.ColumnCode;
+            target.ColumnId = col.ColumnId;
+        });
     }
 
     /// <summary>Đảm bảo appsettings đã được nạp trước khi gọi DB.</summary>
