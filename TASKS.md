@@ -96,7 +96,7 @@
 ### Giai đoạn 3 — Blazor runtime (owner: Claude)
 - [x] **VIEW-3a** — `ViewApiService` + DTO (`ViewMetadataDto`/`ViewColumnDto`/`ViewActionDto`/`ViewDataResultDto`) gọi `api/v1/views/{code}/info` + `/data` (unwrap JsonElement → CLR). Component đọc metadata trực tiếp (không cần map sang MasterDataGridConfig).
 - [~] **VIEW-3b** — Component `DataView` render `<DxGrid>` / `<DxTreeList>` (theo `View_Type` + Key/Parent field) ✅; page `ViewPage` route `/view/{ViewCode}` (search + paging + Add/Edit/Delete điều hướng Edit_Form) ✅. Còn: alias `/master/*` chuyển tiếp sang view mặc định.
-- [~] **VIEW-3c** — Render `Render_Mode` Text/Boolean/Html ✅ (Html → MarkupString). Còn: Image/Link/Badge/Template + conditional format `Style_Rule_Json` qua AST.
+- [x] **VIEW-3c** — Render `Render_Mode` Text/Boolean/Html/**Image/Link/Badge** (RenderTreeBuilder) + **conditional format** `Style_Rule_Json` (mảng rule `{when:{field,op,value}, style:{color/background/fontWeight}}`, client-eval, rule đầu khớp thắng). Template fallback text; Grammar V1 AST đầy đủ (thay format JSON đơn giản) làm sau nếu cần điều kiện phức tạp.
 - [x] **VIEW-3d** — Toolbar render nút động từ `Ui_View_Action` (Scope Toolbar/Both, Order_No): Export→client; BuiltIn add/refresh→callback; Navigate→Target; row Sửa/Xóa qua Edit_Form. Print/Event/Api/export-server → `OnUnhandledAction` báo "chưa hỗ trợ". (Confirm_Key cho Xóa chưa wire.)
 - [~] **VIEW-3e** — Export client xlsx/csv qua `DxGrid.ExportToXlsxAsync/ExportToCsvAsync` (giá trị thuần theo FieldName, bỏ template) ✅; pdf/docx (Engine='Server') → báo chưa hỗ trợ. Còn: tôn trọng `Allow_Export=0` per-column (hiện DxGrid xuất mọi cột Data) + header export theo langCode.
 

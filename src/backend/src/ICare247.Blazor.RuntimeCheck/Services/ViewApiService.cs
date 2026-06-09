@@ -131,6 +131,12 @@ public sealed class ViewColumnDto
     public string? SummaryType { get; set; }
     public bool AllowExport { get; set; } = true;
 
+    /// <summary>
+    /// Conditional formatting JSON — mảng rule <c>{ "when": {field,op,value}, "style": {color,background,fontWeight} }</c>.
+    /// Rule đầu khớp được áp style cho ô. (Định dạng đơn giản client-eval; Grammar V1 AST đầy đủ làm sau.)
+    /// </summary>
+    public string? StyleRuleJson { get; set; }
+
     /// <summary>Nhãn hiển thị: Caption (i18n) hoặc fallback Field_Name.</summary>
     public string DisplayCaption => string.IsNullOrWhiteSpace(Caption) ? FieldName : Caption!;
 }

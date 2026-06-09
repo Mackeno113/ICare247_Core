@@ -21,7 +21,7 @@
                 <DxTreeListDataColumn Caption="@c.DisplayCaption" FieldName="@c.FieldName"
                                       Width="@c.Width" AllowSort="c.AllowSort">
                     <CellDisplayTemplate>
-                        @RenderCell(GetCell(AsRow(context.DataItem), c.FieldName), c)
+                        @RenderCell(AsRow(context.DataItem), c)
                     </CellDisplayTemplate>
                 </DxTreeListDataColumn>
             }
@@ -74,7 +74,7 @@ else
                                   AllowGroup="c.AllowGroup"
                                   FilterRowCellVisible="c.AllowFilter">
                     <CellDisplayTemplate>
-                        @RenderCell(GetCell(AsRow(context.DataItem), c.FieldName), c)
+                        @RenderCell(AsRow(context.DataItem), c)
                     </CellDisplayTemplate>
                 </DxGridDataColumn>
             }
@@ -219,25 +219,198 @@ else
 
     private static bool IsNumeric(string renderMode) => false; // suy theo dữ liệu ở DisplayCell
 
-    /// <summary>Render ô theo Render_Mode: Boolean → ✓; Html → markup; còn lại → text có format.</summary>
-    private RenderFragment RenderCell(object? value, ViewColumnDto col) => builder =>
+    /// <summary>
+    /// Render ô theo Render_Mode (Text/Boolean/Html/Image/Link/Badge) + áp conditional style
+    /// (Style_Rule_Json) lên span bao ngoài.
+    /// </summary>
+    private RenderFragment RenderCell(Dictionary<string, object?> row, ViewColumnDto col) => builder =>
     {
-        if (value is null) return;
+        var value = GetCell(row, col.FieldName);
+        var style = ResolveCellStyle(row, col);
 
-        switch (col.RenderMode.ToLowerInvariant())
+        builder.OpenElement(0, "span");
+        if (!string.IsNullOrEmpty(style))
+            builder.AddAttribute(1, "style", style);
+
+        if (value is not null)
         {
-            case "boolean":
-                var on = value is bool b ? b : bool.TryParse(value.ToString(), out var pb) && pb;
-                builder.AddContent(0, on ? "✓" : "");
-                break;
-            case "html":
-                builder.AddContent(0, (MarkupString)(value.ToString() ?? ""));
-                break;
-            default: // Text | Image | Link | Badge | Template (chưa render giàu — VIEW-3c)
-                builder.AddContent(0, FormatValue(value, col.DisplayFormat));
-                break;
+            switch (col.RenderMode.ToLowerInvariant())
+            {
+                case "boolean":
+                    var on = value is bool b ? b : bool.TryParse(value.ToString(), out var pb) && pb;
+                    builder.AddContent(2, on ? "✓" : "");
+                    break;
+                case "html":
+                    builder.AddContent(3, (MarkupString)(value.ToString() ?? ""));
+                    break;
+                case "image":
+                    builder.OpenElement(4, "img");
+                    builder.AddAttribute(5, "src", value.ToString());
+                    builder.AddAttribute(6, "class", "dv-cell-img");
+                    builder.AddAttribute(7, "alt", col.FieldName);
+                    builder.CloseElement();
+                    break;
+                case "link":
+                    var href = value.ToString() ?? "";
+                    builder.OpenElement(8, "a");
+                    builder.AddAttribute(9, "href", href);
+                    builder.AddAttribute(10, "target", "_blank");
+                    builder.AddAttribute(11, "rel", "noopener");
+                    builder.AddContent(12, href);
+                    builder.CloseElement();
+                    break;
+                case "badge":
+                    builder.OpenElement(13, "span");
+                    builder.AddAttribute(14, "class", "dv-badge");
+                    builder.AddContent(15, FormatValue(value, col.DisplayFormat));
+                    builder.CloseElement();
+                    break;
+                default: // Text | Template (Template chưa render token — fallback text)
+                    builder.AddContent(16, FormatValue(value, col.DisplayFormat));
+                    break;
+            }
         }
+
+        builder.CloseElement();
     };
+
+    // ── Conditional formatting (Style_Rule_Json — định dạng đơn giản client-eval) ──
+
+    /// <summary>Cache rule đã parse theo từng cột (parse 1 lần / lần đổi metadata).</summary>
+    private readonly Dictionary<string, List<StyleRule>> _rulesCache = new(StringComparer.OrdinalIgnoreCase);
+    private int _rulesViewId = -1;
+
+    protected override void OnParametersSet()
+    {
+        // Parse lại rule khi đổi View.
+        if (_rulesViewId == View.ViewId) return;
+        _rulesViewId = View.ViewId;
+        _rulesCache.Clear();
+        foreach (var col in View.Columns)
+        {
+            if (string.IsNullOrWhiteSpace(col.StyleRuleJson)) continue;
+            try
+            {
+                var rules = System.Text.Json.JsonSerializer.Deserialize<List<StyleRule>>(
+                    col.StyleRuleJson!, JsonOpts);
+                if (rules is { Count: > 0 }) _rulesCache[col.FieldName] = rules;
+            }
+            catch { /* JSON rule sai cú pháp → bỏ qua, không format */ }
+        }
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    /// <summary>Trả CSS inline cho ô nếu có rule conditional khớp (rule đầu khớp thắng).</summary>
+    private string? ResolveCellStyle(Dictionary<string, object?> row, ViewColumnDto col)
+    {
+        if (!_rulesCache.TryGetValue(col.FieldName, out var rules)) return null;
+
+        foreach (var r in rules)
+        {
+            if (r.When is null || r.Style is null || r.Style.Count == 0) continue;
+            if (MatchCondition(row, r.When))
+                return BuildCss(r.Style);
+        }
+        return null;
+    }
+
+    /// <summary>So khớp điều kiện rule với giá trị dòng theo toán tử (= != &gt; &gt;= &lt; &lt;=).</summary>
+    private static bool MatchCondition(Dictionary<string, object?> row, RuleCondition cond)
+    {
+        if (string.IsNullOrWhiteSpace(cond.Field)) return false;
+        var actual = GetCell(row, cond.Field!);
+        var expected = cond.Value;
+
+        var op = (cond.Op ?? "=").Trim();
+
+        // Ưu tiên so sánh số nếu cả 2 vế là số.
+        if (TryToDouble(actual, out var an) && TryToDouble(expected, out var en))
+        {
+            return op switch
+            {
+                "=" or "==" => an == en,
+                "!=" or "<>" => an != en,
+                ">"  => an > en,
+                ">=" => an >= en,
+                "<"  => an < en,
+                "<=" => an <= en,
+                _    => false
+            };
+        }
+
+        // So sánh chuỗi (chỉ = / !=).
+        var asStr = actual?.ToString() ?? "";
+        var exStr = expected.ValueKind == System.Text.Json.JsonValueKind.String
+            ? expected.GetString() ?? ""
+            : expected.ToString();
+        return op switch
+        {
+            "=" or "==" => asStr.Equals(exStr, StringComparison.OrdinalIgnoreCase),
+            "!=" or "<>" => !asStr.Equals(exStr, StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
+    }
+
+    private static bool TryToDouble(object? value, out double d)
+    {
+        switch (value)
+        {
+            case null: d = 0; return false;
+            case double db: d = db; return true;
+            case long l:    d = l;  return true;
+            case int i:     d = i;  return true;
+            case decimal m: d = (double)m; return true;
+        }
+        return double.TryParse(value.ToString(), System.Globalization.NumberStyles.Any,
+            CultureInfo.InvariantCulture, out d);
+    }
+
+    private static bool TryToDouble(System.Text.Json.JsonElement je, out double d)
+    {
+        d = 0;
+        return je.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.Number => je.TryGetDouble(out d),
+            System.Text.Json.JsonValueKind.String => double.TryParse(je.GetString(),
+                System.Globalization.NumberStyles.Any, CultureInfo.InvariantCulture, out d),
+            _ => false
+        };
+    }
+
+    /// <summary>Dựng chuỗi CSS từ map style (color/background/fontWeight...).</summary>
+    private static string BuildCss(Dictionary<string, string> style)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var kv in style)
+        {
+            var prop = kv.Key.Trim().ToLowerInvariant() switch
+            {
+                "color"                  => "color",
+                "background" or "bg"     => "background-color",
+                "fontweight" or "font-weight" => "font-weight",
+                "fontstyle" or "font-style"   => "font-style",
+                "textalign" or "text-align"   => "text-align",
+                _ => null
+            };
+            if (prop is not null) sb.Append(prop).Append(':').Append(kv.Value).Append(';');
+        }
+        return sb.ToString();
+    }
+
+    private sealed class StyleRule
+    {
+        public RuleCondition? When { get; set; }
+        public Dictionary<string, string>? Style { get; set; }
+    }
+
+    private sealed class RuleCondition
+    {
+        public string? Field { get; set; }
+        public string? Op { get; set; }
+        public System.Text.Json.JsonElement Value { get; set; }
+    }
 
     private static string FormatValue(object value, string? fmt)
     {
