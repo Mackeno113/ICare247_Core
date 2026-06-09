@@ -137,18 +137,45 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     private int _editVersion = 1;
 
-    private string _editViewCode = "";
-    public string EditViewCode
+    private string _editViewCodeSuffix = "";
+    /// <summary>
+    /// Phần hậu tố do người dùng nhập. View_Code thực = <see cref="EditViewType"/> + "_" + hậu tố này.
+    /// </summary>
+    public string EditViewCodeSuffix
     {
-        get => _editViewCode;
-        set { if (SetProperty(ref _editViewCode, value)) SaveCommand.RaiseCanExecuteChanged(); }
+        get => _editViewCodeSuffix;
+        set
+        {
+            if (SetProperty(ref _editViewCodeSuffix, value))
+            {
+                RaisePropertyChanged(nameof(EditViewCode));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
+
+    /// <summary>Tiền tố cố định "{View_Type}_" hiển thị (read-only) trước ô nhập hậu tố.</summary>
+    public string ViewCodePrefix => $"{EditViewType}_";
+
+    /// <summary>View_Code đầy đủ ghép từ View_Type + hậu tố; rỗng nếu chưa nhập hậu tố.</summary>
+    public string EditViewCode =>
+        string.IsNullOrWhiteSpace(EditViewCodeSuffix) ? "" : $"{EditViewType}_{EditViewCodeSuffix.Trim()}";
 
     private string _editViewType = "Grid";
     public string EditViewType
     {
         get => _editViewType;
-        set { if (SetProperty(ref _editViewType, value)) RaisePropertyChanged(nameof(IsTreeList)); }
+        set
+        {
+            if (SetProperty(ref _editViewType, value))
+            {
+                // Đổi View_Type vẫn giữ nguyên hậu tố user nhập — chỉ tiền tố thay đổi.
+                RaisePropertyChanged(nameof(IsTreeList));
+                RaisePropertyChanged(nameof(ViewCodePrefix));
+                RaisePropertyChanged(nameof(EditViewCode));
+                SaveCommand.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     /// <summary>Hiện card cấu hình cây khi View_Type = TreeList.</summary>
@@ -243,7 +270,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     // ── State ──────────────────────────────────────────────────
     public int TenantId => _appConfig?.TenantId ?? 0;
     public bool IsEditMode => EditViewId.HasValue;
-    public string SaveButtonText => IsEditMode ? "Cập nhật View" : "Tạo View";
+    public string SaveButtonText => "Lưu";
     public string EditorTitle => IsEditMode ? "Cập nhật View" : "Tạo mới View";
 
     private bool _isBusy;
@@ -372,7 +399,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// <summary>Điều kiện cho phép lưu: không bận + có View_Code + đã chọn bảng nguồn.</summary>
     /// <returns>true nếu được phép lưu.</returns>
     private bool CanSave()
-        => IsNotBusy && !string.IsNullOrWhiteSpace(EditViewCode) && EditTable is not null;
+        => IsNotBusy && !string.IsNullOrWhiteSpace(EditViewCodeSuffix) && EditTable is not null;
 
     /// <summary>Wrapper an toàn nạp dữ liệu — bắt mọi exception tránh crash.</summary>
     /// <param name="selectViewId">View_Id cần chọn lại sau khi load (optional).</param>
@@ -482,8 +509,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         var h = detail.Header;
         EditViewId = h.ViewId;
         _editVersion = h.Version;
-        EditViewCode = h.ViewCode;
         EditViewType = h.ViewType;
+        EditViewCodeSuffix = StripViewTypePrefix(h.ViewCode, h.ViewType);
         EditTable = Tables.FirstOrDefault(t => t.TableId == h.TableId);
         EditSourceType = h.SourceType;
         EditSourceObject = h.SourceObject ?? "";
@@ -538,6 +565,13 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// <remarks>Side-effect: clear SelectedView + reset toàn bộ field editor + clear status.</remarks>
     private void ExecuteNew()
     {
+        var confirm = System.Windows.MessageBox.Show(
+            "Xóa trắng nội dung đang nhập để bắt đầu một View mới?\nMọi thay đổi chưa lưu sẽ mất.",
+            "Xác nhận tạo mới",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
         _isProgrammaticSelect = true;
         SelectedView = null;
         _isProgrammaticSelect = false;
@@ -546,13 +580,25 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         IsSaveStatusError = false;
     }
 
+    /// <summary>Bỏ tiền tố "{View_Type}_" khỏi View_Code để khôi phục phần hậu tố user nhập.</summary>
+    /// <param name="viewCode">View_Code đầy đủ.</param>
+    /// <param name="viewType">View_Type tương ứng.</param>
+    /// <returns>Hậu tố sau tiền tố, hoặc nguyên View_Code nếu không khớp tiền tố.</returns>
+    private static string StripViewTypePrefix(string viewCode, string viewType)
+    {
+        var prefix = $"{viewType}_";
+        return viewCode.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? viewCode[prefix.Length..]
+            : viewCode;
+    }
+
     /// <summary>Reset toàn bộ field editor về mặc định cho View mới.</summary>
     private void ResetEditor()
     {
         EditViewId = null;
         _editVersion = 1;
-        EditViewCode = "";
         EditViewType = "Grid";
+        EditViewCodeSuffix = "";
         EditTable = null;
         EditSourceType = "Table";
         EditSourceObject = "";
@@ -750,19 +796,6 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     // ── VIEW-4d: i18n key + column picker ──────────────────────
 
     /// <summary>
-    /// Dựng key i18n theo convention <c>{tableCode}.view.{viewCode}.{suffix}</c> (spec 10 §1d).
-    /// </summary>
-    /// <param name="suffix">Hậu tố key (vd "title", "col.ma.caption", "action.add.label").</param>
-    /// <returns>Key đầy đủ, hoặc null nếu chưa đủ Table_Code + View_Code.</returns>
-    private string? BuildViewKey(string suffix)
-    {
-        var table = EditTable?.TableCode?.Trim().ToLowerInvariant();
-        var view = EditViewCode?.Trim().ToLowerInvariant();
-        if (string.IsNullOrEmpty(table) || string.IsNullOrEmpty(view)) return null;
-        return $"{table}.view.{view}.{suffix}";
-    }
-
-    /// <summary>
     /// Mở popup <see cref="ViewNames.I18nEditorDialog"/> cho một resource key.
     /// Popup tự lưu Sys_Resource mọi ngôn ngữ; callback nhận bản dịch ngôn ngữ mặc định.
     /// </summary>
@@ -785,56 +818,48 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         });
     }
 
-    /// <summary>Dịch Title_Key của View — tự sinh key theo convention nếu đang trống.</summary>
+    /// <summary>Dịch Title_Key của View — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
     private void ExecuteOpenTitleI18n()
     {
         if (string.IsNullOrWhiteSpace(EditTitleKey))
         {
-            var key = BuildViewKey("title");
-            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            EditTitleKey = key;
+            SetSaveError("Nhập Title_Key trước khi dịch.");
+            return;
         }
         OpenI18nDialog(EditTitleKey, "Tiêu đề màn View");
     }
 
-    /// <summary>Dịch Export_File_Name_Key — tự sinh key theo convention nếu đang trống.</summary>
+    /// <summary>Dịch Export_File_Name_Key — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
     private void ExecuteOpenExportFileNameI18n()
     {
         if (string.IsNullOrWhiteSpace(EditExportFileNameKey))
         {
-            var key = BuildViewKey("export.filename");
-            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            EditExportFileNameKey = key;
+            SetSaveError("Nhập Export_File_Name_Key trước khi dịch.");
+            return;
         }
         OpenI18nDialog(EditExportFileNameKey, "Tên file xuất");
     }
 
-    /// <summary>Dịch Caption_Key của cột đang chọn — tự sinh key từ Field_Name nếu đang trống.</summary>
+    /// <summary>Dịch Caption_Key của cột đang chọn — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
     private void ExecuteOpenColumnCaptionI18n()
     {
         if (SelectedColumn is null) return;
         if (string.IsNullOrWhiteSpace(SelectedColumn.CaptionKey))
         {
-            var field = SelectedColumn.FieldName?.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(field)) { SetSaveError("Nhập Field_Name của cột trước khi tạo key caption."); return; }
-            var key = BuildViewKey($"col.{field}.caption");
-            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            SelectedColumn.CaptionKey = key;
+            SetSaveError("Nhập Caption_Key cho cột trước khi dịch.");
+            return;
         }
         OpenI18nDialog(SelectedColumn.CaptionKey!, $"Caption cột {SelectedColumn.FieldName}");
     }
 
-    /// <summary>Dịch Label_Key của action đang chọn — tự sinh key từ Action_Code nếu đang trống.</summary>
+    /// <summary>Dịch Label_Key của action đang chọn — yêu cầu đã nhập key (chưa hỗ trợ tự sinh key).</summary>
     private void ExecuteOpenActionLabelI18n()
     {
         if (SelectedAction is null) return;
         if (string.IsNullOrWhiteSpace(SelectedAction.LabelKey))
         {
-            var code = SelectedAction.ActionCode?.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(code)) { SetSaveError("Nhập Action_Code trước khi tạo key nhãn."); return; }
-            var key = BuildViewKey($"action.{code}.label");
-            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
-            SelectedAction.LabelKey = key;
+            SetSaveError("Nhập Label_Key cho action trước khi dịch.");
+            return;
         }
         OpenI18nDialog(SelectedAction.LabelKey!, $"Nhãn action {SelectedAction.ActionCode}");
     }
