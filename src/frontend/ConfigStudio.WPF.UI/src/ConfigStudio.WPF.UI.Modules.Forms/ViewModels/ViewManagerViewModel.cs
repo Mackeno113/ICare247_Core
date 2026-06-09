@@ -33,6 +33,9 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly IAppLogger? _logger;
     private bool _isProgrammaticSelect;
 
+    /// <summary>Tạm ngưng rekey i18n khi đang nạp dữ liệu / reset editor (set key theo lô).</summary>
+    private bool _suppressRekey;
+
     /// <summary>Table_Id đã nạp danh sách cột (tránh nạp lại Sys_Column thừa).</summary>
     private int _columnsLoadedForTableId = -1;
 
@@ -146,9 +149,11 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         get => _editViewCodeSuffix;
         set
         {
+            var oldCode = EditViewCode;
             if (SetProperty(ref _editViewCodeSuffix, value))
             {
                 RaisePropertyChanged(nameof(EditViewCode));
+                RekeyForViewCodeChange(oldCode, EditViewCode);
                 SaveCommand.RaiseCanExecuteChanged();
             }
         }
@@ -167,12 +172,14 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         get => _editViewType;
         set
         {
+            var oldCode = EditViewCode;
             if (SetProperty(ref _editViewType, value))
             {
                 // Đổi View_Type vẫn giữ nguyên hậu tố user nhập — chỉ tiền tố thay đổi.
                 RaisePropertyChanged(nameof(IsTreeList));
                 RaisePropertyChanged(nameof(ViewCodePrefix));
                 RaisePropertyChanged(nameof(EditViewCode));
+                RekeyForViewCodeChange(oldCode, EditViewCode);
                 SaveCommand.RaiseCanExecuteChanged();
             }
         }
@@ -506,6 +513,9 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// <remarks>Side-effect: thay toàn bộ EditColumns/EditActions + raise IsEditMode/SaveButtonText/EditorTitle.</remarks>
     private void ApplyDetail(ViewDetailRecord detail)
     {
+        _suppressRekey = true;
+        try
+        {
         var h = detail.Header;
         EditViewId = h.ViewId;
         _editVersion = h.Version;
@@ -543,6 +553,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         foreach (var a in detail.Actions) EditActions.Add(a);
 
         RaiseEditorState();
+        }
+        finally { _suppressRekey = false; }
     }
 
     /// <summary>Lọc danh sách View theo ShowInactive + SearchText.</summary>
@@ -595,6 +607,9 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// <summary>Reset toàn bộ field editor về mặc định cho View mới.</summary>
     private void ResetEditor()
     {
+        _suppressRekey = true;
+        try
+        {
         EditViewId = null;
         _editVersion = 1;
         EditViewType = "Grid";
@@ -627,6 +642,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditColumns.Clear();
         EditActions.Clear();
         RaiseEditorState();
+        }
+        finally { _suppressRekey = false; }
     }
 
     /// <summary>Raise các property phụ thuộc trạng thái edit/new.</summary>
@@ -807,6 +824,44 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         if (string.IsNullOrEmpty(table) || string.IsNullOrEmpty(view)) return null;
         return $"{table}.view.{view}.{suffix}";
     }
+
+    /// <summary>
+    /// Khi View_Code đổi, thay đoạn <c>.view.{cũ}.</c> → <c>.view.{mới}.</c> trong mọi key i18n
+    /// đã sinh (Title/Export + Caption/Label/Tooltip/Confirm của cột &amp; action) — không để key trỏ View_Code cũ.
+    /// </summary>
+    /// <param name="oldCode">View_Code trước khi đổi.</param>
+    /// <param name="newCode">View_Code sau khi đổi.</param>
+    private void RekeyForViewCodeChange(string oldCode, string newCode)
+    {
+        if (_suppressRekey) return;
+        var oldC = oldCode.Trim().ToLowerInvariant();
+        var newC = newCode.Trim().ToLowerInvariant();
+        if (oldC.Length == 0 || oldC == newC) return;
+
+        var from = $".view.{oldC}.";
+        var to = $".view.{newC}.";
+
+        EditTitleKey = SwapSegment(EditTitleKey, from, to) ?? "";
+        EditExportFileNameKey = SwapSegment(EditExportFileNameKey, from, to) ?? "";
+
+        foreach (var c in EditColumns)
+        {
+            c.CaptionKey = SwapSegment(c.CaptionKey, from, to);
+            c.ExportCaptionKey = SwapSegment(c.ExportCaptionKey, from, to);
+            c.CellTemplateKey = SwapSegment(c.CellTemplateKey, from, to);
+        }
+        foreach (var a in EditActions)
+        {
+            a.LabelKey = SwapSegment(a.LabelKey, from, to);
+            a.TooltipKey = SwapSegment(a.TooltipKey, from, to);
+            a.ConfirmKey = SwapSegment(a.ConfirmKey, from, to);
+        }
+    }
+
+    /// <summary>Thay đoạn <paramref name="from"/> bằng <paramref name="to"/> nếu key có chứa; giữ nguyên null/rỗng.</summary>
+    private static string? SwapSegment(string? value, string from, string to)
+        => string.IsNullOrEmpty(value) ? value
+           : value!.Replace(from, to, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Mở popup <see cref="ViewNames.I18nEditorDialog"/> cho một resource key.
