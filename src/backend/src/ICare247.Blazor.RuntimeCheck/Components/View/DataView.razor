@@ -68,7 +68,8 @@ else
         <Columns>
             @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
             {
-                <DxGridSelectionColumn Width="44px" />
+                @* Ghim trái + khai báo đầu tiên → checkbox luôn ngoài cùng bên trái, kể cả khi có cột ghim trái khác *@
+                <DxGridSelectionColumn Width="44px" FixedPosition="GridColumnFixedPosition.Left" />
             }
 
             @foreach (var col in DataColumns)
