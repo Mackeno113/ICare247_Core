@@ -486,6 +486,76 @@
 
 ---
 
+### Ui_View
+> Cấu hình **hiển thị danh sách** (Grid / TreeList / Cards) — tách khỏi form sửa (`Ui_Form`/`Ui_Field`).
+> Một bảng → nhiều View. Mọi text qua resource KEY (`Sys_Resource`). DDL đầy đủ + engine rules: **spec 14**, ADR-015.
+> Migration: `db/031_create_ui_view.sql` (tạo bảng) + `db/032_seed_default_views.sql` (seed Grid mặc định / form — VIEW-1b).
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| View_Id | int | PK IDENTITY | |
+| View_Code | nvarchar(100) | NOT NULL | Định danh kỹ thuật (route `/view/{code}`); convention `{View_Type}_{suffix}` |
+| View_Type | nvarchar(30) | NOT NULL DEFAULT 'Grid' | Grid \| TreeList \| Cards |
+| Table_Id | int | NOT NULL FK→Sys_Table | Bảng nguồn |
+| Source_Type | nvarchar(30) | NOT NULL DEFAULT 'Table' | Table \| View \| Sp \| Api |
+| Source_Object | nvarchar(max) | NULL | Tên view/SP/SQL/endpoint khi ≠ Table |
+| Title_Key | nvarchar(150) | NULL (i18n) | Tiêu đề màn |
+| Edit_Form_Id | int | NULL FK→Ui_Form | Form Thêm/Sửa (NULL = chỉ đọc) |
+| Page_Size, Allow_Paging, Virtual_Scroll | int/bit | | Hành vi phân trang |
+| Show_Filter_Row, Show_Group_Panel, Show_Search_Box, Show_Column_Chooser | bit | | Hành vi lưới |
+| Selection_Mode | nvarchar(20) | DEFAULT 'none' | none \| single \| multiple |
+| Allow_Add, Allow_Edit, Allow_Delete | bit | | Quyền CRUD trên lưới |
+| Allow_Export, Export_Formats, Export_File_Name_Key, Allow_Print | bit/nvarchar | | Export/Print (Export_File_Name_Key = i18n) |
+| Key_Field, Parent_Field, Expand_Level | nvarchar/int | NULL | TreeList (cây) |
+| Detail_View_Id | int | NULL FK→Ui_View | Master-detail (row detail) |
+| Default_Filter_Json, Options_Json | nvarchar(max) | NULL | Lọc mặc định / thoát hiểm |
+| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global |
+| Version, Is_Active, Created_At, Updated_At, Description | | | Chuẩn |
+
+**Indexes:** `UQ_Ui_View_Code_Global (View_Code) WHERE Tenant_Id IS NULL`; `UQ_Ui_View_Code_Tenant (View_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL`; `IX_Ui_View_Table (Table_Id, Is_Active)`.
+
+### Ui_View_Column
+> Cột + thuộc tính cột của một View (render + export + format + conditional style). Text i18n = `*_Key`.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| View_Column_Id | int | PK IDENTITY | |
+| View_Id | int | NOT NULL FK→Ui_View | |
+| Column_Id | int | NULL FK→Sys_Column | NULL = unbound/computed |
+| Field_Name | nvarchar(100) | NOT NULL | FieldName trên control |
+| Caption_Key | nvarchar(150) | NULL (i18n) | NULL = fallback Label_Key field → Field_Name |
+| Column_Kind | nvarchar(30) | DEFAULT 'Data' | Data \| Selection \| Command \| TreeSpin |
+| Width, Min_Width, Text_Align, Display_Format | | | Hiển thị |
+| Render_Mode | nvarchar(20) | DEFAULT 'Text' | Text\|Html\|Image\|Link\|Badge\|Boolean\|Template |
+| Cell_Template_Key | nvarchar(150) | NULL (i18n) | Template cho Html/Badge/Link |
+| Is_Visible, Order_No, Fixed_Position | | | |
+| Allow_Sort, Sort_Order, Sort_Index, Allow_Filter, Allow_Group, Group_Index, Summary_Type | | | Hành vi cột |
+| Allow_Export, Export_Format, Export_Caption_Key | | | Export giá trị thuần (HTML/command/selection → Allow_Export=0) |
+| Style_Rule_Json | nvarchar(max) | NULL | Conditional formatting (điều kiện → style ô) |
+| Props_Json, Is_Active | | | |
+
+**Indexes:** `IX_Ui_View_Column_View (View_Id, Is_Visible, Order_No)`.
+
+### Ui_View_Action
+> Nút toolbar / row của View (CRUD mở rộng, in, xuất file, custom). Text i18n = `*_Key`.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Action_Id | int | PK IDENTITY | |
+| View_Id | int | NOT NULL FK→Ui_View | |
+| Action_Code | nvarchar(50) | NOT NULL | add\|edit\|delete\|export\|print\|refresh\|column-chooser\|<custom> |
+| Action_Type | nvarchar(30) | NOT NULL | BuiltIn\|Export\|Print\|Navigate\|Event\|Api |
+| Scope | nvarchar(20) | DEFAULT 'Toolbar' | Toolbar \| Row \| Both |
+| Label_Key, Tooltip_Key, Confirm_Key | nvarchar(150) | NULL (i18n) | Nhãn / tooltip / xác nhận |
+| Icon | nvarchar(50) | NULL | Unicode/tên icon (không dịch) |
+| Export_Format, Export_Engine | nvarchar | NULL | xlsx\|csv\|pdf\|docx ; Grid(client)\|Server(template) |
+| Target | nvarchar(max) | NULL | url\|event_code\|api endpoint\|report template |
+| Require_Selection, Order_No, Props_Json, Is_Active | | | |
+
+**Indexes:** `IX_Ui_View_Action_View (View_Id, Is_Active, Order_No)`.
+
+---
+
 ## Module: Validation (`Val_*`)
 
 ### Val_Rule_Type

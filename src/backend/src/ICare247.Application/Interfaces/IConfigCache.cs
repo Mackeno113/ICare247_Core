@@ -6,6 +6,7 @@
 using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Lookup;
 using ICare247.Domain.Entities.Permission;
+using ICare247.Domain.Entities.View;
 
 namespace ICare247.Application.Interfaces;
 
@@ -114,4 +115,27 @@ public interface IConfigCache
         int formId,
         int tenantId,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy <see cref="ViewMetadata"/> đầy đủ (header + cột + action) của một View theo code,
+    /// đã localize text i18n theo ngôn ngữ. Cache-aside L1+L2 (key gắn slot version).
+    /// </summary>
+    /// <param name="viewCode">Ui_View.View_Code — unique trong tenant (hoặc global).</param>
+    /// <param name="langCode">Ngôn ngữ resolve resource: 'vi', 'en'...</param>
+    /// <param name="tenantId">Tenant — bắt buộc, vào cache key.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><see cref="ViewMetadata"/> nếu tồn tại và active; <c>null</c> nếu không.</returns>
+    Task<ViewMetadata?> GetViewAsync(
+        string viewCode,
+        string langCode,
+        int tenantId,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Xóa cache metadata của một View (mọi ngôn ngữ đã biết) — gọi sau khi admin sửa View
+    /// ở ConfigStudio (wire endpoint sau, tương tự invalidate-lookup).
+    /// </summary>
+    /// <param name="viewCode">Ui_View.View_Code cần invalidate.</param>
+    /// <param name="tenantId">Tenant sở hữu View.</param>
+    Task InvalidateViewAsync(string viewCode, int tenantId);
 }

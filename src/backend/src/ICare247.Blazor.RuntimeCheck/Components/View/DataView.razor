@@ -1,0 +1,432 @@
+@* File    : DataView.razor
+   Purpose : Lưới/cây hiển thị danh sách metadata-driven từ Ui_View. Chọn DxGrid (Grid) hoặc
+             DxTreeList (TreeList) theo View_Type; render ô theo Render_Mode (Text/Boolean/Html). *@
+
+@using System.Globalization
+@using ICare247.Blazor.RuntimeCheck.Services
+@inject NavigationManager Navigation
+
+@if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
+     && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
+{
+    <DxTreeList Data="Items"
+                KeyFieldName="@View.KeyField"
+                ParentKeyFieldName="@View.ParentField"
+                ShowFilterRow="View.ShowFilterRow"
+                CssClass="dv-treelist">
+        <Columns>
+            @foreach (var col in DataColumns)
+            {
+                var c = col;
+                <DxTreeListDataColumn Caption="@c.DisplayCaption" FieldName="@c.FieldName"
+                                      Width="@c.Width" AllowSort="c.AllowSort">
+                    <CellDisplayTemplate>
+                        @RenderCell(AsRow(context.DataItem), c)
+                    </CellDisplayTemplate>
+                </DxTreeListDataColumn>
+            }
+        </Columns>
+    </DxTreeList>
+}
+else
+{
+    @if (ToolbarActions.Count > 0)
+    {
+        <div class="dv-toolbar">
+            @foreach (var a in ToolbarActions)
+            {
+                var act = a;
+                <button class="btn btn-light dv-action" title="@(act.Tooltip ?? act.Label ?? act.ActionCode)"
+                        @onclick="() => ExecuteActionAsync(act)">
+                    @if (!string.IsNullOrWhiteSpace(act.Icon)) { <span class="dv-action-icon">@act.Icon</span> }
+                    <span>@(act.Label ?? act.ActionCode)</span>
+                </button>
+            }
+        </div>
+    }
+
+    <DxGrid @ref="_grid"
+            Data="Items"
+            ShowFilterRow="View.ShowFilterRow"
+            ShowGroupPanel="View.ShowGroupPanel"
+            VirtualScrollingEnabled="View.VirtualScroll"
+            PageSize="@(View.PageSize < 1 ? 20 : View.PageSize)"
+            PagerVisible="@(View.AllowPaging && !View.VirtualScroll)"
+            PageSizeSelectorVisible="View.AllowPaging"
+            PageSizeSelectorItems="@(new[] { 10, 20, 50 })"
+            SelectionMode="@SelectionModeOf()"
+            CssClass="dv-dxgrid"
+            TextWrapEnabled="false">
+        <Columns>
+            @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
+            {
+                <DxGridSelectionColumn Width="44px" />
+            }
+
+            @foreach (var col in DataColumns)
+            {
+                var c = col;
+                <DxGridDataColumn Caption="@c.DisplayCaption"
+                                  FieldName="@c.FieldName"
+                                  Width="@c.Width"
+                                  TextAlignment="@AlignOf(c)"
+                                  AllowSort="c.AllowSort"
+                                  AllowGroup="c.AllowGroup"
+                                  FilterRowCellVisible="c.AllowFilter">
+                    <CellDisplayTemplate>
+                        @RenderCell(AsRow(context.DataItem), c)
+                    </CellDisplayTemplate>
+                </DxGridDataColumn>
+            }
+
+            @if (HasRowActions)
+            {
+                <DxGridCommandColumn Width="110px" Caption="Thao tác">
+                    <CellDisplayTemplate>
+                        @{
+                            var key = string.IsNullOrWhiteSpace(View.KeyField)
+                                ? null : GetCell(AsRow(context.DataItem), View.KeyField!);
+                        }
+                        @if (View.AllowEdit && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                        {
+                            <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(key)">✏️</button>
+                        }
+                        @if (View.AllowDelete && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                        {
+                            <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(key)">🗑️</button>
+                        }
+                    </CellDisplayTemplate>
+                </DxGridCommandColumn>
+            }
+        </Columns>
+    </DxGrid>
+}
+
+@code {
+    [Parameter] public ViewMetadataDto View { get; set; } = new();
+    [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
+    [Parameter] public EventCallback<object?> OnEdit { get; set; }
+    [Parameter] public EventCallback<object?> OnDelete { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback<ViewActionDto> OnUnhandledAction { get; set; }
+
+    private IGrid? _grid;
+
+    /// <summary>Nút toolbar (Scope = Toolbar | Both), sắp theo Order_No.</summary>
+    private List<ViewActionDto> ToolbarActions => View.Actions
+        .Where(a => a.Scope.Equals("Toolbar", StringComparison.OrdinalIgnoreCase)
+                 || a.Scope.Equals("Both", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(a => a.OrderNo)
+        .ToList();
+
+    /// <summary>Thực thi một action toolbar theo Action_Type / Action_Code.</summary>
+    private async Task ExecuteActionAsync(ViewActionDto a)
+    {
+        switch (a.ActionType.ToLowerInvariant())
+        {
+            case "export":
+                await ExportAsync(a.ExportFormat, a.ExportEngine);
+                return;
+            case "print":
+                // Print client-side đơn giản — server-side template làm sau (VIEW-2e/3d).
+                await OnUnhandledAction.InvokeAsync(a);
+                return;
+            case "navigate":
+                if (!string.IsNullOrWhiteSpace(a.Target))
+                    Navigation.NavigateTo(a.Target!);
+                return;
+            case "builtin":
+                await ExecuteBuiltInAsync(a.ActionCode);
+                return;
+            default: // Event | Api → chưa wire
+                await OnUnhandledAction.InvokeAsync(a);
+                return;
+        }
+    }
+
+    private async Task ExecuteBuiltInAsync(string code)
+    {
+        switch (code.ToLowerInvariant())
+        {
+            case "add":     await OnAdd.InvokeAsync(); break;
+            case "refresh": await OnRefresh.InvokeAsync(); break;
+            default:        break; // edit/delete/column-chooser ở row/grid, bỏ qua toolbar
+        }
+    }
+
+    /// <summary>
+    /// Export client qua DxGrid (giá trị thuần — DxGrid xuất theo FieldName, bỏ render template).
+    /// pdf/docx (Engine='Server') chưa hỗ trợ → báo lên caller.
+    /// </summary>
+    private async Task ExportAsync(string? format, string? engine)
+    {
+        if (_grid is null) return;
+
+        var fmt = (format ?? "xlsx").ToLowerInvariant();
+        var name = string.IsNullOrWhiteSpace(View.ExportFileName) ? View.ViewCode : View.ExportFileName!;
+
+        // Server-side (pdf/docx) chưa có endpoint → để caller xử lý/thông báo.
+        if (string.Equals(engine, "Server", StringComparison.OrdinalIgnoreCase)
+            || fmt is "pdf" or "docx")
+        {
+            await OnUnhandledAction.InvokeAsync(new ViewActionDto
+            {
+                ActionType = "Export", ExportFormat = fmt, ExportEngine = "Server"
+            });
+            return;
+        }
+
+        if (fmt == "csv")
+            await _grid.ExportToCsvAsync($"{name}.csv");
+        else
+            await _grid.ExportToXlsxAsync($"{name}.xlsx");
+    }
+
+    /// <summary>Cột Data hiển thị (Column_Kind='Data', Is_Visible), sắp theo Order_No.</summary>
+    private List<ViewColumnDto> DataColumns => View.Columns
+        .Where(c => c.IsVisible && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase))
+        .Where(c => !string.IsNullOrWhiteSpace(c.FieldName))
+        .OrderBy(c => c.OrderNo)
+        .ToList();
+
+    /// <summary>Hiện cột lệnh sửa/xóa khi View cho phép + có form sửa.</summary>
+    private bool HasRowActions =>
+        !string.IsNullOrWhiteSpace(View.EditFormCode) && (View.AllowEdit || View.AllowDelete);
+
+    private GridSelectionMode SelectionModeOf() => View.SelectionMode?.ToLowerInvariant() switch
+    {
+        "multiple" => GridSelectionMode.Multiple,
+        _          => GridSelectionMode.Single
+    };
+
+    private static Dictionary<string, object?> AsRow(object? dataItem)
+        => dataItem as Dictionary<string, object?> ?? [];
+
+    private static object? GetCell(Dictionary<string, object?> row, string col)
+    {
+        var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
+    }
+
+    private static GridTextAlignment AlignOf(ViewColumnDto c) => (c.TextAlign ?? "").ToLowerInvariant() switch
+    {
+        "right"  => GridTextAlignment.Right,
+        "center" => GridTextAlignment.Center,
+        "left"   => GridTextAlignment.Left,
+        _        => IsNumeric(c.RenderMode) ? GridTextAlignment.Right : GridTextAlignment.Left
+    };
+
+    private static bool IsNumeric(string renderMode) => false; // suy theo dữ liệu ở DisplayCell
+
+    /// <summary>
+    /// Render ô theo Render_Mode (Text/Boolean/Html/Image/Link/Badge) + áp conditional style
+    /// (Style_Rule_Json) lên span bao ngoài.
+    /// </summary>
+    private RenderFragment RenderCell(Dictionary<string, object?> row, ViewColumnDto col) => builder =>
+    {
+        var value = GetCell(row, col.FieldName);
+        var style = ResolveCellStyle(row, col);
+
+        builder.OpenElement(0, "span");
+        if (!string.IsNullOrEmpty(style))
+            builder.AddAttribute(1, "style", style);
+
+        if (value is not null)
+        {
+            switch (col.RenderMode.ToLowerInvariant())
+            {
+                case "boolean":
+                    var on = value is bool b ? b : bool.TryParse(value.ToString(), out var pb) && pb;
+                    builder.AddContent(2, on ? "✓" : "");
+                    break;
+                case "html":
+                    builder.AddContent(3, (MarkupString)(value.ToString() ?? ""));
+                    break;
+                case "image":
+                    builder.OpenElement(4, "img");
+                    builder.AddAttribute(5, "src", value.ToString());
+                    builder.AddAttribute(6, "class", "dv-cell-img");
+                    builder.AddAttribute(7, "alt", col.FieldName);
+                    builder.CloseElement();
+                    break;
+                case "link":
+                    var href = value.ToString() ?? "";
+                    builder.OpenElement(8, "a");
+                    builder.AddAttribute(9, "href", href);
+                    builder.AddAttribute(10, "target", "_blank");
+                    builder.AddAttribute(11, "rel", "noopener");
+                    builder.AddContent(12, href);
+                    builder.CloseElement();
+                    break;
+                case "badge":
+                    builder.OpenElement(13, "span");
+                    builder.AddAttribute(14, "class", "dv-badge");
+                    builder.AddContent(15, FormatValue(value, col.DisplayFormat));
+                    builder.CloseElement();
+                    break;
+                default: // Text | Template (Template chưa render token — fallback text)
+                    builder.AddContent(16, FormatValue(value, col.DisplayFormat));
+                    break;
+            }
+        }
+
+        builder.CloseElement();
+    };
+
+    // ── Conditional formatting (Style_Rule_Json — định dạng đơn giản client-eval) ──
+
+    /// <summary>Cache rule đã parse theo từng cột (parse 1 lần / lần đổi metadata).</summary>
+    private readonly Dictionary<string, List<StyleRule>> _rulesCache = new(StringComparer.OrdinalIgnoreCase);
+    private int _rulesViewId = -1;
+
+    protected override void OnParametersSet()
+    {
+        // Parse lại rule khi đổi View.
+        if (_rulesViewId == View.ViewId) return;
+        _rulesViewId = View.ViewId;
+        _rulesCache.Clear();
+        foreach (var col in View.Columns)
+        {
+            if (string.IsNullOrWhiteSpace(col.StyleRuleJson)) continue;
+            try
+            {
+                var rules = System.Text.Json.JsonSerializer.Deserialize<List<StyleRule>>(
+                    col.StyleRuleJson!, JsonOpts);
+                if (rules is { Count: > 0 }) _rulesCache[col.FieldName] = rules;
+            }
+            catch { /* JSON rule sai cú pháp → bỏ qua, không format */ }
+        }
+    }
+
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    /// <summary>Trả CSS inline cho ô nếu có rule conditional khớp (rule đầu khớp thắng).</summary>
+    private string? ResolveCellStyle(Dictionary<string, object?> row, ViewColumnDto col)
+    {
+        if (!_rulesCache.TryGetValue(col.FieldName, out var rules)) return null;
+
+        foreach (var r in rules)
+        {
+            if (r.When is null || r.Style is null || r.Style.Count == 0) continue;
+            if (MatchCondition(row, r.When))
+                return BuildCss(r.Style);
+        }
+        return null;
+    }
+
+    /// <summary>So khớp điều kiện rule với giá trị dòng theo toán tử (= != &gt; &gt;= &lt; &lt;=).</summary>
+    private static bool MatchCondition(Dictionary<string, object?> row, RuleCondition cond)
+    {
+        if (string.IsNullOrWhiteSpace(cond.Field)) return false;
+        var actual = GetCell(row, cond.Field!);
+        var expected = cond.Value;
+
+        var op = (cond.Op ?? "=").Trim();
+
+        // Ưu tiên so sánh số nếu cả 2 vế là số.
+        if (TryToDouble(actual, out var an) && TryToDouble(expected, out var en))
+        {
+            return op switch
+            {
+                "=" or "==" => an == en,
+                "!=" or "<>" => an != en,
+                ">"  => an > en,
+                ">=" => an >= en,
+                "<"  => an < en,
+                "<=" => an <= en,
+                _    => false
+            };
+        }
+
+        // So sánh chuỗi (chỉ = / !=).
+        var asStr = actual?.ToString() ?? "";
+        var exStr = expected.ValueKind == System.Text.Json.JsonValueKind.String
+            ? expected.GetString() ?? ""
+            : expected.ToString();
+        return op switch
+        {
+            "=" or "==" => asStr.Equals(exStr, StringComparison.OrdinalIgnoreCase),
+            "!=" or "<>" => !asStr.Equals(exStr, StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
+    }
+
+    private static bool TryToDouble(object? value, out double d)
+    {
+        switch (value)
+        {
+            case null: d = 0; return false;
+            case double db: d = db; return true;
+            case long l:    d = l;  return true;
+            case int i:     d = i;  return true;
+            case decimal m: d = (double)m; return true;
+        }
+        return double.TryParse(value.ToString(), System.Globalization.NumberStyles.Any,
+            CultureInfo.InvariantCulture, out d);
+    }
+
+    private static bool TryToDouble(System.Text.Json.JsonElement je, out double d)
+    {
+        d = 0;
+        return je.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.Number => je.TryGetDouble(out d),
+            System.Text.Json.JsonValueKind.String => double.TryParse(je.GetString(),
+                System.Globalization.NumberStyles.Any, CultureInfo.InvariantCulture, out d),
+            _ => false
+        };
+    }
+
+    /// <summary>Dựng chuỗi CSS từ map style (color/background/fontWeight...).</summary>
+    private static string BuildCss(Dictionary<string, string> style)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var kv in style)
+        {
+            var prop = kv.Key.Trim().ToLowerInvariant() switch
+            {
+                "color"                  => "color",
+                "background" or "bg"     => "background-color",
+                "fontweight" or "font-weight" => "font-weight",
+                "fontstyle" or "font-style"   => "font-style",
+                "textalign" or "text-align"   => "text-align",
+                _ => null
+            };
+            if (prop is not null) sb.Append(prop).Append(':').Append(kv.Value).Append(';');
+        }
+        return sb.ToString();
+    }
+
+    private sealed class StyleRule
+    {
+        public RuleCondition? When { get; set; }
+        public Dictionary<string, string>? Style { get; set; }
+    }
+
+    private sealed class RuleCondition
+    {
+        public string? Field { get; set; }
+        public string? Op { get; set; }
+        public System.Text.Json.JsonElement Value { get; set; }
+    }
+
+    private static string FormatValue(object value, string? fmt)
+    {
+        if (!string.IsNullOrWhiteSpace(fmt))
+        {
+            switch (value)
+            {
+                case long l:    return l.ToString(fmt, CultureInfo.CurrentCulture);
+                case int i:     return i.ToString(fmt, CultureInfo.CurrentCulture);
+                case decimal d: return d.ToString(fmt, CultureInfo.CurrentCulture);
+                case double db: return db.ToString(fmt, CultureInfo.CurrentCulture);
+                case string s when DateTime.TryParse(
+                        s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt):
+                    return dt.ToString(fmt, CultureInfo.CurrentCulture);
+            }
+        }
+        return value.ToString() ?? "";
+    }
+}

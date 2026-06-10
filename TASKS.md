@@ -85,29 +85,31 @@
 - [x] **VIEW-0** — Chốt thiết kế 3 bảng + i18n + engine rules ✅ (spec 14, ADR-015, spec 10 §1d, handoff VIEW-0).
 
 ### Giai đoạn 1 — Database + tương thích (owner: Codex)
-- [ ] **VIEW-1a** — Migration `db/0xx_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (bám convention `Sys_Table`: IDENTITY, Tenant FK, Version, Is_Active, unique global/tenant).
-- [ ] **VIEW-1b** — Seed **view Grid mặc định** cho mỗi `Ui_Form` đang có (cột từ field `Show_In_List`, `Edit_Form_Id` = chính form) → màn `/master/*` cũ không vỡ.
-- [ ] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (3 bảng mới).
-- [ ] **VIEW-1run** — Chạy migration trên DB thật ⏳ (manual). Sau đó báo handoff → Claude wire backend.
+- [x] **VIEW-1a** — Migration `db/031_create_ui_view.sql`: tạo `Ui_View` + `Ui_View_Column` + `Ui_View_Action` theo DDL spec 14 (idempotent IF OBJECT_ID/IF NOT EXISTS, FK Sys_Table/Ui_Form/Sys_Tenant/Sys_Column, unique global/tenant). Đã chạy DB dev + bổ sung repo (session 43, Claude).
+- [x] **VIEW-1b** — `db/032_seed_default_views.sql`: seed 1 Grid view (`Grid_{Form_Code}`) cho mỗi `Ui_Form` active, cột từ field `Show_In_List=1` (bỏ ảo, Field_Name=Column_Code, Caption_Key=Label_Key), `Edit_Form_Id`=chính form. Idempotent (NOT EXISTS). ⏳ Cần chạy trên DB.
+- [x] **VIEW-1c** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md`: thêm `Ui_View` + `Ui_View_Column` + `Ui_View_Action` (cuối module UI, tham chiếu spec 14 + migration 031/032).
+- [x] **VIEW-1run** — Migration đã chạy trên DB dev ✅ (user).
 
 ### Giai đoạn 2 — Backend (owner: Claude)
-- [ ] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (Entities/View).
-- [ ] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): GetViewByCode (header + columns + actions), resolve i18n caption qua Sys_Resource theo langCode (fallback `Label_Key` field → Field_Name).
-- [ ] **VIEW-2c** — `IConfigCache.GetViewAsync(viewCode, tenant, lang)` + key `{tenant}:{lang}:v{n}` (ADR-014); ResourceMap loader nạp thêm prefix `{tableCode}.view.%`; `InvalidateViewAsync` + endpoint.
-- [ ] **VIEW-2d** — CQRS `Features/View/`: `GetViewQuery` (metadata) — data list tái dùng `MasterData` query theo `Source_Type` (Table trước, View/Sp/Api sau).
-- [ ] **VIEW-2e** — `ViewController`: GET `{viewCode}/info` (metadata), GET data (delegate master-data list), endpoint export server-side (pdf/docx theo template).
+- [x] **VIEW-2a** — Domain: `ViewMetadata` / `ViewColumn` / `ViewAction` (`Entities/View`) — text i18n resolve sẵn (Title/Caption/Label/...). Build backend 0/0.
+- [x] **VIEW-2b** — `IViewRepository` + `ViewRepository` (Dapper, Config DB): `GetByCodeAsync` (header + columns + actions), resolve i18n qua Sys_Resource theo langCode, ưu tiên bản tenant-specific hơn global; đăng ký DI. (Fallback caption `Label_Key` field → Field_Name để tầng Blazor VIEW-3 xử lý.)
+- [x] **VIEW-2c** — `IConfigCache.GetViewAsync` (cache-aside L1+L2, key `CacheKeys.View` slot `:v0`) + `InvalidateViewAsync`; `GetViewByCode` handler ủy quyền facade (đúng ADR-014); inject `IViewRepository` vào `ConfigCache`. (ResourceMap prefix `{tableCode}.view.%` chưa cần — caption resolve trực tiếp trong repo.)
+- [x] **VIEW-2d** — CQRS `Features/Views/Queries/`: `GetViewByCode` (metadata) + `GetViewData` (data, Source_Type='Table'): nạp metadata qua facade → `ViewRepository.GetDataAsync` SELECT cột Data (Field_Name whitelist) từ bảng nguồn (Data DB), search LIKE (CAST NVARCHAR) + paging. (View/Sp/Api source → `NotSupportedException`, làm sau.)
+- [~] **VIEW-2e** — `ViewController`: GET `{code}/info` (metadata) ✅, GET `{code}/data` (data list) ✅, POST `{code}/invalidate-cache` ✅. Còn: export server-side (pdf/docx theo template) — **hoãn**, cần template engine chưa có.
 
 ### Giai đoạn 3 — Blazor runtime (owner: Claude)
-- [ ] **VIEW-3a** — Map `Ui_View*` → `MasterDataGridConfig`/`MasterDataColumnDto` (runtime model đã có); bổ sung `MasterDataViewActionDto`.
-- [ ] **VIEW-3b** — Component `DataView` chọn render `<DxGrid>` / `<DxTreeList>` theo `View_Type`; route `/view/{ViewCode}` (giữ alias `/master/*` chuyển tiếp).
-- [ ] **VIEW-3c** — Render cột theo `Render_Mode` (Text/Html/Image/Link/Badge/Boolean/Template) + conditional format (`Style_Rule_Json` qua AST).
-- [ ] **VIEW-3d** — Toolbar/row actions từ `Ui_View_Action`: CRUD (mở `Edit_Form_Id` popup/tab), export client (xlsx/csv qua DxGrid), gọi export server (pdf/docx), print.
-- [ ] **VIEW-3e** — Export rule: lấy **giá trị thuần** (`Export_Format ?? Display_Format`, bỏ `Render_Mode`); header export resolve theo langCode; `Allow_Export=0` cho cột HTML-only/command/selection.
+- [x] **VIEW-3a** — `ViewApiService` + DTO (`ViewMetadataDto`/`ViewColumnDto`/`ViewActionDto`/`ViewDataResultDto`) gọi `api/v1/views/{code}/info` + `/data` (unwrap JsonElement → CLR). Component đọc metadata trực tiếp (không cần map sang MasterDataGridConfig).
+- [~] **VIEW-3b** — Component `DataView` render `<DxGrid>` / `<DxTreeList>` (theo `View_Type` + Key/Parent field) ✅; page `ViewPage` route `/view/{ViewCode}` (search + paging + Add/Edit/Delete điều hướng Edit_Form) ✅. Còn: alias `/master/*` chuyển tiếp sang view mặc định.
+- [x] **VIEW-3c** — Render `Render_Mode` Text/Boolean/Html/**Image/Link/Badge** (RenderTreeBuilder) + **conditional format** `Style_Rule_Json` (mảng rule `{when:{field,op,value}, style:{color/background/fontWeight}}`, client-eval, rule đầu khớp thắng). Template fallback text; Grammar V1 AST đầy đủ (thay format JSON đơn giản) làm sau nếu cần điều kiện phức tạp.
+- [x] **VIEW-3d** — Toolbar render nút động từ `Ui_View_Action` (Scope Toolbar/Both, Order_No): Export→client; BuiltIn add/refresh→callback; Navigate→Target; row Sửa/Xóa qua Edit_Form. Print/Event/Api/export-server → `OnUnhandledAction` báo "chưa hỗ trợ". (Confirm_Key cho Xóa chưa wire.)
+- [~] **VIEW-3e** — Export client xlsx/csv qua `DxGrid.ExportToXlsxAsync/ExportToCsvAsync` (giá trị thuần theo FieldName, bỏ template) ✅; pdf/docx (Engine='Server') → báo chưa hỗ trợ. Còn: tôn trọng `Allow_Export=0` per-column (hiện DxGrid xuất mọi cột Data) + header export theo langCode.
 
-### Giai đoạn 4 — ConfigStudio WPF (owner: Codex)
-- [ ] **VIEW-4a** — Màn "Quản lý View": list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList).
-- [ ] **VIEW-4b** — Grid cấu hình cột (`Ui_View_Column`): order, width, align, format, render mode, sort/filter/group, export flags + nút "+ Tạo key" i18n.
-- [ ] **VIEW-4c** — Cấu hình `Ui_View_Action` (toolbar/row) + auto-seed i18n vi+en (pattern `RegisterI18nKeysAsync`).
+### Giai đoạn 4 — ConfigStudio WPF (owner: Codex → Claude làm session 42)
+- [x] **VIEW-4a** — Màn "Quản lý View" (`ViewManagerView`/`ViewManagerViewModel`, module Forms): list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList) qua `IViewDataService`/`ViewDataService` (Dapper, transaction, optimistic concurrency). Build WPF 0/0.
+- [x] **VIEW-4b** — Lưới cấu hình cột (`Ui_View_Column`) editable: Field_Name, caption key, kind, render mode, width, align, format, visible, sort/filter/group, summary, export + up/down order.
+- [x] **VIEW-4c** — Lưới `Ui_View_Action` editable (code/type/scope/label key/icon/export format/engine/target/require-selection). Lưu cột+action nguyên khối cùng View.
+- [x] **VIEW-4d** — nút "🌐 Dịch" i18n (tái dùng `I18nEditorDialog`) cho Title_Key (tab Cơ bản), Export_File_Name_Key (tab Export), Caption_Key (toolbar tab Cột — cột đang chọn), Label_Key (toolbar tab Actions — action đang chọn) + tự sinh key theo convention `{tableCode}.view.{viewCode}.{suffix}` (spec 10 §1d) khi trống; column picker từ `Sys_Column` (`ColumnPickerDialog`, nạp lười theo bảng nguồn). Build WPF 0/0. ⚠️ Màn chỉ chạy được sau khi chạy migration `Ui_View` (VIEW-1) — service ném lỗi thân thiện nếu thiếu bảng.
+- [x] **VIEW-4e** (polish UX, session 43) — (1) View_Code = `{View_Type}_` + hậu tố user nhập (badge tiền tố + preview); đổi View_Type giữ hậu tố; **đổi View_Code tự rekey** mọi i18n key đã sinh (`.view.{cũ}.`→`.view.{mới}.`). (2) Nút lưu đổi nhãn "Lưu"; "Tạo mới" có MessageBox cảnh báo. (3) Tab Cơ bản sắp lại thứ tự ①View_Type→②View_Code→③Bảng nguồn→④Source. (4) Caption_Key/Label_Key trong 2 grid đổi thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng. (5) `ColumnPickerDialog` thêm **multi-select** (checkbox + "Chọn (N)") + khóa cột đã có (badge "đã thêm") — giữ tương thích single-select màn FieldConfig. (6) `GridSplitter` kéo co giãn 2 panel master-detail. Build WPF slnx 0/0.
 
 ### Nguyên tắc cứng (review checklist)
 - Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.

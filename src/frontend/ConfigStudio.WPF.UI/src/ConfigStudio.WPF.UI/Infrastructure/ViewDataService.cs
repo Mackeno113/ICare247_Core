@@ -1,0 +1,417 @@
+// File    : ViewDataService.cs
+// Module  : Infrastructure
+// Layer   : Presentation
+// Purpose : Truy vấn / ghi cụm bảng Ui_View, Ui_View_Column, Ui_View_Action qua Dapper.
+
+using Dapper;
+using Microsoft.Data.SqlClient;
+using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Interfaces;
+
+namespace ConfigStudio.WPF.UI.Infrastructure;
+
+/// <summary>
+/// Implementation <see cref="IViewDataService"/> dùng Dapper trên Config DB.
+/// Mọi query parameterized; cột/action lưu nguyên khối theo transaction.
+/// </summary>
+public sealed class ViewDataService : IViewDataService
+{
+    private readonly IAppConfigService _config;
+
+    /// <summary>Khởi tạo với cấu hình DB hiện hành.</summary>
+    /// <param name="config">Dịch vụ cung cấp ConnectionString + Tenant_Id.</param>
+    public ViewDataService(IAppConfigService config) => _config = config;
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ViewRecord>> GetViewsAsync(
+        int tenantId,
+        bool includeInactive = false,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await EnsureSchemaAsync(conn, ct);
+
+        var whereActive = includeInactive ? "" : "  AND v.Is_Active = 1\n";
+
+        var sql =
+            "SELECT v.View_Id AS ViewId, v.View_Code AS ViewCode, v.View_Type AS ViewType,\n" +
+            "       v.Table_Id AS TableId, ISNULL(st.Table_Code, '') AS TableCode,\n" +
+            "       v.Source_Type AS SourceType, v.Source_Object AS SourceObject,\n" +
+            "       v.Title_Key AS TitleKey, v.Edit_Form_Id AS EditFormId,\n" +
+            "       v.Page_Size AS PageSize, v.Allow_Paging AS AllowPaging, v.Virtual_Scroll AS VirtualScroll,\n" +
+            "       v.Show_Filter_Row AS ShowFilterRow, v.Show_Group_Panel AS ShowGroupPanel,\n" +
+            "       v.Show_Search_Box AS ShowSearchBox, v.Show_Column_Chooser AS ShowColumnChooser,\n" +
+            "       v.Selection_Mode AS SelectionMode, v.Allow_Add AS AllowAdd, v.Allow_Edit AS AllowEdit,\n" +
+            "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
+            "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
+            "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
+            "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
+            "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
+            "       v.Description AS Description\n" +
+            "FROM   dbo.Ui_View v\n" +
+            "LEFT JOIN dbo.Sys_Table st ON st.Table_Id = v.Table_Id\n" +
+            "WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)\n" +
+            whereActive +
+            "ORDER BY v.View_Code";
+
+        var result = await conn.QueryAsync<ViewRecord>(
+            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct));
+        return result.ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<ViewDetailRecord?> GetViewDetailAsync(int viewId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return null;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await EnsureSchemaAsync(conn, ct);
+
+        var headerSql =
+            "SELECT v.View_Id AS ViewId, v.View_Code AS ViewCode, v.View_Type AS ViewType,\n" +
+            "       v.Table_Id AS TableId, ISNULL(st.Table_Code, '') AS TableCode,\n" +
+            "       v.Source_Type AS SourceType, v.Source_Object AS SourceObject,\n" +
+            "       v.Title_Key AS TitleKey, v.Edit_Form_Id AS EditFormId,\n" +
+            "       v.Page_Size AS PageSize, v.Allow_Paging AS AllowPaging, v.Virtual_Scroll AS VirtualScroll,\n" +
+            "       v.Show_Filter_Row AS ShowFilterRow, v.Show_Group_Panel AS ShowGroupPanel,\n" +
+            "       v.Show_Search_Box AS ShowSearchBox, v.Show_Column_Chooser AS ShowColumnChooser,\n" +
+            "       v.Selection_Mode AS SelectionMode, v.Allow_Add AS AllowAdd, v.Allow_Edit AS AllowEdit,\n" +
+            "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
+            "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
+            "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
+            "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
+            "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
+            "       v.Description AS Description\n" +
+            "FROM   dbo.Ui_View v\n" +
+            "LEFT JOIN dbo.Sys_Table st ON st.Table_Id = v.Table_Id\n" +
+            "WHERE  v.View_Id = @ViewId";
+
+        var header = await conn.QuerySingleOrDefaultAsync<ViewRecord>(
+            new CommandDefinition(headerSql, new { ViewId = viewId }, cancellationToken: ct));
+        if (header is null) return null;
+
+        var columnsSql =
+            "SELECT View_Column_Id AS ViewColumnId, Column_Id AS ColumnId, Field_Name AS FieldName,\n" +
+            "       Caption_Key AS CaptionKey, Column_Kind AS ColumnKind, Width AS Width, Min_Width AS MinWidth,\n" +
+            "       Text_Align AS TextAlign, Display_Format AS DisplayFormat, Render_Mode AS RenderMode,\n" +
+            "       Cell_Template_Key AS CellTemplateKey, Is_Visible AS IsVisible, Order_No AS OrderNo,\n" +
+            "       Fixed_Position AS FixedPosition, Allow_Sort AS AllowSort, Sort_Order AS SortOrder,\n" +
+            "       Sort_Index AS SortIndex, Allow_Filter AS AllowFilter, Allow_Group AS AllowGroup,\n" +
+            "       Group_Index AS GroupIndex, Summary_Type AS SummaryType, Allow_Export AS AllowExport,\n" +
+            "       Export_Format AS ExportFormat, Export_Caption_Key AS ExportCaptionKey,\n" +
+            "       Style_Rule_Json AS StyleRuleJson, Props_Json AS PropsJson, Is_Active AS IsActive\n" +
+            "FROM   dbo.Ui_View_Column\n" +
+            "WHERE  View_Id = @ViewId\n" +
+            "ORDER BY Order_No, View_Column_Id";
+
+        var columns = await conn.QueryAsync<ViewColumnRecord>(
+            new CommandDefinition(columnsSql, new { ViewId = viewId }, cancellationToken: ct));
+
+        var actionsSql =
+            "SELECT Action_Id AS ActionId, Action_Code AS ActionCode, Action_Type AS ActionType,\n" +
+            "       Scope AS Scope, Label_Key AS LabelKey, Tooltip_Key AS TooltipKey, Confirm_Key AS ConfirmKey,\n" +
+            "       Icon AS Icon, Export_Format AS ExportFormat, Export_Engine AS ExportEngine, Target AS Target,\n" +
+            "       Require_Selection AS RequireSelection, Order_No AS OrderNo, Props_Json AS PropsJson,\n" +
+            "       Is_Active AS IsActive\n" +
+            "FROM   dbo.Ui_View_Action\n" +
+            "WHERE  View_Id = @ViewId\n" +
+            "ORDER BY Order_No, Action_Id";
+
+        var actions = await conn.QueryAsync<ViewActionRecord>(
+            new CommandDefinition(actionsSql, new { ViewId = viewId }, cancellationToken: ct));
+
+        return new ViewDetailRecord
+        {
+            Header = header,
+            Columns = columns.ToList(),
+            Actions = actions.ToList(),
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<int> SaveViewAsync(ViewUpsertRequest request, int tenantId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured)
+            throw new InvalidOperationException(
+                "DB chưa được cấu hình. Kiểm tra %APPDATA%\\ICare247\\ConfigStudio\\appsettings.json");
+
+        var code = request.ViewCode.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+            throw new InvalidOperationException("View_Code không được để trống.");
+        if (request.TableId <= 0)
+            throw new InvalidOperationException("Phải chọn bảng nguồn (Table_Id).");
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.OpenAsync(ct);
+        await EnsureSchemaAsync(conn, ct);
+
+        await using var tx = await conn.BeginTransactionAsync(ct);
+        try
+        {
+            // ── Chống trùng View_Code trong phạm vi tenant ────────
+            var dupSql =
+                "SELECT TOP (1) 1 FROM dbo.Ui_View\n" +
+                "WHERE View_Code = @Code AND (Tenant_Id = @TenantId OR Tenant_Id IS NULL)\n" +
+                "  AND View_Id <> @ViewId";
+            var duplicate = await conn.ExecuteScalarAsync<int?>(new CommandDefinition(
+                dupSql, new { Code = code, TenantId = tenantId, ViewId = request.ViewId ?? 0 },
+                tx, cancellationToken: ct));
+            if (duplicate.HasValue)
+                throw new InvalidOperationException($"View_Code '{code}' đã tồn tại.");
+
+            int viewId;
+            var p = BuildHeaderParams(request, code, tenantId);
+
+            if (request.ViewId is null or 0)
+            {
+                const string insertSql =
+                    "INSERT INTO dbo.Ui_View (View_Code, View_Type, Table_Id, Source_Type, Source_Object,\n" +
+                    "    Title_Key, Edit_Form_Id, Page_Size, Allow_Paging, Virtual_Scroll, Show_Filter_Row,\n" +
+                    "    Show_Group_Panel, Show_Search_Box, Show_Column_Chooser, Selection_Mode, Allow_Add,\n" +
+                    "    Allow_Edit, Allow_Delete, Allow_Export, Export_Formats, Export_File_Name_Key, Allow_Print,\n" +
+                    "    Key_Field, Parent_Field, Expand_Level, Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
+                    "    Tenant_Id, Version, Is_Active, Created_At, Updated_At, Description)\n" +
+                    "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @SourceObject, @TitleKey, @EditFormId,\n" +
+                    "    @PageSize, @AllowPaging, @VirtualScroll, @ShowFilterRow, @ShowGroupPanel, @ShowSearchBox,\n" +
+                    "    @ShowColumnChooser, @SelectionMode, @AllowAdd, @AllowEdit, @AllowDelete, @AllowExport,\n" +
+                    "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel,\n" +
+                    "    @DetailViewId, @DefaultFilterJson, @OptionsJson, @TenantId, 1, @IsActive, GETDATE(), GETDATE(),\n" +
+                    "    @Description);\n" +
+                    "SELECT CAST(SCOPE_IDENTITY() AS INT);";
+                viewId = await conn.ExecuteScalarAsync<int>(
+                    new CommandDefinition(insertSql, p, tx, cancellationToken: ct));
+            }
+            else
+            {
+                viewId = request.ViewId.Value;
+                p.Add("ViewId", viewId);
+                p.Add("Version", request.Version);
+                const string updateSql =
+                    "UPDATE dbo.Ui_View SET View_Code = @ViewCode, View_Type = @ViewType, Table_Id = @TableId,\n" +
+                    "    Source_Type = @SourceType, Source_Object = @SourceObject, Title_Key = @TitleKey,\n" +
+                    "    Edit_Form_Id = @EditFormId, Page_Size = @PageSize, Allow_Paging = @AllowPaging,\n" +
+                    "    Virtual_Scroll = @VirtualScroll, Show_Filter_Row = @ShowFilterRow,\n" +
+                    "    Show_Group_Panel = @ShowGroupPanel, Show_Search_Box = @ShowSearchBox,\n" +
+                    "    Show_Column_Chooser = @ShowColumnChooser, Selection_Mode = @SelectionMode,\n" +
+                    "    Allow_Add = @AllowAdd, Allow_Edit = @AllowEdit, Allow_Delete = @AllowDelete,\n" +
+                    "    Allow_Export = @AllowExport, Export_Formats = @ExportFormats,\n" +
+                    "    Export_File_Name_Key = @ExportFileNameKey, Allow_Print = @AllowPrint, Key_Field = @KeyField,\n" +
+                    "    Parent_Field = @ParentField, Expand_Level = @ExpandLevel, Detail_View_Id = @DetailViewId,\n" +
+                    "    Default_Filter_Json = @DefaultFilterJson, Options_Json = @OptionsJson,\n" +
+                    "    Version = Version + 1, Is_Active = @IsActive, Updated_At = GETDATE(),\n" +
+                    "    Description = @Description\n" +
+                    "WHERE View_Id = @ViewId AND Version = @Version";
+                var affected = await conn.ExecuteAsync(
+                    new CommandDefinition(updateSql, p, tx, cancellationToken: ct));
+                if (affected == 0)
+                    throw new InvalidOperationException(
+                        "View đã bị thay đổi bởi phiên khác (optimistic concurrency). Vui lòng tải lại.");
+            }
+
+            // ── Ghi lại toàn bộ cột + action (xóa cũ → insert mới) ──
+            await conn.ExecuteAsync(new CommandDefinition(
+                "DELETE FROM dbo.Ui_View_Column WHERE View_Id = @ViewId;\n" +
+                "DELETE FROM dbo.Ui_View_Action WHERE View_Id = @ViewId;",
+                new { ViewId = viewId }, tx, cancellationToken: ct));
+
+            await InsertColumnsAsync(conn, tx, viewId, request.Columns, ct);
+            await InsertActionsAsync(conn, tx, viewId, request.Actions, ct);
+
+            await tx.CommitAsync(ct);
+            return viewId;
+        }
+        catch
+        {
+            await tx.RollbackAsync(ct);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task DeactivateViewAsync(int viewId, int tenantId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured)
+            throw new InvalidOperationException("DB chưa được cấu hình.");
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await EnsureSchemaAsync(conn, ct);
+
+        var affected = await conn.ExecuteAsync(new CommandDefinition(
+            "UPDATE dbo.Ui_View SET Is_Active = 0, Updated_At = GETDATE()\n" +
+            "WHERE View_Id = @ViewId AND (Tenant_Id = @TenantId OR Tenant_Id IS NULL)",
+            new { ViewId = viewId, TenantId = tenantId }, cancellationToken: ct));
+        if (affected == 0)
+            throw new InvalidOperationException($"Không tìm thấy View_Id={viewId} để ẩn.");
+    }
+
+    // ── Helpers ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Dựng tham số Dapper cho header Ui_View từ request.
+    /// </summary>
+    /// <param name="r">Payload upsert.</param>
+    /// <param name="code">View_Code đã trim.</param>
+    /// <param name="tenantId">Tenant gắn vào bản ghi mới.</param>
+    /// <returns><see cref="DynamicParameters"/> đủ tham số cho INSERT/UPDATE.</returns>
+    private static DynamicParameters BuildHeaderParams(ViewUpsertRequest r, string code, int tenantId)
+    {
+        var p = new DynamicParameters();
+        p.Add("ViewCode", code);
+        p.Add("ViewType", string.IsNullOrWhiteSpace(r.ViewType) ? "Grid" : r.ViewType);
+        p.Add("TableId", r.TableId);
+        p.Add("SourceType", string.IsNullOrWhiteSpace(r.SourceType) ? "Table" : r.SourceType);
+        p.Add("SourceObject", NullIfEmpty(r.SourceObject));
+        p.Add("TitleKey", NullIfEmpty(r.TitleKey));
+        p.Add("EditFormId", r.EditFormId);
+        p.Add("PageSize", r.PageSize <= 0 ? 20 : r.PageSize);
+        p.Add("AllowPaging", r.AllowPaging);
+        p.Add("VirtualScroll", r.VirtualScroll);
+        p.Add("ShowFilterRow", r.ShowFilterRow);
+        p.Add("ShowGroupPanel", r.ShowGroupPanel);
+        p.Add("ShowSearchBox", r.ShowSearchBox);
+        p.Add("ShowColumnChooser", r.ShowColumnChooser);
+        p.Add("SelectionMode", string.IsNullOrWhiteSpace(r.SelectionMode) ? "none" : r.SelectionMode);
+        p.Add("AllowAdd", r.AllowAdd);
+        p.Add("AllowEdit", r.AllowEdit);
+        p.Add("AllowDelete", r.AllowDelete);
+        p.Add("AllowExport", r.AllowExport);
+        p.Add("ExportFormats", NullIfEmpty(r.ExportFormats));
+        p.Add("ExportFileNameKey", NullIfEmpty(r.ExportFileNameKey));
+        p.Add("AllowPrint", r.AllowPrint);
+        p.Add("KeyField", NullIfEmpty(r.KeyField));
+        p.Add("ParentField", NullIfEmpty(r.ParentField));
+        p.Add("ExpandLevel", r.ExpandLevel);
+        p.Add("DetailViewId", r.DetailViewId);
+        p.Add("DefaultFilterJson", NullIfEmpty(r.DefaultFilterJson));
+        p.Add("OptionsJson", NullIfEmpty(r.OptionsJson));
+        p.Add("TenantId", tenantId);
+        p.Add("IsActive", r.IsActive);
+        p.Add("Description", NullIfEmpty(r.Description));
+        return p;
+    }
+
+    /// <summary>Ghi danh sách cột Ui_View_Column trong transaction.</summary>
+    /// <param name="conn">Kết nối đang mở.</param>
+    /// <param name="tx">Transaction hiện hành.</param>
+    /// <param name="viewId">View_Id cha.</param>
+    /// <param name="columns">Danh sách cột cần ghi.</param>
+    /// <param name="ct">Token hủy.</param>
+    private static async Task InsertColumnsAsync(
+        SqlConnection conn, System.Data.Common.DbTransaction tx, int viewId,
+        IReadOnlyList<ViewColumnRecord> columns, CancellationToken ct)
+    {
+        const string sql =
+            "INSERT INTO dbo.Ui_View_Column (View_Id, Column_Id, Field_Name, Caption_Key, Column_Kind, Width,\n" +
+            "    Min_Width, Text_Align, Display_Format, Render_Mode, Cell_Template_Key, Is_Visible, Order_No,\n" +
+            "    Fixed_Position, Allow_Sort, Sort_Order, Sort_Index, Allow_Filter, Allow_Group, Group_Index,\n" +
+            "    Summary_Type, Allow_Export, Export_Format, Export_Caption_Key, Style_Rule_Json, Props_Json, Is_Active)\n" +
+            "VALUES (@ViewId, @ColumnId, @FieldName, @CaptionKey, @ColumnKind, @Width, @MinWidth, @TextAlign,\n" +
+            "    @DisplayFormat, @RenderMode, @CellTemplateKey, @IsVisible, @OrderNo, @FixedPosition, @AllowSort,\n" +
+            "    @SortOrder, @SortIndex, @AllowFilter, @AllowGroup, @GroupIndex, @SummaryType, @AllowExport,\n" +
+            "    @ExportFormat, @ExportCaptionKey, @StyleRuleJson, @PropsJson, @IsActive)";
+
+        var order = 0;
+        foreach (var c in columns)
+        {
+            if (string.IsNullOrWhiteSpace(c.FieldName)) continue; // bỏ dòng rỗng
+            await conn.ExecuteAsync(new CommandDefinition(sql, new
+            {
+                ViewId = viewId,
+                c.ColumnId,
+                FieldName = c.FieldName.Trim(),
+                CaptionKey = NullIfEmpty(c.CaptionKey),
+                ColumnKind = string.IsNullOrWhiteSpace(c.ColumnKind) ? "Data" : c.ColumnKind,
+                Width = NullIfEmpty(c.Width),
+                c.MinWidth,
+                TextAlign = NullIfEmpty(c.TextAlign),
+                DisplayFormat = NullIfEmpty(c.DisplayFormat),
+                RenderMode = string.IsNullOrWhiteSpace(c.RenderMode) ? "Text" : c.RenderMode,
+                CellTemplateKey = NullIfEmpty(c.CellTemplateKey),
+                c.IsVisible,
+                OrderNo = order++,
+                FixedPosition = NullIfEmpty(c.FixedPosition),
+                c.AllowSort,
+                SortOrder = NullIfEmpty(c.SortOrder),
+                c.SortIndex,
+                c.AllowFilter,
+                c.AllowGroup,
+                c.GroupIndex,
+                SummaryType = NullIfEmpty(c.SummaryType),
+                c.AllowExport,
+                ExportFormat = NullIfEmpty(c.ExportFormat),
+                ExportCaptionKey = NullIfEmpty(c.ExportCaptionKey),
+                StyleRuleJson = NullIfEmpty(c.StyleRuleJson),
+                PropsJson = NullIfEmpty(c.PropsJson),
+                c.IsActive,
+            }, tx, cancellationToken: ct));
+        }
+    }
+
+    /// <summary>Ghi danh sách action Ui_View_Action trong transaction.</summary>
+    /// <param name="conn">Kết nối đang mở.</param>
+    /// <param name="tx">Transaction hiện hành.</param>
+    /// <param name="viewId">View_Id cha.</param>
+    /// <param name="actions">Danh sách action cần ghi.</param>
+    /// <param name="ct">Token hủy.</param>
+    private static async Task InsertActionsAsync(
+        SqlConnection conn, System.Data.Common.DbTransaction tx, int viewId,
+        IReadOnlyList<ViewActionRecord> actions, CancellationToken ct)
+    {
+        const string sql =
+            "INSERT INTO dbo.Ui_View_Action (View_Id, Action_Code, Action_Type, Scope, Label_Key, Tooltip_Key,\n" +
+            "    Confirm_Key, Icon, Export_Format, Export_Engine, Target, Require_Selection, Order_No, Props_Json, Is_Active)\n" +
+            "VALUES (@ViewId, @ActionCode, @ActionType, @Scope, @LabelKey, @TooltipKey, @ConfirmKey, @Icon,\n" +
+            "    @ExportFormat, @ExportEngine, @Target, @RequireSelection, @OrderNo, @PropsJson, @IsActive)";
+
+        var order = 0;
+        foreach (var a in actions)
+        {
+            if (string.IsNullOrWhiteSpace(a.ActionCode)) continue;
+            await conn.ExecuteAsync(new CommandDefinition(sql, new
+            {
+                ViewId = viewId,
+                ActionCode = a.ActionCode.Trim(),
+                ActionType = string.IsNullOrWhiteSpace(a.ActionType) ? "BuiltIn" : a.ActionType,
+                Scope = string.IsNullOrWhiteSpace(a.Scope) ? "Toolbar" : a.Scope,
+                LabelKey = NullIfEmpty(a.LabelKey),
+                TooltipKey = NullIfEmpty(a.TooltipKey),
+                ConfirmKey = NullIfEmpty(a.ConfirmKey),
+                Icon = NullIfEmpty(a.Icon),
+                ExportFormat = NullIfEmpty(a.ExportFormat),
+                ExportEngine = NullIfEmpty(a.ExportEngine),
+                Target = NullIfEmpty(a.Target),
+                a.RequireSelection,
+                OrderNo = order++,
+                PropsJson = NullIfEmpty(a.PropsJson),
+                a.IsActive,
+            }, tx, cancellationToken: ct));
+        }
+    }
+
+    /// <summary>
+    /// Kiểm tra cụm bảng Ui_View đã tồn tại chưa; ném lỗi thân thiện nếu chưa chạy migration.
+    /// </summary>
+    /// <param name="conn">Kết nối SQL (sẽ tự mở khi query nếu chưa mở).</param>
+    /// <param name="ct">Token hủy.</param>
+    /// <remarks>Bảo vệ trường hợp migration VIEW-1 chưa chạy trên DB tenant.</remarks>
+    private static async Task EnsureSchemaAsync(SqlConnection conn, CancellationToken ct)
+    {
+        const string sql =
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES\n" +
+            "WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Ui_View'";
+        var exists = await conn.ExecuteScalarAsync<int>(new CommandDefinition(sql, cancellationToken: ct));
+        if (exists == 0)
+            throw new InvalidOperationException(
+                "Chưa có bảng dbo.Ui_View. Cần chạy migration tạo Ui_View / Ui_View_Column / Ui_View_Action (VIEW-1) trước.");
+    }
+
+    /// <summary>Chuẩn hóa chuỗi rỗng/space về null để cột nullable lưu NULL thay vì ''.</summary>
+    /// <param name="value">Chuỗi đầu vào.</param>
+    /// <returns>null nếu rỗng/space, ngược lại chuỗi đã trim.</returns>
+    private static string? NullIfEmpty(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+}

@@ -1,8 +1,18 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-08
+> Cập nhật lần cuối: 2026-06-09
 
-## Đợt mới nhất — Master Data DxGrid + thiết kế Ui_View (session 41, 2026-06-08)
+## Đợt mới nhất — VIEW-4d + 4e: i18n, column picker, polish UX (session 43, 2026-06-09)
+
+Hoàn tất phần WPF cụm View. **VIEW-4d**: nút 🌐 mở `I18nEditorDialog` cho Title/Export/Caption/Label key — tự sinh key convention `{tableCode}.view.{viewCode}.{suffix}` khi trống; `BrowseColumnCommand` mở `ColumnPickerDialog` nạp lười `Sys_Column`. **VIEW-4e** (polish): View_Code = `{View_Type}_` + hậu tố (đổi code tự rekey i18n); nút "Lưu" + "Tạo mới" cảnh báo; thứ tự tab Cơ bản ①Type→②Code→③Bảng; Caption_Key/Label_Key thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng; `ColumnPickerDialog` multi-select + khóa cột đã có (giữ tương thích single-select FieldConfig); `GridSplitter` co giãn 2 panel. Build WPF slnx 0/0.
+
+→ **WPF cụm View xong (VIEW-4a→4e).** Đường tới hạn: VIEW-1 (migration `Ui_View`, owner Codex) phải chạy → handoff → Claude vào VIEW-2/3 (backend + Blazor runtime).
+
+## Đợt trước — Màn cấu hình View Grid/TreeGrid trong WPF (session 42, 2026-06-09)
+
+Hoàn thành **VIEW-4a/4b/4c**: màn "Quản Lý View" trong ConfigStudio WPF (module Forms) — CRUD `Ui_View` + 2 lưới con editable `Ui_View_Column`/`Ui_View_Action`, lưu nguyên khối trong transaction (optimistic-concurrency theo Version), guard báo lỗi khi chưa có bảng. Mới: `IViewDataService`/`ViewDataService`, 5 record Core, `ViewManagerViewModel`/`ViewManagerView` (DXTabControl 6 tab). Build WPF slnx 0/0. Commit `c05e55b` đã push master.
+
+## Đợt trước — Master Data DxGrid + thiết kế Ui_View (session 41, 2026-06-08)
 
 Lưới danh mục chuyển sang DevExpress `DxGrid` (cấu hình qua `MasterDataGridConfig`/`MasterDataColumnDto`) + fix loại `Is_Virtual` khỏi lưới. **Chốt thiết kế kiến trúc `Ui_View`** (ADR-015): cụm 3 bảng cấu hình hiển thị danh sách (Grid/TreeList) tách khỏi form sửa, hỗ trợ datasource, render HTML vs export thuần, toolbar in/xuất (xlsx/csv client, pdf/docx server), i18n toàn bộ. Đã push master; handoff Codex làm VIEW-1 (migration + ConfigStudio).
 
