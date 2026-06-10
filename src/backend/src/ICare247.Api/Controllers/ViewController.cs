@@ -5,6 +5,7 @@
 
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
+using ICare247.Application.Features.Views.Queries.GetViewsList;
 using ICare247.Application.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -28,6 +29,30 @@ public sealed class ViewController : ControllerBase
         _mediator = mediator;
         _configCache = configCache;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Lấy danh sách View (header tóm tắt) có phân trang + filter — cho màn chọn View.
+    /// </summary>
+    /// <param name="lang">Mã ngôn ngữ resolve Title (mặc định "vi").</param>
+    /// <param name="isActive">Lọc theo trạng thái (mặc định chỉ active).</param>
+    /// <param name="search">Từ khóa lọc View_Code/Title.</param>
+    /// <param name="page">Trang (1-based).</param>
+    /// <param name="pageSize">Số dòng mỗi trang.</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetList(
+        [FromQuery] string lang = "vi",
+        [FromQuery] bool? isActive = true,
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50,
+        CancellationToken ct = default)
+    {
+        var query = new GetViewsListQuery(GetTenantId(), lang, isActive, search, page, pageSize);
+        var result = await _mediator.Send(query, ct);
+        return Ok(result);
     }
 
     /// <summary>

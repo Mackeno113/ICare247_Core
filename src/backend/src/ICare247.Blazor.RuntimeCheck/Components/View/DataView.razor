@@ -56,7 +56,12 @@ else
             PageSizeSelectorItems="@(new[] { 10, 20, 50 })"
             SelectionMode="@SelectionModeOf()"
             CssClass="dv-dxgrid"
-            TextWrapEnabled="false">
+            TextWrapEnabled="false"
+            AllowColumnReorder="true"
+            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+            HighlightRowOnHover="true"
+            FocusedRowEnabled="true"
+            KeyboardNavigationEnabled="true">
         <Columns>
             @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
             {
@@ -69,10 +74,16 @@ else
                 <DxGridDataColumn Caption="@c.DisplayCaption"
                                   FieldName="@c.FieldName"
                                   Width="@c.Width"
+                                  MinWidth="@(c.MinWidth ?? 0)"
+                                  FixedPosition="@FixedOf(c)"
                                   TextAlignment="@AlignOf(c)"
                                   AllowSort="c.AllowSort"
                                   AllowGroup="c.AllowGroup"
-                                  FilterRowCellVisible="c.AllowFilter">
+                                  SortIndex="@(c.SortIndex ?? -1)"
+                                  SortOrder="@SortOrderOf(c)"
+                                  FilterRowEditorVisible="c.AllowFilter"
+                                  FilterRowOperatorType="@FilterOpOf(c)"
+                                  FilterMenuButtonDisplayMode="GridFilterMenuButtonDisplayMode.Always">
                     <CellDisplayTemplate>
                         @RenderCell(AsRow(context.DataItem), c)
                     </CellDisplayTemplate>
@@ -208,6 +219,38 @@ else
         var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
         return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
     }
+
+    /// <summary>Ghim cột theo Fixed_Position cấu hình (none/left/right → enum DevExpress).</summary>
+    private static GridColumnFixedPosition FixedOf(ViewColumnDto c) => (c.FixedPosition ?? "").ToLowerInvariant() switch
+    {
+        "left"  => GridColumnFixedPosition.Left,
+        "right" => GridColumnFixedPosition.Right,
+        _       => GridColumnFixedPosition.None
+    };
+
+    /// <summary>
+    /// Toán tử filter mặc định của ô filter row (Mức 1 — suy theo kiểu hiển thị/căn lề):
+    /// text → Contains; boolean & cột canh phải (số) → Equal; còn lại để DevExpress tự chọn.
+    /// User vẫn đổi được qua nút menu filter (FilterMenuButtonDisplayMode=Always).
+    /// (Mức 2 metadata-driven theo Filter_Operator cấu hình — xem TASKS VIEW-3h.)
+    /// </summary>
+    private static GridFilterRowOperatorType FilterOpOf(ViewColumnDto c)
+    {
+        var rm = (c.RenderMode ?? "").ToLowerInvariant();
+        if (rm == "boolean") return GridFilterRowOperatorType.Equal;
+        if ((c.TextAlign ?? "").ToLowerInvariant() == "right") return GridFilterRowOperatorType.Equal;
+        return rm is "text" or "html" or "link" or "badge" or ""
+            ? GridFilterRowOperatorType.Contains
+            : GridFilterRowOperatorType.Default;
+    }
+
+    /// <summary>Sắp xếp mặc định theo Sort_Order cấu hình (asc/desc → enum; null = không sắp).</summary>
+    private static GridColumnSortOrder SortOrderOf(ViewColumnDto c) => (c.SortOrder ?? "").ToLowerInvariant() switch
+    {
+        "asc"  => GridColumnSortOrder.Ascending,
+        "desc" => GridColumnSortOrder.Descending,
+        _      => GridColumnSortOrder.None
+    };
 
     private static GridTextAlignment AlignOf(ViewColumnDto c) => (c.TextAlign ?? "").ToLowerInvariant() switch
     {

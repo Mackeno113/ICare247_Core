@@ -1,8 +1,14 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-09
+> Cập nhật lần cuối: 2026-06-10
 
-## Đợt mới nhất — VIEW-4d + 4e: i18n, column picker, polish UX (session 43, 2026-06-09)
+## Đợt mới nhất — Test Grid + Grid UX + bug DxGrid + WPF config cột (session 44, 2026-06-10)
+
+Wire hoàn chỉnh runtime lưới Blazor + cấu hình WPF tương ứng. **VIEW-3f**: endpoint `GET /api/v1/views` (list) + trang `TestGrid` (`/test-grid`) chọn View → render `DataView`. **🐞 Fix bug** `DxGridDataColumn.FilterRowCellVisible` (không tồn tại DX 25.2.3, làm rớt toàn bộ cột) → `FilterRowEditorVisible`. **Grid UX**: resize/reorder/hover/focused/keyboard; cột ghim `FixedPosition` + `MinWidth` + sort mặc định `SortIndex/SortOrder`; filter operator Mức 1 (Contains + menu đổi). **VIEW-4f**: ConfigStudio WPF tab "Cột" thêm 4 cột chỉnh (web đã consume sẵn). Tài liệu `docs/reference/DEVEXPRESS_*` reflect DLL v25.2.3. Build backend + WPF 0/0.
+
+→ **Còn lại cụm View**: kiểm tra data cột `1/12`; quyết định giữ/gỡ debug panel TestGrid; **VIEW-3g** (lưu layout/user), **VIEW-3h** (filter operator Mức 2 metadata-driven).
+
+## Đợt trước — VIEW-4d + 4e: i18n, column picker, polish UX (session 43, 2026-06-09)
 
 Hoàn tất phần WPF cụm View. **VIEW-4d**: nút 🌐 mở `I18nEditorDialog` cho Title/Export/Caption/Label key — tự sinh key convention `{tableCode}.view.{viewCode}.{suffix}` khi trống; `BrowseColumnCommand` mở `ColumnPickerDialog` nạp lười `Sys_Column`. **VIEW-4e** (polish): View_Code = `{View_Type}_` + hậu tố (đổi code tự rekey i18n); nút "Lưu" + "Tạo mới" cảnh báo; thứ tự tab Cơ bản ①Type→②Code→③Bảng; Caption_Key/Label_Key thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng; `ColumnPickerDialog` multi-select + khóa cột đã có (giữ tương thích single-select FieldConfig); `GridSplitter` co giãn 2 panel. Build WPF slnx 0/0.
 

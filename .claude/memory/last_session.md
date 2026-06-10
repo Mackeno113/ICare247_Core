@@ -1,6 +1,31 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-09 (session 43 — WPF VIEW-4d + 4e: i18n, column picker, polish UX)
+> Cập nhật: 2026-06-10 (session 44 — Test Grid + Grid UX + bug DxGrid + WPF config cột)
+
+## Session 44 (2026-06-10) — đã làm
+
+### VIEW-3f — Test Grid + list views + bug fix DxGrid
+- **Endpoint list views** `GET /api/v1/views`: `Features/Views/Queries/GetViewsList` (Query+Handler) → `IViewRepository.GetListAsync` (Dapper, `ROW_NUMBER OVER(PARTITION BY View_Code ...)` khử trùng code ưu tiên tenant-specific > global; join Sys_Table + Sys_Resource Title, đếm cột; search + paging). DTO `ViewListItem`. `ViewController` `[HttpGet]` list. Không cache (như Form list).
+- **Trang `Pages/TestGrid.razor`** (`/test-grid`, link ở `MainLayout`): tải danh sách View → chọn → `GetInfoAsync` + `GetDataAsync` → render `DataView`. Có panel **debug** (in cột metadata + khóa data) + nút xem **JSON `/info` `/data`** (`ViewApiService.GetRawJsonAsync`) — **công cụ tạm, chưa quyết định giữ/gỡ**.
+- **🐞 Bug `FilterRowCellVisible`**: thuộc tính KHÔNG tồn tại ở DX 25.2.3 → `DxGridDataColumn` ném `InvalidOperationException` khi set params → **rớt toàn bộ cột Data** (chỉ còn cột lệnh). Sửa thành **`FilterRowEditorVisible`**. Ảnh hưởng cả `/view/{code}`.
+
+### VIEW-3f (grid UX) + 3f.1 (filter operator) — DataView
+- Grid: `ColumnResizeMode=NextColumn`, `AllowColumnReorder`, `HighlightRowOnHover`, `FocusedRowEnabled`, `KeyboardNavigationEnabled`.
+- Cột: `MinWidth`, **ghim `FixedPosition`** (helper `FixedOf` none/left/right), **sort mặc định** `SortIndex`+`SortOrder` (helper `SortOrderOf` asc/desc). Thêm 3 field `FixedPosition/SortOrder/SortIndex` vào `ViewColumnDto` (`/info` đã trả sẵn).
+- Filter operator **Mức 1**: `FilterOpOf` (text→Contains, số/boolean→Equal) + `FilterMenuButtonDisplayMode=Always` cho user đổi operator runtime. Enum verify: `GridFilterRowOperatorType` (Contains/StartsWith/EndsWith/Equal/…).
+
+### VIEW-4f — ConfigStudio WPF tab "Cột"
+- `ViewManagerView.xaml`: thêm 4 cột chỉnh **MinWidth / Ghim(FixedPosition combo) / SortMặc định(SortOrder combo) / SortIdx(SortIndex)** + 2 array resource `FixedPositions`/`SortOrders`. Model `ViewColumnRecord` + `ViewDataService` (SELECT/INSERT/UPDATE) **đã lưu sẵn** — chỉ thiếu UI. **Web không cần sửa thêm** (đã consume 4 field). Build WPF 0/0.
+
+### Tài liệu + memory
+- `docs/reference/DEVEXPRESS_DXGRID_PROPERTIES.md` + `DEVEXPRESS_CONTROLS_PROPERTIES.md` — reflect DLL `DevExpress.Blazor.v25.2` v25.2.3 (DxGrid 113 prop + 32 control). Kỹ thuật: console net9 + `FrameworkReference Microsoft.AspNetCore.App` (PowerShell 5.1 không load được net8.0 DLL). `DxPopover` không tồn tại → `DxFlyout`.
+- Memory mới: `feedback-always-ask-first`, `feedback-devexpress-verify-api`. **NGUYÊN TẮC SỐ 1** ở đầu CLAUDE.md.
+
+### Tồn đọng / cần xử lý tiếp
+- **Kiểm tra dữ liệu**: cột "Tên trình độ văn hóa" hiển thị `1/12`,`2/12` — nghi map nhầm Field_Name hoặc data thật.
+- Quyết định **giữ/gỡ panel debug + nút JSON** ở TestGrid.
+- **VIEW-3g** (lưu layout grid/user — localStorage vs bảng per-user+auth), **VIEW-3h** (filter operator Mức 2 metadata-driven — DB migration + cột WPF `Filter_Operator`).
+- Build: `ICare247.slnx` **0/0**, `ConfigStudio.WPF.UI.slnx` **0/0**.
 
 ## Session 43 (2026-06-09) — đã làm
 

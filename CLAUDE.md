@@ -6,6 +6,16 @@
   ĐỒNG BỘ: Git-tracked → tự động sync qua nhiều máy khi git pull/push.
 -->
 
+## ⛔ NGUYÊN TẮC SỐ 1 — LUÔN HỎI TRƯỚC KHI QUYẾT ĐỊNH
+
+> **LUÔN HỎI TRƯỚC khi quyết định làm bất cứ việc gì.** Không tự ý chọn cách làm,
+> không tự bịa dữ liệu mẫu (mock), không tự suy diễn yêu cầu. Khi yêu cầu chưa rõ
+> hoặc có nhiều hướng (VD: dữ liệu thật theo cấu hình vs. mock; chọn API/bảng/field;
+> phạm vi tính năng) → **DỪNG LẠI và HỎI user**, rồi mới làm.
+> Mặc định: dữ liệu lấy THẬT theo thông số cấu hình của hệ thống, không phải dữ liệu giả.
+
+---
+
 ## ĐỌC ĐẦU TIÊN
 
 > **[BRAIN.md](BRAIN.md)** — Single source of truth: project identity, tech stack,

@@ -43,6 +43,16 @@
             <sys:String>center</sys:String>
             <sys:String>right</sys:String>
         </x:Array>
+        <x:Array x:Key="FixedPositions" Type="sys:String">
+            <sys:String>none</sys:String>
+            <sys:String>left</sys:String>
+            <sys:String>right</sys:String>
+        </x:Array>
+        <x:Array x:Key="SortOrders" Type="sys:String">
+            <sys:String></sys:String>
+            <sys:String>asc</sys:String>
+            <sys:String>desc</sys:String>
+        </x:Array>
         <x:Array x:Key="SummaryTypes" Type="sys:String">
             <sys:String>count</sys:String>
             <sys:String>sum</sys:String>
@@ -419,14 +429,29 @@
                                             </dxg:GridColumn.EditSettings>
                                         </dxg:GridColumn>
                                         <dxg:GridColumn Header="Width" FieldName="Width" Width="70" />
+                                        <dxg:GridColumn Header="MinWidth" FieldName="MinWidth" Width="70" />
                                         <dxg:GridColumn Header="Align" FieldName="TextAlign" Width="80">
                                             <dxg:GridColumn.EditSettings>
                                                 <dxe:ComboBoxEditSettings ItemsSource="{StaticResource TextAligns}" />
                                             </dxg:GridColumn.EditSettings>
                                         </dxg:GridColumn>
+                                        <dxg:GridColumn Header="Ghim" FieldName="FixedPosition" Width="70"
+                                                        ToolTip="Đóng băng cột: none / left / right">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings ItemsSource="{StaticResource FixedPositions}" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Format" FieldName="DisplayFormat" Width="80" />
                                         <dxg:GridColumn Header="Visible" FieldName="IsVisible" Width="60" />
                                         <dxg:GridColumn Header="Sort" FieldName="AllowSort" Width="55" />
+                                        <dxg:GridColumn Header="SortMặc định" FieldName="SortOrder" Width="80"
+                                                        ToolTip="Sắp xếp mặc định khi mở: asc / desc (trống = không)">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings ItemsSource="{StaticResource SortOrders}" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
+                                        <dxg:GridColumn Header="SortIdx" FieldName="SortIndex" Width="60"
+                                                        ToolTip="Thứ tự ưu tiên khi sort nhiều cột (trống = không tham gia)" />
                                         <dxg:GridColumn Header="Filter" FieldName="AllowFilter" Width="55" />
                                         <dxg:GridColumn Header="Group" FieldName="AllowGroup" Width="55" />
                                         <dxg:GridColumn Header="Summary" FieldName="SummaryType" Width="80">

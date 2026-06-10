@@ -25,6 +25,52 @@ public sealed class ViewApiService
         _logger = logger;
     }
 
+    /// <summary>Danh sách View (header tóm tắt) cho màn chọn — có filter active + search.</summary>
+    public async Task<List<ViewListItemDto>> GetListAsync(
+        string lang = "vi", string? search = null, int pageSize = 100, CancellationToken ct = default)
+    {
+        var url = $"/api/v1/views?lang={Uri.EscapeDataString(lang)}&isActive=true&page=1&pageSize={pageSize}";
+        if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
+
+        var resp = await _http.GetAsync(url, ct);
+        await EnsureOkAsync(resp, "GetList");
+        var dto = await resp.Content.ReadFromJsonAsync<ViewListResultDto>(JsonOpts, ct);
+        return dto?.Items ?? [];
+    }
+
+    /// <summary>
+    /// Lấy JSON thô của một endpoint View (info/data) để hỗ trợ debug cấu hình.
+    /// Trả về chuỗi JSON đã format đẹp; nếu lỗi trả về thông điệp lỗi (không throw).
+    /// </summary>
+    /// <param name="viewCode">View_Code.</param>
+    /// <param name="kind">"info" (metadata) hoặc "data" (dữ liệu lưới).</param>
+    /// <param name="lang">Ngôn ngữ resolve i18n.</param>
+    public async Task<string> GetRawJsonAsync(
+        string viewCode, string kind = "info", string lang = "vi", CancellationToken ct = default)
+    {
+        var url = kind.Equals("data", StringComparison.OrdinalIgnoreCase)
+            ? $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/data?lang={Uri.EscapeDataString(lang)}&page=1&pageSize=50"
+            : $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/info?lang={Uri.EscapeDataString(lang)}";
+
+        try
+        {
+            var resp = await _http.GetAsync(url, ct);
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+                return $"HTTP {(int)resp.StatusCode} — {url}\n\n{body}";
+
+            // Re-serialize để format đẹp (indent) cho dễ đọc.
+            using var doc = JsonDocument.Parse(body);
+            return JsonSerializer.Serialize(doc.RootElement,
+                new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetRawJson lỗi — {Url}", url);
+            return $"Lỗi tải JSON: {ex.Message}";
+        }
+    }
+
     /// <summary>Metadata View (header + cột + action) — đã resolve i18n theo lang.</summary>
     public async Task<ViewMetadataDto?> GetInfoAsync(string viewCode, string lang = "vi", CancellationToken ct = default)
     {
@@ -131,6 +177,15 @@ public sealed class ViewColumnDto
     public string? SummaryType { get; set; }
     public bool AllowExport { get; set; } = true;
 
+    /// <summary>Ghim cột: none | left | right (đóng băng khi cuộn ngang).</summary>
+    public string? FixedPosition { get; set; }
+
+    /// <summary>Sắp xếp mặc định: asc | desc (null = không sắp).</summary>
+    public string? SortOrder { get; set; }
+
+    /// <summary>Thứ tự ưu tiên khi sort nhiều cột (null = không tham gia sort mặc định).</summary>
+    public int? SortIndex { get; set; }
+
     /// <summary>
     /// Conditional formatting JSON — mảng rule <c>{ "when": {field,op,value}, "style": {color,background,fontWeight} }</c>.
     /// Rule đầu khớp được áp style cho ô. (Định dạng đơn giản client-eval; Grammar V1 AST đầy đủ làm sau.)
@@ -161,4 +216,27 @@ public sealed class ViewDataResultDto
 {
     public List<Dictionary<string, object?>> Items { get; set; } = [];
     public int TotalCount { get; set; }
+}
+
+/// <summary>Item tóm tắt trong danh sách View (màn chọn View_Code).</summary>
+public sealed class ViewListItemDto
+{
+    public int ViewId { get; set; }
+    public string ViewCode { get; set; } = "";
+    public string ViewType { get; set; } = "Grid";
+    public string TableCode { get; set; } = "";
+    public string? Title { get; set; }
+    public string? EditFormCode { get; set; }
+    public int ColumnCount { get; set; }
+    public int Version { get; set; }
+    public bool IsActive { get; set; }
+}
+
+/// <summary>Wrapper phân trang danh sách View từ API.</summary>
+public sealed class ViewListResultDto
+{
+    public List<ViewListItemDto> Items { get; set; } = [];
+    public int TotalCount { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
 }

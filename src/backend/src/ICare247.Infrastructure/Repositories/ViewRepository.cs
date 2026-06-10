@@ -295,6 +295,72 @@ public sealed partial class ViewRepository : IViewRepository
         };
     }
 
+    /// <inheritdoc />
+    public async Task<(IReadOnlyList<ViewListItem> Items, int TotalCount)> GetListAsync(
+        int tenantId, string langCode = "vi", bool? isActive = null, string? search = null,
+        int page = 1, int pageSize = 50, CancellationToken ct = default)
+    {
+        // ROW_NUMBER khử trùng View_Code: giữ bản tenant-specific (Tenant_Id non-NULL) trước bản global.
+        const string sqlList = """
+            WITH Ranked AS (
+                SELECT v.View_Id       AS ViewId,
+                       v.View_Code     AS ViewCode,
+                       v.View_Type     AS ViewType,
+                       t.Table_Code    AS TableCode,
+                       rt.Resource_Value AS Title,
+                       ef.Form_Code    AS EditFormCode,
+                       v.Version,
+                       v.Is_Active     AS IsActive,
+                       (SELECT COUNT(*) FROM dbo.Ui_View_Column c
+                         WHERE c.View_Id = v.View_Id AND c.Is_Active = 1) AS ColumnCount,
+                       ROW_NUMBER() OVER (PARTITION BY v.View_Code
+                                          ORDER BY CASE WHEN v.Tenant_Id IS NULL THEN 1 ELSE 0 END) AS Rn
+                FROM   dbo.Ui_View v
+                JOIN   dbo.Sys_Table t  ON t.Table_Id = v.Table_Id
+                LEFT JOIN dbo.Ui_Form ef ON ef.Form_Id = v.Edit_Form_Id
+                LEFT JOIN dbo.Sys_Resource rt ON rt.Resource_Key = v.Title_Key
+                                             AND rt.Lang_Code     = @LangCode
+                WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
+                  AND  (@IsActive IS NULL OR v.Is_Active = @IsActive)
+                  AND  (@Search IS NULL OR v.View_Code LIKE @Search OR rt.Resource_Value LIKE @Search)
+            )
+            SELECT ViewId, ViewCode, ViewType, TableCode, Title, EditFormCode,
+                   ColumnCount, Version, IsActive
+            FROM   Ranked
+            WHERE  Rn = 1
+            ORDER BY ViewCode
+            OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
+            """;
+
+        const string sqlCount = """
+            SELECT COUNT(DISTINCT v.View_Code)
+            FROM   dbo.Ui_View v
+            LEFT JOIN dbo.Sys_Resource rt ON rt.Resource_Key = v.Title_Key
+                                         AND rt.Lang_Code     = @LangCode
+            WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
+              AND  (@IsActive IS NULL OR v.Is_Active = @IsActive)
+              AND  (@Search IS NULL OR v.View_Code LIKE @Search OR rt.Resource_Value LIKE @Search)
+            """;
+
+        var prm = new
+        {
+            TenantId = tenantId,
+            LangCode = langCode,
+            IsActive = isActive,
+            Search = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%",
+            Skip = Math.Max(0, (page - 1) * pageSize),
+            Take = pageSize < 1 ? 50 : pageSize
+        };
+
+        using var conn = _db.CreateConnection();
+        var items = (await conn.QueryAsync<ViewListItem>(
+            new CommandDefinition(sqlList, prm, cancellationToken: ct))).AsList();
+        var total = await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(sqlCount, prm, cancellationToken: ct));
+
+        return (items, total);
+    }
+
     /// <summary>Bọc identifier bằng [] (đã whitelist regex trước đó).</summary>
     private static string Bracket(string ident) => "[" + ident.Replace("]", "]]") + "]";
 

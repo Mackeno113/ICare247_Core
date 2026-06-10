@@ -1,0 +1,322 @@
+@* File    : TestGrid.razor
+   Purpose : Màn test lưới — CHỌN View_Code từ danh sách (lấy từ /api/v1/views), rồi nạp
+             DỮ LIỆU THẬT theo cấu hình Ui_View (ViewApiService: /info + /data) và render bằng
+             DataView (Grid/TreeList). Không dùng dữ liệu mock; mọi cột/định dạng theo cấu hình. *@
+
+@page "/test-grid"
+@using ICare247.Blazor.RuntimeCheck.Services
+@using ICare247.Blazor.RuntimeCheck.Components.View
+@inject ViewApiService ViewApi
+@inject ApiSettings Settings
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Test Grid — ICare247</PageTitle>
+
+<div class="page-container">
+
+    <div class="page-header">
+        <h1 class="text-gradient-brand">🧪 Test Grid</h1>
+        <p class="subtitle">Chọn View từ danh sách → nạp dữ liệu thật theo cấu hình Ui_View</p>
+        <div class="api-badge">
+            API: <strong>@Settings.BaseUrl</strong>
+            &nbsp;|&nbsp; Tenant: <strong>@Settings.TenantId</strong>
+            &nbsp;|&nbsp; Lang: <strong>@Settings.LangCode</strong>
+        </div>
+    </div>
+
+    @* ── Danh sách View để chọn ───────────────────────── *@
+    <div class="card">
+        <div class="card-header-row">
+            <h3>Danh sách View</h3>
+            <button class="btn btn-secondary" @onclick="LoadViewsAsync" disabled="@_listLoading">
+                @(_listLoading ? "Đang tải..." : "⟳ Tải lại")
+            </button>
+        </div>
+
+        @if (_listError is not null)
+        {
+            <div class="error-banner">
+                ⚠ Không tải được danh sách View: @_listError
+                <br /><small>Kiểm tra backend đang chạy tại <code>@Settings.BaseUrl</code></small>
+            </div>
+        }
+        else if (_listLoading)
+        {
+            <div class="loading">Đang kết nối API...</div>
+        }
+        else if (_views.Count == 0)
+        {
+            <div class="empty-state">Chưa có View nào. Tạo View qua ConfigStudio WPF trước.</div>
+        }
+        else
+        {
+            <table class="forms-table">
+                <thead>
+                    <tr>
+                        <th>View Code</th>
+                        <th>Tiêu đề</th>
+                        <th>Loại</th>
+                        <th>Bảng</th>
+                        <th>Cột</th>
+                        <th>Version</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var v in _views)
+                    {
+                        var item = v;
+                        <tr class="@(item.ViewCode == _view?.ViewCode ? "row-active" : null)">
+                            <td><code>@item.ViewCode</code></td>
+                            <td>@(item.Title ?? "—")</td>
+                            <td><span class="badge">@item.ViewType</span></td>
+                            <td>@item.TableCode</td>
+                            <td>@item.ColumnCount</td>
+                            <td>v@(item.Version)</td>
+                            <td>
+                                <button class="btn btn-sm" @onclick="() => LoadViewAsync(item.ViewCode)">
+                                    ▶ Chạy
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    @* ── Lưới của View đã chọn ─────────────────────────── *@
+    @if (_loading)
+    {
+        <div class="md-form-loading"><div class="spinner"></div><span>Đang tải View…</span></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="error-banner"><strong>⚠ Lỗi:</strong> @_error</div>
+    }
+    else if (_view is not null)
+    {
+        <div class="card">
+            <div class="md-list-header">
+                <div>
+                    <h3>@(_view.Title ?? _view.ViewCode)</h3>
+                    <span class="md-list-sub">Bảng @_view.TableCode · @_view.ViewType</span>
+                </div>
+            </div>
+
+            @if (_view.ShowSearchBox)
+            {
+                <div class="md-list-toolbar">
+                    <input class="md-search" placeholder="🔍 Tìm kiếm…" value="@_search"
+                           @onchange="OnSearchChanged" />
+                </div>
+            }
+
+            @* ── DEBUG: soi luồng cấu hình (tạm thời) ───────────── *@
+            <details class="debug-panel" open style="margin:12px 0;border:1px dashed #94a3b8;border-radius:6px;padding:10px;background:#f8fafc;">
+                <summary style="cursor:pointer;font-weight:600;">🔍 Debug luồng dữ liệu cấu hình</summary>
+
+                <p style="margin:8px 0 4px;">
+                    <strong>/info</strong> trả về <code>@_view.Columns.Count</code> cột —
+                    DataView render được <code>@VisibleDataColumnCount</code> cột Data.
+                </p>
+                <table class="forms-table" style="margin-bottom:10px;">
+                    <thead>
+                        <tr><th>FieldName</th><th>ColumnKind</th><th>IsVisible</th><th>RenderMode</th><th>Caption</th><th>→ Hiển thị?</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in _view.Columns)
+                        {
+                            var shown = c.IsVisible
+                                     && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase)
+                                     && !string.IsNullOrWhiteSpace(c.FieldName);
+                            <tr style="@(shown ? null : "color:#b91c1c;")">
+                                <td><code>@c.FieldName</code></td>
+                                <td>@c.ColumnKind</td>
+                                <td>@c.IsVisible</td>
+                                <td>@c.RenderMode</td>
+                                <td>@(c.Caption ?? "(null)")</td>
+                                <td>@(shown ? "✓" : "✗ bị loại")</td>
+                            </tr>
+                        }
+                        @if (_view.Columns.Count == 0)
+                        {
+                            <tr><td colspan="6" style="color:#b91c1c;">⚠ /info KHÔNG trả cột nào (Columns rỗng).</td></tr>
+                        }
+                    </tbody>
+                </table>
+
+                <p style="margin:4px 0;">
+                    <strong>/data</strong> trả <code>@_items.Count</code> dòng.
+                    Khóa (cột) của dòng đầu: <code>@_firstRowKeys</code>
+                </p>
+                <small style="color:#64748b;">
+                    Cột chỉ hiện khi: <code>IsVisible = true</code> &amp; <code>ColumnKind = "Data"</code> &amp; <code>FieldName</code> không rỗng.
+                    Khóa /data phải trùng <code>FieldName</code> (không phân biệt hoa/thường).
+                </small>
+
+                @* ── JSON config thô ─────────────────────────────── *@
+                <div style="display:flex;gap:8px;margin:12px 0 6px;align-items:center;flex-wrap:wrap;">
+                    <strong>JSON config:</strong>
+                    <button class="btn btn-sm" @onclick='() => ShowRawJsonAsync("info")' disabled="@_jsonLoading">
+                        📄 /info
+                    </button>
+                    <button class="btn btn-sm" @onclick='() => ShowRawJsonAsync("data")' disabled="@_jsonLoading">
+                        📊 /data
+                    </button>
+                    @if (_rawJson is not null)
+                    {
+                        <button class="btn btn-sm btn-secondary" @onclick="CopyRawJsonAsync">📋 Copy</button>
+                        <button class="btn btn-sm btn-secondary" @onclick="() => _rawJson = null">✕ Đóng</button>
+                        <span style="color:#64748b;">đang xem: <code>@_rawJsonKind</code></span>
+                    }
+                    @if (_jsonLoading) { <span class="hint">Đang tải…</span> }
+                </div>
+                @if (_rawJson is not null)
+                {
+                    <pre style="max-height:360px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;font-size:12px;line-height:1.5;"><code>@_rawJson</code></pre>
+                }
+            </details>
+
+            <DataView View="_view" Items="_items"
+                      OnEdit="OpenEdit" OnDelete="OpenDelete" OnAdd="OpenAdd"
+                      OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
+
+            @if (_notice is not null)
+            {
+                <div class="md-list-notice">@_notice</div>
+            }
+
+            <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+        </div>
+    }
+
+</div>
+
+@code {
+    // ── Danh sách View ────────────────────────────────
+    private List<ViewListItemDto> _views = [];
+    private bool _listLoading = true;
+    private string? _listError;
+
+    // ── View đang chọn ────────────────────────────────
+    private ViewMetadataDto? _view;
+    private List<Dictionary<string, object?>> _items = [];
+    private int _total;
+    private bool _loading;
+    private string? _error;
+    private string? _search;
+    private string? _notice;
+
+    // ── JSON config debug ─────────────────────────────
+    private string? _rawJson;
+    private string? _rawJsonKind;
+    private bool _jsonLoading;
+
+    /// <summary>Tải JSON thô của /info hoặc /data cho View đang chọn để hiển thị debug.</summary>
+    private async Task ShowRawJsonAsync(string kind)
+    {
+        if (_view is null) return;
+        _jsonLoading = true;
+        try
+        {
+            _rawJson = await ViewApi.GetRawJsonAsync(_view.ViewCode, kind, Settings.LangCode);
+            _rawJsonKind = $"/{kind}";
+        }
+        finally { _jsonLoading = false; }
+    }
+
+    /// <summary>Copy JSON đang hiển thị vào clipboard.</summary>
+    private async Task CopyRawJsonAsync()
+    {
+        if (_rawJson is null) return;
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", _rawJson); }
+        catch { /* clipboard bị chặn (http/non-secure) → bỏ qua */ }
+    }
+
+    /// <summary>Số cột Data thực sự được DataView render (đối chiếu với bộ lọc của DataView).</summary>
+    private int VisibleDataColumnCount => _view?.Columns
+        .Count(c => c.IsVisible
+                 && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase)
+                 && !string.IsNullOrWhiteSpace(c.FieldName)) ?? 0;
+
+    /// <summary>Danh sách khóa (tên cột) của dòng dữ liệu đầu tiên — để đối chiếu với FieldName.</summary>
+    private string _firstRowKeys => _items.Count > 0
+        ? string.Join(", ", _items[0].Keys)
+        : "(không có dòng)";
+
+    protected override async Task OnInitializedAsync() => await LoadViewsAsync();
+
+    /// <summary>Tải danh sách View từ API để người dùng chọn.</summary>
+    private async Task LoadViewsAsync()
+    {
+        _listLoading = true; _listError = null;
+        try
+        {
+            _views = await ViewApi.GetListAsync(Settings.LangCode);
+        }
+        catch (Exception ex)
+        {
+            _listError = ex.Message;
+            _views = [];
+        }
+        finally { _listLoading = false; }
+    }
+
+    /// <summary>Tải metadata + dữ liệu thật của View được chọn.</summary>
+    private async Task LoadViewAsync(string code)
+    {
+        _loading = true; _error = null; _notice = null; _view = null; _items = []; _search = null;
+        try
+        {
+            _view = await ViewApi.GetInfoAsync(code, Settings.LangCode);
+            if (_view is null) { _error = $"Không tìm thấy View '{code}'."; return; }
+            await ReloadDataAsync();
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task ReloadDataAsync()
+    {
+        if (_view is null) return;
+        var pageSize = _view.PageSize < 1 ? 50 : _view.PageSize;
+        var result = await ViewApi.GetDataAsync(_view.ViewCode, _search, Settings.LangCode, page: 1, pageSize: pageSize);
+        _items = result?.Items ?? [];
+        _total = result?.TotalCount ?? 0;
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        await ReloadDataAsync();
+    }
+
+    /// <summary>Mở form Thêm của Edit_Form gắn với View.</summary>
+    private void OpenAdd()
+    {
+        if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
+        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit");
+    }
+
+    private void OpenEdit(object? id)
+    {
+        if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || id is null) return;
+        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}");
+    }
+
+    private void OpenDelete(object? id)
+    {
+        if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
+        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}");
+    }
+
+    /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>
+    private void OnUnhandledAction(ViewActionDto a)
+    {
+        _notice = a.ActionType.Equals("Export", StringComparison.OrdinalIgnoreCase)
+            ? $"Xuất {a.ExportFormat} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau."
+            : $"Action '{a.ActionType}' ({a.ActionCode}) chưa được hỗ trợ ở runtime.";
+    }
+}

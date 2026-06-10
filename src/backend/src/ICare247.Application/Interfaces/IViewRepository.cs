@@ -37,6 +37,36 @@ public interface IViewRepository
     /// <returns>Danh sách dòng (dictionary cột→giá trị) + tổng số.</returns>
     Task<ViewDataResult> GetDataAsync(
         ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy danh sách View (header tóm tắt) có phân trang + filter — không nạp cột/action.
+    /// Ưu tiên bản tenant-specific hơn bản global khi trùng View_Code (chỉ trả 1 dòng/code).
+    /// </summary>
+    /// <param name="tenantId">Tenant hiện tại; bản global (Tenant_Id NULL) luôn match.</param>
+    /// <param name="langCode">Mã ngôn ngữ resolve Title (mặc định "vi").</param>
+    /// <param name="isActive">Lọc theo trạng thái (null = tất cả).</param>
+    /// <param name="search">Từ khóa LIKE trên View_Code/Title (null = không lọc).</param>
+    /// <param name="page">Trang (1-based).</param>
+    /// <param name="pageSize">Số dòng mỗi trang.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Danh sách item + tổng số dòng khớp filter.</returns>
+    Task<(IReadOnlyList<ViewListItem> Items, int TotalCount)> GetListAsync(
+        int tenantId, string langCode = "vi", bool? isActive = null, string? search = null,
+        int page = 1, int pageSize = 50, CancellationToken ct = default);
+}
+
+/// <summary>DTO tóm tắt một View cho danh sách chọn (không load đầy đủ aggregate).</summary>
+public sealed class ViewListItem
+{
+    public int ViewId { get; init; }
+    public string ViewCode { get; init; } = string.Empty;
+    public string ViewType { get; init; } = "Grid";
+    public string TableCode { get; init; } = string.Empty;
+    public string? Title { get; init; }
+    public string? EditFormCode { get; init; }
+    public int ColumnCount { get; init; }
+    public int Version { get; init; }
+    public bool IsActive { get; init; }
 }
 
 /// <summary>Kết quả truy vấn dữ liệu cho một View (rows + tổng số).</summary>

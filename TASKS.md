@@ -4,6 +4,20 @@
 
 <!-- không có task nào đang chạy -->
 
+## ✅ Done (session 2026-06-10 — Test Grid + Grid UX + WPF config cột)
+
+- [x] **VIEW-3f** — Endpoint `GET /api/v1/views` (CQRS `GetViewsList` + `IViewRepository.GetListAsync`, ROW_NUMBER khử trùng code ưu tiên tenant) + trang `TestGrid` (`/test-grid`, link ở `MainLayout`) chọn View từ danh sách → render `DataView`. Build 0/0.
+- [x] **🐞 Bug fix DxGrid** — `DxGridDataColumn.FilterRowCellVisible` KHÔNG tồn tại ở DX 25.2.3 → ném `InvalidOperationException` khi set parameters → **rớt toàn bộ cột Data** (chỉ còn cột lệnh). Sửa thành `FilterRowEditorVisible`. (Ảnh hưởng cả `/view/{code}`.)
+- [x] **VIEW-3f (grid UX)** — `DataView`: grid `ColumnResizeMode=NextColumn`/`AllowColumnReorder`/`HighlightRowOnHover`/`FocusedRowEnabled`/`KeyboardNavigationEnabled`; cột `MinWidth` + **ghim `FixedPosition`** + sort mặc định `SortIndex/SortOrder` (thêm 3 field vào `ViewColumnDto`).
+- [x] **VIEW-3f.1** — Filter operator Mức 1: ô filter mặc định `Contains` (text) / `Equal` (số,boolean) + `FilterMenuButtonDisplayMode=Always` để user đổi operator.
+- [x] **VIEW-4f** — ConfigStudio WPF tab "Cột" thêm 4 cột chỉnh (MinWidth, Ghim, SortMặc định, SortIdx) — model/`ViewDataService` đã lưu sẵn, chỉ bổ sung UI. Web không cần sửa thêm (đã consume). Build WPF 0/0.
+- [x] **Tài liệu** — `docs/reference/DEVEXPRESS_{DXGRID,CONTROLS}_PROPERTIES.md` reflect từ DLL v25.2.3 (DxGrid + 32 control).
+
+**Decisions Log:**
+- Verify thuộc tính DevExpress qua **reflection DLL / Console** trước khi dùng — đừng đoán (đã ghi memory `feedback-devexpress-verify-api`). `DxPopover` không tồn tại → dùng `DxFlyout`.
+- **NGUYÊN TẮC SỐ 1** ở CLAUDE.md: luôn hỏi trước khi quyết định; dữ liệu thật theo cấu hình, không mock.
+- Hoãn: **VIEW-3g** (lưu layout/user — chốt localStorage vs bảng per-user+auth), **VIEW-3h** (filter operator Mức 2 metadata-driven — cần DB migration + cột WPF `Filter_Operator`).
+
 ## ✅ Done (session 2026-06-08 — NumericBox locale format)
 
 - [x] **BZ-NumFmt** — `NumericBoxRenderer`: real-time thousand separator khi gõ (JS interop `icare.setupNumericInput`). `locale=""` → quốc tế `9,999.05`, `locale="vi"` → VN `9.999,05`. `DxSpinEdit.Culture` theo locale. Prop `locale` trong `Control_Props_Json`. TODO: đọc mặc định từ system config (CC-config-number-format). ✅ (2026-06-08)
@@ -103,6 +117,10 @@
 - [x] **VIEW-3c** — Render `Render_Mode` Text/Boolean/Html/**Image/Link/Badge** (RenderTreeBuilder) + **conditional format** `Style_Rule_Json` (mảng rule `{when:{field,op,value}, style:{color/background/fontWeight}}`, client-eval, rule đầu khớp thắng). Template fallback text; Grammar V1 AST đầy đủ (thay format JSON đơn giản) làm sau nếu cần điều kiện phức tạp.
 - [x] **VIEW-3d** — Toolbar render nút động từ `Ui_View_Action` (Scope Toolbar/Both, Order_No): Export→client; BuiltIn add/refresh→callback; Navigate→Target; row Sửa/Xóa qua Edit_Form. Print/Event/Api/export-server → `OnUnhandledAction` báo "chưa hỗ trợ". (Confirm_Key cho Xóa chưa wire.)
 - [~] **VIEW-3e** — Export client xlsx/csv qua `DxGrid.ExportToXlsxAsync/ExportToCsvAsync` (giá trị thuần theo FieldName, bỏ template) ✅; pdf/docx (Engine='Server') → báo chưa hỗ trợ. Còn: tôn trọng `Allow_Export=0` per-column (hiện DxGrid xuất mọi cột Data) + header export theo langCode.
+- [x] **VIEW-3f** — Endpoint list views `GET /api/v1/views` (CQRS `GetViewsList` + `IViewRepository.GetListAsync`, ROW_NUMBER khử trùng code ưu tiên tenant) + trang `TestGrid` (`/test-grid`) chọn View từ danh sách → render `DataView`. **Fix bug** `DxGridDataColumn.FilterRowCellVisible` (không tồn tại DX 25.2.3) → `FilterRowEditorVisible` (rớt toàn bộ cột Data). Đi dây thuộc tính grid UX: grid `ColumnResizeMode/AllowColumnReorder/HighlightRowOnHover/FocusedRowEnabled/KeyboardNavigationEnabled`; cột `MinWidth` + **ghim `FixedPosition`** (Fixed_Position) + sort mặc định `SortIndex/SortOrder` (thêm field vào `ViewColumnDto`). Doc tra cứu: `docs/reference/DEVEXPRESS_CONTROLS_PROPERTIES.md` (reflect DLL v25.2.3).
+- [x] **VIEW-3f.1** — Filter operator **Mức 1**: ô filter row tự chọn toán tử mặc định theo kiểu (text→`Contains`, boolean/cột canh phải→`Equal`) + `FilterMenuButtonDisplayMode=Always` để user đổi `Contains/StartsWith/EndsWith/…` lúc chạy. Helper `FilterOpOf` trong `DataView`. Enum: `GridFilterRowOperatorType` (Default/Equal/NotEqual/StartsWith/EndsWith/Contains/Less/LessOrEqual/Greater/GreaterOrEqual).
+- [ ] **VIEW-3h** (để sau) — Filter operator **Mức 2 metadata-driven**: thêm cột `Filter_Operator` (+ tuỳ chọn `Filter_Mode`=Value/DisplayText) vào `Ui_View_Column` (DB migration) → entity `ViewColumn` → `ViewRepository` SQL → `ViewColumnDto` → `DataView` (thay `FilterOpOf` suy đoán bằng giá trị cấu hình) → ConfigStudio grid cột (dropdown chọn toán tử). Mặc định giữ logic Mức 1 khi cấu hình trống.
+- [ ] **VIEW-3g** (để sau — chờ quyết định) — **Lưu giao diện grid theo user** (độ rộng/thứ tự/ghim/sort/group/filter). DxGrid có sẵn `LayoutAutoSaving/LayoutAutoLoading` + `SaveLayout/LoadLayout`. Hướng A: localStorage theo `View_Code` (không cần auth, theo trình duyệt). Hướng B: bảng `Ui_View_User_Layout(User_Id, View_Id, Layout_Json)` + endpoint save/load (cần hệ thống đăng nhập — RuntimeCheck hiện chỉ có `X-Tenant-Id`, chưa có User). Chốt hướng trước khi làm.
 
 ### Giai đoạn 4 — ConfigStudio WPF (owner: Codex → Claude làm session 42)
 - [x] **VIEW-4a** — Màn "Quản lý View" (`ViewManagerView`/`ViewManagerViewModel`, module Forms): list + CRUD `Ui_View` (header, datasource, hành vi, export/print, TreeList) qua `IViewDataService`/`ViewDataService` (Dapper, transaction, optimistic concurrency). Build WPF 0/0.
@@ -110,6 +128,8 @@
 - [x] **VIEW-4c** — Lưới `Ui_View_Action` editable (code/type/scope/label key/icon/export format/engine/target/require-selection). Lưu cột+action nguyên khối cùng View.
 - [x] **VIEW-4d** — nút "🌐 Dịch" i18n (tái dùng `I18nEditorDialog`) cho Title_Key (tab Cơ bản), Export_File_Name_Key (tab Export), Caption_Key (toolbar tab Cột — cột đang chọn), Label_Key (toolbar tab Actions — action đang chọn) + tự sinh key theo convention `{tableCode}.view.{viewCode}.{suffix}` (spec 10 §1d) khi trống; column picker từ `Sys_Column` (`ColumnPickerDialog`, nạp lười theo bảng nguồn). Build WPF 0/0. ⚠️ Màn chỉ chạy được sau khi chạy migration `Ui_View` (VIEW-1) — service ném lỗi thân thiện nếu thiếu bảng.
 - [x] **VIEW-4e** (polish UX, session 43) — (1) View_Code = `{View_Type}_` + hậu tố user nhập (badge tiền tố + preview); đổi View_Type giữ hậu tố; **đổi View_Code tự rekey** mọi i18n key đã sinh (`.view.{cũ}.`→`.view.{mới}.`). (2) Nút lưu đổi nhãn "Lưu"; "Tạo mới" có MessageBox cảnh báo. (3) Tab Cơ bản sắp lại thứ tự ①View_Type→②View_Code→③Bảng nguồn→④Source. (4) Caption_Key/Label_Key trong 2 grid đổi thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng. (5) `ColumnPickerDialog` thêm **multi-select** (checkbox + "Chọn (N)") + khóa cột đã có (badge "đã thêm") — giữ tương thích single-select màn FieldConfig. (6) `GridSplitter` kéo co giãn 2 panel master-detail. Build WPF slnx 0/0.
+
+- [x] **VIEW-4f** — Tab "Cột" (`ViewManagerView.xaml`) bổ sung 4 cột chỉnh: **MinWidth**, **Ghim** (`FixedPosition` combo none/left/right), **SortMặc định** (`SortOrder` combo asc/desc), **SortIdx** (`SortIndex`) — để admin cấu hình tính năng grid mới (đồng bộ Blazor VIEW-3f). Model/`ViewDataService` đã lưu sẵn, chỉ thiếu UI. Build WPF 0/0.
 
 ### Nguyên tắc cứng (review checklist)
 - Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.
