@@ -48,6 +48,23 @@
 
 ---
 
+> Cập nhật: 2026-06-08 (session 42b — NumericBox locale format real-time)
+
+## Session 42b (2026-06-08) — NumericBox locale format real-time
+
+> ⚠️ **Ghi chú khôi phục:** mục này đến từ bản local của một máy khác, bị mất khi
+> resolve merge conflict (nhánh `23c577a` thắng). Phần thân chi tiết đã bị diff cắt
+> (`@ -15,6 +16,74 @@`) và **không commit** trong repo này — không khôi phục được nguyên văn.
+> Chỉ còn lại đầu mục + kết quả build. Bổ sung lại nội dung nếu cần.
+
+### Đã làm (chi tiết đã mất)
+- Việc liên quan **NumericBox — định dạng theo locale, cập nhật real-time**
+  (xem `NumericBoxRenderer.razor`; code chưa được commit lên nhánh này).
+- _(thân bài gốc ~58 dòng đã mất khi merge — chưa khôi phục)_
+- Build 0/0. ✅
+
+---
+
 > (cũ) Cập nhật: 2026-06-09 (session 42 — WPF màn "Quản lý View" Grid/TreeGrid)
 
 ## Session 42 (2026-06-09) — đã làm
