@@ -257,12 +257,16 @@ public sealed partial class ViewRepository : IViewRepository
         if (dataCols.Count == 0)
             return new ViewDataResult();
 
-        // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET cần ORDER BY).
-        var orderCol = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField)
-            ? view.KeyField!
-            : dataCols[0];
+        var keyValid = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField);
 
-        var selectCols = string.Join(", ", dataCols.Select(Bracket));
+        // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET cần ORDER BY).
+        var orderCol = keyValid ? view.KeyField! : dataCols[0];
+
+        // SELECT: cột Data + thêm Key_Field (PK) nếu chưa có → client có khóa để Sửa/Xóa theo dòng.
+        var selectFields = new List<string>(dataCols);
+        if (keyValid && !selectFields.Contains(view.KeyField!, StringComparer.OrdinalIgnoreCase))
+            selectFields.Insert(0, view.KeyField!);
+        var selectCols = string.Join(", ", selectFields.Select(Bracket));
 
         var dp = new DynamicParameters();
         var whereSql = "";

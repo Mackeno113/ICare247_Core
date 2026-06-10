@@ -49,5 +49,6 @@ builder.Services.AddScoped<LookupApiService>();
 builder.Services.AddScoped<ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<MasterDataApiService>();
 builder.Services.AddScoped<ViewApiService>();
+builder.Services.AddScoped<I18nService>();
 
 await builder.Build().RunAsync();

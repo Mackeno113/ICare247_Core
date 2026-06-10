@@ -40,22 +40,66 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 }
 
 /* ── Buttons ──────────────────────────────────────────── */
-.btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
+/* ══════════════════════════════════════════════════════════════════════
+   HỆ NÚT CHUẨN — ICare247 (theme tím #7c3aed · Inter)
+   Giữ tên class cũ (.btn-primary/secondary/danger/sm/icon/link/back) +
+   thêm biến thể (success, outline, ghost, lg, block) và trạng thái đẹp.
+   ══════════════════════════════════════════════════════════════════════ */
+:root {
+    --btn-primary:        #7c3aed;
+    --btn-primary-hover:  #6d28d9;
+    --btn-primary-active: #5b21b6;
+    --btn-danger:         #e11d48;
+    --btn-danger-hover:   #be123c;
+    --btn-success:        #16a34a;
+    --btn-success-hover:  #15803d;
+    --btn-ring:           rgba(124, 58, 237, .28);
+    --btn-radius:         8px;
 }
-.btn:disabled { opacity: .55; cursor: not-allowed; }
-.btn-primary { background: #7c3aed; color: #fff; }
-.btn-primary:hover:not(:disabled) { background: #6d28d9; }
-.btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; }
-.btn-secondary:hover:not(:disabled) { background: #f9fafb; }
-.btn-sm { padding: 5px 12px; font-size: 12px; }
-.btn-back { background: none; border: none; color: #7c3aed; cursor: pointer; font-size: 14px; padding: 0; }
-.btn-link { background: none; border: none; color: #7c3aed; cursor: pointer; font-size: 12px; }
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 9px 16px; min-height: 38px;
+    border: 1px solid transparent; border-radius: var(--btn-radius);
+    font-family: inherit; font-size: 14px; font-weight: 600; line-height: 1;
+    white-space: nowrap; cursor: pointer; user-select: none; text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+}
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--btn-ring); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; transform: none; }
+
+/* ── Solid ───────────────────────────────────────────── */
+.btn-primary { background: var(--btn-primary); color: #fff; box-shadow: 0 1px 2px rgba(124, 58, 237, .25); }
+.btn-primary:hover:not(:disabled)  { background: var(--btn-primary-hover); }
+.btn-primary:active:not(:disabled) { background: var(--btn-primary-active); }
+
+.btn-danger { background: var(--btn-danger); color: #fff; box-shadow: 0 1px 2px rgba(225, 29, 72, .25); }
+.btn-danger:hover:not(:disabled) { background: var(--btn-danger-hover); }
+
+.btn-success { background: var(--btn-success); color: #fff; box-shadow: 0 1px 2px rgba(22, 163, 74, .25); }
+.btn-success:hover:not(:disabled) { background: var(--btn-success-hover); }
+
+.btn-secondary { background: #fff; color: #334155; border-color: #d8dee9; }
+.btn-secondary:hover:not(:disabled) { background: #f8fafc; border-color: #c3ccda; }
+
+/* ── Outline · Ghost ─────────────────────────────────── */
+.btn-outline-primary { background: #fff; color: var(--btn-primary); border-color: #ddd6fe; }
+.btn-outline-primary:hover:not(:disabled) { background: #f5f3ff; border-color: var(--btn-primary); }
+.btn-outline-danger { background: #fff; color: var(--btn-danger); border-color: #fecdd3; }
+.btn-outline-danger:hover:not(:disabled) { background: #fff1f2; border-color: var(--btn-danger); }
+.btn-ghost { background: transparent; color: #475569; }
+.btn-ghost:hover:not(:disabled) { background: #f1f5f9; color: #1e293b; }
+
+/* ── Kích thước ──────────────────────────────────────── */
+.btn-sm { padding: 6px 11px; min-height: 30px; font-size: 12.5px; gap: 5px; }
+.btn-lg { padding: 12px 22px; min-height: 46px; font-size: 15px; }
+.btn-block { width: 100%; }
+
+/* ── Text-only ───────────────────────────────────────── */
+.btn-back { background: none; border: none; color: var(--btn-primary); cursor: pointer; font-size: 14px; padding: 0; font-weight: 600; }
+.btn-link { background: none; border: none; color: var(--btn-primary); cursor: pointer; font-size: 12px; font-weight: 600; padding: 0; }
+.btn-back:hover, .btn-link:hover { text-decoration: underline; }
 
 /* ── Input (chỉ cho code-input, field-input dùng DX) ── */
 .input-row { display: flex; gap: 8px; align-items: center; }
@@ -273,9 +317,15 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 .dv-dxgrid .dxbl-grid-header-content { font-weight: 600; color: #334155; }
 .md-list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .md-list-footer { margin-top: 12px; }
-.btn-icon { background: none; border: none; cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px; }
-.btn-icon:hover { background: #eef2ff; }
-.btn-icon-danger:hover { background: #fee2e2; }
+/* Nút icon-only (tròn vuông, canh giữa) */
+.btn-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; padding: 0;
+    background: none; border: none; border-radius: 7px;
+    cursor: pointer; font-size: 15px; color: #64748b; transition: background-color .15s, color .15s;
+}
+.btn-icon:hover { background: #f1f5f9; color: #1e293b; }
+.btn-icon-danger:hover { background: #fef2f2; color: var(--btn-danger); }
 
 /* ── Master Data — Form ───────────────────────────────── */
 .md-form { padding: 4px; }
@@ -292,9 +342,7 @@ html, body { margin: 0; font-family: sans-serif; font-size: 14px; }
 .md-modal-header { padding: 14px 18px; font-size: 16px; font-weight: 600; border-bottom: 1px solid #eef2f7; }
 .md-modal-body { padding: 18px; }
 .md-modal-footer { padding: 12px 18px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #eef2f7; }
-.btn-danger { background: #dc2626; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
-.btn-danger:hover { background: #b91c1c; }
-.btn-danger:disabled { opacity: .6; cursor: default; }
+/* (.btn-danger định nghĩa ở "HỆ NÚT CHUẨN" phía trên) */
 
 /* Popup mode: modal có thể chứa lưới field — đảm bảo responsive bên trong */
 @media (max-width: 767px) {

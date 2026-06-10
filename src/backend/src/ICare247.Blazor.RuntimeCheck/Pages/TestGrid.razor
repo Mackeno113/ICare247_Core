@@ -6,7 +6,9 @@
 @page "/test-grid"
 @using ICare247.Blazor.RuntimeCheck.Services
 @using ICare247.Blazor.RuntimeCheck.Components.View
+@using ICare247.Blazor.RuntimeCheck.Components.MasterData
 @inject ViewApiService ViewApi
+@inject MasterDataApiService MasterApi
 @inject ApiSettings Settings
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -75,7 +77,7 @@
                             <td>@item.ColumnCount</td>
                             <td>v@(item.Version)</td>
                             <td>
-                                <button class="btn btn-sm" @onclick="() => LoadViewAsync(item.ViewCode)">
+                                <button class="btn btn-outline-primary btn-sm" @onclick="() => LoadViewAsync(item.ViewCode)">
                                     ▶ Chạy
                                 </button>
                             </td>
@@ -103,7 +105,21 @@
                     <h3>@(_view.Title ?? _view.ViewCode)</h3>
                     <span class="md-list-sub">Bảng @_view.TableCode · @_view.ViewType</span>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(_view.EditFormCode))
+                {
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn btn-primary" @onclick="OpenAdd">+ Thêm mới</button>
+                        <button class="btn btn-danger" @onclick="OpenBulkDelete"
+                                disabled="@(_selectedCount == 0 || _deleteBusy)">
+                            🗑 Xóa @(_selectedCount > 0 ? $"({_selectedCount})" : "")
+                        </button>
+                    </div>
+                }
             </div>
+            @if (string.IsNullOrWhiteSpace(_view.EditFormCode))
+            {
+                <div class="md-list-notice">⚠ View chưa gắn <code>Edit_Form</code> → không Thêm/Sửa/Xóa được. Cấu hình ở ConfigStudio.</div>
+            }
 
             @if (_view.ShowSearchBox)
             {
@@ -112,72 +128,6 @@
                            @onchange="OnSearchChanged" />
                 </div>
             }
-
-            @* ── DEBUG: soi luồng cấu hình (tạm thời) ───────────── *@
-            <details class="debug-panel" open style="margin:12px 0;border:1px dashed #94a3b8;border-radius:6px;padding:10px;background:#f8fafc;">
-                <summary style="cursor:pointer;font-weight:600;">🔍 Debug luồng dữ liệu cấu hình</summary>
-
-                <p style="margin:8px 0 4px;">
-                    <strong>/info</strong> trả về <code>@_view.Columns.Count</code> cột —
-                    DataView render được <code>@VisibleDataColumnCount</code> cột Data.
-                </p>
-                <table class="forms-table" style="margin-bottom:10px;">
-                    <thead>
-                        <tr><th>FieldName</th><th>ColumnKind</th><th>IsVisible</th><th>RenderMode</th><th>Caption</th><th>→ Hiển thị?</th></tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var c in _view.Columns)
-                        {
-                            var shown = c.IsVisible
-                                     && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase)
-                                     && !string.IsNullOrWhiteSpace(c.FieldName);
-                            <tr style="@(shown ? null : "color:#b91c1c;")">
-                                <td><code>@c.FieldName</code></td>
-                                <td>@c.ColumnKind</td>
-                                <td>@c.IsVisible</td>
-                                <td>@c.RenderMode</td>
-                                <td>@(c.Caption ?? "(null)")</td>
-                                <td>@(shown ? "✓" : "✗ bị loại")</td>
-                            </tr>
-                        }
-                        @if (_view.Columns.Count == 0)
-                        {
-                            <tr><td colspan="6" style="color:#b91c1c;">⚠ /info KHÔNG trả cột nào (Columns rỗng).</td></tr>
-                        }
-                    </tbody>
-                </table>
-
-                <p style="margin:4px 0;">
-                    <strong>/data</strong> trả <code>@_items.Count</code> dòng.
-                    Khóa (cột) của dòng đầu: <code>@_firstRowKeys</code>
-                </p>
-                <small style="color:#64748b;">
-                    Cột chỉ hiện khi: <code>IsVisible = true</code> &amp; <code>ColumnKind = "Data"</code> &amp; <code>FieldName</code> không rỗng.
-                    Khóa /data phải trùng <code>FieldName</code> (không phân biệt hoa/thường).
-                </small>
-
-                @* ── JSON config thô ─────────────────────────────── *@
-                <div style="display:flex;gap:8px;margin:12px 0 6px;align-items:center;flex-wrap:wrap;">
-                    <strong>JSON config:</strong>
-                    <button class="btn btn-sm" @onclick='() => ShowRawJsonAsync("info")' disabled="@_jsonLoading">
-                        📄 /info
-                    </button>
-                    <button class="btn btn-sm" @onclick='() => ShowRawJsonAsync("data")' disabled="@_jsonLoading">
-                        📊 /data
-                    </button>
-                    @if (_rawJson is not null)
-                    {
-                        <button class="btn btn-sm btn-secondary" @onclick="CopyRawJsonAsync">📋 Copy</button>
-                        <button class="btn btn-sm btn-secondary" @onclick="() => _rawJson = null">✕ Đóng</button>
-                        <span style="color:#64748b;">đang xem: <code>@_rawJsonKind</code></span>
-                    }
-                    @if (_jsonLoading) { <span class="hint">Đang tải…</span> }
-                </div>
-                @if (_rawJson is not null)
-                {
-                    <pre style="max-height:360px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;font-size:12px;line-height:1.5;"><code>@_rawJson</code></pre>
-                }
-            </details>
 
             @* ── Tùy chọn lưới ────────────────────────────────── *@
             <div style="display:flex;gap:16px;align-items:center;margin:8px 0;">
@@ -202,10 +152,74 @@
             }
 
             <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+
+            @* ── Panel debug (chuyển xuống dưới lưới) ───────────── *@
+            @DebugPanel
         </div>
     }
 
 </div>
+
+@* ── Popup Thêm/Sửa (reuse MasterDataForm) ───────────────── *@
+@if (_showPopup && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
+{
+    <div class="md-modal-backdrop" @onclick="CloseForm">
+        <div class="md-modal" @onclick:stopPropagation="true">
+            <div class="md-modal-body">
+                <MasterDataForm FormCode="@(_view.EditFormCode!)" Id="_editId"
+                                OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Dialog xác nhận / báo lỗi xóa nhiều dòng ─────────────── *@
+@if (_showDelete)
+{
+    <div class="md-modal-backdrop" @onclick="CloseDelete">
+        <div class="md-modal" style="max-width:560px;" @onclick:stopPropagation="true">
+            <div class="md-modal-body">
+                @if (_deleteBlocked.Count > 0)
+                {
+                    <h3 style="margin-top:0;color:#b91c1c;">⛔ Không thể xóa — vướng khóa ngoại</h3>
+                    <p>Hủy toàn bộ (all-or-nothing). @_deleteBlocked.Count / @_deleteTotal dòng đang được tham chiếu:</p>
+                    <div style="max-height:320px;overflow:auto;">
+                        @foreach (var b in _deleteBlocked)
+                        {
+                            <div style="margin-bottom:10px;padding:8px;border:1px solid #fecaca;border-radius:6px;background:#fef2f2;">
+                                <strong>Khóa: <code>@b.Id</code></strong>
+                                <ul style="margin:6px 0 0;padding-left:18px;">
+                                    @foreach (var u in b.Usages)
+                                    {
+                                        <li>@u.Schema.@u.Table.@u.Column — <strong>@u.RowCount</strong> bản ghi @(u.IsLegacy ? "(legacy)" : "")</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-footer" style="margin-top:12px;">
+                        <button class="btn btn-secondary" @onclick="CloseDelete">Đóng</button>
+                    </div>
+                }
+                else
+                {
+                    <h3 style="margin-top:0;">🗑 Xác nhận xóa</h3>
+                    <p>Xóa <strong>@_deleteTotal</strong> dòng đã chọn khỏi DB? Thao tác <strong>không hoàn tác</strong>.</p>
+                    @if (_deleteError is not null)
+                    {
+                        <p class="error-text">@_deleteError</p>
+                    }
+                    <div class="form-footer" style="margin-top:12px;">
+                        <button class="btn btn-danger" @onclick="ConfirmBulkDeleteAsync" disabled="@_deleteBusy">
+                            @(_deleteBusy ? "Đang xử lý…" : "Xóa")
+                        </button>
+                        <button class="btn btn-secondary" @onclick="CloseDelete" disabled="@_deleteBusy">Hủy</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     // ── Danh sách View ────────────────────────────────
@@ -259,6 +273,59 @@
         ? string.Join(", ", _items[0].Keys)
         : "(không có dòng)";
 
+    /// <summary>Panel debug luồng cấu hình (đặt dưới lưới). Chỉ render khi đã có _view.</summary>
+    private RenderFragment DebugPanel => @<details class="debug-panel" style="margin:12px 0;border:1px dashed #94a3b8;border-radius:6px;padding:10px;background:#f8fafc;">
+        <summary style="cursor:pointer;font-weight:600;">🔍 Debug luồng dữ liệu cấu hình</summary>
+
+        <p style="margin:8px 0 4px;">
+            <strong>/info</strong> trả về <code>@_view!.Columns.Count</code> cột —
+            DataView render được <code>@VisibleDataColumnCount</code> cột Data.
+        </p>
+        <table class="forms-table" style="margin-bottom:10px;">
+            <thead>
+                <tr><th>FieldName</th><th>ColumnKind</th><th>IsVisible</th><th>RenderMode</th><th>Caption</th><th>→ Hiển thị?</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var c in _view!.Columns)
+                {
+                    var shown = c.IsVisible
+                             && c.ColumnKind.Equals("Data", StringComparison.OrdinalIgnoreCase)
+                             && !string.IsNullOrWhiteSpace(c.FieldName);
+                    <tr style="@(shown ? null : "color:#b91c1c;")">
+                        <td><code>@c.FieldName</code></td>
+                        <td>@c.ColumnKind</td>
+                        <td>@c.IsVisible</td>
+                        <td>@c.RenderMode</td>
+                        <td>@(c.Caption ?? "(null)")</td>
+                        <td>@(shown ? "✓" : "✗ bị loại")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <p style="margin:4px 0;">
+            <strong>/data</strong> trả <code>@_items.Count</code> dòng. Khóa dòng đầu: <code>@_firstRowKeys</code>
+            · PkColumn: <code>@(_mdInfo?.PkColumn ?? "(chưa nạp)")</code>
+        </p>
+
+        <div style="display:flex;gap:8px;margin:12px 0 6px;align-items:center;flex-wrap:wrap;">
+            <strong>JSON config:</strong>
+            <button class="btn btn-ghost btn-sm" @onclick='() => ShowRawJsonAsync("info")' disabled="@_jsonLoading">📄 /info</button>
+            <button class="btn btn-ghost btn-sm" @onclick='() => ShowRawJsonAsync("data")' disabled="@_jsonLoading">📊 /data</button>
+            @if (_rawJson is not null)
+            {
+                <button class="btn btn-sm btn-secondary" @onclick="CopyRawJsonAsync">📋 Copy</button>
+                <button class="btn btn-sm btn-secondary" @onclick="() => _rawJson = null">✕ Đóng</button>
+                <span style="color:#64748b;">đang xem: <code>@_rawJsonKind</code></span>
+            }
+            @if (_jsonLoading) { <span class="hint">Đang tải…</span> }
+        </div>
+        @if (_rawJson is not null)
+        {
+            <pre style="max-height:360px;overflow:auto;background:#0f172a;color:#e2e8f0;padding:12px;border-radius:6px;font-size:12px;line-height:1.5;"><code>@_rawJson</code></pre>
+        }
+    </details>;
+
     // ── Chọn nhiều dòng (checkbox) ────────────────────
     private bool _multiSelect;
     private IReadOnlyList<object> _selectedItems = [];
@@ -299,8 +366,16 @@
         {
             _view = await ViewApi.GetInfoAsync(code, Settings.LangCode);
             if (_view is null) { _error = $"Không tìm thấy View '{code}'."; return; }
-            _multiSelect = _view.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase);
+            // Màn test: mặc định BẬT chọn nhiều dòng để thấy ngay cột checkbox (untick để tắt).
+            _multiSelect = true;
+            _view.SelectionMode = "multiple";
             _selectedItems = [];
+
+            // Nạp metadata form (PkColumn) để Thêm/Sửa/Xóa theo khóa — nếu View có Edit_Form.
+            _mdInfo = string.IsNullOrWhiteSpace(_view.EditFormCode)
+                ? null
+                : await MasterApi.GetInfoAsync(_view.EditFormCode);
+
             await ReloadDataAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -314,6 +389,7 @@
         var result = await ViewApi.GetDataAsync(_view.ViewCode, _search, Settings.LangCode, page: 1, pageSize: pageSize);
         _items = result?.Items ?? [];
         _total = result?.TotalCount ?? 0;
+        _selectedItems = []; // dữ liệu mới → xóa selection cũ (tránh đếm dồn tham chiếu cũ)
     }
 
     private async Task OnSearchChanged(ChangeEventArgs e)
@@ -323,22 +399,124 @@
     }
 
     /// <summary>Mở form Thêm của Edit_Form gắn với View.</summary>
+    // ── CRUD qua popup + xóa nhiều dòng ───────────────
+    private MasterDataFormInfoDto? _mdInfo;   // PkColumn của form gắn View
+    private bool _showPopup;
+    private object? _editId;
+
+    private bool _showDelete;
+    private bool _deleteBusy;
+    private int _deleteTotal;
+    private string? _deleteError;
+    private List<BlockedRow> _deleteBlocked = [];
+
+    /// <summary>Một dòng bị khóa ngoại chặn xóa (khóa + danh sách bảng tham chiếu).</summary>
+    private sealed record BlockedRow(object Id, List<ReferenceUsageDto> Usages);
+
+    /// <summary>Mở popup Thêm mới (Id null).</summary>
     private void OpenAdd()
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit");
+        _editId = null; _showPopup = true;
     }
 
+    /// <summary>Mở popup Sửa (double-click dòng → truyền giá trị Key_Field).</summary>
     private void OpenEdit(object? id)
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || id is null) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}");
+        _editId = id; _showPopup = true;
     }
 
-    private void OpenDelete(object? id)
+    private void CloseForm() { _showPopup = false; _editId = null; }
+
+    private async Task OnFormSaved(object? _)
     {
-        if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}");
+        CloseForm();
+        await ReloadDataAsync();
+    }
+
+    /// <summary>OnDelete từ DataView (không còn dùng — xóa qua toolbar). Giữ chữ ký cho tương thích.</summary>
+    private void OpenDelete(object? id) { }
+
+    /// <summary>Mở dialog xác nhận xóa các dòng đang chọn.</summary>
+    private void OpenBulkDelete()
+    {
+        if (_selectedCount == 0 || string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
+        _deleteBlocked = [];
+        _deleteError = null;
+        _deleteTotal = _selectedCount;
+        _showDelete = true;
+    }
+
+    private void CloseDelete()
+    {
+        _showDelete = false;
+        _deleteBlocked = [];
+        _deleteError = null;
+    }
+
+    /// <summary>
+    /// Xóa nhiều dòng — ALL-OR-NOTHING: pre-check soft FK từng dòng; nếu BẤT KỲ dòng nào bị
+    /// tham chiếu → không xóa gì, hiện chi tiết. Hết vướng → xóa cứng tất cả khỏi DB.
+    /// </summary>
+    private async Task ConfirmBulkDeleteAsync()
+    {
+        if (_view is null || string.IsNullOrWhiteSpace(_view.EditFormCode)) return;
+        var form = _view.EditFormCode!;
+        var pkCol = _mdInfo?.PkColumn;
+        if (string.IsNullOrWhiteSpace(pkCol))
+        {
+            _deleteError = "Không xác định được khóa chính (PkColumn). Kiểm tra Edit_Form/Key_Field.";
+            return;
+        }
+
+        _deleteBusy = true; _deleteError = null;
+        try
+        {
+            // Lấy PK từng dòng đang chọn (đọc PkColumn từ ExpandoObject).
+            var ids = new List<object>();
+            foreach (var row in _selectedItems.OfType<IDictionary<string, object?>>())
+            {
+                var id = GetRowValue(row, pkCol!);
+                if (id is null)
+                {
+                    _deleteError = $"Dòng thiếu giá trị khóa '{pkCol}'. Đảm bảo Key_Field = khóa chính và có trong dữ liệu.";
+                    return;
+                }
+                ids.Add(id);
+            }
+
+            // Pre-check soft FK (all-or-nothing).
+            var blocked = new List<BlockedRow>();
+            foreach (var id in ids)
+            {
+                var usages = await MasterApi.GetUsageAsync(form, id);
+                var used = usages.Where(u => u.RowCount > 0).ToList();
+                if (used.Count > 0) blocked.Add(new BlockedRow(id, used));
+            }
+            if (blocked.Count > 0)
+            {
+                _deleteBlocked = blocked;   // hiện báo lỗi chi tiết, KHÔNG xóa
+                return;
+            }
+
+            // Hết vướng → xóa cứng tất cả.
+            foreach (var id in ids)
+                await MasterApi.DeleteAsync(form, id);
+
+            _notice = $"Đã xóa {ids.Count} dòng.";
+            _showDelete = false;
+            await ReloadDataAsync();
+        }
+        catch (Exception ex) { _deleteError = ex.Message; }
+        finally { _deleteBusy = false; }
+    }
+
+    /// <summary>Đọc giá trị 1 cột từ dòng (không phân biệt hoa/thường).</summary>
+    private static object? GetRowValue(IDictionary<string, object?> row, string col)
+    {
+        var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
+        return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
     }
 
     /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>

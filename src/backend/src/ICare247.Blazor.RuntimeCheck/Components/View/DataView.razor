@@ -58,6 +58,7 @@ else
             SelectionMode="@SelectionModeOf()"
             SelectedDataItems="SelectedDataItems"
             SelectedDataItemsChanged="SelectedDataItemsChanged"
+            RowDoubleClick="OnRowDoubleClick"
             CssClass="dv-dxgrid"
             TextWrapEnabled="false"
             AllowColumnReorder="true"
@@ -93,35 +94,6 @@ else
                 </DxGridDataColumn>
             }
 
-            @if (HasRowActions)
-            {
-                <DxGridCommandColumn Width="64px" Caption="" FixedPosition="GridColumnFixedPosition.Right">
-                    <CellDisplayTemplate>
-                        @{
-                            var key = string.IsNullOrWhiteSpace(View.KeyField)
-                                ? null : GetCell(AsRow(context.DataItem), View.KeyField!);
-                        }
-                        @* Kebab ⋮ menu mỗi dòng (native details — không cần JS) *@
-                        <details class="dv-rowmenu">
-                            <summary class="dv-rowmenu-btn" title="Thao tác">⋮</summary>
-                            <div class="dv-rowmenu-popup">
-                                @if (View.AllowEdit && !string.IsNullOrWhiteSpace(View.EditFormCode))
-                                {
-                                    <button class="dv-rowmenu-item" @onclick="() => OnEdit.InvokeAsync(key)">
-                                        <span class="dv-rowmenu-ic">✏️</span> Sửa
-                                    </button>
-                                }
-                                @if (View.AllowDelete && !string.IsNullOrWhiteSpace(View.EditFormCode))
-                                {
-                                    <button class="dv-rowmenu-item dv-rowmenu-item-danger" @onclick="() => OnDelete.InvokeAsync(key)">
-                                        <span class="dv-rowmenu-ic">🗑️</span> Xóa
-                                    </button>
-                                }
-                            </div>
-                        </details>
-                    </CellDisplayTemplate>
-                </DxGridCommandColumn>
-            }
         </Columns>
     </DxGrid>
 }
@@ -221,6 +193,18 @@ else
     /// <summary>Hiện cột lệnh sửa/xóa khi View cho phép + có form sửa.</summary>
     private bool HasRowActions =>
         !string.IsNullOrWhiteSpace(View.EditFormCode) && (View.AllowEdit || View.AllowDelete);
+
+    /// <summary>Double-click dòng → mở Sửa (truyền giá trị Key_Field). Bỏ qua nếu View không cho sửa / thiếu khóa.</summary>
+    private async Task OnRowDoubleClick(GridRowClickEventArgs e)
+    {
+        if (!View.AllowEdit || string.IsNullOrWhiteSpace(View.EditFormCode)
+            || string.IsNullOrWhiteSpace(View.KeyField) || _grid is null) return;
+
+        var item = _grid.GetDataItem(e.VisibleIndex);
+        if (item is null) return;
+        var key = GetCell(AsRow(item), View.KeyField!);
+        if (key is not null) await OnEdit.InvokeAsync(key);
+    }
 
     private GridSelectionMode SelectionModeOf() => View.SelectionMode?.ToLowerInvariant() switch
     {
@@ -348,10 +332,18 @@ else
     /// </summary>
     private List<ExpandoObject> _gridRows = [];
 
+    /// <summary>Tham chiếu Items lần dựng gần nhất — chỉ dựng lại khi Items đổi (giữ ổn định selection).</summary>
+    private object? _builtFromItems;
+
     protected override void OnParametersSet()
     {
-        // Dựng lại dữ liệu grid mỗi khi Items đổi (search/reload) — không gắn với ViewId.
-        BuildGridRows();
+        // CHỈ dựng lại _gridRows khi Items đổi (reference) — nếu dựng mỗi render sẽ tạo
+        // ExpandoObject mới → DxGrid mất khớp dòng đang chọn (đếm sai, tick không ăn).
+        if (!ReferenceEquals(Items, _builtFromItems))
+        {
+            BuildGridRows();
+            _builtFromItems = Items;
+        }
 
         // Parse lại rule chỉ khi đổi View.
         if (_rulesViewId == View.ViewId) return;

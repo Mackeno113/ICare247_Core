@@ -49,7 +49,7 @@
             <sys:String>right</sys:String>
         </x:Array>
         <x:Array x:Key="SortOrders" Type="sys:String">
-            <sys:String></sys:String>
+            <x:Static Member="sys:String.Empty" />
             <sys:String>asc</sys:String>
             <sys:String>desc</sys:String>
         </x:Array>

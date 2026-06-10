@@ -7,6 +7,8 @@
 @inject FormApiService        FormApi
 @inject MasterDataApiService  MasterApi
 @inject LookupApiService      LookupApi
+@inject ApiSettings           Settings
+@inject I18nService           I18n
 
 @if (_loading)
 {
@@ -19,7 +21,7 @@ else if (_error is not null)
 else
 {
     <div class="md-form">
-        <h3 class="md-form-title">@(IsEditMode ? "Cập nhật" : "Thêm mới") — @_formName</h3>
+        <h3 class="md-form-title">@(IsEditMode ? I18n.T("common.action.update", "Cập nhật") : I18n.T("common.action.create", "Thêm mới")) — @_formName</h3>
 
         @if (_formError is not null)
         {
@@ -38,9 +40,9 @@ else
         </div>
 
         <div class="md-form-footer">
-            <button class="btn btn-secondary" @onclick="Cancel" disabled="@_saving">Hủy</button>
+            <button class="btn btn-secondary" @onclick="Cancel" disabled="@_saving">@I18n.T("common.btn.cancel", "Hủy")</button>
             <button class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">
-                @(_saving ? "Đang lưu…" : "💾 Lưu")
+                @(_saving ? I18n.T("common.btn.saving", "Đang lưu…") : "💾 " + I18n.T("common.btn.save", "Lưu"))
             </button>
         </div>
     </div>
@@ -64,7 +66,11 @@ else
     private string? _error;       // lỗi load
     private string? _formError;   // lỗi validation/save hiển thị đầu form
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await I18n.EnsureCommonLoadedAsync(Settings.LangCode);
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
