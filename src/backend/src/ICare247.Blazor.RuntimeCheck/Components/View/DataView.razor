@@ -3,13 +3,14 @@
              DxTreeList (TreeList) theo View_Type; render ô theo Render_Mode (Text/Boolean/Html). *@
 
 @using System.Globalization
+@using System.Dynamic
 @using ICare247.Blazor.RuntimeCheck.Services
 @inject NavigationManager Navigation
 
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
      && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
 {
-    <DxTreeList Data="Items"
+    <DxTreeList Data="_gridRows"
                 KeyFieldName="@View.KeyField"
                 ParentKeyFieldName="@View.ParentField"
                 ShowFilterRow="View.ShowFilterRow"
@@ -46,7 +47,7 @@ else
     }
 
     <DxGrid @ref="_grid"
-            Data="Items"
+            Data="_gridRows"
             ShowFilterRow="View.ShowFilterRow"
             ShowGroupPanel="View.ShowGroupPanel"
             VirtualScrollingEnabled="View.VirtualScroll"
@@ -55,6 +56,8 @@ else
             PageSizeSelectorVisible="View.AllowPaging"
             PageSizeSelectorItems="@(new[] { 10, 20, 50 })"
             SelectionMode="@SelectionModeOf()"
+            SelectedDataItems="SelectedDataItems"
+            SelectedDataItemsChanged="SelectedDataItemsChanged"
             CssClass="dv-dxgrid"
             TextWrapEnabled="false"
             AllowColumnReorder="true"
@@ -92,20 +95,30 @@ else
 
             @if (HasRowActions)
             {
-                <DxGridCommandColumn Width="110px" Caption="Thao tác">
+                <DxGridCommandColumn Width="64px" Caption="" FixedPosition="GridColumnFixedPosition.Right">
                     <CellDisplayTemplate>
                         @{
                             var key = string.IsNullOrWhiteSpace(View.KeyField)
                                 ? null : GetCell(AsRow(context.DataItem), View.KeyField!);
                         }
-                        @if (View.AllowEdit && !string.IsNullOrWhiteSpace(View.EditFormCode))
-                        {
-                            <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(key)">✏️</button>
-                        }
-                        @if (View.AllowDelete && !string.IsNullOrWhiteSpace(View.EditFormCode))
-                        {
-                            <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(key)">🗑️</button>
-                        }
+                        @* Kebab ⋮ menu mỗi dòng (native details — không cần JS) *@
+                        <details class="dv-rowmenu">
+                            <summary class="dv-rowmenu-btn" title="Thao tác">⋮</summary>
+                            <div class="dv-rowmenu-popup">
+                                @if (View.AllowEdit && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                                {
+                                    <button class="dv-rowmenu-item" @onclick="() => OnEdit.InvokeAsync(key)">
+                                        <span class="dv-rowmenu-ic">✏️</span> Sửa
+                                    </button>
+                                }
+                                @if (View.AllowDelete && !string.IsNullOrWhiteSpace(View.EditFormCode))
+                                {
+                                    <button class="dv-rowmenu-item dv-rowmenu-item-danger" @onclick="() => OnDelete.InvokeAsync(key)">
+                                        <span class="dv-rowmenu-ic">🗑️</span> Xóa
+                                    </button>
+                                }
+                            </div>
+                        </details>
                     </CellDisplayTemplate>
                 </DxGridCommandColumn>
             }
@@ -121,6 +134,10 @@ else
     [Parameter] public EventCallback OnAdd { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
     [Parameter] public EventCallback<ViewActionDto> OnUnhandledAction { get; set; }
+
+    /// <summary>Các dòng đang chọn (two-way) — chỉ có ý nghĩa khi Selection_Mode='multiple'.</summary>
+    [Parameter] public IReadOnlyList<object> SelectedDataItems { get; set; } = [];
+    [Parameter] public EventCallback<IReadOnlyList<object>> SelectedDataItemsChanged { get; set; }
 
     private IGrid? _grid;
 
@@ -211,10 +228,11 @@ else
         _          => GridSelectionMode.Single
     };
 
-    private static Dictionary<string, object?> AsRow(object? dataItem)
-        => dataItem as Dictionary<string, object?> ?? [];
+    // Dòng grid là ExpandoObject (IDictionary<string,object>) — nhận diện qua IDictionary.
+    private static IDictionary<string, object?> AsRow(object? dataItem)
+        => dataItem as IDictionary<string, object?> ?? new Dictionary<string, object?>();
 
-    private static object? GetCell(Dictionary<string, object?> row, string col)
+    private static object? GetCell(IDictionary<string, object?> row, string col)
     {
         var hit = row.FirstOrDefault(kv => kv.Key.Equals(col, StringComparison.OrdinalIgnoreCase));
         return hit.Equals(default(KeyValuePair<string, object?>)) ? null : hit.Value;
@@ -266,7 +284,7 @@ else
     /// Render ô theo Render_Mode (Text/Boolean/Html/Image/Link/Badge) + áp conditional style
     /// (Style_Rule_Json) lên span bao ngoài.
     /// </summary>
-    private RenderFragment RenderCell(Dictionary<string, object?> row, ViewColumnDto col) => builder =>
+    private RenderFragment RenderCell(IDictionary<string, object?> row, ViewColumnDto col) => builder =>
     {
         var value = GetCell(row, col.FieldName);
         var style = ResolveCellStyle(row, col);
@@ -323,9 +341,19 @@ else
     private readonly Dictionary<string, List<StyleRule>> _rulesCache = new(StringComparer.OrdinalIgnoreCase);
     private int _rulesViewId = -1;
 
+    /// <summary>
+    /// Dữ liệu đưa vào DxGrid/DxTreeList — dạng <see cref="ExpandoObject"/> (mỗi dòng).
+    /// DxGrid KHÔNG filter/sort được trên <c>Dictionary</c> (không suy ra kiểu cột);
+    /// ExpandoObject là dạng dữ liệu động DevExpress hỗ trợ data-shaping đầy đủ.
+    /// </summary>
+    private List<ExpandoObject> _gridRows = [];
+
     protected override void OnParametersSet()
     {
-        // Parse lại rule khi đổi View.
+        // Dựng lại dữ liệu grid mỗi khi Items đổi (search/reload) — không gắn với ViewId.
+        BuildGridRows();
+
+        // Parse lại rule chỉ khi đổi View.
         if (_rulesViewId == View.ViewId) return;
         _rulesViewId = View.ViewId;
         _rulesCache.Clear();
@@ -342,11 +370,25 @@ else
         }
     }
 
+    /// <summary>Chuyển từng dòng Dictionary → ExpandoObject (giữ nguyên key/giá trị CLR).</summary>
+    private void BuildGridRows()
+    {
+        var rows = new List<ExpandoObject>(Items.Count);
+        foreach (var d in Items)
+        {
+            var e = new ExpandoObject();
+            var ed = (IDictionary<string, object?>)e;
+            foreach (var kv in d) ed[kv.Key] = kv.Value;
+            rows.Add(e);
+        }
+        _gridRows = rows;
+    }
+
     private static readonly System.Text.Json.JsonSerializerOptions JsonOpts =
         new(System.Text.Json.JsonSerializerDefaults.Web);
 
     /// <summary>Trả CSS inline cho ô nếu có rule conditional khớp (rule đầu khớp thắng).</summary>
-    private string? ResolveCellStyle(Dictionary<string, object?> row, ViewColumnDto col)
+    private string? ResolveCellStyle(IDictionary<string, object?> row, ViewColumnDto col)
     {
         if (!_rulesCache.TryGetValue(col.FieldName, out var rules)) return null;
 
@@ -360,7 +402,7 @@ else
     }
 
     /// <summary>So khớp điều kiện rule với giá trị dòng theo toán tử (= != &gt; &gt;= &lt; &lt;=).</summary>
-    private static bool MatchCondition(Dictionary<string, object?> row, RuleCondition cond)
+    private static bool MatchCondition(IDictionary<string, object?> row, RuleCondition cond)
     {
         if (string.IsNullOrWhiteSpace(cond.Field)) return false;
         var actual = GetCell(row, cond.Field!);

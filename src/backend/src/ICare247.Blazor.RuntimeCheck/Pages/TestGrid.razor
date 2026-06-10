@@ -179,7 +179,20 @@
                 }
             </details>
 
+            @* ── Tùy chọn lưới ────────────────────────────────── *@
+            <div style="display:flex;gap:16px;align-items:center;margin:8px 0;">
+                <label style="display:flex;gap:6px;align-items:center;cursor:pointer;">
+                    <input type="checkbox" checked="@_multiSelect" @onchange="ToggleMultiSelect" />
+                    Cho phép chọn nhiều dòng (checkbox mỗi dòng)
+                </label>
+                @if (_multiSelect && _selectedCount > 0)
+                {
+                    <span class="hint">Đã chọn @_selectedCount dòng</span>
+                }
+            </div>
+
             <DataView View="_view" Items="_items"
+                      @bind-SelectedDataItems="_selectedItems"
                       OnEdit="OpenEdit" OnDelete="OpenDelete" OnAdd="OpenAdd"
                       OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
 
@@ -246,6 +259,20 @@
         ? string.Join(", ", _items[0].Keys)
         : "(không có dòng)";
 
+    // ── Chọn nhiều dòng (checkbox) ────────────────────
+    private bool _multiSelect;
+    private IReadOnlyList<object> _selectedItems = [];
+    private int _selectedCount => _selectedItems.Count;
+
+    /// <summary>Bật/tắt cột checkbox chọn nhiều dòng (đổi Selection_Mode của View đang xem).</summary>
+    private void ToggleMultiSelect(ChangeEventArgs e)
+    {
+        _multiSelect = e.Value is true;
+        if (_view is not null)
+            _view.SelectionMode = _multiSelect ? "multiple" : "none";
+        _selectedItems = [];
+    }
+
     protected override async Task OnInitializedAsync() => await LoadViewsAsync();
 
     /// <summary>Tải danh sách View từ API để người dùng chọn.</summary>
@@ -272,6 +299,8 @@
         {
             _view = await ViewApi.GetInfoAsync(code, Settings.LangCode);
             if (_view is null) { _error = $"Không tìm thấy View '{code}'."; return; }
+            _multiSelect = _view.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase);
+            _selectedItems = [];
             await ReloadDataAsync();
         }
         catch (Exception ex) { _error = ex.Message; }
