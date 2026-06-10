@@ -11,6 +11,7 @@ using ICare247.Application.Features.MasterData.Queries.GetMasterDataList;
 using ICare247.Application.Features.MasterData.Queries.GetMasterDataRecord;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ICare247.Api.Controllers;
@@ -84,7 +85,7 @@ public sealed class MasterDataController : ControllerBase
             return BadRequest(Problem400("Cần ít nhất một cột để thêm mới."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, body.Values), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, NormalizeValues(body.Values)), ct);
 
         // Validation fail → 422 kèm danh sách lỗi field
         return result.Success ? Ok(result) : UnprocessableEntity(result);
@@ -100,7 +101,7 @@ public sealed class MasterDataController : ControllerBase
             return BadRequest(Problem400("Cần ít nhất một cột để cập nhật."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), body.Values), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), NormalizeValues(body.Values)), ct);
 
         return result.Success ? Ok(result) : UnprocessableEntity(result);
     }
@@ -133,6 +134,27 @@ public sealed class MasterDataController : ControllerBase
     {
         if (long.TryParse(id, out var l)) return l;
         return id;
+    }
+
+    /// <summary>
+    /// Unwrap giá trị <see cref="JsonElement"/> (do bind JSON vào Dictionary&lt;string,object&gt;) → kiểu CLR
+    /// nguyên thủy. Dapper KHÔNG bind được JsonElement làm tham số → phải chuyển trước khi xuống repo.
+    /// </summary>
+    private static Dictionary<string, object?> NormalizeValues(Dictionary<string, object?> values)
+        => values.ToDictionary(kv => kv.Key, kv => UnwrapJson(kv.Value), StringComparer.OrdinalIgnoreCase);
+
+    private static object? UnwrapJson(object? value)
+    {
+        if (value is not JsonElement je) return value;
+        return je.ValueKind switch
+        {
+            JsonValueKind.Null or JsonValueKind.Undefined => null,
+            JsonValueKind.String => je.GetString(),
+            JsonValueKind.True   => true,
+            JsonValueKind.False  => false,
+            JsonValueKind.Number => je.TryGetInt64(out var l) ? l : je.GetDecimal(),
+            _                    => je.ToString()
+        };
     }
 
     private int GetTenantId()
