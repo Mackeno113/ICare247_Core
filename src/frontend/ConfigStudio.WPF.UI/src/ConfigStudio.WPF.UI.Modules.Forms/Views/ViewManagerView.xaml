@@ -269,6 +269,10 @@
                                                       SelectedItem="{Binding EditEditForm}"
                                                       NullText="Không gắn form sửa" Margin="0,0,0,10" />
 
+                                    <TextBlock Text="Key_Field — cột khóa chính (cho Sửa/Xóa theo dòng + TreeList)" Style="{StaticResource EditorLabel}" />
+                                    <dxe:TextEdit EditValue="{Binding EditKeyField, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: Id — khóa chính của bảng nguồn" Margin="0,0,0,10" />
+
                                     <dxe:CheckEdit Content="Is_Active (View đang dùng)" IsChecked="{Binding EditIsActive}"
                                                    Margin="0,0,0,10" />
 
@@ -360,11 +364,8 @@
                                             CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
                                             Visibility="{Binding IsTreeList, Converter={StaticResource BoolToVis}}">
                                         <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#854D0E"
-                                                   Text="View_Type = TreeList — khai báo cột khóa, cột cha và cấp mở sẵn để dựng cây." />
+                                                   Text="View_Type = TreeList — cần Key_Field (đặt ở tab Cơ bản) + cột cha + cấp mở sẵn để dựng cây." />
                                     </Border>
-                                    <TextBlock Text="Key_Field — cột khóa" Style="{StaticResource EditorLabel}" />
-                                    <dxe:TextEdit EditValue="{Binding EditKeyField, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: Id" Margin="0,0,0,10" />
                                     <TextBlock Text="Parent_Field — cột cha (hierarchy)" Style="{StaticResource EditorLabel}" />
                                     <dxe:TextEdit EditValue="{Binding EditParentField, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="VD: ParentId" Margin="0,0,0,10" />
