@@ -420,10 +420,23 @@
         _editId = null; _showPopup = true;
     }
 
-    /// <summary>Mở popup Sửa (double-click dòng → truyền giá trị Key_Field).</summary>
-    private void OpenEdit(object? id)
+    /// <summary>Mở popup Sửa (double-click dòng) — resolve khóa từ Key_Field hoặc PkColumn của form.</summary>
+    private void OpenEdit(IDictionary<string, object?> row)
     {
-        if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || id is null) return;
+        if (_view is null || string.IsNullOrWhiteSpace(_view.EditFormCode)) return;
+
+        var idCol = !string.IsNullOrWhiteSpace(_view.KeyField) ? _view.KeyField! : _mdInfo?.PkColumn;
+        if (string.IsNullOrWhiteSpace(idCol))
+        {
+            _notice = "Không xác định được khóa (View thiếu Key_Field và form thiếu PkColumn).";
+            return;
+        }
+        var id = GetRowValue(row, idCol);
+        if (id is null)
+        {
+            _notice = $"Dòng thiếu giá trị khóa '{idCol}' (đặt Key_Field = khóa chính và để nó trong cột hiển thị).";
+            return;
+        }
         _editId = id; _showPopup = true;
     }
 

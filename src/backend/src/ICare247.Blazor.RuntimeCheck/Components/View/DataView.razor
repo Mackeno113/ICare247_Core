@@ -101,7 +101,8 @@ else
 @code {
     [Parameter] public ViewMetadataDto View { get; set; } = new();
     [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
-    [Parameter] public EventCallback<object?> OnEdit { get; set; }
+    /// <summary>Double-click dòng → mở Sửa. Tham số = cả dòng (trang tự resolve khóa).</summary>
+    [Parameter] public EventCallback<IDictionary<string, object?>> OnEdit { get; set; }
     [Parameter] public EventCallback<object?> OnDelete { get; set; }
     [Parameter] public EventCallback OnAdd { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
@@ -194,16 +195,13 @@ else
     private bool HasRowActions =>
         !string.IsNullOrWhiteSpace(View.EditFormCode) && (View.AllowEdit || View.AllowDelete);
 
-    /// <summary>Double-click dòng → mở Sửa (truyền giá trị Key_Field). Bỏ qua nếu View không cho sửa / thiếu khóa.</summary>
+    /// <summary>Double-click dòng → mở Sửa (truyền CẢ dòng; trang tự resolve khóa). Bỏ qua nếu View không cho sửa.</summary>
     private async Task OnRowDoubleClick(GridRowClickEventArgs e)
     {
-        if (!View.AllowEdit || string.IsNullOrWhiteSpace(View.EditFormCode)
-            || string.IsNullOrWhiteSpace(View.KeyField) || _grid is null) return;
-
+        if (!View.AllowEdit || string.IsNullOrWhiteSpace(View.EditFormCode) || _grid is null) return;
         var item = _grid.GetDataItem(e.VisibleIndex);
         if (item is null) return;
-        var key = GetCell(AsRow(item), View.KeyField!);
-        if (key is not null) await OnEdit.InvokeAsync(key);
+        await OnEdit.InvokeAsync(AsRow(item));
     }
 
     private GridSelectionMode SelectionModeOf() => View.SelectionMode?.ToLowerInvariant() switch

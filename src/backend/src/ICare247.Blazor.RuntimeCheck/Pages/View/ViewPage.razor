@@ -99,9 +99,13 @@
         Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit");
     }
 
-    private void OpenEdit(object? id)
+    /// <summary>Double-click dòng → Sửa: resolve khóa từ Key_Field rồi điều hướng form edit.</summary>
+    private void OpenEdit(IDictionary<string, object?> row)
     {
-        if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || id is null) return;
+        if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || string.IsNullOrWhiteSpace(_view.KeyField)) return;
+        var hit = row.FirstOrDefault(kv => kv.Key.Equals(_view.KeyField, StringComparison.OrdinalIgnoreCase));
+        var id = hit.Value;
+        if (id is null) return;
         Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}");
     }
 
