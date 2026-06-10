@@ -52,15 +52,14 @@
 
 ## Session 42b (2026-06-08) — NumericBox locale format real-time
 
-> ⚠️ **Ghi chú khôi phục:** mục này đến từ bản local của một máy khác, bị mất khi
-> resolve merge conflict (nhánh `23c577a` thắng). Phần thân chi tiết đã bị diff cắt
-> (`@ -15,6 +16,74 @@`) và **không commit** trong repo này — không khôi phục được nguyên văn.
-> Chỉ còn lại đầu mục + kết quả build. Bổ sung lại nội dung nếu cần.
-
-### Đã làm (chi tiết đã mất)
-- Việc liên quan **NumericBox — định dạng theo locale, cập nhật real-time**
-  (xem `NumericBoxRenderer.razor`; code chưa được commit lên nhánh này).
-- _(thân bài gốc ~58 dòng đã mất khi merge — chưa khôi phục)_
+### NumericBox real-time thousand separator + locale format
+- **Vấn đề:** `DxSpinEdit.DisplayFormat="N0"` chỉ format khi blur — khi đang gõ hiện raw số không có separator.
+- **Fix:**
+  - `index.html`: thêm `icare.setupNumericInput(inputId, locale)` — JS listener `input` event, format real-time giữ cursor đúng vị trí.
+  - `NumericBoxRenderer.razor`: inject `IJSRuntime`, gọi JS sau mỗi render. `DxSpinEdit` thêm `Culture` param. Prop `locale` trong `NumericBoxProps` (`""` = en-US, `"vi"` = vi-VN).
+  - Bỏ `UseThousandSeparator` (luôn format). `DisplayFormat` luôn `N{d}`.
+- **Kết quả:** `locale=""` → `9,999.05` real-time; `locale="vi"` → `9.999,05` real-time.
+- **TODO:** đọc `locale` mặc định từ system config (CC-config-number-format, làm sau).
 - Build 0/0. ✅
 
 ---

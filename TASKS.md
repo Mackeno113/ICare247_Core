@@ -4,6 +4,10 @@
 
 <!-- không có task nào đang chạy -->
 
+## ✅ Done (session 2026-06-08 — NumericBox locale format)
+
+- [x] **BZ-NumFmt** — `NumericBoxRenderer`: real-time thousand separator khi gõ (JS interop `icare.setupNumericInput`). `locale=""` → quốc tế `9,999.05`, `locale="vi"` → VN `9.999,05`. `DxSpinEdit.Culture` theo locale. Prop `locale` trong `Control_Props_Json`. TODO: đọc mặc định từ system config (CC-config-number-format). ✅ (2026-06-08)
+
 ---
 
 ## 📋 Roadmap — ConfigCache facade (đọc config qua cache, hạn chế chọc DB) — ADR-014
