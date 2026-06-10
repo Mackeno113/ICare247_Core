@@ -140,9 +140,11 @@ else
         foreach (var fs in _fieldStates) fs.Errors.Clear();
         try
         {
-            // Chỉ gửi field không readonly hiệu lực; key = FieldCode (= cột DB)
+            // Gửi mọi field trừ field THẬT SỰ read-only (server-managed). Field khóa-khi-sửa
+            // (LockOnEdit) vẫn gửi giá trị (không đổi) để qua validation required — nếu loại theo
+            // EffectiveReadOnly thì cột khóa/Mã (LockOnEdit) bị thiếu → báo "bắt buộc" dù đã có giá trị.
             var values = _fieldStates
-                .Where(fs => !fs.EffectiveReadOnly)
+                .Where(fs => !fs.IsReadOnly)
                 .ToDictionary(fs => fs.FieldCode, fs => fs.Value);
 
             var result = await MasterApi.SaveAsync(FormCode, Id, values);
