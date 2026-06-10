@@ -463,24 +463,27 @@
     {
         if (_view is null || string.IsNullOrWhiteSpace(_view.EditFormCode)) return;
         var form = _view.EditFormCode!;
-        var pkCol = _mdInfo?.PkColumn;
-        if (string.IsNullOrWhiteSpace(pkCol))
+
+        // Khóa dòng = View.Key_Field (đã có trong /data, và DataView Sửa cũng dùng nó).
+        // Fallback PkColumn của form nếu View chưa cấu hình Key_Field.
+        var idCol = !string.IsNullOrWhiteSpace(_view.KeyField) ? _view.KeyField! : _mdInfo?.PkColumn;
+        if (string.IsNullOrWhiteSpace(idCol))
         {
-            _deleteError = "Không xác định được khóa chính (PkColumn). Kiểm tra Edit_Form/Key_Field.";
+            _deleteError = "View chưa cấu hình Key_Field (khóa chính) — không xóa được. Cấu hình ở ConfigStudio.";
             return;
         }
 
         _deleteBusy = true; _deleteError = null;
         try
         {
-            // Lấy PK từng dòng đang chọn (đọc PkColumn từ ExpandoObject).
+            // Lấy khóa từng dòng đang chọn (đọc idCol từ ExpandoObject).
             var ids = new List<object>();
             foreach (var row in _selectedItems.OfType<IDictionary<string, object?>>())
             {
-                var id = GetRowValue(row, pkCol!);
+                var id = GetRowValue(row, idCol!);
                 if (id is null)
                 {
-                    _deleteError = $"Dòng thiếu giá trị khóa '{pkCol}'. Đảm bảo Key_Field = khóa chính và có trong dữ liệu.";
+                    _deleteError = $"Dòng thiếu giá trị khóa '{idCol}'. Đảm bảo Key_Field = khóa chính và có trong dữ liệu.";
                     return;
                 }
                 ids.Add(id);
