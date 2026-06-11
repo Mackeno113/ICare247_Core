@@ -1,0 +1,625 @@
+﻿@* File    : FormRunner.razor
+   Purpose : Render và chạy thử một form theo Form_Code.
+             Flow: Load metadata → FORM_LOAD event → render fields →
+             FIELD_CHANGED → apply UiDelta → submit → validate. *@
+
+@page "/form/{FormCode}"
+@inject FormApiService FormApi
+@inject RuntimeApiService RuntimeApi
+@inject LookupApiService LookupApi
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>@(FormCode) — ICare247_UI</PageTitle>
+
+@if (_loading)
+{
+    <div class="page-container">
+        <div class="loading-center">
+            <div class="spinner"></div>
+            <p>Đang tải form <strong>@FormCode</strong>...</p>
+        </div>
+    </div>
+}
+else if (_error is not null)
+{
+    <div class="page-container">
+        <div class="error-banner">
+            <strong>⚠ Lỗi:</strong> @_error
+        </div>
+        <button class="btn btn-secondary" @onclick="GoBack">← Quay lại</button>
+    </div>
+}
+else if (_form is not null)
+{
+    <div class="page-container form-runner-page" style="@FormStyleAttr">
+        @* Header *@
+        <div class="form-header">
+            <button class="btn-back" @onclick="GoBack">← Danh sách</button>
+            <div>
+                <h2>@(_form.FormName.Length > 0 ? _form.FormName : _form.FormCode)</h2>
+                <span class="meta-text">
+                    Code: <strong>@_form.FormCode</strong> |
+                    v@(_form.Version) |
+                    Platform: @_form.Platform |
+                    @(_fieldStates.Count) fields
+                </span>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary btn-sm" @onclick="ResetForm">↺ Reset</button>
+                <button class="btn btn-warning btn-sm" @onclick="InvalidateCacheAsync"
+                        disabled="@_invalidating" title="Xóa cache metadata — reload lại từ DB">
+                    @(_invalidating ? "⏳ Clearing..." : "🗑 Clear Cache")
+                </button>
+                <button class="btn btn-primary" @onclick="SubmitForm" disabled="@_submitting">
+                    @(_submitting ? "Đang kiểm tra..." : "✓ Submit & Validate")
+                </button>
+            </div>
+        </div>
+
+        @* Submit result *@
+        @if (_submitResult is not null)
+        {
+            @* NOTE: dùng biến cục bộ để tránh lồng dấu " bên trong attribute *@
+            var resultCss = _submitResult.IsValid ? "submit-result result-valid" : "submit-result result-invalid";
+            <div class="@resultCss">
+                @if (_submitResult.IsValid)
+                {
+                    <strong>✅ Form hợp lệ — tất cả rules đã pass.</strong>
+                }
+                else
+                {
+                    <strong>❌ Form có lỗi:</strong>
+                    <ul>
+                        @foreach (var pair in _submitResult.Fields)
+                        {
+                            foreach (var err in pair.Value)
+                            {
+                                @* NOTE: không dùng biến tên 'code' vì @code là Razor directive *@
+                                <li><strong>@(pair.Key)</strong>: @err.Message</li>
+                            }
+                        }
+                    </ul>
+                }
+            </div>
+        }
+
+        @* SHOW_MESSAGE banners từ EventEngine *@
+        @if (_messages.Count > 0)
+        {
+            <div class="form-messages">
+                @foreach (var msg in _messages)
+                {
+                    <div class="form-message form-message-@msg.Severity">
+                        <span>@msg.Key</span>
+                        <button class="btn-icon" @onclick="() => _messages.Remove(msg)">✕</button>
+                    </div>
+                }
+            </div>
+        }
+
+        @* Context snapshot (debug) *@
+        @if (_showDebug)
+        {
+            <div class="debug-panel">
+                <div class="debug-header">
+                    <span>📊 Context Snapshot</span>
+                    <button class="btn-icon" @onclick="HideDebug">✕</button>
+                </div>
+                <pre class="debug-json">@GetContextJson()</pre>
+            </div>
+        }
+
+        @* Form body — sections *@
+        @{
+            // Gom các section có field + nhóm orphan (field không thuộc section nào)
+            // NOTE: không dùng biến tên 'section' vì @section là Razor directive
+            var sectionGroups = _form.Sections
+                .Select(sec => new
+                {
+                    Name   = sec.SectionName,
+                    Fields = _fieldStates.Where(fs => sec.Fields.Any(f => f.FieldCode == fs.FieldCode)).ToList()
+                })
+                .Where(g => g.Fields.Count > 0)
+                .ToList();
+
+            var orphanFields = _fieldStates
+                .Where(fs => !_form.Sections.Any(s => s.Fields.Any(f => f.FieldCode == fs.FieldCode)))
+                .ToList();
+
+            // Số nhóm thực có nội dung. ≤1 → render phẳng (không khung group).
+            var groupCount = sectionGroups.Count + (orphanFields.Count > 0 ? 1 : 0);
+            var useGroups  = groupCount > 1;
+        }
+
+        <div class="form-body">
+            @if (useGroups)
+            {
+                @foreach (var grp in sectionGroups)
+                {
+                    <div class="section-card">
+                        @if (!string.IsNullOrWhiteSpace(grp.Name))
+                        {
+                            <div class="section-title">@grp.Name</div>
+                        }
+                        <div class="fields-grid" style="@GridStyleAttr">
+                            @foreach (var fs in grp.Fields)
+                            {
+                                <FieldRenderer State="fs"
+                                               OnChange="OnFieldChanged"
+                                               OnBlur="OnFieldBlur"
+                                               Context="BuildContext()"
+                                               DebugMode="DebugMode" />
+                            }
+                        </div>
+                    </div>
+                }
+                @if (orphanFields.Count > 0)
+                {
+                    <div class="section-card">
+                        <div class="section-title">Các field khác</div>
+                        <div class="fields-grid" style="@GridStyleAttr">
+                            @foreach (var fs in orphanFields)
+                            {
+                                <FieldRenderer State="fs"
+                                               OnChange="OnFieldChanged"
+                                               OnBlur="OnFieldBlur"
+                                               Context="BuildContext()"
+                                               DebugMode="DebugMode" />
+                            }
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                @* Chỉ 1 nhóm → render field phẳng, không bọc card group *@
+                <div class="fields-grid" style="@GridStyleAttr">
+                    @foreach (var fs in _fieldStates)
+                    {
+                        <FieldRenderer State="fs"
+                                       OnChange="OnFieldChanged"
+                                       OnBlur="OnFieldBlur"
+                                       Context="BuildContext()"
+                                       DebugMode="DebugMode" />
+                    }
+                </div>
+            }
+        </div>
+
+        @* Footer debug *@
+        <div class="form-footer">
+            <button class="btn-link" @onclick="ToggleDebug">
+                @(_showDebug ? "Ẩn" : "Hiện") context snapshot
+            </button>
+            <button class="btn-link" @onclick="ExportConfigJsonAsync">
+                ⬇ Export config JSON
+            </button>
+            @if (_lastDeltaCount > 0)
+            {
+                <span class="delta-badge">⚡ @_lastDeltaCount delta(s) applied</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string FormCode  { get; set; } = "";
+
+    // ?lang=vi|en — ngôn ngữ thông báo lỗi validation, default "vi"
+    [SupplyParameterFromQuery(Name = "lang")]
+    [Parameter] public string LangCode { get; set; } = "vi";
+
+    // ?debug=1 hoặc ?debug=true — Blazor router không parse bool từ "1"
+    [SupplyParameterFromQuery(Name = "debug")]
+    [Parameter] public string? DebugParam { get; set; }
+    private bool DebugMode => DebugParam is "1" or "true" or "True";
+
+    // ?recordId=N — Form mở ở chế độ Edit (record đã tồn tại). Không truyền hoặc 0 = Create mode.
+    // ADR-017: Lock_On_Edit chỉ active khi IsEditMode = true.
+    [SupplyParameterFromQuery(Name = "recordId")]
+    [Parameter] public int? RecordId { get; set; }
+    private bool IsEditMode => RecordId is > 0;
+
+    private FormMetadataDto?            _form;
+    private List<FieldState>            _fieldStates    = [];
+    private bool                        _loading        = true;
+    private string?                     _error;
+    private bool                        _submitting;
+    private bool                        _invalidating;
+    private FormValidationResponseDto?  _submitResult;
+    private bool                        _showDebug;
+    private int                         _lastDeltaCount;
+    /// <summary>Thông báo từ SHOW_MESSAGE delta — hiển thị cuối form.</summary>
+    private List<FormMessage>           _messages       = [];
+
+    /// <summary>Inline style giới hạn bề rộng form (Ui_Form.Max_Width). Trống = dùng CSS mặc định 880px.</summary>
+    private string FormStyleAttr => _form?.MaxWidth is int w && w > 0 ? $"max-width:{w}px" : "";
+
+    /// <summary>Inline var số cột lưới per-form (Ui_Form.Form_Columns). Trống = CSS mặc định 4.</summary>
+    private string GridStyleAttr => _form?.Columns is int c && c > 0 ? $"--form-cols:{c}" : "";
+
+    protected override async Task OnInitializedAsync()
+        => await LoadFormAsync();
+
+    private async Task LoadFormAsync()
+    {
+        _loading      = true;
+        _error        = null;
+        _submitResult = null;
+        _messages.Clear();
+        try
+        {
+            _form = await FormApi.GetFormAsync(FormCode);
+            if (_form is null)
+            {
+                _error = $"Form '{FormCode}' không tồn tại hoặc không tìm thấy trong tenant.";
+                return;
+            }
+
+            // Build field states từ metadata
+            // NormalizeFieldType: DB lưu 'TextBox','DateEdit',... → Renderer cần 'text','date',...
+            // ComboBox + dynamic source → "combobox" (để tách biệt khỏi static "select")
+            _fieldStates = _form.Fields.Select(f => new FieldState
+            {
+                FieldId      = f.FieldId,
+                FieldCode    = f.FieldCode.Length > 0 ? f.FieldCode : $"field_{f.FieldId}",
+                FieldType    = NormalizeFieldType(f.FieldType, f.LookupSource),
+                Label        = f.Label.Length > 0 ? f.Label : f.FieldCode,
+                IsVisible    = f.IsVisible,
+                IsReadOnly   = f.IsReadOnly,
+                IsRequired   = f.IsRequired,
+                LockOnEdit   = f.LockOnEdit,
+                IsVirtual    = f.IsVirtual,
+                IsEditMode   = IsEditMode,
+                Value        = ParseDefaultValue(f.DefaultValueJson),
+                // Default Half (2/4) khi field chưa cấu hình Col_Span → cân đối, không bị 1/4 loãng.
+                ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)2,
+                LookupSource    = f.LookupSource,
+                // Static: truyền LookupCode để load Sys_Lookup options
+                LookupCode      = f.LookupSource == "static" ? f.LookupCode : null,
+                // Dynamic: truyền config để renderer biết columns, width, v.v.
+                LookupConfig    = f.LookupSource == "dynamic" ? f.LookupConfig : null,
+                // Props JSON tĩnh — renderer tự parse theo FieldType
+                ControlPropsJson = f.ControlPropsJson,
+            }).ToList();
+
+            // Load Sys_Lookup options cho tất cả static select fields (gọi song song theo code)
+            await LoadLookupOptionsAsync();
+
+            // DEBUG: log ra console browser (F12) — xóa sau khi verify xong
+            if (DebugMode)
+            {
+                foreach (var fs in _fieldStates)
+                    await JS.InvokeVoidAsync("console.log",
+                        $"[FieldState] {fs.FieldCode} | type={fs.FieldType} | label={fs.Label} | visible={fs.IsVisible} | value={fs.Value}");
+            }
+
+            // Gửi FORM_LOAD event
+            await FireEventAsync("FORM_LOAD", null);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task OnFieldChanged((string Code, object? Value) args)
+    {
+        var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == args.Code);
+        if (fs is not null)
+        {
+            fs.Value = args.Value;
+            fs.Errors.Clear();
+        }
+        await FireEventAsync("FIELD_CHANGED", args.Code);
+        StateHasChanged();
+    }
+
+    private async Task OnFieldBlur(string fieldCode)
+    {
+        var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
+        if (fs is null) return;
+
+        // Snapshot value trước khi gọi API — tránh race condition với ValueChanged:
+        // nếu user vừa chọn (ValueChanged chưa kịp fire), validate sẽ dùng giá trị cũ.
+        // Sau khi API trả về, chỉ apply errors nếu value chưa thay đổi.
+        var valueSnapshot = fs.Value;
+
+        var result = await RuntimeApi.ValidateFieldAsync(
+            FormCode, fieldCode, valueSnapshot, BuildContext(), LangCode);
+
+        // Bỏ qua kết quả nếu giá trị đã thay đổi trong lúc chờ API
+        if (!Equals(fs.Value, valueSnapshot)) return;
+
+        fs.Errors = result.Errors.Select(e => e.Message).ToList();
+        StateHasChanged();
+    }
+
+    private async Task SubmitForm()
+    {
+        _submitting   = true;
+        _submitResult = null;
+        try
+        {
+            await FireEventAsync("FORM_SUBMIT", null);
+            _submitResult = await RuntimeApi.ValidateFormAsync(FormCode, BuildContext(), LangCode);
+
+            foreach (var fs in _fieldStates)
+            {
+                fs.Errors = _submitResult.Fields.TryGetValue(fs.FieldCode, out var errs)
+                    ? errs.Select(e => e.Message).ToList()
+                    : [];
+            }
+
+            // Focus field đầu tiên có lỗi để user biết cần sửa gì
+            if (!_submitResult.IsValid)
+            {
+                var firstError = _fieldStates.FirstOrDefault(f => f.Errors.Count > 0);
+                if (firstError is not null)
+                    await JS.InvokeVoidAsync("icare.focusField", firstError.FieldCode);
+            }
+        }
+        catch (Exception ex)
+        {
+            _submitResult = new FormValidationResponseDto
+            {
+                IsValid = false,
+                Fields  = new() { ["_error"] = [new ValidationItemDto { Message = ex.Message }] }
+            };
+        }
+        finally { _submitting = false; }
+    }
+
+    private async Task ResetForm() => await LoadFormAsync();
+
+    /// <summary>
+    /// Xóa cache metadata của form (L1 + L2) rồi reload lại.
+    /// Dùng sau khi thay đổi i18n resource hoặc cấu hình field trong ConfigStudio.
+    /// </summary>
+    /// <remarks>
+    /// Sự kiện theo sau: gọi LoadFormAsync() → fetch lại metadata mới nhất từ DB.
+    /// </remarks>
+    private async Task InvalidateCacheAsync()
+    {
+        if (_invalidating) return;
+        _invalidating = true;
+        try
+        {
+            await FormApi.InvalidateCacheAsync(FormCode);
+            await LoadFormAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Clear cache thất bại: {ex.Message}";
+        }
+        finally
+        {
+            _invalidating = false;
+        }
+    }
+
+    private void GoBack()     => Nav.NavigateTo("/");
+    private void ToggleDebug() => _showDebug = !_showDebug;
+    private void HideDebug()  => _showDebug = false;
+
+    private string GetContextJson()
+        => System.Text.Json.JsonSerializer.Serialize(
+               BuildContext(),
+               new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    // ── Helpers ──────────────────────────────────────────────
+
+    private async Task FireEventAsync(string eventType, string? sourceField)
+    {
+        try
+        {
+            var response = await RuntimeApi.HandleEventAsync(
+                FormCode, eventType, sourceField, BuildContext());
+            _lastDeltaCount = response.Delta.Count;
+            await ApplyDeltasAsync(response.Delta);
+        }
+        catch
+        {
+            _lastDeltaCount = 0;
+        }
+        // Luôn re-render sau event dù không có delta — state có thể đã thay đổi
+        StateHasChanged();
+    }
+
+    private async Task ApplyDeltasAsync(IEnumerable<UiDeltaDto> deltas)
+    {
+        // Gom các field cần TRIGGER_VALIDATION để validate sau khi apply xong tất cả delta
+        var fieldsToValidate = new List<string>();
+
+        foreach (var delta in deltas)
+        {
+            // Một số action không cần FieldCode (SHOW_MESSAGE form-level)
+            var action = delta.Action.ToUpper();
+
+            // SHOW_MESSAGE có thể không có FieldCode (thông báo form-level)
+            if (action == "SHOW_MESSAGE")
+            {
+                var key      = delta.Data.TryGetValue("messageKey", out var mk) ? mk?.ToString() : null;
+                var severity = delta.Data.TryGetValue("severity",   out var sv) ? sv?.ToString() : "info";
+                if (!string.IsNullOrWhiteSpace(key))
+                    _messages.Add(new FormMessage(key!, severity ?? "info"));
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(delta.FieldCode)) continue;
+
+            var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == delta.FieldCode);
+            if (fs is null) continue;
+
+            switch (action)
+            {
+                case "SET_VALUE":
+                    if (delta.Data.TryGetValue("value", out var v))
+                        fs.Value = v;
+                    break;
+
+                case "SET_VISIBLE":
+                    if (delta.Data.TryGetValue("visible", out var vis))
+                        fs.IsVisible = ToBool(vis);
+                    break;
+
+                case "SET_REQUIRED":
+                    if (delta.Data.TryGetValue("required", out var req))
+                        fs.IsRequired = ToBool(req);
+                    break;
+
+                case "SET_READONLY":
+                    if (delta.Data.TryGetValue("readOnly", out var ro))
+                        fs.IsReadOnly = ToBool(ro);
+                    break;
+
+                // ADR-017: SET_ENABLED bị bỏ. Dùng SET_READONLY hoặc SET_VISIBLE thay thế.
+                // Giữ alias backward-compat: ánh xạ sang SET_READONLY (enabled=false → readOnly=true).
+                case "SET_ENABLED":
+                    if (delta.Data.TryGetValue("enabled", out var en))
+                        fs.IsReadOnly = !ToBool(en);
+                    break;
+
+                case "CLEAR_VALUE":
+                    fs.Value = null;
+                    fs.Errors.Clear();
+                    break;
+
+                case "RELOAD_OPTIONS":
+                    // Cascade reload — lookupCode trong Data ghi đè code mặc định của field
+                    var newCode = delta.Data.TryGetValue("lookupCode", out var lc)
+                        ? lc?.ToString()
+                        : fs.LookupCode;
+                    if (!string.IsNullOrWhiteSpace(newCode))
+                        await ReloadFieldOptionsAsync(fs, newCode);
+                    break;
+
+                case "TRIGGER_VALIDATION":
+                    // Gom lại, validate sau khi apply xong tất cả delta
+                    fieldsToValidate.Add(delta.FieldCode);
+                    break;
+            }
+        }
+
+        // Validate các field được yêu cầu (sau khi apply xong toàn bộ delta)
+        foreach (var fieldCode in fieldsToValidate)
+        {
+            var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == fieldCode);
+            if (fs is null) continue;
+
+            var result = await RuntimeApi.ValidateFieldAsync(
+                FormCode, fieldCode, fs.Value, BuildContext(), LangCode);
+            fs.Errors = result.Errors.Select(e => e.Message).ToList();
+        }
+    }
+
+    /// <summary>Reload options cho 1 field cụ thể (dùng sau RELOAD_OPTIONS delta).</summary>
+    private async Task ReloadFieldOptionsAsync(FieldState fs, string lookupCode)
+    {
+        fs.Options = await LookupApi.GetOptionsAsync(lookupCode);
+        StateHasChanged();
+    }
+
+    private static bool ToBool(object? v)
+        => v is bool b ? b : bool.TryParse(v?.ToString(), out var r) && r;
+
+    /// <summary>Thông báo từ SHOW_MESSAGE delta.</summary>
+    private sealed record FormMessage(string Key, string Severity);
+
+    /// <summary>
+    /// Snapshot context toàn form — dùng để gửi lên API.
+    /// ADR-017: ReadOnly/LockOnEdit fields VẪN submit (giữ giá trị hiện tại).
+    /// </summary>
+    private Dictionary<string, object?> BuildContext()
+        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+
+    private static object? ParseDefaultValue(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        var trimmed = json.Trim();
+        if (trimmed.StartsWith('"') && trimmed.EndsWith('"'))
+            return trimmed[1..^1];
+        if (bool.TryParse(trimmed, out var b)) return b;
+        if (double.TryParse(trimmed, out var d)) return d;
+        return trimmed;
+    }
+
+    /// <summary>
+    /// Load Sys_Lookup options cho tất cả static select fields.
+    /// Gọi song song theo LookupCode — mỗi code chỉ gọi API 1 lần.
+    /// </summary>
+    private async Task LoadLookupOptionsAsync()
+    {
+        // Lấy tất cả code cần load (loại bỏ null/empty + duplicate)
+        var codes = _fieldStates
+            .Where(fs => !string.IsNullOrWhiteSpace(fs.LookupCode))
+            .Select(fs => fs.LookupCode!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (codes.Count == 0) return;
+
+        // Gọi song song
+        var optionsMap = await LookupApi.GetOptionsBatchAsync(codes);
+
+        // Gán options vào từng field state theo LookupCode
+        foreach (var fs in _fieldStates)
+        {
+            if (!string.IsNullOrWhiteSpace(fs.LookupCode)
+                && optionsMap.TryGetValue(fs.LookupCode, out var opts))
+                fs.Options = opts;
+        }
+    }
+
+    /// <summary>
+    /// Chuyển Editor_Type từ DB sang lowercase type mà FieldRenderer dùng.
+    /// DB value → Renderer type:
+    ///   TextBox/Text  → text     | TextArea         → textarea
+    ///   NumberEdit    → number   | DateEdit         → date
+    ///   DateTimeEdit  → datetime | CheckBox/Toggle  → bool
+    ///   LookupComboBox/RadioGroup/Select            → select  (Sys_Lookup static)
+    ///   ComboBox + LookupSource="static"            → select  (Sys_Lookup static)
+    ///   ComboBox + LookupSource="dynamic"           → combobox (dynamic Table/TVF/SQL)
+    ///   LookupBox                                   → fklookup (FK popup grid)
+    /// </summary>
+    private static string NormalizeFieldType(string dbType, string? lookupSource)
+        => dbType.ToLower() switch
+    {
+        "textbox"    or "text"                                          => "text",
+        "textarea"   or "memo"                                          => "textarea",
+        "numberedit" or "number" or "numericbox"                        => "number",
+        "dateedit"   or "date"   or "datepicker"                        => "date",
+        "datetimeedit" or "datetime" or "datetimepicker"                => "datetime",
+        "checkbox"   or "bool"                                          => "bool",
+        "toggleswitch" or "toggle"                                      => "switch",
+        // ComboBox: dynamic → "combobox", static → "select"
+        "combobox"   => lookupSource == "dynamic" ? "combobox" : "select",
+        "select"     or "lookupedit"
+            or "dropdown" or "multiselect"
+            or "radiogroup" or "lookupcombobox"                         => "select",
+        // LookupBox = FK popup grid
+        "lookupbox"                                                     => "fklookup",
+        // TreeLookupBox = dropdown cây expand/collapse
+        "treelookupbox" or "treelookup"                                 => "treelookup",
+        _                                                               => "text"
+    };
+
+    // ── Export config ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Serialize toàn bộ FormMetadataDto → JSON rồi trigger download file
+    /// {FormCode}_config.json để tiện kiểm tra cấu hình.
+    /// </summary>
+    private async Task ExportConfigJsonAsync()
+    {
+        if (_form is null) return;
+
+        var json = System.Text.Json.JsonSerializer.Serialize(_form,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+        var filename = $"{_form.FormCode}_config.json";
+        await JS.InvokeVoidAsync("icare.downloadJson", filename, json);
+    }
+}

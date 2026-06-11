@@ -1,0 +1,487 @@
+@* File    : LookupBoxRenderer.razor
+   Purpose : Render FK dynamic LookupBox — popup grid để chọn từ data source.
+             Dùng cho Editor_Type = LookupBox + LookupSource = dynamic.
+             Hỗ trợ 3 EditBox modes: TextOnly / CodeAndName / Custom.
+             Popup hiển thị bảng dữ liệu với các cột từ PopupColumnsJson (nếu có).
+             Cascade reload khi ReloadTriggerField thay đổi. *@
+
+@using System.Text.Json.Serialization
+@inject ILookupQueryService LookupQuerySvc
+
+<div class="lookupbox-wrapper">
+    @* ── Search input trực tiếp trên control ── *@
+    <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")">
+        <input type="text"
+               class="lookupbox-search-input"
+               placeholder="-- Chọn --"
+               value="@_inputText"
+               disabled="@(State?.EffectiveReadOnly == true)"
+               @oninput="OnSearchInput"
+               @onfocus="OnFocus"
+               @onblur="OnInputBlur"
+               @onkeydown="OnKeyDown" />
+        @if (State?.EffectiveReadOnly != true && !string.IsNullOrEmpty(State?.ValueString))
+        {
+            <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="Xóa">✕</button>
+        }
+        <button class="lookupbox-btn" @onclick="TogglePopup"
+                disabled="@(State?.EffectiveReadOnly == true)"
+                title="Mở danh sách">▼</button>
+    </div>
+
+    @* ── Dropdown list ── *@
+    @if (_popupVisible)
+    {
+        <div class="lookupbox-popup" style="width:@(State?.LookupConfig?.DropDownWidth ?? 400)px">
+            @if (_loading)
+            {
+                <div class="popup-loading">⏳ Đang tải dữ liệu...</div>
+            }
+            else if (_loadError is not null)
+            {
+                <div class="popup-error">⚠ @_loadError</div>
+            }
+            else if (FilteredRows.Count == 0)
+            {
+                <div class="popup-empty">Không tìm thấy kết quả</div>
+            }
+            else
+            {
+                        @* Header tiêu đề *@
+                @if (!string.IsNullOrWhiteSpace(State?.Label))
+                {
+                    <div class="popup-list-header">@State.Label</div>
+                }
+                <div class="popup-list" style="max-height:@(State?.LookupConfig?.DropDownHeight ?? 300)px">
+                    @{ var _rowIdx = 0; }
+                    @foreach (var row in FilteredRows)
+                    {
+                        var rowVal   = GetVal(row);
+                        var isActive = _rowIdx == _highlightIndex;
+                        <div class="popup-list-item @(State?.ValueString == rowVal ? "selected" : "") @(isActive ? "highlight" : "")"
+                             @onmousedown="() => SelectRow(row)">
+                            @GetRowDisplayText(row)
+                        </div>
+                        _rowIdx++;
+                    }
+                </div>
+            }
+
+            @* ── Footer: nút thêm mới (khi AllowAddNew) ── *@
+            @if (CanAddNew)
+            {
+                <div class="popup-addnew"
+                     @onmousedown="OpenAddDialog"
+                     @onmousedown:preventDefault="true">
+                    ➕ Thêm mới@(string.IsNullOrWhiteSpace(_searchText) ? "" : $" \"{_searchText}\"")
+                </div>
+            }
+        </div>
+        <div class="lookupbox-overlay" @onclick="ClosePopup"></div>
+    }
+
+    @* ── Dialog thêm mới entity ── *@
+    @if (_showAddDialog && State?.LookupConfig?.AddFormCode is { Length: > 0 } addFormCode)
+    {
+        <LookupAddDialog FormCode="@addFormCode"
+                         FieldId="State.FieldId"
+                         OnSaved="OnAddSaved"
+                         OnClose="CloseAddDialog" />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldState?                                 State    { get; set; }
+    [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter]                 public EventCallback<string>                       OnBlur   { get; set; }
+    [Parameter]                 public Dictionary<string, object?>                 Context  { get; set; } = [];
+
+    private bool    _popupVisible;
+    private bool    _loading;
+    private string? _loadError;
+    private string  _searchText  = "";
+    private string  _inputText   = "";   // text hiển thị trong input (display value hoặc search term)
+    private object? _lastTriggerValue;
+    private int     _highlightIndex = -1; // index dòng đang được highlight để chọn bằng Enter / phím mũi tên
+    private bool    _showAddDialog;       // mở dialog "thêm mới" entity
+
+    /// <summary>True khi field bật AllowAddNew + có AddFormCode hợp lệ + không readonly.</summary>
+    private bool CanAddNew =>
+        State?.EffectiveReadOnly != true
+        && State?.LookupConfig?.AllowAddNew == true
+        && !string.IsNullOrWhiteSpace(State?.LookupConfig?.AddFormCode);
+
+    // ── Popup columns từ PopupColumnsJson ────────────────────────────────────
+
+    private List<PopupColDef> _popupColumns = [];
+
+    private List<PopupColDef> PopupColumns
+    {
+        get
+        {
+            if (_popupColumns.Count > 0) return _popupColumns;
+            _popupColumns = ParsePopupColumns();
+            return _popupColumns;
+        }
+    }
+
+    private List<PopupColDef> ParsePopupColumns()
+    {
+        var json = State?.LookupConfig?.PopupColumnsJson;
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            // Fallback: chỉ hiển thị DisplayColumn
+            var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+            var displayKey = ExtractColumnKey(displayCol);
+            return [new PopupColDef { Column = displayKey, Title = displayKey }];
+        }
+
+        try
+        {
+            var opts = new System.Text.Json.JsonSerializerOptions
+                { PropertyNameCaseInsensitive = true };
+            return System.Text.Json.JsonSerializer
+                .Deserialize<List<PopupColDef>>(json, opts) ?? [];
+        }
+        catch { return []; }
+    }
+
+    // ── Filtered rows (search) ────────────────────────────────────────────────
+
+    private List<Dictionary<string, object?>> FilteredRows
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_searchText))
+                return State?.DynamicRows ?? [];
+
+            var term = _searchText.ToLower();
+            var displayCol = ExtractColumnKey(State?.LookupConfig?.DisplayColumn ?? "");
+            return (State?.DynamicRows ?? [])
+                .Where(r => GetColValue(r, displayCol).ToLower().Contains(term))
+                .ToList();
+        }
+    }
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State is null) return;
+
+        var triggerField = State.LookupConfig?.ReloadTriggerField;
+        var currentTriggerValue = !string.IsNullOrWhiteSpace(triggerField)
+            && Context.TryGetValue(triggerField, out var tv) ? tv : null;
+
+        var needsLoad = State.DynamicRows.Count == 0
+            || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
+
+        if (needsLoad)
+        {
+            _lastTriggerValue = currentTriggerValue;
+            // Clear giá trị đã chọn khi data source thay đổi (cascading)
+            if (State.DynamicRows.Count > 0)
+                await ClearValue();
+            await LoadDataAsync();
+        }
+    }
+
+    private async Task LoadDataAsync()
+    {
+        if (State is null) return;
+
+        _loading   = true;
+        _loadError = null;
+        _popupColumns = []; // reset columns cache
+
+        try
+        {
+            State.DynamicRows = await LookupQuerySvc.QueryAsync(State.FieldId, Context);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            State.DynamicRows = [];
+        }
+        finally { _loading = false; }
+    }
+
+    // ── UI Interactions ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Mở/đóng dropdown. Load data nếu chưa có.
+    /// Sự kiện theo sau: _popupVisible thay đổi → UI render dropdown list.
+    /// </summary>
+    private async Task TogglePopup()
+    {
+        if (State?.EffectiveReadOnly == true) return;
+        _popupVisible = !_popupVisible;
+
+        if (_popupVisible)
+        {
+            _searchText = "";
+            if (State?.DynamicRows.Count == 0 && !_loading)
+                await LoadDataAsync();
+        }
+        else
+        {
+            // Đóng → khôi phục display text của giá trị đang chọn
+            _inputText  = GetSelectedDisplay();
+            _searchText = "";
+        }
+    }
+
+    /// <summary>
+    /// Khi input được focus: xóa display text để user gõ tìm kiếm, mở dropdown.
+    /// Sự kiện theo sau: _popupVisible = true, _inputText rỗng để gõ filter.
+    /// </summary>
+    private async Task OnFocus()
+    {
+        if (State?.EffectiveReadOnly == true) return;
+        _inputText    = "";
+        _searchText   = "";
+        _popupVisible = true;
+
+        if (State?.DynamicRows.Count == 0 && !_loading)
+            await LoadDataAsync();
+    }
+
+    /// <summary>
+    /// Khi input mất focus: đóng dropdown, khôi phục display text.
+    /// Dùng onblur — SelectRow dùng onmousedown để chạy trước blur.
+    /// </summary>
+    private void OnInputBlur()
+    {
+        // Delay nhỏ để SelectRow (onmousedown) kịp chạy trước khi đóng popup
+        _popupVisible = false;
+        _searchText   = "";
+        _inputText    = GetSelectedDisplay();
+    }
+
+    private void ClosePopup()
+    {
+        _popupVisible = false;
+        _searchText   = "";
+        _inputText    = GetSelectedDisplay();
+        _highlightIndex = -1;
+    }
+
+    /// <summary>
+    /// Mở dialog thêm mới: đóng popup list, hiện modal LookupAddDialog.
+    /// Sự kiện theo sau: _showAddDialog = true → render LookupAddDialog.
+    /// </summary>
+    private void OpenAddDialog()
+    {
+        _popupVisible   = false;
+        _searchText     = "";
+        _highlightIndex = -1;
+        _showAddDialog  = true;
+    }
+
+    private void CloseAddDialog() => _showAddDialog = false;
+
+    /// <summary>
+    /// Sau khi dialog lưu thành công: reload data source để có bản ghi mới rồi auto-select.
+    /// Sự kiện theo sau: State.Value = id mới, OnChange + OnBlur fire để form cập nhật.
+    /// </summary>
+    private async Task OnAddSaved((string? Value, string? Display) res)
+    {
+        _showAddDialog = false;
+        if (State is null || string.IsNullOrEmpty(res.Value)) return;
+
+        await LoadDataAsync();            // nạp lại để dropdown có bản ghi mới
+        State.Value = res.Value;
+        var display = GetSelectedDisplay();
+        _inputText  = string.IsNullOrEmpty(display) || display == res.Value
+                      ? (res.Display ?? res.Value)
+                      : display;
+
+        await OnChange.InvokeAsync((State.FieldCode, (object?)res.Value));
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    /// <summary>
+    /// Chọn 1 row trong dropdown.
+    /// Sự kiện theo sau: đóng dropdown, cập nhật State.Value, raise OnChange + OnBlur.
+    /// </summary>
+    private async Task SelectRow(Dictionary<string, object?> row)
+    {
+        if (State is null) return;
+
+        var val = GetVal(row);
+        State.Value = val;
+        _inputText  = GetSelectedDisplay();
+        _popupVisible = false;
+        _searchText   = "";
+        _highlightIndex = -1;
+
+        await OnChange.InvokeAsync((State.FieldCode, val));
+        await OnBlur.InvokeAsync(State.FieldCode);
+    }
+
+    /// <summary>
+    /// Xóa giá trị đang chọn.
+    /// Sự kiện theo sau: State.Value = null, input hiện placeholder.
+    /// </summary>
+    private async Task ClearValue()
+    {
+        if (State is null) return;
+        State.Value = null;
+        _inputText  = "";
+        _searchText = "";
+        await OnChange.InvokeAsync((State.FieldCode, null));
+    }
+
+    /// <summary>
+    /// User gõ vào input → filter dropdown theo text đang nhập.
+    /// Sự kiện theo sau: FilteredRows re-evaluate → dropdown cập nhật.
+    /// </summary>
+    private void OnSearchInput(ChangeEventArgs e)
+    {
+        _inputText  = e.Value?.ToString() ?? "";
+        _searchText = _inputText;
+        _popupVisible = true;
+        // Khi gõ mới: highlight dòng kết quả đầu tiên để Enter chọn ngay
+        _highlightIndex = FilteredRows.Count > 0 ? 0 : -1;
+    }
+
+    /// <summary>
+    /// Điều hướng dropdown bằng bàn phím: ↓/↑ di chuyển highlight, Enter chọn dòng đang highlight,
+    /// Escape đóng popup. Nếu chưa highlight dòng nào, Enter chọn kết quả đầu tiên.
+    /// Sự kiện theo sau: SelectRow (Enter) hoặc ClosePopup (Escape) hoặc cập nhật _highlightIndex.
+    /// </summary>
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (State?.EffectiveReadOnly == true) return;
+
+        var rows = FilteredRows;
+
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (!_popupVisible)
+                {
+                    _popupVisible = true;
+                    if (rows.Count == 0 && !_loading) { await LoadDataAsync(); rows = FilteredRows; }
+                }
+                if (rows.Count > 0)
+                    _highlightIndex = Math.Min(_highlightIndex + 1, rows.Count - 1);
+                break;
+
+            case "ArrowUp":
+                if (_popupVisible && rows.Count > 0)
+                    _highlightIndex = Math.Max(_highlightIndex - 1, 0);
+                break;
+
+            case "Enter":
+                if (_popupVisible && rows.Count > 0)
+                {
+                    var idx = _highlightIndex >= 0 && _highlightIndex < rows.Count ? _highlightIndex : 0;
+                    await SelectRow(rows[idx]);
+                }
+                break;
+
+            case "Escape":
+                ClosePopup();
+                break;
+        }
+    }
+
+    // ── Sync inputText khi State thay đổi từ bên ngoài ──────────────────────
+
+    protected override void OnParametersSet()
+    {
+        // Khi State được set/thay đổi mà popup đang đóng → sync display text
+        if (!_popupVisible)
+            _inputText = GetSelectedDisplay();
+    }
+
+    // ── Value / Display helpers ───────────────────────────────────────────────
+
+    private string GetVal(Dictionary<string, object?> row)
+        => GetColValue(row, State?.LookupConfig?.ValueColumn ?? "");
+
+    private string GetSelectedDisplay()
+    {
+        var displayCol = State?.LookupConfig?.DisplayColumn ?? "";
+        var selectedVal = State?.ValueString ?? "";
+        var valueCol = State?.LookupConfig?.ValueColumn ?? "";
+        var row = (State?.DynamicRows ?? [])
+            .FirstOrDefault(r => GetColValue(r, valueCol) == selectedVal);
+        return row is not null ? GetColValue(row, displayCol) : selectedVal;
+    }
+
+    private string GetSelectedCode()
+    {
+        var codeField = State?.LookupConfig?.CodeField ?? "";
+        if (string.IsNullOrWhiteSpace(codeField)) return State?.ValueString ?? "";
+        var selectedVal = State?.ValueString ?? "";
+        var valueCol    = State?.LookupConfig?.ValueColumn ?? "";
+        var row = (State?.DynamicRows ?? [])
+            .FirstOrDefault(r => GetColValue(r, valueCol) == selectedVal);
+        return row is not null ? GetColValue(row, codeField) : selectedVal;
+    }
+
+    /// <summary>
+    /// Text hiển thị cho mỗi item trong dropdown list.
+    /// Nếu có nhiều cột popup → ghép lại bằng " | "; ngược lại chỉ dùng DisplayColumn.
+    /// </summary>
+    private string GetRowDisplayText(Dictionary<string, object?> row)
+    {
+        var cols = PopupColumns;
+        if (cols.Count <= 1)
+            return GetColValue(row, State?.LookupConfig?.DisplayColumn ?? "");
+
+        return string.Join("  |  ", cols.Select(c => GetColValue(row, c.Column))
+                                        .Where(v => !string.IsNullOrEmpty(v)));
+    }
+
+    private static string GetColValue(Dictionary<string, object?> row, string col)
+    {
+        if (string.IsNullOrWhiteSpace(col)) return "";
+        // Expression có alias (VD: "CONCAT(a, b) TenHienThi") → dùng alias làm key
+        var key = ExtractColumnKey(col);
+        var kv  = row.FirstOrDefault(p => p.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        return kv.Value?.ToString() ?? "";
+    }
+
+    /// <summary>
+    /// Trích key thực tế để lookup trong result dictionary.
+    /// "CONCAT(MaTinh, ' - ', TenTinh) AS TenTinh" → "TenTinh"  (AS alias)
+    /// "CONCAT(MaTinh, ' - ', TenTinh) TenTinh"    → "TenTinh"  (implicit alias)
+    /// "TenTinh"                                    → "TenTinh"  (identifier đơn)
+    /// </summary>
+    private static string ExtractColumnKey(string col)
+    {
+        var trimmed = col.Trim();
+
+        // Kiểm tra pattern "... AS aliasName" (case-insensitive)
+        var asMatch = System.Text.RegularExpressions.Regex.Match(
+            trimmed, @"\bAS\s+(\w+)\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (asMatch.Success)
+            return asMatch.Groups[1].Value;
+
+        // Nếu có dấu '(' → là expression → lấy token cuối cùng sau dấu ngoặc làm alias
+        if (trimmed.Contains('('))
+        {
+            var lastSpace = trimmed.LastIndexOf(' ');
+            if (lastSpace >= 0)
+                return trimmed[(lastSpace + 1)..].Trim();
+        }
+
+        return trimmed;
+    }
+
+    // ── Inner types ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Ánh xạ JSON từ WPF ConfigStudio (keys: fieldName / caption / width)
+    /// sang C# object để render cột trong popup grid.
+    /// </summary>
+    private sealed class PopupColDef
+    {
+        [JsonPropertyName("fieldName")] public string Column { get; set; } = "";
+        [JsonPropertyName("caption")]   public string Title  { get; set; } = "";
+        [JsonPropertyName("width")]     public int    Width  { get; set; }
+    }
+}

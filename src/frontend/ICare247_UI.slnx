@@ -1,0 +1,5 @@
+<Solution>
+  <Folder Name="/web/">
+    <Project Path="ICare247_UI/ICare247_UI.csproj" />
+  </Folder>
+</Solution>
