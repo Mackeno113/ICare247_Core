@@ -43,14 +43,23 @@ cache hybrid, JWT/multi-tenant, logging.
 ### ADR-012: Thay hẳn Design Tokens sang palette ERP
 - **Context:** Bộ tokens cũ theo brand "I Care 24/7" — Colorful/Playful (Coral/Violet/Teal),
   không hợp ERP nghiêm túc.
-- **Decision:** **Thay hoàn toàn** `docs/design-system/tokens.css` bằng palette ERP:
-  Primary `#1E3A5F`, Secondary `#2E7D32`, Accent `#F59E0B`, nền `#F5F7FA`, card `#FFFFFF`,
-  border `#E5E7EB`. Font đổi sang Inter.
-- **Reason:** Phong cách mục tiêu là Odoo / SAP Fiori / Oracle Fusion — trung tính, đặc
-  data. Blazor frontend còn sơ khai nên chi phí thay tokens ~0.
-- **Phong cách:** ERP first, Data first, form đơn giản, bo góc nhẹ, đổ bóng tiết chế.
-- **Trạng thái (2026-06-09):** `tokens.css` ERP đã áp dụng vào `wwwroot/css/` của
-  `ICare247.Blazor.RuntimeCheck`. Chưa wire `--dx-*` override (BE-004 còn pending).
+- **Decision:** **Thay hoàn toàn** `docs/design-system/tokens.css` bằng palette ERP trung
+  tính, font Inter, bo góc nhẹ, bóng tiết chế. Phong cách Odoo / SAP Fiori / Oracle Fusion.
+- **Reason:** ERP first, Data first; Blazor frontend còn sơ khai nên chi phí thay tokens ~0.
+- **Cập nhật (2026-06-11) — chốt theme DevExpress + accent (commit `5fc36c4`):**
+  - **Theme = DevExpress Fluent Light** (default mới của DX, gói `DevExpress.Blazor.Themes.Fluent`),
+    thay `blazing-berry` (tím). Lắp **4 file modular** đúng thứ tự: `global → core →
+    modes/light → accents/blue` (file `bootstrap/fluent-light.bs5` thiếu `core.min.css` →
+    vỡ layout grid, **không** dùng).
+  - **Accent = xanh Fluent `#0F6CBD`** (thay navy `#1E3A5F` dự kiến ban đầu). Token
+    `--color-primary` của app đồng bộ xanh này để nút/badge/input khớp control DX → một tông.
+  - **Bỏ hướng override `--dx-*` / `--bs-primary`:** đối chiếu trực tiếp DLL theme — biến
+    `--dx-*` **không tồn tại**, màu berry bị **nướng cứng** vào ~50 biến `--dxbl-*`. Để Fluent
+    tự lo accent. **Đổi màu / dark mode về sau = thay 1 file** (`accents/*` 11 màu, `modes/*`).
+  - Palette phụ giữ nguyên: Secondary `#2E7D32`, Accent-amber `#F59E0B`, Danger `#C62828`,
+    nền `#F5F7FA`, card `#FFFFFF`, border `#E5E7EB`.
+- **Trạng thái:** ✅ Đã áp dụng vào `wwwroot/css/` của `ICare247.Blazor.RuntimeCheck`
+  (verify chạy thật OK). **BE-004 (`--dx-*` override) đóng** — không còn cần.
 
 ### ADR-013: Domain chuyển sang nông nghiệp / thương mại
 - **Context:** Domain gốc là y tế (ví dụ `patient_name`, `BloodType` trong spec/agent).
@@ -85,9 +94,9 @@ Tất cả điểm xác minh ban đầu đã được giải quyết:
 
 | Điểm xác minh | Trạng thái |
 |---|---|
-| DevExpress Blazor cài + license | ✅ Xác nhận (session 15) — nâng cấp 24.2→25.2.3, theme `blazing-berry.bs5.min.css` |
+| DevExpress Blazor cài + license | ✅ Xác nhận (session 15) — 24.2→25.2.3. **Theme: Fluent Light** (đổi từ blazing-berry, 2026-06-11) |
 | FormRunner render form đa loại field | ✅ 8 renderer đầy đủ: TextBox, Memo, CheckBox, Numeric, DatePicker, Select, LookupBox, TreePicker |
-| Tên biến `--dx-*` trong tokens | 🔴 Chưa wire — BE-004 còn pending |
+| Tên biến `--dx-*` trong tokens | ✅ Bỏ hẳn — Fluent tự lo accent (DLL không có `--dx-*`); BE-004 đóng |
 | Master-detail giao dịch ERP | 🔴 Cần template riêng — Phase 0 còn thiếu (ROADMAP Phase 0) |
 | Tab phức tạp / tính toán liên field | ✅ Hạ tầng sẵn: Ui_Tab (migration 005), EventEngine (6 action), AST engine 25 hàm |
 

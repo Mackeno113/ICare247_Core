@@ -1,6 +1,40 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-10 (session 44 — Test Grid + Grid UX + bug DxGrid + WPF config cột)
+> Cập nhật: 2026-06-11 (session 45 — đổi theme DevExpress sang Fluent Light + accent xanh)
+
+## Session 45 (2026-06-11) — đã làm
+
+### Theme DevExpress: blazing-berry (tím) → Fluent Light (commit `5fc36c4`)
+- **Bối cảnh:** task "thay đổi phong cách" (ADR-012) mới làm nửa — `tokens.css` đã palette ERP
+  nhưng `app.css` vẫn theme tím `#7c3aed`/`#845EF7`, và DxGrid vẫn berry tím `#5f368d`.
+- **Điều tra (đối chiếu trực tiếp DLL theme trong NuGet cache):**
+  - Khối map `--dx-*` trong tokens.css là **code chết** — blazing-berry v25.2.3 KHÔNG có biến
+    `--dx-color-*`/`--dx-grid-*`. Theme dùng tiền tố `--dxbl-*`, đặt NGAY trên selector component.
+  - Màu berry `#5f368d` **nướng cứng vào ~50 biến `--dxbl-*`** (checkbox, button, grid-focus,
+    calendar, tabs, pager…) → override `--bs-primary` không đủ, phải đập từng cái.
+  - **`office-white`** accent cam hardcode (cùng vấn đề). **`bootstrap-external`** dùng
+    `var(--bs-primary)` (đổi 1 biến) nhưng cần thêm Bootstrap 5.
+  - **Phát hiện theme Fluent** (gói `DevExpress.Blazor.Themes.Fluent` đã cài sẵn): default mới
+    của DX, 11 accent + dark mode, **dễ đổi màu**. → chọn **Fluent Light, accent xanh mặc định**.
+- **Bẫy đã sửa:** link `bootstrap/fluent-light.bs5.min.css` (332KB) **thiếu `core.min.css`**
+  (1.36MB chứa layout grid) → grid vỡ, icon filter khổng lồ, text trợ năng lộ ra. Fluent là
+  theme **lắp 4 file**: `global → core → modes/light → accents/blue` (đúng template DX).
+- **Thay đổi (5 file):**
+  - `index.html`: 4 link Fluent modular thay 1 link blazing-berry.
+  - `csproj`: thêm `PackageReference DevExpress.Blazor.Themes.Fluent` 25.2.3.
+  - `app.css`: viết lại dùng token ERP; **gỡ sạch** override ép navy (`--bs-primary` + `.dxbl-grid`).
+  - `tokens.css` (2 bản docs + wwwroot): bỏ khối `--dx-*` chết; thêm token `--input-*`/`--font-body`;
+    accent `--color-primary` đổi navy `#1E3A5F` → **xanh Fluent `#0F6CBD`** cho đồng bộ.
+- **Đổi theme về sau = thay 1 file**: `accents/*.min.css` (11 màu: steel/storm/cool-blue… cho tông
+  navy-ERP) hoặc `modes/dark.min.css`. KHÔNG override `--dxbl-*` thủ công nữa.
+- Build RuntimeCheck **0 error**. Verify chạy thật OK (user xác nhận).
+- **Docs:** cập nhật `docs/spec/09_ERP_DIRECTION.md` ADR-012 (theme Fluent + accent xanh, BE-004 đóng).
+
+### Tồn đọng / lưu ý
+- ADR-012 giờ accent **xanh Fluent** (không phải navy như ghi ban đầu). Nếu muốn tông navy-ERP →
+  thay `accents/blue.min.css` bằng `steel`/`storm`/`cool-blue` (1 dòng).
+- `tokens.css` navy cũ (`#1E3A5F`) đã thay xanh; các file khác (`README.md` design-system,
+  `design-agent.md`) vẫn còn mô tả cũ — chưa rà.
 
 ## Session 44 (2026-06-10) — đã làm
 

@@ -273,7 +273,7 @@ Commits: `dcbc5f0` (refactor 24 files) + `45fe1cc` (Effective ReadOnly Blazor)
 - [x] **WPF-17** — ~~Virtual field full stack~~ ✅ Done (2026-06-01) — db/019+020, FieldCode, Section picker, Column TextEdit, UX Behavior tab
 - [ ] **BE-002** — Integration tests: ValidationEngine + EventEngine + MetadataEngine ❌ **Chưa làm**
 - [ ] **BE-003** — Test Blazor end-to-end với API + DB thật ⏳ Manual test
-- [ ] **BE-004** — Apply Design System tokens vào Blazor components ❌ **Chưa làm**
+- [x] **BE-004** — ~~Apply Design System tokens + wire `--dx-*`~~ ✅ Done (commit `5fc36c4`, 2026-06-11) — chuyển theme DevExpress sang **Fluent Light** (lắp 4 file modular) + accent xanh `#0F6CBD`; `app.css` viết lại theo token ERP; **bỏ hướng `--dx-*` override** (DLL không có biến đó, Fluent tự lo accent). Đổi theme/màu về sau = thay 1 file `accents/*`/`modes/*`.
 
 ### WPF ConfigStudio
 
