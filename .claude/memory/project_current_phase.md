@@ -1,6 +1,23 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-11
+> Cập nhật lần cuối: 2026-06-12
+
+## Đính chính nhận diện thương hiệu (2026-06-12)
+
+**ICare247 = brand SaaS quản lý đa ngành nghề (no-code), KHÔNG phải lĩnh vực y tế** dù tên có "Care".
+→ README design-system cũ ("I Care 24/7", Colorful/Playful, gradient Coral/Violet/Teal) **đã lỗi thời**
+(thay bằng ADR-012 — ERP Fluent Light, accent xanh `#0F6CBD`). Khi làm UI/nội dung: định vị SaaS đa
+ngành, cấu hình động, đa tổ chức — tránh hình ảnh/từ ngữ y tế. Tagline mẫu đã duyệt: "Một nền tảng, mọi ngành nghề".
+
+## Design — bộ màn Auth + nguyên tắc bố cục HRM (2026-06-12)
+
+- **Phong cách 4 màn Auth** (Đăng nhập/Đăng ký/Quên MK/Đặt lại MK) — hi-tech, split 2 cột, mỗi màn 1
+  motif riêng, accent xanh, tách `auth.css` (không dùng DevExpress cho auth): `docs/design-system/auth-screens.md`.
+- **Nguyên tắc bố cục HRM đa công ty** — phân loại 1:1 (Form Card ≤2 cột) / 1:N (DxGrid + CommandColumn),
+  nav dọc gom nhóm, badge số bản ghi, company switcher, TreeList tổ chức: `docs/design-system/hrm-layout-principles.md`.
+- Phạm vi: **chỉ phong cách/bố cục**; theme Fluent Light + `tokens.css` GIỮ NGUYÊN (không refactor token,
+  không accent-màu-theo-tenant). Auth = brand tập đoàn nên hardcode xanh là đúng chủ đích.
+- Trạng thái: chốt mức mockup, CHƯA nối API. Bước tiếp: viết `auth.css` + `.razor` vào `src/frontend/ICare247_UI`.
 
 ## Đợt mới nhất — Đổi theme DevExpress sang Fluent Light + accent xanh (session 45, 2026-06-11)
 

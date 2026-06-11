@@ -94,3 +94,48 @@ WPF `<Run Text="{Binding Prop}" />` mặc định là **TwoWay**. Nếu property
 **Why:** Khác với `TextBlock.Text` (mặc định OneWay), `Run.Text` mặc định TwoWay vì Run nằm trong FlowDocument có thể editable.
 
 **How to apply:** Mọi `<Run Text="{Binding ...}" />` phải thêm `Mode=OneWay` — nhất là khi ViewModel property có `private set` hoặc chỉ có getter.
+
+<!-- ───────── Gộp từ agent memory (2026-06-12) ───────── -->
+
+## [Nguyên tắc số 1] LUÔN HỎI TRƯỚC — không mock, không tự suy diễn
+
+LUÔN HỎI TRƯỚC khi quyết định làm bất cứ việc gì. Không tự ý chọn cách làm, không tự bịa dữ liệu mẫu (mock), không tự suy diễn yêu cầu khi còn nhiều hướng.
+
+**Why:** User yêu cầu màn test grid; agent tự quyết làm mock data tĩnh thay vì lấy dữ liệu thật theo cấu hình → sai ý định. User nhấn mạnh đây là nguyên tắc số 1 (đã ghi đầu CLAUDE.md).
+
+**How to apply:** Khi yêu cầu chưa rõ hoặc nhiều hướng (dữ liệu thật vs mock, chọn API/bảng/field, phạm vi) → DỪNG và HỎI rồi mới code. Mặc định dữ liệu lấy THẬT theo cấu hình hệ thống.
+
+## [DevExpress] Xác minh thuộc tính/API qua reflection DLL — đừng đoán
+
+Khi dùng thuộc tính/API DevExpress Blazor (DxGrid, editors…), PHẢI xác minh tên tồn tại trước khi dùng — đừng đoán theo trí nhớ.
+
+**Why:** `DataView.razor` từng dùng `FilterRowCellVisible` (không tồn tại ở DX 25.2.3) → DxGrid ném `InvalidOperationException`, rớt toàn bộ cột. Tên đúng: `FilterRowEditorVisible`.
+
+**How to apply:**
+1. Đọc lỗi thật ở **F12 Console** trước khi kết luận (đừng đoán nguyên nhân).
+2. Reflect DLL đúng version: `C:\Users\Mackeno_01\.nuget\packages\devexpress.blazor\25.2.3\lib\net8.0\DevExpress.Blazor.v25.2.dll` — tạo console net9 (FrameworkReference Microsoft.AspNetCore.App + PackageReference DevExpress.Blazor) rồi `GetType(...).GetProperties()`. PowerShell 5.1 KHÔNG load được DLL net8.0.
+3. Tài liệu: `docs/reference/DEVEXPRESS_DXGRID_PROPERTIES.md`.
+
+## [Comment] Mọi hàm C# — XML doc tiếng Việt + sự kiện theo sau
+
+Mọi hàm C# phải có XML doc đầy đủ bằng **tiếng Việt**: `<summary>` (ý nghĩa), `<param>`, `<returns>`, và `<remarks>` (bắt buộc nếu có side-effect: liệt kê event/trigger/state đổi SAU khi hàm chạy).
+
+**Why:** User yêu cầu code self-document tiếng Việt, đặc biệt nêu rõ "sự kiện theo sau" để dễ trace luồng.
+
+**How to apply:** Mọi hàm C# mới hoặc khi sửa hàm cũ. Template: `.claude-rules/comment-rules.md`.
+
+## [Form runtime] Payload Lưu = field IsVisible (KHÔNG lọc theo read-only)
+
+Khi build payload Lưu form (Thêm/Sửa), gửi **mọi field đang hiển thị** (`IsVisible=true`). Field hiển thị nhưng bị khóa (read-only / `LockOnEdit`) **vẫn gửi**. Chỉ field ẩn (`IsVisible=false`) mới không gửi.
+
+**Why:** Lọc theo `EffectiveReadOnly`/`IsReadOnly` làm cột Mã/khóa (`LockOnEdit`) thiếu khỏi payload khi Sửa → server báo "bắt buộc" dù màn hình có giá trị. Tiêu chí loại trừ là **tính hiển thị**, không phải read-only.
+
+**How to apply:** `MasterDataForm.SaveAsync` (và mọi chỗ build values gửi API): `_fieldStates.Where(fs => fs.IsVisible)`. Không dùng `!EffectiveReadOnly`/`!IsReadOnly`.
+
+## [Build] Build fail chỉ do file-lock = PASS, đừng rebuild
+
+Khi `dotnet build` báo lỗi **chỉ do file-lock** (MSB3021/MSB3027 — DLL trong `bin/` bị app đang chạy giữ) thì **coi như build XONG** (biên dịch source đã pass, chỉ kẹt bước copy output). KHÔNG rebuild, không kill process, trừ khi user yêu cầu rõ.
+
+**Why:** App (Api/Blazor) thường đang chạy lúc dev; lock DLL là bình thường, không phản ánh lỗi code.
+
+**How to apply:** Toàn lỗi là MSB3021/MSB3027 → báo "build ok (chỉ kẹt copy do app đang chạy)" và đi tiếp. Cần chắc không có lỗi C# thật → build 1 project KHÁC không khóa bin (vd Infrastructure/Application).
