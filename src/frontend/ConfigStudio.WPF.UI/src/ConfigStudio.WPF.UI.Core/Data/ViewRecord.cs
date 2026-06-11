@@ -45,6 +45,14 @@ public sealed class ViewRecord
     public string? ParentField { get; init; }
     public int? ExpandLevel { get; init; }
 
+    // Panel lọc trái (lưới nâng cao)
+    public bool FilterPanelEnabled { get; init; }
+    public string FilterPanelPosition { get; init; } = "left";   // left | top
+    public bool FilterCollapsible { get; init; } = true;
+    public bool AutoSearchOnLoad { get; init; }
+    public string? SearchLabelKey { get; init; }
+    public string? ResetLabelKey { get; init; }
+
     // Master-detail / lọc mặc định
     public int? DetailViewId { get; init; }
     public string? DefaultFilterJson { get; init; }

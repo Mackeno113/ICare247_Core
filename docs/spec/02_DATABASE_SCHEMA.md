@@ -554,6 +554,33 @@
 
 **Indexes:** `IX_Ui_View_Action_View (View_Id, Is_Active, Order_No)`.
 
+### Ui_View_Filter
+> Control lọc trên **panel trái** của lưới nâng cao (View nguồn SP/SQL). **Mỗi tham số = 1 dòng**
+> (DateRange tách 2 dòng). Whitelist tham số chống injection. Text i18n = `*_Key`. Spec 14 §9, ADR-016.
+> Migration `db/034_create_ui_view_filter.sql` (tạo bảng + ALTER Ui_View cờ panel + seed resource).
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Filter_Id | int | PK IDENTITY | |
+| View_Id | int | NOT NULL FK→Ui_View | per-View |
+| Filter_Code | nvarchar(50) | NOT NULL | unique/View; client gửi value theo code này |
+| Control_Type | nvarchar(30) | NOT NULL | Text\|Number\|Date\|Combo\|MultiSelect\|Checkbox\|Radio |
+| Label_Key / Placeholder_Key / Tooltip_Key | nvarchar(150) | (i18n) | nhãn/placeholder/tooltip control |
+| Param_Name | nvarchar(100) | NOT NULL | @MaBN, @TuNgay… (literal, whitelist) |
+| Param_Type | nvarchar(30) | NOT NULL | string\|int\|decimal\|date\|bool |
+| Operator | nvarchar(20) | DEFAULT '=' | = \| LIKE \| >= \| <= \| IN |
+| Default_Value | nvarchar(255) | NULL | giá trị/Item_Code mặc định (literal) |
+| Is_Required / Is_Visible | bit | | bắt buộc / hiển thị |
+| Order_No / Col_Span | int/tinyint | | thứ tự + bố cục panel (grid 4-col) |
+| Lookup_Source / Lookup_Code / Lookup_Sql | nvarchar | NULL | nguồn Combo/MultiSelect (static→Sys_Lookup; dynamic→SQL) |
+| Props_Json / Is_Active | | | |
+
+**Constraints:** `CHK Operator IN (=,LIKE,>=,<=,IN)`; `CHK Lookup_Source IN (static,dynamic) OR NULL` + consistency.
+**Indexes:** `UQ_Ui_View_Filter_Code (View_Id, Filter_Code) WHERE Is_Active=1`; `IX_Ui_View_Filter_View (View_Id, Is_Visible, Order_No)`.
+
+> **Cờ panel trên `Ui_View` (Migration 034):** `Filter_Panel_Enabled`, `Filter_Panel_Position` (left/top),
+> `Filter_Collapsible`, `Auto_Search_On_Load` (default 0), `Search_Label_Key`, `Reset_Label_Key` (i18n).
+
 ---
 
 ## Module: Validation (`Val_*`)

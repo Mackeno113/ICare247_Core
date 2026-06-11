@@ -281,6 +281,10 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .md-active-filter { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); color: var(--gray-700); }
 .md-list-footer { margin-top: 10px; font-size: var(--fs-xs); color: var(--color-text-secondary); }
 
+/* Lưới nâng cao: panel lọc trái + vùng lưới phải */
+.dv-with-filter { display: flex; gap: 16px; align-items: flex-start; }
+.dv-with-filter .dv-grid-area { flex: 1 1 auto; min-width: 0; }
+
 .md-grid-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 .md-grid { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
 .md-grid thead th { text-align: left; padding: 10px 12px; background: var(--gray-50); border-bottom: 1px solid var(--color-border); font-weight: var(--fw-semibold); color: var(--gray-700); }

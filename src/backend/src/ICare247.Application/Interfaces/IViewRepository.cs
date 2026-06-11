@@ -39,6 +39,18 @@ public interface IViewRepository
         ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
+    /// Thực thi lưới nâng cao (Source_Type='Sp'/'Sql') với tham số từ panel lọc trái.
+    /// Chỉ bind các <c>@param</c> khai báo trong <see cref="ViewMetadata.Filters"/> (whitelist) — ép kiểu
+    /// theo Param_Type, bọc %...% khi Operator='LIKE', giá trị rỗng → NULL (SP nên xử lý NULL = bỏ lọc).
+    /// </summary>
+    /// <param name="view">Metadata View nguồn SP/SQL (chứa danh sách filter + Source_Object).</param>
+    /// <param name="filterValues">Giá trị người dùng nhập, key = <c>Filter_Code</c>. Code lạ bị bỏ qua.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Toàn bộ dòng kết quả (client phân trang) + tổng số.</returns>
+    Task<ViewDataResult> GetFilteredDataAsync(
+        ViewMetadata view, IReadOnlyDictionary<string, string?> filterValues, CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy danh sách View (header tóm tắt) có phân trang + filter — không nạp cột/action.
     /// Ưu tiên bản tenant-specific hơn bản global khi trùng View_Code (chỉ trả 1 dòng/code).
     /// </summary>

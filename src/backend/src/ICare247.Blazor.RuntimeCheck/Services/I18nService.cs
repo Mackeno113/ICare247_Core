@@ -25,6 +25,9 @@ public sealed class I18nService
         "common.btn.save", "common.btn.cancel", "common.btn.saving",
         "common.btn.add", "common.btn.delete",
         "common.action.create", "common.action.update",
+        // Panel lọc nâng cao (Ui_View_Filter)
+        "common.filter.search", "common.filter.reset", "common.filter.searching",
+        "common.validation.required",
     };
 
     private readonly Dictionary<string, Dictionary<string, string>> _cache = new(StringComparer.OrdinalIgnoreCase);

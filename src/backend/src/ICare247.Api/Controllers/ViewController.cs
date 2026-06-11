@@ -5,6 +5,7 @@
 
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
+using ICare247.Application.Features.Views.Queries.GetViewFilteredData;
 using ICare247.Application.Features.Views.Queries.GetViewsList;
 using ICare247.Application.Interfaces;
 using MediatR;
@@ -109,6 +110,43 @@ public sealed class ViewController : ControllerBase
     }
 
     /// <summary>
+    /// Thực thi lưới nâng cao (Source_Type='Sp'/'Sql') với tham số từ panel lọc trái.
+    /// Body chứa map Filter_Code → giá trị; engine bind whitelist tham số rồi gọi SP/SQL.
+    /// </summary>
+    /// <param name="code">Ui_View.View_Code.</param>
+    /// <param name="body">Bộ giá trị lọc người dùng nhập (key = Filter_Code).</param>
+    /// <param name="lang">Ngôn ngữ resolve metadata (mặc định "vi").</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpPost("{code}/search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Search(
+        string code,
+        [FromBody] ViewSearchRequest body,
+        [FromQuery] string lang = "vi",
+        CancellationToken ct = default)
+    {
+        var filterValues = body?.Filters ?? new Dictionary<string, string?>();
+
+        try
+        {
+            var query = new GetViewFilteredDataQuery(code, GetTenantId(), filterValues, lang);
+            var result = await _mediator.Send(query, ct);
+
+            if (result is null)
+                return NotFound(new { message = $"View '{code}' không tồn tại hoặc đã bị ẩn." });
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            // Tham số bắt buộc thiếu hoặc sai định dạng → 400 (client hiển thị thông báo).
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Xóa cache metadata của một View (mọi ngôn ngữ) — gọi sau khi admin sửa View ở ConfigStudio.
     /// </summary>
     /// <param name="code">Ui_View.View_Code cần invalidate.</param>
@@ -133,4 +171,11 @@ public sealed class ViewController : ControllerBase
         _logger.LogWarning("Header X-Tenant-Id thiếu hoặc không hợp lệ — dùng default TenantId=1");
         return 1;
     }
+}
+
+/// <summary>Body cho endpoint Search: map Filter_Code → giá trị người dùng nhập (chuỗi thô).</summary>
+public sealed class ViewSearchRequest
+{
+    /// <summary>Key = Ui_View_Filter.Filter_Code; value = giá trị thô (engine ép kiểu theo Param_Type).</summary>
+    public Dictionary<string, string?> Filters { get; init; } = new();
 }

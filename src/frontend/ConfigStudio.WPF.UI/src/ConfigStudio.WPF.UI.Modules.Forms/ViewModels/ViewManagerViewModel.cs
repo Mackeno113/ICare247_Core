@@ -52,6 +52,14 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public IReadOnlyList<string> ActionScopeOptions { get; } = ["Toolbar", "Row", "Both"];
     public IReadOnlyList<string> ExportEngineOptions { get; } = ["Grid", "Server"];
 
+    // ── Panel lọc (lưới nâng cao) ──────────────────────────────
+    public IReadOnlyList<string> FilterControlTypeOptions { get; } =
+        ["Text", "Number", "Date", "Combo", "MultiSelect", "Checkbox", "Radio"];
+    public IReadOnlyList<string> FilterParamTypeOptions { get; } =
+        ["string", "int", "decimal", "date", "bool"];
+    public IReadOnlyList<string> FilterOperatorOptions { get; } = ["=", "LIKE", ">=", "<=", "IN"];
+    public IReadOnlyList<string> FilterPanelPositionOptions { get; } = ["left", "top"];
+
     public ObservableCollection<TableLookupRecord> Tables { get; } = [];
     public ObservableCollection<FormRecord> Forms { get; } = [];
 
@@ -64,6 +72,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
 
     public ObservableCollection<ViewColumnRecord> EditColumns { get; } = [];
     public ObservableCollection<ViewActionRecord> EditActions { get; } = [];
+    public ObservableCollection<ViewFilterRecord> EditFilters { get; } = [];
 
     private ViewRecord? _selectedView;
     public ViewRecord? SelectedView
@@ -102,6 +111,22 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             {
                 RemoveActionCommand.RaiseCanExecuteChanged();
                 OpenActionLabelI18nCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    private ViewFilterRecord? _selectedFilter;
+    public ViewFilterRecord? SelectedFilter
+    {
+        get => _selectedFilter;
+        set
+        {
+            if (SetProperty(ref _selectedFilter, value))
+            {
+                RemoveFilterCommand.RaiseCanExecuteChanged();
+                MoveFilterUpCommand.RaiseCanExecuteChanged();
+                MoveFilterDownCommand.RaiseCanExecuteChanged();
+                OpenFilterLabelI18nCommand.RaiseCanExecuteChanged();
             }
         }
     }
@@ -268,6 +293,25 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private int? _editExpandLevel;
     public int? EditExpandLevel { get => _editExpandLevel; set => SetProperty(ref _editExpandLevel, value); }
 
+    // ── Panel lọc (lưới nâng cao) ──────────────────────────────
+    private bool _editFilterPanelEnabled;
+    public bool EditFilterPanelEnabled { get => _editFilterPanelEnabled; set => SetProperty(ref _editFilterPanelEnabled, value); }
+
+    private string _editFilterPanelPosition = "left";
+    public string EditFilterPanelPosition { get => _editFilterPanelPosition; set => SetProperty(ref _editFilterPanelPosition, value); }
+
+    private bool _editFilterCollapsible = true;
+    public bool EditFilterCollapsible { get => _editFilterCollapsible; set => SetProperty(ref _editFilterCollapsible, value); }
+
+    private bool _editAutoSearchOnLoad;
+    public bool EditAutoSearchOnLoad { get => _editAutoSearchOnLoad; set => SetProperty(ref _editAutoSearchOnLoad, value); }
+
+    private string _editSearchLabelKey = "";
+    public string EditSearchLabelKey { get => _editSearchLabelKey; set => SetProperty(ref _editSearchLabelKey, value); }
+
+    private string _editResetLabelKey = "";
+    public string EditResetLabelKey { get => _editResetLabelKey; set => SetProperty(ref _editResetLabelKey, value); }
+
     private bool _editIsActive = true;
     public bool EditIsActive { get => _editIsActive; set => SetProperty(ref _editIsActive, value); }
 
@@ -330,6 +374,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public DelegateCommand MoveColumnDownCommand { get; }
     public DelegateCommand AddActionCommand { get; }
     public DelegateCommand RemoveActionCommand { get; }
+    public DelegateCommand AddFilterCommand { get; }
+    public DelegateCommand RemoveFilterCommand { get; }
+    public DelegateCommand MoveFilterUpCommand { get; }
+    public DelegateCommand MoveFilterDownCommand { get; }
+    public DelegateCommand OpenFilterLabelI18nCommand { get; }
+    public DelegateCommand<ViewFilterRecord> OpenFilterLabelI18nRowCommand { get; }
     public DelegateCommand BrowseColumnCommand { get; }
     public DelegateCommand OpenTitleI18nCommand { get; }
     public DelegateCommand OpenExportFileNameI18nCommand { get; }
@@ -378,6 +428,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         MoveColumnDownCommand = new DelegateCommand(() => MoveColumn(1), () => SelectedColumn is not null);
         AddActionCommand = new DelegateCommand(ExecuteAddAction);
         RemoveActionCommand = new DelegateCommand(ExecuteRemoveAction, () => SelectedAction is not null);
+        AddFilterCommand = new DelegateCommand(ExecuteAddFilter);
+        RemoveFilterCommand = new DelegateCommand(ExecuteRemoveFilter, () => SelectedFilter is not null);
+        MoveFilterUpCommand = new DelegateCommand(() => MoveFilter(-1), () => SelectedFilter is not null);
+        MoveFilterDownCommand = new DelegateCommand(() => MoveFilter(1), () => SelectedFilter is not null);
+        OpenFilterLabelI18nCommand = new DelegateCommand(ExecuteOpenFilterLabelI18n, () => SelectedFilter is not null);
+        OpenFilterLabelI18nRowCommand = new DelegateCommand<ViewFilterRecord>(OpenFilterLabelI18nForRow);
         BrowseColumnCommand = new DelegateCommand(async () => await ExecuteBrowseColumnAsync(), () => EditTable is not null);
         OpenTitleI18nCommand = new DelegateCommand(ExecuteOpenTitleI18n);
         OpenExportFileNameI18nCommand = new DelegateCommand(ExecuteOpenExportFileNameI18n);
@@ -548,6 +604,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditKeyField = h.KeyField ?? "";
         EditParentField = h.ParentField ?? "";
         EditExpandLevel = h.ExpandLevel;
+        EditFilterPanelEnabled = h.FilterPanelEnabled;
+        EditFilterPanelPosition = string.IsNullOrWhiteSpace(h.FilterPanelPosition) ? "left" : h.FilterPanelPosition;
+        EditFilterCollapsible = h.FilterCollapsible;
+        EditAutoSearchOnLoad = h.AutoSearchOnLoad;
+        EditSearchLabelKey = h.SearchLabelKey ?? "";
+        EditResetLabelKey = h.ResetLabelKey ?? "";
         EditIsActive = h.IsActive;
         EditDescription = h.Description ?? "";
 
@@ -555,6 +617,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         foreach (var c in detail.Columns) EditColumns.Add(c);
         EditActions.Clear();
         foreach (var a in detail.Actions) EditActions.Add(a);
+        EditFilters.Clear();
+        foreach (var f in detail.Filters) EditFilters.Add(f);
 
         RaiseEditorState();
         }
@@ -641,10 +705,17 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditKeyField = "";
         EditParentField = "";
         EditExpandLevel = null;
+        EditFilterPanelEnabled = false;
+        EditFilterPanelPosition = "left";
+        EditFilterCollapsible = true;
+        EditAutoSearchOnLoad = false;
+        EditSearchLabelKey = "";
+        EditResetLabelKey = "";
         EditIsActive = true;
         EditDescription = "";
         EditColumns.Clear();
         EditActions.Clear();
+        EditFilters.Clear();
         RaiseEditorState();
         }
         finally { _suppressRekey = false; }
@@ -704,6 +775,55 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         if (SelectedAction is null) return;
         EditActions.Remove(SelectedAction);
         SelectedAction = null;
+    }
+
+    // ── Panel lọc (Ui_View_Filter) ─────────────────────────────
+
+    /// <summary>Thêm một dòng filter mới (rỗng) vào panel lọc.</summary>
+    private void ExecuteAddFilter()
+    {
+        var f = new ViewFilterRecord { OrderNo = EditFilters.Count, FilterCode = "", ControlType = "Text" };
+        EditFilters.Add(f);
+        SelectedFilter = f;
+    }
+
+    /// <summary>Xóa dòng filter đang chọn khỏi panel.</summary>
+    private void ExecuteRemoveFilter()
+    {
+        if (SelectedFilter is null) return;
+        EditFilters.Remove(SelectedFilter);
+        SelectedFilter = null;
+    }
+
+    /// <summary>Di chuyển filter đang chọn lên/xuống và cập nhật OrderNo.</summary>
+    /// <param name="delta">-1 lên, +1 xuống.</param>
+    private void MoveFilter(int delta)
+    {
+        if (SelectedFilter is null) return;
+        var idx = EditFilters.IndexOf(SelectedFilter);
+        var newIdx = idx + delta;
+        if (newIdx < 0 || newIdx >= EditFilters.Count) return;
+        EditFilters.Move(idx, newIdx);
+        for (var i = 0; i < EditFilters.Count; i++) EditFilters[i].OrderNo = i;
+    }
+
+    /// <summary>Dịch Label_Key của filter đang chọn (nút toolbar).</summary>
+    private void ExecuteOpenFilterLabelI18n() => OpenFilterLabelI18nForRow(SelectedFilter);
+
+    /// <summary>Dịch Label_Key của một filter — tự sinh key từ Filter_Code nếu đang trống.</summary>
+    /// <param name="flt">Dòng filter (từ nút 🌐 inline hoặc filter đang chọn).</param>
+    private void OpenFilterLabelI18nForRow(ViewFilterRecord? flt)
+    {
+        if (flt is null) return;
+        if (string.IsNullOrWhiteSpace(flt.LabelKey))
+        {
+            var code = flt.FilterCode?.Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(code)) { SetSaveError("Nhập Filter_Code trước khi tạo key nhãn."); return; }
+            var key = BuildViewKey($"filter.{code}.label");
+            if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
+            flt.LabelKey = key;
+        }
+        OpenI18nDialog(flt.LabelKey!, $"Nhãn filter {flt.FilterCode}");
     }
 
     /// <summary>
@@ -778,10 +898,17 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         KeyField = EditKeyField,
         ParentField = EditParentField,
         ExpandLevel = EditExpandLevel,
+        FilterPanelEnabled = EditFilterPanelEnabled,
+        FilterPanelPosition = EditFilterPanelPosition,
+        FilterCollapsible = EditFilterCollapsible,
+        AutoSearchOnLoad = EditAutoSearchOnLoad,
+        SearchLabelKey = EditSearchLabelKey,
+        ResetLabelKey = EditResetLabelKey,
         IsActive = EditIsActive,
         Description = EditDescription,
         Columns = [.. EditColumns],
         Actions = [.. EditActions],
+        Filters = [.. EditFilters],
     };
 
     /// <summary>Ẩn (soft-delete) View đang chỉnh sửa sau khi xác nhận hợp lệ.</summary>
@@ -847,6 +974,15 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
 
         EditTitleKey = SwapSegment(EditTitleKey, from, to) ?? "";
         EditExportFileNameKey = SwapSegment(EditExportFileNameKey, from, to) ?? "";
+        EditSearchLabelKey = SwapSegment(EditSearchLabelKey, from, to) ?? "";
+        EditResetLabelKey = SwapSegment(EditResetLabelKey, from, to) ?? "";
+
+        foreach (var f in EditFilters)
+        {
+            f.LabelKey = SwapSegment(f.LabelKey, from, to);
+            f.PlaceholderKey = SwapSegment(f.PlaceholderKey, from, to);
+            f.TooltipKey = SwapSegment(f.TooltipKey, from, to);
+        }
 
         foreach (var c in EditColumns)
         {

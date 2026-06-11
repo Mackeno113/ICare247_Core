@@ -47,6 +47,9 @@ public sealed class ViewDataService : IViewDataService
             "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
             "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
             "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Filter_Panel_Enabled AS FilterPanelEnabled, v.Filter_Panel_Position AS FilterPanelPosition,\n" +
+            "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
+            "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
             "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
             "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
             "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
@@ -82,6 +85,9 @@ public sealed class ViewDataService : IViewDataService
             "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
             "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
             "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Filter_Panel_Enabled AS FilterPanelEnabled, v.Filter_Panel_Position AS FilterPanelPosition,\n" +
+            "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
+            "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
             "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
             "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
             "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
@@ -124,11 +130,27 @@ public sealed class ViewDataService : IViewDataService
         var actions = await conn.QueryAsync<ViewActionRecord>(
             new CommandDefinition(actionsSql, new { ViewId = viewId }, cancellationToken: ct));
 
+        var filtersSql =
+            "SELECT Filter_Id AS FilterId, Filter_Code AS FilterCode, Control_Type AS ControlType,\n" +
+            "       Label_Key AS LabelKey, Placeholder_Key AS PlaceholderKey, Tooltip_Key AS TooltipKey,\n" +
+            "       Param_Name AS ParamName, Param_Type AS ParamType, Operator AS Operator,\n" +
+            "       Default_Value AS DefaultValue, Is_Required AS IsRequired, Is_Visible AS IsVisible,\n" +
+            "       Order_No AS OrderNo, Col_Span AS ColSpan, Lookup_Source AS LookupSource,\n" +
+            "       Lookup_Code AS LookupCode, Lookup_Sql AS LookupSql, Props_Json AS PropsJson,\n" +
+            "       Is_Active AS IsActive\n" +
+            "FROM   dbo.Ui_View_Filter\n" +
+            "WHERE  View_Id = @ViewId\n" +
+            "ORDER BY Order_No, Filter_Id";
+
+        var filters = await conn.QueryAsync<ViewFilterRecord>(
+            new CommandDefinition(filtersSql, new { ViewId = viewId }, cancellationToken: ct));
+
         return new ViewDetailRecord
         {
             Header = header,
             Columns = columns.ToList(),
             Actions = actions.ToList(),
+            Filters = filters.ToList(),
         };
     }
 
@@ -173,12 +195,16 @@ public sealed class ViewDataService : IViewDataService
                     "    Title_Key, Edit_Form_Id, Page_Size, Allow_Paging, Virtual_Scroll, Show_Filter_Row,\n" +
                     "    Show_Group_Panel, Show_Search_Box, Show_Column_Chooser, Selection_Mode, Allow_Add,\n" +
                     "    Allow_Edit, Allow_Delete, Allow_Export, Export_Formats, Export_File_Name_Key, Allow_Print,\n" +
-                    "    Key_Field, Parent_Field, Expand_Level, Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
+                    "    Key_Field, Parent_Field, Expand_Level, Filter_Panel_Enabled, Filter_Panel_Position,\n" +
+                    "    Filter_Collapsible, Auto_Search_On_Load, Search_Label_Key, Reset_Label_Key,\n" +
+                    "    Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
                     "    Tenant_Id, Version, Is_Active, Created_At, Updated_At, Description)\n" +
                     "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @SourceObject, @TitleKey, @EditFormId,\n" +
                     "    @PageSize, @AllowPaging, @VirtualScroll, @ShowFilterRow, @ShowGroupPanel, @ShowSearchBox,\n" +
                     "    @ShowColumnChooser, @SelectionMode, @AllowAdd, @AllowEdit, @AllowDelete, @AllowExport,\n" +
                     "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel,\n" +
+                    "    @FilterPanelEnabled, @FilterPanelPosition, @FilterCollapsible, @AutoSearchOnLoad,\n" +
+                    "    @SearchLabelKey, @ResetLabelKey,\n" +
                     "    @DetailViewId, @DefaultFilterJson, @OptionsJson, @TenantId, 1, @IsActive, GETDATE(), GETDATE(),\n" +
                     "    @Description);\n" +
                     "SELECT CAST(SCOPE_IDENTITY() AS INT);";
@@ -200,7 +226,11 @@ public sealed class ViewDataService : IViewDataService
                     "    Allow_Add = @AllowAdd, Allow_Edit = @AllowEdit, Allow_Delete = @AllowDelete,\n" +
                     "    Allow_Export = @AllowExport, Export_Formats = @ExportFormats,\n" +
                     "    Export_File_Name_Key = @ExportFileNameKey, Allow_Print = @AllowPrint, Key_Field = @KeyField,\n" +
-                    "    Parent_Field = @ParentField, Expand_Level = @ExpandLevel, Detail_View_Id = @DetailViewId,\n" +
+                    "    Parent_Field = @ParentField, Expand_Level = @ExpandLevel,\n" +
+                    "    Filter_Panel_Enabled = @FilterPanelEnabled, Filter_Panel_Position = @FilterPanelPosition,\n" +
+                    "    Filter_Collapsible = @FilterCollapsible, Auto_Search_On_Load = @AutoSearchOnLoad,\n" +
+                    "    Search_Label_Key = @SearchLabelKey, Reset_Label_Key = @ResetLabelKey,\n" +
+                    "    Detail_View_Id = @DetailViewId,\n" +
                     "    Default_Filter_Json = @DefaultFilterJson, Options_Json = @OptionsJson,\n" +
                     "    Version = Version + 1, Is_Active = @IsActive, Updated_At = GETDATE(),\n" +
                     "    Description = @Description\n" +
@@ -212,14 +242,16 @@ public sealed class ViewDataService : IViewDataService
                         "View đã bị thay đổi bởi phiên khác (optimistic concurrency). Vui lòng tải lại.");
             }
 
-            // ── Ghi lại toàn bộ cột + action (xóa cũ → insert mới) ──
+            // ── Ghi lại toàn bộ cột + action + filter (xóa cũ → insert mới) ──
             await conn.ExecuteAsync(new CommandDefinition(
                 "DELETE FROM dbo.Ui_View_Column WHERE View_Id = @ViewId;\n" +
-                "DELETE FROM dbo.Ui_View_Action WHERE View_Id = @ViewId;",
+                "DELETE FROM dbo.Ui_View_Action WHERE View_Id = @ViewId;\n" +
+                "DELETE FROM dbo.Ui_View_Filter WHERE View_Id = @ViewId;",
                 new { ViewId = viewId }, tx, cancellationToken: ct));
 
             await InsertColumnsAsync(conn, tx, viewId, request.Columns, ct);
             await InsertActionsAsync(conn, tx, viewId, request.Actions, ct);
+            await InsertFiltersAsync(conn, tx, viewId, request.Filters, ct);
 
             await tx.CommitAsync(ct);
             return viewId;
@@ -285,6 +317,12 @@ public sealed class ViewDataService : IViewDataService
         p.Add("KeyField", NullIfEmpty(r.KeyField));
         p.Add("ParentField", NullIfEmpty(r.ParentField));
         p.Add("ExpandLevel", r.ExpandLevel);
+        p.Add("FilterPanelEnabled", r.FilterPanelEnabled);
+        p.Add("FilterPanelPosition", string.IsNullOrWhiteSpace(r.FilterPanelPosition) ? "left" : r.FilterPanelPosition);
+        p.Add("FilterCollapsible", r.FilterCollapsible);
+        p.Add("AutoSearchOnLoad", r.AutoSearchOnLoad);
+        p.Add("SearchLabelKey", NullIfEmpty(r.SearchLabelKey));
+        p.Add("ResetLabelKey", NullIfEmpty(r.ResetLabelKey));
         p.Add("DetailViewId", r.DetailViewId);
         p.Add("DefaultFilterJson", NullIfEmpty(r.DefaultFilterJson));
         p.Add("OptionsJson", NullIfEmpty(r.OptionsJson));
@@ -388,6 +426,54 @@ public sealed class ViewDataService : IViewDataService
                 OrderNo = order++,
                 PropsJson = NullIfEmpty(a.PropsJson),
                 a.IsActive,
+            }, tx, cancellationToken: ct));
+        }
+    }
+
+    /// <summary>Ghi danh sách control lọc Ui_View_Filter trong transaction.</summary>
+    /// <param name="conn">Kết nối đang mở.</param>
+    /// <param name="tx">Transaction hiện hành.</param>
+    /// <param name="viewId">View_Id cha.</param>
+    /// <param name="filters">Danh sách filter cần ghi.</param>
+    /// <param name="ct">Token hủy.</param>
+    private static async Task InsertFiltersAsync(
+        SqlConnection conn, System.Data.Common.DbTransaction tx, int viewId,
+        IReadOnlyList<ViewFilterRecord> filters, CancellationToken ct)
+    {
+        const string sql =
+            "INSERT INTO dbo.Ui_View_Filter (View_Id, Filter_Code, Control_Type, Label_Key, Placeholder_Key,\n" +
+            "    Tooltip_Key, Param_Name, Param_Type, Operator, Default_Value, Is_Required, Is_Visible, Order_No,\n" +
+            "    Col_Span, Lookup_Source, Lookup_Code, Lookup_Sql, Props_Json, Is_Active)\n" +
+            "VALUES (@ViewId, @FilterCode, @ControlType, @LabelKey, @PlaceholderKey, @TooltipKey, @ParamName,\n" +
+            "    @ParamType, @Operator, @DefaultValue, @IsRequired, @IsVisible, @OrderNo, @ColSpan, @LookupSource,\n" +
+            "    @LookupCode, @LookupSql, @PropsJson, @IsActive)";
+
+        var order = 0;
+        foreach (var f in filters)
+        {
+            // Bỏ dòng chưa khai báo đủ (Filter_Code + Param_Name là tối thiểu).
+            if (string.IsNullOrWhiteSpace(f.FilterCode) || string.IsNullOrWhiteSpace(f.ParamName)) continue;
+            await conn.ExecuteAsync(new CommandDefinition(sql, new
+            {
+                ViewId = viewId,
+                FilterCode = f.FilterCode.Trim(),
+                ControlType = string.IsNullOrWhiteSpace(f.ControlType) ? "Text" : f.ControlType,
+                LabelKey = NullIfEmpty(f.LabelKey),
+                PlaceholderKey = NullIfEmpty(f.PlaceholderKey),
+                TooltipKey = NullIfEmpty(f.TooltipKey),
+                ParamName = f.ParamName.Trim(),
+                ParamType = string.IsNullOrWhiteSpace(f.ParamType) ? "string" : f.ParamType,
+                Operator = string.IsNullOrWhiteSpace(f.Operator) ? "=" : f.Operator,
+                DefaultValue = NullIfEmpty(f.DefaultValue),
+                f.IsRequired,
+                f.IsVisible,
+                OrderNo = order++,
+                ColSpan = f.ColSpan < 1 ? (byte)1 : f.ColSpan,
+                LookupSource = NullIfEmpty(f.LookupSource),
+                LookupCode = NullIfEmpty(f.LookupCode),
+                LookupSql = NullIfEmpty(f.LookupSql),
+                PropsJson = NullIfEmpty(f.PropsJson),
+                f.IsActive,
             }, tx, cancellationToken: ct));
         }
     }

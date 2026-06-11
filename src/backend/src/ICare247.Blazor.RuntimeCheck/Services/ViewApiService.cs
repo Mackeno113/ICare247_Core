@@ -103,6 +103,48 @@ public sealed class ViewApiService
         return dto;
     }
 
+    /// <summary>
+    /// Thực thi lưới nâng cao (Source_Type='Sp'/'Sql') — POST giá trị panel lọc (key=Filter_Code).
+    /// Trả null nếu View không tồn tại; ném <see cref="HttpRequestException"/> kèm message khi 400 (tham số sai).
+    /// </summary>
+    public async Task<ViewDataResultDto?> SearchAsync(
+        string viewCode, IReadOnlyDictionary<string, string?> filters, string lang = "vi",
+        CancellationToken ct = default)
+    {
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/search?lang={Uri.EscapeDataString(lang)}";
+        var resp = await _http.PostAsJsonAsync(url, new { filters }, JsonOpts, ct);
+
+        if (resp.StatusCode == HttpStatusCode.NotFound) return null;
+        if (resp.StatusCode == HttpStatusCode.BadRequest)
+        {
+            // Tham số bắt buộc thiếu/sai → đọc message để hiển thị cho người dùng.
+            var problem = await resp.Content.ReadAsStringAsync(ct);
+            _logger.LogWarning("Search 400 [{Code}]: {Body}", viewCode, problem);
+            throw new HttpRequestException(ExtractMessage(problem));
+        }
+        await EnsureOkAsync(resp, $"Search {viewCode}");
+
+        var dto = await resp.Content.ReadFromJsonAsync<ViewDataResultDto>(JsonOpts, ct)
+                  ?? new ViewDataResultDto();
+        foreach (var row in dto.Items)
+            foreach (var key in row.Keys.ToList())
+                row[key] = UnwrapJson(row[key]);
+        return dto;
+    }
+
+    /// <summary>Bóc trường "message" trong body lỗi JSON; fallback nguyên văn nếu không parse được.</summary>
+    private static string ExtractMessage(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String)
+                return m.GetString() ?? body;
+        }
+        catch { /* không phải JSON → trả nguyên văn */ }
+        return body;
+    }
+
     private static object? UnwrapJson(object? value)
     {
         if (value is not JsonElement je) return value;
@@ -134,6 +176,7 @@ public sealed class ViewMetadataDto
     public string ViewCode { get; set; } = "";
     public string ViewType { get; set; } = "Grid";
     public string TableCode { get; set; } = "";
+    public string SourceType { get; set; } = "Table";
     public string? Title { get; set; }
     public string? EditFormCode { get; set; }
     public string? ExportFileName { get; set; }
@@ -155,8 +198,48 @@ public sealed class ViewMetadataDto
     public string? ParentField { get; set; }
     public int? ExpandLevel { get; set; }
 
+    // ── Panel lọc trái (lưới nâng cao) ────────────────────────
+    public bool FilterPanelEnabled { get; set; }
+    public string FilterPanelPosition { get; set; } = "left";
+    public bool FilterCollapsible { get; set; } = true;
+    public bool AutoSearchOnLoad { get; set; }
+    public string? SearchLabel { get; set; }
+    public string? ResetLabel { get; set; }
+
     public List<ViewColumnDto> Columns { get; set; } = [];
     public List<ViewActionDto> Actions { get; set; } = [];
+    public List<ViewFilterDto> Filters { get; set; } = [];
+
+    /// <summary>Nguồn SP/SQL (cho phép panel lọc tham số).</summary>
+    public bool IsQuerySource =>
+        SourceType.Equals("Sp", StringComparison.OrdinalIgnoreCase)
+        || SourceType.Equals("Sql", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Panel lọc trái thực sự hiển thị: bật + nguồn query + có ≥1 control.</summary>
+    public bool HasFilterPanel => FilterPanelEnabled && IsQuerySource && Filters.Count > 0;
+}
+
+/// <summary>Một control lọc trên panel trái (Ui_View_Filter) — text i18n đã resolve.</summary>
+public sealed class ViewFilterDto
+{
+    public string FilterCode { get; set; } = "";
+    public string ControlType { get; set; } = "Text";
+    public string? Label { get; set; }
+    public string? Placeholder { get; set; }
+    public string? Tooltip { get; set; }
+    public string ParamName { get; set; } = "";
+    public string ParamType { get; set; } = "string";
+    public string Operator { get; set; } = "=";
+    public string? DefaultValue { get; set; }
+    public bool IsRequired { get; set; }
+    public bool IsVisible { get; set; } = true;
+    public int OrderNo { get; set; }
+    public byte ColSpan { get; set; } = 1;
+    public string? LookupSource { get; set; }
+    public string? LookupCode { get; set; }
+
+    /// <summary>Nhãn hiển thị: Label (i18n) hoặc fallback Filter_Code.</summary>
+    public string DisplayLabel => string.IsNullOrWhiteSpace(Label) ? FilterCode : Label!;
 }
 
 public sealed class ViewColumnDto

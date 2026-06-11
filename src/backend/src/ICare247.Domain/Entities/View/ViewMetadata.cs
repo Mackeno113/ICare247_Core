@@ -78,6 +78,29 @@ public sealed class ViewMetadata
     public string? ParentField { get; init; }
     public int? ExpandLevel { get; init; }
 
+    // ── Panel lọc trái (lưới nâng cao) — chỉ hiệu lực khi SourceType ∈ {Sp, Sql} ──
+    /// <summary>Bật panel lọc trái (Ui_View.Filter_Panel_Enabled).</summary>
+    public bool FilterPanelEnabled { get; init; }
+
+    /// <summary>left | top — vị trí panel lọc.</summary>
+    public string FilterPanelPosition { get; init; } = "left";
+
+    /// <summary>Cho thu gọn panel.</summary>
+    public bool FilterCollapsible { get; init; } = true;
+
+    /// <summary>Tự Tìm khi mở (false = chờ người dùng bấm Tìm — mặc định, tránh SP nặng).</summary>
+    public bool AutoSearchOnLoad { get; init; }
+
+    public string? SearchLabelKey { get; init; }
+
+    /// <summary>Nhãn nút Tìm đã resolve theo langCode (null = dùng key chung common.filter.search).</summary>
+    public string? SearchLabel { get; init; }
+
+    public string? ResetLabelKey { get; init; }
+
+    /// <summary>Nhãn nút Đặt lại đã resolve theo langCode (null = dùng key chung common.filter.reset).</summary>
+    public string? ResetLabel { get; init; }
+
     public int? TenantId { get; init; }
 
     /// <summary>Phiên bản metadata — dùng làm cache key/slot.</summary>
@@ -91,7 +114,18 @@ public sealed class ViewMetadata
     /// <summary>Nút toolbar/row theo thứ tự Order_No.</summary>
     public IReadOnlyList<ViewAction> Actions { get; init; } = [];
 
+    /// <summary>Control lọc trên panel trái theo thứ tự Order_No (rỗng nếu không dùng panel).</summary>
+    public IReadOnlyList<ViewFilter> Filters { get; init; } = [];
+
     /// <summary>Cờ View dạng cây.</summary>
     public bool IsTreeList =>
         string.Equals(ViewType, "TreeList", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Nguồn là Stored Procedure hoặc SQL tùy chỉnh (cho phép panel lọc tham số).</summary>
+    public bool IsQuerySource =>
+        string.Equals(SourceType, "Sp", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(SourceType, "Sql", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Panel lọc trái thực sự hiển thị: được bật, nguồn query, và có ≥1 control.</summary>
+    public bool HasFilterPanel => FilterPanelEnabled && IsQuerySource && Filters.Count > 0;
 }

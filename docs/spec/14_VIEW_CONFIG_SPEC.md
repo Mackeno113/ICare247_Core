@@ -249,4 +249,92 @@ map vào đó. Component `DataView` chọn render `<DxGrid>` hoặc `<DxTreeList
 ## 8. Trạng thái
 
 - **Thiết kế:** ✅ chốt (ADR-015, 2026-06-07).
-- **Triển khai:** ⏳ chưa bắt đầu — cần handoff Codex (db + ConfigStudio) trước khi Claude wire backend.
+- **Triển khai:** ✅ backend + Blazor + ConfigStudio đã code (Ui_View cơ bản). Panel lọc nâng cao xem §9.
+
+---
+
+## 9. Lưới nâng cao — Panel lọc trái + tham số SP/SQL (ADR-016, 2026-06-11)
+
+Mở rộng `Ui_View` để hỗ trợ **panel control lọc bên trái → nút Tìm (i18n) → đẩy tham số vào
+Stored Procedure / SQL → đổ kết quả ra lưới**. **Không** tạo `View_Type` mới — panel lọc là tính năng
+bật/tắt theo nguồn (`Source_Type ∈ {Sp, Sql}`), tái dùng nguyên `Ui_View_Column`/`Ui_View_Action`.
+
+### 9.1 Cờ panel — thêm vào `Ui_View` (Migration 034)
+
+| Cột | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `Filter_Panel_Enabled` | bit | 0 | Bật panel lọc trái |
+| `Filter_Panel_Position` | nvarchar(10) | 'left' | left \| top |
+| `Filter_Collapsible` | bit | 1 | Cho thu gọn panel |
+| `Auto_Search_On_Load` | bit | 0 | Tự Tìm khi mở (mặc định **chờ bấm** — tránh SP nặng) |
+| `Search_Label_Key` | nvarchar(150) | NULL | ★ i18n nút Tìm (null → `common.filter.search`) |
+| `Reset_Label_Key` | nvarchar(150) | NULL | ★ i18n nút Đặt lại (null → `common.filter.reset`) |
+
+### 9.2 `Ui_View_Filter` — mỗi control lọc = 1 dòng = **1 tham số**
+
+```sql
+CREATE TABLE dbo.Ui_View_Filter
+(
+    Filter_Id        INT            IDENTITY(1,1) NOT NULL,
+    View_Id          INT            NOT NULL,                   -- per-View
+    Filter_Code      NVARCHAR(50)   NOT NULL,                   -- unique/View; client gửi value theo code này
+    Control_Type     NVARCHAR(30)   NOT NULL,                   -- Text|Number|Date|Combo|MultiSelect|Checkbox|Radio
+    Label_Key        NVARCHAR(150)  NOT NULL,                   -- ★ i18n
+    Placeholder_Key  NVARCHAR(150)  NULL,                       -- ★ i18n
+    Tooltip_Key      NVARCHAR(150)  NULL,                       -- ★ i18n
+    Param_Name       NVARCHAR(100)  NOT NULL,                   -- @MaBN, @TuNgay... (literal, whitelist)
+    Param_Type       NVARCHAR(30)   NOT NULL,                   -- string|int|decimal|date|bool
+    Operator         NVARCHAR(20)   NOT NULL DEFAULT '=',       -- = | LIKE | >= | <= | IN
+    Default_Value    NVARCHAR(255)  NULL,                       -- literal — KHÔNG i18n
+    Is_Required      BIT            NOT NULL DEFAULT 0,
+    Is_Visible       BIT            NOT NULL DEFAULT 1,
+    Order_No         INT            NOT NULL DEFAULT 0,
+    Col_Span         TINYINT        NOT NULL DEFAULT 1,         -- bố cục panel (grid 4-col)
+    Lookup_Source    NVARCHAR(20)   NULL,                       -- NULL|static|dynamic
+    Lookup_Code      NVARCHAR(50)   NULL,                       -- Sys_Lookup.Lookup_Code (static)
+    Lookup_Sql       NVARCHAR(MAX)  NULL,                       -- SELECT value,display (dynamic)
+    Props_Json       NVARCHAR(MAX)  NULL,
+    Is_Active        BIT            NOT NULL DEFAULT 1,
+    CONSTRAINT PK_Ui_View_Filter PRIMARY KEY (Filter_Id),
+    CONSTRAINT FK_Ui_View_Filter_View FOREIGN KEY (View_Id) REFERENCES dbo.Ui_View(View_Id)
+);
+-- + CHK Operator/Lookup; UQ (View_Id, Filter_Code) WHERE Is_Active=1; IX (View_Id, Is_Visible, Order_No)
+```
+
+> **Khoảng giá trị (DateRange/NumberRange):** tách **2 dòng** — vd `tu_ngay` (Operator '>=') +
+> `den_ngay` (Operator '<='), mỗi dòng nhãn + `Is_Required` riêng → thông báo "Từ ngày là bắt buộc"
+> và focus đúng ô. (Quyết định bỏ cột `Param_Name_To`, xem ADR-016.)
+
+### 9.3 i18n
+
+| Cột là KEY (★) | Cột literal (không dịch) |
+|---|---|
+| `Label_Key`, `Placeholder_Key`, `Tooltip_Key`, `Search_Label_Key`, `Reset_Label_Key` | `Filter_Code`, `Control_Type`, `Param_Name`, `Param_Type`, `Operator`, `Default_Value`, `Lookup_Code` |
+
+Key convention (xem spec 10 §1d): `{table}.view.filter.{filter_code}.label/.placeholder/.tooltip`;
+nút dùng chung `common.filter.search` / `common.filter.reset`; thiếu tham số `common.validation.required`
+= `"{0} là bắt buộc"` ({0} = nhãn control đã i18n).
+
+### 9.4 Engine rules
+
+1. Panel chỉ render khi `Filter_Panel_Enabled=1` **và** `Source_Type ∈ {Sp,Sql}` **và** có ≥1 filter
+   (`ViewMetadata.HasFilterPanel`). Nguồn `Table` → dùng filter row trong cột, không có panel.
+2. Bấm **Tìm** → validate `Is_Required` rỗng → chặn + thông báo i18n + `FocusAsync()` ô lỗi đầu tiên.
+3. Bind tham số: **chỉ** từ `Ui_View_Filter` (whitelist). Ép kiểu theo `Param_Type`; `LIKE` bọc `%...%`;
+   rỗng → NULL (SP nên dùng `WHERE (@x IS NULL OR col=@x)`). Giá trị luôn parameterized (Dapper).
+4. SP trả nguyên tập đã lọc → **client phân trang** (DxGrid). SP nặng nên tự giới hạn theo tham số.
+5. `MultiSelect → IN`: đợt 2 (khung tách mảng theo dấu phẩy đã có cho `Source_Type='Sql'`).
+
+### 9.5 API
+
+`POST /api/v1/views/{code}/search` — body `{ "filters": { "{filter_code}": "value", ... } }`,
+query `?lang=vi`. Trả `ViewDataResult` (rows + total). Tham số bắt buộc thiếu / sai định dạng → **400**.
+
+### 9.6 Ánh xạ runtime (Blazor)
+
+| Config DB | Blazor |
+|---|---|
+| `Filter_Panel_Enabled` + `Filter_Panel_Position` | render `<FilterPanel>` trái/trên `<DataView>` |
+| `Ui_View_Filter.Control_Type` | chọn editor DevExpress (DxTextBox/DxDateEdit/DxComboBox/…) |
+| `Is_Required` | validate trước khi gọi `/search` + thông báo + focus |
+| `Auto_Search_On_Load` | gọi `/search` ngay khi mở (nếu true) |

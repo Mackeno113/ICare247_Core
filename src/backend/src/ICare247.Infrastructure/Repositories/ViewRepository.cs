@@ -74,6 +74,14 @@ public sealed partial class ViewRepository : IViewRepository
                    v.Key_Field            AS KeyField,
                    v.Parent_Field         AS ParentField,
                    v.Expand_Level         AS ExpandLevel,
+                   v.Filter_Panel_Enabled  AS FilterPanelEnabled,
+                   v.Filter_Panel_Position AS FilterPanelPosition,
+                   v.Filter_Collapsible    AS FilterCollapsible,
+                   v.Auto_Search_On_Load   AS AutoSearchOnLoad,
+                   v.Search_Label_Key      AS SearchLabelKey,
+                   rsl.Resource_Value      AS SearchLabel,
+                   v.Reset_Label_Key       AS ResetLabelKey,
+                   rrl.Resource_Value      AS ResetLabel,
                    v.Tenant_Id            AS TenantId,
                    v.Version,
                    v.Is_Active            AS IsActive,
@@ -85,6 +93,10 @@ public sealed partial class ViewRepository : IViewRepository
                                          AND rt.Lang_Code     = @LangCode
             LEFT JOIN dbo.Sys_Resource rf ON rf.Resource_Key = v.Export_File_Name_Key
                                          AND rf.Lang_Code     = @LangCode
+            LEFT JOIN dbo.Sys_Resource rsl ON rsl.Resource_Key = v.Search_Label_Key
+                                          AND rsl.Lang_Code     = @LangCode
+            LEFT JOIN dbo.Sys_Resource rrl ON rrl.Resource_Key = v.Reset_Label_Key
+                                          AND rrl.Lang_Code     = @LangCode
             WHERE  v.View_Code = @ViewCode
               AND  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
               AND  v.Is_Active  = 1
@@ -158,6 +170,40 @@ public sealed partial class ViewRepository : IViewRepository
             ORDER BY a.Order_No
             """;
 
+        const string sqlFilters = """
+            SELECT f.Filter_Id        AS FilterId,
+                   f.Filter_Code      AS FilterCode,
+                   f.Control_Type     AS ControlType,
+                   f.Label_Key        AS LabelKey,
+                   rfl.Resource_Value AS Label,
+                   f.Placeholder_Key  AS PlaceholderKey,
+                   rfp.Resource_Value AS Placeholder,
+                   f.Tooltip_Key      AS TooltipKey,
+                   rft.Resource_Value AS Tooltip,
+                   f.Param_Name       AS ParamName,
+                   f.Param_Type       AS ParamType,
+                   f.Operator,
+                   f.Default_Value    AS DefaultValue,
+                   f.Is_Required      AS IsRequired,
+                   f.Is_Visible       AS IsVisible,
+                   f.Order_No         AS OrderNo,
+                   f.Col_Span         AS ColSpan,
+                   f.Lookup_Source    AS LookupSource,
+                   f.Lookup_Code      AS LookupCode,
+                   f.Lookup_Sql       AS LookupSql,
+                   f.Props_Json       AS PropsJson
+            FROM   dbo.Ui_View_Filter f
+            LEFT JOIN dbo.Sys_Resource rfl ON rfl.Resource_Key = f.Label_Key
+                                          AND rfl.Lang_Code     = @LangCode
+            LEFT JOIN dbo.Sys_Resource rfp ON rfp.Resource_Key = f.Placeholder_Key
+                                          AND rfp.Lang_Code     = @LangCode
+            LEFT JOIN dbo.Sys_Resource rft ON rft.Resource_Key = f.Tooltip_Key
+                                          AND rft.Lang_Code     = @LangCode
+            WHERE  f.View_Id = @ViewId
+              AND  f.Is_Active = 1
+            ORDER BY f.Order_No
+            """;
+
         using var conn = _db.CreateConnection();
 
         var header = await conn.QueryFirstOrDefaultAsync<ViewMetadata>(
@@ -179,6 +225,9 @@ public sealed partial class ViewRepository : IViewRepository
 
         var actions = (await conn.QueryAsync<ViewAction>(
             new CommandDefinition(sqlActions, byView, cancellationToken: ct))).AsList();
+
+        var filters = (await conn.QueryAsync<ViewFilter>(
+            new CommandDefinition(sqlFilters, byView, cancellationToken: ct))).AsList();
 
         // ── Ráp aggregate (init props → tạo bản đầy đủ kèm cột + action) ──
         return new ViewMetadata
@@ -213,12 +262,21 @@ public sealed partial class ViewRepository : IViewRepository
             KeyField = header.KeyField,
             ParentField = header.ParentField,
             ExpandLevel = header.ExpandLevel,
+            FilterPanelEnabled = header.FilterPanelEnabled,
+            FilterPanelPosition = header.FilterPanelPosition,
+            FilterCollapsible = header.FilterCollapsible,
+            AutoSearchOnLoad = header.AutoSearchOnLoad,
+            SearchLabelKey = header.SearchLabelKey,
+            SearchLabel = header.SearchLabel,
+            ResetLabelKey = header.ResetLabelKey,
+            ResetLabel = header.ResetLabel,
             TenantId = header.TenantId,
             Version = header.Version,
             IsActive = header.IsActive,
             Description = header.Description,
             Columns = columns,
-            Actions = actions
+            Actions = actions,
+            Filters = filters
         };
     }
 
@@ -298,6 +356,115 @@ public sealed partial class ViewRepository : IViewRepository
             TotalCount = total
         };
     }
+
+    /// <inheritdoc />
+    public async Task<ViewDataResult> GetFilteredDataAsync(
+        ViewMetadata view, IReadOnlyDictionary<string, string?> filterValues, CancellationToken ct = default)
+    {
+        if (!view.IsQuerySource)
+            throw new NotSupportedException(
+                $"View '{view.ViewCode}': GetFilteredDataAsync chỉ dùng cho Source_Type='Sp'/'Sql' " +
+                $"(hiện '{view.SourceType}').");
+        if (string.IsNullOrWhiteSpace(view.SourceObject))
+            throw new InvalidOperationException(
+                $"View '{view.ViewCode}': Source_Object rỗng — chưa khai báo SP/SQL.");
+
+        var isSp = string.Equals(view.SourceType, "Sp", StringComparison.OrdinalIgnoreCase);
+
+        // ── Bind tham số: CHỈ từ view.Filters (whitelist). Code lạ trong filterValues bị bỏ qua. ──
+        var dp = new DynamicParameters();
+        foreach (var f in view.Filters)
+        {
+            if (string.IsNullOrWhiteSpace(f.ParamName))
+                continue;
+
+            // Giá trị người dùng (theo Filter_Code) → fallback Default_Value khi không gửi.
+            filterValues.TryGetValue(f.FilterCode, out var raw);
+            if (string.IsNullOrWhiteSpace(raw))
+                raw = f.DefaultValue;
+
+            // Required mà rỗng → chặn (client cũng chặn + focus, đây là hàng rào server).
+            if (f.IsRequired && string.IsNullOrWhiteSpace(raw))
+                throw new ArgumentException(
+                    $"Thiếu tham số bắt buộc '{f.FilterCode}' ({f.ParamName}).", f.FilterCode);
+
+            var value = ConvertFilterValue(raw, f.ParamType, f.Operator, f.FilterCode);
+            // Luôn add (NULL khi rỗng) → SP/SQL kiểu `WHERE (@x IS NULL OR col=@x)` bỏ lọc đúng.
+            dp.Add(NormalizeParamName(f.ParamName), value);
+        }
+
+        using var data = _dataDb.CreateConnection();
+
+        var rows = isSp
+            ? await data.QueryAsync(new CommandDefinition(
+                ValidateSpName(view.SourceObject!, view.ViewCode), dp,
+                commandType: System.Data.CommandType.StoredProcedure, cancellationToken: ct))
+            : await data.QueryAsync(new CommandDefinition(
+                view.SourceObject!, dp, commandType: System.Data.CommandType.Text, cancellationToken: ct));
+
+        var items = rows
+            .Select(r => (IDictionary<string, object?>)
+                ((IDictionary<string, object>)r).ToDictionary(k => k.Key, v => (object?)v.Value))
+            .ToList();
+
+        // SP/SQL trả nguyên tập đã lọc → client phân trang. TotalCount = số dòng trả về.
+        return new ViewDataResult { Items = items, TotalCount = items.Count };
+    }
+
+    /// <summary>Bỏ tiền tố '@' để Dapper tự thêm (tránh '@@'); whitelist ký tự an toàn.</summary>
+    private static string NormalizeParamName(string name)
+    {
+        var n = name.TrimStart('@');
+        if (!SafeIdentifierRegex().IsMatch(n))
+            throw new InvalidOperationException($"Tên tham số không hợp lệ: '{name}'.");
+        return n;
+    }
+
+    /// <summary>Validate tên SP ('schema.proc' hoặc 'proc') — mỗi phần là identifier an toàn.</summary>
+    private static string ValidateSpName(string spName, string viewCode)
+    {
+        var parts = spName.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+            throw new InvalidOperationException(
+                $"View '{viewCode}': tên Stored Procedure '{spName}' không hợp lệ.");
+        return string.Join('.', parts.Select(Bracket));
+    }
+
+    /// <summary>Ép giá trị thô (string) sang kiểu tham số; bọc %...% khi LIKE; tách mảng khi IN.</summary>
+    private static object? ConvertFilterValue(string? raw, string paramType, string op, string filterCode)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+        raw = raw.Trim();
+
+        if (string.Equals(op, "IN", StringComparison.OrdinalIgnoreCase))
+            return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                      .Select(s => ConvertScalar(s, paramType, filterCode))
+                      .ToArray();
+
+        var val = ConvertScalar(raw, paramType, filterCode);
+        if (string.Equals(op, "LIKE", StringComparison.OrdinalIgnoreCase) && val is string s)
+            return $"%{s}%";
+        return val;
+    }
+
+    /// <summary>Ép 1 giá trị scalar theo Param_Type; ném <see cref="ArgumentException"/> nếu sai định dạng.</summary>
+    private static object ConvertScalar(string raw, string paramType, string filterCode) =>
+        paramType.ToLowerInvariant() switch
+        {
+            "int" => int.TryParse(raw, out var i)
+                ? i : throw new ArgumentException($"'{filterCode}': '{raw}' không phải số nguyên.", filterCode),
+            "decimal" => decimal.TryParse(raw, System.Globalization.NumberStyles.Any,
+                            System.Globalization.CultureInfo.InvariantCulture, out var d)
+                ? d : throw new ArgumentException($"'{filterCode}': '{raw}' không phải số.", filterCode),
+            "date" => DateTime.TryParse(raw, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out var dt)
+                ? dt : throw new ArgumentException($"'{filterCode}': '{raw}' không phải ngày.", filterCode),
+            "bool" => raw is "1" or "true" or "True" ? true
+                    : raw is "0" or "false" or "False" ? false
+                    : throw new ArgumentException($"'{filterCode}': '{raw}' không phải bool.", filterCode),
+            _ => raw   // string
+        };
 
     /// <inheritdoc />
     public async Task<(IReadOnlyList<ViewListItem> Items, int TotalCount)> GetListAsync(

@@ -134,3 +134,37 @@
 - **Ownership:** db + ConfigStudio = Codex; Domain/Application/Infrastructure/Api/Blazor = Claude.
 - **Chi tiết schema đầy đủ:** `docs/spec/14_VIEW_CONFIG_SPEC.md`.
 - **Status:** thiết kế chốt; triển khai chưa bắt đầu (cần handoff Codex).
+
+---
+
+## ADR-016: Lưới nâng cao — panel lọc trái + tham số SP/SQL (Ui_View_Filter) (2026-06-11)
+- **Context:** Cần "lưới nâng cao": panel control lọc bên trái + nút Tìm (i18n) → đẩy tham số vào
+  câu SQL/Stored Procedure → đổ kết quả ra lưới, kèm nút thao tác. `Ui_View` đã có `Source_Type`
+  (Table|View|Sp|Api) + cột/action/export, nhưng **thiếu panel lọc tham số**: `Show_Filter_Row`
+  chỉ là ô lọc trong cột, `Default_Filter_Json` là lọc cố định — không có control→tham số SP.
+- **Decision (Hướng A — mở rộng `Ui_View`, KHÔNG tạo `View_Type='QueryGrid'` hay store riêng):**
+  - Trục "nguồn dữ liệu" (`Source_Type`) **trực giao** với trục "render" (`View_Type`). Panel lọc là
+    tính năng bật/tắt theo nguồn, không phải loại lưới mới → tái dùng 100% `Ui_View_Column`/`Ui_View_Action`.
+  - **Bảng mới `Ui_View_Filter`** (per-View, FK `View_Id`): mỗi control lọc = 1 dòng. **MỖI THAM SỐ =
+    1 DÒNG riêng** (DateRange tách `tu_ngay` Operator '>=' + `den_ngay` '<='; KHÔNG có cột Param_Name_To).
+    Lý do: thông báo i18n + focus chính xác từng ô khi thiếu tham số (báo "Từ ngày là bắt buộc" được).
+  - **Whitelist tham số:** engine chỉ bind `@param` khai báo trong `Ui_View_Filter`; ép kiểu theo
+    `Param_Type`; bọc `%...%` khi `Operator='LIKE'`; giá trị rỗng → NULL (SP nên xử lý `@x IS NULL` = bỏ lọc).
+    Giá trị **luôn parameterized** (Dapper) → chống injection. SP name validate identifier (schema.proc).
+  - **Cờ panel = cột tường minh trên `Ui_View`** (không nhét Options_Json): `Filter_Panel_Enabled`,
+    `Filter_Panel_Position` (left|top), `Filter_Collapsible`, `Auto_Search_On_Load` (default 0 = chờ bấm
+    Tìm, tránh SP nặng), `Search_Label_Key`, `Reset_Label_Key`.
+  - **Engine rule:** panel chỉ render khi `Filter_Panel_Enabled=1` AND `Source_Type ∈ {Sp,Sql}` AND có
+    ≥1 filter (`ViewMetadata.HasFilterPanel`). Bấm Tìm → validate Required → bind whitelist → gọi SP/SQL,
+    trả nguyên tập đã lọc (client phân trang, TotalCount = số dòng).
+  - **i18n triệt để:** mọi text UI là `_Key` → `Sys_Resource`. `Param_Name`/`Default_Value`/`Lookup_Code`
+    là literal nghiệp vụ (KHÔNG i18n). Key convention: `{table}.view.filter.{filter_code}.label/.placeholder/
+    .tooltip`; nút `common.filter.search`/`.reset`; thông báo `common.validation.required` = "{0} là bắt buộc".
+  - **MultiSelect → IN:** hoãn đợt 2 (engine đã có khung tách mảng theo dấu phẩy cho Source_Type='Sql').
+- **API:** `POST /api/v1/views/{code}/search` (body `{ filters: {filterCode: value} }`) →
+  `GetViewFilteredDataQuery` → `IViewRepository.GetFilteredDataAsync`. Tham số sai/thiếu → 400.
+- **Ownership:** db migration (034) + ConfigStudio = Codex; Domain/App/Infra/Api/Blazor = Claude.
+  *(Session 2026-06-11: user yêu cầu Claude làm trọn gói cả db + ConfigStudio.)*
+- **Chi tiết schema:** `docs/spec/14_VIEW_CONFIG_SPEC.md §9`. Migration `db/034_create_ui_view_filter.sql`.
+- **Status:** ✅ thiết kế chốt; backend (Domain/App/Infra/Api) đã code + build xanh (2026-06-11);
+  Blazor FilterPanel + ConfigStudio đang triển khai.

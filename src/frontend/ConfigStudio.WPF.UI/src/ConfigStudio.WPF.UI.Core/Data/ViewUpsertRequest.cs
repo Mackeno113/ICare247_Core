@@ -43,6 +43,14 @@ public sealed class ViewUpsertRequest
     public string? ParentField { get; set; }
     public int? ExpandLevel { get; set; }
 
+    // Panel lọc trái (lưới nâng cao)
+    public bool FilterPanelEnabled { get; set; }
+    public string FilterPanelPosition { get; set; } = "left";
+    public bool FilterCollapsible { get; set; } = true;
+    public bool AutoSearchOnLoad { get; set; }
+    public string? SearchLabelKey { get; set; }
+    public string? ResetLabelKey { get; set; }
+
     public int? DetailViewId { get; set; }
     public string? DefaultFilterJson { get; set; }
     public string? OptionsJson { get; set; }
@@ -55,4 +63,5 @@ public sealed class ViewUpsertRequest
 
     public List<ViewColumnRecord> Columns { get; set; } = [];
     public List<ViewActionRecord> Actions { get; set; } = [];
+    public List<ViewFilterRecord> Filters { get; set; } = [];
 }

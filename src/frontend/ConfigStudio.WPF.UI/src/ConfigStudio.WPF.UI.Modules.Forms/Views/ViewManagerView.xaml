@@ -78,6 +78,35 @@
             <sys:String>Server</sys:String>
         </x:Array>
 
+        <!-- Panel lọc (Ui_View_Filter) -->
+        <x:Array x:Key="FilterControlTypes" Type="sys:String">
+            <sys:String>Text</sys:String>
+            <sys:String>Number</sys:String>
+            <sys:String>Date</sys:String>
+            <sys:String>Combo</sys:String>
+            <sys:String>MultiSelect</sys:String>
+            <sys:String>Checkbox</sys:String>
+            <sys:String>Radio</sys:String>
+        </x:Array>
+        <x:Array x:Key="FilterParamTypes" Type="sys:String">
+            <sys:String>string</sys:String>
+            <sys:String>int</sys:String>
+            <sys:String>decimal</sys:String>
+            <sys:String>date</sys:String>
+            <sys:String>bool</sys:String>
+        </x:Array>
+        <x:Array x:Key="FilterOperators" Type="sys:String">
+            <sys:String>=</sys:String>
+            <sys:String>LIKE</sys:String>
+            <sys:String>&gt;=</sys:String>
+            <sys:String>&lt;=</sys:String>
+            <sys:String>IN</sys:String>
+        </x:Array>
+        <x:Array x:Key="FilterPanelPositions" Type="sys:String">
+            <sys:String>left</sys:String>
+            <sys:String>top</sys:String>
+        </x:Array>
+
         <Style x:Key="EditorLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -525,6 +554,118 @@
                                         </dxg:GridColumn>
                                         <dxg:GridColumn Header="Target" FieldName="Target" Width="*" />
                                         <dxg:GridColumn Header="Req_Sel" FieldName="RequireSelection" Width="65" />
+                                    </dxg:GridControl.Columns>
+                                </dxg:GridControl>
+                            </Grid>
+                        </dx:DXTabItem>
+
+                        <!-- TAB 7: Bộ lọc (panel trái — lưới nâng cao, nguồn SP/SQL) -->
+                        <dx:DXTabItem Header="Bộ lọc">
+                            <Grid Margin="0,8,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Cờ panel -->
+                                <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                                    <Border Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                                            CornerRadius="6" Padding="12,10" Margin="0,0,0,10">
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#0369A1"
+                                                   Text="Panel lọc trái chỉ hiển thị khi Source_Type = Sp hoặc Sql (tab Cơ bản) và có ≥1 control. Mỗi tham số = 1 dòng; nhãn/placeholder/tooltip là i18n; giá trị luôn parameterized (whitelist tham số)." />
+                                    </Border>
+                                    <dxe:CheckEdit Content="Filter_Panel_Enabled — bật panel lọc trái"
+                                                   IsChecked="{Binding EditFilterPanelEnabled}" Margin="0,2" />
+                                    <dxe:CheckEdit Content="Filter_Collapsible — cho thu gọn panel"
+                                                   IsChecked="{Binding EditFilterCollapsible}" Margin="0,2" />
+                                    <dxe:CheckEdit Content="Auto_Search_On_Load — tự Tìm khi mở (mặc định chờ bấm, tránh SP nặng)"
+                                                   IsChecked="{Binding EditAutoSearchOnLoad}" Margin="0,2" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="16" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Vị trí panel" Style="{StaticResource EditorLabel}" />
+                                            <dxe:ComboBoxEdit Width="120" HorizontalAlignment="Left"
+                                                              ItemsSource="{Binding FilterPanelPositionOptions}"
+                                                              EditValue="{Binding EditFilterPanelPosition}" IsTextEditable="False" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock Text="Nhãn nút Tìm / Đặt lại (i18n — null = nút mặc định)" Style="{StaticResource EditorLabel}" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <dxe:TextEdit Width="200" EditValue="{Binding EditSearchLabelKey, UpdateSourceTrigger=PropertyChanged}"
+                                                              NullText="common.filter.search" Margin="0,0,8,0" />
+                                                <dxe:TextEdit Width="200" EditValue="{Binding EditResetLabelKey, UpdateSourceTrigger=PropertyChanged}"
+                                                              NullText="common.filter.reset" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- Toolbar filter -->
+                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+                                    <dx:SimpleButton Command="{Binding AddFilterCommand}" Content="+ Thêm filter" Margin="0,0,8,0" />
+                                    <dx:SimpleButton Command="{Binding RemoveFilterCommand}" Content="− Xóa filter" Margin="0,0,8,0" />
+                                    <dx:SimpleButton Command="{Binding MoveFilterUpCommand}" Content="↑" Width="32" Margin="0,0,4,0" />
+                                    <dx:SimpleButton Command="{Binding MoveFilterDownCommand}" Content="↓" Width="32" Margin="0,0,12,0" />
+                                    <dx:SimpleButton Command="{Binding OpenFilterLabelI18nCommand}" Content="🌐 Dịch nhãn"
+                                                     ToolTip="Tạo/sửa bản dịch Label_Key cho filter đang chọn" />
+                                </StackPanel>
+
+                                <dxg:GridControl Grid.Row="2" ItemsSource="{Binding EditFilters}"
+                                                 SelectedItem="{Binding SelectedFilter, Mode=TwoWay}"
+                                                 AutoGenerateColumns="None">
+                                    <dxg:GridControl.View>
+                                        <dxg:TableView NavigationStyle="Cell" ShowGroupPanel="False"
+                                                       AllowEditing="True" AllowPerPixelScrolling="True"
+                                                       NewItemRowPosition="None" />
+                                    </dxg:GridControl.View>
+                                    <dxg:GridControl.Columns>
+                                        <dxg:GridColumn Header="Filter_Code *" FieldName="FilterCode" Width="120" />
+                                        <dxg:GridColumn Header="Control" FieldName="ControlType" Width="100">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings ItemsSource="{StaticResource FilterControlTypes}" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
+                                        <dxg:GridColumn Header="Label (i18n)" FieldName="LabelKey" Width="170" AllowEditing="False">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <DockPanel LastChildFill="True">
+                                                        <dx:SimpleButton DockPanel.Dock="Right" Content="🌐" Width="26" Padding="0"
+                                                                         ToolTip="Dịch / tạo key nhãn (i18n)"
+                                                                         Command="{Binding DataContext.OpenFilterLabelI18nRowCommand,
+                                                                                   RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                         CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock Text="{Binding RowData.Row.LabelKey}" VerticalAlignment="Center"
+                                                                   TextTrimming="CharacterEllipsis" Margin="2,0"
+                                                                   ToolTip="{Binding RowData.Row.LabelKey}" />
+                                                    </DockPanel>
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
+                                        <dxg:GridColumn Header="Param_Name *" FieldName="ParamName" Width="110"
+                                                        ToolTip="Tham số SP/SQL, vd @TuNgay" />
+                                        <dxg:GridColumn Header="Type" FieldName="ParamType" Width="80">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings ItemsSource="{StaticResource FilterParamTypes}" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
+                                        <dxg:GridColumn Header="Op" FieldName="Operator" Width="70"
+                                                        ToolTip="Khoảng ngày: tách 2 dòng &gt;= và &lt;=">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings ItemsSource="{StaticResource FilterOperators}" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
+                                        <dxg:GridColumn Header="Mặc định" FieldName="DefaultValue" Width="90" />
+                                        <dxg:GridColumn Header="Bắt buộc" FieldName="IsRequired" Width="65" />
+                                        <dxg:GridColumn Header="Hiện" FieldName="IsVisible" Width="55" />
+                                        <dxg:GridColumn Header="ColSpan" FieldName="ColSpan" Width="65" />
+                                        <dxg:GridColumn Header="LookupCode" FieldName="LookupCode" Width="110"
+                                                        ToolTip="Combo tĩnh: Sys_Lookup.Lookup_Code" />
+                                        <dxg:GridColumn Header="Order" FieldName="OrderNo" Width="55" AllowEditing="False" />
                                     </dxg:GridControl.Columns>
                                 </dxg:GridControl>
                             </Grid>

@@ -16,4 +16,5 @@ public sealed class ViewDetailRecord
     public required ViewRecord Header { get; init; }
     public List<ViewColumnRecord> Columns { get; init; } = [];
     public List<ViewActionRecord> Actions { get; init; } = [];
+    public List<ViewFilterRecord> Filters { get; init; } = [];
 }

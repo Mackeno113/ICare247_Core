@@ -6,6 +6,7 @@
 @using ICare247.Blazor.RuntimeCheck.Services
 @using ICare247.Blazor.RuntimeCheck.Components.View
 @inject ViewApiService ViewApi
+@inject I18nService I18n
 @inject NavigationManager Nav
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
@@ -32,7 +33,8 @@
             }
         </div>
 
-        @if (_view.ShowSearchBox)
+        @* Ô search nhanh (LIKE) chỉ cho nguồn Table — nguồn SP/SQL dùng panel lọc tham số. *@
+        @if (_view.ShowSearchBox && !_view.HasFilterPanel)
         {
             <div class="md-list-toolbar">
                 <input class="md-search" placeholder="🔍 Tìm kiếm…" value="@_search"
@@ -40,15 +42,25 @@
             </div>
         }
 
-        <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
-                  OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
+        <div class="@(_view.HasFilterPanel ? "dv-with-filter" : "")">
+            @if (_view.HasFilterPanel)
+            {
+                <FilterPanel Filters="_view.Filters" SearchLabel="_view.SearchLabel"
+                             ResetLabel="_view.ResetLabel" Collapsible="_view.FilterCollapsible"
+                             OnSearch="OnFilterSearchAsync" />
+            }
+            <div class="dv-grid-area">
+                <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
+                          OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
 
-        @if (_notice is not null)
-        {
-            <div class="md-list-notice">@_notice</div>
-        }
+                @if (_notice is not null)
+                {
+                    <div class="md-list-notice">@_notice</div>
+                }
 
-        <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+                <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+            </div>
+        </div>
     }
 </div>
 
@@ -63,6 +75,9 @@
     private string? _search;
     private string? _notice;
 
+    /// <summary>Giá trị panel lọc lần Tìm gần nhất — để Refresh chạy lại đúng bộ lọc (nguồn SP/SQL).</summary>
+    private IReadOnlyDictionary<string, string?> _lastFilters = new Dictionary<string, string?>();
+
     protected override async Task OnParametersSetAsync() => await InitAsync();
 
     private async Task InitAsync()
@@ -70,20 +85,61 @@
         _loading = true; _error = null;
         try
         {
+            await I18n.EnsureCommonLoadedAsync("vi");
             _view = await ViewApi.GetInfoAsync(ViewCode);
             if (_view is null) { _error = $"Không tìm thấy View '{ViewCode}'."; return; }
-            await ReloadDataAsync();
+
+            // Nguồn SP/SQL có panel lọc: chỉ tải khi Auto_Search_On_Load (tránh SP nặng) — ngược lại chờ bấm Tìm.
+            if (_view.HasFilterPanel && !_view.AutoSearchOnLoad)
+            {
+                _items = []; _total = 0;
+            }
+            else
+            {
+                await ReloadDataAsync();
+            }
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; }
     }
 
+    /// <summary>Tải lại dữ liệu: nguồn query → chạy lại bộ lọc gần nhất; nguồn Table → SELECT + search LIKE.</summary>
     private async Task ReloadDataAsync()
     {
-        var pageSize = _view!.PageSize < 1 ? 50 : _view.PageSize;
+        if (_view!.IsQuerySource)
+        {
+            await RunSearchAsync(_lastFilters);
+            return;
+        }
+
+        var pageSize = _view.PageSize < 1 ? 50 : _view.PageSize;
         var result = await ViewApi.GetDataAsync(ViewCode, _search, page: 1, pageSize: pageSize);
         _items = result?.Items ?? [];
         _total = result?.TotalCount ?? 0;
+    }
+
+    /// <summary>Panel lọc bấm Tìm (đã validate Required client-side) → thực thi SP/SQL.</summary>
+    private async Task OnFilterSearchAsync(IReadOnlyDictionary<string, string?> values)
+    {
+        _lastFilters = values;
+        await RunSearchAsync(values);
+    }
+
+    /// <summary>Gọi endpoint /search; tham số sai/thiếu (400) → hiện thông báo thay vì vỡ trang.</summary>
+    private async Task RunSearchAsync(IReadOnlyDictionary<string, string?> values)
+    {
+        _notice = null;
+        try
+        {
+            var result = await ViewApi.SearchAsync(ViewCode, values);
+            _items = result?.Items ?? [];
+            _total = result?.TotalCount ?? 0;
+        }
+        catch (HttpRequestException ex)
+        {
+            _items = []; _total = 0;
+            _notice = ex.Message;
+        }
     }
 
     private async Task OnSearchChanged(ChangeEventArgs e)

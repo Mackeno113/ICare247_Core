@@ -203,6 +203,13 @@ INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
 {tableCode}.view.{viewCode}.action.{actionCode}.label    -- nhãn nút
 {tableCode}.view.{viewCode}.action.{actionCode}.tooltip  -- tooltip nút
 {tableCode}.view.{viewCode}.action.{actionCode}.confirm  -- xác nhận (vd Xóa)
+
+-- Panel lọc nâng cao (Ui_View_Filter — spec 14 §9, ADR-016)
+{tableCode}.view.{viewCode}.filter.{filterCode}.label        -- nhãn control lọc
+{tableCode}.view.{viewCode}.filter.{filterCode}.placeholder  -- placeholder
+{tableCode}.view.{viewCode}.filter.{filterCode}.tooltip      -- tooltip
+-- Nút Tìm/Đặt lại dùng key CHUNG (không scope theo view): common.filter.search / common.filter.reset
+-- Thông báo thiếu tham số: common.validation.required = "{0} là bắt buộc"
 ```
 
 | Phần | Mô tả | Ví dụ |
