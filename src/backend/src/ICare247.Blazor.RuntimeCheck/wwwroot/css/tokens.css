@@ -4,14 +4,17 @@
    Thay thế hoàn toàn bộ tokens "playful" (Coral/Violet/Teal) cũ.
    Định hướng: ERP nghiêm túc kiểu Odoo / SAP Fiori / Oracle Fusion.
    Nguyên tắc: trung tính, đặc data, ít màu gây nhiễu, ưu tiên đọc nhanh grid.
-   Cập nhật: 2026-06-09 (ADR-012)
+   Accent = xanh Fluent #0F6CBD — ĐỒNG BỘ theme DevExpress Fluent Light (default
+   mới của DX). Đổi 1 chỗ ở đây là đổi nút/badge/focus của app; control DX đổi
+   qua accent API của Fluent. (ADR-012 chốt hướng ERP; accent xanh thay navy.)
+   Cập nhật: 2026-06-11
    ============================================================================= */
 
 :root {
   /* ── Brand ─────────────────────────────────────────────────────────────── */
-  --color-primary:        #1E3A5F;  /* navy — sidebar, header, nút chính       */
-  --color-primary-hover:  #16304F;  /* navy đậm hơn cho hover                  */
-  --color-primary-soft:   #E8EDF3;  /* navy nhạt — nền selected, badge nhẹ     */
+  --color-primary:        #0F6CBD;  /* xanh Fluent — nút chính, link, focus     */
+  --color-primary-hover:  #0C5A9E;  /* xanh đậm hơn cho hover                   */
+  --color-primary-soft:   #E5F1FB;  /* xanh nhạt — nền selected, badge nhẹ      */
 
   --color-secondary:      #2E7D32;  /* green — thành công, xác nhận, dương     */
   --color-secondary-hover:#256628;
@@ -102,6 +105,19 @@
   --grid-row-height:   36px;   /* dòng grid compact                  */
   --form-card-max:     700px;  /* danh mục nhỏ < 10 trường: card giữa */
 
+  /* ── Form controls (alias dùng cho input/editor) ───────────────────────── */
+  --font-body:           var(--font-sans);
+  --input-height-md:     38px;
+  --input-font:          var(--fs-base);          /* 14px                     */
+  --input-radius:        var(--radius-md);         /* 6px                      */
+  --input-border:        var(--color-border);
+  --input-border-hover:  var(--color-border-strong);
+  --input-border-focus:  var(--color-primary);     /* xanh Fluent              */
+  --input-border-error:  var(--color-danger);
+  --input-shadow-focus:  0 0 0 3px rgba(15, 108, 189, 0.18); /* xanh ring      */
+  --input-shadow-error:  0 0 0 3px rgba(198, 40, 40, 0.18);  /* danger ring    */
+  --input-transition:    border-color 0.15s ease, box-shadow 0.15s ease;
+
   --z-header:   100;
   --z-sidebar:  90;
   --z-popup:    1000;
@@ -109,32 +125,15 @@
 }
 
 /* =============================================================================
-   Map sang DevExpress Blazor theme variables
+   Theme DevExpress — KHÔNG map ở đây (chú thích quan trọng)
    -----------------------------------------------------------------------------
-   DevExpress đọc các biến --dx-* để tô màu DxGrid, DxFormLayout, DxButton...
-   Đặt khối này SAU :root để override theme mặc định của DevExpress.
-   (Tên biến --dx-* cần đối chiếu version DevExpress thực tế đang dùng.)
+   blazing-berry v25.2.3 KHÔNG đọc biến --dx-color-* / --dx-grid-* — đã đối chiếu
+   trực tiếp DLL theme: những tên đó không tồn tại. Màu accent thật do Bootstrap
+   --bs-primary (mặc định berry tím #5f368d) và các biến --dxbl-grid-* điều khiển;
+   chúng được đặt NGAY trên selector component (.dxbl-grid, .dxbl-text-edit…) nên
+   phải override đúng selector đó, KHÔNG override ở :root.
+   → Việc re-tint DevExpress sang navy ERP nằm ở app.css (file load SAU theme).
    ============================================================================= */
-:root {
-  --dx-color-primary:          var(--color-primary);
-  --dx-color-primary-contrast: var(--color-text-inverse);
-  --dx-color-success:          var(--color-success);
-  --dx-color-warning:          var(--color-warning);
-  --dx-color-danger:           var(--color-danger);
-
-  --dx-border-color:           var(--color-border);
-  --dx-surface-color:          var(--color-card);
-  --dx-font-family:            var(--font-sans);
-  --dx-font-size:              var(--fs-sm);
-
-  /* Grid — thành phần trung tâm của ERP */
-  --dx-grid-header-bg:         var(--gray-50);
-  --dx-grid-header-color:      var(--color-text);
-  --dx-grid-border-color:      var(--color-border);
-  --dx-grid-row-hover-bg:      var(--color-primary-soft);
-  --dx-grid-row-selected-bg:   var(--color-primary-soft);
-  --dx-grid-row-height:        var(--grid-row-height);
-}
 
 /* Dark mode: để trống có chủ đích — ERP nội bộ ưu tiên hoàn thiện light mode
    trước. Khi cần, override các biến trên trong [data-theme="dark"]. */

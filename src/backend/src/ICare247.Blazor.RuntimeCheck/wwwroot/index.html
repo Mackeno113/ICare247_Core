@@ -6,7 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ICare247 RuntimeCheck</title>
     <base href="/" />
-    <link rel="stylesheet" href="_content/DevExpress.Blazor.Themes/blazing-berry.bs5.min.css" />
+    <!-- DevExpress Fluent theme (lắp 4 file đúng thứ tự: global → core → mode → accent).
+         Đổi accent: thay accents/blue.min.css bằng steel/storm/cool-blue… (11 màu).
+         Đổi dark mode: thay modes/light.min.css bằng modes/dark.min.css. -->
+    <link rel="stylesheet" href="_content/DevExpress.Blazor.Themes.Fluent/global.min.css" />
+    <link rel="stylesheet" href="_content/DevExpress.Blazor.Themes.Fluent/core.min.css" />
+    <link rel="stylesheet" href="_content/DevExpress.Blazor.Themes.Fluent/modes/light.min.css" />
+    <link rel="stylesheet" href="_content/DevExpress.Blazor.Themes.Fluent/accents/blue.min.css" />
     <link rel="stylesheet" href="css/tokens.css" />
     <link rel="stylesheet" href="css/app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
