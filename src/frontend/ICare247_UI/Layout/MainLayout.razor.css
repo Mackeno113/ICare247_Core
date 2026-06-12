@@ -1,77 +1,183 @@
-.page {
-    position: relative;
+/* MainLayout — shell ERP responsive. Mọi màu/kích thước lấy từ tokens.css. */
+
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--fs-sm);
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────── */
+.app-sidebar {
+    width: var(--sidebar-expanded);
+    flex: 0 0 var(--sidebar-expanded);
+    background: var(--color-card);
+    border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    z-index: var(--z-sidebar);
 }
 
-main {
-    flex: 1;
-}
-
-.sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
-}
-
-.top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
-    justify-content: flex-end;
-    height: 3.5rem;
+.app-brand {
+    height: var(--header-height);
     display: flex;
     align-items: center;
+    gap: var(--space-3);
+    padding: 0 var(--space-5);
+    border-bottom: 1px solid var(--color-border);
 }
 
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        white-space: nowrap;
-        margin-left: 1.5rem;
-        text-decoration: none;
-    }
-
-    .top-row ::deep a:hover, .top-row ::deep .btn-link:hover {
-        text-decoration: underline;
-    }
-
-    .top-row ::deep a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-@media (max-width: 640.98px) {
-    .top-row {
-        justify-content: space-between;
-    }
-
-    .top-row ::deep a, .top-row ::deep .btn-link {
-        margin-left: 0;
-    }
+.app-brand__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    font-weight: var(--fw-bold);
+    font-size: var(--fs-sm);
 }
 
-@media (min-width: 641px) {
-    .page {
-        flex-direction: row;
+.app-brand__name {
+    font-weight: var(--fw-semibold);
+    font-size: var(--fs-md);
+}
+
+/* ── Body (topbar + content) ──────────────────────────────────────────── */
+.app-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.app-topbar {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: 0 var(--space-6);
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+}
+
+/* Nút ☰ — ẩn trên desktop, hiện trên mobile */
+.app-navtoggle {
+    display: none;
+    border: none;
+    background: transparent;
+    font-size: var(--fs-lg);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-md);
+}
+
+.app-navtoggle:hover {
+    background: var(--gray-100);
+}
+
+.app-company {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.app-company__label {
+    color: var(--color-text-secondary);
+}
+
+.app-company__value {
+    font-weight: var(--fw-medium);
+}
+
+.app-topbar__spacer {
+    flex: 1 1 auto;
+}
+
+.app-user__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: var(--fw-semibold);
+}
+
+/* Bộ chuyển ngôn ngữ */
+.app-lang ::deep .lang-switcher {
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-size: var(--fs-sm);
+    padding: 0 var(--space-2);
+    cursor: pointer;
+}
+
+.app-lang ::deep .lang-switcher:hover {
+    border-color: var(--color-border-strong);
+}
+
+.app-content {
+    flex: 1 1 auto;
+    padding: var(--content-padding);
+    overflow: auto;
+}
+
+/* Backdrop — chỉ dùng trên mobile khi mở sidebar */
+.app-backdrop {
+    display: none;
+}
+
+/* ── Responsive: <= 768px ─────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .app-navtoggle {
+        display: inline-flex;
+        align-items: center;
     }
 
-    .sidebar {
-        width: 250px;
+    /* Sidebar trượt từ trái, đè lên nội dung */
+    .app-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
         height: 100vh;
-        position: sticky;
-        top: 0;
+        transform: translateX(-100%);
+        transition: transform .2s ease;
+        box-shadow: var(--shadow-popup);
     }
 
-    .top-row {
-        position: sticky;
-        top: 0;
-        z-index: 1;
+    .app-shell--nav-open .app-sidebar {
+        transform: translateX(0);
     }
 
-    .top-row.auth ::deep a:first-child {
-        flex: 1;
-        text-align: right;
-        width: 0;
+    .app-shell--nav-open .app-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(16, 24, 40, .45);
+        z-index: var(--z-sidebar);
     }
+}
 
-    .top-row, article {
-        padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
+/* ── Responsive: màn rất hẹp ──────────────────────────────────────────── */
+@media (max-width: 480px) {
+    .app-company__label {
+        display: none;
     }
 }

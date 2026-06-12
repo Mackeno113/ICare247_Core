@@ -1,6 +1,45 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-11 (session 45 — đổi theme DevExpress sang Fluent Light + accent xanh)
+> Cập nhật: 2026-06-12 (session 46 — Frontend ICare247_UI: dựng khung host+Shared RCL + menu + i18n shell)
+
+## Session 46 (2026-06-12) — đã làm
+
+### FE-MOVE — chuyển RuntimeCheck sang frontend + sửa path
+- User di chuyển folder `ICare247.Blazor.RuntimeCheck` `src/backend/src/` → `src/frontend/`. Sửa mọi path tham chiếu: `run-blazor.bat`/`run-all.bat` (cd `src\frontend`), `.claude/launch.json`, `src/backend/ICare247.slnx` (`../frontend/ICare247.Blazor.RuntimeCheck/...`), `docs/spec/12_CASCADE_LOOKUP_GUIDE.md` + `13_LOOKUP_ADD_NEW_GUIDE.md`. `settings.local.json` (allowlist cũ) để nguyên.
+
+### FE-KHUNG — dựng khung ICare247_UI (modular monolith)
+- **Quyết định** (user chốt qua hỏi-đáp): end-user app = `ICare247_UI`; **mỗi module nghiệp vụ = 1 RCL riêng**; host + RCL cross-cutting `ICare247.UI.Shared`.
+- Tạo **RCL `ICare247.UI.Shared`**: `Services/Http/ApiClientBase`, `Services/Auth/IAuthService`+`AuthService`(stub), `State/AppState` (công ty hiện hành), `DependencyInjection.AddIcare247UiShared()`. Host `ICare247_UI` thêm ProjectReference + DI + `_Imports`.
+- Solution frontend mới `src/frontend/ICare247.UI.slnx` (host + Shared + RuntimeCheck harness).
+
+### FE-SHELL — shell ERP responsive + menu data-driven
+- `Navigation/AppNav.cs`: cây 8 phân hệ (Organization/Hr/Payroll/Trade/Finance/Reporting/Administration + Auth) × màn con + helper `NavKeys` (suy key i18n từ slug) + field `Permission` (#4 hook).
+- `Layout/`: `MainLayout` (sidebar + topbar + nút ☰ off-canvas mobile, backdrop, tự đóng khi điều hướng), `NavMenu` (accordion từ AppNav, lọc theo quyền stub), `AuthLayout`.
+- `Pages/`: `Dashboard` (route `/`, KPI placeholder), `ScreenView` (`/m/{module}` lưới thẻ + `/m/{module}/{screen}` stub + breadcrumb). Trang dev `Home` đổi route `/`→`/dev/forms`.
+- Màu/kích thước dùng biến `tokens.css` (Fluent Light, accent `#0F6CBD`) — không hardcode.
+- **Verify chạy thật** (preview): desktop accordion + điều hướng OK; mobile (375px) ☰ off-canvas + backdrop OK; 0 lỗi console.
+
+### FE-RUNUI — bat mở web
+- `run-ui.bat` (gốc repo): chạy `ICare247_UI` profile https → https://localhost:7027, tự mở trình duyệt; shell không cần backend. Sửa `launchSettings` cổng phụ `5040`→`5173` (5040 bị OS chặn — gặp khi preview). Verify bind OK.
+
+### FE-I18N — i18n shell (gói #1–#4 + #6)
+- **Nguyên tắc (user chốt)**: KEY thuộc cấu trúc/code (suy từ slug), base vi nằm tại chỗ gọi (`Loc.L("key","base vi")`), JSON chỉ là **value overlay** (KHÔNG gõ key tay), thiếu → fallback base → "key có trước, dịch sau". Tách khỏi `Sys_Resource`/`I18nService` (chỉ cho nội dung động form/field/view).
+- RCL Shared: `Services/I18n/LocalizationService` (lazy-load 1 ngôn ngữ; gộp overlay đa nguồn `RegisterSource` cho module RCL — #2; fetch URL tuyệt đối theo `NavigationManager.BaseUri`, KHÔNG dùng BaseAddress API; localStorage `ic247.lang`; set `CultureInfo` → DevExpress/số-ngày tự dịch — #3; tham số `{0}` — #1; pseudo-loc `qps` — #6) + `Components/LocalizedComponentBase` + `Components/LanguageSwitcher` + `wwwroot/i18n/{languages.json (vi,en), en.json rỗng}`.
+- Bind `NavMenu/MainLayout/Dashboard/ScreenView` qua `Loc.L`. Thêm bộ chuyển ngôn ngữ vào topbar.
+- **Verify**: ⟦Pseudo⟧ → mọi chuỗi shell bọc ngoặc (chỉ brand "ICare247" không, đúng) ⇒ không còn hardcode lọt lưới; English (en.json rỗng) → fallback vi, không vỡ. 0 lỗi console.
+
+### Thảo luận (không code)
+- Phân tích **DDD**: chưa áp dụng (giữ Clean Architecture); nếu sau này → DDD-lite chọn lọc cho module phức tạp (Payroll/Trade/Finance), Dapper repo mức aggregate-root, KHÔNG DDD-hóa nhánh metadata-engine.
+- Gợi ý phương pháp thiết kế phù hợp: Vertical Slice + CQRS, Result pattern, Domain/Integration Events + Outbox, Read Model cho Reporting, Contract-first.
+
+### Build
+- `src/backend/ICare247.slnx` **0/0**; `src/frontend/ICare247.UI.slnx` **0/0**. (3 warning DevExpress license = pre-existing trial.)
+
+### Việc tiếp theo gợi ý
+- i18n: #5 (xuất skeleton Excel cho người dịch + import) hoặc #7 (trang `/dev/i18n` báo key thiếu/độ phủ).
+- Bắt đầu module thật đầu tiên dưới dạng RCL (vd `ICare247.UI.Organization`) làm template, hoặc nối màn Auth (`auth.css`/`.razor`) theo design đã chốt.
+
+---
 
 ## Session 45 (2026-06-11) — đã làm
 

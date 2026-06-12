@@ -89,6 +89,6 @@ Endpoint: `POST /api/v1/lookups/insert`
 - Migration: [db/022_ui_field_lookup_add_addnew.sql](../../db/022_ui_field_lookup_add_addnew.sql)
 - Backend insert: [DynamicLookupRepository.cs](../../src/backend/src/ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs) (`InsertAsync`)
 - Endpoint: [LookupController.cs](../../src/backend/src/ICare247.Api/Controllers/LookupController.cs) (`POST insert`)
-- Dialog: [LookupAddDialog.razor](../../src/backend/src/ICare247.Blazor.RuntimeCheck/Components/LookupAddDialog.razor)
-- Renderer wiring: [LookupBoxRenderer.razor](../../src/backend/src/ICare247.Blazor.RuntimeCheck/Components/FieldRenderers/LookupBoxRenderer.razor)
+- Dialog: [LookupAddDialog.razor](../../src/frontend/ICare247.Blazor.RuntimeCheck/Components/LookupAddDialog.razor)
+- Renderer wiring: [LookupBoxRenderer.razor](../../src/frontend/ICare247.Blazor.RuntimeCheck/Components/FieldRenderers/LookupBoxRenderer.razor)
 - WPF config UI: [LookupBoxPropsPanel.xaml](../../src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Forms/Views/Panels/ControlProps/LookupBoxPropsPanel.xaml)

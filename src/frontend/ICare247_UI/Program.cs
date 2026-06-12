@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using ICare247_UI;
 using ICare247_UI.Models;
 using ICare247_UI.Services;
+using ICare247.UI.Shared;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -41,6 +42,9 @@ builder.Services.AddScoped(sp =>
 // ── DevExpress Blazor ──────────────────────────────────────────────────────
 // NOTE: BootstrapVersion obsolete từ v25 — AddDevExpressBlazor() không cần options
 builder.Services.AddDevExpressBlazor();
+
+// ── Dịch vụ Shared (cross-cutting: AppState, Auth) ─────────────────────────
+builder.Services.AddIcare247UiShared();
 
 // ── Application services ───────────────────────────────────────────────────
 builder.Services.AddScoped<FormApiService>();

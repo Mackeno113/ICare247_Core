@@ -19,7 +19,18 @@ ngành, cấu hình động, đa tổ chức — tránh hình ảnh/từ ngữ y
   không accent-màu-theo-tenant). Auth = brand tập đoàn nên hardcode xanh là đúng chủ đích.
 - Trạng thái: chốt mức mockup, CHƯA nối API. Bước tiếp: viết `auth.css` + `.razor` vào `src/frontend/ICare247_UI`.
 
-## Đợt mới nhất — Đổi theme DevExpress sang Fluent Light + accent xanh (session 45, 2026-06-11)
+## Đợt mới nhất — Frontend ICare247_UI: dựng khung + menu + i18n shell (session 46, 2026-06-12)
+
+Khởi tạo **end-user app thật `ICare247_UI`** (Blazor WASM) theo **modular monolith**: host + RCL cross-cutting `ICare247.UI.Shared`; **mỗi module nghiệp vụ sau này = 1 RCL riêng** (user chốt). Đã có shell ERP responsive (sidebar accordion + topbar + ☰ off-canvas mobile), menu **data-driven từ `AppNav`** (8 phân hệ: Organization/Hr/Payroll/Trade/Finance/Reporting/Administration + Auth × màn con), Dashboard `/`, placeholder `ScreenView` (`/m/{module}`, `/m/{module}/{screen}`) để **click hình dung cấu trúc** (chưa dữ liệu/control). `run-ui.bat` mở web (https://localhost:7027).
+
+**i18n shell** (gói #1–#4 + #6): `LocalizationService` lazy-load + pseudo-loc + CultureInfo + localStorage; **KEY suy từ cấu trúc, JSON = value overlay** (không gõ key tay), base vi fallback → "key có trước, dịch sau"; tách khỏi `Sys_Resource` (chỉ cho nội dung động). Bộ chuyển ngôn ngữ ở topbar (vi + en; en.json rỗng chờ dịch). Verify thật: pseudo lộ hết chuỗi, English fallback vi OK.
+
+- **Chuyển `ICare247.Blazor.RuntimeCheck`** `src/backend/src/` → `src/frontend/` (harness thử nghiệm, tách khỏi app end-user); sửa path bat/slnx/launch/docs.
+- **DDD**: chưa áp dụng (giữ Clean Architecture) — chỉ thảo luận; nếu sau → DDD-lite cho module phức tạp.
+
+→ **Bước tiếp**: i18n #5 (xuất Excel cho người dịch) / #7 (trang `/dev/i18n` báo key thiếu); hoặc dựng module RCL thật đầu tiên (template); hoặc nối bộ màn Auth (`auth.css`/`.razor`) theo design đã chốt. Memory mới: `project-frontend-module-architecture`, `project-frontend-i18n-shell`.
+
+## Đợt trước — Đổi theme DevExpress sang Fluent Light + accent xanh (session 45, 2026-06-11)
 
 Hoàn tất task "thay đổi phong cách" (ADR-012). **Theme: blazing-berry (tím) → Fluent Light** (default mới của DevExpress, gói `DevExpress.Blazor.Themes.Fluent` đã cài sẵn), lắp **4 file modular** `global → core → modes/light → accents/blue` (bẫy: file `bootstrap/fluent-light.bs5` thiếu `core.min.css` làm vỡ grid). **Accent = xanh Fluent `#0F6CBD`** thay navy. Điều tra DLL: khối map `--dx-*` là code chết, berry tím nướng cứng ~50 biến `--dxbl-*` → **bỏ hết override thủ công, để Fluent tự lo**. `app.css` viết lại theo token ERP; `tokens.css` bỏ `--dx-*`, thêm `--input-*`, accent xanh. Build 0 error, verify thật OK. Commit `5fc36c4`. Docs spec 09 ADR-012 cập nhật (BE-004 đóng).
 

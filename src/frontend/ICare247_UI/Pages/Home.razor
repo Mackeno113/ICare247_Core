@@ -1,7 +1,8 @@
 ﻿@* File    : Home.razor
-   Purpose : Landing page — danh sách form có thể chạy thử, hoặc nhập Form_Code thủ công. *@
+   Purpose : Trang công cụ Dev — danh sách form chạy thử, hoặc nhập Form_Code thủ công.
+   Lưu ý   : Đổi route "/" → "/dev/forms" khi dựng shell end-user (Dashboard chiếm "/"). *@
 
-@page "/"
+@page "/dev/forms"
 @inject FormApiService FormApi
 @inject ApiSettings Settings
 @inject NavigationManager Nav

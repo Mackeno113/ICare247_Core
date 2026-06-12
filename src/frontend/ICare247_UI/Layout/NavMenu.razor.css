@@ -1,0 +1,113 @@
+/* NavMenu — accordion dọc. Màu lấy từ tokens.css. */
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-3) var(--space-2);
+    gap: 2px;
+    overflow-y: auto;
+}
+
+/* ── Mục đơn (Tổng quan, Dev) ─────────────────────────────────────────── */
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-tight);
+}
+
+.nav-item:hover {
+    background: var(--gray-100);
+    color: var(--color-text);
+}
+
+.nav-item.active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: var(--fw-semibold);
+}
+
+.nav-item__icon {
+    width: 20px;
+    text-align: center;
+    font-size: var(--fs-base);
+}
+
+.nav-item--muted {
+    color: var(--color-text-muted);
+}
+
+/* ── Nhóm phân hệ (accordion) ─────────────────────────────────────────── */
+.nav-group__header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    font: inherit;
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    text-align: left;
+}
+
+.nav-group__header:hover {
+    background: var(--gray-100);
+    color: var(--color-text);
+}
+
+.nav-group--active > .nav-group__header {
+    color: var(--color-primary);
+    font-weight: var(--fw-semibold);
+}
+
+.nav-group__title {
+    flex: 1 1 auto;
+}
+
+.nav-group__caret {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+}
+
+.nav-group__items {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    margin: 2px 0 var(--space-2);
+}
+
+.nav-subitem {
+    display: block;
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 28px);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-tight);
+}
+
+.nav-subitem:hover {
+    background: var(--gray-100);
+    color: var(--color-text);
+}
+
+.nav-subitem.active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: var(--fw-medium);
+}
+
+.nav-sep {
+    height: 1px;
+    background: var(--color-border);
+    margin: var(--space-3) var(--space-2);
+}

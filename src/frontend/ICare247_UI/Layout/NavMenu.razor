@@ -1,0 +1,106 @@
+@implements IDisposable
+@inject NavigationManager Nav
+@inject LocalizationService Loc
+
+@*
+    NavMenu — điều hướng dọc dạng accordion, dữ liệu từ AppNav.
+    - Tiêu đề qua Loc.L(key, base vi): key suy từ slug, base là Title trong AppNav.
+    - Lọc theo quyền (#4): chỉ hiện phân hệ/màn người dùng được phép.
+    - Tự vẽ lại khi đổi ngôn ngữ.
+*@
+
+<nav class="nav-menu">
+    <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+        <span class="nav-item__icon">▦</span> <span>@Loc.L("nav.dashboard", "Tổng quan")</span>
+    </NavLink>
+
+    @foreach (var module in AppNav.Modules.Where(m => CanShow(m.Permission)))
+    {
+        var isOpen = _expanded == module.Key;
+        var isActive = _currentModule == module.Key;
+        <div class="nav-group @(isActive ? "nav-group--active" : "")">
+            <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module.Key)">
+                <span class="nav-item__icon">@module.Icon</span>
+                <span class="nav-group__title">@Loc.L(NavKeys.Module(module.Key), module.Title)</span>
+                <span class="nav-group__caret">@(isOpen ? "▾" : "▸")</span>
+            </button>
+            @if (isOpen)
+            {
+                <div class="nav-group__items">
+                    @foreach (var screen in module.Screens.Where(s => CanShow(s.Permission)))
+                    {
+                        <NavLink class="nav-subitem" href="@($"m/{module.Key}/{screen.Key}")">
+                            @Loc.L(NavKeys.Screen(module.Key, screen.Key), screen.Title)
+                        </NavLink>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="nav-sep"></div>
+
+    <NavLink class="nav-item nav-item--muted" href="dev/forms">
+        <span class="nav-item__icon">🧪</span> <span>@Loc.L("nav.devtools", "Công cụ (Dev)")</span>
+    </NavLink>
+</nav>
+
+@code {
+    // Khóa phân hệ đang được mở (accordion — chỉ 1 mở tại một thời điểm).
+    private string? _expanded;
+    // Khóa phân hệ ứng với URL hiện tại (để tô đậm).
+    private string? _currentModule;
+
+    /// <summary>
+    /// Khởi tạo: xác định phân hệ theo URL, lắng nghe đổi URL + đổi ngôn ngữ.
+    /// </summary>
+    protected override void OnInitialized()
+    {
+        SyncFromUri();
+        _expanded ??= _currentModule;
+        Nav.LocationChanged += OnLocationChanged;
+        Loc.OnChanged += OnLanguageChanged;
+    }
+
+    /// <summary>
+    /// Kiểm tra quyền hiển thị (#4). TODO(phase-auth): tra quyền thật của người dùng.
+    /// Hiện tại pass-through — cấu trúc đã sẵn để lọc khi có module Quản trị.
+    /// </summary>
+    private bool CanShow(string? permission) => true;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        SyncFromUri();
+        if (_currentModule is not null) _expanded = _currentModule;
+        StateHasChanged();
+    }
+
+    private void SyncFromUri()
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri);
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        _currentModule = (segments.Length >= 2 && segments[0] == "m") ? segments[1] : null;
+    }
+
+    private void ToggleModule(string key)
+    {
+        if (_expanded == key)
+        {
+            _expanded = null;
+        }
+        else
+        {
+            _expanded = key;
+            Nav.NavigateTo($"m/{key}");
+        }
+    }
+
+    /// <summary>Hủy đăng ký sự kiện khi component bị loại bỏ.</summary>
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Loc.OnChanged -= OnLanguageChanged;
+    }
+}

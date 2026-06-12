@@ -6,7 +6,7 @@
 :: ============================================================
 title ICare247 - Blazor RuntimeCheck
 
-cd /d "%~dp0src\backend"
+cd /d "%~dp0src\frontend"
 
 echo.
 echo  ========================================
@@ -18,6 +18,6 @@ echo       https://localhost:7130
 echo  ========================================
 echo.
 
-dotnet run --project src\ICare247.Blazor.RuntimeCheck\ICare247.Blazor.RuntimeCheck.csproj --launch-profile https
+dotnet run --project ICare247.Blazor.RuntimeCheck\ICare247.Blazor.RuntimeCheck.csproj --launch-profile https
 
 pause

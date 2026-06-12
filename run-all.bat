@@ -35,7 +35,7 @@ timeout /t 5 /nobreak >nul
 
 :: ── Bước 2: Blazor RuntimeCheck ────────────────────────────
 echo  >> Khoi dong Blazor RuntimeCheck...
-start "ICare247 - Blazor" cmd /k "cd /d %~dp0src\backend && echo. && echo  https://localhost:7017 && echo. && dotnet run --project src\ICare247.Blazor.RuntimeCheck\ICare247.Blazor.RuntimeCheck.csproj --launch-profile https"
+start "ICare247 - Blazor" cmd /k "cd /d %~dp0src\frontend && echo. && echo  https://localhost:7017 && echo. && dotnet run --project ICare247.Blazor.RuntimeCheck\ICare247.Blazor.RuntimeCheck.csproj --launch-profile https"
 
 :: ── Bước 3: ConfigStudio WPF ───────────────────────────────
 echo  >> Khoi dong ConfigStudio WPF...

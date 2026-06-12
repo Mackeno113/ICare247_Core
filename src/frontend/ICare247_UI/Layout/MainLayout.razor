@@ -1,13 +1,85 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject AppState AppState
+@inject NavigationManager Nav
+@inject LocalizationService Loc
 
-<div style="min-height:100vh;">
-    <nav style="background:#1e293b;padding:0 24px;display:flex;align-items:center;height:48px;gap:20px;">
-        <a href="/" style="color:#fff;font-weight:700;font-size:15px;text-decoration:none;">
-            🚀 ICare247 UI
-        </a>
-        <a href="/" style="color:#94a3b8;font-size:13px;text-decoration:none;">Danh sách form</a>
-    </nav>
-    <main>
-        @Body
-    </main>
+@*
+    MainLayout — Shell ERP responsive + đa ngôn ngữ.
+    - Desktop: sidebar dọc cố định + topbar + nội dung.
+    - Mobile (<= 768px): sidebar off-canvas, mở bằng nút ☰, tự đóng khi điều hướng.
+    - Topbar có bộ chuyển ngôn ngữ; init i18n 1 lần lúc tải.
+    Token màu/kích thước lấy từ wwwroot/css/tokens.css (KHÔNG hardcode màu).
+*@
+
+<div class="app-shell @(_navOpen ? "app-shell--nav-open" : "")">
+    <aside class="app-sidebar">
+        <div class="app-brand">
+            <span class="app-brand__logo">IC</span>
+            <span class="app-brand__name">ICare247</span>
+        </div>
+        <NavMenu />
+    </aside>
+
+    <div class="app-backdrop" @onclick="CloseNav"></div>
+
+    <div class="app-body">
+        <header class="app-topbar">
+            <button type="button" class="app-navtoggle" @onclick="ToggleNav" aria-label="@Loc.L("common.app.openmenu", "Mở menu")">☰</button>
+            <div class="app-company">
+                @* TODO(phase-org): thay bằng DxComboBox chọn công ty từ AppState/API *@
+                <span class="app-company__label">@Loc.L("common.app.company", "Công ty"):</span>
+                <span class="app-company__value">@Loc.L("common.app.nocompany", "— chưa chọn —")</span>
+            </div>
+            <div class="app-topbar__spacer"></div>
+            <div class="app-lang">
+                <LanguageSwitcher />
+            </div>
+            <div class="app-user">
+                @* TODO(phase-auth): hiển thị tên user + menu đăng xuất *@
+                <span class="app-user__avatar">U</span>
+            </div>
+        </header>
+
+        <main class="app-content">
+            @Body
+        </main>
+    </div>
 </div>
+
+@code {
+    // Trạng thái mở sidebar trên mobile.
+    private bool _navOpen;
+
+    /// <summary>
+    /// Khởi tạo: lắng nghe điều hướng + đổi ngôn ngữ, và nạp i18n 1 lần (khôi phục
+    /// ngôn ngữ đã lưu). Sự kiện theo sau: nếu ngôn ngữ ≠ vi thì UI vẽ lại theo bản dịch.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+        Loc.OnChanged += OnLanguageChanged;
+        await Loc.InitializeAsync();
+    }
+
+    /// <summary>Mở/đóng sidebar. Sự kiện theo sau: shell thêm/bỏ class --nav-open.</summary>
+    private void ToggleNav() => _navOpen = !_navOpen;
+
+    /// <summary>Đóng sidebar.</summary>
+    private void CloseNav() => _navOpen = false;
+
+    private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Đóng sidebar khi đổi trang để không che nội dung.</summary>
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        if (_navOpen) { _navOpen = false; StateHasChanged(); }
+    }
+
+    /// <summary>Hủy đăng ký sự kiện khi component bị loại bỏ.</summary>
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        Loc.OnChanged -= OnLanguageChanged;
+    }
+}

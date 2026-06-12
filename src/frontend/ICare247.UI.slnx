@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/app/">
+    <Project Path="ICare247_UI/ICare247_UI.csproj" />
+    <Project Path="ICare247.UI.Shared/ICare247.UI.Shared.csproj" />
+  </Folder>
+  <Folder Name="/harness/">
+    <Project Path="ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,69 @@
+@* File    : ScreenView.razor
+   Purpose : Trang placeholder dùng chung cho mọi phân hệ/màn con (chưa có dữ liệu/control).
+             - /m/{Module}          → trang phân hệ: lưới thẻ các màn con để click.
+             - /m/{Module}/{Screen}  → trang màn con: tiêu đề + nhãn "đang phát triển".
+             Tiêu đề qua Loc.L(key, base vi): key suy từ slug. *@
+
+@page "/m/{Module}"
+@page "/m/{Module}/{Screen}"
+@inherits LocalizedComponentBase
+
+@{
+    var module = AppNav.FindModule(Module);
+}
+
+@if (module is null)
+{
+    <PageTitle>@Loc.L("screen.notfound", "Không tìm thấy") — ICare247</PageTitle>
+    <div class="page-header"><h1>@Loc.L("screen.notfound.module", "Không tìm thấy phân hệ")</h1></div>
+}
+else
+{
+    var moduleTitle = Loc.L(NavKeys.Module(module.Key), module.Title);
+    @if (string.IsNullOrEmpty(Screen))
+    {
+        <PageTitle>@moduleTitle — ICare247</PageTitle>
+        <div class="page-header">
+            <div class="breadcrumb">@module.Icon <span>@moduleTitle</span></div>
+            <h1>@moduleTitle</h1>
+            <p class="page-header__sub">@Loc.L("screen.pickfunction", "Chọn một chức năng để xem màn hình.")</p>
+        </div>
+
+        <div class="screen-grid">
+            @foreach (var s in module.Screens)
+            {
+                <a class="screen-card" href="@($"m/{module.Key}/{s.Key}")">
+                    <span class="screen-card__title">@Loc.L(NavKeys.Screen(module.Key, s.Key), s.Title)</span>
+                    <span class="screen-card__hint">@Loc.L("screen.open", "Mở →")</span>
+                </a>
+            }
+        </div>
+    }
+    else
+    {
+        var title = Loc.L(NavKeys.Screen(module.Key, Screen), AppNav.ScreenTitle(module, Screen));
+        <PageTitle>@title — ICare247</PageTitle>
+        <div class="page-header">
+            <div class="breadcrumb">
+                <a href="@($"m/{module.Key}")">@module.Icon @moduleTitle</a>
+                <span class="breadcrumb__sep">/</span>
+                <span>@title</span>
+            </div>
+            <h1>@title</h1>
+        </div>
+
+        <div class="screen-stub">
+            <div class="screen-stub__icon">🚧</div>
+            <p>@Loc.L("screen.stub.developing", "Màn hình {0} đang được phát triển.", title)</p>
+            <p class="screen-stub__muted">@Loc.L("screen.stub.note", "Khung để hình dung điều hướng — chưa gắn dữ liệu & control.")</p>
+        </div>
+    }
+}
+
+@code {
+    /// <summary>Khóa phân hệ lấy từ route (vd "organization").</summary>
+    [Parameter] public string? Module { get; set; }
+
+    /// <summary>Khóa màn con lấy từ route (vd "company"); null = trang phân hệ.</summary>
+    [Parameter] public string? Screen { get; set; }
+}

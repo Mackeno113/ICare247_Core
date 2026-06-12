@@ -4,6 +4,20 @@
 
 <!-- không có task nào đang chạy -->
 
+## ✅ Done (session 2026-06-12 — Frontend ICare247_UI: dựng khung + menu + i18n)
+
+- [x] **FE-MOVE** — Chuyển `ICare247.Blazor.RuntimeCheck` từ `src/backend/src/` → `src/frontend/` (user di chuyển folder). Sửa path ảnh hưởng: `run-blazor.bat`, `run-all.bat`, `.claude/launch.json`, `src/backend/ICare247.slnx` (`../frontend/...`), 2 docs spec (12/13). Build verify OK.
+- [x] **FE-KHUNG** — Dựng khung end-user app `ICare247_UI` theo **modular monolith** (mỗi module 1 RCL): tạo RCL `ICare247.UI.Shared` (`ApiClientBase`, `IAuthService`+stub, `AppState`, `AddIcare247UiShared()`); host nối Shared; solution frontend `src/frontend/ICare247.UI.slnx`. Build 0/0.
+- [x] **FE-SHELL** — Shell ERP responsive: `MainLayout` (sidebar + topbar + ☰ off-canvas mobile), `NavMenu` accordion **data-driven từ `AppNav`** (8 phân hệ + màn con), `AuthLayout`, `Dashboard` (`/`), `ScreenView` (placeholder `/m/{module}` lưới thẻ + `/m/{module}/{screen}` stub + breadcrumb). Trang dev cũ đổi route `/` → `/dev/forms`. Verify chạy thật (desktop + mobile) OK.
+- [x] **FE-RUNUI** — `run-ui.bat` mở web (https://localhost:7027, tự bật trình duyệt). Sửa `launchSettings` cổng phụ `5040`→`5173` (5040 bị OS chặn).
+- [x] **FE-I18N** — i18n shell (gói #1–#4 + #6): `LocalizationService` (lazy-load, key suy từ cấu trúc + base vi tại chỗ gọi, JSON = value overlay, localStorage, CultureInfo, tham số {0}, gộp overlay đa nguồn), `LocalizedComponentBase`, `LanguageSwitcher` (đổ từ manifest), `wwwroot/i18n/{languages.json,en.json}`. Bind NavMenu/MainLayout/Dashboard/ScreenView qua `Loc.L`. Pseudo-localization verify: không còn chuỗi hardcode; English fallback về vi OK. Build 0/0.
+
+**Decisions Log:**
+- **Modular monolith FE**: mỗi module nghiệp vụ = 1 RCL riêng (user chốt), host `ICare247_UI` + `ICare247.UI.Shared` (cross-cutting). Map 8 module: Organization, Hr, Payroll, Trade, Finance (riêng), Reporting, Administration, + Auth.
+- **i18n shell (user chốt)**: KEY thuộc cấu trúc/code (suy từ slug AppNav), KHÔNG gõ key tay vào JSON; JSON chỉ là *value overlay*; base vi ở fallback luôn hiển thị → "key có trước, dịch sau". Tách khỏi `Sys_Resource` (chỉ cho nội dung động form/field/view). Thêm ngôn ngữ = thả 1 file `{lang}.json` + 1 dòng manifest.
+- **DDD**: cân nhắc nhưng **chưa áp dụng**, giữ Clean Architecture hiện tại (chỉ thảo luận).
+- Để sau (i18n): #5 xuất skeleton Excel + import, #7 trang `/dev/i18n` báo độ phủ/key thiếu, #8 tránh trùng `common.*` với Sys_Resource, #9 RTL, #10 `<html lang>`.
+
 ## ✅ Done (session 2026-06-10 — Test Grid + Grid UX + WPF config cột)
 
 - [x] **VIEW-3f** — Endpoint `GET /api/v1/views` (CQRS `GetViewsList` + `IViewRepository.GetListAsync`, ROW_NUMBER khử trùng code ưu tiên tenant) + trang `TestGrid` (`/test-grid`, link ở `MainLayout`) chọn View từ danh sách → render `DataView`. Build 0/0.

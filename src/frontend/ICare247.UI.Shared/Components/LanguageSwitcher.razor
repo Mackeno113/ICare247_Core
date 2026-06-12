@@ -1,0 +1,21 @@
+@inherits LocalizedComponentBase
+
+@*
+    LanguageSwitcher — bộ chuyển ngôn ngữ, đổ từ manifest (Loc.Available).
+    Thêm ngôn ngữ = thêm dòng manifest + file json → tự xuất hiện ở đây.
+    Mục "⟦Pseudo⟧" là chế độ giả lập (dev) để soát i18n/tràn layout (#6).
+*@
+
+<select class="lang-switcher" @onchange="OnChange" aria-label="Chọn ngôn ngữ">
+    @foreach (var lang in Loc.Available)
+    {
+        <option value="@lang.Code" selected="@(!Loc.PseudoEnabled && Loc.CurrentLanguage == lang.Code)">@lang.Name</option>
+    }
+    <option value="@LocalizationService.PseudoCode" selected="@Loc.PseudoEnabled">⟦Pseudo⟧</option>
+</select>
+
+@code {
+    /// <summary>Đổi ngôn ngữ khi người dùng chọn. Sự kiện theo sau: cả app vẽ lại.</summary>
+    private async Task OnChange(ChangeEventArgs e)
+        => await Loc.SetLanguageAsync(e.Value?.ToString() ?? LocalizationService.BaseLanguage);
+}

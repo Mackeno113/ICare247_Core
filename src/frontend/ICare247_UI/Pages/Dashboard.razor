@@ -1,0 +1,20 @@
+@* File    : Dashboard.razor
+   Purpose : Trang chủ end-user (Tổng quan). Khung — sẽ gắn KPI/widget theo module sau. *@
+
+@page "/"
+@inherits LocalizedComponentBase
+
+<PageTitle>@Loc.L("nav.dashboard", "Tổng quan") — ICare247</PageTitle>
+
+<div class="page-header">
+    <h1>@Loc.L("nav.dashboard", "Tổng quan")</h1>
+    <p class="page-header__sub">@Loc.L("dashboard.welcome", "Chào mừng đến ICare247. Chọn một phân hệ ở thanh điều hướng để bắt đầu.")</p>
+</div>
+
+<div class="kpi-grid">
+    @* TODO(phase-report): thay placeholder bằng KPI thật (nhân sự, tồn kho, công nợ, KQKD). *@
+    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.hr", "Nhân sự")</span><span class="kpi-card__value">—</span></div>
+    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.stock", "Tồn kho")</span><span class="kpi-card__value">—</span></div>
+    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.debt", "Công nợ")</span><span class="kpi-card__value">—</span></div>
+    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.revenue", "Doanh thu tháng")</span><span class="kpi-card__value">—</span></div>
+</div>

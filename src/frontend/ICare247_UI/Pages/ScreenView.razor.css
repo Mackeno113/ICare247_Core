@@ -1,0 +1,98 @@
+/* ScreenView — trang placeholder phân hệ/màn con. Màu từ tokens.css. */
+
+.page-header {
+    margin-bottom: var(--space-6);
+}
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: var(--fs-sm);
+    margin-bottom: var(--space-2);
+}
+
+.breadcrumb a {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+}
+
+.breadcrumb a:hover {
+    color: var(--color-primary);
+}
+
+.breadcrumb__sep {
+    color: var(--color-text-muted);
+}
+
+.page-header h1 {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    margin: 0 0 var(--space-1);
+}
+
+.page-header__sub {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+/* ── Lưới thẻ màn con ─────────────────────────────────────────────────── */
+.screen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--space-4);
+}
+
+.screen-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    text-decoration: none;
+    color: var(--color-text);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.screen-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+.screen-card__title {
+    font-weight: var(--fw-medium);
+}
+
+.screen-card__hint {
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+}
+
+/* ── Stub màn con ─────────────────────────────────────────────────────── */
+.screen-stub {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-2);
+    min-height: 48vh;
+    background: var(--color-card);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    color: var(--color-text-secondary);
+}
+
+.screen-stub__icon {
+    font-size: 40px;
+}
+
+.screen-stub__muted {
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+}

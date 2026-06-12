@@ -1,0 +1,9 @@
+/* AuthLayout — canvas trần cho màn đăng nhập. */
+
+.auth-shell {
+    min-height: 100vh;
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    display: flex;
+}

@@ -4,8 +4,14 @@
     {
       "name": "blazor-wasm",
       "runtimeExecutable": "dotnet",
-      "runtimeArgs": ["run", "--project", "src/backend/src/ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj"],
+      "runtimeArgs": ["run", "--project", "src/frontend/ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj"],
       "port": 5030
+    },
+    {
+      "name": "icare247-ui",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "src/frontend/ICare247_UI/ICare247_UI.csproj", "--urls", "http://localhost:5173"],
+      "port": 5173
     }
   ]
 }

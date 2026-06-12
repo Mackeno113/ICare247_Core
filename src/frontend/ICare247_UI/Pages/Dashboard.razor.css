@@ -1,0 +1,44 @@
+/* Dashboard — khung tổng quan. Màu/kích thước từ tokens.css. */
+
+.page-header {
+    margin-bottom: var(--space-6);
+}
+
+.page-header h1 {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+    margin: 0 0 var(--space-1);
+}
+
+.page-header__sub {
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--space-4);
+}
+
+.kpi-card {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.kpi-card__label {
+    color: var(--color-text-secondary);
+    font-size: var(--fs-sm);
+}
+
+.kpi-card__value {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    font-family: var(--font-mono);
+}
