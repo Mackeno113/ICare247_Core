@@ -231,20 +231,12 @@ public sealed class FormController : ControllerBase
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    /// <summary>Lấy Tenant_Id từ header X-Tenant-Id.</summary>
+    /// <summary>
+    /// Tenant_Id lấy từ TenantContext (TenantMiddleware đã phân giải qua subdomain/header).
+    /// KHÔNG đọc header trực tiếp nữa để khớp đúng tenant đã mở DB (tránh rò cache chéo). ADR-018.
+    /// </summary>
     private int GetTenantId()
-    {
-        if (Request.Headers.TryGetValue("X-Tenant-Id", out var values)
-            && int.TryParse(values.FirstOrDefault(), out var tenantId)
-            && tenantId > 0)
-        {
-            return tenantId;
-        }
-
-        // Development fallback — sẽ bỏ khi có TenantMiddleware
-        _logger.LogWarning("Header X-Tenant-Id thiếu hoặc không hợp lệ — dùng default TenantId=1");
-        return 1;
-    }
+        => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
 
     /// <summary>Lấy username từ JWT claims. Development fallback = "admin".</summary>
     private string GetCurrentUser()

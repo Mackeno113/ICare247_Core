@@ -6,6 +6,7 @@
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure.Caching;
 using ICare247.Infrastructure.Data;
+using ICare247.Infrastructure.MultiTenancy;
 using ICare247.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,42 +25,25 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // ── Database — 2 connection string riêng biệt ────────────────────────
+        // ── Database — factory TENANT-AWARE (scoped) — ADR-018 ───────────────
         //
-        //   Config DB ("Config"): ICare247_Config — metadata form engine
-        //     Ui_Form, Ui_Field, Sys_*, Val_*, Evt_*, Gram_*
-        //     → IDbConnectionFactory
+        //   Connection string KHÔNG còn cố định lúc đăng ký. Mỗi request:
+        //   TenantMiddleware phân giải tenant (subdomain/header) → ITenantConnectionResolver
+        //   → set ConfigConnectionString/DataConnectionString vào TenantContext (scoped).
+        //   Factory đọc từ TenantContext để mở đúng cặp DB của tenant.
         //
-        //   Data DB  ("Data"):   DB nghiệp vụ thực tế — bệnh nhân, hồ sơ,...
-        //     → IDataDbConnectionFactory
+        //   Chế độ fallback (chưa cấu hình ConnectionStrings:Catalog): resolver trả về
+        //   Config/Data cố định trong config → hành vi như cũ (1 tenant / dev).
         //
-        //   Cả 2 được cấu hình trong:
-        //     %APPDATA%\ICare247\Api\appsettings.local.json
-        //     mục ConnectionStrings: { "Config": "...", "Data": "..." }
-        //
-        // ── Config DB (IDbConnectionFactory) ─────────────────────────────────
-        var configConn = configuration.GetConnectionString("Config")
-                      ?? configuration.GetConnectionString("Default"); // backward compat
-        if (!string.IsNullOrWhiteSpace(configConn))
-        {
-            services.AddSingleton<IDbConnectionFactory>(
-                new SqlConnectionFactory(configConn));
-        }
+        //   Config DB → IDbConnectionFactory ; Data DB → IDataDbConnectionFactory.
+        services.AddScoped<IDbConnectionFactory, ConfigDbConnectionFactory>();
+        services.AddScoped<IDataDbConnectionFactory, DataDbConnectionFactory>();
 
-        // ── Data DB (IDataDbConnectionFactory) ───────────────────────────────
-        // Nếu chưa cấu hình Data DB → fallback về Config DB (môi trường dev đơn giản).
-        var dataConn = configuration.GetConnectionString("Data");
-        if (!string.IsNullOrWhiteSpace(dataConn))
-        {
-            services.AddSingleton<IDataDbConnectionFactory>(
-                new SqlConnectionFactory(dataConn));
-        }
-        else if (!string.IsNullOrWhiteSpace(configConn))
-        {
-            // Dev fallback: chưa có Data DB riêng → dùng chung Config DB
-            services.AddSingleton<IDataDbConnectionFactory>(
-                new SqlConnectionFactory(configConn));
-        }
+        // ── Multi-tenant connection resolver (ADR-018) ───────────────────────
+        // Phân giải tenant → cặp connection string từ Catalog DB (cache in-memory).
+        // Chưa cấu hình ConnectionStrings:Catalog → fallback dùng Config/Data cố định ở trên
+        // (chế độ 1 tenant / dev — KHÔNG đổi hành vi hiện tại). Bước flip factory scoped làm sau.
+        services.AddSingleton<ITenantConnectionResolver, TenantConnectionResolver>();
 
         // ── Cache ─────────────────────────────────────────────────────────────
         services.AddMemoryCache();

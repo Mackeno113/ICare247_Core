@@ -195,14 +195,9 @@ public sealed class LookupController : ControllerBase
         return NoContent();
     }
 
+    // Tenant_Id từ TenantContext (TenantMiddleware phân giải) — không đọc header trực tiếp. ADR-018.
     private int GetTenantId()
-    {
-        if (Request.Headers.TryGetValue("X-Tenant-Id", out var values)
-            && int.TryParse(values.FirstOrDefault(), out var tenantId)
-            && tenantId > 0)
-            return tenantId;
-        return 1;
-    }
+        => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
 }
 
 /// <summary>Request body cho POST /api/v1/lookups/query-dynamic.</summary>

@@ -158,19 +158,12 @@ public sealed class ViewController : ControllerBase
         return Ok(new { message = $"Đã xóa cache View '{code}'." });
     }
 
-    /// <summary>Lấy Tenant_Id từ header X-Tenant-Id (fallback 1 ở môi trường dev).</summary>
+    /// <summary>
+    /// Tenant_Id lấy từ TenantContext (TenantMiddleware đã phân giải qua subdomain/header).
+    /// KHÔNG đọc header trực tiếp nữa để khớp đúng tenant đã mở DB (tránh rò cache chéo). ADR-018.
+    /// </summary>
     private int GetTenantId()
-    {
-        if (Request.Headers.TryGetValue("X-Tenant-Id", out var values)
-            && int.TryParse(values.FirstOrDefault(), out var tenantId)
-            && tenantId > 0)
-        {
-            return tenantId;
-        }
-
-        _logger.LogWarning("Header X-Tenant-Id thiếu hoặc không hợp lệ — dùng default TenantId=1");
-        return 1;
-    }
+        => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
 }
 
 /// <summary>Body cho endpoint Search: map Filter_Code → giá trị người dùng nhập (chuỗi thô).</summary>

@@ -168,3 +168,72 @@
 - **Chi tiết schema:** `docs/spec/14_VIEW_CONFIG_SPEC.md §9`. Migration `db/034_create_ui_view_filter.sql`.
 - **Status:** ✅ thiết kế chốt; backend (Domain/App/Infra/Api) đã code + build xanh (2026-06-11);
   Blazor FilterPanel + ConfigStudio đang triển khai.
+
+## ADR-018: Multi-tenant database-per-tenant + Catalog DB master, nhận tenant qua subdomain (2026-06-12)
+- **Context:** 1 IIS API + 1 IIS app phải chạy cho nhiều DB khác nhau; mỗi tenant có cấu hình +
+  dữ liệu riêng. `SqlConnectionFactory` hiện là **singleton + connection string cố định** (single-tenant cứng).
+- **Decision:**
+  - **Database-per-tenant**: mỗi tenant = **1 Config DB** (metadata Sys_/Ui_/Val_/Evt_/Gram_) + **1 Data DB**
+    (dữ liệu vận hành) riêng, cô lập vật lý.
+  - **Catalog DB master riêng** (vd `ICare247_Master`): bảng Tenants map `tenant → (Config conn, Data conn)`.
+    Conn string của catalog nằm trong `appsettings.local.json` của API (1 dòng cố định).
+  - **Nhận diện tenant qua SUBDOMAIN** (`congtyA.icare247.vn` → API & app suy từ Host) — bắt buộc vì phải
+    biết tenant TRƯỚC login (bảng user nằm ở Data DB).
+  - **Connection string mã hóa cột** trong catalog, key giải mã ở `appsettings.local.json`.
+  - `SqlConnectionFactory`: singleton-cố-định → **scoped + `ITenantConnectionResolver`** (tra catalog,
+    cache in-memory). Repository KHÔNG sửa (vẫn `CreateConnection()`). **Fallback:** chưa cấu hình catalog →
+    dùng conn cố định hiện có (dev không vỡ).
+  - `TenantMiddleware`: suy tenant từ Host thay vì tin header `X-Tenant-Id` → đồng thời khép lỗ hổng bảo mật #1.
+- **Hybrid on-prem + cloud:** thiết kế chạy cả 2 (SQL Server on-prem lẫn Azure SQL); chọn hạ tầng qua config.
+- **Status:** 🔴 thiết kế chốt — chưa code (infra resolver + catalog).
+
+## ADR-019: Quy ước Data DB — tên tiếng Việt + cột hệ thống tiếng Anh + PK 'Id' + soft-check qua Sys_Relation (2026-06-12)
+- **Context:** Data DB là dữ liệu vận hành người dùng/khách nhìn trực tiếp; tách khỏi Config DB (metadata).
+- **Decision:**
+  - **Tên bảng**: tiếng Việt không dấu PascalCase + **tiền tố nhóm** (vd `DS_TinhThanhPho` = danh sách).
+    Bộ tiền tố (DS_/DT_/GD_/CT_/HT_/NK_/TS_) — **user sẽ chốt khi thiết kế DB (HOÃN)**. Config DB GIỮ tiền tố Anh.
+  - **Cột nghiệp vụ tiếng Việt không dấu** (`Ma`, `Ten`, `MoTa`...); **cột hệ thống/auto tiếng Anh**.
+  - **Cột auto bắt buộc MỌI bảng:** `Id` BIGINT IDENTITY (PK) · `CreatedBy` BIGINT · `CreatedAt` DATETIME ·
+    `UpdatedBy` BIGINT NULL · `UpdatedAt` DATETIME NULL · `IsDeleted` BIT · `Ver` INT (optimistic concurrency).
+    `Ma` là cột riêng có unique.
+  - **PK = `Id` đồng nhất** (tốt cho engine generic + Dapper `splitOn` mặc định). FK = `{Table}Id` (đặt tên
+    ngữ nghĩa, có thể tiền tố vai trò: `NoiSinh_TinhThanhPhoID`).
+  - **Soft-check FK khi xóa = đọc registry tường minh `Sys_Relation`** (KHÔNG đoán theo tên) → xử lý đúng
+    nhiều FK cùng nguồn. `Sys_Relation` mở rộng (migration 035): `Detail_FK_Column`, `Master_Key_Column`,
+    `On_Delete`, `Relation_Code`. `ReferenceCheckService` **hybrid**: Sys_Relation trước → fallback name-match
+    cho bảng chưa khai (giai đoạn chuyển tiếp).
+- **Sys_User → Data DB** (không phải Config DB) → auth repo dùng `IDataDbConnectionFactory`.
+- **Status:** Sys_Relation + soft-check ✅ code xong (REL-1/REL-2); convention bảng/cột 🔴 chờ thiết kế Data DB.
+
+## ADR-020: Audit-log chi tiết — bắt diff tầng Application, JSON, bật/tắt theo bảng+màn hình (2026-06-12)
+- **Context:** Cần log toàn bộ thao tác user: ai tạo/sửa/xóa dữ liệu nào, **cột nào sửa, cũ→mới**;
+  CHỈ thao tác từ giao diện, bỏ qua SQL tay vào DB; bật/tắt theo từng bảng + màn hình.
+- **Decision:**
+  - **Bắt diff ở tầng Application** (handler CRUD generic), KHÔNG dùng trigger → tự động chỉ tính thao tác UI
+    (SQL tay không qua handler). Update: load row cũ → diff cột đổi (cũ→mới). Create/Delete: snapshot.
+  - **Lưu header + JSON diff** ở Data DB (vd `NK_ThayDoi`: TenBang, BanGhiId, HanhDong, NguoiThaoTacID,
+    ThoiGian, Form_Code, ChiTiet JSON `[{Cot,Cu,Moi}]`). Truy vấn được bằng OPENJSON.
+  - **Bật/tắt theo bảng + màn hình:** cờ `Sys_Table.Audit_Enabled` + `Ui_Form.Audit_Enabled` (màn hình đè bảng).
+- **Phụ thuộc:** user context (NguoiThaoTacID) từ JWT claim → cần pha Auth.
+- **Status:** 🔴 thiết kế chốt — chưa code (cần Data DB + Auth).
+
+## ADR-021: Scale-out nhiều IIS — stateless + Redis chia sẻ + DataProtection shared + file ở DB qua abstraction (2026-06-12)
+- **Context:** Sau này tách site (app/web/từng module = IIS riêng) → phải đảm bảo "ở đâu cũng lấy được dữ liệu".
+- **Decision:**
+  - **Không giữ state trong process/đĩa cục bộ IIS.** Phiên/cache per-user → **Redis (L2 chia sẻ)**
+    (đã có `HybridCacheService` L1+L2); JWT stateless để node nào cũng validate.
+  - **DataProtection keyring PHẢI shared** (Redis) — thiếu → antiforgery/cookie mã hóa vỡ khi đổi node.
+    Cấu hình có **fallback dev** (Redis vắng → keyring local).
+  - **File/ảnh upload (user chốt lưu DB, xử lý nhược điểm; hybrid):** **metadata LUÔN ở Data DB** + **bytes qua
+    provider cắm được** (`db|blob|filestream`) qua abstraction **`IFileStorage`**. Mặc định portable =
+    `varbinary(max)` ở **filegroup/"Files DB" riêng per-tenant** (DB nghiệp vụ gọn). Xử lý nhược điểm:
+    chunked streaming (không nạp cả file vào RAM) · cache+ETag (Redis/CDN) · dedup SHA-256 + RefCount.
+    ⚠️ FILESTREAM hợp on-prem nhưng **Azure SQL không hỗ trợ** → giữ provider cắm được (on-prem→FILESTREAM,
+    cloud→Blob), default varbinary chạy mọi nơi.
+- **Status:** DataProtection 🔴 đang code đợt này; file storage 🔴 backlog (user chọn chưa code).
+
+## ADR-Sec: Đóng lỗ hổng CORS + JWT SecretKey (2026-06-12)
+- **#2 CORS:** bỏ `AllowAnyOrigin`; whitelist `Cors:AllowedOrigins` + `AllowCredentials`; dev tự nhận loopback;
+  prod rỗng → dừng khởi động. **#3 JWT:** fail-fast `Jwt:SecretKey` ngoài Development (rỗng/<32/placeholder → throw).
+  **#1 (tenant từ claim):** hoãn sang pha Auth (xem ADR-018 — sẽ đóng khi suy tenant từ Host/claim).
+- **Status:** #2/#3 ✅ code xong (Program.cs), build xanh; #1 hoãn.

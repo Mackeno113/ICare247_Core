@@ -24,4 +24,13 @@ public sealed class TenantContext : ITenantContext
 {
     /// <inheritdoc />
     public int TenantId { get; set; }
+
+    /// <summary>
+    /// Connection string Config DB của tenant — set bởi TenantMiddleware sau khi phân giải
+    /// (qua <see cref="ITenantConnectionResolver"/>). Factory đọc giá trị này để mở kết nối.
+    /// </summary>
+    public string ConfigConnectionString { get; set; } = "";
+
+    /// <summary>Connection string Data DB của tenant — tương tự ConfigConnectionString.</summary>
+    public string DataConnectionString { get; set; } = "";
 }
