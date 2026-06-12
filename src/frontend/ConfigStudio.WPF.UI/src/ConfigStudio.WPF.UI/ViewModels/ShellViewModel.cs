@@ -178,6 +178,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = "Quan hệ (Relation)",
+                    Icon = "🔗",
+                    NavigateTo = ViewNames.RelationManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "New Form",
                     Icon = "+",
                     NavigateTo = ViewNames.FormEditor,

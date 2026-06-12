@@ -19,6 +19,38 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-12] REL-1 (Sys_Relation) — claude (làm thay codex) → codex (FYI)
+
+- Status: done (Claude đã làm thay ở vùng Codex: `db/` + ConfigStudio WPF) — build WPF 0/0.
+- Files đã tạo/sửa:
+  - `db/035_extend_sys_relation.sql` — **migration idempotent** mở rộng `Sys_Relation`: thêm
+    `Relation_Code` (unique), `Master_Key_Column` (default 'Id'), `Detail_FK_Column`, `On_Delete`
+    (CHECK Restrict/Cascade/SetNull/NoAction) + index `IX_Sys_Relation_Master`. **⏳ CẦN CHẠY trên DB.**
+  - WPF Modules.Forms: màn "Quản lý quan hệ" — `RelationManagerView.xaml(.cs)` + `RelationManagerViewModel`
+    (Core: `RelationRecord`, `IRelationDataService`; Infra: `RelationDataService` Dapper Config DB).
+  - Wire: `ViewNames.RelationManager`, `FormsModule` RegisterForNavigation, `App.xaml.cs` DI, `ShellViewModel`
+    nav "Quan hệ (Relation)" dưới nhóm Forms.
+  - `docs/spec/02_DATABASE_SCHEMA.md` — cập nhật Sys_Relation (cột mới + ghi chú soft-check).
+- Cần biết:
+  - **Mục đích**: registry quan hệ tường minh phục vụ (1) **soft-check FK khi xóa** + (2) **Master-Detail 1:N**.
+    Giữ tách với `Ui_Field_Lookup` (lookup N:1 vẫn ở đó). Quyết định: PK Data DB = `Id` đồng nhất → soft-check
+    KHÔNG đoán theo tên, đọc `Detail_FK_Column` từ Sys_Relation (xử lý đúng nhiều FK cùng nguồn).
+  - **REL-2 ĐÃ XONG** (xem dưới): `ReferenceCheckService` giờ ưu tiên Sys_Relation, fallback name-match.
+- Bước tiếp theo: (đã chạy migration 035 + REL-2). Khi vào Data DB tiếng Việt + PK `Id`: khai quan hệ
+  trong màn "Quan hệ (Relation)" để soft-check chạy đường tường minh.
+
+### [2026-06-12] REL-2 (soft-check đọc Sys_Relation) — claude
+
+- Status: done — build backend `ICare247.slnx` **0/0**. Migration 035 user đã chạy.
+- Files: `src/backend/src/ICare247.Infrastructure/Repositories/ReferenceCheckService.cs` (viết lại).
+- Cần biết:
+  - **Hybrid** (user chưa chốt rõ → Claude chọn an toàn): ① đọc `Sys_Relation` theo `Master_Table_Id`
+    (active, có `Detail_FK_Column`) → candidate chính xác (xử lý đúng nhiều FK cùng nguồn). ② Bảng CHƯA
+    khai quan hệ nào → **fallback** dò theo quy ước tên PK như cũ (không mất chặn xóa giai đoạn chuyển tiếp).
+  - Query Sys_Relation bọc try/catch: DB chưa migrate 035 → trả rỗng → tự fallback (không nổ).
+  - Logic đếm usage (Data DB) + validate identifier + IsLegacy giữ nguyên, tách thành helper `CountUsagesAsync`.
+  - Nếu sau muốn **bỏ fallback** (chỉ Sys_Relation, hướng D thuần) → xóa nhánh ② trong `CheckUsageAsync`.
+
 ### [2026-06-07] VIEW-0 (Ui_View) — claude → codex
 
 - Status: in_progress (thiết kế chốt; chờ Codex làm DB + ConfigStudio)

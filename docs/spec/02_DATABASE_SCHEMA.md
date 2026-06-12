@@ -96,17 +96,31 @@
 ---
 
 ### Sys_Relation
-> Định nghĩa quan hệ master-detail giữa các bảng, dùng để render lookup/combobox.
+> Registry quan hệ tường minh giữa 2 bảng — phục vụ **soft-check FK khi xóa** +
+> **Master-Detail UI 1:N** + render lookup/combobox. Mở rộng tại migration **035**
+> (thêm Relation_Code, Master_Key_Column, Detail_FK_Column, On_Delete).
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Relation_Id | int | PK IDENTITY | |
-| Master_Table_Id | int | NOT NULL FK→Sys_Table | Bảng cha |
-| Detail_Table_Id | int | NOT NULL FK→Sys_Table | Bảng con |
-| Relation_Type | nvarchar(50) | NOT NULL | VD: 'OneToMany', 'Lookup' |
+| Relation_Code | nvarchar(100) | NULL, UNIQUE (khi có giá trị) | Mã quan hệ ổn định (035) |
+| Master_Table_Id | int | NOT NULL FK→Sys_Table | Bảng cha (phía "1") |
+| Master_Key_Column | nvarchar(100) | NOT NULL DEFAULT 'Id' | Cột khóa bảng cha (035) |
+| Detail_Table_Id | int | NOT NULL FK→Sys_Table | Bảng con (phía "N") |
+| Detail_FK_Column | nvarchar(100) | NULL | Cột FK vật lý ở bảng con (vd NoiSinh_TinhThanhPhoID) (035) |
+| Relation_Type | nvarchar(50) | NOT NULL | 'OneToMany' / 'OneToOne' / 'Lookup' |
+| On_Delete | nvarchar(20) | NOT NULL DEFAULT 'Restrict' | Restrict / Cascade / SetNull / NoAction (035) |
 | Display_Column | nvarchar(100) | NULL | Cột hiển thị trong dropdown |
 | Value_Column | nvarchar(100) | NULL | Cột lưu giá trị khi chọn |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
+
+**Indexes:** `IX_Sys_Relation_Master (Master_Table_Id, Is_Active)` — tra nhanh khi soft-check xóa.
+
+> **Soft-check FK (hướng tường minh):** khi xóa 1 bản ghi master, tra `Sys_Relation`
+> theo `Master_Table_Id` → mỗi quan hệ cho (Detail_Table_Id + Detail_FK_Column) →
+> đếm usage. KHÔNG đoán theo tên cột (xử lý đúng nhiều FK cùng nguồn như
+> `NoiSinh_TinhThanhPhoID` / `ThuongTru_TinhThanhPhoID`). Cấu hình tại màn
+> "Quan hệ (Relation)" trong ConfigStudio WPF.
 
 ---
 
