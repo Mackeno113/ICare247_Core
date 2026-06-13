@@ -29,7 +29,8 @@
 
 ### Giai đoạn 4 — Bảo mật + cấu hình (trước production)
 - [ ] **AUTHZ-SEC** — `[RequirePermission(Ma, Op)]` deny-by-default trên controller engine (MasterData/View/Form/Runtime).
-- [ ] **AUTHZ-UI-1** — Màn Phân quyền **bespoke** (`DxTreeList` × 5 cờ Xem/Thêm/Sửa/Xóa/In) → ghi `HT_VaiTro_Quyen` + invalidate cache. (Tra `DxTreeList` API qua reflection trước.)
+- [x] **AUTHZ-UI-1 (BE)** — API admin phân quyền: `GET /api/v1/admin/roles`, `GET roles/{id}/permissions` (cây + cờ), `PUT roles/{id}/permissions` (upsert `HT_VaiTro_Quyen` trong transaction). CQRS + `IPermissionAdminRepository`/`PermissionAdminRepository` + `AdminPermissionController [Authorize]` + DI. Compile sạch.
+- [ ] **AUTHZ-UI-1 (FE)** — Màn Phân quyền **bespoke** (`DxTreeList` × 5 cờ) gọi API trên + invalidate cache. (Tra `DxTreeList` API qua reflection trước.) _(chưa làm)_
 - [ ] **AUTHZ-UI-2** — Vai trò/Người dùng qua **engine MasterData** (`Ui_Form` cho `HT_VaiTro`/`HT_NguoiDung`).
 
 ### Pha sau
