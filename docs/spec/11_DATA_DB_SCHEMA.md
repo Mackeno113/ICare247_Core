@@ -63,6 +63,24 @@ Mọi bảng dưới đây **đều có** khối cột auto sau (không liệt k
 
 > Va chạm tên lúc JOIN nhiều bảng → xử lý bằng **alias** (`tt.Ten AS TenTinhThanhPho`), không entity-suffix ở cấp lưu trữ.
 
+### 0.3 Nguyên tắc: Data DB KHÔNG chứa cấu hình + render không JOIN cross-DB
+
+**Cấu hình nền tảng (IP) KHÔNG được lộ trong Data DB.** Metadata Engine (`Sys_*`, `Ui_*`, `Gram_*`, `Evt_*`,
+`Sys_Lookup`, `Sys_Resource`, `Sys_Config`) ở **Config DB riêng** (`ICare247_Config`). Data DB (`ICare247_Solution`)
+chỉ chứa **data nghiệp vụ + người dùng của tenant** (`DM_/TC_/HT_/NS_/...`). Khách hàng cầm/backup/cắm BI vào
+Data DB **không thấy** cấu hình. → **KHÔNG có FK nào từ Data DB trỏ sang Config DB**; mọi tham chiếu cấu hình
+qua **chuỗi code** (vd `TrangThai='HoatDong'`) + resolve ở tầng app.
+
+**Render không JOIN cross-DB** (app có 2 connection, ghép trong RAM — không JOIN SQL):
+
+| Loại màn | Cách render trạng thái/label |
+|---|---|
+| **Hardcode (đa số)** | Đọc **chỉ Data DB**; trạng thái = **C# enum/const**, label = **frontend i18n shell** (`Loc.L`). KHÔNG chạm Config DB. |
+| **Engine no-code (vài màn)** | `ConfigCache` (L1+L2) nạp metadata + lookup từ Config DB → map `code→label` bằng `Dictionary` trong C#; data đọc riêng từ Data DB. |
+
+> Hệ quả: bảng `Data DB` tự thân **không tự mô tả label** (báo cáo chạy thẳng SQL trên Data DB chỉ thấy code) —
+> đây là **chủ đích** (đổi lấy việc không lộ cấu hình). Resolve label là việc của tầng app.
+
 ---
 
 ## 1. Nhóm `DM_` — Danh Mục dùng chung
@@ -170,7 +188,7 @@ Mọi bảng dưới đây **đều có** khối cột auto sau (không liệt k
 | NganHang_Id | bigint | NULL FK→DM_NganHang | |
 | SoTaiKhoan | nvarchar(50) | NULL | |
 | Logo_Id | bigint | NULL | → `TT_TepDinhKem` (nhóm TT_, đợt sau) |
-| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Lookup `TRANGTHAI_DONVI` |
+| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Enum HT: HoatDong/NgungHoatDong (label qua i18n shell) |
 
 **Indexes:** `IX_TC_CongTy_Cha (CongTy_Cha_Id)`, `IX_TC_CongTy_Ten (Ten)`
 
@@ -189,7 +207,7 @@ Mọi bảng dưới đây **đều có** khối cột auto sau (không liệt k
 | DienThoai | nvarchar(50) | NULL | |
 | Email | nvarchar(150) | NULL | |
 | ThuTu | int | NOT NULL DEFAULT 0 | Thứ tự hiển thị |
-| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Lookup `TRANGTHAI_DONVI` |
+| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Enum HT: HoatDong/NgungHoatDong (label qua i18n shell) |
 
 **Indexes:** `IX_TC_PhongBan_Cha (PhongBan_Cha_Id)`, `IX_TC_PhongBan_CongTy (CongTy_Id)`
 
@@ -209,16 +227,16 @@ Mọi bảng dưới đây **đều có** khối cột auto sau (không liệt k
 |---|---|---|---|
 | Ma | nvarchar(50) | UNIQUE NOT NULL | Mã người dùng / mã NV |
 | TenDangNhap | nvarchar(100) | UNIQUE NOT NULL | Username đăng nhập |
-| LoaiTaiKhoan | nvarchar(20) | NOT NULL DEFAULT 'Local' | Lookup `LOAI_TAIKHOAN`: 'Local'/'AD'/'SSO'/'Portal' (Item_Code bất biến) |
+| LoaiTaiKhoan | nvarchar(20) | NOT NULL DEFAULT 'Local' | Enum HT: 'Local'/'AD'/'SSO'/'Portal' (label qua i18n shell) |
 | MatKhauHash | nvarchar(256) | NULL | Hash PBKDF2 (`PasswordHasher<T>`, gồm salt+version). **NULL khi AD/SSO** (xác thực ngoài) |
 | NhanVien_Id | bigint | NULL* | → `NS_NhanVien` — **mỗi tài khoản gắn đúng 1 nhân viên**; `HoTen`/`Email`/`DienThoai`/ảnh lấy qua đây (KHÔNG lưu trùng ở tài khoản). `*` nullable tạm ở đợt nền tảng → siết **NOT NULL + FK + UNIQUE** ở đợt `NS_` (trừ tài khoản hệ thống bootstrap, xem §6.7) |
 | CongTyMacDinh_Id | bigint | NULL FK→TC_CongTy | Công ty mặc định khi đăng nhập |
 | PhongBan_Id | bigint | NULL FK→TC_PhongBan | Phòng ban trực thuộc (có thể suy từ NhanVien) |
-| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Lookup `TRANGTHAI_NGUOIDUNG`: HoatDong/TamKhoa/NgungHoatDong |
+| TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Enum HT: HoatDong/TamKhoa/NgungHoatDong (label qua i18n shell) |
 | LaQuanTri | bit | NOT NULL DEFAULT 0 | Super-admin tenant (bỏ qua check quyền) |
 | KichHoatMobile | bit | NOT NULL DEFAULT 0 | Cho phép đăng nhập app mobile |
 | HetHanTaiKhoan | datetime2 | NULL | Hạn dùng tài khoản (tạm/CTV); quá hạn → vô hiệu |
-| HinhThuc2FA | nvarchar(20) | NOT NULL DEFAULT 'None' | Lookup `HINHTHUC_2FA`: None/App/Email/SMS |
+| HinhThuc2FA | nvarchar(20) | NOT NULL DEFAULT 'None' | Enum HT: None/App/Email/SMS (label qua i18n shell) |
 | Khoa2FA | nvarchar(500) | NULL | Secret TOTP (mã hóa) khi `HinhThuc2FA='App'` |
 | LanDangNhapCuoi | datetime2 | NULL | |
 | LanDangXuatCuoi | datetime2 | NULL | |
@@ -343,15 +361,15 @@ HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quy
 
 ## 6. Điểm cần chốt thêm trước khi sinh SQL
 
-1. ✅ **CHỐT — `TrangThai` dùng `Sys_Lookup` (Config DB).** Mỗi miền trạng thái = 1 `Lookup_Code`
-   (`TRANGTHAI_NGUOIDUNG`, `TRANGTHAI_DONVI`, `TRANGTHAI_NHANVIEN`, `TRANGTHAI_XETDUYET`,
-   `LOAI_TAIKHOAN`, `HINHTHUC_2FA`...).
-   - **Danh sách trạng thái** (registry) lưu ở **Config DB / `Sys_Lookup`**; **Data DB chỉ lưu chuỗi `Item_Code`**
-     đã chọn trong cột nghiệp vụ (vd `HT_NguoiDung.TrangThai = 'HoatDong'`).
-   - Resolve label dropdown/badge qua `ConfigCache` (HybridCache L1+L2) → **không JOIN cross-DB**, map ở tầng app.
-   - ⚠️ **`Item_Code` của trạng thái hệ thống là HẰNG SỐ bất biến** (code logic phụ thuộc, vd chặn login khi
-     `TrangThai='TamKhoa'`): seed global (`Tenant_Id=NULL`), tenant chỉ sửa **label** (Sys_Resource),
-     KHÔNG được đổi/xóa `Item_Code`.
+1. ✅ **CHỐT — Mã trạng thái hệ thống = C# enum + i18n shell (KHÔNG dùng Sys_Lookup).**
+   `TrangThai`, `LoaiTaiKhoan`, `HinhThuc2FA` là **enum hệ thống cố định** (code logic phụ thuộc, vd chặn
+   login khi `TrangThai='TamKhoa'`) → định nghĩa **enum/const trong C#** (nguồn sự thật), Data DB lưu chuỗi
+   `Item_Code` ('HoatDong'...), label hiển thị resolve qua **frontend i18n shell** (`Loc.L("common.status.active")`).
+   - **Lý do** (xem §0.3): phần lớn UI hardcode → màn hardcode render trạng thái bằng enum + i18n shell,
+     **không chạm Config DB, không cross-DB**. `Sys_Lookup` chỉ dành cho **danh mục tenant tự cấu hình** hiển thị
+     trên màn Engine (no-code), hoặc khi 1 màn Engine cụ thể cần render trạng thái thành dropdown động.
+   - → File seed `db/039_seed_config_lookup_foundation.sql` **đã bỏ** (không seed các mã này vào Sys_Lookup).
+     Nếu tenant đã chạy 039, các dòng Sys_Lookup đó vô hại (không phải nguồn chính) — có thể dọn sau.
 2. ✅ **CHỐT — Hash mật khẩu = PBKDF2** qua `PasswordHasher<HT_NguoiDung>` (Microsoft.AspNetCore.Identity,
    không thêm dependency, tự versioning + rehash khi login). Cột `MatKhauHash` rút còn **`nvarchar(256)`**.
 3. **`TT_TepDinhKem`** (file/ảnh: Logo công ty) thuộc đợt nhóm `TT_` sau — đợt này chỉ để cột FK `*_Id`
@@ -361,7 +379,7 @@ HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quy
    đợt `NS_` siết **NOT NULL + FK + UNIQUE(NhanVien_Id)** (1 nhân viên ≤ 1 tài khoản).
 5. **Đăng ký `Sys_Relation`** cho các FK trên (soft-check khi xóa): ✅ **HOÃN** — dựa `ReferenceCheckService`
    name-match (dò theo tên cột `{Bang}_Id`) cho giai đoạn này. Đăng ký `Sys_Table` + `Sys_Relation` đầy đủ
-   khi đưa bảng vào metadata Engine. (Lookup trạng thái đã seed: `db/039_seed_config_lookup_foundation.sql`.)
+   khi đưa bảng vào metadata Engine.
 6. **`015_create_cf_data_schema.sql`** (schema `Cf_*` convention cũ): ✅ **GIỮ LÀM THAM KHẢO** — không chạy
    vào Data DB chuẩn mới. Dùng làm nguồn phân tích nghiệp vụ khi phát triển **module mua bán cà phê nhân**
    (sẽ chuẩn hóa lại sang nhóm `TM_` Thương Mại theo convention mới: bỏ `Tenant_Id`, đổi tên tiếng Việt,

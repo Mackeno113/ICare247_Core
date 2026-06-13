@@ -23,16 +23,18 @@
       phá vòng lặp `TC_PhongBan↔HT_NguoiDung` bằng ALTER FK cuối file). Chạy trên Data DB.
 - [x] **DDB-038** — `db/038_seed_data_db_bootstrap.sql`: super-admin `admin`/`Admin@12345` (PBKDF2 Identity v3,
       `NhanVien_Id` NULL — ngoại lệ bootstrap §6.7) + vai trò SUPERADMIN + danh mục cấp + Quốc gia VN.
-- [x] **DDB-039** — `db/039_seed_config_lookup_foundation.sql` (Config DB): seed `Sys_Lookup` + `Sys_Resource`
-      (vi/en) cho `TRANGTHAI_NGUOIDUNG`, `TRANGTHAI_DONVI`, `LOAI_TAIKHOAN`, `HINHTHUC_2FA`.
+- [~] **DDB-039 (đã thu hồi)** — Ban đầu seed `Sys_Lookup`/`Sys_Resource` cho trạng thái; sau **đổi hướng**:
+      mã trạng thái hệ thống = **C# enum + i18n shell** (không Sys_Lookup) → file 039 **đã xóa** khỏi repo (spec §0.3/§6.1).
 - [x] **DDB-RUN** — User tạo DB `ICare247_Solution` + chạy đủ 037/038/039 ✅.
 
 **Decisions Log:**
 - **Tiền tố theo module nghiệp vụ** (không theo bản chất dữ liệu DS_/GD_) → nhất quán Config DB + 8 module UI;
   Trade gộp `TM_`; bảng hạ tầng (DM_/HT_/NK_/TT_) tách riêng. (ADR-022)
 - **Phân quyền toàn bộ ở Data DB** (`HT_`): VaiTro/ChucNang/VaiTro_Quyen; `Sys_Role/Permission` Config DB chỉ cho Engine.
-- **TrangThai** = `Sys_Lookup` ở **Config DB** (Data DB chỉ lưu `Item_Code`); Item_Code hệ thống **bất biến**,
-  chỉ label i18n đổi được; resolve qua ConfigCache (không JOIN cross-DB).
+- **Mã trạng thái hệ thống** (TrangThai/LoaiTaiKhoan/HinhThuc2FA) = **C# enum + frontend i18n shell** (đa số UI
+  hardcode → không chạm Config DB); Data DB chỉ lưu chuỗi code. Sys_Lookup chỉ cho danh mục tenant tự cấu hình/màn Engine. (spec §0.3)
+- **Data DB KHÔNG chứa cấu hình nền tảng** (IP): 2 DB tách (Config `ICare247_Config` + Data `ICare247_Solution`),
+  không FK cross-DB; render = ghép trong RAM ở app (ConfigCache/enum+i18n), KHÔNG JOIN SQL. (spec §0.3)
 - **Hash mật khẩu = PBKDF2** qua `PasswordHasher<T>` (.NET built-in, versioning + rehash khi login). Cột `nvarchar(256)`.
 - **`Ma`/`Ten` generic** (không entity-suffix `MaDonViTinh`) để giữ engine generic; FK thì entity-suffix `{Bang}_Id`.
 - **INSERT/seed set cột audit tường minh** (CreatedBy/CreatedAt), không dựa DEFAULT — memory `feedback-explicit-audit-columns`.
