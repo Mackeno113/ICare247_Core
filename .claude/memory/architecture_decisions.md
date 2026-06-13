@@ -264,3 +264,33 @@
 - **Liên quan:** ADR-019 (quy ước tên/cột Data DB), ADR-020 (`NK_ThayDoi`), ADR-018 (DB-per-tenant).
 - **Status:** ✅ convention chốt — áp dụng khi thiết kế bảng Data DB thật (chưa có bảng nào ngoài `NK_*` thiết kế).
 - **Status:** #2/#3 ✅ code xong (Program.cs), build xanh; #1 hoãn.
+
+## ADR-023: Menu động + phân quyền — server-driven từ HT_ChucNang, master→tenant (2026-06-13)
+- **Context:** `AppNav.cs` vẽ menu tĩnh, `NavMenu.CanShow()` luôn `true` → mọi tài khoản thấy đủ. DB tenant
+  ĐÃ có sẵn mô hình quyền đầy đủ (`HT_ChucNang` cây chức năng self-ref, `HT_VaiTro`, `HT_VaiTro_Quyen`
+  Xem/Them/Sua/Xoa/Duyet/InAn, `HT_NguoiDung_VaiTro`) nhưng chưa nối vào menu. → khoảng trống `phase-auth`.
+- **Quyết định (qua hỏi-đáp nhiều vòng):**
+  1. **Server là nguồn sự thật:** backend đọc `HT_ChucNang ⨝ HT_VaiTro_Quyen (Xem=1)` theo role user →
+     trả cây menu; frontend chỉ render. `AppNav.cs` → **seed + fallback dev**.
+  2. **2 nửa bắt buộc:** (a) client lọc menu (UX) + (b) **server enforce** `[RequirePermission(Ma, Op)]`
+     deny-by-default trên controller engine (ẩn menu ≠ bảo mật).
+  3. **2 khái niệm tách bạch:** ① ĐỊNH NGHĨA menu = **DEV qua WPF**, ghi **Config DB** (`Sys_Menu`,
+     `Sys_MenuCatalog` master). ② PHÂN QUYỀN = **end user qua Web/API**, ghi **Data DB** tenant. End user
+     KHÔNG đụng route/icon/API (không thể biết).
+  4. **Master → tenant (Cách 3 lai):** menu base ở `Sys_MenuCatalog` (Config DB) → đồng bộ **UPSERT theo `Ma`**
+     xuống `HT_ChucNang` mỗi tenant (`LaHeThong=1`); DEV thêm node riêng/khách (`LaHeThong=0`); đồng bộ
+     không đụng custom. Tenant = khách, **mỗi khách 1 Data DB** (ADR-018).
+  5. **Bổ sung cột `HT_ChucNang`:** `Menu_Id`, `LaHeThong` (base/custom), `KichHoat` (tenant bật/tắt),
+     `ViTriHienThi` (`Sidebar`/`TrongMan`/`Ca2`). Bảng mới Config DB: `Sys_Menu`, `Sys_MenuCatalog`.
+  6. **1 cây sâu tùy ý** (self-ref `ChucNang_Cha_Id`) cho MỌI chức năng cần quyền; tách "vị trí render"
+     bằng `ViTriHienThi` → sidebar nông, các "quá trình" của 1 bản ghi render sub-nav TRONG màn. Mỗi node =
+     1 màn (có quyền riêng); **bản ghi/giá trị bên trong màn = dữ liệu, KHÔNG vào cây**.
+  7. **5 cờ quyền:** Xem · Thêm · Sửa · Xóa · In. **`Duyet` → workflow** (giữ cột, không hiện ở Phân quyền).
+  8. **UI cấu hình:** màn Phân quyền = **bespoke** (`DxTreeList` × 5 checkbox); Vai trò/Người dùng = **engine
+     MasterData no-code**. Nguyên tắc chung: **A (no-code) mặc định, bespoke chỉ khi đặc thù**.
+  9. **API:** gộp `GET /api/v1/me/navigation` + `/me/permissions` (1 call sau login), cache theo tenant+role
+     (`IConfigCache`, ADR-014), recursive CTE cho cây sâu.
+- **Hoãn:** `ChucNangCon` (quyền cấp nút), `Sys_Menu` nhiều bộ menu (Top/Mobile), `Duyet` (workflow).
+- **Spec:** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md`.
+- **Liên quan:** ADR-018 (DB-per-tenant), ADR-007 (ConfigStudio Direct DB), ADR-022 (tiền tố `HT_`/`Sys_`), ADR-014 (ConfigCache).
+- **Status:** 📋 thiết kế CHỐT — chưa code. Việc theo `TASKS.md` phase-auth.

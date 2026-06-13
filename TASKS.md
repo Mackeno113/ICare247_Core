@@ -4,6 +4,34 @@
 
 <!-- không có task nào đang chạy -->
 
+## 📋 Roadmap — Menu động + Phân quyền (phase-auth) — ADR-023
+
+> Thiết kế CHỐT: `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` + ADR-023. Menu server-driven từ
+> `HT_ChucNang` (lọc `HT_VaiTro_Quyen.Xem=1` theo role). Master `Sys_MenuCatalog` (Config DB/WPF)
+> → đồng bộ xuống `HT_ChucNang` mỗi tenant. `AppNav.cs` → seed + fallback. Chưa code.
+
+### Giai đoạn 1 — Migration + seed
+- [ ] **AUTHZ-DB-1** — `ALTER TABLE HT_ChucNang` thêm `Menu_Id, LaHeThong, KichHoat, ViTriHienThi`.
+- [ ] **AUTHZ-DB-2** — Config DB: tạo `Sys_Menu` + `Sys_MenuCatalog`; seed `MAIN` + cây từ `AppNav` (Icon Lucide, DuongDan, ViTriHienThi=Sidebar).
+- [ ] **AUTHZ-DB-3** — Đồng bộ master→`HT_ChucNang` (UPSERT theo `Ma`, `LaHeThong=1`); seed vai trò `ADMIN` + grant `Xem=1` toàn bộ. CreatedBy/At tường minh.
+
+### Giai đoạn 2 — Backend đọc
+- [ ] **AUTHZ-BE-1** — `GetMyNavigationQuery` + `GetMyPermissionsQuery` (gộp 1 call) + `MeController` `GET /api/v1/me/{navigation,permissions}`.
+- [ ] **AUTHZ-BE-2** — `NavigationRepository` (Dapper, recursive CTE, không `SELECT *`) + cache `IConfigCache` theo tenant+role.
+
+### Giai đoạn 3 — Frontend tiêu thụ
+- [ ] **AUTHZ-FE-1** — `NavigationApiService` + `AppState.NavTree/PermissionMap` (nạp sau login, xóa khi logout).
+- [ ] **AUTHZ-FE-2** — `NavMenu.razor` đọc `NavTree` (bỏ `CanShow`, thêm loading/empty); `AppNav`→fallback.
+- [ ] **AUTHZ-FE-3** — Sub-nav `ViTriHienThi=TrongMan` render trong màn; ẩn nút theo `PermissionMap`.
+
+### Giai đoạn 4 — Bảo mật + cấu hình (trước production)
+- [ ] **AUTHZ-SEC** — `[RequirePermission(Ma, Op)]` deny-by-default trên controller engine (MasterData/View/Form/Runtime).
+- [ ] **AUTHZ-UI-1** — Màn Phân quyền **bespoke** (`DxTreeList` × 5 cờ Xem/Thêm/Sửa/Xóa/In) → ghi `HT_VaiTro_Quyen` + invalidate cache. (Tra `DxTreeList` API qua reflection trước.)
+- [ ] **AUTHZ-UI-2** — Vai trò/Người dùng qua **engine MasterData** (`Ui_Form` cho `HT_VaiTro`/`HT_NguoiDung`).
+
+### Pha sau
+- [ ] `ChucNangCon` (quyền cấp nút) · `Sys_Menu` nhiều bộ menu (Top/Mobile) · `Duyet` cho workflow engine.
+
 ## ✅ Done (session 2026-06-13b — Auth full-stack + bộ màn đăng nhập + audit log non-blocking)
 
 > Đăng nhập **full-stack thật** (JWT + refresh, verify PBKDF2 với `HT_NguoiDung` ở Live DB) + 3 màn
@@ -130,11 +158,11 @@
 ### Giai đoạn 2 — Lookup options
 - [x] **CC-2** — Lookup options qua facade ✅ (2026-06-07). `GetLookupByCodeQueryHandler` bỏ tự cache-aside (key cũ `CacheKeys.Lookup` — đã xóa dead code) → delegate `IConfigCache.GetLookupOptionsAsync` (hưởng stampede+negative cache CC-0c). Thêm `IConfigCache.InvalidateLookupAsync` + endpoint `POST /api/v1/lookups/{code}/invalidate-cache` (mirror form invalidate). Build 0/0. _Wiring WPF gọi endpoint khi sửa Sys_Lookup = CC-4b._
 
-### Giai đoạn 3 — Permission (⏸ HOÃN — chờ thiết kế schema DB)
-> **Lý do hoãn:** `GetFormPermissionsAsync` hiện trả `null` (deny-by-default) trong `ConfigCache`.
-> Triển khai thật cần chốt **cấu trúc bảng lưu quyền trước** (bảng `Sys_Permission` chưa tồn tại):
-> quyền theo user/role? cột nào (View/Create/Edit/Delete)? field-level hay chỉ form-level?
-> scope tenant/form. Làm sau khi có schema. Entity `FormPermission` (Domain) đã tạo sẵn làm contract.
+### Giai đoạn 3 — Permission (✅ schema CHỐT tại ADR-023 — gộp vào roadmap phase-auth ở trên)
+> **Cập nhật 2026-06-13:** schema quyền đã chốt = **`HT_VaiTro_Quyen`** (role × chức năng × Xem/Thêm/Sửa/Xóa/In,
+> Data DB per-tenant) — KHÔNG dùng `Sys_Permission` (Config DB) như dự kiến cũ. Quyền theo **role** (không theo
+> user trực tiếp), node = `HT_ChucNang`. Việc triển khai nằm ở roadmap **phase-auth (ADR-023)** đầu file
+> (AUTHZ-*). `ConfigCache.GetFormPermissionsAsync`/entity `FormPermission` map từ `HT_VaiTro_Quyen` theo role.
 - [ ] **CC-3a** — Thiết kế + migration bảng `Sys_Permission` (role/user × form × CRUD, tenant scope). _Tiền đề._
 - [ ] **CC-3b** — `IPermissionRepository` + impl Dapper (đọc theo form+tenant, map sang `FormPermission`).
 - [ ] **CC-3c** — `ConfigCache.GetFormPermissionsAsync` đọc qua repo + cache key `ConfigPermission` (đã có) + `InvalidatePermissionAsync` + endpoint invalidate.

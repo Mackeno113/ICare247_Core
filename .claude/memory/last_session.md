@@ -1,6 +1,33 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-13 (session 48 — Auth full-stack + 3 màn đăng nhập + audit log non-blocking + debug docs)
+> Cập nhật: 2026-06-13 (session 49 — Redesign sidebar + thiết kế phase-auth menu/phân quyền ADR-023)
+
+## Session 49 (2026-06-13) — đã làm
+
+### UI — Redesign sidebar (đã code + commit `f038b90`)
+- Thay icon emoji → bộ **Lucide line đơn sắc** (`currentColor`), khử "đơn điệu"/lệch nét.
+- Gom 7 phân hệ thành **3 nhóm có nhãn**: Vận hành / Kinh doanh / Hệ thống (`NavGroup` trong `AppNav.cs`).
+- Active state: thanh accent trái + chữ/icon xanh; màn con có đường rail dọc; caret SVG xoay.
+- Tách component **`<Icon>` dùng chung** ở `ICare247.UI.Shared` (`Name/Size/StrokeWidth`, registry path Lucide);
+  `NavModule.Icon` giữ **tên icon** (tách khóa nghiệp vụ ↔ icon); xóa `NavIcon` cũ. `ScreenView` dùng `<Icon>`.
+- **Quyết định icon:** Lucide (chính) + Tabler (bổ sung), copy path từ lucide.dev/tabler.io vào `Icon.razor`.
+
+### Thiết kế phase-auth — Menu động + Phân quyền (CHỐT, CHƯA code) → ADR-023
+- **Server-driven menu** từ `HT_ChucNang` (lọc `HT_VaiTro_Quyen.Xem=1` theo role user); `AppNav`→seed+fallback.
+- **2 khái niệm tách:** ① ĐỊNH NGHĨA menu = DEV/WPF→Config DB (`Sys_Menu`,`Sys_MenuCatalog` master); ② PHÂN QUYỀN
+  = end user/Web→Data DB (`HT_VaiTro_Quyen`,`HT_NguoiDung_VaiTro`). End user KHÔNG đụng route/icon/API.
+- **Master→tenant (lai):** base ở `Sys_MenuCatalog` → đồng bộ UPSERT theo `Ma` xuống `HT_ChucNang` mỗi tenant
+  (`LaHeThong=1`); DEV thêm node riêng (`=0`); tenant=khách, mỗi khách 1 Data DB.
+- **1 cây sâu tùy ý** (self-ref) cho mọi chức năng cần quyền; tách "render" bằng cột **`ViTriHienThi`**
+  (Sidebar/TrongMan/Ca2) → sidebar nông, "quá trình" của 1 bản ghi render sub-nav TRONG màn. Node=màn; bản ghi=data.
+- **Bổ sung cột `HT_ChucNang`:** `Menu_Id, LaHeThong, KichHoat, ViTriHienThi`.
+- **5 cờ quyền:** Xem/Thêm/Sửa/Xóa/In. **Duyệt → workflow** (giữ cột).
+- **UI:** Phân quyền = bespoke `DxTreeList`×5 checkbox; Vai trò/User = engine MasterData. Nguyên tắc: **A no-code
+  mặc định, bespoke khi đặc thù**.
+- **Tài liệu đã viết:** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` + ADR-023 (architecture_decisions.md) + roadmap
+  AUTHZ-* trong `TASKS.md`. **Chưa code màn/migration.**
+
+---
 
 ## Session 48 (2026-06-13) — đã làm
 
@@ -47,12 +74,14 @@
 ### Build
 - `src/backend/ICare247.slnx` **0/0** (sau khi dừng API để gỡ file-lock). `src/frontend/ICare247.UI.slnx` **0/0**.
 
-### ⏳ Việc cần làm ngay (đầu session sau)
-1. **Tạo DB `ICare247_Solution_Audit`** + chạy `db/040` trên nó (xem `docs/backend-debug/redis-setup.md` để verify).
-   Chưa tách thì để `ConnectionStrings:Audit` rỗng → ghi chung Live DB (vẫn chạy).
-2. (Tuỳ chọn) cài Redis + điền `ConnectionStrings:Redis` để audit bền hơn (scale-out). Chưa có → fallback ghi thẳng DB.
-3. E2E thật: chạy API+UI, login `admin`/`Admin@12345` → kiểm `NK_NhatKyHoatDong` có dòng `LOGIN_SUCCESS`.
-4. Pha sau: Forgot/Reset nối SMTP thật; diff `GiaTriCu` cho MasterData audit; siết `NhanVien_Id` (đợt NS_).
+### ✅ Đã verify (user xác nhận)
+1. ✅ Tạo DB `ICare247_Solution_Audit` + chạy `db/040` trên nó.
+2. ✅ Redis (cài/cấu hình).
+3. ✅ E2E thật: login `admin`/`Admin@12345` → `NK_NhatKyHoatDong` ghi nhận đăng nhập. Pipeline audit chạy OK.
+
+### ⏳ Việc cần làm (pha sau — để sau)
+4. Forgot/Reset nối SMTP thật; diff `GiaTriCu` (giá trị cũ) cho MasterData audit; siết `NhanVien_Id` NOT NULL (đợt NS_).
+- Mở rộng audit cho các module khác (Forms/Views/Lookup) nếu cần; trang xem nhật ký (admin).
 
 ### Memory gợi ý lưu (auto-memory)
 - Cơ chế audit non-blocking + DB audit riêng per-tenant (project); login full-stack fallback X-Tenant-Id (project).
