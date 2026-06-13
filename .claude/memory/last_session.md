@@ -25,7 +25,21 @@
 - **UI:** Phân quyền = bespoke `DxTreeList`×5 checkbox; Vai trò/User = engine MasterData. Nguyên tắc: **A no-code
   mặc định, bespoke khi đặc thù**.
 - **Tài liệu đã viết:** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` + ADR-023 (architecture_decisions.md) + roadmap
-  AUTHZ-* trong `TASKS.md`. **Chưa code màn/migration.**
+  AUTHZ-* trong `TASKS.md`.
+
+### Triển khai phase-auth Stage 1–3 (đã code + commit; CHƯA áp SQL)
+- **Stage 1 DB (commit 7dbcea7):** `db/042` ALTER HT_ChucNang (+Menu_Id/LaHeThong/KichHoat/ViTriHienThi+index);
+  `db/043` CREATE Sys_Menu/Sys_MenuCatalog (Config DB); `db/044` seed MAIN + 45 node master từ AppNav;
+  `db/045` seed HT_ChucNang base (nối cha-con theo Ma) + grant SUPERADMIN 5 cờ. **Chưa chạy vào DB.**
+  Thứ tự chạy: 037→038→042→(043,044 Config)→045.
+- **Stage 2 BE (commit 5ddb171):** `MeNavigationDto/MeNavNodeDto`, `GetMyNavigationQuery`+Handler,
+  `INavigationRepository`+`NavigationRepository` (Dapper recursive CTE: Xem=1 + tổ tiên, cờ MAX OR vai trò),
+  `MeController [Authorize] GET /api/v1/me/navigation` (userId từ claim sub), DI. Compile sạch.
+- **Stage 3 FE (commit fbdd353):** `MeNavModels` + `NavigationApiService` + `NavMenu` dựng VM từ API,
+  **rỗng/lỗi → fallback AppNav** (app vẫn chạy khi chưa seed). Build xanh.
+- **CÒN LẠI:** (1) ⏳ chạy SQL 042→045 vào DB để menu thật sự theo quyền (giờ đang fallback AppNav);
+  (2) Stage 4: enforce `[RequirePermission]` server + màn Phân quyền (DxTreeList) + Vai trò/User qua MasterData;
+  (3) FE-3 ẩn nút theo quyền + sub-nav TrongMan; (4) BE-2 cache. Xem TASKS.md AUTHZ-*.
 
 ---
 
