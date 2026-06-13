@@ -37,9 +37,15 @@
   `MeController [Authorize] GET /api/v1/me/navigation` (userId từ claim sub), DI. Compile sạch.
 - **Stage 3 FE (commit fbdd353):** `MeNavModels` + `NavigationApiService` + `NavMenu` dựng VM từ API,
   **rỗng/lỗi → fallback AppNav** (app vẫn chạy khi chưa seed). Build xanh.
-- **CÒN LẠI:** (1) ⏳ chạy SQL 042→045 vào DB để menu thật sự theo quyền (giờ đang fallback AppNav);
-  (2) Stage 4: enforce `[RequirePermission]` server + màn Phân quyền (DxTreeList) + Vai trò/User qua MasterData;
-  (3) FE-3 ẩn nút theo quyền + sub-nav TrongMan; (4) BE-2 cache. Xem TASKS.md AUTHZ-*.
+- **Stage 4 (commit 4c25504 BE, 9282b1c FE):** API admin phân quyền (`GET /api/v1/admin/roles`,
+  `GET/PUT roles/{id}/permissions` — upsert HT_VaiTro_Quyen MERGE/transaction; CQRS + `PermissionAdminRepository`)
+  + màn **Phân quyền** `/m/administration/permissions` (DxTreeList cây + 5 DxCheckBox Xem/Thêm/Sửa/Xóa/In →
+  PUT lưu; `AdminPermissionApiService`). Build BE compile sạch / FE xanh.
+- **CÒN LẠI:** (1) ⏳ **chạy SQL 042→045** vào DB để menu + phân quyền chạy thật (giờ menu fallback AppNav,
+  màn Phân quyền rỗng vì chưa seed HT_ChucNang); (2) **AUTHZ-SEC** enforce `[RequirePermission]` server (CHƯA gắn
+  — gắn trước khi SQL seed sẽ khóa hết engine); (3) **AUTHZ-UI-2** Vai trò/User qua engine MasterData (Ui_Form);
+  (4) FE-3 ẩn nút theo cờ quyền + sub-nav TrongMan; (5) cascade tick màn Phân quyền + BE-2 cache + invalidate.
+  Xem TASKS.md AUTHZ-*.
 
 ---
 
