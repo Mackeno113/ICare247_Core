@@ -2,7 +2,29 @@
 
 > Cập nhật lần cuối: 2026-06-13
 
-## Đợt mới nhất — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration (session 47, 2026-06-13)
+## Đợt mới nhất — Auth full-stack + bộ màn đăng nhập + audit log non-blocking (session 48, 2026-06-13)
+
+Hoàn tất **pha Auth/login** (gợi ý từ session 47). **Backend**: JWT + refresh token rotation, verify PBKDF2
+(`PasswordHasher`) với `HT_NguoiDung` ở **Live DB** (`ICare247_Solution`), lockout 5 lần/15', `AuthController`
+`/api/v1/auth/{login,refresh,logout,forgot-password,reset-password}` — login chạy **fallback `X-Tenant-Id`**
+(chưa dựng Catalog local; hạ tầng đa tenant đã sẵn sàng). **Frontend**: `auth.css` tách riêng + components
+`AuthShell/AuthInput/AuthButton/BrandPanel` + 3 màn (`Login` thật, `ForgotPassword`/`ResetPassword` UI+stub),
+`AuthService` thật + `JwtAuthenticationStateProvider` + guard 2 chiều (`MainLayout`↔`Login`). **Đăng ký = bỏ**
+(để sau cho cổng ứng viên nộp CV). Forgot/Reset = **stub** (chưa SMTP).
+
+**Audit log "hành vi" non-blocking** (yêu cầu: 10k login không khựng UX): `IAuditWriter`→`IAuditQueue` (bounded,
+**drop khi đầy**, không chặn request) → `AuditBackgroundService` (có Redis → Redis Stream + consumer group; không →
+ghi thẳng DB) → **SqlBulkCopy** vào `NK_NhatKyHoatDong` ở **DB audit RIÊNG per-tenant** (tách log/RAM/I-O khỏi DB
+nghiệp vụ; event chỉ mang TenantId, không lộ connstring qua Redis). Gắn cho Auth + MasterData. Connstring: thêm
+`LiveData`/`Audit`, đổi `Data`→`Demo`.
+
+**Tài liệu debug**: `docs/backend-debug/` — hướng dẫn debug từng tính năng (màn hình→API→payload→lớp→luồng→breakpoint)
++ `redis-setup.md`. Build backend + frontend **0/0**.
+
+→ **Bước tiếp**: tạo DB `ICare247_Solution_Audit` + chạy `db/040`; (tuỳ chọn) cài Redis; E2E login + kiểm `NK_`;
+pha sau nối SMTP cho Forgot/Reset + diff `GiaTriCu` cho MasterData audit.
+
+## Đợt trước — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration (session 47, 2026-06-13)
 
 Khởi động thiết kế **Data DB per-tenant** (dữ liệu vận hành, tách Config DB metadata). Chốt **bộ 10 tiền tố
 bảng theo module nghiệp vụ** (ADR-022: `HT_/TC_/DM_/NS_/TL_/TM_/CN_/BC_/NK_/TT_`; Trade gộp `TM_`). Thiết kế

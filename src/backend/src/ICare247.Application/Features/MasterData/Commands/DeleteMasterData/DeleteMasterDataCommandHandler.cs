@@ -15,15 +15,18 @@ public sealed class DeleteMasterDataCommandHandler
 {
     private readonly IMasterDataRepository  _repo;
     private readonly IReferenceCheckService _refCheck;
+    private readonly IAuditWriter           _audit;
     private readonly ILogger<DeleteMasterDataCommandHandler> _logger;
 
     public DeleteMasterDataCommandHandler(
         IMasterDataRepository repo,
         IReferenceCheckService refCheck,
+        IAuditWriter audit,
         ILogger<DeleteMasterDataCommandHandler> logger)
     {
         _repo     = repo;
         _refCheck = refCheck;
+        _audit    = audit;
         _logger   = logger;
     }
 
@@ -46,6 +49,15 @@ public sealed class DeleteMasterDataCommandHandler
 
         await _repo.DeleteAsync(r.FormCode, r.TenantId, r.Id, ct);
         _logger.LogInformation("DeleteMasterData OK '{Form}' Id={Id}.", r.FormCode, r.Id);
+        _audit.Enqueue(new AuditEvent
+        {
+            TenantId = r.TenantId,
+            Category = AuditCategory.MasterData,
+            Action = AuditAction.DataDelete,
+            Result = "Success",
+            ObjectType = r.FormCode,
+            ObjectId = r.Id?.ToString()
+        });
         return new MasterDataDeleteResult(Success: true, BlockedBy: []);
     }
 }

@@ -1,0 +1,40 @@
+@*
+    AuthButton — nút chính (submit) cho màn xác thực. Hiển thị spinner khi Busy.
+*@
+
+<button type="@Type"
+        class="auth-btn"
+        disabled="@(Busy || Disabled)"
+        @onclick="OnClick">
+    @if (Busy)
+    {
+        <span class="auth-spinner"></span>
+        <span>@(BusyText ?? ChildContentText)</span>
+    }
+    else
+    {
+        @ChildContent
+    }
+</button>
+
+@code {
+    /// <summary>Nội dung nút (text/icon).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Đang xử lý — hiện spinner + khóa nút.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>Khóa nút (ngoài trạng thái Busy).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Text hiển thị cạnh spinner khi Busy (vd "Đang đăng nhập...").</summary>
+    [Parameter] public string? BusyText { get; set; }
+
+    /// <summary>type của button: submit (mặc định) hoặc button.</summary>
+    [Parameter] public string Type { get; set; } = "submit";
+
+    /// <summary>Callback click (khi không dùng submit form).</summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private const string ChildContentText = "Đang xử lý...";
+}

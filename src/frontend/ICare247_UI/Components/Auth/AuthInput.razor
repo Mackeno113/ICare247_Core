@@ -1,0 +1,79 @@
+@*
+    AuthInput — ô nhập cho màn xác thực: nhãn + icon trái + (tùy chọn) nút ẩn/hiện mật khẩu.
+    Style thuần qua auth.css (.auth-field/.auth-input...), KHÔNG dùng DevExpress (theo design).
+*@
+
+<div class="auth-field">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label for="@Id">@Label</label>
+    }
+    <div class="auth-input-wrap">
+        @if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="auth-icon">@Icon</span>
+        }
+        <input id="@Id"
+               class="auth-input @(Invalid ? "is-invalid" : null)"
+               type="@EffectiveType"
+               placeholder="@Placeholder"
+               autocomplete="@Autocomplete"
+               value="@Value"
+               @oninput="OnInput"
+               @attributes="Extra" />
+        @if (IsPassword)
+        {
+            <button type="button" class="auth-eye" tabindex="-1"
+                    title="@(_show ? "Ẩn mật khẩu" : "Hiện mật khẩu")"
+                    @onclick="() => _show = !_show">
+                @(_show ? "🙈" : "👁")
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>Nhãn hiển thị phía trên ô nhập.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Giá trị hiện tại (hỗ trợ @bind-Value).</summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Callback khi giá trị đổi (cho @bind-Value).</summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Loại input: text/password/email. Mặc định text.</summary>
+    [Parameter] public string Type { get; set; } = "text";
+
+    /// <summary>Icon unicode hiển thị bên trái (vd 👤, 🔒, ✉).</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>Placeholder.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Id phần tử (gắn label + autofocus).</summary>
+    [Parameter] public string? Id { get; set; }
+
+    /// <summary>Gợi ý autocomplete của trình duyệt.</summary>
+    [Parameter] public string? Autocomplete { get; set; }
+
+    /// <summary>Cờ trạng thái lỗi (viền đỏ).</summary>
+    [Parameter] public bool Invalid { get; set; }
+
+    /// <summary>Thuộc tính HTML bổ sung (vd @onkeydown).</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? Extra { get; set; }
+
+    private bool _show;
+
+    private bool IsPassword => string.Equals(Type, "password", StringComparison.OrdinalIgnoreCase);
+
+    private string EffectiveType => IsPassword && _show ? "text" : Type;
+
+    /// <summary>Cập nhật Value ngay khi gõ. Sự kiện theo sau: phát ValueChanged cho binding.</summary>
+    private Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        return ValueChanged.InvokeAsync(Value);
+    }
+}

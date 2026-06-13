@@ -58,6 +58,11 @@ try
     builder.Services.AddScoped<TenantContext>();
     builder.Services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
+    // ── Audit log writer (enqueue non-blocking) — cần HttpContext nên đặt ở Api ──
+    // Hàng đợi + tiến trình nền ghi NK_ đăng ký trong AddInfrastructure.
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IAuditWriter, ICare247.Api.Audit.HttpAuditWriter>();
+
     // ── JWT Auth ────────────────────────────────────────────────────────────
     var jwtSection = builder.Configuration.GetSection("Jwt");
     var secretKey = jwtSection["SecretKey"];

@@ -1,0 +1,66 @@
+@*
+    BrandPanel — cột thương hiệu (phải) cho màn xác thực. Mỗi màn 1 motif nền riêng
+    (login: lưới dữ liệu · forgot: radar khiên · reset: chấm bi) — design-login-hitech.
+    Viết 1 lần, 4 màn truyền nội dung qua tham số.
+*@
+
+<aside class="auth-brand-col">
+    @* Lớp trang trí nền theo motif *@
+    @switch (Motif)
+    {
+        case "forgot":
+            <div class="brand-deco"><div class="deco-radar"></div></div>
+            break;
+        case "reset":
+            <div class="brand-deco deco-dots"></div>
+            break;
+        default: @* login *@
+            <div class="brand-deco deco-grid"></div>
+            <div class="brand-deco">
+                <span class="deco-node" style="top:24%;left:62%"></span>
+                <span class="deco-node" style="top:46%;left:78%"></span>
+                <span class="deco-node" style="top:68%;left:54%"></span>
+            </div>
+            break;
+    }
+
+    <div style="position:relative;z-index:2">
+        @if (!string.IsNullOrEmpty(Eyebrow))
+        {
+            <div class="brand-eyebrow">@Eyebrow</div>
+        }
+        <h2 class="brand-headline">@Headline</h2>
+        <p class="brand-sub">@Sub</p>
+
+        @if (Badges is { Length: > 0 })
+        {
+            <div class="brand-badges">
+                @foreach (var b in Badges)
+                {
+                    <span class="auth-badge">@b</span>
+                }
+            </div>
+        }
+        @ChildContent
+    </div>
+</aside>
+
+@code {
+    /// <summary>Motif nền: "login" (mặc định) / "forgot" / "reset".</summary>
+    [Parameter] public string Motif { get; set; } = "login";
+
+    /// <summary>Dòng nhãn nhỏ phía trên tiêu đề (in hoa, neon).</summary>
+    [Parameter] public string? Eyebrow { get; set; }
+
+    /// <summary>Tiêu đề lớn.</summary>
+    [Parameter] public string? Headline { get; set; }
+
+    /// <summary>Mô tả ngắn dưới tiêu đề.</summary>
+    [Parameter] public string? Sub { get; set; }
+
+    /// <summary>Danh sách badge (chip neon) hiển thị dưới mô tả.</summary>
+    [Parameter] public string[]? Badges { get; set; }
+
+    /// <summary>Nội dung bổ sung (tùy chọn).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

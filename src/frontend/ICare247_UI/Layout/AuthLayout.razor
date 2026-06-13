@@ -1,10 +1,9 @@
 @inherits LayoutComponentBase
 
 @*
-    AuthLayout — layout trần cho nhóm màn xác thực (đăng nhập, quên mật khẩu).
-    Không sidebar/topbar; trang con tự dựng bố cục split 2 cột (design-login-hitech).
+    AuthLayout — layout trần cho nhóm màn xác thực (đăng nhập, quên/đặt lại mật khẩu).
+    Không sidebar/topbar; trang con dùng <AuthShell> tự dựng bố cục split 2 cột
+    (design-login-hitech). Layout chỉ là passthrough.
 *@
 
-<div class="auth-shell">
-    @Body
-</div>
+@Body

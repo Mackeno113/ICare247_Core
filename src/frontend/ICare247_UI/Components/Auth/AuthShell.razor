@@ -1,0 +1,24 @@
+@*
+    AuthShell — khung split 2 cột dùng chung cho mọi màn xác thực.
+    Trái = form (FormContent); phải = cột thương hiệu (BrandContent, ẩn khi < 768px).
+*@
+
+<div class="auth-shell">
+    <div class="auth-card">
+        <section class="auth-form-col">
+            <div class="auth-lang">
+                <LanguageSwitcher />
+            </div>
+            @FormContent
+        </section>
+        @BrandContent
+    </div>
+</div>
+
+@code {
+    /// <summary>Nội dung cột form (trái).</summary>
+    [Parameter] public RenderFragment? FormContent { get; set; }
+
+    /// <summary>Nội dung cột thương hiệu (phải) — thường là 1 &lt;BrandPanel&gt;.</summary>
+    [Parameter] public RenderFragment? BrandContent { get; set; }
+}

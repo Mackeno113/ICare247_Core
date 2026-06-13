@@ -1,0 +1,409 @@
+/* =============================================================================
+   auth.css — Bộ màn xác thực ICare247 (Đăng nhập / Quên MK / Đặt lại MK)
+   Phong cách ĐÃ CHỐT (design-login-hitech): split 2 cột, hi-tech, accent xanh.
+   TÁCH RIÊNG khỏi tokens.css / app.css — chỉ nạp ở các trang auth.
+   Mọi animation bọc trong @media (prefers-reduced-motion: no-preference).
+   ============================================================================= */
+
+:root {
+    --auth-accent: #0F6CBD;
+    --auth-accent-2: #1A7AD4;
+    --auth-btn: linear-gradient(135deg, #1A7AD4, #0F6CBD);
+    --auth-panel: linear-gradient(165deg, #1763AE, #0F4C8A 55%, #0C3D70);
+    --auth-neon: #7DECF8;
+    --auth-success: #16A34A;
+    --auth-ink: #0F1B2D;
+    --auth-muted: #5B6B7F;
+    --auth-line: #E3E9F0;
+    --auth-field-bg: #F8FAFC;
+    --auth-radius-card: 16px;
+    --auth-radius-input: 10px;
+    --auth-ring: 0 0 0 4px rgba(15, 108, 189, .12);
+}
+
+/* ── Canvas + card split ───────────────────────────────────────────────── */
+.auth-shell {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(1200px 600px at 100% 0%, rgba(15, 108, 189, .06), transparent 60%),
+        radial-gradient(900px 500px at 0% 100%, rgba(15, 108, 189, .05), transparent 55%),
+        #EEF3F8;
+    font-family: var(--font-sans, "Segoe UI", system-ui, sans-serif);
+    color: var(--auth-ink);
+}
+
+/* ── Bộ chọn ngôn ngữ (trong cột form, ngang hàng logo) ─────────────────── */
+.auth-lang {
+    position: absolute;
+    top: 40px;
+    right: 48px;
+    z-index: 5;
+}
+
+.auth-lang .lang-switcher {
+    height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+    color: var(--auth-ink);
+    background: #fff;
+    border: 1px solid var(--auth-line);
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px -8px rgba(12, 45, 90, .4);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.auth-lang .lang-switcher:hover { border-color: var(--auth-accent); }
+
+.auth-lang .lang-switcher:focus {
+    outline: none;
+    border-color: var(--auth-accent);
+    box-shadow: var(--auth-ring);
+}
+
+@media (max-width: 768px) {
+    .auth-lang { top: 30px; right: 28px; }
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 980px;
+    min-height: 600px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #fff;
+    border: 1px solid var(--auth-line);
+    border-radius: var(--auth-radius-card);
+    box-shadow: 0 24px 60px -28px rgba(12, 45, 90, .35);
+    overflow: hidden;
+}
+
+/* ── Cột form (trái) ───────────────────────────────────────────────────── */
+.auth-form-col {
+    position: relative;
+    padding: 44px 48px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.auth-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.auth-logo {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--auth-btn);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 20px;
+    box-shadow: 0 6px 16px -6px rgba(15, 108, 189, .6);
+}
+
+.auth-logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: .2px;
+}
+
+.auth-logo-text .accent {
+    color: var(--auth-accent);
+}
+
+.auth-title {
+    font-size: 26px;
+    font-weight: 700;
+    margin: 0 0 6px;
+}
+
+.auth-subtitle {
+    font-size: 14px;
+    color: var(--auth-muted);
+    margin: 0 0 26px;
+}
+
+/* ── Trường nhập (AuthInput) ───────────────────────────────────────────── */
+.auth-field {
+    margin-bottom: 18px;
+}
+
+.auth-field > label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #2A3848;
+}
+
+.auth-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.auth-input-wrap .auth-icon {
+    position: absolute;
+    left: 14px;
+    font-size: 16px;
+    color: #8A99AC;
+    pointer-events: none;
+}
+
+.auth-input {
+    width: 100%;
+    height: 46px;
+    padding: 0 14px 0 42px;
+    font-size: 14px;
+    color: var(--auth-ink);
+    background: var(--auth-field-bg);
+    border: 1px solid var(--auth-line);
+    border-radius: var(--auth-radius-input);
+    outline: none;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+.auth-input::placeholder { color: #9AA7B6; }
+
+.auth-input:focus {
+    border-color: var(--auth-accent);
+    background: #fff;
+    box-shadow: var(--auth-ring);
+}
+
+.auth-input.is-invalid {
+    border-color: #DC2626;
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, .10);
+}
+
+.auth-eye {
+    position: absolute;
+    right: 10px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: #8A99AC;
+    font-size: 16px;
+    padding: 6px;
+    line-height: 1;
+}
+.auth-eye:hover { color: var(--auth-accent); }
+
+/* ── Hàng phụ: ghi nhớ + quên mật khẩu ─────────────────────────────────── */
+.auth-row-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 0 22px;
+    font-size: 13px;
+}
+
+.auth-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #2A3848;
+    cursor: pointer;
+    user-select: none;
+}
+.auth-check input { width: 16px; height: 16px; accent-color: var(--auth-accent); }
+
+.auth-link {
+    color: var(--auth-accent);
+    text-decoration: none;
+    font-weight: 600;
+}
+.auth-link:hover { text-decoration: underline; }
+
+/* ── Nút (AuthButton) ──────────────────────────────────────────────────── */
+.auth-btn {
+    width: 100%;
+    height: 48px;
+    border: none;
+    border-radius: var(--auth-radius-input);
+    background: var(--auth-btn);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 12px 24px -12px rgba(15, 108, 189, .7);
+    transition: transform .12s, box-shadow .15s, filter .15s;
+}
+.auth-btn:hover:not(:disabled) { filter: brightness(1.05); }
+.auth-btn:active:not(:disabled) { transform: translateY(1px); }
+.auth-btn:disabled { opacity: .65; cursor: not-allowed; }
+
+.auth-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, .45);
+    border-top-color: #fff;
+    border-radius: 50%;
+}
+
+/* ── Thông báo lỗi / banner ────────────────────────────────────────────── */
+.auth-alert {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 11px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    margin-bottom: 18px;
+}
+.auth-alert.error { background: #FEF2F2; color: #B91C1C; border: 1px solid #FCA5A5; }
+.auth-alert.info { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+
+.auth-foot {
+    margin-top: 26px;
+    font-size: 13px;
+    color: var(--auth-muted);
+    text-align: center;
+}
+
+/* ── Checklist điều kiện mật khẩu (Đặt lại MK) ─────────────────────────── */
+.auth-checklist { list-style: none; margin: 6px 0 18px; padding: 0; }
+.auth-checklist li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--auth-muted);
+    padding: 3px 0;
+}
+.auth-checklist li.ok { color: var(--auth-success); }
+.auth-checklist li .dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 10px;
+    background: #E5EAF0; color: #9AA7B6;
+}
+.auth-checklist li.ok .dot { background: rgba(22, 163, 74, .15); color: var(--auth-success); }
+
+/* ── Cột thương hiệu (BrandPanel, phải) ────────────────────────────────── */
+.auth-brand-col {
+    position: relative;
+    color: #Eaf2fb;
+    padding: 48px 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--auth-panel);
+    overflow: hidden;
+}
+
+.auth-brand-col .brand-eyebrow {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--auth-neon);
+    margin-bottom: 14px;
+}
+.auth-brand-col .brand-headline {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0 0 14px;
+    color: #fff;
+}
+.auth-brand-col .brand-sub {
+    font-size: 14px;
+    line-height: 1.6;
+    color: rgba(234, 242, 251, .85);
+    max-width: 360px;
+}
+.auth-brand-col .brand-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 26px;
+    position: relative;
+    z-index: 2;
+}
+.auth-badge {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(125, 236, 248, .12);
+    border: 1px solid rgba(125, 236, 248, .35);
+    color: var(--auth-neon);
+}
+
+/* Lớp trang trí nền — đặt sau nội dung (z thấp) */
+.brand-deco { position: absolute; inset: 0; z-index: 1; opacity: .9; pointer-events: none; }
+
+/* Motif Đăng nhập: lưới kỹ thuật + node mạch */
+.deco-grid {
+    background-image:
+        linear-gradient(rgba(125, 236, 248, .10) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(125, 236, 248, .10) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(circle at 70% 30%, #000 0%, transparent 75%);
+}
+.deco-node {
+    position: absolute;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--auth-neon);
+    box-shadow: 0 0 0 4px rgba(125, 236, 248, .18);
+}
+
+/* Motif Quên MK: vòng radar lan tỏa quanh khiên */
+.deco-radar {
+    position: absolute;
+    top: 28%; left: 60%;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    border: 1px solid rgba(125, 236, 248, .25);
+}
+.deco-radar::after,
+.deco-radar::before {
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(125, 236, 248, .25);
+}
+.deco-radar::after { inset: 40px; }
+.deco-radar::before { inset: 80px; }
+
+/* Motif Đặt lại MK: nền chấm bi */
+.deco-dots {
+    background-image: radial-gradient(rgba(125, 236, 248, .22) 1.4px, transparent 1.4px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(circle at 50% 40%, #000 0%, transparent 78%);
+}
+
+/* ── Animation (chỉ khi user không yêu cầu giảm chuyển động) ───────────── */
+@media (prefers-reduced-motion: no-preference) {
+    .auth-spinner { animation: auth-spin .7s linear infinite; }
+    .deco-node { animation: auth-pulse 2.4s ease-in-out infinite; }
+    .deco-radar { animation: auth-radar 4s ease-out infinite; }
+    @keyframes auth-spin { to { transform: rotate(360deg); } }
+    @keyframes auth-pulse {
+        0%, 100% { opacity: .4; transform: scale(.9); }
+        50% { opacity: 1; transform: scale(1.15); }
+    }
+    @keyframes auth-radar {
+        0% { transform: scale(.6); opacity: .8; }
+        100% { transform: scale(1.05); opacity: 0; }
+    }
+}
+
+/* ── Responsive: ẩn cột thương hiệu < 768px ────────────────────────────── */
+@media (max-width: 768px) {
+    .auth-card { grid-template-columns: 1fr; min-height: 0; max-width: 460px; }
+    .auth-brand-col { display: none; }
+    .auth-form-col { padding: 36px 28px; }
+}

@@ -4,6 +4,42 @@
 
 <!-- không có task nào đang chạy -->
 
+## ✅ Done (session 2026-06-13b — Auth full-stack + bộ màn đăng nhập + audit log non-blocking)
+
+> Đăng nhập **full-stack thật** (JWT + refresh, verify PBKDF2 với `HT_NguoiDung` ở Live DB) + 3 màn
+> Auth Blazor theo design đã chốt + cơ chế **log hành vi non-blocking** (Channel→Redis Stream→SqlBulkCopy
+> vào DB audit RIÊNG per-tenant). Build backend + frontend **0/0**.
+
+- [x] **CFG-CONN** — Connstring ngoài repo: đổi `Data`→`Demo` (QLNS_Demo), thêm **`LiveData`** (ICare247_Solution,
+      login đọc từ đây) + **`Audit`** (ICare247_Solution_Audit). Sửa `TenantConnectionResolver`/`ConnectionChecker`
+      đọc `LiveData`/`Audit`. `Jwt:SecretKey` sinh thật. (`appsettings.local.json` ngoài git + placeholder repo.)
+- [x] **AUTH-BE** — Backend auth: package `Microsoft.Extensions.Identity.Core` + `System.IdentityModel.Tokens.Jwt`;
+      Domain `NguoiDung`; `Features/Auth` (Login verify PBKDF2 + lockout 5 lần/15', Refresh rotation, Logout,
+      Forgot/Reset **stub**); Infra `AuthRepository`/`RefreshTokenRepository` (Dapper, Live DB) + `JwtTokenService` +
+      `IdentityPasswordHasher`; `AuthController` `POST /api/v1/auth/{login,refresh,logout,forgot-password,reset-password}`.
+- [x] **AUTH-FE** — `auth.css` (tách riêng), components `AuthShell/AuthInput/AuthButton/BrandPanel`, 3 màn
+      `Login`(thật)/`ForgotPassword`/`ResetPassword`(UI+stub), `AuthService` thật + `TokenStore`(localStorage) +
+      `JwtAuthenticationStateProvider` + guard `MainLayout` (chưa login→/login; đã login vào /login→/). Bộ chọn
+      ngôn ngữ trong cột form. Package RCL thêm `Microsoft.AspNetCore.Components.Authorization`. **Đăng ký: bỏ** (cổng ứng viên — sau).
+- [x] **AUDIT-1** — Log hành vi non-blocking: `IAuditWriter`/`IAuditQueue` (bounded, **drop khi đầy**, không chặn
+      request) + `AuditBackgroundService` (có Redis→Redis Stream `ic247:audit`→consumer group; không→ghi thẳng DB) +
+      `AuditNkWriter` (SqlBulkCopy theo tenant). Gắn enqueue: Auth (login success/failed/locked, logout, refresh),
+      MasterData (create/update/delete). DB audit **RIÊNG per-tenant** (`db/040` bảng `NK_NhatKyHoatDong`; `db/041`
+      thêm cột `Audit_Conn_Encrypted` cho catalog). ⏳ CẦN tạo `ICare247_Solution_Audit` + chạy `db/040`.
+- [x] **DOCS-DEBUG** — `docs/backend-debug/`: README (bản đồ lớp + pipeline + breakpoint theo lớp + bảng lỗi) +
+      trang debug từng tính năng (auth-login mẫu, refresh/logout, forgot/reset, forms-config, runtime-form,
+      master-data, views) + `redis-setup.md` (hướng dẫn cài Redis).
+
+**Decisions Log:**
+- **Login chạy fallback `X-Tenant-Id`** (chưa dựng Catalog local) — hạ tầng đã sẵn sàng đa tenant; subdomain để sau.
+- **Audit non-blocking, ưu tiên UX tuyệt đối**: request chỉ enqueue (~micro-giây); hàng đợi đầy → **drop** (không chặn);
+  ghi DB dồn nền + gộp lô SqlBulkCopy. Mục tiêu "10k login không khựng giao diện".
+- **DB audit tách RIÊNG, per-tenant**: tránh tranh transaction-log/RAM/I-O với DB nghiệp vụ. Event chỉ mang `TenantId`
+  (KHÔNG nhét connstring vào Redis → tránh lộ secret); resolve audit-conn lúc ghi (catalog `Audit_Conn_Encrypted`
+  hoặc `ConnectionStrings:Audit`, rỗng→fallback Live DB).
+- **Forgot/Reset = stub** (chưa SMTP/kho token); **Đăng ký = bỏ** (để sau cho cổng ứng viên nộp CV).
+- `db/` là vùng Codex — `db/040`+`041` Claude tạo thay, đã ghi `AI_HANDOFF.md` (AUDIT-1).
+
 ## ✅ Done (session 2026-06-13 — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration)
 
 > Chốt **bộ tiền tố bảng Data DB theo module nghiệp vụ** + thiết kế **spec nền tảng** (người dùng,

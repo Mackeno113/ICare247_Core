@@ -18,17 +18,20 @@ public sealed class SaveMasterDataCommandHandler
     private readonly IMasterDataRepository _repo;
     private readonly IValidationEngine     _validation;
     private readonly IConfigCache          _config;
+    private readonly IAuditWriter          _audit;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
     public SaveMasterDataCommandHandler(
         IMasterDataRepository repo,
         IValidationEngine validation,
         IConfigCache config,
+        IAuditWriter audit,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
         _repo       = repo;
         _validation = validation;
         _config     = config;
+        _audit      = audit;
         _logger     = logger;
     }
 
@@ -88,11 +91,26 @@ public sealed class SaveMasterDataCommandHandler
         {
             var newId = await _repo.InsertAsync(r.FormCode, r.TenantId, r.Values, ct);
             _logger.LogInformation("SaveMasterData INSERT '{Form}' → Id={Id}.", r.FormCode, newId);
+            AuditData(r, AuditAction.DataCreate, newId);
             return new MasterDataSaveResult(Success: true, Id: newId, Errors: []);
         }
 
         await _repo.UpdateAsync(r.FormCode, r.TenantId, r.Id, r.Values, ct);
         _logger.LogInformation("SaveMasterData UPDATE '{Form}' Id={Id}.", r.FormCode, r.Id);
+        AuditData(r, AuditAction.DataUpdate, r.Id);
         return new MasterDataSaveResult(Success: true, Id: r.Id, Errors: []);
     }
+
+    /// <summary>Ghi nhật ký 1 thao tác ghi danh mục (non-blocking). GiaTriMoi = JSON các giá trị gửi lên.</summary>
+    private void AuditData(SaveMasterDataCommand r, string action, object? id)
+        => _audit.Enqueue(new AuditEvent
+        {
+            TenantId = r.TenantId,
+            Category = AuditCategory.MasterData,
+            Action = action,
+            Result = "Success",
+            ObjectType = r.FormCode,
+            ObjectId = id?.ToString(),
+            NewValueJson = System.Text.Json.JsonSerializer.Serialize(r.Values)
+        });
 }

@@ -7,6 +7,7 @@
 using ICare247.UI.Shared.Services.Auth;
 using ICare247.UI.Shared.Services.I18n;
 using ICare247.UI.Shared.State;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ICare247.UI.Shared;
@@ -27,8 +28,19 @@ public static class DependencyInjection
     public static IServiceCollection AddIcare247UiShared(this IServiceCollection services)
     {
         services.AddScoped<AppState>();
-        services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<LocalizationService>();
+
+        // ── Xác thực (JWT) ────────────────────────────────────────────────────
+        // TokenStore giữ token; JwtAuthenticationStateProvider dựng ClaimsPrincipal từ token.
+        // Đăng ký provider 2 chiều: kiểu cụ thể (để AuthService notify) + AuthenticationStateProvider
+        // (để <CascadingAuthenticationState>/AuthorizeView dùng) — cùng 1 instance.
+        services.AddAuthorizationCore();
+        services.AddScoped<TokenStore>();
+        services.AddScoped<JwtAuthenticationStateProvider>();
+        services.AddScoped<AuthenticationStateProvider>(
+            sp => sp.GetRequiredService<JwtAuthenticationStateProvider>());
+        services.AddScoped<IAuthService, AuthService>();
+
         return services;
     }
 }

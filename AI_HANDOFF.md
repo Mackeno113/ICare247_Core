@@ -19,6 +19,18 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-13] AUDIT-1 (NK_ nhật ký hoạt động) — claude (làm thay codex ở `db/`) → codex (FYI)
+
+- Status: done (code backend); ⏳ migration CẦN CHẠY trên Data DB tenant (vd ICare247_Solution).
+- Files (db, vùng Codex — Claude tạo thay):
+  - `db/040_create_nk_audit.sql` — bảng `dbo.NK_NhatKyHoatDong` (append-only, không FK, 3 index).
+- Cần biết: cơ chế audit **non-blocking** — request chỉ enqueue (`IAuditWriter`→`IAuditQueue` bounded,
+  drop khi đầy); `AuditBackgroundService` (Infrastructure) tiêu thụ: có Redis → Redis Stream
+  `ic247:audit` (consumer group) → SqlBulkCopy NK_; không Redis → ghi thẳng DB. Event chỉ mang
+  `TenantId` (KHÔNG mang connstring — resolve qua `ITenantConnectionResolver` lúc ghi).
+  Đã gắn enqueue: Auth (login/logout/refresh), MasterData (create/update/delete).
+- Bước tiếp theo: chạy `db/040` trên Data DB; (tuỳ chọn) cài Redis theo `docs/backend-debug/redis-setup.md`.
+
 ### [2026-06-12] REL-1 (Sys_Relation) — claude (làm thay codex) → codex (FYI)
 
 - Status: done (Claude đã làm thay ở vùng Codex: `db/` + ConfigStudio WPF) — build WPF 0/0.

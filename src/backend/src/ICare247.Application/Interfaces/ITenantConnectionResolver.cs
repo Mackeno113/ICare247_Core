@@ -12,10 +12,13 @@ namespace ICare247.Application.Interfaces;
 /// <param name="TenantId">Khóa tenant trong catalog.</param>
 /// <param name="ConfigConnectionString">Chuỗi kết nối Config DB (metadata) của tenant.</param>
 /// <param name="DataConnectionString">Chuỗi kết nối Data DB (dữ liệu vận hành) của tenant.</param>
+/// <param name="AuditConnectionString">Chuỗi kết nối DB nhật ký (audit) RIÊNG của tenant —
+/// tách khỏi Data DB để không tranh log/RAM/I-O với nghiệp vụ. Rỗng/không cấu hình → dùng Data DB.</param>
 public sealed record TenantConnections(
     int TenantId,
     string ConfigConnectionString,
-    string DataConnectionString);
+    string DataConnectionString,
+    string AuditConnectionString);
 
 /// <summary>
 /// Phân giải tenant ra cặp connection string. Tra Catalog DB (cache in-memory) hoặc

@@ -105,6 +105,12 @@
     flex: 1 1 auto;
 }
 
+.app-user {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
 .app-user__avatar {
     display: inline-flex;
     align-items: center;
@@ -115,6 +121,44 @@
     background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-semibold);
+}
+
+.app-user__name {
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-text);
+}
+
+.app-user__logout {
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-text-soft, var(--color-text));
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+}
+
+.app-user__logout:hover {
+    border-color: var(--color-border-strong);
+    color: var(--color-primary);
+}
+
+/* Màn hình chờ trong lúc kiểm tra phiên đăng nhập */
+.app-auth-loading {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-soft, var(--color-text));
+    font-size: var(--fs-sm);
+}
+
+/* Ẩn tên user khi màn hẹp để topbar không vỡ */
+@media (max-width: 768px) {
+    .app-user__name { display: none; }
 }
 
 /* Bộ chuyển ngôn ngữ */

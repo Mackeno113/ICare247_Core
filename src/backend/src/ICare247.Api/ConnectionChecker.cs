@@ -28,8 +28,10 @@ public static class ConnectionChecker
     {
         DebugLogger.Log("ConnectionChecker", "── Kiểm tra kết nối ──────────────────────");
 
-        await CheckSqlAsync(configuration, "Config", "Config DB (ICare247_Config)");
-        await CheckSqlAsync(configuration, "Data",   "Data DB  (nghiệp vụ)       ");
+        await CheckSqlAsync(configuration, "Config",   "Config DB (ICare247_Config)");
+        await CheckSqlAsync(configuration, "LiveData", "Live DB  (nghiệp vụ thật)  ");
+        await CheckSqlAsync(configuration, "Demo",     "Demo DB  (dữ liệu thử)     ");
+        await CheckSqlAsync(configuration, "Audit",    "Audit DB (nhật ký NK_)     ");
         await CheckRedisAsync(configuration);
 
         DebugLogger.Log("ConnectionChecker", "─────────────────────────────────────────");

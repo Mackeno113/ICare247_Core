@@ -1,0 +1,110 @@
+@* File    : Login.razor
+   Purpose : Màn đăng nhập (full-stack) — gọi IAuthService → /api/v1/auth/login.
+             Motif "luồng dữ liệu/lưới" (design-login-hitech). Layout trần AuthLayout. *@
+
+@page "/login"
+@layout AuthLayout
+@inherits LocalizedComponentBase
+@inject IAuthService Auth
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>@Loc.L("auth.login.title", "Đăng nhập") — ICare247</PageTitle>
+
+<AuthShell>
+    <FormContent>
+        <div class="auth-brand-row">
+            <span class="auth-logo">◆</span>
+            <span class="auth-logo-text">ICare<span class="accent">247</span></span>
+        </div>
+
+        <h1 class="auth-title">@Loc.L("auth.login.heading", "Đăng nhập")</h1>
+        <p class="auth-subtitle">@Loc.L("auth.login.sub", "Đăng nhập để tiếp tục vào hệ thống quản trị ICare247.")</p>
+
+        @if (_error is not null)
+        {
+            <div class="auth-alert error"><span>⚠</span><span>@_error</span></div>
+        }
+
+        <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+            <AuthInput Id="username"
+                       Label="@Loc.L("auth.login.username", "Tên đăng nhập")"
+                       Icon="👤"
+                       Placeholder="@Loc.L("auth.login.username.ph", "Nhập tên đăng nhập")"
+                       Autocomplete="username"
+                       Invalid="_error is not null"
+                       @bind-Value="_username" />
+
+            <AuthInput Id="password"
+                       Type="password"
+                       Label="@Loc.L("auth.login.password", "Mật khẩu")"
+                       Icon="🔒"
+                       Placeholder="@Loc.L("auth.login.password.ph", "Nhập mật khẩu")"
+                       Autocomplete="current-password"
+                       Invalid="_error is not null"
+                       @bind-Value="_password" />
+
+            <div class="auth-row-between">
+                <label class="auth-check">
+                    <input type="checkbox" @bind="_remember" />
+                    @Loc.L("auth.login.remember", "Ghi nhớ đăng nhập")
+                </label>
+                <a class="auth-link" href="forgot-password">@Loc.L("auth.login.forgot", "Quên mật khẩu?")</a>
+            </div>
+
+            <AuthButton Busy="_busy" BusyText="@Loc.L("auth.login.submitting", "Đang đăng nhập...")">
+                @Loc.L("auth.login.submit", "Đăng nhập")
+            </AuthButton>
+        </form>
+
+        <p class="auth-foot">@Loc.L("auth.login.foot", "Cần hỗ trợ? Liên hệ quản trị viên hệ thống.")</p>
+    </FormContent>
+
+    <BrandContent>
+        <BrandPanel Motif="login"
+                    Eyebrow="@Loc.L("auth.brand.eyebrow", "NỀN TẢNG QUẢN TRỊ")"
+                    Headline="@Loc.L("auth.login.brand.headline", "Vận hành đa ngành trên một nền tảng duy nhất.")"
+                    Sub="@Loc.L("auth.login.brand.sub", "Cấu hình không cần code — quản lý tổ chức, nhân sự, hàng hóa và công nợ theo thời gian thực.")"
+                    Badges="@(new[] { Loc.L("auth.brand.badge.nocode", "No-code"), Loc.L("auth.brand.badge.multitenant", "Đa công ty"), Loc.L("auth.brand.badge.secure", "Bảo mật JWT") })" />
+    </BrandContent>
+</AuthShell>
+
+@code {
+    private string? _username;
+    private string? _password;
+    private bool _remember = true;
+    private bool _busy;
+    private string? _error;
+
+    /// <summary>
+    /// Khi vào màn login mà phiên đã đăng nhập (token còn hạn) → chuyển thẳng về trang chủ,
+    /// không bắt đăng nhập lại.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.InitializeAsync();   // nạp token đã lưu (nếu có) trước khi kiểm tra
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        if (state.User.Identity?.IsAuthenticated == true)
+            Nav.NavigateTo("/", forceLoad: false);
+    }
+
+    /// <summary>Xử lý submit. Sự kiện theo sau: thành công → điều hướng "/"; lỗi → hiện thông báo.</summary>
+    private async Task HandleLogin()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_username) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = Loc.L("auth.login.required", "Vui lòng nhập tên đăng nhập và mật khẩu.");
+            return;
+        }
+
+        _busy = true;
+        var result = await Auth.LoginAsync(_username!, _password!, _remember);
+        _busy = false;
+
+        if (result.Succeeded)
+            Nav.NavigateTo("/");
+        else
+            _error = result.ErrorMessage ?? Loc.L("auth.login.failed", "Đăng nhập thất bại.");
+    }
+}

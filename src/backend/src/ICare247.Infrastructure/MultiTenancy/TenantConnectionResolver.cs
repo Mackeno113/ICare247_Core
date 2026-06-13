@@ -27,6 +27,7 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
     private readonly string? _catalogConn;
     private readonly string _defaultConfigConn;
     private readonly string _defaultDataConn;
+    private readonly string _defaultAuditConn;
     private readonly TenantConnectionProtector _protector;
     private readonly ILogger<TenantConnectionResolver> _logger;
 
@@ -41,7 +42,15 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
         var configConn = configuration.GetConnectionString("Config")
                       ?? configuration.GetConnectionString("Default") ?? "";
         _defaultConfigConn = configConn;
-        _defaultDataConn = configuration.GetConnectionString("Data") is { Length: > 0 } d ? d : configConn;
+        // Data DB nghiệp vụ (chế độ fallback 1 cấu hình): ưu tiên LiveData (DB vận hành thật,
+        // chứa HT_NguoiDung), rồi Data (tên cũ — tương thích ngược), cuối cùng dùng chung Config.
+        _defaultDataConn = configuration.GetConnectionString("LiveData") is { Length: > 0 } live ? live
+                         : configuration.GetConnectionString("Data") is { Length: > 0 } d ? d
+                         : configConn;
+
+        // DB nhật ký (audit) RIÊNG: ưu tiên ConnectionStrings:Audit; chưa cấu hình → dùng chung Data DB
+        // (kèm log cảnh báo ở nơi ghi). Mỗi tenant 1 audit DB → catalog mang Audit_Conn_Encrypted riêng.
+        _defaultAuditConn = configuration.GetConnectionString("Audit") is { Length: > 0 } au ? au : _defaultDataConn;
 
         _protector = new TenantConnectionProtector(configuration["Catalog:EncryptionKey"]);
     }
@@ -53,12 +62,12 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
     public async Task<TenantConnections> ResolveByIdAsync(int tenantId, CancellationToken ct = default)
     {
         if (!IsCatalogConfigured)
-            return new TenantConnections(tenantId, _defaultConfigConn, _defaultDataConn);
+            return new TenantConnections(tenantId, _defaultConfigConn, _defaultDataConn, _defaultAuditConn);
 
         if (_byId.TryGetValue(tenantId, out var cached)) return cached;
 
         const string sql =
-            "SELECT Tenant_Id, Subdomain, Config_Conn_Encrypted, Data_Conn_Encrypted\n" +
+            "SELECT Tenant_Id, Subdomain, Config_Conn_Encrypted, Data_Conn_Encrypted, Audit_Conn_Encrypted\n" +
             "FROM dbo.Tenant WHERE Tenant_Id = @Id AND Is_Active = 1";
         var row = await QueryTenantAsync(sql, new { Id = tenantId }, ct);
         if (row is null)
@@ -73,12 +82,12 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
         if (string.IsNullOrWhiteSpace(subdomain)) return null;
 
         if (!IsCatalogConfigured)
-            return new TenantConnections(FallbackTenantId, _defaultConfigConn, _defaultDataConn);
+            return new TenantConnections(FallbackTenantId, _defaultConfigConn, _defaultDataConn, _defaultAuditConn);
 
         if (_bySubdomain.TryGetValue(subdomain, out var cached)) return cached;
 
         const string sql =
-            "SELECT Tenant_Id, Subdomain, Config_Conn_Encrypted, Data_Conn_Encrypted\n" +
+            "SELECT Tenant_Id, Subdomain, Config_Conn_Encrypted, Data_Conn_Encrypted, Audit_Conn_Encrypted\n" +
             "FROM dbo.Tenant WHERE Subdomain = @Sub AND Is_Active = 1";
         var row = await QueryTenantAsync(sql, new { Sub = subdomain }, ct);
         return row is null ? null : Cache(row);
@@ -101,10 +110,17 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
     /// <returns>Cặp connection đã giải mã.</returns>
     private TenantConnections Cache(TenantRow row)
     {
+        var dataConn = _protector.Decrypt(row.Data_Conn_Encrypted);
+        // Audit DB riêng theo tenant; nếu catalog chưa khai (null/rỗng) → tạm dùng chung Data DB.
+        var auditConn = string.IsNullOrWhiteSpace(row.Audit_Conn_Encrypted)
+            ? dataConn
+            : _protector.Decrypt(row.Audit_Conn_Encrypted);
+
         var result = new TenantConnections(
             row.Tenant_Id,
             _protector.Decrypt(row.Config_Conn_Encrypted),
-            _protector.Decrypt(row.Data_Conn_Encrypted));
+            dataConn,
+            auditConn);
 
         _byId[row.Tenant_Id] = result;
         if (!string.IsNullOrWhiteSpace(row.Subdomain))
@@ -121,5 +137,6 @@ public sealed class TenantConnectionResolver : ITenantConnectionResolver
         public string Subdomain { get; init; } = "";
         public string Config_Conn_Encrypted { get; init; } = "";
         public string Data_Conn_Encrypted { get; init; } = "";
+        public string? Audit_Conn_Encrypted { get; init; }
     }
 }

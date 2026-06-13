@@ -1,6 +1,63 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-13 (session 47 — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration 037/038/039)
+> Cập nhật: 2026-06-13 (session 48 — Auth full-stack + 3 màn đăng nhập + audit log non-blocking + debug docs)
+
+## Session 48 (2026-06-13) — đã làm
+
+### CFG-CONN — connstring ngoài repo (đổi tên + thêm Live/Audit)
+- `appsettings.local.json` (ngoài git): đổi `Data`→**`Demo`** (QLNS_Demo); thêm **`LiveData`**=ICare247_Solution
+  (login + nghiệp vụ đọc từ đây) + **`Audit`**=ICare247_Solution_Audit (DB nhật ký riêng); sinh `Jwt:SecretKey` thật 64 ký tự.
+- Repo: `appsettings.json` placeholder + readme keys mới; `TenantConnectionResolver` đọc `LiveData` (fallback Data→Config)
+  + mang thêm `AuditConnectionString`; `ConnectionChecker` log Live/Demo/Audit.
+
+### AUTH-BE — backend đăng nhập full-stack (JWT)
+- Package: `Microsoft.Extensions.Identity.Core` + `System.IdentityModel.Tokens.Jwt` (Infra).
+- Domain `Entities/Auth/NguoiDung`. Interfaces: `IAuthRepository`/`IRefreshTokenRepository`/`IJwtTokenService`/`IPasswordHasher`.
+- `Features/Auth`: **Login** (verify PBKDF2, kiểm Local/khóa/TrangThai/HetHan, lockout 5 lần→khóa 15', cấp JWT+refresh,
+  cập nhật LanDangNhapCuoi), **Refresh** (rotation: thu hồi cũ + cấp mới), **Logout** (thu hồi), **Forgot/Reset = STUB**.
+  `AuthResult`/`AuthStatus`. Validator login.
+- Infra: `AuthRepository`/`RefreshTokenRepository` (Dapper, IDataDbConnectionFactory=Live), `JwtTokenService`
+  (HMAC-SHA256, claim sub/unique_name/tenant/admin/role; refresh=32B random + hash SHA256), `IdentityPasswordHasher`.
+- Api: `AuthController` `POST /api/v1/auth/{login,refresh,logout,forgot-password,reset-password}` `[AllowAnonymous]`,
+  map AuthStatus→HTTP (401/403/423/501). Verify hash seed `admin`/`Admin@12345` (Identity v3) bằng PasswordHasher.
+
+### AUTH-FE — 3 màn Auth + nối API thật
+- `wwwroot/css/auth.css` (tách riêng, token `--auth-*`, split 2 cột, 3 motif, reduced-motion).
+- Components `Components/Auth/{AuthShell,AuthInput,AuthButton,BrandPanel}`. Bộ chọn ngôn ngữ đặt trong cột form (cạnh logo).
+- Màn `Pages/Auth/{Login(thật),ForgotPassword,ResetPassword(UI+stub)}`; mọi text qua `Loc.L`. **Đăng ký: bỏ** (cổng ứng viên sau).
+- Shared: `TokenStore` (localStorage), `JwtParser`, `JwtAuthenticationStateProvider`, `AuthService` thật (POST login,
+  lưu token, gắn `Bearer`, notify). DI Shared + `AddAuthorizationCore`; RCL thêm package `Microsoft.AspNetCore.Components.Authorization`.
+- `App.razor` bọc `CascadingAuthenticationState`; `MainLayout` guard (chưa login→/login + tên user + nút đăng xuất);
+  `Login.razor` đã login→điều hướng `/`. index.html nạp auth.css.
+
+### AUDIT-1 — log hành vi non-blocking (Auth + MasterData)
+- `IAuditWriter`/`AuditEvent`/`IAuditQueue` (Application). Infra: `AuditQueue` (bounded 20k, **DropWrite** — không chặn),
+  `AuditNkWriter` (gom theo tenant → resolve audit-conn → **SqlBulkCopy** NK_), `AuditBackgroundService` (có Redis →
+  XADD `ic247:audit` + consumer group XREADGROUP→DB→XACK; không Redis → ghi thẳng DB). Api `HttpAuditWriter` (làm giàu
+  actor/IP/correlation/tenant từ HttpContext). Enqueue: Login(success/failed/locked)/Logout/Refresh + MasterData(create/update/delete).
+- DB audit **RIÊNG per-tenant** (user chốt): `db/040_create_nk_audit.sql` (bảng `NK_NhatKyHoatDong` append-only, 3 index) chạy
+  trên DB audit; `db/041_add_audit_conn_to_tenant.sql` (cột `Audit_Conn_Encrypted` ở catalog — chỉ cần khi bật đa tenant thật).
+  Event chỉ mang TenantId (không lộ connstring qua Redis).
+
+### DOCS-DEBUG — bộ tài liệu debug backend
+- `docs/backend-debug/`: README (bản đồ 4 lớp + pipeline middleware + breakpoint theo lớp + bảng lỗi + template) +
+  trang từng tính năng: `auth-login`(mẫu chi tiết), `auth-refresh-logout`, `auth-forgot-reset`, `forms-config`,
+  `runtime-form`, `master-data`, `views`, `redis-setup` (hướng dẫn cài Redis Windows: Docker/Memurai/WSL).
+
+### Build
+- `src/backend/ICare247.slnx` **0/0** (sau khi dừng API để gỡ file-lock). `src/frontend/ICare247.UI.slnx` **0/0**.
+
+### ⏳ Việc cần làm ngay (đầu session sau)
+1. **Tạo DB `ICare247_Solution_Audit`** + chạy `db/040` trên nó (xem `docs/backend-debug/redis-setup.md` để verify).
+   Chưa tách thì để `ConnectionStrings:Audit` rỗng → ghi chung Live DB (vẫn chạy).
+2. (Tuỳ chọn) cài Redis + điền `ConnectionStrings:Redis` để audit bền hơn (scale-out). Chưa có → fallback ghi thẳng DB.
+3. E2E thật: chạy API+UI, login `admin`/`Admin@12345` → kiểm `NK_NhatKyHoatDong` có dòng `LOGIN_SUCCESS`.
+4. Pha sau: Forgot/Reset nối SMTP thật; diff `GiaTriCu` cho MasterData audit; siết `NhanVien_Id` (đợt NS_).
+
+### Memory gợi ý lưu (auto-memory)
+- Cơ chế audit non-blocking + DB audit riêng per-tenant (project); login full-stack fallback X-Tenant-Id (project).
+
+---
 
 ## Session 47 (2026-06-13) — đã làm
 
