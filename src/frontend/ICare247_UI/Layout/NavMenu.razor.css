@@ -1,11 +1,22 @@
-/* NavMenu — accordion dọc. Màu lấy từ tokens.css. */
+/* NavMenu — accordion dọc, icon line đơn sắc. Màu lấy từ tokens.css. */
 
 .nav-menu {
     display: flex;
     flex-direction: column;
-    padding: var(--space-3) var(--space-2);
-    gap: 2px;
+    padding: var(--space-3) var(--space-3);
+    gap: 1px;
     overflow-y: auto;
+}
+
+/* ── Icon line (currentColor → theo màu mục) ──────────────────────────── */
+.nav-item__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    color: var(--color-text-muted);
 }
 
 /* ── Mục đơn (Tổng quan, Dev) ─────────────────────────────────────────── */
@@ -26,23 +37,50 @@
     color: var(--color-text);
 }
 
+.nav-item:hover .nav-item__icon {
+    color: var(--color-text-secondary);
+}
+
 .nav-item.active {
     background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-semibold);
 }
 
-.nav-item__icon {
-    width: 20px;
-    text-align: center;
-    font-size: var(--fs-base);
+.nav-item.active .nav-item__icon {
+    color: var(--color-primary);
 }
 
 .nav-item--muted {
     color: var(--color-text-muted);
 }
 
+/* ── Nhóm hiển thị (overline caption) ─────────────────────────────────── */
+.nav-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.nav-section + .nav-section {
+    margin-top: var(--space-4);
+}
+
+.nav-section__label {
+    padding: var(--space-2) var(--space-3) var(--space-1);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    user-select: none;
+}
+
 /* ── Nhóm phân hệ (accordion) ─────────────────────────────────────────── */
+.nav-group {
+    position: relative;
+}
+
 .nav-group__header {
     width: 100%;
     display: flex;
@@ -64,9 +102,30 @@
     color: var(--color-text);
 }
 
+.nav-group__header:hover .nav-item__icon {
+    color: var(--color-text-secondary);
+}
+
+/* Phân hệ đang xem: thanh accent trái + chữ/icon xanh */
 .nav-group--active > .nav-group__header {
+    background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-semibold);
+}
+
+.nav-group--active > .nav-group__header::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 6px;
+    bottom: 6px;
+    width: 3px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    background: var(--color-primary);
+}
+
+.nav-group--active > .nav-group__header .nav-item__icon {
+    color: var(--color-primary);
 }
 
 .nav-group__title {
@@ -74,20 +133,42 @@
 }
 
 .nav-group__caret {
-    font-size: var(--fs-xs);
+    display: inline-flex;
+    align-items: center;
     color: var(--color-text-muted);
+    transition: transform .15s ease;
 }
 
+.nav-group__caret--open {
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nav-group__caret { transition: none; }
+}
+
+/* ── Màn con — đường rail dọc gom theo nhóm ───────────────────────────── */
 .nav-group__items {
     display: flex;
     flex-direction: column;
     gap: 1px;
-    margin: 2px 0 var(--space-2);
+    margin: 1px 0 var(--space-2);
+    position: relative;
+}
+
+.nav-group__items::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: calc(var(--space-3) + 9px);
+    width: 1px;
+    background: var(--color-border);
 }
 
 .nav-subitem {
     display: block;
-    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 28px);
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 33px);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     text-decoration: none;
@@ -101,7 +182,6 @@
 }
 
 .nav-subitem.active {
-    background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-medium);
 }
@@ -109,5 +189,5 @@
 .nav-sep {
     height: 1px;
     background: var(--color-border);
-    margin: var(--space-3) var(--space-2);
+    margin: var(--space-4) var(--space-2);
 }

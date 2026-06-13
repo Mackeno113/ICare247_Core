@@ -8,6 +8,9 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base); color: var(--color-text); }
 
+/* ── Icon dùng chung (component <Icon>) — nét đơn sắc, theo currentColor ── */
+.app-icon { display: inline-block; vertical-align: middle; flex: none; }
+
 /* ── Page layout ──────────────────────────────────────── */
 .page-container { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
 

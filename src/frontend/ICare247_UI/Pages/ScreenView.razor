@@ -24,7 +24,7 @@ else
     {
         <PageTitle>@moduleTitle — ICare247</PageTitle>
         <div class="page-header">
-            <div class="breadcrumb">@module.Icon <span>@moduleTitle</span></div>
+            <div class="breadcrumb"><Icon Name="@module.Icon" /> <span>@moduleTitle</span></div>
             <h1>@moduleTitle</h1>
             <p class="page-header__sub">@Loc.L("screen.pickfunction", "Chọn một chức năng để xem màn hình.")</p>
         </div>
@@ -45,7 +45,7 @@ else
         <PageTitle>@title — ICare247</PageTitle>
         <div class="page-header">
             <div class="breadcrumb">
-                <a href="@($"m/{module.Key}")">@module.Icon @moduleTitle</a>
+                <a href="@($"m/{module.Key}")"><Icon Name="@module.Icon" /> @moduleTitle</a>
                 <span class="breadcrumb__sep">/</span>
                 <span>@title</span>
             </div>

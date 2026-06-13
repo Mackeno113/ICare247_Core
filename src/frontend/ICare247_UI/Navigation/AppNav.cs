@@ -16,14 +16,23 @@ public sealed record NavScreen(string Key, string Title, string? Permission = nu
 /// <summary>Một phân hệ (module / bounded context) gồm nhiều màn con.</summary>
 /// <param name="Key">Khóa route, ví dụ "organization". Cũng dùng để suy key i18n.</param>
 /// <param name="Title">Tiêu đề tiếng Việt — base/fallback khi chưa dịch.</param>
-/// <param name="Icon">Ký tự icon (Unicode) hiển thị ở menu.</param>
+/// <param name="Group">Khóa nhóm hiển thị (vd "operations") — gom phân hệ thành cụm có nhãn.</param>
+/// <param name="Icon">Tên icon (kiểu Lucide, vd "building") cho component dùng chung Icon.</param>
 /// <param name="Screens">Danh sách màn con.</param>
 /// <param name="Permission">Khóa quyền yêu cầu để thấy phân hệ (null = ai cũng thấy). #4</param>
-public sealed record NavModule(string Key, string Title, string Icon, IReadOnlyList<NavScreen> Screens, string? Permission = null);
+public sealed record NavModule(string Key, string Title, string Group, string Icon, IReadOnlyList<NavScreen> Screens, string? Permission = null);
+
+/// <summary>Một nhóm hiển thị trên sidebar (overline caption) gom nhiều phân hệ.</summary>
+/// <param name="Key">Khóa nhóm, vd "operations". Cũng dùng để suy key i18n.</param>
+/// <param name="Title">Nhãn nhóm tiếng Việt — base/fallback khi chưa dịch.</param>
+public sealed record NavGroup(string Key, string Title);
 
 /// <summary>Tiện ích suy khóa i18n từ cấu trúc (key luôn có trước, dịch sau).</summary>
 public static class NavKeys
 {
+    /// <summary>Khóa nhãn nhóm, vd "nav.group.operations".</summary>
+    public static string Group(string groupKey) => $"nav.group.{groupKey}";
+
     /// <summary>Khóa tiêu đề phân hệ, vd "nav.module.organization".</summary>
     public static string Module(string moduleKey) => $"nav.module.{moduleKey}";
 
@@ -37,10 +46,21 @@ public static class NavKeys
 /// </summary>
 public static class AppNav
 {
+    /// <summary>
+    /// Nhóm hiển thị theo thứ tự trên sidebar (overline caption). Phân hệ gom theo
+    /// <see cref="NavModule.Group"/>. Tạo nhịp đọc mà không cần thêm màu.
+    /// </summary>
+    public static readonly IReadOnlyList<NavGroup> Groups = new List<NavGroup>
+    {
+        new("operations", "Vận hành"),
+        new("business",   "Kinh doanh"),
+        new("system",     "Hệ thống"),
+    };
+
     /// <summary>Toàn bộ phân hệ theo thứ tự hiển thị trên sidebar.</summary>
     public static readonly IReadOnlyList<NavModule> Modules = new List<NavModule>
     {
-        new("organization", "Tổ chức", "🏢", new List<NavScreen>
+        new("organization", "Tổ chức", "operations", "building", new List<NavScreen>
         {
             new("company",       "Công ty"),
             new("department",    "Phòng ban"),
@@ -50,7 +70,7 @@ public static class AppNav
             new("position-plan", "Hoạch định vị trí"),
             new("hr-cost",       "Chi phí nhân sự"),
         }),
-        new("hr", "Nhân sự", "👤", new List<NavScreen>
+        new("hr", "Nhân sự", "operations", "users", new List<NavScreen>
         {
             new("employee",  "Hồ sơ nhân viên"),
             new("contract",  "Hợp đồng lao động"),
@@ -58,14 +78,14 @@ public static class AppNav
             new("transfer",  "Điều chuyển"),
             new("reward",    "Khen thưởng – Kỷ luật"),
         }),
-        new("payroll", "Chấm công – Lương", "🕑", new List<NavScreen>
+        new("payroll", "Chấm công – Lương", "operations", "clock", new List<NavScreen>
         {
             new("timesheet", "Chấm công"),
             new("period",    "Kỳ lương"),
             new("payslip",   "Bảng lương"),
             new("config",    "Thiết lập lương"),
         }),
-        new("trade", "Bán hàng & Kho", "📦", new List<NavScreen>
+        new("trade", "Bán hàng & Kho", "business", "package", new List<NavScreen>
         {
             new("product",   "Danh mục hàng hóa"),
             new("purchase",  "Mua hàng"),
@@ -74,12 +94,12 @@ public static class AppNav
             new("stock-out", "Xuất kho"),
             new("stock",     "Tồn kho"),
         }),
-        new("finance", "Công nợ", "💳", new List<NavScreen>
+        new("finance", "Công nợ", "business", "credit-card", new List<NavScreen>
         {
             new("receivable", "Công nợ phải thu"),
             new("payable",    "Công nợ phải trả"),
         }),
-        new("reporting", "Báo cáo", "📊", new List<NavScreen>
+        new("reporting", "Báo cáo", "business", "bar-chart", new List<NavScreen>
         {
             new("inventory", "Báo cáo tồn kho"),
             new("debt",      "Báo cáo công nợ"),
@@ -87,7 +107,7 @@ public static class AppNav
             new("hr",        "Báo cáo nhân sự"),
             new("payroll",   "Báo cáo công lương"),
         }),
-        new("administration", "Quản trị hệ thống", "⚙", new List<NavScreen>
+        new("administration", "Quản trị hệ thống", "system", "sliders", new List<NavScreen>
         {
             new("users",       "Người dùng"),
             new("roles",       "Vai trò"),

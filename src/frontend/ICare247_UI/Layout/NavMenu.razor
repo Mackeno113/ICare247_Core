@@ -11,27 +11,39 @@
 
 <nav class="nav-menu">
     <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
-        <span class="nav-item__icon">▦</span> <span>@Loc.L("nav.dashboard", "Tổng quan")</span>
+        <span class="nav-item__icon"><Icon Name="layout-grid" /></span>
+        <span>@Loc.L("nav.dashboard", "Tổng quan")</span>
     </NavLink>
 
-    @foreach (var module in AppNav.Modules.Where(m => CanShow(m.Permission)))
+    @foreach (var group in AppNav.Groups)
     {
-        var isOpen = _expanded == module.Key;
-        var isActive = _currentModule == module.Key;
-        <div class="nav-group @(isActive ? "nav-group--active" : "")">
-            <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module.Key)">
-                <span class="nav-item__icon">@module.Icon</span>
-                <span class="nav-group__title">@Loc.L(NavKeys.Module(module.Key), module.Title)</span>
-                <span class="nav-group__caret">@(isOpen ? "▾" : "▸")</span>
-            </button>
-            @if (isOpen)
+        var modules = AppNav.Modules.Where(m => m.Group == group.Key && CanShow(m.Permission)).ToList();
+        if (modules.Count == 0) { continue; }
+
+        <div class="nav-section">
+            <div class="nav-section__label">@Loc.L(NavKeys.Group(group.Key), group.Title)</div>
+            @foreach (var module in modules)
             {
-                <div class="nav-group__items">
-                    @foreach (var screen in module.Screens.Where(s => CanShow(s.Permission)))
+                var isOpen = _expanded == module.Key;
+                var isActive = _currentModule == module.Key;
+                <div class="nav-group @(isActive ? "nav-group--active" : "")">
+                    <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module.Key)">
+                        <span class="nav-item__icon"><Icon Name="@module.Icon" /></span>
+                        <span class="nav-group__title">@Loc.L(NavKeys.Module(module.Key), module.Title)</span>
+                        <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
+                            <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
+                        </span>
+                    </button>
+                    @if (isOpen)
                     {
-                        <NavLink class="nav-subitem" href="@($"m/{module.Key}/{screen.Key}")">
-                            @Loc.L(NavKeys.Screen(module.Key, screen.Key), screen.Title)
-                        </NavLink>
+                        <div class="nav-group__items">
+                            @foreach (var screen in module.Screens.Where(s => CanShow(s.Permission)))
+                            {
+                                <NavLink class="nav-subitem" href="@($"m/{module.Key}/{screen.Key}")">
+                                    @Loc.L(NavKeys.Screen(module.Key, screen.Key), screen.Title)
+                                </NavLink>
+                            }
+                        </div>
                     }
                 </div>
             }
@@ -41,7 +53,8 @@
     <div class="nav-sep"></div>
 
     <NavLink class="nav-item nav-item--muted" href="dev/forms">
-        <span class="nav-item__icon">🧪</span> <span>@Loc.L("nav.devtools", "Công cụ (Dev)")</span>
+        <span class="nav-item__icon"><Icon Name="wrench" /></span>
+        <span>@Loc.L("nav.devtools", "Công cụ (Dev)")</span>
     </NavLink>
 </nav>
 
