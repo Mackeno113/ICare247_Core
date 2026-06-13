@@ -93,6 +93,7 @@ public static class DependencyInjection
         // Hasher + JwtTokenService stateless → singleton (JwtTokenService đọc Jwt:* lúc khởi tạo).
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<INavigationRepository, NavigationRepository>();
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 

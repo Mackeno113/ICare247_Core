@@ -17,8 +17,9 @@
 - [ ] **AUTHZ-DB-APPLY** — ⏳ Chạy 042→(043,044 Config DB)→045 trên DB thật (chưa áp).
 
 ### Giai đoạn 2 — Backend đọc
-- [ ] **AUTHZ-BE-1** — `GetMyNavigationQuery` + `GetMyPermissionsQuery` (gộp 1 call) + `MeController` `GET /api/v1/me/{navigation,permissions}`.
-- [ ] **AUTHZ-BE-2** — `NavigationRepository` (Dapper, recursive CTE, không `SELECT *`) + cache `IConfigCache` theo tenant+role.
+- [x] **AUTHZ-BE-1** — `MeNavigationDto`/`MeNavNodeDto` + `GetMyNavigationQuery`+Handler + `MeController [Authorize] GET /api/v1/me/navigation` (userId từ claim sub; gộp navigation + cờ quyền 1 call). Compile sạch (build fail chỉ do file-lock app đang chạy).
+- [x] **AUTHZ-BE-1b** — `INavigationRepository` + `NavigationRepository` (Dapper, recursive CTE: Xem=1 + tổ tiên, cờ MAX theo OR vai trò, không `SELECT *`) + DI.
+- [ ] **AUTHZ-BE-2** — Cache `IConfigCache` theo tenant+role + invalidate khi sửa quyền/menu. _(chưa làm)_
 
 ### Giai đoạn 3 — Frontend tiêu thụ
 - [ ] **AUTHZ-FE-1** — `NavigationApiService` + `AppState.NavTree/PermissionMap` (nạp sau login, xóa khi logout).
