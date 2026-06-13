@@ -10,10 +10,11 @@
 > `HT_ChucNang` (lọc `HT_VaiTro_Quyen.Xem=1` theo role). Master `Sys_MenuCatalog` (Config DB/WPF)
 > → đồng bộ xuống `HT_ChucNang` mỗi tenant. `AppNav.cs` → seed + fallback. Chưa code.
 
-### Giai đoạn 1 — Migration + seed
-- [ ] **AUTHZ-DB-1** — `ALTER TABLE HT_ChucNang` thêm `Menu_Id, LaHeThong, KichHoat, ViTriHienThi`.
-- [ ] **AUTHZ-DB-2** — Config DB: tạo `Sys_Menu` + `Sys_MenuCatalog`; seed `MAIN` + cây từ `AppNav` (Icon Lucide, DuongDan, ViTriHienThi=Sidebar).
-- [ ] **AUTHZ-DB-3** — Đồng bộ master→`HT_ChucNang` (UPSERT theo `Ma`, `LaHeThong=1`); seed vai trò `ADMIN` + grant `Xem=1` toàn bộ. CreatedBy/At tường minh.
+### Giai đoạn 1 — Migration + seed ✅ (scripts viết xong — CHƯA áp vào DB)
+- [x] **AUTHZ-DB-1** — `db/042_alter_ht_chucnang_authz.sql`: thêm `Menu_Id, LaHeThong, KichHoat, ViTriHienThi` + index (idempotent).
+- [x] **AUTHZ-DB-2** — `db/043_create_sys_menu_catalog.sql` (tạo `Sys_Menu`+`Sys_MenuCatalog`) + `db/044_seed_sys_menu_catalog.sql` (seed `MAIN` + 45 node từ `AppNav`).
+- [x] **AUTHZ-DB-3** — `db/045_seed_ht_chucnang_base.sql`: seed `HT_ChucNang` base (`LaHeThong=1`), nối cha-con theo `Ma`; grant `SUPERADMIN` Xem/Thêm/Sửa/Xóa/In toàn bộ. CreatedBy=admin tường minh.
+- [ ] **AUTHZ-DB-APPLY** — ⏳ Chạy 042→(043,044 Config DB)→045 trên DB thật (chưa áp).
 
 ### Giai đoạn 2 — Backend đọc
 - [ ] **AUTHZ-BE-1** — `GetMyNavigationQuery` + `GetMyPermissionsQuery` (gộp 1 call) + `MeController` `GET /api/v1/me/{navigation,permissions}`.
