@@ -1,0 +1,123 @@
+@page "/m/administration/permissions"
+@inject AdminPermissionApiService Api
+@inject LocalizationService Loc
+
+@*
+    PermissionMatrixPage — màn Phân quyền (bespoke, ADR-023).
+    - Chọn vai trò → DxTreeList cây chức năng (HT_ChucNang) + 5 cột tick: Xem/Thêm/Sửa/Xóa/In.
+    - 1 CTA "Lưu" → PUT /api/v1/admin/roles/{id}/permissions.
+    - Duyệt KHÔNG có ở đây (thuộc workflow). Cascade tick: TODO pha sau.
+*@
+
+<PageTitle>@Loc.L("admin.perm.title", "Phân quyền") — ICare247</PageTitle>
+
+<div class="perm-toolbar">
+    <span class="perm-title">@Loc.L("admin.perm.title", "Phân quyền")</span>
+    <span class="perm-sep">·</span>
+    <label class="perm-rolelabel">@Loc.L("admin.perm.role", "Vai trò"):</label>
+    <select class="perm-roleselect" @onchange="OnRoleChanged">
+        @foreach (var r in _roles)
+        {
+            <option value="@r.Id" selected="@(r.Id == _roleId)">@r.Ten</option>
+        }
+    </select>
+    <span class="perm-spacer"></span>
+    @if (_saved)
+    {
+        <span class="perm-saved">@Loc.L("admin.perm.saved", "Đã lưu")</span>
+    }
+    <button class="perm-btn-primary" disabled="@(_roleId is null || _saving)" @onclick="SaveAsync">
+        @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+    </button>
+</div>
+
+@if (_loading)
+{
+    <div class="perm-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+}
+else if (_nodes.Count == 0)
+{
+    <div class="perm-empty">@Loc.L("admin.perm.empty", "Chưa có chức năng nào (cần chạy seed HT_ChucNang).")</div>
+}
+else
+{
+    <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId" CssClass="perm-tree">
+        <Columns>
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.func", "Chức năng")" FieldName="Ten" />
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.view", "Xem")" Width="70px">
+                <CellDisplayTemplate>
+                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Xem)" />
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.add", "Thêm")" Width="70px">
+                <CellDisplayTemplate>
+                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Them)" />
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.edit", "Sửa")" Width="70px">
+                <CellDisplayTemplate>
+                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Sua)" />
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.delete", "Xóa")" Width="70px">
+                <CellDisplayTemplate>
+                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Xoa)" />
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.print", "In")" Width="70px">
+                <CellDisplayTemplate>
+                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).InAn)" />
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+        </Columns>
+    </DxTreeList>
+}
+
+@code {
+    private List<RoleVm> _roles = new();
+    private List<PermNode> _nodes = new();
+    private long? _roleId;
+    private bool _loading;
+    private bool _saving;
+    private bool _saved;
+
+    /// <summary>Khởi tạo: nạp vai trò, chọn vai trò đầu tiên rồi nạp ma trận quyền.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await Api.GetRolesAsync();
+        if (_roles.Count > 0)
+        {
+            _roleId = _roles[0].Id;
+            await LoadPermissionsAsync();
+        }
+    }
+
+    /// <summary>Đổi vai trò → nạp lại ma trận quyền tương ứng.</summary>
+    private async Task OnRoleChanged(ChangeEventArgs e)
+    {
+        if (long.TryParse(e.Value?.ToString(), out var id))
+        {
+            _roleId = id;
+            _saved = false;
+            await LoadPermissionsAsync();
+        }
+    }
+
+    private async Task LoadPermissionsAsync()
+    {
+        if (_roleId is null) return;
+        _loading = true;
+        _nodes = await Api.GetPermissionsAsync(_roleId.Value);
+        _loading = false;
+    }
+
+    /// <summary>Lưu toàn bộ trạng thái cờ của vai trò hiện tại.</summary>
+    private async Task SaveAsync()
+    {
+        if (_roleId is null) return;
+        _saving = true;
+        _saved = false;
+        _saved = await Api.SaveAsync(_roleId.Value, _nodes);
+        _saving = false;
+    }
+}
