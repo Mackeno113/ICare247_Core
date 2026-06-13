@@ -22,9 +22,10 @@
 - [ ] **AUTHZ-BE-2** — Cache `IConfigCache` theo tenant+role + invalidate khi sửa quyền/menu. _(chưa làm)_
 
 ### Giai đoạn 3 — Frontend tiêu thụ
-- [ ] **AUTHZ-FE-1** — `NavigationApiService` + `AppState.NavTree/PermissionMap` (nạp sau login, xóa khi logout).
-- [ ] **AUTHZ-FE-2** — `NavMenu.razor` đọc `NavTree` (bỏ `CanShow`, thêm loading/empty); `AppNav`→fallback.
-- [ ] **AUTHZ-FE-3** — Sub-nav `ViTriHienThi=TrongMan` render trong màn; ẩn nút theo `PermissionMap`.
+- [x] **AUTHZ-FE-1** — `NavigationApiService` (GET /me/navigation, lỗi→rỗng) + model `MeNavNode`/`MeNavigationResult` + DI. Build xanh.
+- [x] **AUTHZ-FE-2** — `NavMenu.razor` dựng VM từ API (node phẳng → group/module/screen, lọc ViTriHienThi Sidebar/Ca2); **rỗng/lỗi → fallback AppNav** (app vẫn chạy khi chưa seed DB). Bỏ `CanShow`.
+- [ ] **AUTHZ-FE-3** — Render sub-nav `ViTriHienThi=TrongMan` trong màn + ẩn nút theo cờ quyền (cần expose PermissionMap qua AppState). _(chưa làm)_
+- [ ] **AUTHZ-FE-CACHE** — `AppState.NavTree/PermissionMap` (nạp 1 lần sau login, xóa khi logout) thay vì NavMenu gọi API mỗi lần mount. _(tối ưu sau)_
 
 ### Giai đoạn 4 — Bảo mật + cấu hình (trước production)
 - [ ] **AUTHZ-SEC** — `[RequirePermission(Ma, Op)]` deny-by-default trên controller engine (MasterData/View/Form/Runtime).

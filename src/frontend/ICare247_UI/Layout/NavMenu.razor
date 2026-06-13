@@ -1,35 +1,37 @@
 @implements IDisposable
 @inject NavigationManager Nav
 @inject LocalizationService Loc
+@inject NavigationApiService NavApi
 
 @*
-    NavMenu — điều hướng dọc dạng accordion, dữ liệu từ AppNav.
-    - Tiêu đề qua Loc.L(key, base vi): key suy từ slug, base là Title trong AppNav.
-    - Lọc theo quyền (#4): chỉ hiện phân hệ/màn người dùng được phép.
+    NavMenu — điều hướng dọc dạng accordion.
+    - Nguồn dữ liệu: API /me/navigation (đã lọc theo quyền). Rỗng/lỗi → fallback AppNav tĩnh.
+    - Dựng cây từ node phẳng (group → module → screen), chỉ hiện node ViTriHienThi = Sidebar/Ca2.
+    - Tiêu đề qua Loc.L(key, base vi): key suy từ cấu trúc; base là Ten/Title.
     - Tự vẽ lại khi đổi ngôn ngữ.
 *@
 
 <nav class="nav-menu">
-    <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
-        <span class="nav-item__icon"><Icon Name="layout-grid" /></span>
-        <span>@Loc.L("nav.dashboard", "Tổng quan")</span>
-    </NavLink>
-
-    @foreach (var group in AppNav.Groups)
+    @foreach (var item in _top)
     {
-        var modules = AppNav.Modules.Where(m => m.Group == group.Key && CanShow(m.Permission)).ToList();
-        if (modules.Count == 0) { continue; }
+        <NavLink class="nav-item" href="@item.Href" Match="@(item.Href == "" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+            <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
+            <span>@Loc.L(item.TitleKey, item.Title)</span>
+        </NavLink>
+    }
 
+    @foreach (var section in _sections)
+    {
         <div class="nav-section">
-            <div class="nav-section__label">@Loc.L(NavKeys.Group(group.Key), group.Title)</div>
-            @foreach (var module in modules)
+            <div class="nav-section__label">@Loc.L(section.TitleKey, section.Title)</div>
+            @foreach (var module in section.Modules)
             {
                 var isOpen = _expanded == module.Key;
                 var isActive = _currentModule == module.Key;
                 <div class="nav-group @(isActive ? "nav-group--active" : "")">
-                    <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module.Key)">
+                    <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module)">
                         <span class="nav-item__icon"><Icon Name="@module.Icon" /></span>
-                        <span class="nav-group__title">@Loc.L(NavKeys.Module(module.Key), module.Title)</span>
+                        <span class="nav-group__title">@Loc.L(module.TitleKey, module.Title)</span>
                         <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
                             <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
                         </span>
@@ -37,10 +39,10 @@
                     @if (isOpen)
                     {
                         <div class="nav-group__items">
-                            @foreach (var screen in module.Screens.Where(s => CanShow(s.Permission)))
+                            @foreach (var screen in module.Screens)
                             {
-                                <NavLink class="nav-subitem" href="@($"m/{module.Key}/{screen.Key}")">
-                                    @Loc.L(NavKeys.Screen(module.Key, screen.Key), screen.Title)
+                                <NavLink class="nav-subitem" href="@screen.Href">
+                                    @Loc.L(screen.TitleKey, screen.Title)
                                 </NavLink>
                             }
                         </div>
@@ -50,36 +52,113 @@
         </div>
     }
 
-    <div class="nav-sep"></div>
-
-    <NavLink class="nav-item nav-item--muted" href="dev/forms">
-        <span class="nav-item__icon"><Icon Name="wrench" /></span>
-        <span>@Loc.L("nav.devtools", "Công cụ (Dev)")</span>
-    </NavLink>
+    @if (_bottom.Count > 0)
+    {
+        <div class="nav-sep"></div>
+        @foreach (var item in _bottom)
+        {
+            <NavLink class="nav-item nav-item--muted" href="@item.Href">
+                <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
+                <span>@Loc.L(item.TitleKey, item.Title)</span>
+            </NavLink>
+        }
+    }
 </nav>
 
 @code {
-    // Khóa phân hệ đang được mở (accordion — chỉ 1 mở tại một thời điểm).
+    // ── View-model: cây menu sau khi dựng (từ API hoặc AppNav) ──────────────
+    private sealed record VmItem(string Key, string TitleKey, string Title, string Icon, string Href);
+    private sealed record VmScreen(string Href, string TitleKey, string Title);
+    private sealed record VmModule(string Key, string TitleKey, string Title, string Icon, string Href, List<VmScreen> Screens);
+    private sealed record VmSection(string TitleKey, string Title, List<VmModule> Modules);
+
+    private List<VmItem> _top = new();
+    private List<VmSection> _sections = new();
+    private List<VmItem> _bottom = new();
+
+    // Khóa phân hệ đang mở (accordion — chỉ 1 mở) + phân hệ ứng với URL (tô đậm).
     private string? _expanded;
-    // Khóa phân hệ ứng với URL hiện tại (để tô đậm).
     private string? _currentModule;
 
     /// <summary>
-    /// Khởi tạo: xác định phân hệ theo URL, lắng nghe đổi URL + đổi ngôn ngữ.
+    /// Khởi tạo: nạp menu theo quyền từ API (rỗng/lỗi → AppNav), xác định phân hệ theo URL,
+    /// lắng nghe đổi URL + đổi ngôn ngữ.
     /// </summary>
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var nodes = await NavApi.GetNavigationAsync();
+        if (nodes.Count > 0) BuildFromApi(nodes);
+        else BuildFromAppNav();
+
         SyncFromUri();
         _expanded ??= _currentModule;
         Nav.LocationChanged += OnLocationChanged;
         Loc.OnChanged += OnLanguageChanged;
     }
 
-    /// <summary>
-    /// Kiểm tra quyền hiển thị (#4). TODO(phase-auth): tra quyền thật của người dùng.
-    /// Hiện tại pass-through — cấu trúc đã sẵn để lọc khi có module Quản trị.
-    /// </summary>
-    private bool CanShow(string? permission) => true;
+    // ── Dựng VM từ API (node phẳng → cây) ───────────────────────────────────
+    private void BuildFromApi(IReadOnlyList<MeNavNode> nodes)
+    {
+        // Chỉ hiện ở sidebar: ViTriHienThi Sidebar/Ca2.
+        bool OnSidebar(MeNavNode n) => n.ViTriHienThi is "Sidebar" or "Ca2";
+        var vis = nodes.Where(OnSidebar).ToList();
+
+        string Href(string? duongDan) => (duongDan ?? "").TrimStart('/');
+
+        // Mục đơn cấp gốc (Loai=ManHinh, không cha): Tổng quan + Công cụ Dev.
+        foreach (var n in vis.Where(n => n.ChaMa is null && n.Loai == "ManHinh").OrderBy(n => n.ThuTu))
+        {
+            var item = new VmItem(n.Ma, $"nav.{n.Ma}", n.Ten, n.Icon ?? "circle", Href(n.DuongDan));
+            if (n.Ma is "devtools" || (n.DuongDan ?? "").StartsWith("/dev")) _bottom.Add(item);
+            else _top.Add(item);
+        }
+
+        // Nhóm (Loai=Menu, không cha) → phân hệ (Loai=Menu, cha=nhóm) → màn (cha=phân hệ).
+        foreach (var grp in vis.Where(n => n.ChaMa is null && n.Loai == "Menu").OrderBy(n => n.ThuTu))
+        {
+            var grpKey = grp.Ma.StartsWith("group.") ? grp.Ma["group.".Length..] : grp.Ma;
+            var modules = new List<VmModule>();
+            foreach (var mod in vis.Where(n => n.ChaMa == grp.Ma && n.Loai == "Menu").OrderBy(n => n.ThuTu))
+            {
+                var modKey = Href(mod.DuongDan).Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } s && s[0] == "m"
+                    ? s[1] : mod.Ma;
+                var screens = vis.Where(n => n.ChaMa == mod.Ma).OrderBy(n => n.ThuTu)
+                    .Select(sc => new VmScreen(Href(sc.DuongDan), ScreenKey(sc.Ma, modKey), sc.Ten))
+                    .ToList();
+                modules.Add(new VmModule(modKey, NavKeys.Module(modKey), mod.Ten, mod.Icon ?? "circle", Href(mod.DuongDan), screens));
+            }
+            if (modules.Count > 0)
+                _sections.Add(new VmSection(NavKeys.Group(grpKey), grp.Ten, modules));
+        }
+    }
+
+    /// <summary>Suy key i18n cho màn: Ma "organization.company" → nav.screen.organization.company.</summary>
+    private static string ScreenKey(string ma, string modKey)
+    {
+        var dot = ma.IndexOf('.');
+        var screenKey = dot >= 0 ? ma[(dot + 1)..] : ma;
+        return NavKeys.Screen(modKey, screenKey);
+    }
+
+    // ── Dựng VM từ AppNav (fallback tĩnh khi API rỗng/lỗi) ──────────────────
+    private void BuildFromAppNav()
+    {
+        _top.Add(new VmItem("dashboard", "nav.dashboard", "Tổng quan", "layout-grid", ""));
+
+        foreach (var group in AppNav.Groups)
+        {
+            var modules = AppNav.Modules.Where(m => m.Group == group.Key).Select(m =>
+                new VmModule(
+                    m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}",
+                    m.Screens.Select(s => new VmScreen(
+                        $"m/{m.Key}/{s.Key}", NavKeys.Screen(m.Key, s.Key), s.Title)).ToList()))
+                .ToList();
+            if (modules.Count > 0)
+                _sections.Add(new VmSection(NavKeys.Group(group.Key), group.Title, modules));
+        }
+
+        _bottom.Add(new VmItem("devtools", "nav.devtools", "Công cụ (Dev)", "wrench", "dev/forms"));
+    }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 
@@ -97,16 +176,16 @@
         _currentModule = (segments.Length >= 2 && segments[0] == "m") ? segments[1] : null;
     }
 
-    private void ToggleModule(string key)
+    private void ToggleModule(VmModule module)
     {
-        if (_expanded == key)
+        if (_expanded == module.Key)
         {
             _expanded = null;
         }
         else
         {
-            _expanded = key;
-            Nav.NavigateTo($"m/{key}");
+            _expanded = module.Key;
+            if (!string.IsNullOrEmpty(module.Href)) Nav.NavigateTo(module.Href);
         }
     }
 
