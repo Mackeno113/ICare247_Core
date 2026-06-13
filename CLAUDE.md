@@ -66,6 +66,7 @@
 | `docs/spec/08_CONVENTIONS.md` | Cache keys, Dapper patterns, comment rules |
 | `docs/spec/09_FIELD_CONFIG_GUIDE.md` | Field config UI — behavior, layout, i18n |
 | `docs/spec/10_RESOURCE_KEY_CONVENTION.md` | i18n key convention: validation + field display (label/placeholder/tooltip) |
+| `docs/spec/11_DATA_DB_SCHEMA.md` | Data DB per-tenant — nền tảng HT_/DM_/TC_ (người dùng, danh mục, tổ chức) |
 
 ---
 

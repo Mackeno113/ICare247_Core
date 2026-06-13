@@ -191,7 +191,7 @@
 - **Context:** Data DB là dữ liệu vận hành người dùng/khách nhìn trực tiếp; tách khỏi Config DB (metadata).
 - **Decision:**
   - **Tên bảng**: tiếng Việt không dấu PascalCase + **tiền tố nhóm** (vd `DS_TinhThanhPho` = danh sách).
-    Bộ tiền tố (DS_/DT_/GD_/CT_/HT_/NK_/TS_) — **user sẽ chốt khi thiết kế DB (HOÃN)**. Config DB GIỮ tiền tố Anh.
+    Bộ tiền tố **đã chốt theo module nghiệp vụ → xem ADR-022**. Config DB GIỮ tiền tố Anh.
   - **Cột nghiệp vụ tiếng Việt không dấu** (`Ma`, `Ten`, `MoTa`...); **cột hệ thống/auto tiếng Anh**.
   - **Cột auto bắt buộc MỌI bảng:** `Id` BIGINT IDENTITY (PK) · `CreatedBy` BIGINT · `CreatedAt` DATETIME ·
     `UpdatedBy` BIGINT NULL · `UpdatedAt` DATETIME NULL · `IsDeleted` BIT · `Ver` INT (optimistic concurrency).
@@ -236,4 +236,31 @@
 - **#2 CORS:** bỏ `AllowAnyOrigin`; whitelist `Cors:AllowedOrigins` + `AllowCredentials`; dev tự nhận loopback;
   prod rỗng → dừng khởi động. **#3 JWT:** fail-fast `Jwt:SecretKey` ngoài Development (rỗng/<32/placeholder → throw).
   **#1 (tenant từ claim):** hoãn sang pha Auth (xem ADR-018 — sẽ đóng khi suy tenant từ Host/claim).
+
+## ADR-022: Bộ tiền tố bảng Data DB — theo module nghiệp vụ (2026-06-12)
+- **Context:** ADR-019 chốt tên bảng = "tiếng Việt không dấu PascalCase + tiền tố nhóm" nhưng để HOÃN bộ
+  tiền tố cụ thể. Config DB đã dùng tiền tố theo module/engine (`Sys_/Ui_/Val_/Gram_/Evt_`).
+- **Quyết định (qua hỏi-đáp, chốt 3 điểm):**
+  1. **Triết lý = theo MODULE nghiệp vụ** (không theo bản chất dữ liệu DS_/GD_/CT_) → nhất quán với Config DB
+     và 8 module UI; mỗi module = 1 nhóm bảng → dễ phân quyền + tách site.
+  2. **Trade GỘP một** `TM_` (không tách MH_/BH_/KHO_).
+  3. **Bảng hạ tầng dùng chung TÁCH nhóm riêng** (không gộp hết vào HT_).
+- **Bộ tiền tố (10 nhóm):**
+
+  | Prefix | Nhóm | Phạm vi |
+  |---|---|---|
+  | `HT_` | Hệ Thống | Người dùng + phân quyền cấp data (Identity + Administration) |
+  | `TC_` | Tổ Chức | Organization (công ty, phòng ban) |
+  | `DM_` | Danh Mục | Danh mục dùng chung (tỉnh/thành, ĐVT…) — tách riêng |
+  | `NS_` | Nhân Sự | Hr |
+  | `TL_` | Tiền Lương | Payroll |
+  | `TM_` | Thương Mại | Trade — gộp hàng hóa/mua/bán/kho |
+  | `CN_` | Công Nợ | Finance |
+  | `BC_` | Báo Cáo | Reporting (cấu hình báo cáo lưu) |
+  | `NK_` | Nhật Ký | Audit-log (`NK_ThayDoi`) — tách riêng |
+  | `TT_` | Tệp Tin | File đính kèm — tách riêng |
+
+- **Ví dụ:** `TM_PhieuNhapKho`, `NS_NhanVien`, `HT_NguoiDung`, `DM_TinhThanhPho`, `NK_ThayDoi`.
+- **Liên quan:** ADR-019 (quy ước tên/cột Data DB), ADR-020 (`NK_ThayDoi`), ADR-018 (DB-per-tenant).
+- **Status:** ✅ convention chốt — áp dụng khi thiết kế bảng Data DB thật (chưa có bảng nào ngoài `NK_*` thiết kế).
 - **Status:** #2/#3 ✅ code xong (Program.cs), build xanh; #1 hoãn.

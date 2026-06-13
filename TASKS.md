@@ -4,6 +4,41 @@
 
 <!-- không có task nào đang chạy -->
 
+## ✅ Done (session 2026-06-13 — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration)
+
+> Chốt **bộ tiền tố bảng Data DB theo module nghiệp vụ** + thiết kế **spec nền tảng** (người dùng,
+> danh mục, tổ chức) + **sinh SQL migration** 037/038/039. User đã tạo DB `ICare247_Solution` và
+> chạy đủ 3 script.
+
+- [x] **DDB-PREFIX** — Chốt **10 tiền tố theo module** (qua hỏi-đáp): `HT_` (Hệ Thống) `TC_` (Tổ Chức)
+      `DM_` (Danh Mục) `NS_` (Nhân Sự) `TL_` (Tiền Lương) `TM_` (Thương Mại — gộp hàng hóa/mua/bán/kho)
+      `CN_` (Công Nợ) `BC_` (Báo Cáo) `NK_` (Nhật Ký) `TT_` (Tệp Tin). → **ADR-022** + update ADR-019.
+- [x] **DDB-SPEC** — `docs/spec/11_DATA_DB_SCHEMA.md`: spec **16 bảng nền tảng** (`DM_` 5 + `TC_` 4 + `HT_` 7).
+      Convention: không `Tenant_Id` (DB-per-tenant), khối auto `Id/CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver`,
+      cột nghiệp vụ tiếng Việt, `Ma`/`Ten` generic (KHÔNG entity-suffix) — §0.1/§0.2. Tổ chức = **2 cây tree
+      tự tham chiếu** (Công ty + Phòng ban, mỗi cây có cấp). Hành chính **2 cấp** (Tỉnh→Phường/Xã, bỏ Huyện
+      theo mô hình VN 2025). `HT_NguoiDung` gọn (auth-only): 2FA/SSO/lockout/mobile/hạn dùng; thông tin cá nhân
+      lấy qua `NhanVien_Id` (bắt buộc — siết NOT NULL ở đợt NS_).
+- [x] **DDB-037** — `db/037_create_data_db_foundation.sql`: DDL 16 bảng (idempotent, FK, filtered-unique `Ma`,
+      phá vòng lặp `TC_PhongBan↔HT_NguoiDung` bằng ALTER FK cuối file). Chạy trên Data DB.
+- [x] **DDB-038** — `db/038_seed_data_db_bootstrap.sql`: super-admin `admin`/`Admin@12345` (PBKDF2 Identity v3,
+      `NhanVien_Id` NULL — ngoại lệ bootstrap §6.7) + vai trò SUPERADMIN + danh mục cấp + Quốc gia VN.
+- [x] **DDB-039** — `db/039_seed_config_lookup_foundation.sql` (Config DB): seed `Sys_Lookup` + `Sys_Resource`
+      (vi/en) cho `TRANGTHAI_NGUOIDUNG`, `TRANGTHAI_DONVI`, `LOAI_TAIKHOAN`, `HINHTHUC_2FA`.
+- [x] **DDB-RUN** — User tạo DB `ICare247_Solution` + chạy đủ 037/038/039 ✅.
+
+**Decisions Log:**
+- **Tiền tố theo module nghiệp vụ** (không theo bản chất dữ liệu DS_/GD_) → nhất quán Config DB + 8 module UI;
+  Trade gộp `TM_`; bảng hạ tầng (DM_/HT_/NK_/TT_) tách riêng. (ADR-022)
+- **Phân quyền toàn bộ ở Data DB** (`HT_`): VaiTro/ChucNang/VaiTro_Quyen; `Sys_Role/Permission` Config DB chỉ cho Engine.
+- **TrangThai** = `Sys_Lookup` ở **Config DB** (Data DB chỉ lưu `Item_Code`); Item_Code hệ thống **bất biến**,
+  chỉ label i18n đổi được; resolve qua ConfigCache (không JOIN cross-DB).
+- **Hash mật khẩu = PBKDF2** qua `PasswordHasher<T>` (.NET built-in, versioning + rehash khi login). Cột `nvarchar(256)`.
+- **`Ma`/`Ten` generic** (không entity-suffix `MaDonViTinh`) để giữ engine generic; FK thì entity-suffix `{Bang}_Id`.
+- **INSERT/seed set cột audit tường minh** (CreatedBy/CreatedAt), không dựa DEFAULT — memory `feedback-explicit-audit-columns`.
+- **`015_create_cf_data_schema.sql` (Cf_*) giữ làm tham khảo** cho module mua bán cà phê nhân (`TM_` sau), KHÔNG migrate trực tiếp.
+- **Hoãn** (dựa name-match fallback): đăng ký `Sys_Table` + `Sys_Relation` cho FK Data DB — làm khi đưa bảng vào metadata Engine.
+
 ## ✅ Done (session 2026-06-12 — Frontend ICare247_UI: dựng khung + menu + i18n)
 
 - [x] **FE-MOVE** — Chuyển `ICare247.Blazor.RuntimeCheck` từ `src/backend/src/` → `src/frontend/` (user di chuyển folder). Sửa path ảnh hưởng: `run-blazor.bat`, `run-all.bat`, `.claude/launch.json`, `src/backend/ICare247.slnx` (`../frontend/...`), 2 docs spec (12/13). Build verify OK.

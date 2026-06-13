@@ -1,6 +1,54 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-12 (session 46 — Frontend ICare247_UI: dựng khung host+Shared RCL + menu + i18n shell)
+> Cập nhật: 2026-06-13 (session 47 — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration 037/038/039)
+
+## Session 47 (2026-06-13) — đã làm
+
+### Chốt bộ tiền tố bảng Data DB (theo module) — ADR-022
+- Qua hỏi-đáp: tiền tố **theo MODULE nghiệp vụ** (không theo bản chất dữ liệu DS_/GD_/CT_) → nhất quán Config DB
+  (`Sys_/Ui_/...`) + 8 module UI. **Trade gộp `TM_`**; bảng hạ tầng **tách riêng** (DM_/HT_/NK_/TT_).
+- **10 tiền tố:** `HT_` Hệ Thống · `TC_` Tổ Chức · `DM_` Danh Mục · `NS_` Nhân Sự · `TL_` Tiền Lương ·
+  `TM_` Thương Mại · `CN_` Công Nợ · `BC_` Báo Cáo · `NK_` Nhật Ký · `TT_` Tệp Tin.
+- Ghi **ADR-022** trong `.claude/memory/architecture_decisions.md` + update ADR-019 (gỡ "HOÃN").
+
+### Spec nền tảng Data DB — `docs/spec/11_DATA_DB_SCHEMA.md` (16 bảng)
+- `DM_` (5): QuocGia, TinhThanhPho, **PhuongXa** (2 cấp, trực thuộc thẳng Tỉnh — bỏ Huyện theo mô hình VN 2025),
+  DonViTinh, NganHang.
+- `TC_` (4): CapCongTy, CapPhongBan, **CongTy** + **PhongBan** = **2 cây tree tự tham chiếu** (parent + cấp).
+  TC_CongTy chỉ giữ `PhuongXa_Id` (Tỉnh suy qua PhuongXa — user yêu cầu bỏ `TinhThanhPho_Id`).
+- `HT_` (7): NguoiDung, VaiTro, NguoiDung_VaiTro, ChucNang (cây menu), VaiTro_Quyen (Xem/Thêm/Sửa/Xóa/Duyệt/In),
+  NguoiDung_CongTy (switcher), RefreshToken. **Phân quyền toàn bộ ở Data DB**.
+- **Convention chốt:** không `Tenant_Id` (DB-per-tenant); khối auto universal = `Id/CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver`
+  (§0.1); `Ma`/`Ten`/`MoTa` = cột theo **archetype** (§0.2), **generic không entity-suffix** (giữ engine generic),
+  FK thì `{Bang}_Id`. INSERT/seed set audit tường minh.
+- **HT_NguoiDung** đối chiếu bảng legacy `SYS_NguoiDung`: gọn còn auth (bỏ Salt→PBKDF2 nhúng; bỏ Token*→HT_RefreshToken;
+  bỏ HoTen/Email/ĐT/ảnh→lấy qua NhanVien). Thêm 2FA/LoaiTaiKhoan(AD/SSO/Portal)/KichHoatMobile/HetHanTaiKhoan.
+  `NhanVien_Id` bắt buộc nghiệp vụ (nullable tạm; siết NOT NULL+FK+UNIQUE đợt NS_). Chicken-egg bootstrap → §6.7.
+
+### Sinh SQL migration + chạy thật
+- `db/037_create_data_db_foundation.sql` (Data DB): DDL 16 bảng idempotent, FK, filtered-unique `Ma WHERE IsDeleted=0`,
+  CreatedBy/UpdatedBy **không FK** (tránh vòng lặp bootstrap), phá vòng `TC_PhongBan↔HT_NguoiDung` bằng ALTER FK cuối.
+- `db/038_seed_data_db_bootstrap.sql` (Data DB): super-admin **`admin`/`Admin@12345`** (hash PBKDF2 Identity v3 tạo bằng
+  PowerShell, verify được) + vai trò SUPERADMIN + cấp công ty/phòng ban + Quốc gia VN. Set `CreatedAt` tường minh (user nhắc).
+- `db/039_seed_config_lookup_foundation.sql` (Config DB): `Sys_Lookup` + `Sys_Resource` (vi/en) cho
+  `TRANGTHAI_NGUOIDUNG`/`TRANGTHAI_DONVI`/`LOAI_TAIKHOAN`/`HINHTHUC_2FA`.
+- **User đã tạo DB `ICare247_Solution` + chạy đủ 3 script** (verify thật). KHÔNG dotnet build (chỉ SQL/docs/memory).
+
+### Quyết định #1/#2/#3 (cho HT_NguoiDung)
+- #1 TrangThai → **Sys_Lookup ở Config DB** (Data lưu Item_Code; code bất biến, label i18n đổi được; ConfigCache resolve).
+- #2 Hash → **PBKDF2** `PasswordHasher<T>` (.NET built-in), `nvarchar(256)`.
+- #3 `Cf_*` (015) → **giữ làm tham khảo** cho module mua bán cà phê nhân (`TM_` sau), không migrate.
+
+### Memory mới
+- Git-tracked: **ADR-022**. Auto-memory: `feedback-explicit-audit-columns`, update `project-multitenant-and-data-conventions` (gỡ HOÃN tiền tố).
+
+### Việc tiếp theo gợi ý
+- Đợt `TT_` (file/logo: `TT_TepDinhKem`) — hiện chỉ để cột FK `*_Id`.
+- Đăng ký `Sys_Table` + `Sys_Relation` cho FK Data DB (đang dựa name-match) — khi đưa bảng vào metadata Engine.
+- Module thật đầu tiên: `TC_`/`HT_` (Organization/Administration) hoặc `NS_` (siết `NhanVien_Id`) + pha **Auth/login**.
+- Seed danh mục hành chính VN (Tỉnh/Phường-Xã) khi có nguồn chuẩn.
+
+---
 
 ## Session 46 (2026-06-12) — đã làm
 

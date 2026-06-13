@@ -1,6 +1,25 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-12
+> Cập nhật lần cuối: 2026-06-13
+
+## Đợt mới nhất — Data DB nền tảng: chốt tiền tố + spec HT_/DM_/TC_ + migration (session 47, 2026-06-13)
+
+Khởi động thiết kế **Data DB per-tenant** (dữ liệu vận hành, tách Config DB metadata). Chốt **bộ 10 tiền tố
+bảng theo module nghiệp vụ** (ADR-022: `HT_/TC_/DM_/NS_/TL_/TM_/CN_/BC_/NK_/TT_`; Trade gộp `TM_`). Thiết kế
+**spec nền tảng 16 bảng** `docs/spec/11_DATA_DB_SCHEMA.md` (`DM_` danh mục · `TC_` tổ chức = 2 cây tree tự tham
+chiếu · `HT_` người dùng + **phân quyền toàn bộ ở Data DB**). Convention: **không `Tenant_Id`** (DB-per-tenant),
+khối auto `Id/CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver`, cột nghiệp vụ tiếng Việt, `Ma`/`Ten`
+**generic không entity-suffix**. Hành chính **2 cấp** (Tỉnh→Phường/Xã, bỏ Huyện — VN 2025). `HT_NguoiDung` gọn
+auth-only (2FA/SSO/lockout/mobile/hạn dùng; cá nhân qua `NhanVien_Id`).
+
+**Sinh + chạy thật:** `db/037` (DDL 16 bảng) + `db/038` (super-admin `admin`/`Admin@12345` PBKDF2 + danh mục cấp)
++ `db/039` (Config DB seed `Sys_Lookup`/`Sys_Resource` trạng thái). **User đã tạo DB `ICare247_Solution` + chạy đủ 3 script.**
+
+**Quyết định:** TrangThai=Sys_Lookup ở Config DB (Item_Code bất biến, label i18n); Hash=PBKDF2 `PasswordHasher<T>`;
+`Cf_*` (015) giữ làm tham khảo module cà phê nhân (`TM_` sau). **Hoãn:** đăng ký `Sys_Table`+`Sys_Relation` (dựa name-match).
+
+→ **Bước tiếp:** nhóm `TT_` (file/logo); pha **Auth/login** + siết `NhanVien_Id` NOT NULL (đợt `NS_`); module thật
+đầu tiên (`TC_`/`HT_` hoặc `NS_`); seed danh mục hành chính VN. Memory mới: **ADR-022**, `feedback-explicit-audit-columns`.
 
 ## Đính chính nhận diện thương hiệu (2026-06-12)
 
