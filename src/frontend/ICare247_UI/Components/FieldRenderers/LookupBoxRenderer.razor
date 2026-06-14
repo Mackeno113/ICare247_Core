@@ -7,13 +7,14 @@
 
 @using System.Text.Json.Serialization
 @inject ILookupQueryService LookupQuerySvc
+@inherits LocalizedComponentBase
 
 <div class="lookupbox-wrapper">
     @* ── Search input trực tiếp trên control ── *@
     <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")">
         <input type="text"
                class="lookupbox-search-input"
-               placeholder="-- Chọn --"
+               placeholder="@Loc.L("common.lookup.choose", "-- Chọn --")"
                value="@_inputText"
                disabled="@(State?.EffectiveReadOnly == true)"
                @oninput="OnSearchInput"
@@ -22,11 +23,11 @@
                @onkeydown="OnKeyDown" />
         @if (State?.EffectiveReadOnly != true && !string.IsNullOrEmpty(State?.ValueString))
         {
-            <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="Xóa">✕</button>
+            <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="@Loc.L("common.action.clear", "Xóa")">✕</button>
         }
         <button class="lookupbox-btn" @onclick="TogglePopup"
                 disabled="@(State?.EffectiveReadOnly == true)"
-                title="Mở danh sách">▼</button>
+                title="@Loc.L("common.lookup.openList", "Mở danh sách")">▼</button>
     </div>
 
     @* ── Dropdown list ── *@
@@ -35,7 +36,7 @@
         <div class="lookupbox-popup" style="width:@(State?.LookupConfig?.DropDownWidth ?? 400)px">
             @if (_loading)
             {
-                <div class="popup-loading">⏳ Đang tải dữ liệu...</div>
+                <div class="popup-loading">⏳ @Loc.L("common.lookup.loadingData", "Đang tải dữ liệu...")</div>
             }
             else if (_loadError is not null)
             {
@@ -43,7 +44,7 @@
             }
             else if (FilteredRows.Count == 0)
             {
-                <div class="popup-empty">Không tìm thấy kết quả</div>
+                <div class="popup-empty">@Loc.L("common.lookup.noResults", "Không tìm thấy kết quả")</div>
             }
             else
             {
@@ -73,7 +74,7 @@
                 <div class="popup-addnew"
                      @onmousedown="OpenAddDialog"
                      @onmousedown:preventDefault="true">
-                    ➕ Thêm mới@(string.IsNullOrWhiteSpace(_searchText) ? "" : $" \"{_searchText}\"")
+                    ➕ @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_searchText) ? "" : $" \"{_searchText}\"")
                 </div>
             }
         </div>

@@ -1,6 +1,37 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-13 (session 49 — Redesign sidebar + thiết kế phase-auth menu/phân quyền ADR-023)
+> Cập nhật: 2026-06-14 (session 50 — i18n web UI hand-coded: hợp nhất về LocalizationService.L())
+
+## Session 50 (2026-06-14) — đã làm
+
+### i18n cấu hình đa ngôn ngữ ở Web UI — tách 2 phần + hợp nhất cơ chế hand-coded
+
+**Bối cảnh — 2 phần i18n tách bạch:**
+- **Phần 1 — màn WPF tạo (metadata-driven):** label/placeholder/tooltip/caption lưu key `Sys_Resource`,
+  backend `MetadataEngine` resolve theo `Lang_Code`. **Đã có i18n** — không đụng.
+- **Phần 2 — màn/control viết tay trong Web UI:** trước đây chuỗi cứng tiếng Việt → **đợt này bơm i18n**.
+
+**Quyết định user (chốt qua hỏi):** phạm vi = TOÀN BỘ phần 2; **key trước, dịch sau** (en.json để rỗng,
+fallback vi tại chỗ gọi); key theo **nguyên tắc WPF (spec 10)** = `common.*` + `{scope}.{category}.*`;
+**hợp nhất** mọi chuỗi hand-coded về **`LocalizationService.L(key, fallback)`** (shell, JSON overlay client-side),
+**bỏ `I18nService`** (kho `common.*` qua `Sys_Resource` backend — trùng namespace, đã xóa).
+
+**Đã làm:**
+- Đăng ký **nguồn i18n host** `Loc.RegisterSource("i18n")` trong `MainLayout` trước `InitializeAsync`;
+  tạo `wwwroot/i18n/en.json` rỗng (Shared vẫn là nguồn `common.*`/shell).
+- **Migrate 3 màn** khỏi `I18nService.T()` → `Loc.L()`: `FilterPanel`, `ViewPage`, `MasterDataForm`
+  (gỡ `EnsureCommonLoadedAsync`); **gỡ DI + xóa** `Services/I18nService.cs`.
+- **Bơm `L()`** (thêm `@inherits LocalizedComponentBase`) cho trang bespoke: `Home`, `MasterDataListPage`,
+  `MasterDataTabPage`, `FormRunner`; và chrome trong component: `MasterDataGrid` (cột "Thao tác", nút Sửa/Xóa),
+  `ConfirmDeleteDialog`, `LookupAddDialog`, `LookupBoxRenderer`, `TreeLookupBoxRenderer`.
+- **Bộ key chuẩn:** `common.action.*` (save/cancel/create/update/edit/delete/refresh/run/close/clear/back/
+  hide/show/understood/saving), `common.filter.*`, `common.validation.required`, `common.search.placeholder`,
+  `common.label.error`, `common.column.actions`, `common.lookup.*`, `common.msg.saveFailed`; namespace riêng
+  trang: `dev.forms.*`, `masterdata.*`, `view.*`, `formrunner.*`, `delete.*`, `lookupadd.*`.
+- Build frontend **0 error / 0 warning**.
+
+→ **Bước tiếp:** dịch `en.json` (Shared `common.*` + host page keys) khi cần bản tiếng Anh; cân nhắc trang
+`/dev/i18n` báo key thiếu (gói #7) + xuất Excel cho người dịch (gói #5).
 
 ## Session 49 (2026-06-13) — đã làm
 

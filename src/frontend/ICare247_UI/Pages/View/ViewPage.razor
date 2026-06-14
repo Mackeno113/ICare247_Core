@@ -6,30 +6,30 @@
 @using ICare247_UI.Services
 @using ICare247_UI.Components.View
 @inject ViewApiService ViewApi
-@inject I18nService I18n
 @inject NavigationManager Nav
+@inherits LocalizedComponentBase
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
 
 <div class="page-container">
     @if (_loading)
     {
-        <div class="md-form-loading"><div class="spinner"></div><span>Đang tải View…</span></div>
+        <div class="md-form-loading"><div class="spinner"></div><span>@Loc.L("view.loading", "Đang tải View…")</span></div>
     }
     else if (_error is not null)
     {
-        <div class="error-banner"><strong>⚠ Lỗi:</strong> @_error</div>
+        <div class="error-banner"><strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
     }
     else if (_view is not null)
     {
         <div class="md-list-header">
             <div>
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
-                <span class="md-list-sub">Bảng @_view.TableCode · @_view.ViewType</span>
+                <span class="md-list-sub">@Loc.L("view.subtitle", "Bảng {0} · {1}", _view.TableCode, _view.ViewType)</span>
             </div>
             @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
             {
-                <button class="btn btn-primary" @onclick="OpenAdd">+ Thêm mới</button>
+                <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
             }
         </div>
 
@@ -37,7 +37,7 @@
         @if (_view.ShowSearchBox && !_view.HasFilterPanel)
         {
             <div class="md-list-toolbar">
-                <input class="md-search" placeholder="🔍 Tìm kiếm…" value="@_search"
+                <input class="md-search" placeholder="@Loc.L("common.search.placeholder", "🔍 Tìm kiếm…")" value="@_search"
                        @onchange="OnSearchChanged" />
             </div>
         }
@@ -58,7 +58,7 @@
                     <div class="md-list-notice">@_notice</div>
                 }
 
-                <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+                <div class="md-list-footer">@Loc.L("view.footer.count", "Hiển thị {0} / {1} bản ghi", _items.Count, _total)</div>
             </div>
         </div>
     }
@@ -85,9 +85,8 @@
         _loading = true; _error = null;
         try
         {
-            await I18n.EnsureCommonLoadedAsync("vi");
             _view = await ViewApi.GetInfoAsync(ViewCode);
-            if (_view is null) { _error = $"Không tìm thấy View '{ViewCode}'."; return; }
+            if (_view is null) { _error = Loc.L("view.notfound", "Không tìm thấy View '{0}'.", ViewCode); return; }
 
             // Nguồn SP/SQL có panel lọc: chỉ tải khi Auto_Search_On_Load (tránh SP nặng) — ngược lại chờ bấm Tìm.
             if (_view.HasFilterPanel && !_view.AutoSearchOnLoad)
@@ -176,7 +175,7 @@
     private void OnUnhandledAction(ViewActionDto a)
     {
         _notice = a.ActionType.Equals("Export", StringComparison.OrdinalIgnoreCase)
-            ? $"Xuất {a.ExportFormat} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau."
-            : $"Action '{a.ActionType}' ({a.ActionCode}) chưa được hỗ trợ ở runtime.";
+            ? Loc.L("view.action.exportUnsupported", "Xuất {0} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau.", a.ExportFormat ?? "")
+            : Loc.L("view.action.unsupported", "Action '{0}' ({1}) chưa được hỗ trợ ở runtime.", a.ActionType, a.ActionCode);
     }
 }

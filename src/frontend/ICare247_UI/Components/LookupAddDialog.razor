@@ -6,18 +6,19 @@
 @inject FormApiService      FormApi
 @inject LookupApiService    LookupApi
 @inject ILookupQueryService LookupQuerySvc
+@inherits LocalizedComponentBase
 
 <div class="lookupadd-backdrop" @onclick="OnCancel">
     <div class="lookupadd-dialog" @onclick:stopPropagation>
         <div class="lookupadd-header">
-            <span>➕ Thêm mới@(string.IsNullOrWhiteSpace(_formTitle) ? "" : $": {_formTitle}")</span>
-            <button class="lookupadd-close" @onclick="OnCancel" title="Đóng">✕</button>
+            <span>➕ @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_formTitle) ? "" : $": {_formTitle}")</span>
+            <button class="lookupadd-close" @onclick="OnCancel" title="@Loc.L("common.action.close", "Đóng")">✕</button>
         </div>
 
         <div class="lookupadd-body">
             @if (_loading)
             {
-                <div class="lookupadd-loading">⏳ Đang tải form...</div>
+                <div class="lookupadd-loading">⏳ @Loc.L("masterdata.form.loading", "Đang tải form...")</div>
             }
             else if (_error is not null)
             {
@@ -44,9 +45,9 @@
             {
                 <div class="lookupadd-error" style="flex:1">⚠ @_saveError</div>
             }
-            <button class="btn btn-secondary" @onclick="OnCancel" disabled="@_saving">Hủy</button>
+            <button class="btn btn-secondary" @onclick="OnCancel" disabled="@_saving">@Loc.L("common.action.cancel", "Hủy")</button>
             <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || _loading || _error is not null)">
-                @(_saving ? "Đang lưu..." : "Lưu")
+                @(_saving ? Loc.L("common.action.saving", "Đang lưu...") : Loc.L("common.action.save", "Lưu"))
             </button>
         </div>
     </div>
@@ -80,7 +81,7 @@
             var form = await FormApi.GetFormAsync(FormCode);
             if (form is null)
             {
-                _error = $"Form '{FormCode}' không tồn tại trong tenant.";
+                _error = Loc.L("lookupadd.notfound", "Form '{0}' không tồn tại trong tenant.", FormCode);
                 return;
             }
 
@@ -163,7 +164,7 @@
                 .ToList();
             if (missing.Count > 0)
             {
-                _saveError = $"Vui lòng nhập: {string.Join(", ", missing)}";
+                _saveError = Loc.L("lookupadd.required", "Vui lòng nhập: {0}", string.Join(", ", missing));
                 return;
             }
 
@@ -175,14 +176,14 @@
 
             if (values.Count == 0)
             {
-                _saveError = "Chưa có dữ liệu để lưu.";
+                _saveError = Loc.L("lookupadd.noData", "Chưa có dữ liệu để lưu.");
                 return;
             }
 
             var result = await LookupQuerySvc.InsertAsync(FieldId, values);
             if (!result.Success)
             {
-                _saveError = result.Error ?? "Lưu thất bại.";
+                _saveError = result.Error ?? Loc.L("common.msg.saveFailed", "Lưu thất bại.");
                 return;
             }
 

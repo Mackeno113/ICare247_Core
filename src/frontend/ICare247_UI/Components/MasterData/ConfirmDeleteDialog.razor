@@ -6,14 +6,15 @@
 
 @using ICare247_UI.Services
 @inject MasterDataApiService MasterApi
+@inherits LocalizedComponentBase
 
 <div class="md-modal-backdrop" @onclick="Cancel">
     <div class="md-modal md-modal-sm" @onclick:stopPropagation="true">
-        <div class="md-modal-header">⚠️ Xác nhận xóa</div>
+        <div class="md-modal-header">⚠️ @Loc.L("delete.confirm.title", "Xác nhận xóa")</div>
         <div class="md-modal-body">
             @if (_checking)
             {
-                <div class="md-form-loading"><div class="spinner"></div><span>Đang kiểm tra tham chiếu…</span></div>
+                <div class="md-form-loading"><div class="spinner"></div><span>@Loc.L("delete.checking", "Đang kiểm tra tham chiếu…")</span></div>
             }
             else if (_error is not null)
             {
@@ -22,30 +23,30 @@
             else if (_blocked.Count > 0)
             {
                 <div class="result-invalid">
-                    <strong>❌ Không thể xóa.</strong> Bản ghi đang được sử dụng tại:
+                    <strong>❌ @Loc.L("delete.blocked.title", "Không thể xóa.")</strong> @Loc.L("delete.blocked.usedAt", "Bản ghi đang được sử dụng tại:")
                     <ul>
                         @foreach (var u in _blocked)
                         {
                             <li>
-                                <code>@u.Schema.@u.Table.@u.Column</code> → @u.RowCount dòng
-                                @if (u.IsLegacy) { <span class="md-legacy-tag">[dữ liệu cũ]</span> }
+                                <code>@u.Schema.@u.Table.@u.Column</code> → @Loc.L("delete.blocked.rows", "{0} dòng", u.RowCount)
+                                @if (u.IsLegacy) { <span class="md-legacy-tag">@Loc.L("delete.blocked.legacy", "[dữ liệu cũ]")</span> }
                             </li>
                         }
                     </ul>
-                    Gỡ các tham chiếu này trước khi xóa.
+                    @Loc.L("delete.blocked.removeFirst", "Gỡ các tham chiếu này trước khi xóa.")
                 </div>
             }
             else
             {
-                <p>Bạn chắc chắn xóa <strong>vĩnh viễn</strong> bản ghi này? Hành động không thể hoàn tác.</p>
+                <p>@((MarkupString)Loc.L("delete.confirm.body", "Bạn chắc chắn xóa <strong>vĩnh viễn</strong> bản ghi này? Hành động không thể hoàn tác."))</p>
             }
         </div>
         <div class="md-modal-footer">
-            <button class="btn btn-secondary" @onclick="Cancel">@(_blocked.Count > 0 ? "Đã hiểu" : "Hủy")</button>
+            <button class="btn btn-secondary" @onclick="Cancel">@(_blocked.Count > 0 ? Loc.L("common.action.understood", "Đã hiểu") : Loc.L("common.action.cancel", "Hủy"))</button>
             @if (!_checking && _error is null && _blocked.Count == 0)
             {
                 <button class="btn btn-danger" @onclick="ConfirmAsync" disabled="@_deleting">
-                    @(_deleting ? "Đang xóa…" : "🗑️ Xóa vĩnh viễn")
+                    @(_deleting ? Loc.L("delete.deleting", "Đang xóa…") : "🗑️ " + Loc.L("delete.confirm.permanent", "Xóa vĩnh viễn"))
                 </button>
             }
         </div>

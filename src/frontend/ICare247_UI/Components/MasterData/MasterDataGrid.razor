@@ -5,6 +5,7 @@
 
 @using System.Globalization
 @using ICare247_UI.Services
+@inherits LocalizedComponentBase
 
 <DxGrid Data="Items"
         ShowFilterRow="Config.ShowFilterRow"
@@ -41,18 +42,18 @@
 
         @if (CanEdit || CanDelete)
         {
-            <DxGridCommandColumn Width="110px" Caption="Thao tác">
+            <DxGridCommandColumn Width="110px" Caption="@Loc.L("common.column.actions", "Thao tác")">
                 <CellDisplayTemplate>
                     @{
                         var pk = GetCell(AsRow(context.DataItem), PkColumn);
                     }
                     @if (CanEdit)
                     {
-                        <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
+                        <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
                     }
                     @if (CanDelete)
                     {
-                        <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
+                        <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
                     }
                 </CellDisplayTemplate>
             </DxGridCommandColumn>

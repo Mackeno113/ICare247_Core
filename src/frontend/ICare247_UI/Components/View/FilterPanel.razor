@@ -4,14 +4,14 @@
              Bấm Tìm → raise OnSearch với map Filter_Code → giá trị thô (engine ép kiểu). *@
 
 @using ICare247_UI.Services
-@inject I18nService I18n
+@inherits LocalizedComponentBase
 
 <div class="fp-panel @(Collapsed ? "fp-collapsed" : "")">
     <div class="fp-header">
         <span class="fp-title">@SearchLabelText</span>
         @if (Collapsible)
         {
-            <button class="fp-toggle" type="button" title="@(Collapsed ? "Mở" : "Thu gọn")"
+            <button class="fp-toggle" type="button" title="@(Collapsed ? Loc.L("common.action.expand", "Mở") : Loc.L("common.action.collapse", "Thu gọn"))"
                     @onclick="() => Collapsed = !Collapsed">@(Collapsed ? "»" : "«")</button>
         }
     </div>
@@ -72,14 +72,14 @@
         Filters.Where(f => f.IsVisible).OrderBy(f => f.OrderNo).ToList();
 
     private string SearchLabelText => string.IsNullOrWhiteSpace(SearchLabel)
-        ? I18n.T("common.filter.search", "Tìm kiếm") : SearchLabel!;
+        ? Loc.L("common.filter.search", "Tìm kiếm") : SearchLabel!;
     private string ResetLabelText => string.IsNullOrWhiteSpace(ResetLabel)
-        ? I18n.T("common.filter.reset", "Đặt lại") : ResetLabel!;
-    private string SearchingText => I18n.T("common.filter.searching", "Đang tìm…");
+        ? Loc.L("common.filter.reset", "Đặt lại") : ResetLabel!;
+    private string SearchingText => Loc.L("common.filter.searching", "Đang tìm…");
 
     /// <summary>Thông báo thiếu tham số (i18n template "{0} là bắt buộc").</summary>
     private string RequiredMessage(string label)
-        => string.Format(I18n.T("common.validation.required", "{0} là bắt buộc"), label);
+        => Loc.L("common.validation.required", "{0} là bắt buộc", label);
 
     protected override void OnParametersSet()
     {

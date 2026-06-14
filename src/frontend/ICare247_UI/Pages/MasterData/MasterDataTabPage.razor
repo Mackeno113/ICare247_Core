@@ -6,11 +6,12 @@
 @page "/master/{FormCode}/edit/{Id}"
 @using ICare247_UI.Components.MasterData
 @inject NavigationManager Nav
+@inherits LocalizedComponentBase
 
-<PageTitle>@FormCode — @(string.IsNullOrEmpty(Id) ? "Thêm mới" : "Sửa")</PageTitle>
+<PageTitle>@FormCode — @(string.IsNullOrEmpty(Id) ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.edit", "Sửa"))</PageTitle>
 
 <div class="page-container">
-    <button class="btn-back" @onclick="BackToList">← Danh sách</button>
+    <button class="btn-back" @onclick="BackToList">← @Loc.L("masterdata.tab.backToList", "Danh sách")</button>
     <MasterDataForm FormCode="@FormCode" Id="@IdValue"
                     OnSaved="OnSaved" OnCancelled="BackToList" />
 </div>

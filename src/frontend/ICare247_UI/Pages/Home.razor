@@ -6,13 +6,14 @@
 @inject FormApiService FormApi
 @inject ApiSettings Settings
 @inject NavigationManager Nav
+@inherits LocalizedComponentBase
 
 <PageTitle>ICare247 UI</PageTitle>
 
 <div class="page-container">
     <div class="page-header">
-        <h1>🚀 ICare247 — Runtime Check</h1>
-        <p class="subtitle">Test cấu hình UI form trực tiếp từ metadata</p>
+        <h1>🚀 @Loc.L("dev.forms.title", "ICare247 — Runtime Check")</h1>
+        <p class="subtitle">@Loc.L("dev.forms.subtitle", "Test cấu hình UI form trực tiếp từ metadata")</p>
         <div class="api-badge">
             API: <strong>@Settings.BaseUrl</strong>
             &nbsp;|&nbsp; Tenant: <strong>@Settings.TenantId</strong>
@@ -22,15 +23,15 @@
 
     @* ── Nhập Form Code thủ công ──────────────────── *@
     <div class="card">
-        <h3>Chạy form theo mã</h3>
+        <h3>@Loc.L("dev.forms.runByCode", "Chạy form theo mã")</h3>
         <div class="input-row">
             <input type="text" class="code-input"
-                   placeholder="Nhập Form_Code (VD: NHAN_VIEN_CREATE)"
+                   placeholder="@Loc.L("dev.forms.codePlaceholder", "Nhập Form_Code (VD: NHAN_VIEN_CREATE)")"
                    @bind="_manualCode"
                    @onkeydown="OnKeyDown" />
             <button class="btn btn-primary" @onclick="RunManual"
                     disabled="@string.IsNullOrWhiteSpace(_manualCode)">
-                ▶ Chạy
+                ▶ @Loc.L("common.action.run", "Chạy")
             </button>
         </div>
         @if (_manualError is not null)
@@ -42,37 +43,37 @@
     @* ── Danh sách form từ API ─────────────────────── *@
     <div class="card">
         <div class="card-header-row">
-            <h3>Danh sách form</h3>
+            <h3>@Loc.L("dev.forms.listTitle", "Danh sách form")</h3>
             <button class="btn btn-secondary" @onclick="LoadForms" disabled="@_loading">
-                @(_loading ? "Đang tải..." : "⟳ Tải lại")
+                @(_loading ? Loc.L("common.state.loading", "Đang tải...") : "⟳ " + Loc.L("common.action.refresh", "Tải lại"))
             </button>
         </div>
 
         @if (_loadError is not null)
         {
             <div class="error-banner">
-                ⚠ Không tải được danh sách: @_loadError
-                <br /><small>Kiểm tra backend đang chạy tại <code>@Settings.BaseUrl</code></small>
+                ⚠ @Loc.L("dev.forms.loadError", "Không tải được danh sách:") @_loadError
+                <br /><small>@Loc.L("dev.forms.checkBackend", "Kiểm tra backend đang chạy tại") <code>@Settings.BaseUrl</code></small>
             </div>
         }
         else if (_loading)
         {
-            <div class="loading">Đang kết nối API...</div>
+            <div class="loading">@Loc.L("dev.forms.connecting", "Đang kết nối API...")</div>
         }
         else if (_forms.Count == 0)
         {
-            <div class="empty-state">Không có form nào. Thêm form qua ConfigStudio WPF trước.</div>
+            <div class="empty-state">@Loc.L("dev.forms.empty", "Không có form nào. Thêm form qua ConfigStudio WPF trước.")</div>
         }
         else
         {
             <table class="forms-table">
                 <thead>
                     <tr>
-                        <th>Form Code</th>
-                        <th>Platform</th>
-                        <th>Bảng</th>
-                        <th>Fields</th>
-                        <th>Version</th>
+                        <th>@Loc.L("dev.forms.col.code", "Form Code")</th>
+                        <th>@Loc.L("dev.forms.col.platform", "Platform")</th>
+                        <th>@Loc.L("dev.forms.col.table", "Bảng")</th>
+                        <th>@Loc.L("dev.forms.col.fields", "Fields")</th>
+                        <th>@Loc.L("dev.forms.col.version", "Version")</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -88,7 +89,7 @@
                             <td>
                                 <button class="btn btn-sm"
                                         @onclick="() => RunForm(f.FormCode)">
-                                    ▶ Chạy
+                                    ▶ @Loc.L("common.action.run", "Chạy")
                                 </button>
                             </td>
                         </tr>

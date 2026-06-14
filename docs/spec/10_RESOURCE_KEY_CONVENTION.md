@@ -387,3 +387,36 @@ INSERT INTO Sys_Resource (Resource_Key, Lang_Code, Resource_Value) VALUES
   ('nhanvien.val.manhanvien.Required', 'vi', N'Mã nhân viên không được để trống'),
   ('nhanvien.val.ngaysinh.Required',   'vi', N'Ngày sinh không được để trống');
 ```
+
+---
+
+## 9. Hai hệ i18n ở Web UI — tách bạch rõ (ADR i18n shell)
+
+Web UI (`ICare247_UI`) có **2 hệ i18n riêng**, dùng **cùng quy ước key phân cấp chấm** nhưng **kho lưu khác nhau**:
+
+| | Phần 1 — màn WPF tạo (metadata-driven) | Phần 2 — màn/control viết tay (hand-coded) |
+|---|---|---|
+| Nội dung | label/placeholder/tooltip/caption/title của form/field/section/tab/view | chrome viết tay: nút, cột lệnh, dialog, thông báo, tiêu đề trang bespoke |
+| Kho | `Sys_Resource` (DB Config), backend `MetadataEngine` resolve theo `Lang_Code` | **JSON overlay client** (`_content/ICare247.UI.Shared/i18n/{lang}.json` + host `wwwroot/i18n/{lang}.json`) |
+| API consume | metadata DTO (key đã resolve sẵn) | `LocalizationService.L(key, fallback, args)` — đồng bộ, fallback vi tại chỗ gọi |
+| Triết lý | cấu hình trong ConfigStudio WPF (nút 🌐) | **key trước, dịch sau** — base vi nằm trong code, en.json bổ sung dần; có pseudo-loc soát |
+
+> **KHÔNG dùng `Sys_Resource` cho chuỗi hand-coded** (đã bỏ `I18nService` cũ — gây trùng namespace `common.*`).
+> Mọi chuỗi viết tay đi qua `LocalizationService.L()`. Component dịch: `@inherits LocalizedComponentBase` để
+> tự vẽ lại khi đổi ngôn ngữ.
+
+### Quy ước key hand-coded (giống nguyên tắc WPF §2)
+
+```
+common.{nhóm}.{tên}              -- chuỗi dùng chung, tái dụng nhiều màn
+{scope}.{category}.{...}         -- chuỗi riêng 1 trang/feature (scope = slug trang)
+```
+
+| Nhóm `common.*` | Ví dụ key |
+|---|---|
+| Hành động | `common.action.save` / `.cancel` / `.create` / `.update` / `.edit` / `.delete` / `.refresh` / `.run` / `.close` / `.clear` / `.back` / `.hide` / `.show` / `.saving` |
+| Lọc (khớp §1d) | `common.filter.search` / `.reset` / `.searching` |
+| Khác | `common.validation.required` · `common.search.placeholder` · `common.label.error` · `common.column.actions` · `common.lookup.choose/openList/openTree/loadingData/noResults/noData` · `common.msg.saveFailed` |
+
+Scope theo trang ví dụ: `dev.forms.*`, `masterdata.list.*`, `masterdata.form.*`, `view.*`, `formrunner.*`,
+`delete.*`, `lookupadd.*`. Tham số `{0}/{1}` truyền qua `args` của `L()` (format theo CultureInfo hiện hành).

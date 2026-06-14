@@ -8,37 +8,38 @@
 @inject MasterDataApiService MasterApi
 @inject PermissionState Perms
 @inject NavigationManager Nav
+@inherits LocalizedComponentBase
 
-<PageTitle>@(_info?.FormCode ?? FormCode) — Danh mục</PageTitle>
+<PageTitle>@(_info?.FormCode ?? FormCode) — @Loc.L("masterdata.list.pageTitle", "Danh mục")</PageTitle>
 
 <div class="page-container">
     @if (_loading)
     {
-        <div class="md-form-loading"><div class="spinner"></div><span>Đang tải danh mục…</span></div>
+        <div class="md-form-loading"><div class="spinner"></div><span>@Loc.L("masterdata.list.loading", "Đang tải danh mục…")</span></div>
     }
     else if (_error is not null)
     {
-        <div class="error-banner"><strong>⚠ Lỗi:</strong> @_error</div>
+        <div class="error-banner"><strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
     }
     else if (_info is not null)
     {
         <div class="md-list-header">
             <div>
-                <h2>Quản lý: @FormCode</h2>
-                <span class="md-list-sub">Bảng @_info.SchemaName.@_info.TableName · chế độ @_info.DisplayMode</span>
+                <h2>@Loc.L("masterdata.list.manage", "Quản lý: {0}", FormCode)</h2>
+                <span class="md-list-sub">@Loc.L("masterdata.list.subtitle", "Bảng {0}.{1} · chế độ {2}", _info.SchemaName, _info.TableName, _info.DisplayMode)</span>
             </div>
             @if (_perm.Them)
             {
-                <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ Thêm mới</button>
+                <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ @Loc.L("common.action.create", "Thêm mới")</button>
             }
         </div>
 
         <div class="md-list-toolbar">
-            <input class="md-search" placeholder="🔍 Tìm kiếm…" value="@_search"
+            <input class="md-search" placeholder="@Loc.L("common.search.placeholder", "🔍 Tìm kiếm…")" value="@_search"
                    @onchange="OnSearchChanged" />
             <label class="md-active-filter">
                 <input type="checkbox" checked="@_activeOnly" @onchange="OnActiveToggled" />
-                Chỉ Active
+                @Loc.L("masterdata.list.activeOnly", "Chỉ Active")
             </label>
         </div>
 
@@ -51,7 +52,7 @@
                         OnEdit="(id) => OpenForm(id)"
                         OnDelete="OpenDelete" />
 
-        <div class="md-list-footer">Hiển thị @_items.Count / @_total bản ghi</div>
+        <div class="md-list-footer">@Loc.L("view.footer.count", "Hiển thị {0} / {1} bản ghi", _items.Count, _total)</div>
     }
 </div>
 
@@ -106,7 +107,7 @@
         try
         {
             _info = await MasterApi.GetInfoAsync(FormCode);
-            if (_info is null) { _error = $"Không tìm thấy form danh mục '{FormCode}'."; return; }
+            if (_info is null) { _error = Loc.L("masterdata.list.notfound", "Không tìm thấy form danh mục '{0}'.", FormCode); return; }
 
             await Perms.EnsureLoadedAsync();
             _perm = Perms.ForTarget("Form", FormCode);

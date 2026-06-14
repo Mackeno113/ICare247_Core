@@ -9,6 +9,7 @@
 @inject LookupApiService LookupApi
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inherits LocalizedComponentBase
 
 <PageTitle>@(FormCode) — ICare247_UI</PageTitle>
 
@@ -17,7 +18,7 @@
     <div class="page-container">
         <div class="loading-center">
             <div class="spinner"></div>
-            <p>Đang tải form <strong>@FormCode</strong>...</p>
+            <p>@Loc.L("formrunner.loading", "Đang tải form")<strong> @FormCode</strong>...</p>
         </div>
     </div>
 }
@@ -25,9 +26,9 @@ else if (_error is not null)
 {
     <div class="page-container">
         <div class="error-banner">
-            <strong>⚠ Lỗi:</strong> @_error
+            <strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error
         </div>
-        <button class="btn btn-secondary" @onclick="GoBack">← Quay lại</button>
+        <button class="btn btn-secondary" @onclick="GoBack">← @Loc.L("common.action.back", "Quay lại")</button>
     </div>
 }
 else if (_form is not null)
@@ -35,7 +36,7 @@ else if (_form is not null)
     <div class="page-container form-runner-page" style="@FormStyleAttr">
         @* Header *@
         <div class="form-header">
-            <button class="btn-back" @onclick="GoBack">← Danh sách</button>
+            <button class="btn-back" @onclick="GoBack">← @Loc.L("formrunner.backToList", "Danh sách")</button>
             <div>
                 <h2>@(_form.FormName.Length > 0 ? _form.FormName : _form.FormCode)</h2>
                 <span class="meta-text">
@@ -46,13 +47,13 @@ else if (_form is not null)
                 </span>
             </div>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-sm" @onclick="ResetForm">↺ Reset</button>
+                <button class="btn btn-secondary btn-sm" @onclick="ResetForm">↺ @Loc.L("formrunner.reset", "Reset")</button>
                 <button class="btn btn-warning btn-sm" @onclick="InvalidateCacheAsync"
-                        disabled="@_invalidating" title="Xóa cache metadata — reload lại từ DB">
-                    @(_invalidating ? "⏳ Clearing..." : "🗑 Clear Cache")
+                        disabled="@_invalidating" title="@Loc.L("formrunner.clearCache.tooltip", "Xóa cache metadata — reload lại từ DB")">
+                    @(_invalidating ? "⏳ " + Loc.L("formrunner.clearing", "Clearing...") : "🗑 " + Loc.L("formrunner.clearCache", "Clear Cache"))
                 </button>
                 <button class="btn btn-primary" @onclick="SubmitForm" disabled="@_submitting">
-                    @(_submitting ? "Đang kiểm tra..." : "✓ Submit & Validate")
+                    @(_submitting ? Loc.L("formrunner.validating", "Đang kiểm tra...") : "✓ " + Loc.L("formrunner.submit", "Submit & Validate"))
                 </button>
             </div>
         </div>
@@ -65,11 +66,11 @@ else if (_form is not null)
             <div class="@resultCss">
                 @if (_submitResult.IsValid)
                 {
-                    <strong>✅ Form hợp lệ — tất cả rules đã pass.</strong>
+                    <strong>✅ @Loc.L("formrunner.result.valid", "Form hợp lệ — tất cả rules đã pass.")</strong>
                 }
                 else
                 {
-                    <strong>❌ Form có lỗi:</strong>
+                    <strong>❌ @Loc.L("formrunner.result.invalid", "Form có lỗi:")</strong>
                     <ul>
                         @foreach (var pair in _submitResult.Fields)
                         {
@@ -103,7 +104,7 @@ else if (_form is not null)
         {
             <div class="debug-panel">
                 <div class="debug-header">
-                    <span>📊 Context Snapshot</span>
+                    <span>📊 @Loc.L("formrunner.contextSnapshotTitle", "Context Snapshot")</span>
                     <button class="btn-icon" @onclick="HideDebug">✕</button>
                 </div>
                 <pre class="debug-json">@GetContextJson()</pre>
@@ -157,7 +158,7 @@ else if (_form is not null)
                 @if (orphanFields.Count > 0)
                 {
                     <div class="section-card">
-                        <div class="section-title">Các field khác</div>
+                        <div class="section-title">@Loc.L("formrunner.otherFields", "Các field khác")</div>
                         <div class="fields-grid" style="@GridStyleAttr">
                             @foreach (var fs in orphanFields)
                             {
@@ -190,14 +191,14 @@ else if (_form is not null)
         @* Footer debug *@
         <div class="form-footer">
             <button class="btn-link" @onclick="ToggleDebug">
-                @(_showDebug ? "Ẩn" : "Hiện") context snapshot
+                @(_showDebug ? Loc.L("common.action.hide", "Ẩn") : Loc.L("common.action.show", "Hiện")) @Loc.L("formrunner.contextSnapshot", "context snapshot")
             </button>
             <button class="btn-link" @onclick="ExportConfigJsonAsync">
-                ⬇ Export config JSON
+                ⬇ @Loc.L("formrunner.exportConfig", "Export config JSON")
             </button>
             @if (_lastDeltaCount > 0)
             {
-                <span class="delta-badge">⚡ @_lastDeltaCount delta(s) applied</span>
+                <span class="delta-badge">⚡ @Loc.L("formrunner.deltaApplied", "{0} delta(s) applied", _lastDeltaCount)</span>
             }
         </div>
     </div>
@@ -253,7 +254,7 @@ else if (_form is not null)
             _form = await FormApi.GetFormAsync(FormCode);
             if (_form is null)
             {
-                _error = $"Form '{FormCode}' không tồn tại hoặc không tìm thấy trong tenant.";
+                _error = Loc.L("formrunner.notfound", "Form '{0}' không tồn tại hoặc không tìm thấy trong tenant.", FormCode);
                 return;
             }
 
@@ -392,7 +393,7 @@ else if (_form is not null)
         }
         catch (Exception ex)
         {
-            _error = $"Clear cache thất bại: {ex.Message}";
+            _error = Loc.L("formrunner.clearCacheFailed", "Clear cache thất bại: {0}", ex.Message);
         }
         finally
         {

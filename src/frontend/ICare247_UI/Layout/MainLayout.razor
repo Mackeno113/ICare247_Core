@@ -78,6 +78,11 @@ else if (_authed)
         Loc.OnChanged += OnLanguageChanged;
         AuthProvider.AuthenticationStateChanged += OnAuthStateChanged;
 
+        // Nguồn i18n riêng của host (chuỗi trang/feature hand-coded). Phải đăng ký TRƯỚC
+        // InitializeAsync để overlay ngôn ngữ gộp luôn file json của host. Sự kiện theo sau:
+        // lần nạp overlay kế tiếp merge thêm wwwroot/i18n/{lang}.json.
+        Loc.RegisterSource("i18n");
+
         await Loc.InitializeAsync();
         await Auth.InitializeAsync();      // nạp token + gắn header Bearer
         await CheckAuthAsync();

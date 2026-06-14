@@ -7,21 +7,20 @@
 @inject FormApiService        FormApi
 @inject MasterDataApiService  MasterApi
 @inject LookupApiService      LookupApi
-@inject ApiSettings           Settings
-@inject I18nService           I18n
+@inherits LocalizedComponentBase
 
 @if (_loading)
 {
-    <div class="md-form-loading"><div class="spinner"></div><span>Đang tải form…</span></div>
+    <div class="md-form-loading"><div class="spinner"></div><span>@Loc.L("masterdata.form.loading", "Đang tải form…")</span></div>
 }
 else if (_error is not null)
 {
-    <div class="error-banner"><strong>⚠ Lỗi:</strong> @_error</div>
+    <div class="error-banner"><strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
 }
 else
 {
     <div class="md-form">
-        <h3 class="md-form-title">@(IsEditMode ? I18n.T("common.action.update", "Cập nhật") : I18n.T("common.action.create", "Thêm mới")) — @_formName</h3>
+        <h3 class="md-form-title">@(IsEditMode ? Loc.L("common.action.update", "Cập nhật") : Loc.L("common.action.create", "Thêm mới")) — @_formName</h3>
 
         @if (_formError is not null)
         {
@@ -40,9 +39,9 @@ else
         </div>
 
         <div class="md-form-footer">
-            <button class="btn btn-secondary" @onclick="Cancel" disabled="@_saving">@I18n.T("common.btn.cancel", "Hủy")</button>
+            <button class="btn btn-secondary" @onclick="Cancel" disabled="@_saving">@Loc.L("common.action.cancel", "Hủy")</button>
             <button class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">
-                @(_saving ? I18n.T("common.btn.saving", "Đang lưu…") : "💾 " + I18n.T("common.btn.save", "Lưu"))
+                @(_saving ? Loc.L("common.action.saving", "Đang lưu…") : "💾 " + Loc.L("common.action.save", "Lưu"))
             </button>
         </div>
     </div>
@@ -68,7 +67,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await I18n.EnsureCommonLoadedAsync(Settings.LangCode);
         await LoadAsync();
     }
 
@@ -78,7 +76,7 @@ else
         try
         {
             var form = await FormApi.GetFormAsync(FormCode);
-            if (form is null) { _error = $"Form '{FormCode}' không tồn tại."; return; }
+            if (form is null) { _error = Loc.L("masterdata.form.notfound", "Form '{0}' không tồn tại.", FormCode); return; }
             _formName = form.FormName.Length > 0 ? form.FormName : form.FormCode;
 
             // Build field states (mirror FormRunner). Bỏ field virtual (không map cột DB).
@@ -163,8 +161,8 @@ else
                 if (fs is not null) fs.Errors.Add(err.Message);
             }
             _formError = result.Errors.Count > 0
-                ? $"Có {result.Errors.Count} lỗi cần sửa trước khi lưu."
-                : "Lưu thất bại.";
+                ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", result.Errors.Count)
+                : Loc.L("common.msg.saveFailed", "Lưu thất bại.");
         }
         catch (Exception ex) { _formError = ex.Message; }
         finally { _saving = false; }
