@@ -11,6 +11,8 @@ using ICare247.Application.Features.Forms.Commands.UpdateForm;
 using ICare247.Application.Features.Forms.Queries.GetFormAuditLog;
 using ICare247.Application.Features.Forms.Queries.GetFormByCode;
 using ICare247.Application.Features.Forms.Queries.GetFormsList;
+using ICare247.Api.Authorization;
+using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -62,6 +64,7 @@ public sealed class FormController : ControllerBase
     /// Lấy form metadata đầy đủ theo Form_Code.
     /// </summary>
     [HttpGet("{code}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem, "code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByCode(

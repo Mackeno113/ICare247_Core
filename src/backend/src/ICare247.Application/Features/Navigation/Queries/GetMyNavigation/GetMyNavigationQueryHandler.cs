@@ -12,13 +12,18 @@ public sealed class GetMyNavigationQueryHandler
     : IRequestHandler<GetMyNavigationQuery, MeNavigationDto>
 {
     private readonly INavigationRepository _repo;
+    private readonly INavigationCache _cache;
+    private readonly ITenantContext _tenant;
 
-    public GetMyNavigationQueryHandler(INavigationRepository repo) => _repo = repo;
-
-    /// <summary>Lấy node menu theo quyền. Sự kiện theo sau: API trả cây cho NavMenu vẽ.</summary>
-    public async Task<MeNavigationDto> Handle(GetMyNavigationQuery r, CancellationToken ct)
+    public GetMyNavigationQueryHandler(INavigationRepository repo, INavigationCache cache, ITenantContext tenant)
     {
-        var nodes = await _repo.GetForUserAsync(r.UserId, ct);
-        return new MeNavigationDto(nodes);
+        _repo = repo;
+        _cache = cache;
+        _tenant = tenant;
     }
+
+    /// <summary>Lấy node menu theo quyền (qua cache tenant+user). Sự kiện theo sau: API trả cây cho NavMenu.</summary>
+    public Task<MeNavigationDto> Handle(GetMyNavigationQuery r, CancellationToken ct)
+        => _cache.GetOrLoadAsync(_tenant.TenantId, r.UserId,
+            async () => new MeNavigationDto(await _repo.GetForUserAsync(r.UserId, ct)));
 }
