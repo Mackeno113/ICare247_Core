@@ -4,9 +4,10 @@
 
 @*
     PermissionMatrixPage — màn Phân quyền (bespoke, ADR-023).
-    - Chọn vai trò → DxTreeList cây chức năng (HT_ChucNang) + 5 cột tick: Xem/Thêm/Sửa/Xóa/In.
-    - Cascade 2 chiều: tick cha → toàn bộ con; bỏ hết con → cha bỏ; 1 phần con → cha "một phần"
-      (indeterminate). Trạng thái ô CHA được SUY từ con (CellState), không lưu cứng.
+    - Chọn vai trò → DxTreeList cây chức năng (HT_ChucNang) + cột "Tất cả" + 5 cột Xem/Thêm/Sửa/Xóa/In.
+    - Cascade 2 chiều: tick cha → toàn bộ con; bỏ hết con → cha bỏ; 1 phần con → cha "một phần" (indeterminate).
+      Trạng thái ô CHA được SUY từ con (CellState) — KHÔNG lưu cứng (DB chỉ có bit 0/1; reload tự suy lại).
+    - Check nhanh: cột "Tất cả" (cả 5 quyền 1 dòng) · checkbox header (cả 1 cột mọi dòng) · ô master (tất cả).
     - 1 CTA "Lưu" → PUT /api/v1/admin/roles/{id}/permissions. Duyệt KHÔNG có (thuộc workflow).
 *@
 
@@ -47,10 +48,39 @@ else
                 CssClass="perm-tree">
         <Columns>
             <DxTreeListDataColumn Caption="@Loc.L("admin.perm.func", "Chức năng")" FieldName="Ten" />
+
+            @* Cột "Tất cả": tick 1 ô = bật/tắt cả 5 quyền của dòng (+cascade). Header = master toàn bảng. *@
+            <DxTreeListDataColumn Width="92px">
+                <HeaderCaptionTemplate>
+                    <div class="perm-head" @onclick:stopPropagation="true">
+                        <span>@Loc.L("admin.perm.all", "Tất cả")</span>
+                        <DxCheckBox T="bool?" AllowIndeterminateState="true" AllowIndeterminateStateByClick="false"
+                                    Checked="@MasterAllState()" CheckedChanged="@((bool? v) => OnMasterAll(v))"
+                                    CssClass="perm-chk" />
+                    </div>
+                </HeaderCaptionTemplate>
+                <CellDisplayTemplate>
+                    @{ var na = (PermNode)context.DataItem; }
+                    <div class="perm-cell">
+                        <DxCheckBox T="bool?" AllowIndeterminateState="true" AllowIndeterminateStateByClick="false"
+                                    Checked="@RowAllState(na)" CheckedChanged="@((bool? v) => OnRowAll(na, v))"
+                                    CssClass="perm-chk" />
+                    </div>
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+
             @foreach (var col in Cols)
             {
                 var c = col;
-                <DxTreeListDataColumn Caption="@Loc.L(c.Key, c.Def)" Width="84px">
+                <DxTreeListDataColumn Width="84px">
+                    <HeaderCaptionTemplate>
+                        <div class="perm-head" @onclick:stopPropagation="true">
+                            <span>@Loc.L(c.Key, c.Def)</span>
+                            <DxCheckBox T="bool?" AllowIndeterminateState="true" AllowIndeterminateStateByClick="false"
+                                        Checked="@ColHeaderState(c.Get)" CheckedChanged="@((bool? v) => OnColHeader(c.Set, v))"
+                                        CssClass="perm-chk" />
+                        </div>
+                    </HeaderCaptionTemplate>
                     <CellDisplayTemplate>
                         @{ var n = (PermNode)context.DataItem; }
                         <div class="perm-cell">
@@ -112,7 +142,6 @@ else
         if (_roleId is null) return;
         _loading = true;
         _nodes = await Api.GetPermissionsAsync(_roleId.Value);
-        // Bản đồ cha → con để cascade + suy trạng thái cha.
         _childrenByParent = _nodes.Where(n => n.ChaId is not null)
             .GroupBy(n => n.ChaId!.Value)
             .ToDictionary(g => g.Key, g => g.ToList());
@@ -122,18 +151,37 @@ else
     private List<PermNode> Children(PermNode n)
         => _childrenByParent.TryGetValue(n.Id, out var c) ? c : new();
 
-    /// <summary>
-    /// Trạng thái hiển thị 1 ô: lá = cờ của chính nó; cha = suy từ con
-    /// (tất cả bật → true · tất cả tắt → false · lẫn lộn → null = indeterminate).
-    /// </summary>
+    private List<PermNode> Roots() => _nodes.Where(n => n.ChaId is null).ToList();
+
+    private static bool? Combine(IEnumerable<bool?> states)
+    {
+        var list = states.ToList();
+        if (list.Count == 0) return false;
+        if (list.All(s => s == true)) return true;
+        if (list.All(s => s == false)) return false;
+        return null;
+    }
+
+    /// <summary>Trạng thái ô: lá = cờ của nó; cha = suy từ con (all bật→true · all tắt→false · lẫn→null).</summary>
     private bool? CellState(PermNode n, Func<PermNode, bool> get)
     {
         var kids = Children(n);
-        if (kids.Count == 0) return get(n);
-        var states = kids.Select(k => CellState(k, get)).ToList();
-        if (states.All(s => s == true)) return true;
-        if (states.All(s => s == false)) return false;
-        return null;
+        return kids.Count == 0 ? get(n) : Combine(kids.Select(k => CellState(k, get)));
+    }
+
+    /// <summary>Trạng thái cột "Tất cả" của 1 dòng = gộp 5 quyền của dòng đó.</summary>
+    private bool? RowAllState(PermNode n) => Combine(Cols.Select(c => CellState(n, c.Get)));
+
+    /// <summary>Trạng thái checkbox header 1 cột = gộp cột đó trên mọi node gốc.</summary>
+    private bool? ColHeaderState(Func<PermNode, bool> get) => Combine(Roots().Select(r => CellState(r, get)));
+
+    /// <summary>Trạng thái ô master = gộp toàn bộ 5 cột trên mọi node gốc.</summary>
+    private bool? MasterAllState() => Combine(Cols.Select(c => ColHeaderState(c.Get)));
+
+    private void SetCascade(PermNode n, Action<PermNode, bool> set, bool val)
+    {
+        set(n, val);
+        foreach (var ch in Children(n)) SetCascade(ch, set, val);
     }
 
     /// <summary>Tick/bỏ 1 ô → áp xuống toàn bộ con (cha tự suy lại khi vẽ lại).</summary>
@@ -143,13 +191,29 @@ else
         _saved = false;
     }
 
-    private void SetCascade(PermNode n, Action<PermNode, bool> set, bool val)
+    /// <summary>Cột "Tất cả" của 1 dòng → bật/tắt cả 5 quyền (+cascade con).</summary>
+    private void OnRowAll(PermNode n, bool? v)
     {
-        set(n, val);
-        foreach (var ch in Children(n)) SetCascade(ch, set, val);
+        foreach (var c in Cols) SetCascade(n, c.Set, v == true);
+        _saved = false;
     }
 
-    /// <summary>Lưu toàn bộ trạng thái cờ (mọi node, gồm cả cha đã cascade).</summary>
+    /// <summary>Checkbox header 1 cột → bật/tắt cột đó cho mọi node.</summary>
+    private void OnColHeader(Action<PermNode, bool> set, bool? v)
+    {
+        foreach (var r in Roots()) SetCascade(r, set, v == true);
+        _saved = false;
+    }
+
+    /// <summary>Ô master → bật/tắt toàn bộ 5 cột cho mọi node.</summary>
+    private void OnMasterAll(bool? v)
+    {
+        foreach (var r in Roots())
+            foreach (var c in Cols) SetCascade(r, c.Set, v == true);
+        _saved = false;
+    }
+
+    /// <summary>Lưu toàn bộ trạng thái cờ (mọi node).</summary>
     private async Task SaveAsync()
     {
         if (_roleId is null) return;

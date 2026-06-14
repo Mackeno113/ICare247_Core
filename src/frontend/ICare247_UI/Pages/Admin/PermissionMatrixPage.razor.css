@@ -92,6 +92,15 @@
     transform-origin: center;
 }
 
+/* Header cột thao tác: caption trên, checkbox "cả cột" dưới — căn giữa */
+.perm-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+
 /* Hàng cao hơn + vạch dọc giữa cột để dò sang ô xa bên phải */
 .perm-tree ::deep td,
 .perm-tree ::deep th {
