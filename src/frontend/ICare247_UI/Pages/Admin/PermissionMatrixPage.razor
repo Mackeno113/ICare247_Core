@@ -5,8 +5,9 @@
 @*
     PermissionMatrixPage — màn Phân quyền (bespoke, ADR-023).
     - Chọn vai trò → DxTreeList cây chức năng (HT_ChucNang) + 5 cột tick: Xem/Thêm/Sửa/Xóa/In.
-    - 1 CTA "Lưu" → PUT /api/v1/admin/roles/{id}/permissions.
-    - Duyệt KHÔNG có ở đây (thuộc workflow). Cascade tick: TODO pha sau.
+    - Cascade 2 chiều: tick cha → toàn bộ con; bỏ hết con → cha bỏ; 1 phần con → cha "một phần"
+      (indeterminate). Trạng thái ô CHA được SUY từ con (CellState), không lưu cứng.
+    - 1 CTA "Lưu" → PUT /api/v1/admin/roles/{id}/permissions. Duyệt KHÔNG có (thuộc workflow).
 *@
 
 <PageTitle>@Loc.L("admin.perm.title", "Phân quyền") — ICare247</PageTitle>
@@ -42,34 +43,26 @@ else if (_nodes.Count == 0)
 else
 {
     <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
-                AutoExpandAllNodes="true" ShowAllRows="true" CssClass="perm-tree">
+                AutoExpandAllNodes="true" ShowAllRows="true" HighlightRowOnHover="true"
+                CssClass="perm-tree">
         <Columns>
             <DxTreeListDataColumn Caption="@Loc.L("admin.perm.func", "Chức năng")" FieldName="Ten" />
-            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.view", "Xem")" Width="70px">
-                <CellDisplayTemplate>
-                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Xem)" />
-                </CellDisplayTemplate>
-            </DxTreeListDataColumn>
-            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.add", "Thêm")" Width="70px">
-                <CellDisplayTemplate>
-                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Them)" />
-                </CellDisplayTemplate>
-            </DxTreeListDataColumn>
-            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.edit", "Sửa")" Width="70px">
-                <CellDisplayTemplate>
-                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Sua)" />
-                </CellDisplayTemplate>
-            </DxTreeListDataColumn>
-            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.delete", "Xóa")" Width="70px">
-                <CellDisplayTemplate>
-                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).Xoa)" />
-                </CellDisplayTemplate>
-            </DxTreeListDataColumn>
-            <DxTreeListDataColumn Caption="@Loc.L("admin.perm.print", "In")" Width="70px">
-                <CellDisplayTemplate>
-                    <DxCheckBox @bind-Checked="@(((PermNode)context.DataItem).InAn)" />
-                </CellDisplayTemplate>
-            </DxTreeListDataColumn>
+            @foreach (var col in Cols)
+            {
+                var c = col;
+                <DxTreeListDataColumn Caption="@Loc.L(c.Key, c.Def)" Width="84px">
+                    <CellDisplayTemplate>
+                        @{ var n = (PermNode)context.DataItem; }
+                        <div class="perm-cell">
+                            <DxCheckBox T="bool?" AllowIndeterminateState="true"
+                                        AllowIndeterminateStateByClick="false"
+                                        Checked="@CellState(n, c.Get)"
+                                        CheckedChanged="@((bool? v) => OnCell(n, c.Set, v))"
+                                        CssClass="perm-chk" />
+                        </div>
+                    </CellDisplayTemplate>
+                </DxTreeListDataColumn>
+            }
         </Columns>
     </DxTreeList>
 }
@@ -77,12 +70,23 @@ else
 @code {
     private List<RoleVm> _roles = new();
     private List<PermNode> _nodes = new();
+    private Dictionary<long, List<PermNode>> _childrenByParent = new();
     private long? _roleId;
     private bool _loading;
     private bool _saving;
     private bool _saved;
 
-    /// <summary>Khởi tạo: nạp vai trò, chọn vai trò đầu tiên rồi nạp ma trận quyền.</summary>
+    // 5 cột thao tác (Duyệt → workflow, không có ở đây). Caption qua Loc.L(key, def).
+    private List<(string Key, string Def, Func<PermNode, bool> Get, Action<PermNode, bool> Set)> Cols => new()
+    {
+        ("admin.perm.view",   "Xem",  n => n.Xem,  (n, v) => n.Xem = v),
+        ("admin.perm.add",    "Thêm", n => n.Them, (n, v) => n.Them = v),
+        ("admin.perm.edit",   "Sửa",  n => n.Sua,  (n, v) => n.Sua = v),
+        ("admin.perm.delete", "Xóa",  n => n.Xoa,  (n, v) => n.Xoa = v),
+        ("admin.perm.print",  "In",   n => n.InAn, (n, v) => n.InAn = v),
+    };
+
+    /// <summary>Khởi tạo: nạp vai trò, chọn vai trò đầu rồi nạp ma trận quyền.</summary>
     protected override async Task OnInitializedAsync()
     {
         _roles = await Api.GetRolesAsync();
@@ -93,7 +97,6 @@ else
         }
     }
 
-    /// <summary>Đổi vai trò → nạp lại ma trận quyền tương ứng.</summary>
     private async Task OnRoleChanged(ChangeEventArgs e)
     {
         if (long.TryParse(e.Value?.ToString(), out var id))
@@ -109,10 +112,44 @@ else
         if (_roleId is null) return;
         _loading = true;
         _nodes = await Api.GetPermissionsAsync(_roleId.Value);
+        // Bản đồ cha → con để cascade + suy trạng thái cha.
+        _childrenByParent = _nodes.Where(n => n.ChaId is not null)
+            .GroupBy(n => n.ChaId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
         _loading = false;
     }
 
-    /// <summary>Lưu toàn bộ trạng thái cờ của vai trò hiện tại.</summary>
+    private List<PermNode> Children(PermNode n)
+        => _childrenByParent.TryGetValue(n.Id, out var c) ? c : new();
+
+    /// <summary>
+    /// Trạng thái hiển thị 1 ô: lá = cờ của chính nó; cha = suy từ con
+    /// (tất cả bật → true · tất cả tắt → false · lẫn lộn → null = indeterminate).
+    /// </summary>
+    private bool? CellState(PermNode n, Func<PermNode, bool> get)
+    {
+        var kids = Children(n);
+        if (kids.Count == 0) return get(n);
+        var states = kids.Select(k => CellState(k, get)).ToList();
+        if (states.All(s => s == true)) return true;
+        if (states.All(s => s == false)) return false;
+        return null;
+    }
+
+    /// <summary>Tick/bỏ 1 ô → áp xuống toàn bộ con (cha tự suy lại khi vẽ lại).</summary>
+    private void OnCell(PermNode n, Action<PermNode, bool> set, bool? v)
+    {
+        SetCascade(n, set, v == true);
+        _saved = false;
+    }
+
+    private void SetCascade(PermNode n, Action<PermNode, bool> set, bool val)
+    {
+        set(n, val);
+        foreach (var ch in Children(n)) SetCascade(ch, set, val);
+    }
+
+    /// <summary>Lưu toàn bộ trạng thái cờ (mọi node, gồm cả cha đã cascade).</summary>
     private async Task SaveAsync()
     {
         if (_roleId is null) return;
