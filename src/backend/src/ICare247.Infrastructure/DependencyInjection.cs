@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INavigationRepository, NavigationRepository>();
         services.AddScoped<IPermissionAdminRepository, PermissionAdminRepository>();
+        services.AddScoped<IPermissionService, Services.PermissionService>();
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
 

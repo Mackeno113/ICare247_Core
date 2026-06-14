@@ -4,10 +4,12 @@
 // Purpose : Endpoint cấu hình phân quyền (màn Phân quyền): danh sách vai trò + đọc/lưu ma trận
 //           quyền theo vai trò (HT_VaiTro_Quyen). Bắt buộc JWT; userId suy từ claim sub.
 
+using ICare247.Api.Authorization;
 using ICare247.Application.Features.Admin.Permissions;
 using ICare247.Application.Features.Admin.Permissions.GetRolePermissions;
 using ICare247.Application.Features.Admin.Permissions.GetRoles;
 using ICare247.Application.Features.Admin.Permissions.SaveRolePermissions;
+using ICare247.Application.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +17,7 @@ using System.Security.Claims;
 
 namespace ICare247.Api.Controllers;
 
-/// <summary>Cấu hình phân quyền theo vai trò (admin). TODO(AUTHZ-SEC): siết quyền truy cập chính màn này.</summary>
+/// <summary>Cấu hình phân quyền theo vai trò (admin). Enforce: chức năng "administration.permissions".</summary>
 [ApiController]
 [Route("api/v1/admin")]
 [Authorize]
@@ -28,18 +30,21 @@ public sealed class AdminPermissionController : ControllerBase
     /// <summary>Danh sách vai trò để chọn.</summary>
     /// <remarks>GET /api/v1/admin/roles</remarks>
     [HttpGet("roles")]
+    [RequirePermission("administration.permissions", PermissionOp.Xem)]
     public async Task<IActionResult> GetRoles(CancellationToken ct = default)
         => Ok(await _mediator.Send(new GetRolesQuery(), ct));
 
     /// <summary>Cây chức năng + cờ quyền hiện tại của 1 vai trò.</summary>
     /// <remarks>GET /api/v1/admin/roles/{roleId}/permissions</remarks>
     [HttpGet("roles/{roleId:long}/permissions")]
+    [RequirePermission("administration.permissions", PermissionOp.Xem)]
     public async Task<IActionResult> GetRolePermissions(long roleId, CancellationToken ct = default)
         => Ok(await _mediator.Send(new GetRolePermissionsQuery(roleId), ct));
 
     /// <summary>Lưu (upsert) quyền của vai trò.</summary>
     /// <remarks>PUT /api/v1/admin/roles/{roleId}/permissions</remarks>
     [HttpPut("roles/{roleId:long}/permissions")]
+    [RequirePermission("administration.permissions", PermissionOp.Sua)]
     public async Task<IActionResult> SaveRolePermissions(
         long roleId, [FromBody] SavePermissionsRequest body, CancellationToken ct = default)
     {
