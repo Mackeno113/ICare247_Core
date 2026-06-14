@@ -21,7 +21,9 @@ public sealed record MeNavNode(
     bool Them,
     bool Sua,
     bool Xoa,
-    bool InAn);
+    bool InAn,
+    string? DoiTuong = null,
+    string? LoaiDoiTuong = null);
 
 /// <summary>Payload /me/navigation.</summary>
 public sealed record MeNavigationResult(IReadOnlyList<MeNavNode> Nodes);

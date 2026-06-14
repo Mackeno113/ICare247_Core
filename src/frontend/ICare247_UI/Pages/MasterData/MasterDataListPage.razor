@@ -6,6 +6,7 @@
 @using ICare247_UI.Services
 @using ICare247_UI.Components.MasterData
 @inject MasterDataApiService MasterApi
+@inject PermissionState Perms
 @inject NavigationManager Nav
 
 <PageTitle>@(_info?.FormCode ?? FormCode) — Danh mục</PageTitle>
@@ -26,7 +27,10 @@
                 <h2>Quản lý: @FormCode</h2>
                 <span class="md-list-sub">Bảng @_info.SchemaName.@_info.TableName · chế độ @_info.DisplayMode</span>
             </div>
-            <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ Thêm mới</button>
+            @if (_perm.Them)
+            {
+                <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ Thêm mới</button>
+            }
         </div>
 
         <div class="md-list-toolbar">
@@ -42,6 +46,8 @@
                         Items="_items"
                         PkColumn="@_info.PkColumn"
                         Config="_gridConfig"
+                        CanEdit="_perm.Sua"
+                        CanDelete="_perm.Xoa"
                         OnEdit="(id) => OpenForm(id)"
                         OnDelete="OpenDelete" />
 
@@ -82,6 +88,9 @@
     private string? _search;
     private bool _activeOnly;
 
+    // Cờ quyền cho form này (Form = FormCode). Chưa cấu hình → cho phép hết.
+    private PermFlags _perm = PermFlags.All;
+
     // Cấu hình lưới DxGrid — default an toàn; sau này nạp per-form từ metadata.
     private readonly MasterDataGridConfig _gridConfig = new();
 
@@ -98,6 +107,9 @@
         {
             _info = await MasterApi.GetInfoAsync(FormCode);
             if (_info is null) { _error = $"Không tìm thấy form danh mục '{FormCode}'."; return; }
+
+            await Perms.EnsureLoadedAsync();
+            _perm = Perms.ForTarget("Form", FormCode);
 
             // Cột lưới = Show_In_List; fallback toàn bộ cột nếu chưa cấu hình cờ nào
             _listColumns = _info.Columns.Where(c => c.ShowInList).ToList();

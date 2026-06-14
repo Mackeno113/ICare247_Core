@@ -68,7 +68,9 @@ public sealed class NavigationRepository : INavigationRepository
                 CAST(ISNULL(g.Them, 0) AS BIT) AS Them,
                 CAST(ISNULL(g.Sua,  0) AS BIT) AS Sua,
                 CAST(ISNULL(g.Xoa,  0) AS BIT) AS Xoa,
-                CAST(ISNULL(g.InAn, 0) AS BIT) AS InAn
+                CAST(ISNULL(g.InAn, 0) AS BIT) AS InAn,
+                c.DoiTuong      AS DoiTuong,
+                c.LoaiDoiTuong  AS LoaiDoiTuong
             FROM dbo.HT_ChucNang c
             JOIN (SELECT DISTINCT Id FROM Tree) tr ON tr.Id = c.Id
             LEFT JOIN dbo.HT_ChucNang pa ON pa.Id = c.ChucNang_Cha_Id

@@ -24,6 +24,8 @@ namespace ICare247.Application.Features.Navigation;
 /// <param name="Sua">Quyền sửa.</param>
 /// <param name="Xoa">Quyền xóa.</param>
 /// <param name="InAn">Quyền in.</param>
+/// <param name="DoiTuong">Mã đối tượng engine (form/view) — để FE ẩn nút theo quyền.</param>
+/// <param name="LoaiDoiTuong">Loại đối tượng: Form/View/null.</param>
 public sealed record MeNavNodeDto(
     string Ma,
     string Ten,
@@ -38,7 +40,9 @@ public sealed record MeNavNodeDto(
     bool Them,
     bool Sua,
     bool Xoa,
-    bool InAn);
+    bool InAn,
+    string? DoiTuong,
+    string? LoaiDoiTuong);
 
 /// <summary>Toàn bộ menu user được thấy (đã gồm cờ quyền — gộp navigation + permissions).</summary>
 /// <param name="Nodes">Danh sách node phẳng, đã sort theo ThuTu.</param>

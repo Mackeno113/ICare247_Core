@@ -39,15 +39,24 @@
             </DxGridDataColumn>
         }
 
-        <DxGridCommandColumn Width="110px" Caption="Thao tác">
-            <CellDisplayTemplate>
-                @{
-                    var pk = GetCell(AsRow(context.DataItem), PkColumn);
-                }
-                <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
-                <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
-            </CellDisplayTemplate>
-        </DxGridCommandColumn>
+        @if (CanEdit || CanDelete)
+        {
+            <DxGridCommandColumn Width="110px" Caption="Thao tác">
+                <CellDisplayTemplate>
+                    @{
+                        var pk = GetCell(AsRow(context.DataItem), PkColumn);
+                    }
+                    @if (CanEdit)
+                    {
+                        <button class="btn-icon" title="Sửa" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
+                    }
+                    @if (CanDelete)
+                    {
+                        <button class="btn-icon btn-icon-danger" title="Xóa" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
+                    }
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
+        }
     </Columns>
 
     <TotalSummary>
@@ -67,6 +76,10 @@
     [Parameter] public MasterDataGridConfig Config { get; set; } = new();
     [Parameter] public EventCallback<object?> OnEdit { get; set; }
     [Parameter] public EventCallback<object?> OnDelete { get; set; }
+    /// <summary>Hiện nút Sửa (theo quyền). Mặc định true.</summary>
+    [Parameter] public bool CanEdit { get; set; } = true;
+    /// <summary>Hiện nút Xóa (theo quyền). Mặc định true.</summary>
+    [Parameter] public bool CanDelete { get; set; } = true;
 
     /// <summary>Cột đầu tiên (đặt summary đếm vào footer cột này).</summary>
     private string? _firstColName => Columns.Count > 0 ? Columns[0].ColumnCode : null;

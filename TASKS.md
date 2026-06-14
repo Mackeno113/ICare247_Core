@@ -24,8 +24,9 @@
 ### Giai đoạn 3 — Frontend tiêu thụ
 - [x] **AUTHZ-FE-1** — `NavigationApiService` (GET /me/navigation, lỗi→rỗng) + model `MeNavNode`/`MeNavigationResult` + DI. Build xanh.
 - [x] **AUTHZ-FE-2** — `NavMenu.razor` dựng VM từ API (node phẳng → group/module/screen, lọc ViTriHienThi Sidebar/Ca2); **rỗng/lỗi → fallback AppNav** (app vẫn chạy khi chưa seed DB). Bỏ `CanShow`.
-- [ ] **AUTHZ-FE-3** — Render sub-nav `ViTriHienThi=TrongMan` trong màn + ẩn nút theo cờ quyền (cần expose PermissionMap qua AppState). _(chưa làm)_
-- [ ] **AUTHZ-FE-CACHE** — `AppState.NavTree/PermissionMap` (nạp 1 lần sau login, xóa khi logout) thay vì NavMenu gọi API mỗi lần mount. _(tối ưu sau)_
+- [x] **AUTHZ-FE-3 (ẩn nút)** — nav trả `DoiTuong/LoaiDoiTuong`; `PermissionState` (nạp /me/navigation, `ForTarget(type,code)`, chưa map→cho phép); `MasterDataListPage` ẩn **Thêm** + truyền `CanEdit/CanDelete`; `MasterDataGrid` ẩn **Sửa/Xóa**. Build xanh.
+- [x] **AUTHZ-FE-CACHE** — `PermissionState` (scoped) nạp 1 lần/phiên, dùng chung cho ẩn nút (+ BE đã cache /me/navigation). NavMenu vẫn gọi riêng (rẻ vì BE cache).
+- [ ] **AUTHZ-FE-3b** — sub-nav `ViTriHienThi=TrongMan` + ẩn nút trên `DataView` (View) — chờ màn HR thật. _(sau)_
 
 ### Giai đoạn 4 — Bảo mật + cấu hình (trước production)
 - [x] **AUTHZ-SEC (hạ tầng + admin)** — `IPermissionService.HasPermissionAsync` (Dapper HT_VaiTro_Quyen) + attribute `[RequirePermission(funcCode, Op)]` (IAsyncAuthorizationFilter: userId từ claim sub, bypass role SUPERADMIN, 403 deny-by-default) + DI. Gắn vào `AdminPermissionController` (Xem/Sua trên `administration.permissions`) — bịt lỗ "ai đăng nhập cũng sửa quyền".
