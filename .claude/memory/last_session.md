@@ -41,11 +41,19 @@
   `GET/PUT roles/{id}/permissions` — upsert HT_VaiTro_Quyen MERGE/transaction; CQRS + `PermissionAdminRepository`)
   + màn **Phân quyền** `/m/administration/permissions` (DxTreeList cây + 5 DxCheckBox Xem/Thêm/Sửa/Xóa/In →
   PUT lưu; `AdminPermissionApiService`). Build BE compile sạch / FE xanh.
-- **CÒN LẠI:** (1) ⏳ **chạy SQL 042→045** vào DB để menu + phân quyền chạy thật (giờ menu fallback AppNav,
-  màn Phân quyền rỗng vì chưa seed HT_ChucNang); (2) **AUTHZ-SEC** enforce `[RequirePermission]` server (CHƯA gắn
-  — gắn trước khi SQL seed sẽ khóa hết engine); (3) **AUTHZ-UI-2** Vai trò/User qua engine MasterData (Ui_Form);
-  (4) FE-3 ẩn nút theo cờ quyền + sub-nav TrongMan; (5) cascade tick màn Phân quyền + BE-2 cache + invalidate.
-  Xem TASKS.md AUTHZ-*.
+- **Stage 4 mở rộng (đã code + commit, SQL 042–045 user ĐÃ chạy):**
+  - Màn Phân quyền: **cascade tri-state** (cha derived từ con, indeterminate khi lẫn) + **check nhanh**
+    (cột "Tất cả"/dòng · checkbox header cả cột · ô master) + UX (checkbox to, hover dòng, zebra, ShowAllRows).
+  - **AUTHZ-SEC:** `IPermissionService` + `[RequirePermission]` → gắn AdminPermissionController (bịt lỗ ai cũng sửa quyền).
+  - **AUTHZ-SEC-2:** `db/046` HT_ChucNang +DoiTuong/LoaiDoiTuong; `HasPermissionForTargetAsync` **enforce-if-mapped**;
+    `[RequirePermissionForTarget]` → MasterData(Form CRUD)/View(Xem)/Runtime(Xem)/FormController.GetByCode(Xem).
+  - **BE-2:** `INavigationCache` (IMemoryCache + token hủy theo tenant) cache /me/navigation, invalidate sau lưu quyền.
+  - **FE-3:** nav trả DoiTuong; `PermissionState` (ForTarget); MasterDataListPage/Grid ẩn Thêm/Sửa/Xóa theo quyền.
+  - **DxTreeList reference:** `docs/reference/DEVEXPRESS_DXTREELIST_PROPERTIES.md` + tái dựng tool `tools/DxReflect`.
+- **CÒN LẠI:** AUTHZ-UI-2 (Vai trò/User = cấu hình ConfigStudio, KHÔNG code) · FE-3b (sub-nav TrongMan + ẩn nút DataView,
+  chờ màn HR thật) · scale-out: đổi NavigationCache token sang Redis (ADR-021). Xem TASKS.md AUTHZ-*.
+- **Cách bật khóa 1 màn:** chạy `db/046` → set HT_ChucNang.DoiTuong=mã form/view + LoaiDoiTuong=Form/View →
+  cấp quyền ở màn Phân quyền. Nhớ **restart API** để attribute áp.
 
 ---
 
