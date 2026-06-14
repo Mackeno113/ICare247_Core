@@ -1,0 +1,38 @@
+/* File    : I18nToolsPage.razor.css
+   Purpose : Style cục bộ màn tra cứu i18n (Dev) — mật độ cao, dùng token nền tảng. */
+
+.i18n-tools { padding: 1rem 1.25rem; }
+
+.i18n-head { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.i18n-head h2 { margin: 0; font-size: 1.15rem; }
+
+.i18n-stats { display: flex; gap: .4rem; flex-wrap: wrap; }
+.chip { font-size: .75rem; padding: .15rem .5rem; border-radius: 999px;
+        background: var(--dxbl-gray-200, #eee); color: var(--dxbl-body-color, #333); }
+.chip-ok   { background: #e3f3e6; color: #1d6a2c; }
+.chip-warn { background: #fdf0dc; color: #8a5a12; }
+
+.i18n-toolbar { display: flex; align-items: center; gap: .6rem; margin: .9rem 0; flex-wrap: wrap; }
+.i18n-search { flex: 1 1 280px; min-width: 220px; padding: .4rem .6rem;
+               border: 1px solid var(--dxbl-border-color, #ccc); border-radius: 6px; font-size: .9rem; }
+.i18n-lang { font-size: .8rem; color: var(--dxbl-text-muted, #777); margin-left: auto; }
+
+.i18n-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.i18n-table th, .i18n-table td { text-align: left; padding: .35rem .5rem;
+               border-bottom: 1px solid var(--dxbl-border-color, #eee); vertical-align: top; }
+.i18n-table th { font-weight: 600; color: var(--dxbl-text-muted, #666);
+               position: sticky; top: 0; background: var(--dxbl-body-bg, #fff); }
+.i18n-table code { font-size: .8rem; }
+
+.td-untranslated { color: #b0852a; font-style: italic; }
+.td-where { white-space: nowrap; color: var(--dxbl-text-muted, #777); cursor: help; }
+.muted { color: var(--dxbl-text-muted, #999); }
+
+.tag-dyn { font-size: .68rem; padding: 0 .35rem; border-radius: 4px;
+           background: #fdf0dc; color: #8a5a12; margin-left: .25rem; }
+
+.i18n-subhead { margin: 1.4rem 0 .5rem; font-size: .95rem; }
+.i18n-empty { padding: 2rem; text-align: center; color: var(--dxbl-text-muted, #888); }
+
+.btn-icon { border: none; background: transparent; cursor: pointer; font-size: 1rem; padding: .1rem .3rem; }
+.btn-icon:hover { color: var(--dxbl-primary, #0a7); }

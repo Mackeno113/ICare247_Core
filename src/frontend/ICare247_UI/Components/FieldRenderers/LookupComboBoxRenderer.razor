@@ -8,6 +8,7 @@
 @using System.Text.Json.Serialization
 @using DevExpress.Blazor
 @using ICare247_UI.Models
+@inject LocalizationService Loc
 
 <div @onfocusout="HandleLostFocus">
     @if (State?.Options.Count > 0)
@@ -71,7 +72,7 @@
     // ── Computed ─────────────────────────────────────────────────────────────────
 
     /// <summary>NullText: label field làm placeholder fallback.</summary>
-    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : "-- Chọn --";
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : Loc.L("common.combo.choose", "-- Chọn --");
 
     /// <summary>CSS class thêm dx-has-error khi field có lỗi validation.</summary>
     private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";

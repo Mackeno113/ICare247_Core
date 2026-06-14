@@ -6,7 +6,7 @@
     Mục "⟦Pseudo⟧" là chế độ giả lập (dev) để soát i18n/tràn layout (#6).
 *@
 
-<select class="lang-switcher" @onchange="OnChange" aria-label="Chọn ngôn ngữ">
+<select class="lang-switcher" @onchange="OnChange" aria-label="@Loc.L("common.lang.choose", "Chọn ngôn ngữ")">
     @foreach (var lang in Loc.Available)
     {
         <option value="@lang.Code" selected="@(!Loc.PseudoEnabled && Loc.CurrentLanguage == lang.Code)">@lang.Name</option>

@@ -1,0 +1,146 @@
+@page "/dev/i18n"
+@using ICare247.UI.Shared.Services.I18n
+@inherits LocalizedComponentBase
+@inject IJSRuntime Js
+
+@*
+    I18nToolsPage — màn tra cứu i18n hand-coded (Dev).
+    - Nguồn TĨNH: catalog.json (do tool I18nScanner sinh) — key ↔ text gốc ↔ nơi dùng.
+    - Nguồn ĐỘNG: LocalizationService.SeenKeys — key thực render runtime, vét cả key dựng động.
+    - Mục đích chính: gõ text (vd "Đăng nhập") → ra key (common.action.login) để cấu hình bản dịch.
+    - Nút "Soi key" bật chế độ hiển thị ⟨key⟩ ngay trên mọi màn để dò trực quan.
+*@
+
+<PageTitle>@Loc.L("dev.i18n.title", "Tra cứu i18n") — ICare247</PageTitle>
+
+<div class="i18n-tools">
+    <div class="i18n-head">
+        <h2>@Loc.L("dev.i18n.title", "Tra cứu i18n")</h2>
+        <div class="i18n-stats">
+            <span class="chip">@Loc.L("dev.i18n.stat.keys", "{0} key", _catalog.Count)</span>
+            <span class="chip chip-ok">@Loc.L("dev.i18n.stat.translated", "{0} đã dịch", _translatedCount)</span>
+            <span class="chip chip-warn">@Loc.L("dev.i18n.stat.runtime", "{0} key động (runtime)", _runtimeOnly.Count)</span>
+        </div>
+    </div>
+
+    <div class="i18n-toolbar">
+        <input class="i18n-search" placeholder="@Loc.L("dev.i18n.search.ph", "Tìm theo text hoặc key…")"
+               @bind="_query" @bind:event="oninput" />
+        <button class="btn @(Loc.KeyInspectorEnabled ? "btn-primary" : "btn-secondary")"
+                @onclick="ToggleInspector"
+                title="@Loc.L("dev.i18n.inspector.tip", "Hiện ⟨key⟩ cạnh mọi chữ trên app để dò trực quan")">
+            @(Loc.KeyInspectorEnabled
+                ? Loc.L("dev.i18n.inspector.on", "● Soi key: BẬT")
+                : Loc.L("dev.i18n.inspector.off", "○ Soi key"))
+        </button>
+        <span class="i18n-lang">@Loc.L("dev.i18n.lang", "Ngôn ngữ"): <strong>@Loc.CurrentLanguage</strong></span>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="i18n-empty">@Loc.L("dev.i18n.loading", "Đang nạp catalog…")</div>
+    }
+    else if (_catalog.Count == 0)
+    {
+        <div class="i18n-empty">
+            @Loc.L("dev.i18n.nocatalog", "Chưa có catalog.json. Chạy: dotnet run --project tools/I18nScanner -- --write")
+        </div>
+    }
+    else
+    {
+        <table class="i18n-table">
+            <thead>
+                <tr>
+                    <th>@Loc.L("dev.i18n.col.key", "Key")</th>
+                    <th>@Loc.L("dev.i18n.col.vi", "Văn bản gốc (vi)")</th>
+                    <th>@Loc.L("dev.i18n.col.cur", "Bản dịch ({0})", Loc.CurrentLanguage)</th>
+                    <th>@Loc.L("dev.i18n.col.where", "Nơi dùng")</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Filtered())
+                {
+                    var overlay = Loc.GetOverlay(e.Key);
+                    <tr>
+                        <td><code>@e.Key</code> @if (e.Dynamic) { <span class="tag-dyn">@Loc.L("dev.i18n.dyn", "động")</span> }</td>
+                        <td>@e.Vi</td>
+                        <td class="@(overlay is null ? "td-untranslated" : "")">
+                            @(overlay ?? Loc.L("dev.i18n.untranslated", "— chưa dịch —"))
+                        </td>
+                        <td class="td-where" title="@string.Join("\n", e.Occurrences.Select(o => $"{o.File}:{o.Line}"))">
+                            @if (e.Occurrences.Count > 0)
+                            {
+                                @($"{ShortFile(e.Occurrences[0].File)}:{e.Occurrences[0].Line}")
+                                @if (e.Occurrences.Count > 1) { <span class="muted"> +@(e.Occurrences.Count - 1)</span> }
+                            }
+                        </td>
+                        <td><button class="btn-icon" title="@Loc.L("dev.i18n.copy", "Chép key")" @onclick="() => Copy(e.Key)">⧉</button></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (_runtimeOnly.Count > 0)
+        {
+            <h3 class="i18n-subhead">@Loc.L("dev.i18n.runtime.title", "Key chỉ thấy ở runtime ({0}) — bổ sung vào catalog", _runtimeOnly.Count)</h3>
+            <table class="i18n-table">
+                <thead><tr><th>@Loc.L("dev.i18n.col.key", "Key")</th><th>@Loc.L("dev.i18n.col.vi", "Văn bản gốc (vi)")</th><th></th></tr></thead>
+                <tbody>
+                    @foreach (var kv in _runtimeOnly)
+                    {
+                        <tr>
+                            <td><code>@kv.Key</code></td>
+                            <td>@kv.Value</td>
+                            <td><button class="btn-icon" title="@Loc.L("dev.i18n.copy", "Chép key")" @onclick="() => Copy(kv.Key)">⧉</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    }
+</div>
+
+@code {
+    private bool _loading = true;
+    private string _query = "";
+    private IReadOnlyList<I18nCatalogEntry> _catalog = [];
+    private int _translatedCount;
+    private List<KeyValuePair<string, string>> _runtimeOnly = [];
+
+    /// <summary>Nạp catalog tĩnh + tính các key chỉ-runtime. Sự kiện theo sau: render bảng.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _catalog = await Loc.LoadCatalogAsync();
+        var known = _catalog.Select(e => e.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _runtimeOnly = Loc.SeenKeys.Where(kv => !known.Contains(kv.Key))
+                          .OrderBy(kv => kv.Key, StringComparer.Ordinal).ToList();
+        _translatedCount = _catalog.Count(e => Loc.GetOverlay(e.Key) is not null);
+        _loading = false;
+    }
+
+    /// <summary>Lọc theo key hoặc văn bản gốc (không phân biệt hoa thường).</summary>
+    private IEnumerable<I18nCatalogEntry> Filtered()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return _catalog;
+        var q = _query.Trim();
+        return _catalog.Where(e =>
+            e.Key.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+            e.Vi.Contains(q, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void ToggleInspector() => Loc.SetKeyInspector(!Loc.KeyInspectorEnabled);
+
+    private async Task Copy(string key)
+    {
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", key); }
+        catch { /* clipboard có thể bị chặn — bỏ qua */ }
+    }
+
+    /// <summary>Rút gọn đường dẫn file còn tên file cho gọn cột.</summary>
+    private static string ShortFile(string file)
+    {
+        var i = file.LastIndexOf('/');
+        return i >= 0 ? file[(i + 1)..] : file;
+    }
+}

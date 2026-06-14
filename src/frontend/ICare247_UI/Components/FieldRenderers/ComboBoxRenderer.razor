@@ -8,15 +8,16 @@
 @using ICare247_UI.Models
 
 @inject ILookupQueryService LookupQuerySvc
+@inject LocalizationService Loc
 
 <div @onfocusout="HandleLostFocus">
     @if (_loading)
     {
-        <span class="lookup-loading">⏳ Đang tải...</span>
+        <span class="lookup-loading">⏳ @Loc.L("common.combo.loading", "Đang tải...")</span>
     }
     else if (_loadError is not null)
     {
-        <span class="lookup-error" title="@_loadError">⚠ Lỗi tải dữ liệu</span>
+        <span class="lookup-error" title="@_loadError">⚠ @Loc.L("common.combo.loaderror", "Lỗi tải dữ liệu")</span>
     }
     else if (State is not null)
     {
@@ -56,7 +57,7 @@
         set => _ = HandleValueChangedAsync(value);
     }
 
-    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : "-- Chọn --";
+    private string NullTextValue => State?.Label is { Length: > 0 } lbl ? "-- " + lbl + " --" : Loc.L("common.combo.choose", "-- Chọn --");
     private string CssClassValue => State?.Errors.Count > 0 ? "field-dx dx-has-error" : "field-dx";
 
     protected override async Task OnParametersSetAsync()

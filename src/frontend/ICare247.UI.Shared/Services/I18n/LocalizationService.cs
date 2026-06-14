@@ -54,6 +54,15 @@ public sealed class LocalizationService
     /// <summary>Đang bật chế độ pseudo-localization?</summary>
     public bool PseudoEnabled { get; private set; }
 
+    /// <summary>Đang bật chế độ soi key? Khi bật, <see cref="L"/> trả "value ⟨key⟩" để tra ngược text→key trên UI.</summary>
+    public bool KeyInspectorEnabled { get; private set; }
+
+    // Mọi key thực render qua L() (key → fallback vi). Vét cả key DỰNG ĐỘNG mà scanner tĩnh bỏ sót.
+    private readonly Dictionary<string, string> _seen = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Danh sách key đã render runtime (bổ sung cho catalog tĩnh).</summary>
+    public IReadOnlyDictionary<string, string> SeenKeys => _seen;
+
     /// <summary>Danh sách ngôn ngữ từ manifest (đổ ra bộ chuyển ngôn ngữ).</summary>
     public IReadOnlyList<LanguageInfo> Available { get; private set; } = new List<LanguageInfo> { new(BaseLanguage, "Tiếng Việt") };
 
@@ -131,7 +140,49 @@ public sealed class LocalizationService
             try { value = string.Format(_culture, value, args); }
             catch (FormatException ex) { _logger.LogWarning(ex, "i18n format lỗi cho key {Key}", key); }
         }
+        // Thu thập key thực render — nguồn bổ sung cho catalog tĩnh (vét key động).
+        _seen[key] = fallback;
+        if (KeyInspectorEnabled) return $"{value} ⟨{key}⟩";
         return PseudoEnabled ? Pseudo(value) : value;
+    }
+
+    /// <summary>
+    /// Bật/tắt chế độ soi key. Sự kiện theo sau: bắn <see cref="OnChanged"/> để mọi component vẽ lại
+    /// (hiện/ẩn hậu tố ⟨key⟩).
+    /// </summary>
+    public void SetKeyInspector(bool on)
+    {
+        if (KeyInspectorEnabled == on) return;
+        KeyInspectorEnabled = on;
+        OnChanged?.Invoke();
+    }
+
+    /// <summary>Giá trị overlay (bản dịch hiện hành) của key, null nếu chưa dịch.</summary>
+    public string? GetOverlay(string key)
+        => _overlay.TryGetValue(key, out var v) && !string.IsNullOrEmpty(v) ? v : null;
+
+    /// <summary>
+    /// Nạp + gộp catalog.json từ MỌI nguồn đã đăng ký (host + module RCL).
+    /// Sự kiện theo sau: trả danh sách gộp; key trùng giữ mục đầu (nguồn đăng ký trước).
+    /// </summary>
+    public async Task<IReadOnlyList<I18nCatalogEntry>> LoadCatalogAsync(CancellationToken ct = default)
+    {
+        var merged = new Dictionary<string, I18nCatalogEntry>(StringComparer.OrdinalIgnoreCase);
+        foreach (var src in _sources)
+        {
+            try
+            {
+                var doc = await _http.GetFromJsonAsync<I18nCatalogDoc>(Url(src, "catalog.json"), JsonOpts, ct);
+                if (doc?.Entries is null) continue;
+                foreach (var e in doc.Entries)
+                    merged.TryAdd(e.Key, e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "i18n: nạp catalog từ {Src} lỗi (bỏ qua).", src);
+            }
+        }
+        return merged.Values.OrderBy(e => e.Key, StringComparer.Ordinal).ToList();
     }
 
     // ── Nội bộ ────────────────────────────────────────────────────────────

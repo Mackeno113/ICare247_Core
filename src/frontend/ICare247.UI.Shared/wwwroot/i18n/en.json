@@ -1,2 +1,7 @@
 {
+  "auth.error.badresponse": "",
+  "auth.error.invalidcredentials": "",
+  "auth.error.loginfailed": "",
+  "auth.error.noserver": "",
+  "common.lang.choose": ""
 }

@@ -1,0 +1,62 @@
+{
+  "generatedAt": "2026-06-14 23:06:03",
+  "source": "ICare247.UI.Shared",
+  "count": 5,
+  "entries": [
+    {
+      "key": "auth.error.badresponse",
+      "vi": "Phản hồi đăng nhập không hợp lệ.",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Services/Auth/AuthService.cs",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "key": "auth.error.invalidcredentials",
+      "vi": "Tên đăng nhập hoặc mật khẩu không đúng.",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Services/Auth/AuthService.cs",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "key": "auth.error.loginfailed",
+      "vi": "Đăng nhập thất bại. Vui lòng thử lại.",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Services/Auth/AuthService.cs",
+          "line": 127
+        }
+      ]
+    },
+    {
+      "key": "auth.error.noserver",
+      "vi": "Không kết nối được máy chủ: {0}",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Services/Auth/AuthService.cs",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "key": "common.lang.choose",
+      "vi": "Chọn ngôn ngữ",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Components/LanguageSwitcher.razor",
+          "line": 9
+        }
+      ]
+    }
+  ]
+}

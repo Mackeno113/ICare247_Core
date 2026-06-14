@@ -4,6 +4,8 @@
 // Purpose : Danh mục điều hướng tĩnh — nguồn dữ liệu cho NavMenu + trang placeholder.
 //           Khai báo cây phân hệ (module) và các màn con để "hình dung" cấu trúc app
 //           khi chưa code nghiệp vụ. Không chứa dữ liệu/logic — chỉ tiêu đề + route key.
+//           Các tiêu đề ở đây là FALLBACK tiếng Việt, được render qua Loc.L(key, title)
+//           trong NavMenu → KHÔNG hardcode. Đánh dấu để scanner bỏ qua: i18n:skip-hardcode
 
 namespace ICare247_UI.Navigation;
 

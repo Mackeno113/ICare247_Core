@@ -1,0 +1,21 @@
+<!-- File    : I18nScanner.csproj
+     Purpose : Console tool quét toàn bộ frontend Blazor, trích key i18n từ các lời gọi
+               LocalizationService.L("key","fallback") + dò chuỗi tiếng Việt hardcode chưa bọc.
+               Xuất catalog.json (cho màn tra cứu in-app) + merge khung {lang}.json. -->
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ICare247.Tools.I18nScanner</RootNamespace>
+    <AssemblyName>I18nScanner</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Roslyn để phân tích .cs (tìm invocation L, phân biệt key literal vs key động) -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+  </ItemGroup>
+
+</Project>

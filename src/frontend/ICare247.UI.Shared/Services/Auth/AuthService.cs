@@ -20,12 +20,15 @@ public sealed class AuthService : IAuthService
     private readonly HttpClient _http;
     private readonly TokenStore _store;
     private readonly JwtAuthenticationStateProvider _authState;
+    private readonly ICare247.UI.Shared.Services.I18n.LocalizationService _loc;
 
-    public AuthService(HttpClient http, TokenStore store, JwtAuthenticationStateProvider authState)
+    public AuthService(HttpClient http, TokenStore store, JwtAuthenticationStateProvider authState,
+        ICare247.UI.Shared.Services.I18n.LocalizationService loc)
     {
         _http = http;
         _store = store;
         _authState = authState;
+        _loc = loc;
     }
 
     /// <inheritdoc />
@@ -47,14 +50,14 @@ public sealed class AuthService : IAuthService
         }
         catch (Exception ex)
         {
-            return new AuthLoginResult(false, $"Không kết nối được máy chủ: {ex.Message}");
+            return new AuthLoginResult(false, _loc.L("auth.error.noserver", "Không kết nối được máy chủ: {0}", ex.Message));
         }
 
         if (resp.IsSuccessStatusCode)
         {
             var data = await resp.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: ct);
             if (data is null || string.IsNullOrEmpty(data.AccessToken) || string.IsNullOrEmpty(data.RefreshToken))
-                return new AuthLoginResult(false, "Phản hồi đăng nhập không hợp lệ.");
+                return new AuthLoginResult(false, _loc.L("auth.error.badresponse", "Phản hồi đăng nhập không hợp lệ."));
 
             await _store.SetAsync(data.AccessToken, data.RefreshToken);
             ApplyAuthHeader(data.AccessToken);
@@ -107,7 +110,7 @@ public sealed class AuthService : IAuthService
             string.IsNullOrEmpty(accessToken) ? null : new AuthenticationHeaderValue("Bearer", accessToken);
 
     /// <summary>Trích thông báo lỗi thân thiện từ ProblemDetails (hoặc fallback theo status).</summary>
-    private static async Task<string> ExtractErrorAsync(HttpResponseMessage resp, CancellationToken ct)
+    private async Task<string> ExtractErrorAsync(HttpResponseMessage resp, CancellationToken ct)
     {
         try
         {
@@ -120,8 +123,8 @@ public sealed class AuthService : IAuthService
         }
 
         return resp.StatusCode == HttpStatusCode.Unauthorized
-            ? "Tên đăng nhập hoặc mật khẩu không đúng."
-            : "Đăng nhập thất bại. Vui lòng thử lại.";
+            ? _loc.L("auth.error.invalidcredentials", "Tên đăng nhập hoặc mật khẩu không đúng.")
+            : _loc.L("auth.error.loginfailed", "Đăng nhập thất bại. Vui lòng thử lại.");
     }
 
     // ── DTO nội bộ ────────────────────────────────────────────────────────────

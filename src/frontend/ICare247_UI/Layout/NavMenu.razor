@@ -158,6 +158,7 @@
         }
 
         _bottom.Add(new VmItem("devtools", "nav.devtools", "Công cụ (Dev)", "wrench", "dev/forms"));
+        _bottom.Add(new VmItem("i18ntools", "nav.i18ntools", "Tra cứu i18n", "languages", "dev/i18n"));
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
