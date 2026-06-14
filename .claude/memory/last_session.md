@@ -50,8 +50,12 @@
   - **BE-2:** `INavigationCache` (IMemoryCache + token hủy theo tenant) cache /me/navigation, invalidate sau lưu quyền.
   - **FE-3:** nav trả DoiTuong; `PermissionState` (ForTarget); MasterDataListPage/Grid ẩn Thêm/Sửa/Xóa theo quyền.
   - **DxTreeList reference:** `docs/reference/DEVEXPRESS_DXTREELIST_PROPERTIES.md` + tái dựng tool `tools/DxReflect`.
-- **CÒN LẠI:** AUTHZ-UI-2 (Vai trò/User = cấu hình ConfigStudio, KHÔNG code) · FE-3b (sub-nav TrongMan + ẩn nút DataView,
-  chờ màn HR thật) · scale-out: đổi NavigationCache token sang Redis (ADR-021). Xem TASKS.md AUTHZ-*.
+  - **AUTHZ-UI-2 (Vai trò):** Engine MasterData **tự bơm audit** (CreatedBy/At insert · UpdatedBy/At update theo
+    cột tồn tại; userId luồn `SaveMasterDataCommand`←claim). `db/047` seed form `HT_VaiTro`; `db/048` nối menu
+    `administration.roles` → `/master/HT_VaiTro` + DoiTuong. (Phát hiện: engine cũ KHÔNG bơm audit → HT_* insert lỗi.)
+- **CÒN LẠI:** AUTHZ-UI-2b (Người dùng HT_NguoiDung = màn **bespoke**, field nhạy cảm) · FE-3b (sub-nav TrongMan +
+  ẩn nút DataView, chờ màn HR thật) · scale-out: NavigationCache token → Redis (ADR-021). Xem TASKS.md AUTHZ-*.
+- **⏳ SQL cần chạy:** db/046 (cột DoiTuong) · db/047 (Config: form HT_VaiTro) · db/048 (Data: nối menu) + **restart API**.
 - **Cách bật khóa 1 màn:** chạy `db/046` → set HT_ChucNang.DoiTuong=mã form/view + LoaiDoiTuong=Form/View →
   cấp quyền ở màn Phân quyền. Nhớ **restart API** để attribute áp.
 
