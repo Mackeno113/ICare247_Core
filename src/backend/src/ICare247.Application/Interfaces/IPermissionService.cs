@@ -24,4 +24,13 @@ public interface IPermissionService
     /// Không có dòng/cờ = false (deny-by-default).
     /// </summary>
     Task<bool> HasPermissionAsync(long userId, string funcCode, PermissionOp op, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kiểm quyền theo "đối tượng" engine (Ui_Form/Ui_View) cho endpoint generic.
+    /// <b>Enforce-if-mapped:</b> nếu KHÔNG có node chức năng nào gắn (<c>LoaiDoiTuong</c>,<c>DoiTuong</c>)
+    /// = (<paramref name="targetType"/>,<paramref name="targetCode"/>) → trả true (chưa cấu hình thì không khóa).
+    /// Có gắn → mới áp deny-by-default theo <paramref name="op"/>.
+    /// </summary>
+    Task<bool> HasPermissionForTargetAsync(
+        long userId, string targetType, string targetCode, PermissionOp op, CancellationToken ct = default);
 }

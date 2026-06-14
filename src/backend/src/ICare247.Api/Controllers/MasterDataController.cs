@@ -3,6 +3,8 @@
 // Layer   : Api
 // Purpose : REST endpoint CRUD danh mục generic (metadata-driven) + soft-check tham chiếu.
 
+using ICare247.Api.Authorization;
+using ICare247.Application.Interfaces;
 using ICare247.Application.Features.MasterData.Commands.DeleteMasterData;
 using ICare247.Application.Features.MasterData.Commands.SaveMasterData;
 using ICare247.Application.Features.MasterData.Queries.CheckMasterDataUsage;
@@ -31,6 +33,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Thông tin bảng đích + cột (cho Blazor render lưới + form).</summary>
     /// <remarks>GET /api/v1/master-data/{formCode}/info</remarks>
     [HttpGet("{formCode}/info")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     public async Task<IActionResult> GetInfo(string formCode, CancellationToken ct = default)
     {
         var info = await _mediator.Send(new GetMasterDataFormInfoQuery(formCode, GetTenantId()), ct);
@@ -40,6 +43,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Danh sách bản ghi danh mục (search + active filter + paging).</summary>
     /// <remarks>GET /api/v1/master-data/{formCode}?search=&amp;activeOnly=true&amp;page=1&amp;pageSize=50</remarks>
     [HttpGet("{formCode}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     public async Task<IActionResult> GetList(
         string formCode,
         [FromQuery] string? search = null,
@@ -56,6 +60,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Lấy 1 bản ghi theo PK (cho form Sửa).</summary>
     /// <remarks>GET /api/v1/master-data/{formCode}/{id}</remarks>
     [HttpGet("{formCode}/{id}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     public async Task<IActionResult> GetById(string formCode, string id, CancellationToken ct = default)
     {
         var record = await _mediator.Send(
@@ -68,6 +73,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Soft-check: bản ghi có đang bị tham chiếu ở đâu không (cho dialog xóa).</summary>
     /// <remarks>GET /api/v1/master-data/{formCode}/{id}/usage</remarks>
     [HttpGet("{formCode}/{id}/usage")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     public async Task<IActionResult> GetUsage(string formCode, string id, CancellationToken ct = default)
     {
         var usages = await _mediator.Send(
@@ -78,6 +84,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Thêm mới 1 bản ghi danh mục.</summary>
     /// <remarks>POST /api/v1/master-data/{formCode} — Body: { "values": { ... } }</remarks>
     [HttpPost("{formCode}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Them)]
     public async Task<IActionResult> Create(
         string formCode, [FromBody] SaveMasterDataRequest body, CancellationToken ct = default)
     {
@@ -94,6 +101,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Cập nhật 1 bản ghi danh mục theo PK.</summary>
     /// <remarks>PUT /api/v1/master-data/{formCode}/{id} — Body: { "values": { ... } }</remarks>
     [HttpPut("{formCode}/{id}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Sua)]
     public async Task<IActionResult> Update(
         string formCode, string id, [FromBody] SaveMasterDataRequest body, CancellationToken ct = default)
     {
@@ -109,6 +117,7 @@ public sealed class MasterDataController : ControllerBase
     /// <summary>Xóa cứng 1 bản ghi — chặn (409) nếu đang bị tham chiếu.</summary>
     /// <remarks>DELETE /api/v1/master-data/{formCode}/{id}</remarks>
     [HttpDelete("{formCode}/{id}")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xoa)]
     public async Task<IActionResult> Delete(string formCode, string id, CancellationToken ct = default)
     {
         var result = await _mediator.Send(

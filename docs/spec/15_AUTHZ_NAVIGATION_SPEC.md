@@ -116,6 +116,8 @@ Module, DuongDan, Icon, ThuTu` + audit. **Thêm:**
 | `LaHeThong` | BIT DEFAULT 0 | **1 = BASE** (đồng bộ từ master, khóa cấu trúc) · **0 = CUSTOM** (tenant/DEV thêm riêng) |
 | `KichHoat` | BIT DEFAULT 1 | Tenant **bật/tắt** node (độc lập quyền). Tắt = không ai thấy dù có quyền |
 | `ViTriHienThi` | NVARCHAR(20) DEFAULT `Sidebar` | `Sidebar` / `TrongMan` / `Ca2` (xem §5) |
+| `DoiTuong` | NVARCHAR(100) NULL | Mã đối tượng engine node điều khiển (vd `HT_VaiTro` cho master-data/runtime; mã view) — dùng enforce endpoint generic (`db/046`) |
+| `LoaiDoiTuong` | NVARCHAR(20) NULL | `Form` / `View` / NULL (chưa gắn). NULL = enforce-if-mapped bỏ qua |
 
 > Quy ước `LaHeThong BIT` đã dùng sẵn ở `HT_VaiTro` (vai trò hệ thống) → nhất quán.
 
@@ -205,11 +207,23 @@ SELECT DISTINCT * FROM cn ORDER BY ThuTu;   -- DISTINCT vì nhiều vai trò có
 → dựng cây theo `ChucNang_Cha_Id`; client render sidebar (nhánh nông) + mỗi màn render nhánh con.
 
 ### Enforce server (nửa b) — bắt buộc
-Mỗi endpoint nghiệp vụ kiểm quyền theo `Ma` chức năng trước khi thực thi, deny-by-default:
+2 attribute (đọc `HT_VaiTro_Quyen` qua `IPermissionService`, bypass role `SUPERADMIN`, thiếu → 403):
 ```csharp
-[RequirePermission("HR.NhanVien.KyLuat", Op.Them)]   // attribute đọc HT_VaiTro_Quyen
+// Theo MÃ CHỨC NĂNG tĩnh (vd màn admin):
+[RequirePermission("administration.permissions", PermissionOp.Sua)]
+
+// Theo ĐỐI TƯỢNG engine lấy từ route (endpoint generic) — enforce-if-mapped:
+[RequirePermissionForTarget("Form", PermissionOp.Sua, "formCode")]   // master-data/runtime
+[RequirePermissionForTarget("View", PermissionOp.Xem, "code")]       // views
 ```
-Gắn lên các controller engine (`MasterData/View/Form/Runtime`).
+**Enforce-if-mapped:** nếu KHÔNG node `HT_ChucNang` nào gắn `(LoaiDoiTuong, DoiTuong)` khớp → **cho qua**
+(chưa cấu hình thì không khóa, tránh vỡ app khi chuyển tiếp). Có gắn → áp deny-by-default theo cờ.
+
+Đã gắn: `MasterDataController` (Form: GET=Xem · POST=Thêm · PUT=Sửa · DELETE=Xóa), `ViewController`
+(View: Xem), `RuntimeController` (Form: Xem). `FormController` (config metadata) tạm chưa enforce.
+
+> Để 1 màn được enforce thật: set `HT_ChucNang.DoiTuong` = mã form/view + `LoaiDoiTuong` = Form/View,
+> rồi cấp quyền cho vai trò ở màn Phân quyền.
 
 ---
 

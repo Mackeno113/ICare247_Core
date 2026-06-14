@@ -3,6 +3,7 @@
 // Layer   : Api
 // Purpose : REST endpoint cho cấu hình hiển thị danh sách (Ui_View) — metadata cho Blazor DataView.
 
+using ICare247.Api.Authorization;
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
 using ICare247.Application.Features.Views.Queries.GetViewFilteredData;
@@ -64,6 +65,7 @@ public sealed class ViewController : ControllerBase
     /// <param name="lang">Mã ngôn ngữ resolve resource (mặc định "vi").</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet("{code}/info")]
+    [RequirePermissionForTarget("View", PermissionOp.Xem, "code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetInfo(
@@ -90,6 +92,7 @@ public sealed class ViewController : ControllerBase
     /// <param name="pageSize">Số dòng mỗi trang.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet("{code}/data")]
+    [RequirePermissionForTarget("View", PermissionOp.Xem, "code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetData(
@@ -118,6 +121,7 @@ public sealed class ViewController : ControllerBase
     /// <param name="lang">Ngôn ngữ resolve metadata (mặc định "vi").</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpPost("{code}/search")]
+    [RequirePermissionForTarget("View", PermissionOp.Xem, "code")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

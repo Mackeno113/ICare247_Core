@@ -3,6 +3,7 @@
 // Layer   : Api
 // Purpose : REST endpoints cho runtime form processing — validate field, handle event.
 
+using ICare247.Api.Authorization;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using ICare247.Domain.Engine.Models;
@@ -45,6 +46,7 @@ public sealed class RuntimeController : ControllerBase
     /// Validate một field đơn lẻ — trả về kết quả validation (pass/fail + errors).
     /// </summary>
     [HttpPost("validate-field")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ValidateField(
@@ -89,6 +91,7 @@ public sealed class RuntimeController : ControllerBase
     /// Dùng trước submit để kiểm tra tất cả required/custom rules.
     /// </summary>
     [HttpPost("validate")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ValidateForm(
@@ -134,6 +137,7 @@ public sealed class RuntimeController : ControllerBase
     /// Event types: FIELD_CHANGED, FIELD_BLUR, FORM_LOAD, FORM_SUBMIT, SECTION_TOGGLE.
     /// </summary>
     [HttpPost("handle-event")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> HandleEvent(
