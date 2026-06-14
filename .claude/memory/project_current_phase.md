@@ -1,8 +1,32 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-13
+> Cập nhật lần cuối: 2026-06-14
 
-## Đợt mới nhất — Auth full-stack + bộ màn đăng nhập + audit log non-blocking (session 48, 2026-06-13)
+## Đợt mới nhất — phase-auth: Menu động + Phân quyền full-stack (session 49, 2026-06-14)
+
+Triển khai trọn **menu động theo quyền + phân quyền** (ADR-023, spec `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md`).
+Mở đầu bằng **redesign sidebar** (icon Lucide đơn sắc + 3 nhóm + component `<Icon>` dùng chung).
+
+**DB (db/042–048):** `HT_ChucNang` +`Menu_Id/LaHeThong/KichHoat/ViTriHienThi/DoiTuong/LoaiDoiTuong`; Config DB
+`Sys_Menu`+`Sys_MenuCatalog` (master) + seed 45 node từ AppNav; seed `HT_ChucNang` base + grant SUPERADMIN;
+form danh mục `HT_VaiTro` (Sys_Table/Ui_Form/Ui_Field) + nối menu Vai trò → `/master/HT_VaiTro`.
+
+**Backend:** `GET /me/navigation` (recursive CTE lọc Xem=1 + tổ tiên, cache `INavigationCache` invalidate theo
+tenant); API admin phân quyền (roles + get/save `HT_VaiTro_Quyen`); **enforce server** `[RequirePermission]`
+(admin) + `[RequirePermissionForTarget]` (engine MasterData/View/Runtime/Form, **enforce-if-mapped**, bypass
+SUPERADMIN, deny-by-default); **engine MasterData tự bơm audit** CreatedBy/At + UpdatedBy/At.
+
+**Frontend:** NavMenu tiêu thụ `/me/navigation` (fallback AppNav); **màn Phân quyền** bespoke (`DxTreeList` ×5 cờ
+Xem/Thêm/Sửa/Xóa/In, cascade tri-state, check nhanh cột/header/master, ShowAllRows); `PermissionState` ẩn nút
+Thêm/Sửa/Xóa theo quyền (MasterData). Reference `DEVEXPRESS_DXTREELIST_PROPERTIES.md` + tool `tools/DxReflect`.
+
+**Mô hình chốt:** ① định nghĩa menu (DEV/WPF/Config DB) tách ② phân quyền (end user/Web/Data DB); 5 cờ quyền
+(Duyệt→workflow); 1 cây sâu + `ViTriHienThi` (Sidebar/TrongMan/Ca2); master→tenant lai (LaHeThong base/custom).
+
+→ **Bước tiếp:** ⏳ chạy `db/046+047+048` + restart API; màn **Người dùng bespoke** (HT_NguoiDung field nhạy cảm);
+FE-3b sub-nav `TrongMan` + ẩn nút DataView (chờ màn HR thật); scale-out → `NavigationCache` token sang Redis.
+
+## Đợt trước — Auth full-stack + bộ màn đăng nhập + audit log non-blocking (session 48, 2026-06-13)
 
 Hoàn tất **pha Auth/login** (gợi ý từ session 47). **Backend**: JWT + refresh token rotation, verify PBKDF2
 (`PasswordHasher`) với `HT_NguoiDung` ở **Live DB** (`ICare247_Solution`), lockout 5 lần/15', `AuthController`
