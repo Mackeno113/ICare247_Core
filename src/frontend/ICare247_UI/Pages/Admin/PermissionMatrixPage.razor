@@ -41,7 +41,8 @@ else if (_nodes.Count == 0)
 }
 else
 {
-    <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId" CssClass="perm-tree">
+    <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
+                AutoExpandAllNodes="true" PageSize="0" PagerVisible="false" CssClass="perm-tree">
         <Columns>
             <DxTreeListDataColumn Caption="@Loc.L("admin.perm.func", "Chức năng")" FieldName="Ten" />
             <DxTreeListDataColumn Caption="@Loc.L("admin.perm.view", "Xem")" Width="70px">
