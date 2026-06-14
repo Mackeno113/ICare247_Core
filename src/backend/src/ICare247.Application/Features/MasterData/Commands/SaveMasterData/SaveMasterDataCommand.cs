@@ -12,8 +12,10 @@ namespace ICare247.Application.Features.MasterData.Commands.SaveMasterData;
 /// <param name="TenantId">Tenant hiện tại.</param>
 /// <param name="Id">PK của bản ghi: null = Insert, có giá trị = Update.</param>
 /// <param name="Values">Cặp Cột↔Giá trị (key = tên cột DB = Field_Code).</param>
+/// <param name="UserId">Người thao tác (claim sub) — để engine bơm CreatedBy/UpdatedBy. Null = không bơm.</param>
 public sealed record SaveMasterDataCommand(
     string FormCode,
     int    TenantId,
     object? Id,
-    Dictionary<string, object?> Values) : IRequest<MasterDataSaveResult>;
+    Dictionary<string, object?> Values,
+    long? UserId = null) : IRequest<MasterDataSaveResult>;

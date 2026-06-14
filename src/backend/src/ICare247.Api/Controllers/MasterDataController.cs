@@ -13,6 +13,7 @@ using ICare247.Application.Features.MasterData.Queries.GetMasterDataList;
 using ICare247.Application.Features.MasterData.Queries.GetMasterDataRecord;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -92,7 +93,7 @@ public sealed class MasterDataController : ControllerBase
             return BadRequest(Problem400("Cần ít nhất một cột để thêm mới."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, NormalizeValues(body.Values)), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, NormalizeValues(body.Values), GetUserId()), ct);
 
         // Validation fail → 422 kèm danh sách lỗi field
         return result.Success ? Ok(result) : UnprocessableEntity(result);
@@ -109,7 +110,7 @@ public sealed class MasterDataController : ControllerBase
             return BadRequest(Problem400("Cần ít nhất một cột để cập nhật."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), NormalizeValues(body.Values)), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), NormalizeValues(body.Values), GetUserId()), ct);
 
         return result.Success ? Ok(result) : UnprocessableEntity(result);
     }
@@ -169,6 +170,13 @@ public sealed class MasterDataController : ControllerBase
     // Tenant_Id từ TenantContext (TenantMiddleware phân giải) — không đọc header trực tiếp. ADR-018.
     private int GetTenantId()
         => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
+
+    /// <summary>Id người dùng từ claim sub (để engine bơm CreatedBy/UpdatedBy). Null nếu chưa đăng nhập.</summary>
+    private long? GetUserId()
+    {
+        var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        return long.TryParse(raw, out var id) ? id : null;
+    }
 
     private NotFoundObjectResult FormNotFound(string formCode) =>
         NotFound(Problem404($"Không tìm thấy form danh mục '{formCode}'."));

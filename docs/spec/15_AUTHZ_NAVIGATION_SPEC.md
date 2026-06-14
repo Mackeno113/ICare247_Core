@@ -246,8 +246,13 @@ SELECT DISTINCT * FROM cn ORDER BY ThuTu;   -- DISTINCT vì nhiều vai trò có
 - ⚠️ Thuộc tính `DxTreeList` (bind cột checkbox, tri-state) **tra qua reflection DLL trước khi code** (không đoán).
 
 ### 8.2 Vai trò / Người dùng (no-code — engine MasterData)
-Khai báo `Ui_Form` cho `HT_VaiTro` & `HT_NguoiDung` → CRUD chạy bằng engine sẵn có (route `/master/...`).
-**Không** viết trang bespoke.
+- **Vai trò:** khai báo `Ui_Form` cho `HT_VaiTro` → CRUD qua engine, route `/master/HT_VaiTro` (`db/047` seed
+  `Sys_Table`+`Sys_Column`+`Ui_Form`+`Ui_Field`; `db/048` trỏ node menu `administration.roles` → form + `DoiTuong`).
+- **Engine đã nâng:** MasterData **tự bơm audit** `CreatedBy/CreatedAt` (insert) + `UpdatedBy/UpdatedAt` (update)
+  theo cột TỒN TẠI trên bảng đích (bảng `HT_*`/`DM_*` cần `CreatedBy NOT NULL`); userId luồn qua
+  `SaveMasterDataCommand` ← claim sub. Không khai field audit trong form.
+- **Người dùng (`HT_NguoiDung`):** KHÔNG dùng form generic (field nhạy cảm: MatKhauHash/2FA/lockout) → **bespoke** sau
+  (đặt mật khẩu đúng cách, ẩn field hệ thống).
 
 > **Nguyên tắc chung:** mặc định **Cách A (engine MasterData no-code)**; chỉ **bespoke** khi màn phải
 > xử lý đặc thù engine không sinh được (vd ma trận TreeList × checkbox).

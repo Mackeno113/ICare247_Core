@@ -34,7 +34,8 @@
   - [ ] `FormController` (config metadata) enforce + map form↔chức năng tự động khi dựng màn thật. _(sau)_
 - [x] **AUTHZ-UI-1 (BE)** — API admin phân quyền: `GET /api/v1/admin/roles`, `GET roles/{id}/permissions` (cây + cờ), `PUT roles/{id}/permissions` (upsert `HT_VaiTro_Quyen` trong transaction). CQRS + `IPermissionAdminRepository`/`PermissionAdminRepository` + `AdminPermissionController [Authorize]` + DI. Compile sạch.
 - [x] **AUTHZ-UI-1 (FE)** — Màn Phân quyền `/m/administration/permissions` (route literal ưu tiên hơn ScreenView): chọn vai trò → `DxTreeList` cây + 5 `DxCheckBox` (Xem/Thêm/Sửa/Xóa/In) → PUT lưu. `AdminPermissionApiService` + models + DI + CSS. Build xanh. _(Cascade tick + invalidate cache: TODO)_
-- [~] **AUTHZ-UI-2** — Vai trò/Người dùng = **cấu hình qua ConfigStudio** (khai báo `Sys_Table`+`Ui_Form`/`Ui_Field` cho `HT_VaiTro`/`HT_NguoiDung`), KHÔNG phải code: engine MasterData + route `/master/{formCode}` đã sẵn. Sau khai báo: set `HT_ChucNang.DoiTuong=HT_VaiTro`/`HT_NguoiDung` (LoaiDoiTuong=Form) → enforce + ẩn nút tự áp.
+- [x] **AUTHZ-UI-2 (Vai trò)** — Engine MasterData **tự bơm audit** (CreatedBy/At insert · UpdatedBy/At update theo cột tồn tại; userId luồn qua `SaveMasterDataCommand`←claim). `db/047` seed `Sys_Table`/`Sys_Column`/`Ui_Form`/`Ui_Field` cho `HT_VaiTro`; `db/048` nối menu `administration.roles` → `/master/HT_VaiTro` + `DoiTuong`. Build BE xanh. ⏳ chạy db/047 (Config) + db/048 (Data) + restart API.
+  - [ ] **AUTHZ-UI-2b (Người dùng)** — `HT_NguoiDung` field nhạy cảm (MatKhauHash/2FA) → màn **bespoke** (đặt mật khẩu đúng cách), KHÔNG form generic. _(sau)_
 
 ### Pha sau
 - [ ] `ChucNangCon` (quyền cấp nút) · `Sys_Menu` nhiều bộ menu (Top/Mobile) · `Duyet` cho workflow engine.

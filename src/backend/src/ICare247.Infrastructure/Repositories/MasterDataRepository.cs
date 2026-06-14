@@ -238,7 +238,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
     /// <inheritdoc />
     public async Task<object?> InsertAsync(
-        string formCode, int tenantId, Dictionary<string, object?> values, CancellationToken ct = default)
+        string formCode, int tenantId, Dictionary<string, object?> values,
+        long? userId = null, CancellationToken ct = default)
     {
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
@@ -249,11 +250,21 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         if (cols.Count == 0)
             throw new InvalidOperationException("MasterData Insert: không có cột hợp lệ để thêm.");
 
-        var colList   = string.Join(", ", cols.Select(Bracket));
-        var paramList = string.Join(", ", cols.Select(c => "@" + c));
-        var sql = $"INSERT INTO {table} ({colList}) OUTPUT INSERTED.{Bracket(pk)} AS NewId VALUES ({paramList})";
-
         using var data = _dataDb.CreateConnection();
+        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct);
+
+        // (cột, biểu thức giá trị) — field = @param; audit = bơm tự động (CreatedBy/At nếu bảng có).
+        var insCols = cols.Select(Bracket).ToList();
+        var insVals = cols.Select(c => "@" + c).ToList();
+        if (audit.Contains("CreatedBy") && userId is not null)
+        {
+            insCols.Add(Bracket("CreatedBy")); insVals.Add("@__CreatedBy"); dp.Add("__CreatedBy", userId.Value);
+        }
+        if (audit.Contains("CreatedAt")) { insCols.Add(Bracket("CreatedAt")); insVals.Add("SYSUTCDATETIME()"); }
+
+        var sql = $"INSERT INTO {table} ({string.Join(", ", insCols)}) " +
+                  $"OUTPUT INSERTED.{Bracket(pk)} AS NewId VALUES ({string.Join(", ", insVals)})";
+
         return await data.ExecuteScalarAsync<object>(new CommandDefinition(sql, dp, cancellationToken: ct));
     }
 
@@ -261,7 +272,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
     /// <inheritdoc />
     public async Task<int> UpdateAsync(
-        string formCode, int tenantId, object id, Dictionary<string, object?> values, CancellationToken ct = default)
+        string formCode, int tenantId, object id, Dictionary<string, object?> values,
+        long? userId = null, CancellationToken ct = default)
     {
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
@@ -272,12 +284,38 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         if (cols.Count == 0)
             throw new InvalidOperationException("MasterData Update: không có cột hợp lệ để cập nhật.");
 
-        dp.Add("__Id", id);
-        var setList = string.Join(", ", cols.Select(c => $"{Bracket(c)} = @{c}"));
-        var sql = $"UPDATE {table} SET {setList} WHERE {Bracket(pk)} = @__Id";
-
         using var data = _dataDb.CreateConnection();
+        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct);
+
+        var setParts = cols.Select(c => $"{Bracket(c)} = @{c}").ToList();
+        if (audit.Contains("UpdatedBy") && userId is not null)
+        {
+            setParts.Add($"{Bracket("UpdatedBy")} = @__UpdatedBy"); dp.Add("__UpdatedBy", userId.Value);
+        }
+        if (audit.Contains("UpdatedAt")) { setParts.Add($"{Bracket("UpdatedAt")} = SYSUTCDATETIME()"); }
+
+        dp.Add("__Id", id);
+        var sql = $"UPDATE {table} SET {string.Join(", ", setParts)} WHERE {Bracket(pk)} = @__Id";
+
         return await data.ExecuteAsync(new CommandDefinition(sql, dp, cancellationToken: ct));
+    }
+
+    /// <summary>
+    /// Cột audit (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt) THỰC SỰ có trên bảng đích — để engine
+    /// chỉ bơm cột tồn tại (bảng cũ không có cột audit thì bỏ qua, không vỡ).
+    /// </summary>
+    private static async Task<HashSet<string>> GetAuditColumnsAsync(
+        System.Data.IDbConnection data, string schema, string table, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT COLUMN_NAME
+            FROM   INFORMATION_SCHEMA.COLUMNS
+            WHERE  TABLE_SCHEMA = @Schema AND TABLE_NAME = @Table
+              AND  COLUMN_NAME IN ('CreatedBy','CreatedAt','UpdatedBy','UpdatedAt')
+            """;
+        var rows = await data.QueryAsync<string>(
+            new CommandDefinition(sql, new { Schema = schema, Table = table }, cancellationToken: ct));
+        return rows.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 
     // ── Delete (hard) ───────────────────────────────────────────────────────────

@@ -45,12 +45,12 @@ public interface IMasterDataRepository
     /// </summary>
     Task<object?> InsertAsync(
         string formCode, int tenantId, Dictionary<string, object?> values,
-        CancellationToken ct = default);
+        long? userId = null, CancellationToken ct = default);
 
     /// <summary>Update 1 bản ghi theo PK. Trả số dòng bị ảnh hưởng.</summary>
     Task<int> UpdateAsync(
         string formCode, int tenantId, object id, Dictionary<string, object?> values,
-        CancellationToken ct = default);
+        long? userId = null, CancellationToken ct = default);
 
     /// <summary>
     /// Xóa cứng 1 bản ghi theo PK (DELETE row).

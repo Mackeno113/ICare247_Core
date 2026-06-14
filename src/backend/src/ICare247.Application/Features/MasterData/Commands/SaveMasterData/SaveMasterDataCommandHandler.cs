@@ -89,13 +89,13 @@ public sealed class SaveMasterDataCommandHandler
         // ── Ghi DB ────────────────────────────────────────────────────────────
         if (r.Id is null)
         {
-            var newId = await _repo.InsertAsync(r.FormCode, r.TenantId, r.Values, ct);
+            var newId = await _repo.InsertAsync(r.FormCode, r.TenantId, r.Values, r.UserId, ct);
             _logger.LogInformation("SaveMasterData INSERT '{Form}' → Id={Id}.", r.FormCode, newId);
             AuditData(r, AuditAction.DataCreate, newId);
             return new MasterDataSaveResult(Success: true, Id: newId, Errors: []);
         }
 
-        await _repo.UpdateAsync(r.FormCode, r.TenantId, r.Id, r.Values, ct);
+        await _repo.UpdateAsync(r.FormCode, r.TenantId, r.Id, r.Values, r.UserId, ct);
         _logger.LogInformation("SaveMasterData UPDATE '{Form}' Id={Id}.", r.FormCode, r.Id);
         AuditData(r, AuditAction.DataUpdate, r.Id);
         return new MasterDataSaveResult(Success: true, Id: r.Id, Errors: []);
