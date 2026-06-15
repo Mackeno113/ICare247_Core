@@ -19,6 +19,18 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-16] CFGSTUDIO-SYSTABLE-PICKER (combobox chọn bảng/view thật) — claude
+
+- Status: done (build WPF **0/0**).
+- Vấn đề: màn Sys Table chỉ gõ tay Table_Code → dễ sai tên (engine đọc dữ liệu bằng Schema_Name+Table_Code).
+- Files:
+  - `Modules.Forms/ViewModels/SysTableManagerViewModel.cs`: inject `ISchemaInspectorService`; `DbObjects`
+    (danh sách "schema.tên" bảng+VIEW từ Target DB, nạp khi config sẵn sàng); `SelectedDbObject` → auto-điền
+    Schema_Name + Table_Code (+ Table_Name nếu trống). Guard: chỉ fill khi value khớp đúng 1 mục (tránh text gõ dở).
+  - `Modules.Forms/Views/SysTableManagerView.xaml`: thêm `dxe:ComboBoxEdit` (IsTextEditable + IncrementalFiltering)
+    vào panel Tạo mới (gộp dòng subtitle, không re-index Grid rows).
+- Nhờ ORG-CFG-1, combobox liệt kê cả VIEW (vw_TC_CongTy, vw_DM_*). User vẫn gõ tay được nếu muốn.
+
 ### [2026-06-15] CAT-CFG-1 (danh mục nền tảng — code + routing) — claude
 
 - Status: code done (build FE **0/0**); ⏳ chạy `db/052` + **CAT-CFG-2 cấu hình tay** + sync.

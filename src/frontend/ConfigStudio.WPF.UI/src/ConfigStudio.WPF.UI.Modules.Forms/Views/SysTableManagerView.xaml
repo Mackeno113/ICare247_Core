@@ -164,11 +164,23 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <TextBlock Grid.Row="1"
-                               FontSize="12"
-                               Opacity="0.6"
-                               Margin="0,2,0,12"
-                               Text="{Binding EditTableId, StringFormat='Đang chỉnh sửa Table_Id={0}', TargetNullValue='Nhập thông tin và bấm Tạo mới để lưu.'}" />
+                    <StackPanel Grid.Row="1" Margin="0,2,0,12">
+                        <TextBlock FontSize="12"
+                                   Opacity="0.6"
+                                   Text="{Binding EditTableId, StringFormat='Đang chỉnh sửa Table_Id={0}', TargetNullValue='Nhập thông tin và bấm Tạo mới để lưu.'}" />
+
+                        <!-- Chọn nhanh bảng/view thật từ Target DB → tự điền Table_Code + Schema_Name. -->
+                        <TextBlock Text="Chọn bảng / view có sẵn (Target DB)"
+                                   FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,12,0,6" />
+                        <dxe:ComboBoxEdit ItemsSource="{Binding DbObjects}"
+                                          EditValue="{Binding SelectedDbObject, UpdateSourceTrigger=PropertyChanged}"
+                                          IsTextEditable="True"
+                                          ImmediatePopup="True"
+                                          IncrementalFiltering="True"
+                                          FilterCondition="Contains"
+                                          NullText="— Chọn để tự điền Code, hoặc gõ tay bên dưới —"
+                                          Height="34" />
+                    </StackPanel>
 
                     <TextBlock Grid.Row="2" Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
                     <dxe:TextEdit Grid.Row="3"

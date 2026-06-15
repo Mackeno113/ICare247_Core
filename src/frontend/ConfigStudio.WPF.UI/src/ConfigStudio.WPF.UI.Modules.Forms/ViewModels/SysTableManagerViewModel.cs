@@ -23,10 +23,40 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 {
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
+    private readonly ISchemaInspectorService? _schemaInspector;
     private readonly IAppLogger? _logger;
     private bool _isProgrammaticEditorUpdate;
 
     public ObservableCollection<SysTableRecord> Tables { get; } = [];
+
+    /// <summary>
+    /// Danh sách "schema.tên" bảng + VIEW thật trong Target DB (đọc qua SchemaInspector) —
+    /// để chọn nhanh thay vì gõ tay Table_Code (tránh sai tên). Rỗng nếu Target DB chưa cấu hình.
+    /// </summary>
+    public ObservableCollection<string> DbObjects { get; } = [];
+
+    private string? _selectedDbObject;
+    /// <summary>Bảng/view user chọn từ combobox. Sự kiện theo sau: tự điền Schema_Name + Table_Code.</summary>
+    public string? SelectedDbObject
+    {
+        get => _selectedDbObject;
+        set
+        {
+            if (!SetProperty(ref _selectedDbObject, value)) return;
+            if (string.IsNullOrWhiteSpace(value)) return;
+            // Chỉ auto-fill khi chọn đúng 1 mục trong danh sách (tránh điền theo text gõ dở khi lọc).
+            if (!DbObjects.Contains(value)) return;
+
+            // value dạng "dbo.TC_CapCongTy" → tách Schema_Name + Table_Code; Table_Name mặc định = tên bảng.
+            var dot = value.IndexOf('.');
+            var schema = dot > 0 ? value[..dot] : "dbo";
+            var name = dot > 0 ? value[(dot + 1)..] : value;
+            EditSchemaName = schema;
+            EditTableCode = name;
+            if (string.IsNullOrWhiteSpace(EditTableName))
+                EditTableName = name;
+        }
+    }
 
     /// <summary>CollectionView hỗ trợ search/filter trên DataGrid.</summary>
     public ICollectionView TablesView { get; }
@@ -207,11 +237,13 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         IFormDataService? formDataService = null,
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
+        ISchemaInspectorService? schemaInspector = null,
         IAppLogger? logger = null)
     {
         _formDataService = formDataService;
         _appConfig = appConfig;
         _history = history;
+        _schemaInspector = schemaInspector;
         _logger = logger;
 
         TablesView = CollectionViewSource.GetDefaultView(Tables);
@@ -284,6 +316,9 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                 return;
             }
 
+            if (DbObjects.Count == 0)
+                await LoadDbObjectsAsync();
+
             var records = await _formDataService.GetSysTablesAsync(
                 _appConfig.TenantId,
                 includeInactive: true);
@@ -326,6 +361,28 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    /// <summary>Nạp danh sách bảng + VIEW thật từ Target DB (gợi ý chọn nhanh). Lỗi/chưa cấu hình → bỏ qua.</summary>
+    private async Task LoadDbObjectsAsync()
+    {
+        if (_schemaInspector is null || _appConfig is null
+            || !_appConfig.IsTargetConfigured
+            || string.IsNullOrWhiteSpace(_appConfig.TargetConnectionString))
+            return;
+
+        try
+        {
+            var names = await _schemaInspector.GetTableNamesAsync(_appConfig.TargetConnectionString);
+            DbObjects.Clear();
+            foreach (var n in names)
+                DbObjects.Add(n);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.LoadDbObjects");
+            // Không chặn màn — combobox rỗng, user vẫn gõ tay được.
         }
     }
 
@@ -464,6 +521,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         EditIsTenant = true;
         EditIsActive = true;
         EditDescription = "";
+        _selectedDbObject = null;                       // không kích hoạt auto-fill khi reset
+        RaisePropertyChanged(nameof(SelectedDbObject));
     }
 
     private void SetSaveError(string message)
