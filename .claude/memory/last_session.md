@@ -1,6 +1,35 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-15 (session 51 — hotfix connstring template + db/046 + annotate migration files)
+> Cập nhật: 2026-06-15 (session 52 — baseline lưới + rule UI + pivot màn Công ty sang engine-driven + thiết kế F1 config-sync)
+
+## Session 52 (2026-06-15) — đã làm
+
+### UI-GRID-BASELINE + UI-RULE (commit `41ce53a`)
+- **Baseline lưới** ở component dùng chung: `DataView.razor` (DxGrid + DxTreeList) + `MasterDataGrid.razor`:
+  `TextWrapEnabled=true`, `ColumnResizeMode=ColumnsContainer` (**cột giữ độ rộng + cuộn ngang**, không ép vừa màn),
+  `AllowColumnReorder`/`HighlightRowOnHover`/`FocusedRowEnabled`, **cột chọn ghim trái + khai báo đầu tiên**;
+  TreeList thêm `DxTreeListSelectionColumn`. **Fix** `FilterRowCellVisible`→`FilterRowEditorVisible` (property crash DX v25.2.3).
+- **Rule chuẩn** vào skill `icare247-admin-ui`: tách **DxGrid** + **DxTreeList** thành **2 file độc lập**
+  (`references/grid-dxgrid.md`, `grid-dxtreelist.md`), thêm `references/i18n.md` (**i18n bắt buộc — cấm hardcode**)
+  + `blueprint-company.md`; bổ sung ràng buộc i18n + bảng tham chiếu vào `SKILL.md`.
+
+### Màn Công ty: bespoke → GỠ → pivot engine-driven (commit `d658ff8` rồi `0fae3f7`)
+- Đã dựng **bespoke full-stack** `TC_CongTy` (RCL `ICare247.UI.Organization` + `CompaniesController` +
+  `CongTyRepository` + CQRS + tree/form/cascade) — `d658ff8`.
+- User chốt hướng **engine-driven (no-code)** thay bespoke → **gỡ sạch** ở `0fae3f7` (history `d658ff8` giữ làm
+  tham chiếu thiết kế). **ADR-024**.
+
+### Thiết kế (CHỐT, chưa code) — chuỗi quyết định kiến trúc
+- **Hướng A (ADR-024):** màn Công ty = engine: list `Ui_View` TreeList + `Ui_Form` Popup + `Ui_Field` (bắt
+  buộc/validation/lookup/i18n cấu hình); thiết kế ở **ConfigStudio WPF** (ghi thẳng Config DB, **không SQL seed**);
+  đọc qua **SQL View** + RLS phân quyền (**hoãn**). Khảo sát: ConfigStudio đã có `SchemaInspectorService` +
+  `AutoGenerateFields` (đọc schema thật) — gap nhỏ: inspector chỉ liệt kê BASE TABLE, cần thêm VIEW.
+- **1 DB / 1 tenant (ADR-025):** mỗi khách có **Config DB + Data DB riêng** → cần **F1 — đồng bộ config
+  master→tenant** (UPSERT theo MÃ + re-link FK theo mã + cờ `LaHeThong`/`DaTuyBien`). Spec đầy đủ:
+  `docs/spec/16_CONFIG_SYNC_SPEC.md`. Chốt **Cách 2: làm F1 trước → F2 (engine-hóa màn) sau**.
+
+→ **Bước tiếp:** chốt **5 quyết định mở** (§10 spec 16: master ở đâu · mức bảo vệ tùy biến · xử lý dòng đã tùy
+biến · trigger · chính sách xóa) → code F1 (CFGSYNC-1→3). Phân quyền dữ liệu (RLS) thiết kế sau.
 
 ## Session 51 (2026-06-15) — đã làm
 

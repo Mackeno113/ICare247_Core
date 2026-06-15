@@ -2,7 +2,52 @@
 
 ## 🔴 Đang làm (In Progress)
 
-<!-- không có task nào đang chạy -->
+**F1 — Đồng bộ config master→tenant: thiết kế CHỐT, ĐANG DỪNG chờ user quyết định 5 điểm rồi mới code.**
+Spec đầy đủ: `docs/spec/16_CONFIG_SYNC_SPEC.md` (§10). Đã chốt: Cách 2 (F1 trước → F2 sau), engine-driven (ADR-024), 1 DB/tenant (ADR-025).
+
+### ⏳ CẦN USER QUYẾT ĐỊNH (chặn CFGSYNC-1)
+1. **Master ở đâu?** — Config DB "vàng" canonical *(khuyến nghị)* / DB template riêng.
+2. **Mức bảo vệ tùy biến?** — row-level `DaTuyBien` cả dòng *(khuyến nghị)* / field-level ngay.
+3. **Master sửa dòng tenant đã tùy biến?** — giữ bản tenant *(khuyến nghị)* / báo super admin review / ép ghi đè.
+4. **Trigger sync?** — provisioning + nút thủ công super admin *(khuyến nghị)* — có cần scheduled định kỳ?
+5. **Xóa bản hệ thống ở master?** — tenant đặt `Is_Active=0` *(khuyến nghị)* / cho hard-delete.
+
+> Chốt 5 điểm → mở khóa `CFGSYNC-1` (migration cờ) → `CFGSYNC-2/3`.
+
+## 📋 Roadmap — Engine-hóa màn nghiệp vụ + Đồng bộ config (ADR-024/025)
+
+> Màn Công ty (và mọi màn nghiệp vụ chuẩn) = **no-code engine-driven**, KHÔNG bespoke. Thiết kế ở
+> ConfigStudio WPF (không SQL seed). Thứ tự: **F1 (nền đồng bộ config) TRƯỚC → F2 (engine-hóa màn)**.
+> Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`.
+
+### F1 — Đồng bộ config master → tenant (nền tảng, làm trước)
+- [ ] **CFGSYNC-0** — Chốt **5 quyết định mở** (§10 spec 16): master ở đâu · mức bảo vệ tùy biến · xử lý
+      dòng tenant đã tùy biến · trigger · chính sách xóa. ⏳ **chờ user duyệt** trước khi code.
+- [ ] **CFGSYNC-1** — Migration: thêm cờ `LaHeThong`+`DaTuyBien` (+`SyncedAt`) vào `Sys_Table`/`Ui_*`/`Ui_View*`/
+      rule/`Sys_Resource`/`Sys_Lookup` + bảng log sync.
+- [ ] **CFGSYNC-2** — `IConfigSyncService` (Application) + impl (Infrastructure): UPSERT theo MÃ + re-link FK theo
+      mã, đúng thứ tự phụ thuộc (§2 spec), một chiều master→tenant, transaction/tenant, dry-run preview.
+- [ ] **CFGSYNC-3** — Trigger: provisioning full-sync + action super admin "Cập nhật cấu hình từ master"
+      (`[RequirePermission]`/SUPERADMIN) + invalidate `ConfigCache`.
+
+### F2 — Engine-hóa màn Công ty (sau F1)
+- [ ] **ORG-CFG-1** — ConfigStudio: cho `SchemaInspectorService` liệt kê cả **VIEW** (đang chỉ BASE TABLE) → design
+      trên `vw_TC_CongTy`.
+- [ ] **ORG-CFG-2** — (DB, schema không phải config-seed) tạo view `vw_TC_CongTy` (JOIN Cấp/Tỉnh/Ngân hàng).
+- [ ] **ORG-CFG-3** — (DEV ở WPF, không SQL) đăng ký `TC_CongTy`/`vw_TC_CongTy` → `Ui_Form` Popup + `Ui_Field`
+      (bắt buộc/lookup/i18n) + `Ui_View` TreeList. Tham chiếu blueprint Công ty.
+- [ ] **ORG-CFG-4** — Bổ sung **popup edit** trên view cây (`DataView`/`ViewPage` đang điều hướng routed).
+- [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
+
+## ✅ Done (session 2026-06-15b — baseline lưới + rule + pivot engine-driven)
+
+- [x] **UI-GRID-BASELINE** — `DataView`/`MasterDataGrid`: `TextWrapEnabled=true`, `ColumnResizeMode=ColumnsContainer`
+      (cuộn ngang, không ép vừa màn), reorder/hover/focus, **cột chọn ghim trái + đầu tiên**; TreeList +
+      `DxTreeListSelectionColumn`. Fix `FilterRowCellVisible`→`FilterRowEditorVisible` (crash DX 25.2.3). (commit `41ce53a`)
+- [x] **UI-RULE** — Skill `icare247-admin-ui`: tách rule **DxGrid** + **DxTreeList** thành 2 file độc lập
+      (`references/`), thêm `references/i18n.md` (**cấm hardcode chuỗi**) + blueprint màn Công ty; ràng buộc i18n vào SKILL.md. (commit `41ce53a`)
+- [x] **ORG-BESPOKE-REVERT** — Dựng màn Công ty bespoke full-stack (`d658ff8`) rồi **GỠ** (`0fae3f7`) sau khi chốt
+      hướng engine-driven (ADR-024). History `d658ff8` giữ làm tham chiếu thiết kế.
 
 ## 📋 Roadmap — Menu động + Phân quyền (phase-auth) — ADR-023
 

@@ -294,3 +294,30 @@
 - **Spec:** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md`.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-007 (ConfigStudio Direct DB), ADR-022 (tiền tố `HT_`/`Sys_`), ADR-014 (ConfigCache).
 - **Status:** 📋 thiết kế CHỐT — chưa code. Việc theo `TASKS.md` phase-auth.
+
+## ADR-024: Màn nghiệp vụ chuẩn = engine-driven (no-code), KHÔNG bespoke — màn Công ty pivot (2026-06-15)
+- **Context:** Đã dựng màn Công ty **bespoke full-stack** (commit `d658ff8`: RCL `ICare247.UI.Organization` +
+  `CompaniesController` + `CongTyRepository` + CQRS). User yêu cầu **linh động cấu hình per-tenant** (super admin
+  copy giao diện → config, sửa riêng, fallback mặc định) — đúng triết lý nền tảng no-code đã có (`Sys_Table`/`Ui_*`).
+- **Decision:** Màn nghiệp vụ chuẩn (vd Công ty) **không bespoke** mà **engine-driven**:
+  - List/cây = `Ui_View` TreeList → `DataView`; form Thêm/Sửa = `Ui_Form` (Display_Mode=**Popup**) → `FormRunner`;
+    CRUD = `SaveMasterDataCommand` generic (tự bơm audit). Bắt buộc/validation/lookup/i18n = **cấu hình** `Ui_Field`.
+  - **Thiết kế ở ConfigStudio WPF** (ghi thẳng Config DB, **KHÔNG SQL seed**); dùng bản bespoke cũ làm **tham chiếu**
+    field/kiểu/nhãn/source. Web config editor cho super admin → **hoãn** (tiết kiệm dev).
+  - **Đọc dữ liệu qua SQL View** (vd `vw_TC_CongTy`) thay vì bảng thô; **lọc theo phân quyền** = RLS
+    (`SESSION_CONTEXT`, phương án P1) — **thiết kế sau** (phân quyền dữ liệu hoãn).
+- **Action:** **GỠ bespoke** (`d658ff8`) → commit `0fae3f7` (giữ history làm tham chiếu). Giữ baseline lưới + rule
+  (`41ce53a`) + blueprint Công ty.
+- **Liên quan:** ADR-025 (config sync), spec `docs/spec/16_CONFIG_SYNC_SPEC.md`, blueprint
+  `.claude/skills/icare247-admin-ui/references/blueprint-company.md`.
+
+## ADR-025: 1 DB / 1 tenant (Config DB + Data DB per-tenant) → cần đồng bộ config master→tenant (2026-06-15)
+- **Context:** User chốt **mỗi tenant một bộ DB riêng**, gồm **cả Config DB** (không chỉ Data DB). Config
+  (`Sys_Table`+`Ui_*`) thiết kế 1 lần qua WPF nhưng phải tới được Config DB từng tenant.
+- **Decision:** Cần **nền tảng F1 — đồng bộ config master → tenant** (làm TRƯỚC engine-hóa màn = "Cách 2"):
+  - Master = Config DB "vàng" canonical (cùng schema tenant). Sync **UPSERT theo MÃ** (`*_Code`) + **re-link FK
+    theo mã** (không bê `*_Id` identity) — tái dùng pattern menu `Sys_MenuCatalog→HT_ChucNang` (ADR-023).
+  - Cờ **`LaHeThong`** (hệ thống/tenant) + **`DaTuyBien`** → tenant chỉnh không mất khi re-sync. Xóa = `Is_Active=0`.
+  - Incremental theo version; tích hợp invalidate `ConfigCache`.
+- **Status:** 📋 thiết kế CHỐT (spec `16_CONFIG_SYNC_SPEC.md`) — chưa code; chờ duyệt 5 quyết định mở (§10 spec).
+- **Liên quan:** ADR-018 (DB-per-tenant), ADR-023 (master→tenant menu), ADR-024 (engine-driven), ADR-014 (ConfigCache).

@@ -1,8 +1,24 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-14
+> Cập nhật lần cuối: 2026-06-15
 
-## Đợt mới nhất — phase-auth: Menu động + Phân quyền full-stack (session 49, 2026-06-14)
+## Đợt mới nhất — Baseline lưới + Rule UI + pivot màn Công ty sang engine-driven (session 52, 2026-06-15)
+
+**Baseline lưới (commit `41ce53a`):** `DataView`/`MasterDataGrid` chuẩn hóa hành vi 1 chỗ — wrap, **cuộn ngang
+(`ColumnResizeMode=ColumnsContainer`, không ép vừa màn)**, reorder/hover/focus, cột chọn ghim-trái-đầu, TreeList
+selection column; fix `FilterRowCellVisible`→`FilterRowEditorVisible`. **Rule chuẩn** vào skill `icare247-admin-ui`:
+tách DxGrid/DxTreeList 2 file + `i18n.md` (**cấm hardcode**) + blueprint Công ty.
+
+**Pivot kiến trúc màn nghiệp vụ (ADR-024/025):** đã dựng màn Công ty **bespoke** (`d658ff8`) rồi **GỠ** (`0fae3f7`)
+→ chuyển sang **engine-driven no-code**: list `Ui_View` TreeList + `Ui_Form` Popup + `Ui_Field` cấu hình; thiết kế
+ở **ConfigStudio WPF** (không SQL seed); đọc qua **SQL View** + RLS (hoãn). Mô hình **1 DB/1 tenant** (Config +
+Data per-tenant) → cần **nền F1 — đồng bộ config master→tenant** (spec `docs/spec/16_CONFIG_SYNC_SPEC.md`):
+UPSERT theo MÃ + re-link FK theo mã + cờ `LaHeThong`/`DaTuyBien`. Chốt **Cách 2: F1 trước → F2 sau**.
+
+→ **Bước tiếp:** chốt 5 quyết định mở F1 (§10 spec 16) → code `CFGSYNC-1→3`; rồi engine-hóa màn Công ty
+(`ORG-CFG-1→4`). Phân quyền dữ liệu (RLS) thiết kế sau.
+
+## Đợt trước — phase-auth: Menu động + Phân quyền full-stack (session 49, 2026-06-14)
 
 Triển khai trọn **menu động theo quyền + phân quyền** (ADR-023, spec `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md`).
 Mở đầu bằng **redesign sidebar** (icon Lucide đơn sắc + 3 nhóm + component `<Icon>` dùng chung).
