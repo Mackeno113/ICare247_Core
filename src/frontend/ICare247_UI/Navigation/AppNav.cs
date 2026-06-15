@@ -112,6 +112,18 @@ public static class AppNav
             new("hr",        "Báo cáo nhân sự"),
             new("payroll",   "Báo cáo công lương"),
         }),
+        // Danh mục nền tảng (engine-driven Grid). Route → /view/Grid_* (Ui_View tự cấu hình trong ConfigStudio).
+        // Thứ tự cấu hình theo phụ thuộc: Quốc gia → Tỉnh/TP → Phường/Xã (cascade lookup).
+        new("catalog", "Danh mục", "system", "list", new List<NavScreen>
+        {
+            new("quoc-gia",      "Quốc gia",        Route: "/view/Grid_DM_QuocGia"),
+            new("tinh-thanh",    "Tỉnh / Thành phố", Route: "/view/Grid_DM_TinhThanhPho"),
+            new("phuong-xa",     "Phường / Xã",     Route: "/view/Grid_DM_PhuongXa"),
+            new("don-vi-tinh",   "Đơn vị tính",     Route: "/view/Grid_DM_DonViTinh"),
+            new("ngan-hang",     "Ngân hàng",       Route: "/view/Grid_DM_NganHang"),
+            new("cap-cong-ty",   "Cấp công ty",     Route: "/view/Grid_TC_CapCongTy"),
+            new("cap-phong-ban", "Cấp phòng ban",   Route: "/view/Grid_TC_CapPhongBan"),
+        }),
         new("administration", "Quản trị hệ thống", "system", "sliders", new List<NavScreen>
         {
             new("users",       "Người dùng"),

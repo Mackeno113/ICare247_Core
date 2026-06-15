@@ -19,6 +19,25 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-15] CAT-CFG-1 (danh mục nền tảng — code + routing) — claude
+
+- Status: code done (build FE **0/0**); ⏳ chạy `db/052` + **CAT-CFG-2 cấu hình tay** + sync.
+- Files:
+  - DB: `db/052_create_vw_danhmuc.sql` — `vw_DM_TinhThanhPho` (+TenQuocGia), `vw_DM_PhuongXa` (+TenTinhThanhPho).
+  - FE: `Navigation/AppNav.cs` — module `catalog` ("Danh mục", nhóm system) + 7 NavScreen Route `/view/Grid_*`.
+- 7 danh mục (db/037): DM_QuocGia, DM_TinhThanhPho(FK), DM_PhuongXa(FK), DM_DonViTinh, DM_NganHang,
+  TC_CapCongTy, TC_CapPhongBan. Chỉ 2 bảng FK cần view; 5 phẳng đăng ký base table.
+- ⏳ **CAT-CFG-2 — bạn cấu hình tay trong ConfigStudio** (thứ tự phụ thuộc: Quốc gia → Tỉnh → Phường/Xã):
+  1. Chạy `db/052` (Data DB).
+  2. Mỗi danh mục: Sys_Table (đăng ký base table; với Tỉnh/Phường dùng VIEW để lưới hiện tên cha) → tự sinh cột.
+  3. Ui_Form Popup trên base table (DM_*/TC_Cap*); Tỉnh: lookup QuocGia_Id→DM_QuocGia; Phường/Xã: lookup
+     TinhThanhPho_Id→DM_TinhThanhPho (cascade từ Tỉnh); i18n nhãn; bỏ audit/Id.
+  4. Ui_View Grid **View_Code=`Grid_{Bang}`** (khớp Route AppNav: Grid_DM_QuocGia, Grid_DM_TinhThanhPho,
+     Grid_DM_PhuongXa, Grid_DM_DonViTinh, Grid_DM_NganHang, Grid_TC_CapCongTy, Grid_TC_CapPhongBan); nguồn =
+     base table (phẳng) hoặc view (Tỉnh/Phường); cột hiển thị Ma/Ten/… + tên cha; Edit_Form = form bước 3.
+  5. Chạy config-sync → mở Danh mục › từng màn.
+- → Sau khi 7 danh mục chạy = đủ lookup cho màn Công ty (ORG-CFG-3) và các màn nghiệp vụ tham chiếu khác.
+
 ### [2026-06-15] ORG-CFG-1/2/4 (engine-hóa màn Công ty — phần CODE) — claude
 
 - Status: code done (build WPF + FE **0/0**); ⏳ chạy `db/051` + **ORG-CFG-3 cấu hình tay** + sync.

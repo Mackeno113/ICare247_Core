@@ -65,6 +65,14 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **ORG-CFG-4** — Routing placeholder→engine: `NavScreen.Route` (tuỳ chọn) + màn Công ty `Route="/view/Tree_TC_CongTy"`;
       NavMenu fallback dùng Route; `ScreenView` redirect khi màn có Route. Server-driven path dùng `HT_ChucNang.DuongDan` (data).
       Build FE 0/0.
+### Danh mục nền tảng (cấu hình TRƯỚC màn tham chiếu — nguồn lookup)
+> 7 danh mục db/037, module "Danh mục" (nhóm Hệ thống). Thứ tự config theo phụ thuộc:
+> Quốc gia → Tỉnh/TP → Phường/Xã (cascade); ĐVT/Ngân hàng/Cấp công ty/Cấp phòng ban độc lập.
+- [x] **CAT-CFG-1 (code)** — `db/052_create_vw_danhmuc.sql`: `vw_DM_TinhThanhPho` (+TenQuocGia) + `vw_DM_PhuongXa`
+      (+TenTinhThanhPho). 5 danh mục phẳng dùng base table. ⏳ **CẦN CHẠY** trên Data DB. + AppNav module `catalog`
+      (7 NavScreen Route `/view/Grid_*`). Build FE 0/0.
+- [ ] **CAT-CFG-2 (cấu hình tay)** — ConfigStudio: mỗi danh mục → Sys_Table (base/vw) + `Ui_Form` Popup + `Ui_View`
+      Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
 ## ✅ Done (session 2026-06-15b — baseline lưới + rule + pivot engine-driven)
