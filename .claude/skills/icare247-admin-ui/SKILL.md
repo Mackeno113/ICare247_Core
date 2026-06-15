@@ -16,6 +16,15 @@ description: >-
 > Khuôn mẫu tham chiếu: **Linear, Vercel, Supabase, Sentry** (data dày, phẳng,
 > precise) — KHÔNG phải Apple/landing-page.
 
+## 📎 File rule chi tiết (đọc khi đụng đúng chủ đề)
+
+| File | Khi nào đọc |
+|---|---|
+| `references/i18n.md` | Mọi màn — chuỗi hiển thị (bắt buộc) |
+| `references/grid-dxgrid.md` | Lưới **phẳng** (1 bảng) — DxGrid |
+| `references/grid-dxtreelist.md` | Lưới **cây** (cha-con) — DxTreeList |
+| `references/blueprint-company.md` | Mẫu master-detail tổ chức (màn Công ty) |
+
 ## ⛔ Ràng buộc bất biến (không được vi phạm)
 
 - **Theme = Fluent Light, token đã KHÓA.** Đổi màu = thay file accent, **KHÔNG**
@@ -28,6 +37,8 @@ description: >-
 - **Bảng chiếm 70–80% diện tích** ở màn danh sách. Toolbar mỏng, không hero/banner.
 - **KHÔNG tạo dashboard nếu nghiệp vụ không cần** — vào thẳng bảng/việc.
 - **Mỗi module 1 layout riêng** — không dùng chung template generic.
+- **i18n bắt buộc — KHÔNG hardcode chuỗi hiển thị.** Mọi nhãn/nút/thông báo/placeholder/cột qua
+  `Loc.L(key, "fallback vi")` (hand-coded) hoặc `Sys_Resource` (field cấu hình WPF). Chi tiết → `references/i18n.md`.
 
 ## Checklist nhanh (chạy qua trước khi xuất UI)
 
@@ -104,8 +115,11 @@ Giữ **Segoe UI**. Không nạp font "premium". `tabular-nums` cho cột số.
 5. Canh phải số/tiền, canh trái text, ngày theo locale. Cột thao tác cố định phải.
 6. Row-height ~36–40px (mật độ vừa). Không row 56px kiểu material.
 7. Trạng thái = **badge text-màu**, ≤ 2–3 màu. Không chấm tròn to.
-8. **DevExpress `DxGrid`:** virtual scroll, `ShowFilterRow`, ẩn GridLines dọc.
-   Filter nâng cao theo quy ước Ui_View + Ui_View_Filter.
+8. **DevExpress lưới — baseline đã KHÓA, set 1 chỗ (không lặp từng màn):** wrap text,
+   reorder cột, `ColumnResizeMode=ColumnsContainer` (kéo giãn + **cuộn ngang**, không ép vừa màn),
+   hover, focus, **cột chọn ghim trái + đầu tiên**. Cột/ghim/filter/sort/paging = cấu hình per-`Ui_View`.
+   - Lưới **phẳng** (`DxGrid`) → **`references/grid-dxgrid.md`** (mẫu `Grid_TrinhDoVanHoa`).
+   - Lưới **cây** (`DxTreeList`) → **`references/grid-dxtreelist.md`** (dữ liệu cha-con: công ty/phòng ban/menu).
 
 ## 7. Button rules
 

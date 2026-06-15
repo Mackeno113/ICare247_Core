@@ -14,8 +14,19 @@
                 KeyFieldName="@View.KeyField"
                 ParentKeyFieldName="@View.ParentField"
                 ShowFilterRow="View.ShowFilterRow"
-                CssClass="dv-treelist">
+                CssClass="dv-treelist"
+                TextWrapEnabled="true"
+                AllowColumnReorder="true"
+                ColumnResizeMode="TreeListColumnResizeMode.ColumnsContainer"
+                HighlightRowOnHover="true"
+                FocusedRowEnabled="true">
         <Columns>
+            @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
+            {
+                @* Cột chọn ghim trái + khai báo đầu tiên → luôn ngoài cùng bên trái (baseline lưới). *@
+                <DxTreeListSelectionColumn Width="44px" FixedPosition="TreeListColumnFixedPosition.Left" />
+            }
+
             @foreach (var col in DataColumns)
             {
                 var c = col;
@@ -60,9 +71,9 @@ else
             SelectedDataItemsChanged="SelectedDataItemsChanged"
             RowDoubleClick="OnRowDoubleClick"
             CssClass="dv-dxgrid"
-            TextWrapEnabled="false"
+            TextWrapEnabled="true"
             AllowColumnReorder="true"
-            ColumnResizeMode="GridColumnResizeMode.NextColumn"
+            ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
             HighlightRowOnHover="true"
             FocusedRowEnabled="true">
         <Columns>
