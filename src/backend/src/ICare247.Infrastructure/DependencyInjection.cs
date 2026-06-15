@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.AddScoped<IMasterDataRepository, MasterDataRepository>();
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
         services.AddScoped<IViewRepository, ViewRepository>();
+        services.AddScoped<ICongTyRepository, CongTyRepository>();
 
         // ── Auth (đăng nhập / JWT) ────────────────────────────────────────────
         // Repo đọc HT_NguoiDung/HT_RefreshToken từ Data DB tenant (scoped — tenant-aware).

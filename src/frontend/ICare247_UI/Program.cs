@@ -8,6 +8,7 @@ using ICare247_UI;
 using ICare247_UI.Models;
 using ICare247_UI.Services;
 using ICare247.UI.Shared;
+using ICare247.UI.Organization;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -45,6 +46,9 @@ builder.Services.AddDevExpressBlazor();
 
 // ── Dịch vụ Shared (cross-cutting: AppState, Auth) ─────────────────────────
 builder.Services.AddIcare247UiShared();
+
+// ── Module Tổ chức (RCL ICare247.UI.Organization) ──────────────────────────
+builder.Services.AddIcare247UiOrganization();
 
 // ── Application services ───────────────────────────────────────────────────
 builder.Services.AddScoped<FormApiService>();

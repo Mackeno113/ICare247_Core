@@ -1,0 +1,41 @@
+/* Màn Công ty — master-detail. Surface phẳng, không card-shadow; spacing theo thang 4px. */
+
+.org-page { display: flex; flex-direction: column; height: 100%; padding: 16px 20px; gap: 12px; }
+
+/* Toolbar mỏng — 1 CTA */
+.org-toolbar { display: flex; align-items: center; justify-content: space-between; }
+.org-title { margin: 0; font-size: 20px; font-weight: 600; }
+
+/* Body split: cây trái + chi tiết phải */
+.org-body { display: flex; gap: 20px; flex: 1; min-height: 0; }
+.org-tree-pane { flex: 0 0 360px; min-width: 280px; display: flex; min-height: 0; }
+.org-detail-pane { flex: 1; min-width: 0; overflow: auto; }
+.org-tree { width: 100%; }
+
+@media (max-width: 1024px) {
+    .org-body { flex-direction: column; }
+    .org-tree-pane { flex: 0 0 auto; height: 280px; }
+}
+
+/* Badge trạng thái — text-màu, không chấm tròn */
+.org-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+.org-badge.is-on  { color: #15803d; background: #dcfce7; }
+.org-badge.is-off { color: #b91c1c; background: #fee2e2; }
+
+/* Form */
+.org-detail-title { margin: 0 0 12px; font-size: 16px; font-weight: 600; }
+.org-form { max-width: 980px; }
+.org-empty { color: var(--color-text-secondary, #64748b); padding: 32px 4px; font-size: 14px; }
+.org-soon { color: var(--color-text-secondary, #64748b); font-size: 13px; font-style: italic; }
+
+/* Footer — 1 primary + secondary + danh (ghost) */
+.org-footer { display: flex; align-items: center; gap: 8px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--input-border, #e2e8f0); }
+.org-footer-spacer { flex: 1; }
+.org-footer .btn-secondary { background: transparent; border: 1px solid var(--input-border, #cbd5e1); color: inherit; padding: 6px 14px; border-radius: 4px; }
+.org-footer .btn-danger-ghost { background: transparent; border: 1px solid #ef4444; color: #b91c1c; padding: 6px 14px; border-radius: 4px; }
+
+/* Thông báo + lỗi */
+.org-notice { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 4px; background: var(--color-accent-soft, #eff6ff); border: 1px solid var(--color-accent, #bfdbfe); font-size: 13px; }
+.org-notice-x { margin-left: auto; border: 0; background: transparent; cursor: pointer; font-size: 16px; line-height: 1; }
+.org-errors { margin-bottom: 12px; padding: 8px 12px 8px 28px; border-radius: 4px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 13px; }
+.org-errors ul { margin: 0; padding-left: 16px; }

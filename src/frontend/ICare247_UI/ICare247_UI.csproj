@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ICare247.UI.Shared\ICare247.UI.Shared.csproj" />
+    <ProjectReference Include="..\ICare247.UI.Organization\ICare247.UI.Organization.csproj" />
   </ItemGroup>
 
   <!-- #3 i18n: tự chạy I18nScanner trước build (chỉ Debug) để catalog.json + {lang}.json luôn mới.
