@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 042_alter_ht_chucnang_authz.sql
+-- Database: ICare247_Solution  (Data DB per-tenant)
 -- Purpose : Bổ sung cột cho HT_ChucNang phục vụ menu động + phân quyền (phase-auth).
 --           Thêm: Menu_Id (thuộc bộ menu), LaHeThong (base/custom), KichHoat (tenant
 --           bật/tắt), ViTriHienThi (Sidebar/TrongMan/Ca2).

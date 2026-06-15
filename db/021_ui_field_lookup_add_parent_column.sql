@@ -1,4 +1,5 @@
 -- Migration 021: Thêm Parent_Column vào Ui_Field_Lookup cho TreeLookupBox
+-- Database  : ICare247_Config
 -- Parent_Column: tên cột chứa Parent Id trong bảng nguồn (VD: Parent_Id).
 -- NULL = không phải tree (LookupBox thông thường).
 -- TreeLookupBox: EditorType = 'TreeLookupBox', Parent_Column NOT NULL.

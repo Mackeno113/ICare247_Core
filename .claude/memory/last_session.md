@@ -1,6 +1,35 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-14 (session 50 — i18n web UI hand-coded: hợp nhất về LocalizationService.L())
+> Cập nhật: 2026-06-15 (session 51 — hotfix connstring template + db/046 + annotate migration files)
+
+## Session 51 (2026-06-15) — đã làm
+
+### CFG-CONN-FIX — Chuẩn hóa LocalConfigLoader template
+
+- Template cũ có key `"Data"` nhưng `ConnectionChecker` kiểm tra `"LiveData"`, `"Demo"`, `"Audit"` → 3 DB báo "chưa cấu hình" dù đã điền.
+- Cập nhật template trong `LocalConfigLoader.cs`: đổi `"Data"` → `"LiveData"`, bổ sung `"Demo"` + `"Audit"`, **bỏ toàn bộ placeholder** (Server=localhost, CHANGE_ME...) — tất cả để `""`.
+- Áp dụng chung: `Jwt.Issuer/Audience/SecretKey` cũng để trống (không điền giả).
+- **Lưu ý:** file `appsettings.local.json` trên máy đã tồn tại → template mới KHÔNG tự ghi đè. User cần update tay hoặc xóa file để tạo lại.
+
+### HOTFIX — 500 `/api/v1/me/navigation`
+
+- Nguyên nhân: `NavigationRepository` SELECT `c.DoiTuong`, `c.LoaiDoiTuong` nhưng bảng `HT_ChucNang` trong `ICare247_Solution` chưa có 2 cột này (db/046 chưa chạy).
+- Đã áp thủ công qua sqlcmd: `ALTER TABLE dbo.HT_ChucNang ADD DoiTuong NVARCHAR(100) NULL, LoaiDoiTuong NVARCHAR(50) NULL` — **verify OK**.
+- Ghi chú: db/046 đã áp bằng lệnh trực tiếp; file script vẫn giữ để documentation.
+
+### DB-ANNOTATE — Thêm `-- Database:` header toàn bộ migration files
+
+- 15 file `db/*.sql` thiếu chỉ định DB target → đã thêm dòng `-- Database: <tên DB>` vào header.
+- Bảng mapping đầy đủ:
+  - **ICare247_Config**: 000–035, 039 (pending), 043, 044, 047
+  - **ICare247_Solution** (Data/LiveData per-tenant): 037, 038, 042, 045, 046, 048, 049
+  - **ICare247_Solution_Audit**: 040
+  - **ICare247_Master** (Catalog): 036, 041
+  - **Legacy/tham khảo**: 015 (Cf_* cà phê — Data DB cũ)
+
+→ **Bước tiếp:** chạy `db/047` (Config DB) + `db/048`, `db/049` (Data DB) → restart API → test navigation đầy đủ.
+
+---
 
 ## Session 50 (2026-06-14) — đã làm
 

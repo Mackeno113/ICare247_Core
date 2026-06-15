@@ -42,31 +42,34 @@ public static class LocalConfigLoader
           "_readme": "File này chứa cấu hình thật cho ICare247 API. KHÔNG commit vào git.",
 
           "ConnectionStrings": {
+            "_readme_Config":   "Config DB  : ICare247_Config — metadata form engine (Ui_Form, Sys_*, Val_*, Evt_*,...)",
+            "Config":    "",
 
-            "_readme_Config": "Config DB: ICare247_Config — chứa metadata form engine (Ui_Form, Sys_*, Val_*, Evt_*,...)",
-            "Config": "Server=localhost;Database=ICare247_Config;Trusted_Connection=True;TrustServerCertificate=True;",
+            "_readme_LiveData": "LiveData DB: DB nghiệp vụ thực tế (bệnh nhân, hồ sơ,...)",
+            "LiveData":  "",
 
-            "_readme_Data": "Data DB: DB nghiệp vụ thực tế (bệnh nhân, hồ sơ,...). Để trống = dùng chung Config DB (dev).",
-            "Data": "",
+            "_readme_Demo":     "Demo DB    : dữ liệu thử, không ảnh hưởng nghiệp vụ thật",
+            "Demo":      "",
 
-            "_readme_Redis": "Redis cache (tuỳ chọn). Để trống = dùng MemoryCache local.",
-            "Redis": "",
+            "_readme_Audit":    "Audit DB   : nhật ký NK_ — ghi log thao tác người dùng",
+            "Audit":     "",
 
-            "_example_SqlExpress": "Server=localhost\\SQLEXPRESS;Database=ICare247_Config;Trusted_Connection=True;TrustServerCertificate=True;"
+            "_readme_Redis":    "Redis cache (tuỳ chọn). Để trống = dùng MemoryCache local.",
+            "Redis":     ""
           },
 
           "Jwt": {
-            "Issuer": "https://icare247.vn",
-            "Audience": "icare247-api",
-            "SecretKey": "CHANGE_ME_32CHARS_MINIMUM_SECRET_KEY",
+            "Issuer":            "",
+            "Audience":          "",
+            "SecretKey":         "",
             "ExpirationMinutes": 480
           },
 
           "DebugLog": {
             "_readme": "Bật/tắt DebugLogger — log debug trước Serilog. Xem .claude-rules/debug-logger.md",
-            "Enabled": true,
+            "Enabled":     true,
             "WriteToFile": false,
-            "FilePath": ""
+            "FilePath":    ""
           },
 
           "Serilog": {

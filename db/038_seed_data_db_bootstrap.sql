@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 038_seed_data_db_bootstrap.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy sau 037)
 -- Purpose : Seed bootstrap cho Data DB nền tảng — tài khoản super-admin để phát
 --           triển (chưa cần phân quyền) + vài danh mục cấp cơ bản.
 -- Spec    : docs/spec/11_DATA_DB_SCHEMA.md §6.7 (bootstrap chicken-egg).

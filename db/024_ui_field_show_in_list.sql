@@ -1,4 +1,5 @@
 -- Migration 024: Thêm Show_In_List vào Ui_Field
+-- Database  : ICare247_Config
 -- Tách "field hiện ở form nhập liệu" (Is_Visible) khỏi "field hiện ở lưới List danh mục".
 --   Show_In_List = 1 : cột này hiển thị trong MasterDataGrid (lưới danh sách bản ghi).
 --   Show_In_List = 0 : chỉ dùng ở form nhập, không lên lưới (mặc định).

@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 045_seed_ht_chucnang_base.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy sau 042)
 -- Purpose : Seed cây HT_ChucNang BASE cho 1 tenant (bootstrap dev) từ cây AppNav +
 --           grant toàn quyền cho vai trò SUPERADMIN (để admin thấy đủ như hiện tại).
 --           Mọi node LaHeThong=1 (base), KichHoat=1, ViTriHienThi='Sidebar'.

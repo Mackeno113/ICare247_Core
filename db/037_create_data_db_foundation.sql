@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 037_create_data_db_foundation.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy riêng cho mỗi tenant)
 -- Purpose : Tạo nhóm bảng NỀN TẢNG cho Data DB per-tenant (ICare247_Data của 1 tenant):
 --           DM_ (danh mục dùng chung), TC_ (tổ chức), HT_ (người dùng + phân quyền).
 -- Spec    : docs/spec/11_DATA_DB_SCHEMA.md  · ADR-018/019/022.

@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 048_link_menu_roles_to_form.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy sau 045/046 + 047)
 -- Purpose : Nối node menu "Vai trò" (administration.roles) tới form danh mục thật HT_VaiTro:
 --           đổi DuongDan → /master/HT_VaiTro, gắn DoiTuong/LoaiDoiTuong để enforce + ẩn nút áp.
 -- Spec    : docs/spec/15_AUTHZ_NAVIGATION_SPEC.md (AUTHZ-UI-2) · ADR-023.

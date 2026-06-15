@@ -1,4 +1,5 @@
 -- Migration 022: Thêm Allow_Add_New + Add_Form_Code vào Ui_Field_Lookup
+-- Database  : ICare247_Config
 -- Cho phép LookupBox mở dialog "thêm mới" entity ngay trên control.
 --   Allow_Add_New: bật/tắt nút "➕ Thêm mới" trong dropdown (mặc định tắt).
 --   Add_Form_Code: Form_Code của Ui_Form dùng để render dialog nhập liệu entity nguồn.

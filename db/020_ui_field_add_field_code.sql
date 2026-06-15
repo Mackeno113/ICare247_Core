@@ -1,4 +1,5 @@
 -- Migration : 020_ui_field_add_field_code.sql
+-- Database  : ICare247_Config
 -- Purpose   : Thêm cột Field_Code vào Ui_Field để virtual field có FieldCode riêng.
 --             Field thường: FieldCode = COALESCE(Field_Code, Sys_Column.Column_Code)
 --             Field ảo    : FieldCode = Field_Code (bắt buộc phải có)

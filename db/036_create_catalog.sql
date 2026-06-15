@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 036_create_catalog.sql
+-- Database: ICare247_Master  (Catalog DB — chạy 1 lần, dùng chung mọi tenant)
 -- Purpose : Tạo bảng Tenant trong CATALOG DB master (vd ICare247_Master) — danh bạ
 --           ánh xạ tenant → cặp connection string (Config DB + Data DB), nhận diện
 --           qua Subdomain. Connection string LƯU DẠNG MÃ HÓA (giải mã bằng key ở

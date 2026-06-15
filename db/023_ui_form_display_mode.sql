@@ -1,4 +1,5 @@
 -- Migration 023: Thêm Display_Mode vào Ui_Form
+-- Database  : ICare247_Config
 -- Quyết định cách render form Thêm/Sửa của một danh mục (Master Data):
 --   'Popup' : mở dialog modal nổi (mặc định — không vỡ form cũ).
 --   'Tab'   : mở routed page nội bộ SPA (List -> Detail -> Back).

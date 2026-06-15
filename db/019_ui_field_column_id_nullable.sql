@@ -1,4 +1,5 @@
 -- Migration : 019_ui_field_column_id_nullable.sql
+-- Database  : ICare247_Config
 -- Purpose   : Cho phép Column_Id = NULL trong Ui_Field.
 --             Virtual field (Is_Virtual = 1) không map tới cột DB thực,
 --             nên Column_Id hợp lệ là NULL.

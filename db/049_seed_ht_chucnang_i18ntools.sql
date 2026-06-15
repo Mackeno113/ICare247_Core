@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 049_seed_ht_chucnang_i18ntools.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy sau 045)
 -- Purpose : Thêm node menu "Tra cứu i18n" (/dev/i18n) vào HT_ChucNang để màn này
 --           xuất hiện ở menu server-driven (cụm Dev, cạnh "Công cụ (Dev)"), thay vì
 --           chỉ có ở fallback AppNav tĩnh. Grant toàn quyền cho SUPERADMIN.

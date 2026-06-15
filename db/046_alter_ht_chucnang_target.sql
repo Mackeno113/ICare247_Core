@@ -1,5 +1,6 @@
 -- =============================================================================
 -- File    : 046_alter_ht_chucnang_target.sql
+-- Database: ICare247_Solution  (Data DB per-tenant — chạy sau 042)
 -- Purpose : Liên kết node chức năng với "đối tượng" engine (Ui_Form / Ui_View) để enforce
 --           quyền ở endpoint generic (master-data/{formCode}, views/{code}, forms/{formCode}).
 --           DoiTuong = mã form/view; LoaiDoiTuong = 'Form'/'View'.
