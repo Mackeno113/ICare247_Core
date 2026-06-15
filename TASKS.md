@@ -2,17 +2,28 @@
 
 ## 🔴 Đang làm (In Progress)
 
-**F1 — Đồng bộ config master→tenant: thiết kế CHỐT, ĐANG DỪNG chờ user quyết định 5 điểm rồi mới code.**
-Spec đầy đủ: `docs/spec/16_CONFIG_SYNC_SPEC.md` (§10). Đã chốt: Cách 2 (F1 trước → F2 sau), engine-driven (ADR-024), 1 DB/tenant (ADR-025).
+**F1 — Đồng bộ config master→tenant: CFGSYNC-0→3 ĐÃ CODE XONG (session 53, build BE 0/0). ⏳ CÒN: chạy `db/050` + E2E.**
+Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Đã chốt: Cách 2 (F1 trước → F2 sau), engine-driven (ADR-024), 1 DB/tenant (ADR-025).
+5 quyết định mở DUYỆT 2026-06-15 (toàn bộ khuyến nghị): master=Config DB canonical · bảo vệ **row-level** (`Is_Customized`) ·
+giữ bản tenant khi xung đột · trigger provisioning+nút thủ công super admin · xóa=`Is_Active=0` tombstone.
 
-### ⏳ CẦN USER QUYẾT ĐỊNH (chặn CFGSYNC-1)
-1. **Master ở đâu?** — Config DB "vàng" canonical *(khuyến nghị)* / DB template riêng.
-2. **Mức bảo vệ tùy biến?** — row-level `DaTuyBien` cả dòng *(khuyến nghị)* / field-level ngay.
-3. **Master sửa dòng tenant đã tùy biến?** — giữ bản tenant *(khuyến nghị)* / báo super admin review / ép ghi đè.
-4. **Trigger sync?** — provisioning + nút thủ công super admin *(khuyến nghị)* — có cần scheduled định kỳ?
-5. **Xóa bản hệ thống ở master?** — tenant đặt `Is_Active=0` *(khuyến nghị)* / cho hard-delete.
+### ⏳ VIỆC CÒN LẠI CỦA F1 (theo thứ tự)
+1. **Chạy `db/050`** trên Config DB (4 cờ + bảng log) → **E2E**: login `admin` → `POST /api/v1/admin/config-sync/preview`
+   rồi `POST .../config-sync` → kiểm `Sys_Config_Sync_Log`. (dev: master=tenant nên gần như no-op, chỉ set `Is_System`.)
+2. **Mở rộng descriptor** các bảng còn lại vào `ConfigSyncTables.Order` (Sys_Resource/Sys_Lookup/Ui_Tab/Ui_View*/Val_Rule).
+3. Hook **provisioning full-sync** khi tạo tenant mới · invalidate **ConfigCache** version-stamp (CC-4) ·
+   seed node `administration.config-sync` vào `HT_ChucNang` · UI nút "Cập nhật cấu hình từ master" ở màn admin.
 
-> Chốt 5 điểm → mở khóa `CFGSYNC-1` (migration cờ) → `CFGSYNC-2/3`.
+> Xong F1 → **F2 engine-hóa màn Công ty** (ORG-CFG-1→4).
+
+**Decisions Log (session 53):**
+- **Cờ đồng bộ tên tiếng Anh** `Is_System`/`Is_Customized`/`Synced_At`/`Source_Ver` (config DB dùng cột tiếng Anh) —
+  KHÁC `LaHeThong`/`DaTuyBien` của Data DB (`db/042`). Khi code entity/repo nhớ mapping này.
+- **Engine descriptor-driven** (1 routine UPSERT generic + `ConfigSyncTables.Order`): re-link FK theo **mã** (map 2 chiều
+  Code↔Id, KHÔNG bê Id identity); khóa nghiệp vụ = [khóa cha re-link] + mã con (sep control char U+0001).
+- **Master = `ConnectionStrings:Config`** (user chốt dùng key sẵn có; dev master trùng tenant → sync vô hại). Tách 1 DB/
+  tenant về sau = đổi nguồn master trong ctor `ConfigSyncService`.
+- **CFGSYNC-2 phạm vi = vertical slice 5 bảng** (user chốt) để verify pattern trước khi mở rộng toàn bộ §2.
 
 ## 📋 Roadmap — Engine-hóa màn nghiệp vụ + Đồng bộ config (ADR-024/025)
 
@@ -21,14 +32,22 @@ Spec đầy đủ: `docs/spec/16_CONFIG_SYNC_SPEC.md` (§10). Đã chốt: Cách
 > Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`.
 
 ### F1 — Đồng bộ config master → tenant (nền tảng, làm trước)
-- [ ] **CFGSYNC-0** — Chốt **5 quyết định mở** (§10 spec 16): master ở đâu · mức bảo vệ tùy biến · xử lý
-      dòng tenant đã tùy biến · trigger · chính sách xóa. ⏳ **chờ user duyệt** trước khi code.
-- [ ] **CFGSYNC-1** — Migration: thêm cờ `LaHeThong`+`DaTuyBien` (+`SyncedAt`) vào `Sys_Table`/`Ui_*`/`Ui_View*`/
-      rule/`Sys_Resource`/`Sys_Lookup` + bảng log sync.
-- [ ] **CFGSYNC-2** — `IConfigSyncService` (Application) + impl (Infrastructure): UPSERT theo MÃ + re-link FK theo
-      mã, đúng thứ tự phụ thuộc (§2 spec), một chiều master→tenant, transaction/tenant, dry-run preview.
-- [ ] **CFGSYNC-3** — Trigger: provisioning full-sync + action super admin "Cập nhật cấu hình từ master"
-      (`[RequirePermission]`/SUPERADMIN) + invalidate `ConfigCache`.
+- [x] **CFGSYNC-0** — Chốt **5 quyết định mở** (§10 spec 16): ✅ DUYỆT 2026-06-15, toàn bộ theo khuyến nghị
+      (master=Config DB canonical · row-level `DaTuyBien` · giữ bản tenant · provisioning+nút thủ công · `Is_Active=0`).
+- [x] **CFGSYNC-1** — `db/050_alter_config_sync_flags.sql`: thêm cờ **`Is_System`+`Is_Customized`** (+`Synced_At`+`Source_Ver`,
+      tên tiếng Anh cho nhất quán config DB) vào 11 bảng `Sys_Table`/`Sys_Resource`/`Sys_Lookup`/`Ui_Form`/`Ui_Tab`/
+      `Ui_Section`/`Ui_Field`/`Ui_View*`/`Val_Rule` + bảng log `Sys_Config_Sync_Log`. Idempotent. ⏳ **CẦN CHẠY** trên Config DB.
+- [~] **CFGSYNC-2** — `IConfigSyncService` (Application) + `ConfigSyncService` (Infrastructure): engine **descriptor-driven**
+      UPSERT theo MÃ + re-link FK theo mã, đúng thứ tự phụ thuộc, một chiều, transaction/tenant, dry-run, tombstone
+      `Is_Active=0`, giữ bản `Is_Customized`. Ghi `Sys_Config_Sync_Log`. Master = `ConnectionStrings:Config`. Build BE 0/0.
+      **VERTICAL SLICE 5 bảng** (`Sys_Table→Sys_Column→Ui_Form→Ui_Section→Ui_Field`) — `ConfigSyncTables.Order`.
+      ⏳ CHƯA verify chạy thật (cần chạy db/050 + trigger). **Mở rộng bảng còn lại** (Sys_Resource/Sys_Lookup/Ui_Tab/
+      Ui_View*/Val_Rule) = nối descriptor vào `ConfigSyncTables` theo cùng khuôn — đợt sau.
+- [~] **CFGSYNC-3** — Action super admin "Cập nhật cấu hình từ master": `SyncConfigCommand`+Handler (gọi
+      `IConfigSyncService`, invalidate `INavigationCache`) + `AdminConfigSyncController` `POST /api/v1/admin/config-sync`
+      (áp thật, `[RequirePermission(administration.config-sync, Sua)]`) + `/preview` (dry-run, `Xem`). SUPERADMIN bypass.
+      Build BE 0/0. CÒN: hook **provisioning full-sync** (khi tạo tenant mới) · invalidate **ConfigCache** version-stamp
+      (chờ CC-4) · seed node `administration.config-sync` vào `HT_ChucNang` (để cấp quyền role khác — super admin chạy được luôn).
 
 ### F2 — Engine-hóa màn Công ty (sau F1)
 - [ ] **ORG-CFG-1** — ConfigStudio: cho `SchemaInspectorService` liệt kê cả **VIEW** (đang chỉ BASE TABLE) → design

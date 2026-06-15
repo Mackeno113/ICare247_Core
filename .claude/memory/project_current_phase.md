@@ -2,7 +2,28 @@
 
 > Cập nhật lần cuối: 2026-06-15
 
-## Đợt mới nhất — Baseline lưới + Rule UI + pivot màn Công ty sang engine-driven (session 52, 2026-06-15)
+## Đợt mới nhất — F1 đồng bộ config master→tenant full-stack (session 53, 2026-06-15)
+
+Triển khai trọn **nền tảng F1** (spec `docs/spec/16_CONFIG_SYNC_SPEC.md`) — tiền đề engine-hóa màn nghiệp vụ (F2).
+Mở đầu bằng **đồng bộ code GitHub** (fast-forward 5 commit).
+
+- **CFGSYNC-0** — chốt 5 quyết định mở (toàn bộ theo khuyến nghị): master = Config DB canonical · bảo vệ tùy biến
+  **row-level** · giữ bản tenant khi xung đột · trigger provisioning + nút thủ công super admin · xóa = `Is_Active=0`.
+- **CFGSYNC-1** — `db/050`: 4 cờ **tiếng Anh** `Is_System`/`Is_Customized`/`Synced_At`/`Source_Ver` (KHÁC `LaHeThong/
+  DaTuyBien` của Data DB — nhất quán config DB tiếng Anh) vào 11 bảng + bảng log `Sys_Config_Sync_Log`. ⏳ chưa chạy DB.
+- **CFGSYNC-2** — engine **descriptor-driven** (`IConfigSyncService` + `ConfigSyncService`): UPSERT theo MÃ + re-link FK
+  theo mã (map 2 chiều Code↔Id, không bê Id identity), 1 transaction, dry-run, tombstone, giữ `Is_Customized`, ghi log.
+  Master = `ConnectionStrings:Config`. **Vertical slice 5 bảng** (Sys_Table→Sys_Column→Ui_Form→Ui_Section→Ui_Field).
+- **CFGSYNC-3** — `AdminConfigSyncController` `POST /api/v1/admin/config-sync` (+`/preview` dry-run), gate
+  `[RequirePermission("administration.config-sync", ...)]` (SUPERADMIN bypass) + invalidate menu cache.
+
+Build backend `ICare247.slnx` **0/0**.
+
+→ **Bước tiếp:** ⏳ chạy `db/050` + E2E (login admin → preview → áp → kiểm log); mở rộng descriptor các bảng còn lại;
+hook provisioning full-sync; ConfigCache version-stamp (CC-4); UI nút "Cập nhật cấu hình từ master". Sau F1 →
+**F2 engine-hóa màn Công ty** (ORG-CFG-1→4).
+
+## Đợt trước — Baseline lưới + Rule UI + pivot màn Công ty sang engine-driven (session 52, 2026-06-15)
 
 **Baseline lưới (commit `41ce53a`):** `DataView`/`MasterDataGrid` chuẩn hóa hành vi 1 chỗ — wrap, **cuộn ngang
 (`ColumnResizeMode=ColumnsContainer`, không ép vừa màn)**, reorder/hover/focus, cột chọn ghim-trái-đầu, TreeList

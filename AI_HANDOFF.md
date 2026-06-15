@@ -19,6 +19,63 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-15] CFGSYNC-3 (action super admin đồng bộ) — claude
+
+- Status: done (build BE `ICare247.slnx` **0/0**); ⏳ chưa E2E (cần chạy db/050 + đăng nhập SUPERADMIN gọi endpoint).
+- Files (backend):
+  - Application: `Features/Admin/ConfigSync/SyncConfigCommand.cs` (command + handler).
+  - Api: `Controllers/AdminConfigSyncController.cs`.
+- Cần biết:
+  - Endpoint: `POST /api/v1/admin/config-sync` (áp thật, gate `[RequirePermission("administration.config-sync", Sua)]`)
+    + `POST /api/v1/admin/config-sync/preview` (dry-run, `Xem`). Cả 2 `[Authorize]`; **SUPERADMIN tự bypass** kiểm quyền.
+  - Handler gọi `IConfigSyncService.SyncAsync` → nếu áp thật & Success thì `INavigationCache.InvalidateTenant`.
+    TriggeredBy = unique_name/Name/sub (cho log sync). Trả `ConfigSyncResult` (số dòng I/U/deactivate/skip theo bảng).
+  - **CÒN THIẾU**: (1) hook provisioning full-sync khi tạo tenant mới; (2) invalidate **ConfigCache** toàn tenant
+    (version-stamp CC-4 chưa có — hiện chỉ xóa cache menu); (3) seed node `administration.config-sync` vào
+    `HT_ChucNang` nếu muốn cấp quyền cho role ngoài SUPERADMIN (super admin chạy được ngay).
+- Bước tiếp: E2E (chạy db/050 → đăng nhập admin → POST /preview rồi POST áp thật → kiểm `Sys_Config_Sync_Log`);
+  mở rộng descriptor các bảng còn lại; UI nút "Cập nhật cấu hình từ master" ở màn admin.
+
+### [2026-06-15] CFGSYNC-2 (engine đồng bộ config) — claude
+
+- Status: done (vertical slice — build BE `ICare247.slnx` **0 error**); ⏳ chưa verify chạy thật (cần db/050 + trigger CFGSYNC-3).
+- Files (backend, không phải vùng Codex):
+  - Application: `ConfigSync/ConfigSyncOptions.cs`, `ConfigSync/ConfigSyncResult.cs`, `Interfaces/IConfigSyncService.cs`.
+  - Infrastructure: `ConfigSync/ConfigTableDescriptor.cs`, `ConfigSync/ConfigSyncTables.cs`, `ConfigSync/ConfigSyncService.cs`;
+    DI `services.AddScoped<IConfigSyncService, ConfigSyncService>()`.
+- Cần biết:
+  - **Engine descriptor-driven**: 1 routine UPSERT generic + danh sách mô tả bảng (`ConfigSyncTables.Order`).
+    Mỗi descriptor: tên bảng, IdColumn, LocalKeyColumn (mã), ContextParent (cha tạo ngữ cảnh khóa),
+    RelinkParents (FK cần dịch sang Id tenant), ActiveColumn (tombstone), VersionColumn (→Source_Ver).
+  - **Khóa nghiệp vụ** = [khóa cha đã re-link] + mã con (ngăn cách bằng control char U+0001). Map 2 chiều
+    Code↔Id (master + tenant) trong `TableSyncState` → bảng con re-link FK qua mã, KHÔNG bê Id identity.
+  - **Master = `ConnectionStrings:Config`** (dev: trùng tenant → sync vô hại). Khi tách 1 DB/tenant: đổi nguồn
+    master trong ctor `ConfigSyncService` (vd thêm key `ConfigMaster`).
+  - **Tenant đích = `IDbConnectionFactory`** (scoped, tenant-aware). Ghi trong 1 transaction; dry-run chỉ đọc.
+  - Đọc cột thực tế qua INFORMATION_SCHEMA (không SELECT *); tập ghi = giao cột master∩tenant. Bắt buộc đủ
+    4 cờ db/050 (thiếu → lỗi thân thiện). Đọc dòng dạng `IDictionary<string,object>` (Dapper dynamic).
+  - **SLICE 5 bảng**: `Sys_Table→Sys_Column→Ui_Form→Ui_Section→Ui_Field`. Ui_Field không có Is_Active
+    (dùng Is_Visible) → KHÔNG tombstone; Field_Code nullable → dòng thiếu mã bị Skip.
+- Bước tiếp theo: **CFGSYNC-3** — action super admin "Cập nhật cấu hình từ master" (`[RequirePermission]`/SUPERADMIN,
+  CQRS command + endpoint, gọi `SyncAsync`) + invalidate ConfigCache; rồi mở rộng các bảng còn lại vào `ConfigSyncTables`.
+
+### [2026-06-15] CFGSYNC-1 (cờ đồng bộ config) — claude (làm thay codex ở `db/`) → codex (FYI)
+
+- Status: done (script viết xong); ⏳ migration CẦN CHẠY trên **ICare247_Config** (master + mỗi tenant).
+- Files (db, vùng Codex — Claude tạo thay):
+  - `db/050_alter_config_sync_flags.sql` — thêm 4 cột cờ vào **11 bảng config** + tạo bảng log sync.
+- Cần biết: nền tảng **F1 — đồng bộ config master→tenant** (spec `docs/spec/16_CONFIG_SYNC_SPEC.md`, ADR-024/025).
+  - 5 quyết định mở §10 **đã duyệt 2026-06-15** (toàn bộ theo khuyến nghị): master=Config DB canonical ·
+    bảo vệ **row-level** · giữ bản tenant khi xung đột · trigger provisioning+nút thủ công · xóa=`Is_Active=0`.
+  - 4 cột mới (tên **tiếng Anh** cho nhất quán config DB, KHÁC `LaHeThong/DaTuyBien` của db/042 Data DB):
+    `Is_System` (1=từ master) · `Is_Customized` (1=tenant đã sửa → sync bỏ qua) · `Synced_At` · `Source_Ver`.
+  - 11 bảng (theo spec §7): `Sys_Table`, `Sys_Resource`, `Sys_Lookup`, `Ui_Form`, `Ui_Tab`, `Ui_Section`,
+    `Ui_Field`, `Ui_View`, `Ui_View_Column`, `Ui_View_Action`, `Val_Rule`. Bảng con sát (Sys_Column,
+    Ui_Field_Lookup, lookup items) **đi theo cha** — bảo vệ ở mức cha. Tombstone dùng `Is_Active` sẵn có.
+  - Bảng `Sys_Config_Sync_Log` (audit + dry-run): I/U/deactivate/skip · version · status · Detail_Json.
+  - Idempotent (COL_LENGTH/OBJECT_ID guard) — chạy lại an toàn.
+- Bước tiếp theo: chạy `db/050` trên Config DB → code **CFGSYNC-2** (`IConfigSyncService` UPSERT theo mã, §3).
+
 ### [2026-06-13] AUDIT-1 (NK_ nhật ký hoạt động) — claude (làm thay codex ở `db/`) → codex (FYI)
 
 - Status: done (code backend); ⏳ migration CẦN CHẠY trên Data DB tenant (vd ICare247_Solution).

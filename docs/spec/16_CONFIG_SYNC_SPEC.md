@@ -1,6 +1,6 @@
 # 16 — Đồng bộ Config master → tenant (F1)
 
-> **Trạng thái:** 📋 thiết kế CHỐT — CHƯA code (chờ duyệt 5 quyết định mở §10).
+> **Trạng thái:** ✅ thiết kế CHỐT + 5 quyết định mở §10 ĐÃ DUYỆT (2026-06-15) — sẵn sàng code `CFGSYNC-1`.
 > **Bối cảnh:** mô hình **1 DB / 1 tenant** (mỗi khách có **Config DB + Data DB riêng**, ADR-018/ADR-025).
 > Config (`Sys_Table` + `Ui_*`) thiết kế **1 lần ở master qua ConfigStudio WPF**, phải **đồng bộ xuống Config DB
 > từng tenant**. Đây là **nền tảng F1** — tiền đề để engine-hóa mọi màn nghiệp vụ (F2, vd màn Công ty — ADR-024).
@@ -88,13 +88,17 @@ chiếu + giữ lịch sử). Bản tenant tự thêm: không đụng.
   `[RequirePermission]`/SUPERADMIN) + (tùy chọn) scheduled.
 - WPF chỉ tác động **master**; không chạm Config DB tenant.
 
-## 10. Quyết định mở (chốt trước khi code)
+## 10. Quyết định mở — ✅ ĐÃ DUYỆT (2026-06-15)
 
-1. **Master ở đâu:** Config DB "vàng" canonical (khuyến nghị) / DB template riêng?
-2. **Mức bảo vệ tùy biến:** row-level (`DaTuyBien` cả dòng — khuyến nghị) / field-level ngay?
-3. **Master sửa dòng tenant đã tùy biến:** giữ bản tenant (khuyến nghị) / báo super admin review / ép ghi đè?
-4. **Trigger:** provisioning + nút thủ công super admin (khuyến nghị) — có cần scheduled?
-5. **Xóa:** `Is_Active=0` (khuyến nghị) / cho hard-delete bản hệ thống?
+Cả 5 chốt theo **khuyến nghị** (bộ "an toàn, làm ngay, nâng cấp sau"):
+
+1. **Master ở đâu:** ✅ **Config DB "vàng" canonical** — chính DB ConfigStudio WPF trỏ vào; sync đồng dạng
+   bảng→bảng theo mã, WPF không đổi. `ICare247_Master` chỉ giữ catalog + `Sys_MenuCatalog`.
+2. **Mức bảo vệ tùy biến:** ✅ **Row-level** (`DaTuyBien` cả dòng). Field-level → pha sau.
+3. **Master sửa dòng tenant đã tùy biến:** ✅ **Giữ bản tenant** — sync bỏ qua dòng `DaTuyBien=1`, không ghi đè.
+4. **Trigger:** ✅ **Provisioning (full-sync 1 lần) + action thủ công super admin** "Cập nhật cấu hình từ master"
+   (gate `[RequirePermission]`/SUPERADMIN). **Chưa làm scheduled** (cân nhắc pha sau).
+5. **Xóa:** ✅ **`Is_Active=0`** (tombstone) — không hard-delete bản hệ thống; tránh vỡ FK + giữ lịch sử.
 
 ## 11. Liên quan
 

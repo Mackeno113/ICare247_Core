@@ -88,6 +88,10 @@ public static class DependencyInjection
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
         services.AddScoped<IViewRepository, ViewRepository>();
 
+        // ── Config Sync (F1 — đồng bộ config master→tenant, spec 16) ─────────
+        // Scoped: dùng IDbConnectionFactory tenant-aware (đích) + đọc master từ ConnectionStrings:Config.
+        services.AddScoped<IConfigSyncService, ConfigSync.ConfigSyncService>();
+
         // ── Auth (đăng nhập / JWT) ────────────────────────────────────────────
         // Repo đọc HT_NguoiDung/HT_RefreshToken từ Data DB tenant (scoped — tenant-aware).
         // Hasher + JwtTokenService stateless → singleton (JwtTokenService đọc Jwt:* lúc khởi tạo).

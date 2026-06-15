@@ -1,6 +1,38 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-15 (session 52 — baseline lưới + rule UI + pivot màn Công ty sang engine-driven + thiết kế F1 config-sync)
+> Cập nhật: 2026-06-15 (session 53 — đồng bộ code GitHub + F1 config-sync full-stack: CFGSYNC-0→3)
+
+## Session 53 (2026-06-15) — đã làm
+
+### Đồng bộ code từ GitHub
+- Nhánh master chậm 5 commit → fast-forward `a49dcbd`→`be573aa` (bỏ 3 thay đổi local chỉ là timestamp i18n tự sinh).
+- Code mới về: pivot engine-driven (ADR-024/025), baseline DxGrid/DxTreeList, 14 migration DB, spec 16 config-sync,
+  skill `icare247-admin-ui` +4 reference.
+
+### F1 — Đồng bộ config master→tenant (CFGSYNC-0→3) — code đủ để chạy, build BE 0/0
+
+- **CFGSYNC-0** — chốt **5 quyết định mở** (§10 spec 16), toàn bộ theo khuyến nghị: master=Config DB canonical ·
+  bảo vệ **row-level** (`Is_Customized`) · giữ bản tenant khi xung đột · trigger provisioning+nút thủ công · xóa=`Is_Active=0`.
+  Ghi vào spec 16 §10 + TASKS.md.
+- **CFGSYNC-1** — `db/050_alter_config_sync_flags.sql` (vùng Codex, Claude tạo thay): thêm 4 cờ **tên tiếng Anh**
+  `Is_System`/`Is_Customized`/`Synced_At`/`Source_Ver` (nhất quán config DB, KHÁC `LaHeThong/DaTuyBien` của Data DB)
+  vào 11 bảng (spec §7) + bảng `Sys_Config_Sync_Log`. Idempotent. ⏳ CHƯA chạy DB.
+- **CFGSYNC-2** — engine **descriptor-driven** (Application `IConfigSyncService`+`ConfigSyncOptions`/`ConfigSyncResult`;
+  Infrastructure `ConfigTableDescriptor`/`ConfigSyncTables`/`ConfigSyncService`). UPSERT theo MÃ + re-link FK theo mã
+  (map 2 chiều Code↔Id, KHÔNG bê Id identity), khóa nghiệp vụ = [khóa cha re-link]+mã con (sep U+0001), 1 transaction,
+  dry-run, tombstone `Is_Active=0`, giữ `Is_Customized`, ghi log. Đọc cột qua INFORMATION_SCHEMA (không SELECT *).
+  Master=`ConnectionStrings:Config` (dev trùng tenant→vô hại). **VERTICAL SLICE 5 bảng**: Sys_Table→Sys_Column→
+  Ui_Form→Ui_Section→Ui_Field.
+- **CFGSYNC-3** — `SyncConfigCommand`+Handler + `AdminConfigSyncController`: `POST /api/v1/admin/config-sync` (áp thật,
+  `[RequirePermission("administration.config-sync", Sua)]`) + `/preview` (dry-run, `Xem`). SUPERADMIN bypass; invalidate
+  menu cache sau khi áp. TriggeredBy từ claim.
+
+### ⏳ Để chạy/verify thật
+- Chạy `db/050` trên Config DB → đăng nhập `admin` → POST /preview rồi /config-sync → kiểm `Sys_Config_Sync_Log`.
+
+→ **Bước tiếp:** E2E F1; mở rộng descriptor các bảng còn lại (Sys_Resource/Sys_Lookup/Ui_Tab/Ui_View*/Val_Rule);
+hook provisioning full-sync; invalidate ConfigCache version-stamp (CC-4); UI nút "Cập nhật cấu hình từ master";
+seed node `administration.config-sync` vào HT_ChucNang. Sau F1 → **F2 engine-hóa màn Công ty** (ORG-CFG-1→4).
 
 ## Session 52 (2026-06-15) — đã làm
 
