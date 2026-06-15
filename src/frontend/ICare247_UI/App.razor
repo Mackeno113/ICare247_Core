@@ -4,8 +4,7 @@
     redirect về /login khi chưa đăng nhập (màn auth dùng AuthLayout nên không bị chặn).
 *@
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(App).Assembly"
-            AdditionalAssemblies="new[] { typeof(ICare247.UI.Organization.DependencyInjection).Assembly }">
+    <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />

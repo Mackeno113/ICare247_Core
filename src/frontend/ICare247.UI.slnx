@@ -2,7 +2,6 @@
   <Folder Name="/app/">
     <Project Path="ICare247_UI/ICare247_UI.csproj" />
     <Project Path="ICare247.UI.Shared/ICare247.UI.Shared.csproj" />
-    <Project Path="ICare247.UI.Organization/ICare247.UI.Organization.csproj" />
   </Folder>
   <Folder Name="/harness/">
     <Project Path="ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj" />
