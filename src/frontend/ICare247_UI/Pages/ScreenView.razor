@@ -7,6 +7,7 @@
 @page "/m/{Module}"
 @page "/m/{Module}/{Screen}"
 @inherits LocalizedComponentBase
+@inject NavigationManager Nav
 
 @{
     var module = AppNav.FindModule(Module);
@@ -66,4 +67,16 @@ else
 
     /// <summary>Khóa màn con lấy từ route (vd "company"); null = trang phân hệ.</summary>
     [Parameter] public string? Screen { get; set; }
+
+    /// <summary>
+    /// ORG-CFG-4: nếu màn con khai Route đích (engine-driven) → redirect sang đó (vd /view/Tree_TC_CongTy)
+    /// thay vì hiện placeholder. Chạy cả khi vào thẳng URL /m/{module}/{screen}.
+    /// </summary>
+    protected override void OnParametersSet()
+    {
+        if (string.IsNullOrEmpty(Screen)) return;
+        var route = AppNav.FindModule(Module)?.Screens.FirstOrDefault(s => s.Key == Screen)?.Route;
+        if (!string.IsNullOrEmpty(route))
+            Nav.NavigateTo(route, forceLoad: false, replace: true);
+    }
 }

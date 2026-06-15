@@ -13,7 +13,9 @@ namespace ICare247_UI.Navigation;
 /// <param name="Key">Khóa route (slug), ví dụ "company". Cũng dùng để suy key i18n.</param>
 /// <param name="Title">Tiêu đề tiếng Việt — base/fallback khi chưa dịch.</param>
 /// <param name="Permission">Khóa quyền yêu cầu để thấy màn (null = ai cũng thấy). #4</param>
-public sealed record NavScreen(string Key, string Title, string? Permission = null);
+/// <param name="Route">Route đích tường minh (vd "/view/Tree_TC_CongTy") → màn engine-driven.
+///   null = dùng placeholder ScreenView "/m/{module}/{screen}". (ORG-CFG-4)</param>
+public sealed record NavScreen(string Key, string Title, string? Permission = null, string? Route = null);
 
 /// <summary>Một phân hệ (module / bounded context) gồm nhiều màn con.</summary>
 /// <param name="Key">Khóa route, ví dụ "organization". Cũng dùng để suy key i18n.</param>
@@ -64,7 +66,8 @@ public static class AppNav
     {
         new("organization", "Tổ chức", "operations", "building", new List<NavScreen>
         {
-            new("company",       "Công ty"),
+            // Công ty: engine-driven — TreeList đọc vw_TC_CongTy (Ui_View "Tree_TC_CongTy"). (ORG-CFG-4)
+            new("company",       "Công ty", Route: "/view/Tree_TC_CongTy"),
             new("department",    "Phòng ban"),
             new("position",      "Vị trí công việc"),
             new("title",         "Chức danh"),

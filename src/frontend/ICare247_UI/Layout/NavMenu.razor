@@ -151,7 +151,8 @@
                 new VmModule(
                     m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}",
                     m.Screens.Select(s => new VmScreen(
-                        $"m/{m.Key}/{s.Key}", NavKeys.Screen(m.Key, s.Key), s.Title)).ToList()))
+                        string.IsNullOrEmpty(s.Route) ? $"m/{m.Key}/{s.Key}" : s.Route.TrimStart('/'),
+                        NavKeys.Screen(m.Key, s.Key), s.Title)).ToList()))
                 .ToList();
             if (modules.Count > 0)
                 _sections.Add(new VmSection(NavKeys.Group(group.Key), group.Title, modules));

@@ -19,6 +19,28 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-15] ORG-CFG-1/2/4 (engine-hóa màn Công ty — phần CODE) — claude
+
+- Status: code done (build WPF + FE **0/0**); ⏳ chạy `db/051` + **ORG-CFG-3 cấu hình tay** + sync.
+- Files:
+  - WPF: `Infrastructure/SchemaInspectorService.cs` — `GetTableNamesAsync` lấy cả VIEW (`TABLE_TYPE IN ('BASE TABLE','VIEW')`).
+  - DB: `db/051_create_vw_tc_congty.sql` — view `vw_TC_CongTy` (JOIN cấp/phường-xã/tỉnh/ngân hàng/cha; FK id + tên; IsDeleted=0).
+  - FE: `Navigation/AppNav.cs` (NavScreen +Route; company Route="/view/Tree_TC_CongTy"), `Layout/NavMenu.razor`
+    (fallback dùng Route), `Pages/ScreenView.razor` (redirect khi màn có Route).
+- ⏳ **ORG-CFG-3 — bạn làm tay trong ConfigStudio WPF** (no-code, ADR-024):
+  1. Chạy `db/051` (Data DB) + `db/050` (Config DB) trước.
+  2. Sys_Table: đăng ký `dbo.vw_TC_CongTy` (giờ inspector liệt kê được) + `dbo.TC_CongTy` → tự sinh cột.
+  3. Ui_Form (FormEditor): form trên `TC_CongTy`, Display_Mode=Popup, "Tự sinh trường" → set lookup
+     (CapCongTy_Id→TC_CapCongTy, PhuongXa_Id→DM_PhuongXa, NganHang_Id→DM_NganHang, CongTy_Cha_Id→TC_CongTy),
+     i18n nhãn; bỏ cột audit/Id/Logo.
+  4. Ui_View (ViewManager): View_Type=TreeList, **View_Code=`Tree_TC_CongTy`** (PHẢI khớp Route ở AppNav),
+     nguồn=vw_TC_CongTy, Key=Id, Parent=CongTy_Cha_Id, cột hiển thị Ma/Ten/TenCapCongTy/TenTinhThanhPho/…,
+     Edit_Form=form bước 3.
+  5. (Server-driven menu) set `HT_ChucNang` node organization.company `DuongDan=/view/Tree_TC_CongTy`
+     + DoiTuong=Tree_TC_CongTy/LoaiDoiTuong=View. (Fallback AppNav đã có Route sẵn.)
+  6. Chạy config-sync (màn Quản trị › Đồng bộ cấu hình) → mở Tổ chức › Công ty.
+- Lưu ý backend: GetViewData SELECT theo Sys_Table.Schema_Name+Table_Code → đăng ký vw_TC_CongTy như 1 Sys_Table là chạy.
+
 ### [2026-06-15] CFGSYNC-3-UI (màn web đồng bộ cấu hình) — claude
 
 - Status: done (build FE `ICare247_UI` **0 error**); ⏳ chưa E2E (cần backend + db/050 + login admin; trang sau cổng login).

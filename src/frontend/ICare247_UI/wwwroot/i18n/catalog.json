@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-15 23:14:22",
+  "generatedAt": "2026-06-15 23:34:43",
   "source": "ICare247_UI",
   "count": 208,
   "entries": [
@@ -2286,7 +2286,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 17
+          "line": 18
         }
       ]
     },
@@ -2297,7 +2297,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 18
+          "line": 19
         }
       ]
     },
@@ -2308,7 +2308,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 37
+          "line": 38
         }
       ]
     },
@@ -2319,7 +2319,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 29
+          "line": 30
         }
       ]
     },
@@ -2330,7 +2330,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 57
+          "line": 58
         }
       ]
     },
@@ -2341,7 +2341,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/ScreenView.razor",
-          "line": 58
+          "line": 59
         }
       ]
     },

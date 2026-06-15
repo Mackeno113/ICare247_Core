@@ -30,11 +30,12 @@ public sealed class SchemaInspectorService : ISchemaInspectorService
 
         await using var conn = new SqlConnection(connectionString);
 
-        // ── Lấy tất cả bảng user-defined, bỏ system tables ──
+        // ── Lấy bảng user-defined + VIEW (engine-driven: thiết kế trên view, vd vw_TC_CongTy) ──
+        // ORG-CFG-1: gồm cả VIEW để cấu hình màn nghiệp vụ đọc qua SQL View (ADR-024).
         const string sql = """
             SELECT TABLE_SCHEMA + '.' + TABLE_NAME
             FROM   INFORMATION_SCHEMA.TABLES
-            WHERE  TABLE_TYPE = 'BASE TABLE'
+            WHERE  TABLE_TYPE IN ('BASE TABLE', 'VIEW')
             ORDER  BY TABLE_SCHEMA, TABLE_NAME
             """;
 

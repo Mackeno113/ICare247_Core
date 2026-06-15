@@ -55,12 +55,16 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       (chờ CC-4) · seed node `administration.config-sync` vào `HT_ChucNang` (để cấp quyền role khác — super admin chạy được luôn).
 
 ### F2 — Engine-hóa màn Công ty (sau F1)
-- [ ] **ORG-CFG-1** — ConfigStudio: cho `SchemaInspectorService` liệt kê cả **VIEW** (đang chỉ BASE TABLE) → design
-      trên `vw_TC_CongTy`.
-- [ ] **ORG-CFG-2** — (DB, schema không phải config-seed) tạo view `vw_TC_CongTy` (JOIN Cấp/Tỉnh/Ngân hàng).
-- [ ] **ORG-CFG-3** — (DEV ở WPF, không SQL) đăng ký `TC_CongTy`/`vw_TC_CongTy` → `Ui_Form` Popup + `Ui_Field`
-      (bắt buộc/lookup/i18n) + `Ui_View` TreeList. Tham chiếu blueprint Công ty.
-- [ ] **ORG-CFG-4** — Bổ sung **popup edit** trên view cây (`DataView`/`ViewPage` đang điều hướng routed).
+- [x] **ORG-CFG-1** — `SchemaInspectorService.GetTableNamesAsync`: `TABLE_TYPE IN ('BASE TABLE','VIEW')` → liệt kê cả
+      VIEW để design trên `vw_TC_CongTy`. Build WPF 0/0.
+- [x] **ORG-CFG-2** — `db/051_create_vw_tc_congty.sql` (Data DB): `CREATE OR ALTER VIEW vw_TC_CongTy` JOIN cấp/phường-xã/
+      tỉnh/ngân hàng/cha (FK id + tên), lọc IsDeleted=0, expose Id+CongTy_Cha_Id cho TreeList. ⏳ **CẦN CHẠY** trên Data DB.
+- [ ] **ORG-CFG-3** — ⏳ **THAO TÁC TAY trong ConfigStudio** (no-code, không SQL seed): đăng ký `vw_TC_CongTy`+`TC_CongTy`
+      → `Ui_Form` Popup (TC_CongTy, lookup CapCongTy/PhuongXa/NganHang/Cha, i18n) + `Ui_View` TreeList **View_Code=`Tree_TC_CongTy`**
+      (Key=Id, Parent=CongTy_Cha_Id, Edit_Form=form trên) → chạy config-sync. Hướng dẫn ở AI_HANDOFF. Tham chiếu blueprint Công ty.
+- [x] **ORG-CFG-4** — Routing placeholder→engine: `NavScreen.Route` (tuỳ chọn) + màn Công ty `Route="/view/Tree_TC_CongTy"`;
+      NavMenu fallback dùng Route; `ScreenView` redirect khi màn có Route. Server-driven path dùng `HT_ChucNang.DuongDan` (data).
+      Build FE 0/0.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
 ## ✅ Done (session 2026-06-15b — baseline lưới + rule + pivot engine-driven)
