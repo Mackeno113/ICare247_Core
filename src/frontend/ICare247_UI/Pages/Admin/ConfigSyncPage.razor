@@ -1,0 +1,131 @@
+@page "/m/administration/config-sync"
+@inject ConfigSyncApiService Api
+@inject LocalizationService Loc
+
+@*
+    ConfigSyncPage — màn "Đồng bộ cấu hình" (CFGSYNC-3, spec 16).
+    - Action super admin: cập nhật config (Sys_*/Ui_*) từ master → Config DB đơn vị.
+    - 2 thao tác: "Xem trước" (dry-run, secondary) · "Áp dụng từ master" (primary CTA, có bước xác nhận vì ghi DB).
+    - Kết quả: badge trạng thái + dòng tổng + bảng số dòng I/U/Ngừng/Bỏ qua theo từng bảng.
+    - Mọi text qua Loc.L. SUPERADMIN truy cập được (server bypass [RequirePermission]).
+*@
+
+<PageTitle>@Loc.L("admin.cfgsync.title", "Đồng bộ cấu hình") — ICare247</PageTitle>
+
+<div class="cfg-toolbar">
+    <span class="cfg-title">@Loc.L("admin.cfgsync.title", "Đồng bộ cấu hình")</span>
+    <span class="cfg-hint">@Loc.L("admin.cfgsync.hint", "Cập nhật cấu hình (bảng, form, trường…) từ hệ thống master xuống cơ sở dữ liệu của đơn vị này.")</span>
+    <span class="cfg-spacer"></span>
+    <button class="cfg-btn-secondary" disabled="@_busy" @onclick="PreviewAsync">
+        @Loc.L("admin.cfgsync.preview", "Xem trước")
+    </button>
+    <button class="cfg-btn-primary" disabled="@_busy" @onclick="OnApplyClick">
+        @(_busy ? Loc.L("admin.cfgsync.running", "Đang chạy…") : Loc.L("admin.cfgsync.apply", "Áp dụng từ master"))
+    </button>
+</div>
+
+@if (_confirming)
+{
+    <div class="cfg-confirm">
+        <span>@Loc.L("admin.cfgsync.confirm", "Thao tác này ghi cấu hình xuống CSDL đơn vị (trong 1 transaction). Tiếp tục?")</span>
+        <span class="cfg-spacer"></span>
+        <button class="cfg-btn-secondary" @onclick="() => _confirming = false">@Loc.L("common.btn.cancel", "Hủy")</button>
+        <button class="cfg-btn-primary" @onclick="ApplyAsync">@Loc.L("admin.cfgsync.confirmYes", "Xác nhận áp dụng")</button>
+    </div>
+}
+
+@if (_error is not null)
+{
+    <div class="cfg-error">@Loc.L("admin.cfgsync.error", "Lỗi: {0}", _error)</div>
+}
+
+@if (_result is null)
+{
+    <div class="cfg-empty">
+        <p>@Loc.L("admin.cfgsync.empty", "Bấm \"Xem trước\" để xem các thay đổi sẽ áp, hoặc \"Áp dụng từ master\" để đồng bộ ngay.")</p>
+        <p class="cfg-caption">@Loc.L("admin.cfgsync.prereq", "Yêu cầu: đã chạy migration db/050 trên Config DB.")</p>
+    </div>
+}
+else
+{
+    <div class="cfg-result">
+        <div class="cfg-status">
+            <span class="cfg-badge @StatusClass()">@StatusText()</span>
+            <span class="cfg-summary">
+                @Loc.L("admin.cfgsync.summary", "Thêm {0} · Cập nhật {1} · Ngừng {2} · Bỏ qua {3}",
+                    _result.TotalInserted, _result.TotalUpdated, _result.TotalDeactivated, _result.TotalSkipped)
+            </span>
+        </div>
+
+        <DxGrid Data="_result.Tables" ShowFilterRow="false" HighlightRowOnHover="true"
+                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer" CssClass="cfg-grid">
+            <Columns>
+                <DxGridDataColumn FieldName="TableName" Caption="@Loc.L("admin.cfgsync.colTable", "Bảng")" MinWidth="160" />
+                <DxGridDataColumn FieldName="Inserted" Caption="@Loc.L("admin.cfgsync.colInserted", "Thêm")"
+                                  Width="100px" TextAlignment="GridTextAlignment.Right" />
+                <DxGridDataColumn FieldName="Updated" Caption="@Loc.L("admin.cfgsync.colUpdated", "Cập nhật")"
+                                  Width="100px" TextAlignment="GridTextAlignment.Right" />
+                <DxGridDataColumn FieldName="Deactivated" Caption="@Loc.L("admin.cfgsync.colDeactivated", "Ngừng")"
+                                  Width="100px" TextAlignment="GridTextAlignment.Right" />
+                <DxGridDataColumn FieldName="Skipped" Caption="@Loc.L("admin.cfgsync.colSkipped", "Bỏ qua")"
+                                  Width="100px" TextAlignment="GridTextAlignment.Right" />
+            </Columns>
+        </DxGrid>
+    </div>
+}
+
+@code {
+    private ConfigSyncResultVm? _result;
+    private string? _error;
+    private bool _busy;
+    private bool _confirming;
+
+    /// <summary>Xem trước (dry-run) — không ghi.</summary>
+    private async Task PreviewAsync()
+    {
+        _confirming = false;
+        await RunAsync(() => Api.PreviewAsync());
+    }
+
+    /// <summary>Bấm "Áp dụng" lần đầu → hiện dải xác nhận (không chạy ngay).</summary>
+    private void OnApplyClick() => _confirming = true;
+
+    /// <summary>Xác nhận → áp đồng bộ thật.</summary>
+    private async Task ApplyAsync()
+    {
+        _confirming = false;
+        await RunAsync(() => Api.ApplyAsync());
+    }
+
+    /// <summary>Chạy 1 thao tác đồng bộ, cập nhật kết quả/lỗi + cờ bận.</summary>
+    private async Task RunAsync(Func<Task<(ConfigSyncResultVm? Result, string? Error)>> op)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var (result, error) = await op();
+            _result = result;
+            _error = error ?? (result?.Status == "Failed" ? result.ErrorMessage : null);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string StatusText() => _result switch
+    {
+        null => "",
+        { Status: "Failed" } => Loc.L("admin.cfgsync.statusFailed", "Thất bại"),
+        { DryRun: true } => Loc.L("admin.cfgsync.statusPreview", "Xem trước (chưa ghi)"),
+        _ => Loc.L("admin.cfgsync.statusApplied", "Đã áp dụng"),
+    };
+
+    private string StatusClass() => _result switch
+    {
+        { Status: "Failed" } => "cfg-badge-fail",
+        { DryRun: true } => "cfg-badge-preview",
+        _ => "cfg-badge-ok",
+    };
+}

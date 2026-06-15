@@ -12,7 +12,12 @@ giữ bản tenant khi xung đột · trigger provisioning+nút thủ công supe
    rồi `POST .../config-sync` → kiểm `Sys_Config_Sync_Log`. (dev: master=tenant nên gần như no-op, chỉ set `Is_System`.)
 2. **Mở rộng descriptor** các bảng còn lại vào `ConfigSyncTables.Order` (Sys_Resource/Sys_Lookup/Ui_Tab/Ui_View*/Val_Rule).
 3. Hook **provisioning full-sync** khi tạo tenant mới · invalidate **ConfigCache** version-stamp (CC-4) ·
-   seed node `administration.config-sync` vào `HT_ChucNang` · UI nút "Cập nhật cấu hình từ master" ở màn admin.
+   seed node `administration.config-sync` vào `HT_ChucNang`.
+
+✅ **UI web (session 53)** — màn "Đồng bộ cấu hình" `/m/administration/config-sync`: `ConfigSyncApiService` +
+`ConfigSyncModels` + `ConfigSyncPage.razor(.css)` (toolbar mỏng, nút "Xem trước" dry-run + CTA "Áp dụng từ master"
+có bước xác nhận, badge trạng thái + bảng số dòng I/U/Ngừng/Bỏ qua). Menu `administration.config-sync` (AppNav) +
+DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend + db/050 + login admin.
 
 > Xong F1 → **F2 engine-hóa màn Công ty** (ORG-CFG-1→4).
 

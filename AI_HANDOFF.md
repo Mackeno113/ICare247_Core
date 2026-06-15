@@ -19,6 +19,22 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-15] CFGSYNC-3-UI (màn web đồng bộ cấu hình) — claude
+
+- Status: done (build FE `ICare247_UI` **0 error**); ⏳ chưa E2E (cần backend + db/050 + login admin; trang sau cổng login).
+- Files (frontend ICare247_UI):
+  - `Models/ConfigSyncModels.cs` (ConfigSyncResultVm/ConfigSyncTableVm — totals tính FE từ Tables).
+  - `Services/ConfigSyncApiService.cs` (PreviewAsync/ApplyAsync, trích ProblemDetails khi lỗi — không nuốt).
+  - `Pages/Admin/ConfigSyncPage.razor` + `.css` (route `/m/administration/config-sync`).
+  - `Program.cs` DI `AddScoped<ConfigSyncApiService>`; `Navigation/AppNav.cs` thêm screen `config-sync`.
+- Cần biết:
+  - Theo skill `icare247-admin-ui`: toolbar mỏng, surface phẳng, **1 CTA primary** ("Áp dụng từ master") + secondary
+    ("Xem trước" dry-run); **bước xác nhận** trước khi áp thật (ghi DB); badge text-màu; số canh phải tabular-nums.
+  - i18n đầy đủ scope `admin.cfgsync.*` qua `Loc.L(key, "fallback vi")` — en.json để rỗng (overlay, dịch sau).
+  - Gọi `POST /api/v1/admin/config-sync(/preview)`; SUPERADMIN truy cập được (server bypass). Lỗi thiếu db/050 →
+    backend trả 500 ProblemDetails → hiện ở dải `.cfg-error`.
+- Bước tiếp: E2E (chạy db/050 → login admin → vào menu Quản trị › Đồng bộ cấu hình → Xem trước → Áp dụng).
+
 ### [2026-06-15] CFGSYNC-3 (action super admin đồng bộ) — claude
 
 - Status: done (build BE `ICare247.slnx` **0/0**); ⏳ chưa E2E (cần chạy db/050 + đăng nhập SUPERADMIN gọi endpoint).

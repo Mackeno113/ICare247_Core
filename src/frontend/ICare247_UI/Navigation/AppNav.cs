@@ -114,6 +114,7 @@ public static class AppNav
             new("users",       "Người dùng"),
             new("roles",       "Vai trò"),
             new("permissions", "Phân quyền"),
+            new("config-sync", "Đồng bộ cấu hình"),
             new("settings",    "Cấu hình hệ thống"),
         }),
     };

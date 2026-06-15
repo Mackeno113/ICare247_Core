@@ -1,8 +1,221 @@
 {
-  "generatedAt": "2026-06-15 15:45:53",
+  "generatedAt": "2026-06-15 23:14:22",
   "source": "ICare247_UI",
-  "count": 188,
+  "count": 208,
   "entries": [
+    {
+      "key": "admin.cfgsync.apply",
+      "vi": "Áp dụng từ master",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.colDeactivated",
+      "vi": "Ngừng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.colInserted",
+      "vi": "Thêm",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 64
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.colSkipped",
+      "vi": "Bỏ qua",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 70
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.colTable",
+      "vi": "Bảng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.colUpdated",
+      "vi": "Cập nhật",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 66
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.confirm",
+      "vi": "Thao tác này ghi cấu hình xuống CSDL đơn vị (trong 1 transaction). Tiếp tục?",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 30
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.confirmYes",
+      "vi": "Xác nhận áp dụng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.empty",
+      "vi": "Bấm \"Xem trước\" để xem các thay đổi sẽ áp, hoặc \"Áp dụng từ master\" để đồng bộ ngay.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.error",
+      "vi": "Lỗi: {0}",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 39
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.hint",
+      "vi": "Cập nhật cấu hình (bảng, form, trường…) từ hệ thống master xuống cơ sở dữ liệu của đơn vị này.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.prereq",
+      "vi": "Yêu cầu: đã chạy migration db/050 trên Config DB.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.preview",
+      "vi": "Xem trước",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 20
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.running",
+      "vi": "Đang chạy…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.statusApplied",
+      "vi": "Đã áp dụng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 122
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.statusFailed",
+      "vi": "Thất bại",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 120
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.statusPreview",
+      "vi": "Xem trước (chưa ghi)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.summary",
+      "vi": "Thêm {0} · Cập nhật {1} · Ngừng {2} · Bỏ qua {3}",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 55
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.title",
+      "vi": "Đồng bộ cấu hình",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 13
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 16
+        }
+      ]
+    },
     {
       "key": "admin.perm.all",
       "vi": "Tất cả",
@@ -907,6 +1120,17 @@
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
           "line": 36
+        }
+      ]
+    },
+    {
+      "key": "common.btn.cancel",
+      "vi": "Hủy",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 32
         }
       ]
     },

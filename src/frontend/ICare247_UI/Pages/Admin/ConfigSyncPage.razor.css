@@ -1,0 +1,123 @@
+/* ConfigSyncPage — màn Đồng bộ cấu hình. Toolbar mỏng, 1 CTA primary, surface phẳng (skill admin-ui). */
+
+.cfg-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-4);
+}
+
+.cfg-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+}
+
+.cfg-hint {
+    font-size: var(--fs-sm);
+    color: var(--color-text-muted);
+}
+
+.cfg-spacer {
+    flex: 1 1 auto;
+}
+
+/* ── Nút ─────────────────────────────────────────────────────────────────── */
+.cfg-btn-primary,
+.cfg-btn-secondary {
+    height: 32px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}
+
+.cfg-btn-primary {
+    border: none;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+}
+
+.cfg-btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
+
+.cfg-btn-secondary {
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-text);
+}
+
+.cfg-btn-secondary:hover:not(:disabled) { border-color: var(--color-border-strong); }
+
+.cfg-btn-primary:disabled,
+.cfg-btn-secondary:disabled { opacity: .55; cursor: default; }
+
+/* ── Dải xác nhận (áp thật ghi DB) ───────────────────────────────────────── */
+.cfg-confirm {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    background: var(--color-card);
+    border: 1px solid var(--color-warning);
+    border-left-width: 3px;
+    font-size: var(--fs-sm);
+    color: var(--color-text);
+}
+
+/* ── Lỗi ─────────────────────────────────────────────────────────────────── */
+.cfg-error {
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    background: var(--color-danger-soft);
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+    font-size: var(--fs-sm);
+}
+
+/* ── Rỗng / hướng dẫn ────────────────────────────────────────────────────── */
+.cfg-empty {
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+}
+
+.cfg-caption {
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+    margin-top: var(--space-2);
+}
+
+/* ── Kết quả ─────────────────────────────────────────────────────────────── */
+.cfg-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+}
+
+.cfg-summary {
+    font-size: var(--fs-sm);
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Badge = text-màu + viền cùng tông, nền trong suốt (đúng skill: badge text-màu, không chấm to) */
+.cfg-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-semibold);
+    border: 1px solid currentColor;
+}
+
+.cfg-badge-ok { color: var(--color-success); }
+.cfg-badge-preview { color: var(--color-primary); }
+.cfg-badge-fail { color: var(--color-danger); }
+
+/* Số liệu canh phải dùng tabular-nums cho thẳng cột */
+.cfg-grid ::deep td { font-variant-numeric: tabular-nums; }
