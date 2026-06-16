@@ -247,26 +247,27 @@
                 <!-- Right-aligned action buttons -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <!-- Create button (create mode only) -->
+                    <!-- Nút Lưu — chế độ tạo mới (INSERT): nhãn đồng nhất "Lưu" -->
                     <dx:SimpleButton Command="{Binding CreateNewFormCommand}" Margin="0,0,8,0"
                                      Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}"
                                      IsEnabled="{Binding CanCreateNewForm}"
+                                     ToolTip="Lưu form mới. Cần nhập Form_Code, Form_Name và chọn Business Table."
                                      Height="34" Padding="16,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="＋" VerticalAlignment="Center"
-                                       FontWeight="Bold" FontSize="14" />
-                            <TextBlock Text="Tạo Form" Margin="6,0,0,0"
+                            <TextBlock Text="💾" VerticalAlignment="Center" FontSize="13" />
+                            <TextBlock Text="Lưu" Margin="6,0,0,0"
                                        FontWeight="SemiBold" />
                         </StackPanel>
                     </dx:SimpleButton>
 
-                    <!-- Save button (edit mode only) -->
+                    <!-- Nút Lưu — chế độ sửa (UPDATE): nhãn đồng nhất "Lưu" -->
                     <dx:SimpleButton Command="{Binding SaveFormCommand}" Margin="0,0,8,0"
                                      Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}"
+                                     ToolTip="Lưu các thay đổi của form."
                                      Height="34" Padding="16,0">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="💾" VerticalAlignment="Center" FontSize="13" />
-                            <TextBlock Text="Lưu thay đổi" Margin="6,0,0,0"
+                            <TextBlock Text="Lưu" Margin="6,0,0,0"
                                        FontWeight="SemiBold" />
                         </StackPanel>
                     </dx:SimpleButton>

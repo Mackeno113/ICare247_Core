@@ -50,22 +50,22 @@ public static class ResourceResolver
         string fieldLabel,
         string langCode)
     {
+        var label = string.IsNullOrWhiteSpace(fieldLabel) ? fieldCode : fieldLabel;
         if (map is not null)
         {
-            // 1. Form+field specific
+            // 1. Form+field specific — thay token ({0}=giá trị (rỗng với required) · {1}=nhãn).
             var specificKey = $"{formCode}.val.{fieldCode}.Required";
             if (map.TryGetValue(specificKey, out var specific)
                 && !string.IsNullOrWhiteSpace(specific))
-                return specific;
+                return ApplyTokens(specific, "", label);
 
             // 2. Global template
             if (map.TryGetValue("sys.val.Required", out var template)
                 && !string.IsNullOrWhiteSpace(template))
-                return FormatTemplate(template, fieldLabel);
+                return ApplyTokens(template, "", label);
         }
 
         // 3. Hardcoded fallback
-        var label = string.IsNullOrWhiteSpace(fieldLabel) ? fieldCode : fieldLabel;
         return langCode.Equals("en", StringComparison.OrdinalIgnoreCase)
             ? $"{label} is required"
             : $"{label} không được để trống";
@@ -86,19 +86,20 @@ public static class ResourceResolver
         string fieldLabel,
         string langCode)
     {
+        var label = string.IsNullOrWhiteSpace(fieldLabel) ? fieldCode : fieldLabel;
         if (map is not null)
         {
+            // Token ({0}=giá trị · {1}=nhãn). Giá trị không có ở đường này → rỗng.
             var specificKey = $"{formCode}.val.{fieldCode}.Unique";
             if (map.TryGetValue(specificKey, out var specific)
                 && !string.IsNullOrWhiteSpace(specific))
-                return specific;
+                return ApplyTokens(specific, "", label);
 
             if (map.TryGetValue("sys.val.Unique", out var template)
                 && !string.IsNullOrWhiteSpace(template))
-                return FormatTemplate(template, fieldLabel);
+                return ApplyTokens(template, "", label);
         }
 
-        var label = string.IsNullOrWhiteSpace(fieldLabel) ? fieldCode : fieldLabel;
         return langCode.Equals("en", StringComparison.OrdinalIgnoreCase)
             ? $"{label} already exists"
             : $"{label} đã tồn tại";
@@ -126,6 +127,14 @@ public static class ResourceResolver
     }
 
     // ── Internal helpers ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Thay token thông báo validation: <c>{0}</c> = giá trị người dùng nhập ·
+    /// <c>{1}</c> = nhãn field. Dùng Replace (an toàn với dấu ngoặc lẻ / token thừa).
+    /// Áp cho CẢ message per-field lẫn template (Required/Unique).
+    /// </summary>
+    private static string ApplyTokens(string text, string value, string label)
+        => text.Replace("{0}", value).Replace("{1}", label);
 
     /// <summary>
     /// Format template: thay thế {0} → <paramref name="arg0"/>.

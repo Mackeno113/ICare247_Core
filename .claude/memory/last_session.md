@@ -1,5 +1,33 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-16 (session 54 — F1/F2 nối tiếp: màn web config-sync, engine-hóa Công ty, danh mục, ConfigStudio picker, i18n token validation)
+
+## Session 54 (2026-06-16) — đã làm
+
+> Nối tiếp F1 (CFGSYNC) + khởi động F2 (engine-hóa màn) + công cụ cấu hình. Build BE/FE/WPF 0/0. Đã push tới `96c0d9d`.
+
+- **CFGSYNC-3 UI** (commit `73184e5`) — màn web "Đồng bộ cấu hình" `/m/administration/config-sync`: `ConfigSyncApiService`
+  + `ConfigSyncPage` (Xem trước dry-run + Áp dụng từ master có xác nhận, badge + bảng kết quả). i18n `admin.cfgsync.*`.
+- **F2 engine-hóa màn Công ty — code** (commit `422d904`): ORG-CFG-1 (`SchemaInspector` liệt kê cả VIEW),
+  ORG-CFG-2 (`db/051` `vw_TC_CongTy`), ORG-CFG-4 (`NavScreen.Route` + `ScreenView` redirect → menu Công ty vào
+  `/view/Tree_TC_CongTy`). ORG-CFG-3 (Ui_Form/Ui_View) = cấu hình tay trong ConfigStudio.
+- **Danh mục nền tảng** (commit `6a8c846`): `db/052` (`vw_DM_TinhThanhPho`/`vw_DM_PhuongXa`) + AppNav module "Danh mục"
+  (7 màn route `/view/Grid_*`). CAT-CFG-2 = cấu hình tay.
+- **ConfigStudio Sys Table picker** (commit `96c0d9d`): combobox chọn bảng/view thật từ Target DB → tự điền
+  Table_Code/Schema. + `db/dev/reset_config.sql` (xóa cấu hình Config DB, dev only).
+- **i18n token validation** (CHƯA commit): `required`+`unique` hỗ trợ `{0}`=giá trị nhập, `{1}`=nhãn (per-field + template);
+  `ResourceResolver`/`SaveMasterData`/`InsertLookup` + `db/053`.
+- **Guide** (CHƯA commit): `docs/guide/cau-hinh-man-danh-muc.md`.
+- **Fix cấu hình**: `TargetDb` của ConfigStudio (appsettings local) đổi `QLNS_Demo` → `ICare247_Solution` (Live) —
+  combobox/auto-generate đọc đúng bảng nghiệp vụ.
+
+### ⏳ Việc cần làm
+- Chạy SQL: `db/050` (Config), `db/051`/`db/052` (Live), `db/053` (Config). Khởi động lại ConfigStudio (TargetDb mới).
+- Cấu hình tay: danh mục (CAT-CFG-2) → màn Công ty (ORG-CFG-3) theo `docs/guide/cau-hinh-man-danh-muc.md` + AI_HANDOFF.
+- Commit + push phần i18n token validation + guide.
+
+---
+
 > Cập nhật: 2026-06-15 (session 53 — đồng bộ code GitHub + F1 config-sync full-stack: CFGSYNC-0→3)
 
 ## Session 53 (2026-06-15) — đã làm

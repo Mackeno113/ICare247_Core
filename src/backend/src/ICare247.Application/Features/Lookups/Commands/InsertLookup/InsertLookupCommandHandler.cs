@@ -47,11 +47,14 @@ public sealed class InsertLookupCommandHandler
         catch (DuplicateValueException dup)
         {
             // Resolve message trùng qua IConfigCache (ADR-014) — KHÔNG chọc IResourceRepository thẳng.
-            // 1. per-field key {table}.val.{column}.unique → 2. sys.val.unique template({0}) → 3. hardcode.
-            var msg = await _config.ResolveKeyAsync(dup.ResourceKey, "vi", request.TenantId, ct)
-                ?? (await _config.ResolveKeyAsync("sys.val.unique", "vi", request.TenantId, ct))
-                    ?.Replace("{0}", dup.Column)
-                ?? $"{dup.Column} đã tồn tại";
+            // 1. per-field key {table}.val.{column}.unique → 2. sys.val.unique template → 3. hardcode.
+            // Token i18n: {0} = giá trị nhập · {1} = cột (thay ở CẢ per-field lẫn template).
+            var enteredValue = request.Values.TryGetValue(dup.Column, out var dv) ? dv?.ToString() ?? "" : "";
+            var template = await _config.ResolveKeyAsync(dup.ResourceKey, "vi", request.TenantId, ct)
+                ?? await _config.ResolveKeyAsync("sys.val.unique", "vi", request.TenantId, ct);
+            var msg = template is not null
+                ? template.Replace("{0}", enteredValue).Replace("{1}", dup.Column)
+                : $"{dup.Column} \"{enteredValue}\" đã tồn tại";
             throw new InvalidOperationException(msg);
         }
 

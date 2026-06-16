@@ -71,11 +71,14 @@ public sealed class SaveMasterDataCommandHandler
             {
                 var key = $"{info.TableName.ToLowerInvariant()}.val.{col.ColumnCode.ToLowerInvariant()}.unique";
                 var label = col.Label.Length > 0 ? col.Label : col.ColumnCode;
-                // 1. per-field key → 2. sys.val.unique template({0}) → 3. hardcoded
-                var msg = await _config.ResolveKeyAsync(key, "vi", r.TenantId, ct)
-                    ?? (await _config.ResolveKeyAsync("sys.val.unique", "vi", r.TenantId, ct))
-                        ?.Replace("{0}", label)
-                    ?? $"{label} đã tồn tại";
+                var enteredValue = val.ToString() ?? "";
+                // 1. per-field key → 2. sys.val.unique template → 3. hardcoded.
+                // Token i18n: {0} = giá trị người dùng nhập · {1} = nhãn field (thay ở CẢ per-field lẫn template).
+                var template = await _config.ResolveKeyAsync(key, "vi", r.TenantId, ct)
+                    ?? await _config.ResolveKeyAsync("sys.val.unique", "vi", r.TenantId, ct);
+                var msg = template is not null
+                    ? template.Replace("{0}", enteredValue).Replace("{1}", label)
+                    : $"{label} \"{enteredValue}\" đã tồn tại";
                 errors.Add(new MasterDataFieldError(col.ColumnCode, msg));
             }
         }

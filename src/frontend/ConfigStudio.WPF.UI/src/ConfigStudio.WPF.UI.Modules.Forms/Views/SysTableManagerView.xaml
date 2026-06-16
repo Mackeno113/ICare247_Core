@@ -171,7 +171,9 @@
 
                         <!-- Chọn nhanh bảng/view thật từ Target DB → tự điền Table_Code + Schema_Name. -->
                         <TextBlock Text="Chọn bảng / view có sẵn (Target DB)"
-                                   FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,12,0,6" />
+                                   FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,12,0,2" />
+                        <TextBlock Text="Chọn 1 bảng/view vật lý đang có trong Target DB — hệ thống tự điền Table_Code và Schema_Name. Để trống nếu muốn khai báo thủ công."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding DbObjects}"
                                           EditValue="{Binding SelectedDbObject, UpdateSourceTrigger=PropertyChanged}"
                                           IsTextEditable="True"
@@ -182,51 +184,70 @@
                                           Height="34" />
                     </StackPanel>
 
-                    <TextBlock Grid.Row="2" Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                        <TextBlock Text="Mã định danh duy nhất của bảng metadata — dùng trong cấu hình và các engine. Nên viết HOA, không dấu, không khoảng trắng (VD: UI_CUSTOMER)."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                    </StackPanel>
                     <dxe:TextEdit Grid.Row="3"
                                   EditValue="{Binding EditTableCode, UpdateSourceTrigger=PropertyChanged}"
                                   NullText="VD: UI_CUSTOMER, UI_INVOICE"
                                   Height="34"
                                   Margin="0,0,0,10" />
 
-                    <TextBlock Grid.Row="4" Text="Table_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                    <StackPanel Grid.Row="4">
+                        <TextBlock Text="Table_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                        <TextBlock Text="Tên hiển thị thân thiện cho người dùng — có thể là tiếng Việt có dấu (VD: Danh mục khách hàng)."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                    </StackPanel>
                     <dxe:TextEdit Grid.Row="5"
                                   EditValue="{Binding EditTableName, UpdateSourceTrigger=PropertyChanged}"
                                   NullText="VD: Danh mục khách hàng"
                                   Height="34"
                                   Margin="0,0,0,10" />
 
-                    <Grid Grid.Row="6" Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="10" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Row="6" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Schema_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
-                            <dxe:TextEdit EditValue="{Binding EditSchemaName, UpdateSourceTrigger=PropertyChanged}"
-                                          Height="34"
-                                          NullText="dbo" />
-                        </StackPanel>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Schema_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                                <TextBlock Text="Schema chứa bảng/view vật lý trong Target DB (mặc định dbo)."
+                                           FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                                <dxe:TextEdit EditValue="{Binding EditSchemaName, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="34"
+                                              NullText="dbo" />
+                            </StackPanel>
 
-                        <dxe:CheckEdit Grid.Column="2"
-                                       Content="Is_Tenant"
-                                       IsChecked="{Binding EditIsTenant}"
-                                       VerticalAlignment="Bottom"
-                                       Margin="0,0,0,6" />
+                            <dxe:CheckEdit Grid.Column="2"
+                                           Content="Is_Tenant"
+                                           IsChecked="{Binding EditIsTenant}"
+                                           ToolTip="Bật nếu bảng chứa dữ liệu riêng theo từng tenant (mỗi tenant một bộ dữ liệu); tắt nếu là bảng dùng chung."
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,0,6" />
 
-                        <dxe:CheckEdit Grid.Column="4"
-                                       Content="Is_Active"
-                                       IsChecked="{Binding EditIsActive}"
-                                       VerticalAlignment="Bottom"
-                                       Margin="0,0,0,6" />
-                    </Grid>
+                            <dxe:CheckEdit Grid.Column="4"
+                                           Content="Is_Active"
+                                           IsChecked="{Binding EditIsActive}"
+                                           ToolTip="Bật = bản ghi đang hiệu lực và xuất hiện trong cấu hình; tắt = ẩn/vô hiệu khỏi hệ thống."
+                                           VerticalAlignment="Bottom"
+                                           Margin="0,0,0,6" />
+                        </Grid>
+
+                        <TextBlock FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="Is_Tenant: bảng có dữ liệu riêng theo từng tenant. • Is_Active: bản ghi đang hiệu lực (tắt để ẩn/vô hiệu)." />
+                    </StackPanel>
 
                     <StackPanel Grid.Row="7">
-                        <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,6" />
+                        <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                        <TextBlock Text="Ghi chú nội bộ mô tả mục đích/ý nghĩa của bảng (không bắt buộc)."
+                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
                         <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"

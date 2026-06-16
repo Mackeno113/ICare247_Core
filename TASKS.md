@@ -75,6 +75,26 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 54 — 2026-06-16: ConfigStudio table picker + i18n token validation)
+
+- [x] **CFGSTUDIO-SYSTABLE-PICKER** — Màn Sys Table thêm combobox chọn bảng/view thật từ Target DB
+      (`ISchemaInspectorService` + `DbObjects`); chọn → tự điền Table_Code/Schema_Name (Table_Name nếu trống);
+      guard chỉ fill khi khớp đúng 1 mục. (commit `96c0d9d`)
+- [x] **VALIDATION-TOKEN** — Thông báo `required` + `unique` hỗ trợ token **`{0}`=giá trị nhập · `{1}`=nhãn field**
+      (thay ở CẢ message per-field lẫn template): `ResourceResolver.ResolveRequired/ResolveUnique` (+helper `ApplyTokens`),
+      `SaveMasterDataCommandHandler`/`InsertLookupCommandHandler` (block unique). `db/053` chuẩn hóa template
+      `sys.val.Unique/Required` ({1}=nhãn). Build BE 0/0. ⏳ chạy db/053 (Config DB).
+- [x] **DOC-GUIDE** — `docs/guide/cau-hinh-man-danh-muc.md`: hướng dẫn cấu hình màn engine-driven (ví dụ Cấp công ty)
+      + biến thể danh mục phẳng/FK/cây + quy ước Form_Code/View_Code.
+
+**Decisions Log (session 54):**
+- **Convention token thông báo validation = `{0}` giá trị nhập · `{1}` nhãn field** (đồng nhất required + unique;
+  với required `{0}` rỗng vì field trống). Dùng `.Replace` (không `string.Format`) để an toàn dấu ngoặc lẻ.
+  Áp ở CẢ message per-field (trước đây trả nguyên văn) lẫn template `sys.val.*`. Rule message (`ResolveRuleMessage`)
+  giữ nguyên `{0}`=nhãn — chuẩn hóa sau nếu cần.
+- **Sys Table**: chọn bảng/view thật từ **Target DB** (= Live DB), KHÔNG phải Config DB. TargetDb trong
+  ConfigStudio Settings phải trỏ `ICare247_Solution` (đã sửa file appsettings local của user).
+
 ## ✅ Done (session 2026-06-15b — baseline lưới + rule + pivot engine-driven)
 
 - [x] **UI-GRID-BASELINE** — `DataView`/`MasterDataGrid`: `TextWrapEnabled=true`, `ColumnResizeMode=ColumnsContainer`

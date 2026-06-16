@@ -1,6 +1,16 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-15
+> Cập nhật lần cuối: 2026-06-16
+
+## Tiến độ session 54 (2026-06-16) — F1 UI + khởi động F2 + công cụ cấu hình
+
+F1 đủ chạy: thêm **màn web "Đồng bộ cấu hình"** (Quản trị, dry-run + áp dụng). **F2 engine-hóa màn Công ty** xong
+phần code (SchemaInspector liệt kê VIEW · `vw_TC_CongTy` · routing `NavScreen.Route`/`ScreenView` redirect) — phần
+cấu hình `Ui_Form`/`Ui_View` là thao tác tay trong ConfigStudio. **Danh mục nền tảng**: module "Danh mục" + 2 view FK.
+**ConfigStudio**: Sys Table thêm combobox chọn bảng/view thật từ Target DB. **i18n**: thông báo `required`/`unique`
+hỗ trợ token `{0}`=giá trị, `{1}`=nhãn. Hướng dẫn cấu hình màn: `docs/guide/cau-hinh-man-danh-muc.md`.
+
+→ **Bước tiếp:** chạy SQL (db/050–053) + cấu hình tay danh mục → màn Công ty (engine-driven) theo guide.
 
 ## Đợt mới nhất — F1 đồng bộ config master→tenant full-stack (session 53, 2026-06-15)
 
