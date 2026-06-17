@@ -52,6 +52,9 @@
 
 ## Bước 3 — Tạo `Ui_View` (lưới danh sách, Grid)
 
+> 📖 Chi tiết toàn bộ 7 tab của màn này (Cơ bản / Hành vi / Export-Print / Cây / Cột / Actions / Bộ lọc),
+> giá trị hợp lệ từng trường, và panel lọc SP/SQL: xem [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md).
+
 1. Menu: **Forms › Views (Grid/Tree)**.
 2. Tạo mới:
    - **View_Type**: **Grid**.

@@ -1,6 +1,7 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid">
+                    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+                    xmlns:behaviors="clr-namespace:ConfigStudio.WPF.UI.Infrastructure.Behaviors">
     <Style x:Key="FieldLabelStyle" TargetType="{x:Type TextBlock}">
         <Setter Property="FontSize" Value="12" />
         <Setter Property="FontWeight" Value="SemiBold" />
@@ -255,9 +256,14 @@
         <Setter Property="ShowGroupPanel" Value="False" />
         <Setter Property="ShowIndicator" Value="False" />
         <Setter Property="NavigationStyle" Value="Row" />
-        <Setter Property="AutoWidth" Value="True" />
+        <!-- AutoWidth=False: cột giữ ĐÚNG pixel, kéo giãn tự do, có cuộn ngang khi tổng vượt khung.
+             (AutoWidth=True ép mọi cột co vừa khung → lưới nhiều cột không kéo giãn được.) -->
+        <Setter Property="AutoWidth" Value="False" />
         <Setter Property="RowMinHeight" Value="30" />
         <Setter Property="AllowPerPixelScrolling" Value="True" />
+        <!-- Cho phép kéo chỉnh độ rộng cột + tự lưu/phục hồi layout ra file local (xem GridLayoutBehavior). -->
+        <Setter Property="AllowResizing" Value="True" />
+        <Setter Property="behaviors:GridLayoutBehavior.Persist" Value="True" />
     </Style>
 
     <Style TargetType="{x:Type dxg:GridColumn}">

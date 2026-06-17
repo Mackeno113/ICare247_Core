@@ -1,8 +1,8 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-15 23:45_
+_Sinh tự động: 2026-06-17 17:52_
 
-## 1. Chuỗi tiếng Việt hardcode (12) — cần bọc L()
+## 1. Chuỗi tiếng Việt hardcode (13) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/Auth/AuthButton.razor:39` — "Đang xử lý..."
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
@@ -13,6 +13,7 @@ _Sinh tự động: 2026-06-15 23:45_
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:114` — "Sửa"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Xóa"
 - `src/frontend/ICare247_UI/Services/FormApiService.cs:133` — "HTTP {(int)response.StatusCode} — body rỗng"
+- `src/frontend/ICare247_UI/Services/MenuAdminApiService.cs:83` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/RuntimeApiService.cs:147` — "HTTP {(int)response.StatusCode} — body rỗng"
 - `src/frontend/ICare247_UI/Services/ViewApiService.cs:70` — "Lỗi tải JSON: {ex.Message}"
 - `src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs:67` — "Tiếng Việt"

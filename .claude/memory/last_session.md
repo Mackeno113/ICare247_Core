@@ -1,5 +1,39 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-17 (session 55 — Menu Builder web + WPF grid layout persistence + 2 guide)
+
+## Session 55 (2026-06-17) — đã làm
+
+> Việc ad-hoc (ngoài roadmap F1/F2): màn cấu hình menu web + lưu layout lưới WPF + tài liệu. Build BE 0/0, FE 0/0. CHƯA commit.
+
+- **MENU-BUILDER** — Màn web "Quản lý menu" (`/m/administration/menu`) cấu hình cây `HT_ChucNang` bằng **chọn**
+  (không gõ tay/SQL). Kiến trúc chốt: **1 service / 2 factory, KHÔNG tách microservice** — ghi **đơn-DB**
+  `HT_ChucNang` (Data tenant) qua `/api/v1/admin/menu`, picker đọc Config DB qua `/api/v1/views` sẵn có.
+  - BE: `MenuAdminController` + CQRS `Features/Admin/Menu/*` (GetMenuTree/UpsertMenuNode/DeleteMenuNode) +
+    `MenuAdminRepository` (`IDataDbConnectionFactory`) + DI. Sau ghi → `INavigationCache.InvalidateTenant`.
+  - FE: `MenuBuilderPage.razor` (DxTreeList + form chọn) + `MenuAdminApiService` + DI Program.cs.
+  - DB: `db/054_seed_ht_chucnang_menu_admin.sql` — node `administration.menu` + grant SUPERADMIN (idempotent).
+  - CRUD đầy đủ; chặn xóa node hệ thống (LaHeThong=1) / còn con; chống vòng lặp cha-con (server + client).
+  - **`NodeKind` {Group, View, Form}** — server xử lý CẢ Form (whitelist); UI v1 = **LC1** (Group+View, Form ẩn
+    `disabled`). **Nâng LC1→LC3 = chỉ sửa web** (bỏ disabled + thêm dropdown Form từ `FormApiService.GetFormsListAsync`).
+- **WPF-GRID-LAYOUT** — Mọi `dxg:GridControl` ConfigStudio: **kéo chỉnh độ rộng cột** + **tự lưu/phục hồi layout**
+  ra file local (`%LOCALAPPDATA%\ICare247\ConfigStudio\GridLayouts\*.xml`, KHÔNG vào DB). Gắn 1 lần qua implicit
+  `TableView` style (`Themes/Controls.xaml`): `AutoWidth=False` (điều kiện kéo giãn) + `AllowResizing=True` +
+  attached behavior `Infrastructure/Behaviors/GridLayoutBehavior` (key = tên UserControl + chữ ký cột, hash FNV-1a).
+- **DOC-GUIDES** — `docs/guide/cau-hinh-man-quan-ly-view.md` (7 tab màn Quản Lý View) +
+  `docs/guide/cau-hinh-menu.md` (cẩm nang dùng Menu Builder, kiểu user-manual).
+
+### Quyết định (ADR-026 + grid)
+- Menu Builder = monolith 2-factory (phân tích: tách microservice tái tạo chi phí mạng mà cache in-process đã khử).
+- WPF grid `AutoWidth=False` (user chốt pixel cố định + cuộn ngang) — điều kiện kéo giãn cột trên lưới nhiều cột.
+
+### ⏳ Việc cần làm
+- Chạy `db/054` trên Data DB tenant → E2E Menu Builder (login admin → Quản trị → Quản lý menu).
+- (Tùy) đóng ConfigStudio → rebuild để nạp bản WPF grid-layout mới (bin bị khóa khi app đang chạy).
+- Tiếp tục roadmap chính: **F1 E2E** (db/050 + config-sync) → **F2 engine-hóa màn Công ty**.
+
+---
+
 > Cập nhật: 2026-06-16 (session 54 — F1/F2 nối tiếp: màn web config-sync, engine-hóa Công ty, danh mục, ConfigStudio picker, i18n token validation)
 
 ## Session 54 (2026-06-16) — đã làm

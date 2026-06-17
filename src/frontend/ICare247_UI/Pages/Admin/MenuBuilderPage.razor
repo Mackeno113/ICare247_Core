@@ -1,0 +1,358 @@
+@page "/m/administration/menu"
+@inject MenuAdminApiService Api
+@inject ViewApiService ViewApi
+@inject LocalizationService Loc
+
+@*
+    MenuBuilderPage — màn Quản lý menu (Menu Builder).
+    - Trái: DxTreeList cây node (HT_ChucNang) — bấm "Sửa" đổ sang form phải.
+    - Phải: form thêm/sửa node. Loại node = Nhóm | View (Form: backend đã sẵn, UI mở sau — LC3).
+      Chọn View từ dropdown đọc Config DB (ViewApiService.GetListAsync) → tự suy DuongDan/DoiTuong ở server.
+    - Ghi: POST/PUT/DELETE /api/v1/admin/menu (Data DB tenant). Server invalidate cache menu.
+*@
+
+<PageTitle>@Loc.L("admin.menu.title", "Quản lý menu") — ICare247</PageTitle>
+
+<div class="mb-toolbar">
+    <span class="mb-title">@Loc.L("admin.menu.title", "Quản lý menu")</span>
+    <span class="mb-sep">·</span>
+    <span class="mb-sub">@Loc.L("admin.menu.sub", "Cấu hình cây menu trỏ tới các View đã cấu hình")</span>
+    <span class="mb-spacer"></span>
+    <button class="mb-btn" @onclick="StartNew">+ @Loc.L("admin.menu.new", "Thêm node")</button>
+    <button class="mb-btn" @onclick="ReloadAsync">↻ @Loc.L("common.btn.refresh", "Làm mới")</button>
+</div>
+
+<div class="mb-layout">
+    <div class="mb-tree">
+        @if (_loading)
+        {
+            <div class="mb-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+        }
+        else if (_nodes.Count == 0)
+        {
+            <div class="mb-empty">@Loc.L("admin.menu.empty", "Chưa có node nào.")</div>
+        }
+        else
+        {
+            <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
+                        AutoExpandAllNodes="true" ShowAllRows="true" HighlightRowOnHover="true"
+                        CssClass="mb-treelist">
+                <Columns>
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.name", "Tên")" FieldName="Ten" />
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.kind", "Loại")" Width="90px">
+                        <CellDisplayTemplate>
+                            @{ var n = (MenuNodeVm)context.DataItem; }
+                            <span class="mb-badge @(n.Loai == "Menu" ? "mb-badge--group" : "mb-badge--screen")">
+                                @KindLabel(n)
+                            </span>
+                        </CellDisplayTemplate>
+                    </DxTreeListDataColumn>
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan" />
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.active", "Bật")" Width="60px">
+                        <CellDisplayTemplate>
+                            @{ var n = (MenuNodeVm)context.DataItem; }
+                            <span>@(n.KichHoat ? "✓" : "—")</span>
+                        </CellDisplayTemplate>
+                    </DxTreeListDataColumn>
+                    <DxTreeListDataColumn Caption="" Width="80px">
+                        <CellDisplayTemplate>
+                            @{ var n = (MenuNodeVm)context.DataItem; }
+                            <button class="mb-link" @onclick="() => SelectNode(n)">@Loc.L("common.btn.edit", "Sửa")</button>
+                        </CellDisplayTemplate>
+                    </DxTreeListDataColumn>
+                </Columns>
+            </DxTreeList>
+        }
+    </div>
+
+    <div class="mb-form">
+        <h3 class="mb-form__head">
+            @(_editingId is null
+                ? Loc.L("admin.menu.form.new", "Thêm node mới")
+                : Loc.L("admin.menu.form.edit", "Sửa node #{0}", _editingId))
+        </h3>
+
+        @if (_editingSystem)
+        {
+            <div class="mb-note mb-note--warn">
+                @Loc.L("admin.menu.systemnode", "Node hệ thống — chỉ sửa được Bật/tắt & Thứ tự, không xóa.")
+            </div>
+        }
+
+        <label class="mb-label">@Loc.L("admin.menu.f.kind", "Loại node")</label>
+        <select class="mb-input" value="@_kind" @onchange="OnKindChanged" disabled="@_editingSystem">
+            <option value="Group">@Loc.L("admin.menu.kind.group", "Nhóm (không mở màn)")</option>
+            <option value="View">@Loc.L("admin.menu.kind.view", "Mở View")</option>
+            <option value="Form" disabled>@Loc.L("admin.menu.kind.form", "Mở Form (sắp có)")</option>
+        </select>
+
+        @if (_kind == "View")
+        {
+            <label class="mb-label">@Loc.L("admin.menu.f.view", "View (đọc từ cấu hình)")</label>
+            <select class="mb-input" value="@_objectCode" @onchange="OnViewChanged">
+                <option value="">@Loc.L("admin.menu.f.view.pick", "— Chọn View —")</option>
+                @foreach (var v in _views)
+                {
+                    <option value="@v.ViewCode" selected="@(v.ViewCode == _objectCode)">
+                        @(string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})")
+                    </option>
+                }
+            </select>
+            @if (!string.IsNullOrEmpty(_objectCode))
+            {
+                <div class="mb-hint">→ @($"/view/{_objectCode}")</div>
+            }
+        }
+
+        <label class="mb-label">@Loc.L("admin.menu.f.name", "Tên hiển thị *")</label>
+        <input class="mb-input" @bind="_ten" @bind:event="oninput"
+               placeholder="@Loc.L("admin.menu.f.name.ph", "VD: Khách hàng")" />
+
+        <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
+        <select class="mb-input" value="@(_parentId?.ToString() ?? "")" @onchange="OnParentChanged">
+            <option value="">@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")</option>
+            @foreach (var p in ParentOptions())
+            {
+                <option value="@p.Id" selected="@(p.Id == _parentId)">@IndentedName(p)</option>
+            }
+        </select>
+
+        <div class="mb-row">
+            <div class="mb-col">
+                <label class="mb-label">@Loc.L("admin.menu.f.icon", "Icon")</label>
+                <input class="mb-input" @bind="_icon" placeholder="book, users…" />
+            </div>
+            <div class="mb-col">
+                <label class="mb-label">@Loc.L("admin.menu.f.module", "Module")</label>
+                <input class="mb-input" @bind="_module" placeholder="HT, NS, TC…" />
+            </div>
+            <div class="mb-col mb-col--narrow">
+                <label class="mb-label">@Loc.L("admin.menu.f.order", "Thứ tự")</label>
+                <input class="mb-input" type="number" @bind="_thuTu" />
+            </div>
+        </div>
+
+        <label class="mb-check">
+            <input type="checkbox" @bind="_kichHoat" />
+            @Loc.L("admin.menu.f.active", "Kích hoạt (hiển thị trên menu)")
+        </label>
+
+        @if (_status is not null)
+        {
+            <div class="mb-note @(_statusErr ? "mb-note--err" : "mb-note--ok")">@_status</div>
+        }
+
+        <div class="mb-actions">
+            <button class="mb-btn mb-btn--primary" disabled="@_saving" @onclick="SaveAsync">
+                @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+            </button>
+            <button class="mb-btn" @onclick="StartNew">@Loc.L("admin.menu.form.new", "Thêm node mới")</button>
+            @if (_editingId is not null && !_editingSystem)
+            {
+                <button class="mb-btn mb-btn--danger" disabled="@_saving" @onclick="DeleteAsync">
+                    @Loc.L("common.btn.delete", "Xóa")
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MenuNodeVm> _nodes = new();
+    private List<ViewListItemDto> _views = new();
+    private bool _loading = true, _saving;
+    private string? _status; private bool _statusErr;
+
+    // Form state
+    private long? _editingId;
+    private bool _editingSystem;
+    private string _kind = "Group";
+    private string _ten = "";
+    private long? _parentId;
+    private string? _objectCode;
+    private string _icon = "";
+    private string _module = "";
+    private int _thuTu;
+    private bool _kichHoat = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _views = await ViewApi.GetListAsync(pageSize: 200);
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _nodes = await Api.GetTreeAsync();
+        _loading = false;
+    }
+
+    private void StartNew()
+    {
+        _editingId = null; _editingSystem = false;
+        _kind = "Group"; _ten = ""; _parentId = null; _objectCode = null;
+        _icon = ""; _module = ""; _thuTu = 0; _kichHoat = true;
+        _status = null;
+    }
+
+    private void SelectNode(MenuNodeVm n)
+    {
+        _editingId = n.Id;
+        _editingSystem = n.LaHeThong;
+        _kind = n.LoaiDoiTuong switch { "View" => "View", "Form" => "Form", _ => "Group" };
+        _ten = n.Ten;
+        _parentId = n.ChaId;
+        _objectCode = n.DoiTuong;
+        _icon = n.Icon ?? "";
+        _module = n.Module ?? "";
+        _thuTu = n.ThuTu;
+        _kichHoat = n.KichHoat;
+        _status = null;
+    }
+
+    private void OnKindChanged(ChangeEventArgs e)
+    {
+        _kind = e.Value?.ToString() ?? "Group";
+        if (_kind == "Group") _objectCode = null;
+    }
+
+    private void OnViewChanged(ChangeEventArgs e)
+    {
+        _objectCode = e.Value?.ToString();
+        // Gợi ý tên từ Title của View nếu người dùng chưa nhập.
+        if (!string.IsNullOrEmpty(_objectCode) && string.IsNullOrWhiteSpace(_ten))
+        {
+            var v = _views.FirstOrDefault(x => x.ViewCode == _objectCode);
+            if (v is not null) _ten = string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : v.Title!;
+        }
+    }
+
+    private void OnParentChanged(ChangeEventArgs e)
+        => _parentId = long.TryParse(e.Value?.ToString(), out var id) ? id : null;
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_ten))
+        { SetStatus(Loc.L("admin.menu.err.name", "Tên node là bắt buộc."), true); return; }
+        if (_kind == "View" && string.IsNullOrEmpty(_objectCode))
+        { SetStatus(Loc.L("admin.menu.err.view", "Cần chọn View."), true); return; }
+
+        _saving = true; _status = null;
+        var body = new MenuNodePayload
+        {
+            NodeKind = _kind, Ten = _ten.Trim(), ParentId = _parentId,
+            ObjectCode = _kind == "Group" ? null : _objectCode,
+            Module = string.IsNullOrWhiteSpace(_module) ? null : _module.Trim(),
+            Icon = string.IsNullOrWhiteSpace(_icon) ? null : _icon.Trim(),
+            ThuTu = _thuTu, KichHoat = _kichHoat
+        };
+
+        var res = _editingId is null
+            ? await Api.CreateAsync(body)
+            : await Api.UpdateAsync(_editingId.Value, body);
+        _saving = false;
+
+        if (res.Ok)
+        {
+            SetStatus(Loc.L("admin.menu.saved", "Đã lưu. Menu sẽ cập nhật ở lần điều hướng kế."), false);
+            await ReloadAsync();
+            if (_editingId is null) StartNew();
+        }
+        else
+        {
+            SetStatus(res.Error ?? Loc.L("admin.menu.err.save", "Lưu thất bại."), true);
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_editingId is null) return;
+        _saving = true; _status = null;
+        var res = await Api.DeleteAsync(_editingId.Value);
+        _saving = false;
+
+        if (res.Ok)
+        {
+            await ReloadAsync();
+            StartNew();
+            SetStatus(Loc.L("admin.menu.deleted", "Đã xóa node."), false);
+        }
+        else
+        {
+            SetStatus(res.Error ?? Loc.L("admin.menu.err.delete", "Xóa thất bại."), true);
+        }
+    }
+
+    private void SetStatus(string msg, bool err) { _status = msg; _statusErr = err; }
+
+    // ── Helpers cây cha (loại trừ chính node + nhánh con để chống vòng lặp) ──
+    private IEnumerable<MenuNodeVm> ParentOptions()
+    {
+        if (_editingId is null) return _nodes;
+        var banned = DescendantsAndSelf(_editingId.Value);
+        return _nodes.Where(n => !banned.Contains(n.Id));
+    }
+
+    private HashSet<long> DescendantsAndSelf(long id)
+    {
+        var set = new HashSet<long> { id };
+        bool added = true;
+        while (added)
+        {
+            added = false;
+            foreach (var n in _nodes)
+                if (n.ChaId is { } c && set.Contains(c) && set.Add(n.Id)) added = true;
+        }
+        return set;
+    }
+
+    private string IndentedName(MenuNodeVm n)
+    {
+        int depth = 0; var cur = n.ChaId;
+        var guard = 0;
+        while (cur is { } c && guard++ < 50)
+        {
+            depth++;
+            cur = _nodes.FirstOrDefault(x => x.Id == c)?.ChaId;
+        }
+        return new string('—', depth) + (depth > 0 ? " " : "") + n.Ten;
+    }
+
+    private string KindLabel(MenuNodeVm n) => n.LoaiDoiTuong switch
+    {
+        "View" => Loc.L("admin.menu.kind.view.short", "View"),
+        "Form" => Loc.L("admin.menu.kind.form.short", "Form"),
+        _ => Loc.L("admin.menu.kind.group.short", "Nhóm")
+    };
+}
+
+<style>
+    .mb-toolbar { display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid #e2e8f0; }
+    .mb-title { font-size:16px; font-weight:600; }
+    .mb-sep { opacity:.4; }
+    .mb-sub { font-size:12px; opacity:.65; }
+    .mb-spacer { flex:1; }
+    .mb-layout { display:grid; grid-template-columns: 1.4fr 1fr; gap:16px; padding:16px; align-items:start; }
+    .mb-tree, .mb-form { border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#fff; }
+    .mb-empty { padding:24px; text-align:center; opacity:.6; }
+    .mb-form__head { margin:0 0 10px; font-size:14px; }
+    .mb-label { display:block; font-size:12px; font-weight:600; opacity:.75; margin:10px 0 4px; }
+    .mb-input { width:100%; padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box; }
+    .mb-row { display:flex; gap:10px; }
+    .mb-col { flex:1; } .mb-col--narrow { max-width:90px; }
+    .mb-check { display:flex; align-items:center; gap:6px; margin:12px 0 4px; font-size:13px; }
+    .mb-hint { font-size:11px; opacity:.6; margin-top:3px; }
+    .mb-actions { display:flex; gap:8px; margin-top:14px; }
+    .mb-btn { padding:7px 12px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; cursor:pointer; font-size:13px; }
+    .mb-btn--primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .mb-btn--danger { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
+    .mb-link { background:none; border:none; color:#2563eb; cursor:pointer; padding:0; font-size:13px; }
+    .mb-badge { font-size:11px; padding:1px 7px; border-radius:10px; }
+    .mb-badge--group { background:#eef2ff; color:#3730a3; }
+    .mb-badge--screen { background:#ecfdf5; color:#047857; }
+    .mb-note { margin-top:10px; padding:8px 10px; border-radius:6px; font-size:12px; }
+    .mb-note--ok { background:#dcfce7; color:#166534; }
+    .mb-note--err { background:#fee2e2; color:#991b1b; }
+    .mb-note--warn { background:#fef9c3; color:#854d0e; }
+</style>

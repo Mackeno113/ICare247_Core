@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-15 23:45:50",
+  "generatedAt": "2026-06-17 17:52:53",
   "source": "ICare247_UI",
-  "count": 208,
+  "count": 245,
   "entries": [
     {
       "key": "admin.cfgsync.apply",
@@ -213,6 +213,388 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
           "line": 16
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.col.active",
+      "vi": "Bật",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 51
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.col.kind",
+      "vi": "Loại",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.col.name",
+      "vi": "Tên",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.col.route",
+      "vi": "Đường dẫn",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.deleted",
+      "vi": "Đã xóa node.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 279
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.empty",
+      "vi": "Chưa có node nào.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.err.delete",
+      "vi": "Xóa thất bại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 283
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.err.name",
+      "vi": "Tên node là bắt buộc.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 237
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.err.save",
+      "vi": "Lưu thất bại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 264
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.err.view",
+      "vi": "Cần chọn View.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 239
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.active",
+      "vi": "Kích hoạt (hiển thị trên menu)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 137
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.icon",
+      "vi": "Icon",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 122
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.kind",
+      "vi": "Loại node",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.module",
+      "vi": "Module",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.name",
+      "vi": "Tên hiển thị *",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 107
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.name.ph",
+      "vi": "VD: Khách hàng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 109
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.order",
+      "vi": "Thứ tự",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 130
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.parent",
+      "vi": "Node cha",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 111
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.parent.root",
+      "vi": "— Gốc (không cha) —",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 113
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.view",
+      "vi": "View (đọc từ cấu hình)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.f.view.pick",
+      "vi": "— Chọn View —",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 93
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.form.edit",
+      "vi": "Sửa node #{0}",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 72
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.form.new",
+      "vi": "Thêm node mới",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 71
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 149
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.form",
+      "vi": "Mở Form (sắp có)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 86
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.form.short",
+      "vi": "Form",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 325
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.group",
+      "vi": "Nhóm (không mở màn)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 84
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.group.short",
+      "vi": "Nhóm",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 326
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.view",
+      "vi": "Mở View",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 85
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.kind.view.short",
+      "vi": "View",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 324
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.new",
+      "vi": "Thêm node",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.saved",
+      "vi": "Đã lưu. Menu sẽ cập nhật ở lần điều hướng kế.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 258
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.sub",
+      "vi": "Cấu hình cây menu trỏ tới các View đã cấu hình",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.systemnode",
+      "vi": "Node hệ thống — chỉ sửa được Bật/tắt & Thứ tự, không xóa.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.title",
+      "vi": "Quản lý menu",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 14
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 17
         }
       ]
     },
@@ -1085,6 +1467,10 @@
           "line": 19
         },
         {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 29
+        },
+        {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
           "line": 38
         }
@@ -1135,10 +1521,47 @@
       ]
     },
     {
+      "key": "common.btn.delete",
+      "vi": "Xóa",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 153
+        }
+      ]
+    },
+    {
+      "key": "common.btn.edit",
+      "vi": "Sửa",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "key": "common.btn.refresh",
+      "vi": "Làm mới",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 22
+        }
+      ]
+    },
+    {
       "key": "common.btn.save",
       "vi": "Lưu",
       "source": "ICare247_UI",
       "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 147
+        },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
           "line": 32
@@ -1150,6 +1573,10 @@
       "vi": "Đang lưu…",
       "source": "ICare247_UI",
       "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 147
+        },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
           "line": 32

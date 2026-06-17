@@ -321,3 +321,20 @@
   - Incremental theo version; tích hợp invalidate `ConfigCache`.
 - **Status:** 📋 thiết kế CHỐT (spec `16_CONFIG_SYNC_SPEC.md`) — chưa code; chờ duyệt 5 quyết định mở (§10 spec).
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-023 (master→tenant menu), ADR-024 (engine-driven), ADR-014 (ConfigCache).
+
+## ADR-026: Menu Builder web — ghi đơn-DB (Data) + picker đọc Config; LC1 (Group+View) dựng sẵn lên LC3 (+Form) (2026-06-17)
+- **Context:** Cần đưa View đã cấu hình lên menu web. Trước đó node `HT_ChucNang` chỉ thêm bằng SQL seed tay;
+  chưa có UI. Câu hỏi kèm: có nên tách "đọc Config" và "ghi Data" thành 2 service độc lập không.
+- **Decision:** **KHÔNG tách microservice** — giữ 1 API monolith + 2 connection factory đã có
+  (`IDbConnectionFactory`=Config, `IDataDbConnectionFactory`=Data). Menu Builder:
+  - **Ghi đơn-DB:** node menu chỉ ghi `HT_ChucNang` (Data DB tenant) qua `/api/v1/admin/menu` → không cross-DB tx.
+  - **Đọc chéo chỉ để picker:** dropdown View đọc Config DB qua `/api/v1/views` (đã có). Sau ghi → `INavigationCache.InvalidateTenant`.
+  - **Discriminator `NodeKind`** {Group, View, Form}: server `UpsertMenuNodeCommand.ResolveKind` xử lý CẢ Form
+    (whitelist → `Loai`/`DuongDan`/`DoiTuong`/`LoaiDoiTuong`). UI v1 = **LC1** (Group+View); **Form ẩn**.
+  - **Nâng LC1→LC3 = chỉ sửa web** (bỏ `disabled` option Form + thêm dropdown Form từ `FormApiService.GetFormsListAsync`).
+    KHÔNG đụng backend/DB/endpoint.
+  - Quyền: chức năng mới `administration.menu` (`RequirePermission`); seed `db/054`. CRUD đầy đủ; chặn xóa node
+    `LaHeThong=1` và node còn con; chống vòng lặp cha-con (server + client).
+- **Files:** `MenuAdminController` · `Features/Admin/Menu/*` · `MenuAdminRepository` · `MenuBuilderPage.razor` +
+  `MenuAdminApiService` · `db/054`. Guide: `docs/guide/cau-hinh-menu.md`.
+- **Liên quan:** ADR-018 (DB-per-tenant), ADR-023 (menu/authz), phân tích 2-factory (đọc Config vs ghi Data).

@@ -75,6 +75,32 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 55 — 2026-06-17: Menu Builder web + WPF grid layout persistence + guides)
+
+- [x] **MENU-BUILDER** — Màn web "Quản lý menu" (`/m/administration/menu`) cấu hình cây `HT_ChucNang` bằng
+      **chọn** thay vì gõ tay. Kiến trúc: **1 service / 2 factory** (KHÔNG tách microservice) — **ghi đơn-DB**
+      `HT_ChucNang` (Data tenant) qua `/api/v1/admin/menu`, **picker đọc Config DB** qua `/api/v1/views` sẵn có.
+      Backend: `MenuAdminController` + CQRS `Features/Admin/Menu/*` (GetMenuTree/UpsertMenuNode/DeleteMenuNode) +
+      `MenuAdminRepository` (`IDataDbConnectionFactory`) + DI. Sau ghi → `INavigationCache.InvalidateTenant`.
+      Web: `MenuBuilderPage.razor` (DxTreeList + form) + `MenuAdminApiService` + DI. `db/054` seed node
+      `administration.menu` + grant SUPERADMIN. CRUD đầy đủ; chặn xóa node hệ thống/còn con; chống vòng lặp cha-con.
+      Build BE 0/0, FE 0/0. ⏳ chạy `db/054` + E2E (login admin). (ADR-026)
+- [x] **WPF-GRID-LAYOUT** — Mọi `dxg:GridControl` trong ConfigStudio: cho **kéo chỉnh độ rộng cột** + **tự lưu/phục
+      hồi layout ra file local** (`%LOCALAPPDATA%\ICare247\ConfigStudio\GridLayouts\*.xml`, KHÔNG vào DB). Gắn 1 lần
+      qua implicit `TableView` style (`Themes/Controls.xaml`): `AutoWidth=False` + `AllowResizing=True` +
+      attached behavior `GridLayoutBehavior` (key tự sinh từ tên UserControl + chữ ký cột; FNV-1a ổn định).
+- [x] **DOC-GUIDES** — `docs/guide/cau-hinh-man-quan-ly-view.md` (7 tab màn Quản Lý View) +
+      `docs/guide/cau-hinh-menu.md` (cẩm nang sử dụng Menu Builder, kiểu user-manual).
+
+**Decisions Log (session 55):**
+- **Menu Builder = monolith 2-factory, KHÔNG tách service** (phân tích: tách microservice tái tạo chi phí mạng mà
+  cache in-process đã khử). Ghi đơn-DB (Data) + đọc chéo chỉ để picker (Config). (ADR-026)
+- **`NodeKind` discriminator {Group, View, Form}**: server xử lý CẢ `Form` (whitelist route/đối-tượng). UI v1 = **LC1**
+  (Group+View, Form ẩn). **Nâng LC1→LC3 = chỉ sửa web** (bỏ `disabled` option Form + thêm dropdown Form từ
+  `FormApiService.GetFormsListAsync`) — KHÔNG đụng backend/DB/endpoint.
+- **WPF grid `AutoWidth=False`** (user chốt pixel cố định + cuộn ngang): điều kiện để kéo giãn cột trên lưới nhiều
+  cột (AutoWidth=True ép cột co vừa khung → không kéo được). Đánh đổi: cột `Width="*"` mất tự-lấp-đầy.
+
 ## ✅ Done (session 54 — 2026-06-16: ConfigStudio table picker + i18n token validation)
 
 - [x] **CFGSTUDIO-SYSTABLE-PICKER** — Màn Sys Table thêm combobox chọn bảng/view thật từ Target DB
