@@ -419,20 +419,7 @@
     private IEnumerable<LanguageInfo> TransLangs
         => Loc.Available.Where(l => l.Code != LocalizationService.BaseLanguage);
 
-    // ── Nguồn cho combobox có lọc (DxComboBox SearchMode=AutoSearch) ──
-    // PHẢI public (không private nested): DxComboBox ở assembly khác cần truy cập kiểu để dựng
-    // accessor cho TextField/ValueField — nếu private nó fallback ToString() (hiện "ComboOpt {…}").
-    /// <summary>Tùy chọn combo khóa chuỗi (View, Phân hệ).</summary>
-    public sealed record ComboOpt(string Code, string Display)
-    {
-        public override string ToString() => Display;
-    }
-    /// <summary>Tùy chọn combo Node cha (khóa số).</summary>
-    public sealed record ParentOpt(long Id, string Display)
-    {
-        public override string ToString() => Display;
-    }
-
+    // Nguồn combobox (ComboOpt/ParentOpt) là kiểu public top-level — xem MenuBuilderModels.cs.
     // Materialize 1 lần (tham chiếu ổn định) — DxComboBox không reset lựa chọn giữa các lần render.
     private List<ComboOpt> _viewOpts = new();
     private List<ComboOpt> _moduleOpts = new();
