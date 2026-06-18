@@ -39,6 +39,9 @@
             <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
                         AutoExpandAllNodes="true" ShowAllRows="true" HighlightRowOnHover="true"
                         FocusedRowEnabled="true" FocusedRowChanged="OnRowFocused"
+                        ShowSearchBox="true"
+                        AllowColumnReorder="true"
+                        ColumnResizeMode="TreeListColumnResizeMode.ColumnsContainer"
                         CssClass="mb-treelist">
                 <Columns>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.name", "Tên")" FieldName="Ten" />
@@ -77,10 +80,10 @@
                     <DxTreeListDataColumn Caption="" Width="104px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
-                            <button class="mb-link" @onclick="() => OpenEdit(n)">@Loc.L("common.btn.edit", "Sửa")</button>
+                            <button class="mb-act" @onclick="() => OpenEdit(n)">@Loc.L("common.btn.edit", "Sửa")</button>
                             @if (!n.LaHeThong)
                             {
-                                <button class="mb-link mb-link--danger" @onclick="() => _confirmDelete = n">@Loc.L("common.btn.delete", "Xóa")</button>
+                                <button class="mb-act mb-act--danger" @onclick="() => _confirmDelete = n">@Loc.L("common.btn.delete", "Xóa")</button>
                             }
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
@@ -828,6 +831,11 @@
     .mb-btn--danger { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
     .mb-link { background:none; border:none; color:#2563eb; cursor:pointer; padding:0; font-size:13px; }
     .mb-link--danger { color:#b91c1c; margin-left:10px; }
+    /* Nút thao tác dạng "pill" nền trắng → đọc được cả khi dòng đang chọn (nền xanh). */
+    .mb-act { background:#fff; border:1px solid #cbd5e1; border-radius:4px; padding:1px 8px; margin-right:4px;
+              color:#2563eb; cursor:pointer; font-size:12px; line-height:18px; }
+    .mb-act:hover { background:#f1f5f9; }
+    .mb-act--danger { color:#b91c1c; border-color:#fca5a5; }
     .mb-modal--sm { max-width:420px; }
     .mb-iconbtn { background:none; border:none; cursor:pointer; color:#64748b; padding:4px; line-height:0; }
     .mb-badge { font-size:11px; padding:1px 7px; border-radius:10px; }
