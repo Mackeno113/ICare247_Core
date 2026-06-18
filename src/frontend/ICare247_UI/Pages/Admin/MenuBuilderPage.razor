@@ -180,8 +180,8 @@
                 @if (_kind == "View")
                 {
                     <label class="mb-label">@Loc.L("admin.menu.f.view", "View (đọc từ cấu hình)")</label>
-                    <DxComboBox Data="@_viewOpts" @bind-Value="ObjectCodeBound"
-                                TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
+                    <DxComboBox TData="ComboOpt" TValue="ComboOpt" Data="@_viewOpts"
+                                Value="@_viewSel" ValueChanged="@OnViewSelChanged"
                                 SearchMode="ListSearchMode.AutoSearch"
                                 ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
                                 NullText="@Loc.L("admin.menu.f.view.pick", "— Chọn View —")"
@@ -228,8 +228,8 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
-                <DxComboBox Data="@_parentOpts" @bind-Value="_parentId"
-                            TextField="@nameof(ParentOpt.Display)" ValueField="@nameof(ParentOpt.Id)"
+                <DxComboBox TData="ParentOpt" TValue="ParentOpt" Data="@_parentOpts"
+                            Value="@_parentSel" ValueChanged="@OnParentSelChanged"
                             SearchMode="ListSearchMode.AutoSearch"
                             ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
                             NullText="@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")"
@@ -259,8 +259,8 @@
                 <div class="mb-row">
                     <div class="mb-col">
                         <label class="mb-label">@Loc.L("admin.menu.col.module", "Phân hệ")</label>
-                        <DxComboBox Data="@_moduleOpts" @bind-Value="_module"
-                                    TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
+                        <DxComboBox TData="ComboOpt" TValue="ComboOpt" Data="@_moduleOpts"
+                                    Value="@_moduleSel" ValueChanged="@OnModuleSelChanged"
                                     SearchMode="ListSearchMode.AutoSearch"
                                     ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
                                     NullText="@Loc.L("admin.menu.f.module.none", "— Không —")"
@@ -425,25 +425,39 @@
     private List<ComboOpt> _moduleOpts = new();
     private List<ParentOpt> _parentOpts = new();
 
+    // Item ĐANG CHỌN (bind nguyên object — KHÔNG dùng ValueField để tránh reflection theo tên-trường,
+    // vốn fail với kiểu app → trước đây Module bind ra null). Hiển thị qua ToString()=Display.
+    private ComboOpt? _viewSel;
+    private ComboOpt? _moduleSel;
+    private ParentOpt? _parentSel;
+
     private void BuildViewOpts() => _viewOpts = _views.Select(v =>
         new ComboOpt(v.ViewCode, string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})")).ToList();
     private void BuildModuleOpts() => _moduleOpts = _modules.Select(m => new ComboOpt(m.Ma, $"{m.Ma} — {m.Ten}")).ToList();
     private void BuildParentOpts() => _parentOpts = ParentOptions().Select(p => new ParentOpt(p.Id, IndentedName(p))).ToList();
 
-    /// <summary>Bind cho combo View — chọn xong tự gợi ý Tên hiển thị nếu đang trống.</summary>
-    private string? ObjectCodeBound
+    /// <summary>Đồng bộ item đang chọn từ giá trị nguyên thủy hiện tại (gọi khi mở popup).</summary>
+    private void SyncCombosFromValues()
     {
-        get => _objectCode;
-        set
+        _viewSel   = string.IsNullOrEmpty(_objectCode) ? null : _viewOpts.FirstOrDefault(o => o.Code == _objectCode);
+        _moduleSel = string.IsNullOrEmpty(_module)     ? null : _moduleOpts.FirstOrDefault(o => o.Code == _module);
+        _parentSel = _parentId is { } pid ? _parentOpts.FirstOrDefault(o => o.Id == pid) : null;
+    }
+
+    private void OnViewSelChanged(ComboOpt? o)
+    {
+        _viewSel = o;
+        _objectCode = o?.Code;
+        // Gợi ý Tên hiển thị từ View nếu đang trống.
+        if (!string.IsNullOrEmpty(_objectCode) && string.IsNullOrWhiteSpace(_ten))
         {
-            _objectCode = value;
-            if (!string.IsNullOrEmpty(_objectCode) && string.IsNullOrWhiteSpace(_ten))
-            {
-                var v = _views.FirstOrDefault(x => x.ViewCode == _objectCode);
-                if (v is not null) _ten = string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : v.Title!;
-            }
+            var v = _views.FirstOrDefault(x => x.ViewCode == _objectCode);
+            if (v is not null) _ten = string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : v.Title!;
         }
     }
+
+    private void OnModuleSelChanged(ComboOpt? o) { _moduleSel = o; _module = o?.Code; }
+    private void OnParentSelChanged(ParentOpt? o) { _parentSel = o; _parentId = o?.Id; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -476,6 +490,7 @@
         _overridePath = false; _duongDan = "";
         _navKey = null; _trans = new(); _transOrig = new();
         BuildParentOpts();
+        SyncCombosFromValues();
         ResetDrag();
         _status = null; _popupOpen = true;
     }
@@ -511,6 +526,7 @@
         _transOrig = new(_trans);
 
         BuildParentOpts();
+        SyncCombosFromValues();
         ResetDrag();
         _status = null; _popupOpen = true;
     }
@@ -554,7 +570,7 @@
     private void OnKindChanged(ChangeEventArgs e)
     {
         _kind = e.Value?.ToString() ?? "Group";
-        if (_kind == "Group") _objectCode = null;
+        if (_kind == "Group") { _objectCode = null; _viewSel = null; }
     }
 
     private void OnToggleOverride(ChangeEventArgs e)
