@@ -128,6 +128,9 @@ public sealed class MenuNodeVm
     public string? DoiTuong { get; set; }
     public string? LoaiDoiTuong { get; set; }
     public bool LaHeThong { get; set; }
+
+    /// <summary>Nhãn loại để lọc/sắp ở lưới (Nhóm | View | Form) — khớp hiển thị, khác cột Loai gốc (Menu/ManHinh).</summary>
+    public string LoaiText => LoaiDoiTuong switch { "View" => "View", "Form" => "Form", _ => "Nhóm" };
 }
 
 /// <summary>Một phân hệ (module) cho dropdown chọn Module.</summary>

@@ -46,7 +46,8 @@
                 <Columns>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.name", "Tên")" FieldName="Ten"
                                           FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.kind", "Loại")" Width="90px">
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.kind", "Loại")" FieldName="LoaiText" Width="90px"
+                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
                             <span class="mb-badge @(n.Loai == "Menu" ? "mb-badge--group" : "mb-badge--screen")">
@@ -63,13 +64,13 @@
                     </DxTreeListDataColumn>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan"
                                           FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.active", "Bật")" Width="56px">
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.active", "Bật")" FieldName="KichHoat" Width="70px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
                             <span>@(n.KichHoat ? "✓" : "—")</span>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.order", "Thứ tự")" Width="86px">
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.order", "Thứ tự")" FieldName="ThuTu" Width="120px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
                             <div class="mb-order">
