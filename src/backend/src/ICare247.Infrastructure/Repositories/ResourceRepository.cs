@@ -5,6 +5,7 @@
 //           Load toàn bộ keys của form + global sys.val.* trong 1 query.
 
 using Dapper;
+using ICare247.Application.Features.Languages.GetLanguages;
 using ICare247.Application.Interfaces;
 
 namespace ICare247.Infrastructure.Repositories;
@@ -190,6 +191,21 @@ public sealed class ResourceRepository : IResourceRepository
             new { Key = key, Lang = langCode, Value = value },
             cancellationToken: ct);
         await conn.ExecuteAsync(cmd);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<LanguageDto>> GetLanguagesAsync(CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT l.Lang_Code  AS Code,
+                   l.Lang_Name  AS Name,
+                   l.Is_Default AS IsDefault
+            FROM   dbo.Sys_Language l
+            ORDER BY l.Is_Default DESC, l.Lang_Code;
+            """;
+        using var conn = _db.CreateConnection();
+        var rows = await conn.QueryAsync<LanguageDto>(new CommandDefinition(sql, cancellationToken: ct));
+        return rows.ToList();
     }
 
     // ── Private DTO ──────────────────────────────────────────────────────

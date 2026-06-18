@@ -74,10 +74,14 @@
                             </div>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
-                    <DxTreeListDataColumn Caption="" Width="64px">
+                    <DxTreeListDataColumn Caption="" Width="104px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
                             <button class="mb-link" @onclick="() => OpenEdit(n)">@Loc.L("common.btn.edit", "Sửa")</button>
+                            @if (!n.LaHeThong)
+                            {
+                                <button class="mb-link mb-link--danger" @onclick="() => _confirmDelete = n">@Loc.L("common.btn.delete", "Xóa")</button>
+                            }
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
                 </Columns>
@@ -299,7 +303,7 @@
             <div class="mb-modal__foot">
                 @if (_editingId is not null && !_editingSystem)
                 {
-                    <button class="mb-btn mb-btn--danger" disabled="@_saving" @onclick="DeleteAsync">
+                    <button class="mb-btn mb-btn--danger" disabled="@_saving" @onclick="RequestDeleteFromPopup">
                         @Loc.L("common.btn.delete", "Xóa")
                     </button>
                 }
@@ -307,6 +311,39 @@
                 <button class="mb-btn" @onclick="ClosePopup">@Loc.L("common.btn.cancel", "Hủy")</button>
                 <button class="mb-btn mb-btn--primary" disabled="@_saving" @onclick="SaveAsync">
                     @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ─────────────────────── Dialog xác nhận xóa node ─────────────────────── *@
+@if (_confirmDelete is not null)
+{
+    <div class="mb-modal__root">
+        <div class="mb-modal__backdrop" @onclick="() => _confirmDelete = null"></div>
+        <div class="mb-modal mb-modal--sm">
+            <div class="mb-modal__head">
+                <h3>⚠️ @Loc.L("admin.menu.del.title", "Xác nhận xóa node")</h3>
+                <button class="mb-iconbtn" @onclick="() => _confirmDelete = null" title="@Loc.L("common.btn.close", "Đóng")">
+                    <Icon Name="x" Size="18" />
+                </button>
+            </div>
+            <div class="mb-modal__body">
+                <p>@((MarkupString)Loc.L("admin.menu.del.body",
+                    "Bạn chắc chắn xóa node <strong>{0}</strong>? Hành động không thể hoàn tác.", _confirmDelete.Ten))</p>
+                @if (_delStatus is not null)
+                {
+                    <div class="mb-note mb-note--err">@_delStatus</div>
+                }
+            </div>
+            <div class="mb-modal__foot">
+                <span class="mb-spacer"></span>
+                <button class="mb-btn" disabled="@_deleting" @onclick="() => _confirmDelete = null">
+                    @Loc.L("common.btn.cancel", "Hủy")
+                </button>
+                <button class="mb-btn mb-btn--danger" disabled="@_deleting" @onclick="ConfirmDeleteAsync">
+                    @(_deleting ? Loc.L("delete.deleting", "Đang xóa…") : Loc.L("admin.menu.del.confirm", "Xóa node"))
                 </button>
             </div>
         </div>
@@ -326,6 +363,11 @@
     // ── Popup state ──
     private bool _popupOpen;
     private string? _status; private bool _statusErr;
+
+    // ── Xác nhận xóa node ──
+    private MenuNodeVm? _confirmDelete;
+    private bool _deleting;
+    private string? _delStatus;
     private long? _editingId;
     private bool _editingSystem;
     private string _kind = "Group";
@@ -441,27 +483,25 @@
     {
         var parent = n.ChaId is { } c ? _nodes.FirstOrDefault(x => x.Id == c) : null;
 
-        // Gốc + ManHinh (Tổng quan, Công cụ Dev…) → nav.{Ma}
-        if (parent is null && n.Loai == "ManHinh") return $"nav.{n.Ma}";
+        // Dùng NavKeys.* (tự ASCII-hóa đoạn khóa) → khớp 100% với NavMenu lúc dịch thật.
+
+        // Gốc + ManHinh (Tổng quan, Công cụ Dev…) → nav.{ma}
+        if (parent is null && n.Loai == "ManHinh") return NavKeys.Root(n.Ma);
 
         // Gốc + Menu (nhóm) → nav.group.{key}
-        if (parent is null && n.Loai == "Menu")
-        {
-            var grpKey = n.Ma.StartsWith("group.") ? n.Ma["group.".Length..] : n.Ma;
-            return $"nav.group.{grpKey}";
-        }
+        if (parent is null && n.Loai == "Menu") return NavKeys.Group(n.Ma);
 
         // Cha là nhóm gốc + bản thân là Menu → phân hệ → nav.module.{key}
         var parentIsRootGroup = parent is not null && parent.ChaId is null && parent.Loai == "Menu";
         if (parentIsRootGroup && n.Loai == "Menu")
-            return $"nav.module.{ModKeyOf(n)}";
+            return NavKeys.Module(ModKeyOf(n));
 
         // Dưới một phân hệ → màn → nav.screen.{module}.{screen}
         if (parent is not null)
         {
             var dot = n.Ma.IndexOf('.');
             var screenKey = dot >= 0 ? n.Ma[(dot + 1)..] : n.Ma;
-            return $"nav.screen.{ModKeyOf(parent)}.{screenKey}";
+            return NavKeys.Screen(ModKeyOf(parent), screenKey);
         }
         return null;
     }
@@ -549,22 +589,32 @@
         }
     }
 
-    private async Task DeleteAsync()
+    /// <summary>Nút "Xóa" trong popup → mở dialog xác nhận (không xóa ngay).</summary>
+    private void RequestDeleteFromPopup()
     {
-        if (_editingId is null) return;
-        _saving = true; _status = null;
-        var res = await Api.DeleteAsync(_editingId.Value);
-        _saving = false;
+        _delStatus = null;
+        _confirmDelete = _editingId is { } id ? _nodes.FirstOrDefault(n => n.Id == id) : null;
+    }
+
+    /// <summary>Xóa thật sau khi người dùng xác nhận trong dialog.</summary>
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_confirmDelete is null) return;
+        _deleting = true; _delStatus = null;
+        var id = _confirmDelete.Id;
+        var res = await Api.DeleteAsync(id);
+        _deleting = false;
 
         if (res.Ok)
         {
-            if (_selected?.Id == _editingId) _selected = null;
+            if (_selected?.Id == id) _selected = null;
+            if (_editingId == id) _popupOpen = false;
+            _confirmDelete = null;
             await ReloadAsync();
-            _popupOpen = false;
         }
         else
         {
-            SetStatus(res.Error ?? Loc.L("admin.menu.err.delete", "Xóa thất bại."), true);
+            _delStatus = res.Error ?? Loc.L("admin.menu.err.delete", "Xóa thất bại.");
         }
     }
 
@@ -724,6 +774,8 @@
     .mb-btn--primary { background:#2563eb; color:#fff; border-color:#2563eb; }
     .mb-btn--danger { background:#fef2f2; color:#b91c1c; border-color:#fca5a5; }
     .mb-link { background:none; border:none; color:#2563eb; cursor:pointer; padding:0; font-size:13px; }
+    .mb-link--danger { color:#b91c1c; margin-left:10px; }
+    .mb-modal--sm { max-width:420px; }
     .mb-iconbtn { background:none; border:none; cursor:pointer; color:#64748b; padding:4px; line-height:0; }
     .mb-badge { font-size:11px; padding:1px 7px; border-radius:10px; }
     .mb-badge--group { background:#eef2ff; color:#3730a3; }

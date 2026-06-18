@@ -187,9 +187,28 @@ public sealed class LocalizationService
 
     // ── Nội bộ ────────────────────────────────────────────────────────────
 
-    /// <summary>Nạp manifest languages.json từ nguồn đầu tiên (Shared).</summary>
+    /// <summary>
+    /// Nạp danh sách ngôn ngữ: ưu tiên DB (Sys_Language qua API) → thêm ngôn ngữ chỉ cần 1 dòng DB;
+    /// API lỗi/rỗng → fallback file tĩnh languages.json; vẫn lỗi → giữ mặc định vi.
+    /// </summary>
     private async Task LoadManifestAsync(CancellationToken ct)
     {
+        // 1) Nguồn động: Sys_Language qua API.
+        try
+        {
+            var db = await _http.GetFromJsonAsync<List<LangRow>>("/api/v1/languages", JsonOpts, ct);
+            if (db is { Count: > 0 })
+            {
+                Available = db.Select(l => new LanguageInfo(l.Code, l.Name)).ToList();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "i18n: nạp ngôn ngữ từ API lỗi — thử file tĩnh.");
+        }
+
+        // 2) Fallback: file tĩnh languages.json (Shared).
         try
         {
             var list = await _http.GetFromJsonAsync<List<LanguageInfo>>(Url(_sources[0], "languages.json"), JsonOpts, ct);
@@ -200,6 +219,9 @@ public sealed class LocalizationService
             _logger.LogWarning(ex, "i18n: nạp manifest lỗi — dùng mặc định vi.");
         }
     }
+
+    /// <summary>Dòng ngôn ngữ trả về từ /api/v1/languages.</summary>
+    private sealed record LangRow(string Code, string Name, bool IsDefault);
 
     /// <summary>
     /// Nạp overlay ngôn ngữ: lớp TĨNH ({code}.json từ mọi nguồn, base vi không cần file) rồi

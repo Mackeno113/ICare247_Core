@@ -34,14 +34,45 @@ public sealed record NavGroup(string Key, string Title);
 /// <summary>Tiện ích suy khóa i18n từ cấu trúc (key luôn có trước, dịch sau).</summary>
 public static class NavKeys
 {
-    /// <summary>Khóa nhãn nhóm, vd "nav.group.operations".</summary>
-    public static string Group(string groupKey) => $"nav.group.{groupKey}";
+    /// <summary>Khóa nhãn nhóm, vd "nav.group.operations". Đoạn khóa luôn được ASCII-hóa (xem <see cref="Slug"/>).</summary>
+    public static string Group(string groupKey) => $"nav.group.{Slug(groupKey)}";
 
-    /// <summary>Khóa tiêu đề phân hệ, vd "nav.module.organization".</summary>
-    public static string Module(string moduleKey) => $"nav.module.{moduleKey}";
+    /// <summary>Khóa tiêu đề phân hệ, vd "nav.module.organization". Đoạn khóa luôn được ASCII-hóa.</summary>
+    public static string Module(string moduleKey) => $"nav.module.{Slug(moduleKey)}";
 
-    /// <summary>Khóa tiêu đề màn con, vd "nav.screen.organization.company".</summary>
-    public static string Screen(string moduleKey, string screenKey) => $"nav.screen.{moduleKey}.{screenKey}";
+    /// <summary>Khóa tiêu đề màn con, vd "nav.screen.organization.company". Đoạn khóa luôn được ASCII-hóa.</summary>
+    public static string Screen(string moduleKey, string screenKey) => $"nav.screen.{Slug(moduleKey)}.{Slug(screenKey)}";
+
+    /// <summary>Khóa mục đơn cấp gốc, vd "nav.dashboard". ASCII-hóa.</summary>
+    public static string Root(string ma) => $"nav.{Slug(ma)}";
+
+    /// <summary>
+    /// Chuẩn hóa 1 đoạn khóa i18n về ASCII-slug: bỏ dấu tiếng Việt, đ→d, thường hóa, ký tự lạ → '-'.
+    /// Dùng CHUNG cho NavMenu (lúc dịch) và Menu Builder (lúc hiển thị khóa) để 2 nơi luôn khớp.
+    /// "Hệ thống" → "he-thong"; "Grid_DM_QuocGia" → "grid-dm-quocgia".
+    /// </summary>
+    public static string Slug(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        // Bỏ prefix kỹ thuật nếu lỡ truyền cả Ma (group./view./form.).
+        foreach (var p in new[] { "group.", "view.", "form." })
+            if (s.StartsWith(p, StringComparison.OrdinalIgnoreCase)) { s = s[p.Length..]; break; }
+
+        var norm = s.Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(norm.Length);
+        foreach (var ch in norm)
+        {
+            var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (cat == System.Globalization.UnicodeCategory.NonSpacingMark) continue; // bỏ dấu kết hợp
+            var c = char.ToLowerInvariant(ch);
+            if (c is 'đ') sb.Append('d');
+            else if (c is >= 'a' and <= 'z' or >= '0' and <= '9') sb.Append(c);
+            else sb.Append('-');
+        }
+        var slug = sb.ToString();
+        while (slug.Contains("--")) slug = slug.Replace("--", "-");
+        return slug.Trim('-');
+    }
 }
 
 /// <summary>

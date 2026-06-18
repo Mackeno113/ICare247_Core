@@ -3,6 +3,8 @@
 // Layer   : Application
 // Purpose : Repository interface cho Sys_Resource — load resource map theo form + ngôn ngữ.
 
+using ICare247.Application.Features.Languages.GetLanguages;
+
 namespace ICare247.Application.Interfaces;
 
 /// <summary>
@@ -68,4 +70,7 @@ public interface IResourceRepository
         string langCode,
         string value,
         CancellationToken ct = default);
+
+    /// <summary>Danh sách ngôn ngữ hệ thống (Sys_Language), mặc định lên đầu rồi theo mã.</summary>
+    Task<IReadOnlyList<LanguageDto>> GetLanguagesAsync(CancellationToken ct = default);
 }

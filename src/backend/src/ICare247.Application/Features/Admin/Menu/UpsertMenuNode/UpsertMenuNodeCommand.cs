@@ -136,12 +136,24 @@ public sealed class UpsertMenuNodeCommandHandler : IRequestHandler<UpsertMenuNod
         return candidate;
     }
 
-    /// <summary>Slug đơn giản cho Ma node nhóm: chữ/số → giữ, còn lại → '-', gộp '-' thừa.</summary>
+    /// <summary>
+    /// Slug ASCII cho Ma node nhóm: bỏ dấu tiếng Việt + đ→d, thường hóa, chỉ giữ a-z0-9, còn lại → '-'.
+    /// "Hệ thống" → "he-thong" (KHÔNG để unicode lọt vào Ma → khóa i18n suy ra sạch).
+    /// </summary>
     private static string Slug(string s)
     {
-        var chars = s.Trim().ToLowerInvariant()
-            .Select(c => char.IsLetterOrDigit(c) ? c : '-');
-        var slug = new string(chars.ToArray());
+        var norm = s.Trim().Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder(norm.Length);
+        foreach (var ch in norm)
+        {
+            if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
+                == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
+            var c = char.ToLowerInvariant(ch);
+            if (c == 'đ') sb.Append('d');
+            else if (c is >= 'a' and <= 'z' or >= '0' and <= '9') sb.Append(c);
+            else sb.Append('-');
+        }
+        var slug = sb.ToString();
         while (slug.Contains("--")) slug = slug.Replace("--", "-");
         slug = slug.Trim('-');
         return string.IsNullOrEmpty(slug) ? "node" : slug;

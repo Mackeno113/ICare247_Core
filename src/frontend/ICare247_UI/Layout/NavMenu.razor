@@ -108,7 +108,7 @@
         // Mục đơn cấp gốc (Loai=ManHinh, không cha): Tổng quan + Công cụ Dev.
         foreach (var n in vis.Where(n => n.ChaMa is null && n.Loai == "ManHinh").OrderBy(n => n.ThuTu))
         {
-            var item = new VmItem(n.Ma, $"nav.{n.Ma}", n.Ten, n.Icon ?? "circle", Href(n.DuongDan));
+            var item = new VmItem(n.Ma, NavKeys.Root(n.Ma), n.Ten, n.Icon ?? "circle", Href(n.DuongDan));
             if (n.Ma is "devtools" || (n.DuongDan ?? "").StartsWith("/dev")) _bottom.Add(item);
             else _top.Add(item);
         }
