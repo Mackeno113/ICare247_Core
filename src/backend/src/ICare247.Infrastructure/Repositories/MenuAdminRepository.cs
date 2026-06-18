@@ -44,6 +44,21 @@ public sealed class MenuAdminRepository : IMenuAdminRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<ModuleOptionDto>> GetModulesAsync(CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT  p.Ma  AS Ma,
+                    p.Ten AS Ten
+            FROM    dbo.HT_PhanHe p
+            WHERE   p.IsDeleted = 0 AND p.KichHoat = 1
+            ORDER BY p.ThuTu, p.Ma;
+            """;
+        using var conn = _db.CreateConnection();
+        var rows = await conn.QueryAsync<ModuleOptionDto>(new CommandDefinition(sql, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<long> InsertAsync(MenuNodeWrite n, long userId, CancellationToken ct = default)
     {
         const string sql = """

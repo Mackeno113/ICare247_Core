@@ -3,7 +3,9 @@
     - Tô bằng currentColor → tự đổi màu theo ngữ cảnh (hover/active/disabled).
     - viewBox 24, fill none, không bóng/màu → đồng bộ phong cách Linear/Vercel.
     - Tra theo Name (tên icon, KHÔNG phải khóa nghiệp vụ). Thiếu tên → chấm tròn để không vỡ layout.
-    - Thêm icon mới = thêm 1 case vào switch (dán path từ lucide.dev, giữ stroke-width tương đối).
+    - Thêm icon mới = (1) thêm 1 case vào switch bên dưới (dán path từ lucide.dev, giữ stroke-width
+      tương đối) + (2) thêm đúng tên đó vào mảng RegisteredNames ở khối @code. Hai nơi phải đồng bộ:
+      switch để VẼ, RegisteredNames để các bộ CHỌN icon (vd màn Quản lý menu) liệt kê được.
 *@
 
 <svg class="@($"app-icon {CssClass}".Trim())" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -104,6 +106,19 @@
 </svg>
 
 @code {
+    /// <summary>
+    /// Danh sách tên icon ĐÃ ĐĂNG KÝ (khớp 1-1 với các case trong &lt;svg&gt; ở trên).
+    /// Đây là "từ điển icon" dùng chung — bộ chọn icon (vd màn Quản lý menu) đọc từ đây
+    /// thay vì hard-code. THÊM ICON MỚI: dán &lt;path&gt; từ lucide.dev thành 1 case ở trên,
+    /// rồi thêm đúng tên đó vào mảng này (giữ 2 nơi đồng bộ).
+    /// </summary>
+    public static readonly IReadOnlyList<string> RegisteredNames = new[]
+    {
+        "layout-grid", "building", "users", "clock", "package", "credit-card",
+        "bar-chart", "sliders", "wrench", "chevron-right", "plus", "search",
+        "x", "pencil", "trash"
+    };
+
     /// <summary>Tên icon (kiểu Lucide), vd "building", "users", "plus". Không tìm thấy → chấm tròn.</summary>
     [Parameter, EditorRequired] public string Name { get; set; } = "";
 

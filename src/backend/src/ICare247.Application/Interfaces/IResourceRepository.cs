@@ -47,4 +47,25 @@ public interface IResourceRepository
         IEnumerable<string> keys,
         string langCode,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Toàn bộ overlay (Resource_Key → Resource_Value) của một ngôn ngữ, lọc tùy chọn theo prefix key
+    /// (vd "nav."). Dùng cho LocalizationService gộp bản dịch DB lên trên lớp tĩnh JSON.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> GetOverlayAsync(
+        string langCode,
+        string? keyPrefix = null,
+        CancellationToken ct = default);
+
+    /// <summary>Bản dịch của 1 key theo MỌI ngôn ngữ (Lang_Code → Resource_Value) — cho màn sửa bản dịch.</summary>
+    Task<IReadOnlyDictionary<string, string>> GetByKeyAllLangsAsync(
+        string key,
+        CancellationToken ct = default);
+
+    /// <summary>Thêm/sửa 1 bản dịch (MERGE theo PK Resource_Key+Lang_Code). Tăng Version, cập nhật Updated_At.</summary>
+    Task UpsertAsync(
+        string key,
+        string langCode,
+        string value,
+        CancellationToken ct = default);
 }

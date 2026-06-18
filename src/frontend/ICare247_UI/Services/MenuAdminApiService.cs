@@ -37,6 +37,21 @@ public sealed class MenuAdminApiService
         }
     }
 
+    /// <summary>Danh sách phân hệ (module) cho dropdown; lỗi → rỗng.</summary>
+    public async Task<List<ModuleOption>> GetModulesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<ModuleOption>>(
+                "/api/v1/admin/menu/modules", JsonOpts, ct) ?? new();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không lấy được danh sách phân hệ.");
+            return new();
+        }
+    }
+
     /// <summary>Thêm node. Trả (Ok, Error).</summary>
     public Task<MenuSaveResult> CreateAsync(MenuNodePayload body, CancellationToken ct = default)
         => SendAsync(HttpMethod.Post, "/api/v1/admin/menu", body, ct);
@@ -115,6 +130,13 @@ public sealed class MenuNodeVm
     public bool LaHeThong { get; set; }
 }
 
+/// <summary>Một phân hệ (module) cho dropdown chọn Module.</summary>
+public sealed class ModuleOption
+{
+    public string Ma { get; set; } = "";
+    public string Ten { get; set; } = "";
+}
+
 /// <summary>Body thêm/sửa node menu gửi lên API.</summary>
 public sealed class MenuNodePayload
 {
@@ -122,6 +144,8 @@ public sealed class MenuNodePayload
     public string Ten { get; set; } = "";
     public long? ParentId { get; set; }
     public string? ObjectCode { get; set; }
+    /// <summary>Đường dẫn ghi đè (null/rỗng → server tự suy theo NodeKind).</summary>
+    public string? DuongDan { get; set; }
     public string? Module { get; set; }
     public string? Icon { get; set; }
     public int ThuTu { get; set; }

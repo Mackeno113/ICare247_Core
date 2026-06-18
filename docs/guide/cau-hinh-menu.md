@@ -54,17 +54,45 @@ Danh mục nền tảng        ← Nhóm
 
 ## 4. Sắp xếp, sửa, xóa
 
-**Sắp xếp thứ tự:** sửa số ở ô **Thứ tự** của từng node (nhỏ → hiện trước trong cùng cấp).
+**Sắp xếp thứ tự:** bấm nút **▲ / ▼** ở cột **Thứ tự** để đẩy node lên/xuống trong cùng cấp (hoặc sửa
+trực tiếp số **Thứ tự** trong popup — nhỏ → hiện trước).
 
 **Đổi vị trí trong cây:** sửa **Node cha** của node. (Hệ chặn việc đặt một node vào chính nhánh con của nó.)
 
-**Sửa:** bấm **Sửa** ở dòng tương ứng trong cây → chỉnh trong form bên phải → **Lưu**.
+**Sửa:** bấm **Sửa** ở dòng (hoặc chọn dòng rồi bấm **Sửa** ở khung chi tiết bên phải) → chỉnh trong
+**popup** → **Lưu**. Bấm một dòng bất kỳ để xem nhanh thông tin (chỉ đọc) ở khung bên phải.
 
 **Ẩn tạm (không xóa):** bỏ tích **Kích hoạt** → mục biến mất khỏi menu nhưng vẫn còn để bật lại sau.
 
 **Xóa hẳn:** bấm **Xóa**. Lưu ý — **không xóa được** khi:
 - Node là **mục hệ thống** (mặc định của phần mềm) → chỉ ẩn được bằng Kích hoạt.
 - Node **đang có mục con** → di chuyển/xóa các mục con trước.
+
+---
+
+## 4b. Chọn Icon
+
+Ở popup thêm/sửa node, mục **Icon** hiện **bộ icon dùng chung** để bấm chọn (không gõ tay). Nút ✕
+đầu hàng = bỏ icon.
+
+> **Muốn thêm icon mới?** Bộ icon nằm ở file `src/frontend/ICare247.UI.Shared/Components/Icon.razor`
+> (bộ Lucide — xem tên & hình tại [lucide.dev](https://lucide.dev)). Kỹ thuật thêm icon bằng 2 bước
+> trong file đó: (1) dán `<path>` của icon thành 1 `case "<tên>":` trong khối `<svg>`; (2) thêm đúng
+> `"<tên>"` vào mảng `RegisteredNames` ở khối `@code`. Sau khi build lại, icon mới tự xuất hiện trong
+> bộ chọn ở màn này.
+
+---
+
+## 4c. Dịch tên menu sang ngôn ngữ khác (i18n)
+
+Ô **Tên hiển thị** là **bản gốc tiếng Việt** — đây cũng là chữ hiển thị khi *chưa* có bản dịch.
+
+Khi sửa một node, popup hiện thêm **Khóa i18n** (vd `nav.screen.organization.title`). Tên trên menu
+được dịch **theo khóa này**: nếu từ điển ngôn ngữ đang chọn có giá trị cho khóa → menu hiện bản dịch;
+nếu không → hiện bản gốc tiếng Việt.
+
+> Khóa được **suy tự động** từ vị trí node trong cây (nhóm → phân hệ → màn), khớp đúng cách menu thật
+> tra cứu. Bạn dùng khóa này để cấu hình bản dịch trong công cụ i18n.
 
 ---
 

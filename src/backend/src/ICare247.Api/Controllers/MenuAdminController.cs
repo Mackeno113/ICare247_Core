@@ -8,6 +8,7 @@
 using ICare247.Api.Authorization;
 using ICare247.Application.Features.Admin.Menu.DeleteMenuNode;
 using ICare247.Application.Features.Admin.Menu.GetMenuTree;
+using ICare247.Application.Features.Admin.Menu.GetModules;
 using ICare247.Application.Features.Admin.Menu.UpsertMenuNode;
 using ICare247.Application.Interfaces;
 using MediatR;
@@ -33,6 +34,13 @@ public sealed class MenuAdminController : ControllerBase
     [RequirePermission("administration.menu", PermissionOp.Xem)]
     public async Task<IActionResult> GetTree(CancellationToken ct = default)
         => Ok(await _mediator.Send(new GetMenuTreeQuery(), ct));
+
+    /// <summary>Danh sách phân hệ (module) đang bật — cho dropdown chọn Module.</summary>
+    /// <remarks>GET /api/v1/admin/menu/modules</remarks>
+    [HttpGet("modules")]
+    [RequirePermission("administration.menu", PermissionOp.Xem)]
+    public async Task<IActionResult> GetModules(CancellationToken ct = default)
+        => Ok(await _mediator.Send(new GetModulesQuery(), ct));
 
     /// <summary>Thêm node menu mới.</summary>
     /// <remarks>POST /api/v1/admin/menu</remarks>
@@ -95,6 +103,9 @@ public sealed class MenuNodeRequest
     /// <summary>ViewCode (View) / FormCode (Form). Null với Group.</summary>
     public string? ObjectCode { get; set; }
 
+    /// <summary>Đường dẫn ghi đè (tùy chọn). Có giá trị → dùng thay route tự suy; rỗng → server tự suy theo NodeKind.</summary>
+    public string? DuongDan { get; set; }
+
     /// <summary>Mã phân hệ (tùy chọn).</summary>
     public string? Module { get; set; }
 
@@ -109,5 +120,5 @@ public sealed class MenuNodeRequest
 
     /// <summary>Dựng command từ body + Id (null=thêm) + userId.</summary>
     public UpsertMenuNodeCommand ToCommand(long? id, long userId)
-        => new(id, NodeKind, Ten, ParentId, ObjectCode, Module, Icon, ThuTu, KichHoat, userId);
+        => new(id, NodeKind, Ten, ParentId, ObjectCode, DuongDan, Module, Icon, ThuTu, KichHoat, userId);
 }

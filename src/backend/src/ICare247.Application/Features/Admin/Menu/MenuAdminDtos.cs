@@ -43,3 +43,8 @@ public sealed record MenuNodeDto(
     long Id, string Ma, string Ten, long? ChaId, string Loai, string? Module,
     string? DuongDan, string? Icon, int ThuTu, bool KichHoat,
     string? DoiTuong, string? LoaiDoiTuong, bool LaHeThong);
+
+/// <summary>Một phân hệ (module) cho dropdown chọn Module ở Menu Builder.</summary>
+/// <param name="Ma">Mã phân hệ (TC, NS, TL…) — khớp HT_ChucNang.Module.</param>
+/// <param name="Ten">Tên hiển thị phân hệ.</param>
+public sealed record ModuleOptionDto(string Ma, string Ten);

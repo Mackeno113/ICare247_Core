@@ -201,7 +201,10 @@ public sealed class LocalizationService
         }
     }
 
-    /// <summary>Nạp + gộp overlay {code}.json từ mọi nguồn. Base vi không cần file.</summary>
+    /// <summary>
+    /// Nạp overlay ngôn ngữ: lớp TĨNH ({code}.json từ mọi nguồn, base vi không cần file) rồi
+    /// gộp lớp ĐỘNG (bản dịch DB qua API) đè lên — bản dịch admin sửa runtime thắng lớp tĩnh.
+    /// </summary>
     private async Task LoadOverlayAsync(string code, CancellationToken ct)
     {
         var merged = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
@@ -221,7 +224,69 @@ public sealed class LocalizationService
                 }
             }
         }
+        await MergeDbOverlayAsync(code, merged, ct);
         _overlay = merged;
+    }
+
+    /// <summary>Gộp bản dịch DB (Sys_Resource) cho ngôn ngữ vào overlay. Lỗi → bỏ qua (dùng lớp tĩnh/base).</summary>
+    private async Task MergeDbOverlayAsync(string code, Dictionary<string, string> merged, CancellationToken ct)
+    {
+        try
+        {
+            var map = await _http.GetFromJsonAsync<Dictionary<string, string>>(
+                $"/api/v1/resources/overlay?lang={Uri.EscapeDataString(code)}", JsonOpts, ct);
+            if (map is not null)
+                foreach (var kv in map)
+                    if (!string.IsNullOrEmpty(kv.Value)) merged[kv.Key] = kv.Value;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "i18n: nạp overlay DB {Code} lỗi (bỏ qua).", code);
+        }
+    }
+
+    /// <summary>Bản dịch của 1 key theo mọi ngôn ngữ (Lang_Code→value) — cho màn sửa bản dịch. Lỗi → rỗng.</summary>
+    public async Task<IReadOnlyDictionary<string, string>> GetTranslationsAsync(string key, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return new Dictionary<string, string>();
+        try
+        {
+            return await _http.GetFromJsonAsync<Dictionary<string, string>>(
+                $"/api/v1/resources/translations?key={Uri.EscapeDataString(key)}", JsonOpts, ct) ?? new();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "i18n: đọc bản dịch {Key} lỗi.", key);
+            return new Dictionary<string, string>();
+        }
+    }
+
+    /// <summary>
+    /// Lưu 1 bản dịch (key, lang, value) vào DB. Nếu lang = ngôn ngữ đang chọn thì cập nhật overlay
+    /// trong bộ nhớ + bắn <see cref="OnChanged"/> để UI đổi ngay. Trả true nếu lưu thành công.
+    /// </summary>
+    public async Task<bool> SaveTranslationAsync(string key, string lang, string value, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(lang)) return false;
+        try
+        {
+            using var resp = await _http.PutAsJsonAsync(
+                "/api/v1/resources", new { key, lang, value = value ?? string.Empty }, JsonOpts, ct);
+            if (!resp.IsSuccessStatusCode) return false;
+
+            if (string.Equals(lang, CurrentLanguage, StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.IsNullOrEmpty(value)) _overlay.Remove(key);
+                else _overlay[key] = value;
+                OnChanged?.Invoke();
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "i18n: lưu bản dịch {Key}/{Lang} lỗi.", key, lang);
+            return false;
+        }
     }
 
     /// <summary>Đặt CultureInfo theo ngôn ngữ → số/ngày + control DevExpress tự dịch.</summary>

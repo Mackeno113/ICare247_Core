@@ -14,6 +14,9 @@ public interface IMenuAdminRepository
     /// <summary>Toàn bộ node menu chưa xóa (mọi trạng thái KichHoat), sắp theo cấp + ThuTu.</summary>
     Task<IReadOnlyList<MenuNodeDto>> GetTreeAsync(CancellationToken ct = default);
 
+    /// <summary>Danh sách phân hệ (HT_PhanHe) đang bật, sắp theo ThuTu — cho dropdown Module.</summary>
+    Task<IReadOnlyList<ModuleOptionDto>> GetModulesAsync(CancellationToken ct = default);
+
     /// <summary>Thêm node mới — trả Id vừa sinh. <paramref name="ma"/> đã được đảm bảo duy nhất ở handler.</summary>
     Task<long> InsertAsync(MenuNodeWrite node, long userId, CancellationToken ct = default);
 

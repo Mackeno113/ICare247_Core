@@ -17,6 +17,7 @@ namespace ICare247.Application.Features.Admin.Menu.UpsertMenuNode;
 /// <param name="Ten">Tên hiển thị (bắt buộc).</param>
 /// <param name="ParentId">Node cha (null = gốc).</param>
 /// <param name="ObjectCode">ViewCode (View) / FormCode (Form). Null với Group.</param>
+/// <param name="DuongDanOverride">Đường dẫn ghi đè (tùy chọn). Có giá trị → dùng thay route tự suy.</param>
 /// <param name="Module">Mã phân hệ (tùy chọn).</param>
 /// <param name="Icon">Icon (tùy chọn).</param>
 /// <param name="ThuTu">Thứ tự trong cấp.</param>
@@ -24,7 +25,7 @@ namespace ICare247.Application.Features.Admin.Menu.UpsertMenuNode;
 /// <param name="UserId">Người thao tác (CreatedBy/UpdatedBy).</param>
 public sealed record UpsertMenuNodeCommand(
     long? Id, string NodeKind, string Ten, long? ParentId, string? ObjectCode,
-    string? Module, string? Icon, int ThuTu, bool KichHoat, long UserId) : IRequest<long>;
+    string? DuongDanOverride, string? Module, string? Icon, int ThuTu, bool KichHoat, long UserId) : IRequest<long>;
 
 public sealed class UpsertMenuNodeCommandHandler : IRequestHandler<UpsertMenuNodeCommand, long>
 {
@@ -48,6 +49,10 @@ public sealed class UpsertMenuNodeCommandHandler : IRequestHandler<UpsertMenuNod
             throw new ArgumentException($"NodeKind không hợp lệ: '{r.NodeKind}'.");
 
         var (loai, duongDan, doiTuong, loaiDoiTuong) = ResolveKind(r.NodeKind, r.ObjectCode);
+
+        // Đường dẫn ghi đè: admin nhập tay khi route tự suy không đúng (vd node Nhóm trỏ trang tĩnh /m/...).
+        // Có giá trị → thay route tự suy; rỗng → giữ route tự suy theo NodeKind.
+        duongDan = NormalizeRouteOverride(r.DuongDanOverride) ?? duongDan;
 
         // Chống vòng lặp: cha mới không được là chính node hoặc nằm trong nhánh con của nó.
         if (r.Id is { } id && r.ParentId is { } pid)
@@ -101,6 +106,16 @@ public sealed class UpsertMenuNodeCommandHandler : IRequestHandler<UpsertMenuNod
     {
         if (string.IsNullOrWhiteSpace(code))
             throw new ArgumentException($"Cần chọn đối tượng ({kind}) cho node loại {kind}.");
+    }
+
+    /// <summary>Chuẩn hóa route ghi đè: rỗng → null (giữ tự suy); ngược lại trim + bắt buộc bắt đầu bằng '/'.</summary>
+    private static string? NormalizeRouteOverride(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var route = raw.Trim();
+        if (!route.StartsWith('/'))
+            throw new ArgumentException("Đường dẫn phải bắt đầu bằng '/'.");
+        return route;
     }
 
     /// <summary>Sinh Ma gợi nhớ + đảm bảo duy nhất (append -2,-3… khi trùng).</summary>
