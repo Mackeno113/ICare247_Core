@@ -131,6 +131,10 @@ public sealed class MenuNodeVm
 
     /// <summary>Nhãn loại để lọc/sắp ở lưới (Nhóm | View | Form) — khớp hiển thị, khác cột Loai gốc (Menu/ManHinh).</summary>
     public string LoaiText => LoaiDoiTuong switch { "View" => "View", "Form" => "Form", _ => "Nhóm" };
+
+    /// <summary>Nhãn phân hệ đầy đủ ("DMC — Danh mục chung") để LỌC/SẮP khớp đúng text hiển thị.
+    /// Client gán sau khi nạp danh sách phân hệ (cột Module thô không lọc được theo tên).</summary>
+    public string? ModuleText { get; set; }
 }
 
 /// <summary>Một phân hệ (module) cho dropdown chọn Module.</summary>

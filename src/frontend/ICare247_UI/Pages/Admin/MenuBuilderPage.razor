@@ -56,11 +56,11 @@
                             </span>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.module", "Phân hệ")" FieldName="Module" Width="110px"
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.module", "Phân hệ")" FieldName="ModuleText" Width="110px"
                                           FilterRowOperatorType="TreeListFilterRowOperatorType.Contains">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
-                            <span>@ModuleLabel(n.Module)</span>
+                            <span>@(n.ModuleText)</span>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan"
@@ -480,6 +480,8 @@
     {
         _loading = true;
         _nodes = await Api.GetTreeAsync();
+        // Gán nhãn phân hệ đầy đủ để cột lọc/sắp khớp đúng text hiển thị.
+        foreach (var n in _nodes) n.ModuleText = ModuleLabel(n.Module);
         // Giữ lại lựa chọn chi tiết nếu node còn tồn tại.
         if (_selected is not null)
             _selected = _nodes.FirstOrDefault(n => n.Id == _selected.Id);
