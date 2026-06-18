@@ -1,5 +1,42 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-18 (session 56 — Menu Builder hoàn thiện + i18n write-store + cache flush + View render modes)
+
+## Session 56 (2026-06-18) — đã làm
+
+> Việc ad-hoc nối tiếp Menu Builder (session 55) theo phản hồi user, lan sang i18n + cache + View grid.
+> Build FE 0/0, BE compile OK (Api copy-lock do đang chạy). Đã commit từng bước (16 commit, chưa push).
+
+- **MENU-UX** — Quản lý menu: thêm/sửa qua **popup kéo-di-chuyển** (kéo tiêu đề `<h3>`, lớp capture chỉ khi kéo);
+  panel phải = **chi tiết read-only** (bỏ Lưu/Thêm, chỉ nút Sửa); **Đường dẫn = link `target="_blank"`** (lưới + chi tiết);
+  **Xóa mỗi dòng + dialog xác nhận i18n** (`ConfirmDeleteAsync`); **▲▼ đổi thứ tự** (swap ThuTu qua Update, giữ DuongDan).
+- **MENU-GRID** — DxTreeList: **filter row theo từng cột đúng kiểu** (FieldName đúng kiểu → text/bool/số) + **nút đổi
+  toán tử** (FilterMenuButtonDisplayMode=Always) + **resize + đổi vị trí cột** (ColumnsContainer + AllowColumnReorder) +
+  nút thao tác **pill nền trắng** (đọc được khi dòng chọn). Cột Phân hệ/Loại lọc theo **nhãn hiển thị** (ModuleText/LoaiText).
+- **MENU-COMBO** — Module từ **`HT_PhanHe`** (`db/055`, `GET /admin/menu/modules`); Icon chọn từ `Icon.razor`
+  (`RegisteredNames`); combo View/Node cha/Phân hệ = **bind nguyên object** (root-cause "Module=null": kiểu private nested
+  làm DxComboBox reflection fail). Override `DuongDan` (mặc định auto-derive).
+- **I18N-WRITESTORE** — Dịch tên menu inline (mỗi ngôn ngữ) → **`Sys_Resource`**: `PUT /api/v1/resources` +
+  `GET .../overlay|translations`; `LocalizationService` gộp **overlay DB** lên JSON tĩnh. Khóa i18n **ASCII** (`NavKeys.Slug`).
+- **I18N-LANGS** — Ngôn ngữ **động `Sys_Language`** (`GET /api/v1/languages`, fallback `languages.json`).
+- **CACHE** — Nút "↻ Xóa cache" màn View/Form + màn `/m/administration/cache`; **cưỡng chế làm mới toàn tenant** =
+  `ICacheVersion` (in-memory per-tenant version-stamp = **CC-4a mức 1 instance**) + `POST /admin/cache/flush` + reload.
+- **VIEW-RENDER** — `DataView`: render mode **Date/DateTime/Time** (ép kiểu client → date-picker lọc) + **Template token** `{Field}`.
+
+### Quyết định
+- **DxComboBox bind nguyên object** (KHÔNG ValueField/TextField) khi model là kiểu app; model **public top-level**
+  (`MenuBuilderModels.cs`) + `ToString()`. Reflection theo tên-trường fail với kiểu private nested → value null.
+- **i18n write-store = `Sys_Resource`** (không bảng mới); overlay 2 lớp (JSON tĩnh + DB runtime, DB thắng); ngôn ngữ DB-driven.
+- **CC-4a in-memory** (1 instance) — scale-out → Redis `INCR cfgver:{tenant}`.
+- **Khóa i18n ASCII** qua `NavKeys.*` dùng chung NavMenu + Menu Builder (khóa hiển thị = khóa tra cứu).
+
+### ⏳ Việc cần làm
+- **Chạy `db/055`** (HT_PhanHe) trên Data DB tenant · **rebuild + restart API** · **hard-refresh WASM** (cache assembly).
+- (Tùy) seed `Sys_Language` thêm ngôn ngữ (vd `ja`) · seed node menu `administration.cache` để hiện trong sidebar.
+- Quay lại roadmap chính: **F1 E2E** (db/050 + config-sync) → **F2 engine-hóa màn Công ty**.
+
+---
+
 > Cập nhật: 2026-06-17 (session 55 — Menu Builder web + WPF grid layout persistence + 2 guide)
 
 ## Session 55 (2026-06-17) — đã làm

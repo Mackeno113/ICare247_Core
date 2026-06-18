@@ -1,8 +1,265 @@
 {
-  "generatedAt": "2026-06-18 12:03:28",
+  "generatedAt": "2026-06-18 18:15:49",
   "source": "ICare247_UI",
-  "count": 267,
+  "count": 301,
   "entries": [
+    {
+      "key": "admin.cache.clear",
+      "vi": "Xóa cache",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.client.clear",
+      "vi": "Xóa cache combobox (trình duyệt)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 56
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.client.done",
+      "vi": "Đã xóa cache combobox phía trình duyệt.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 112
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.client.help",
+      "vi": "Trình duyệt giữ tạm danh sách combobox (Sys_Lookup) trong phiên. Bấm để xóa toàn bộ — các combobox sẽ tải lại từ server khi mở.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.client.title",
+      "vi": "Cache combobox phía trình duyệt",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 51
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.code",
+      "vi": "Mã đối tượng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.code.form",
+      "vi": "Ui_Form.Form_Code của form cần làm mới.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 125
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.code.lookup",
+      "vi": "Sys_Lookup.Lookup_Code của danh mục/combobox cần làm mới.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.code.view",
+      "vi": "Ui_View.View_Code của màn cần làm mới.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.done",
+      "vi": "Đã xóa cache '{0}'. Lần truy cập kế sẽ nạp lại từ DB.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 104
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.err",
+      "vi": "Xóa cache thất bại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 106
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.err.code",
+      "vi": "Hãy nhập mã đối tượng.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.flush.btn",
+      "vi": "Cưỡng chế làm mới ngay",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.flush.err",
+      "vi": "Cưỡng chế làm mới thất bại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 81
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.flush.help",
+      "vi": "Xóa toàn bộ cache của công ty hiện tại: cache dùng chung (cấu hình màn/form/combobox) + cache riêng từng người dùng (menu trên server). Sau đó trang sẽ tự tải lại để dựng lại dữ liệu mới.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.flush.running",
+      "vi": "Đang làm mới & tải lại…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 28
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.flush.title",
+      "vi": "Cưỡng chế làm mới (xóa toàn bộ cache)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 23
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.kind",
+      "vi": "Loại đối tượng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.kind.form",
+      "vi": "Form nhập liệu",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.kind.lookup",
+      "vi": "Combobox / Danh mục (Sys_Lookup)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 36
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.kind.view",
+      "vi": "Màn hình (View)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.sub",
+      "vi": "Buộc nạp lại cấu hình/danh mục khi dữ liệu đã đổi ở DB nhưng cache còn giữ bản cũ.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "key": "admin.cache.title",
+      "vi": "Xóa cache",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 14
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 18
+        }
+      ]
+    },
     {
       "key": "admin.cfgsync.apply",
       "vi": "Áp dụng từ master",
@@ -223,11 +480,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 60
+          "line": 78
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 127
+          "line": 156
         }
       ]
     },
@@ -238,11 +495,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 45
+          "line": 50
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 103
+          "line": 125
         }
       ]
     },
@@ -253,15 +510,15 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 53
+          "line": 59
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 109
+          "line": 131
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 256
+          "line": 286
         }
       ]
     },
@@ -272,7 +529,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 44
+          "line": 48
         }
       ]
     },
@@ -283,11 +540,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 66
+          "line": 84
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 124
+          "line": 153
         }
       ]
     },
@@ -298,15 +555,48 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 59
+          "line": 66
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 112
+          "line": 134
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 234
+          "line": 264
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.del.body",
+      "vi": "Bạn chắc chắn xóa node <strong>{0}</strong>? Hành động không thể hoàn tác.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 362
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.del.confirm",
+      "vi": "Xóa node",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 375
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.del.title",
+      "vi": "Xác nhận xóa node",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 356
         }
       ]
     },
@@ -317,7 +607,18 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 91
+          "line": 113
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.drag.hint",
+      "vi": "Kéo tiêu đề để di chuyển",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 180
         }
       ]
     },
@@ -339,7 +640,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 564
+          "line": 697
         }
       ]
     },
@@ -350,7 +651,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 501
+          "line": 624
         }
       ]
     },
@@ -361,7 +662,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 508
+          "line": 631
         }
       ]
     },
@@ -372,7 +673,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 545
+          "line": 668
         }
       ]
     },
@@ -383,7 +684,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 503
+          "line": 626
         }
       ]
     },
@@ -394,7 +695,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 294
+          "line": 323
         }
       ]
     },
@@ -405,7 +706,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 106
+          "line": 128
         }
       ]
     },
@@ -416,7 +717,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 191
+          "line": 222
         }
       ]
     },
@@ -427,7 +728,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 196
+          "line": 227
         }
       ]
     },
@@ -438,7 +739,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 219
+          "line": 250
         }
       ]
     },
@@ -449,11 +750,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 115
+          "line": 144
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 271
+          "line": 300
         }
       ]
     },
@@ -464,7 +765,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 288
+          "line": 317
         }
       ]
     },
@@ -475,7 +776,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 273
+          "line": 302
         }
       ]
     },
@@ -486,7 +787,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 164
+          "line": 198
         }
       ]
     },
@@ -497,7 +798,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 258
+          "line": 291
         }
       ]
     },
@@ -508,7 +809,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 185
+          "line": 216
         }
       ]
     },
@@ -519,7 +820,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 187
+          "line": 218
         }
       ]
     },
@@ -530,7 +831,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 266
+          "line": 295
         }
       ]
     },
@@ -541,7 +842,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 224
+          "line": 255
         }
       ]
     },
@@ -552,7 +853,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 226
+          "line": 260
         }
       ]
     },
@@ -563,7 +864,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 240
+          "line": 270
         }
       ]
     },
@@ -574,7 +875,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 241
+          "line": 271
         }
       ]
     },
@@ -585,7 +886,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 236
+          "line": 266
         }
       ]
     },
@@ -596,7 +897,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 245
+          "line": 275
         }
       ]
     },
@@ -607,7 +908,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 251
+          "line": 281
         }
       ]
     },
@@ -618,7 +919,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 132
+          "line": 161
         }
       ]
     },
@@ -629,7 +930,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 202
+          "line": 233
         }
       ]
     },
@@ -640,7 +941,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 212
+          "line": 243
         }
       ]
     },
@@ -651,7 +952,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 173
+          "line": 207
         }
       ]
     },
@@ -662,7 +963,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 175
+          "line": 212
         }
       ]
     },
@@ -673,7 +974,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 149
+          "line": 183
         }
       ]
     },
@@ -684,7 +985,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 148
+          "line": 182
         }
       ]
     },
@@ -695,7 +996,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 168
+          "line": 202
         }
       ]
     },
@@ -706,7 +1007,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 652
+          "line": 785
         }
       ]
     },
@@ -717,7 +1018,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 166
+          "line": 200
         }
       ]
     },
@@ -728,7 +1029,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 653
+          "line": 786
         }
       ]
     },
@@ -739,7 +1040,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 167
+          "line": 201
         }
       ]
     },
@@ -750,7 +1051,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 651
+          "line": 784
         }
       ]
     },
@@ -761,7 +1062,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 72
+          "line": 90
         }
       ]
     },
@@ -772,7 +1073,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 70
+          "line": 88
         }
       ]
     },
@@ -794,7 +1095,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 128
+          "line": 157
         }
       ]
     },
@@ -805,7 +1106,22 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 128
+          "line": 157
+        }
+      ]
+    },
+    {
+      "key": "admin.menu.route.open",
+      "vi": "Mở trong tab mới",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 73
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 139
         }
       ]
     },
@@ -827,7 +1143,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 160
+          "line": 194
         }
       ]
     },
@@ -838,7 +1154,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 133
+          "line": 162
         }
       ]
     },
@@ -1556,7 +1872,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 33
+          "line": 39
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -1564,7 +1880,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 32
+          "line": 38
         }
       ]
     },
@@ -1779,7 +2095,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 311
+          "line": 340
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 372
         }
       ]
     },
@@ -1790,7 +2110,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 151
+          "line": 185
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 357
         }
       ]
     },
@@ -1801,7 +2125,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 307
+          "line": 101
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 336
         }
       ]
     },
@@ -1812,11 +2140,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 80
+          "line": 98
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 98
+          "line": 120
         }
       ]
     },
@@ -1838,7 +2166,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 313
+          "line": 342
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
@@ -1848,12 +2176,16 @@
     },
     {
       "key": "common.btn.saving",
-      "vi": "Đang lưu…",
+      "vi": "Đang xử lý…",
       "source": "ICare247_UI",
       "occurrences": [
         {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/CacheToolsPage.razor",
+          "line": 46
+        },
+        {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
-          "line": 313
+          "line": 342
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
@@ -1957,11 +2289,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 22
+          "line": 23
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 21
+          "line": 22
         }
       ]
     },
@@ -2061,11 +2393,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 38
+          "line": 45
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 40
+          "line": 47
         }
       ]
     },
@@ -2253,6 +2585,10 @@
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor",
           "line": 49
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
+          "line": 375
         }
       ]
     },
@@ -2856,6 +3192,28 @@
       ]
     },
     {
+      "key": "masterdata.cache.clear",
+      "vi": "Xóa cache",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "key": "masterdata.cache.clear.tip",
+      "vi": "Xóa cache cấu hình form + combobox, rồi tải lại",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 34
+        }
+      ]
+    },
+    {
       "key": "masterdata.form.haserrors",
       "vi": "Có {0} lỗi cần sửa trước khi lưu.",
       "source": "ICare247_UI",
@@ -2899,7 +3257,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 42
+          "line": 49
         }
       ]
     },
@@ -2910,7 +3268,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 18
+          "line": 19
         }
       ]
     },
@@ -2921,7 +3279,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 28
+          "line": 29
         }
       ]
     },
@@ -2932,7 +3290,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 110
+          "line": 128
         }
       ]
     },
@@ -2943,7 +3301,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 13
+          "line": 14
         }
       ]
     },
@@ -2954,7 +3312,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 29
+          "line": 30
         }
       ]
     },
@@ -3057,7 +3415,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 178
+          "line": 202
         }
       ]
     },
@@ -3068,7 +3426,51 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 179
+          "line": 203
+        }
+      ]
+    },
+    {
+      "key": "view.cache.clear",
+      "vi": "Xóa cache",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "key": "view.cache.clear.err",
+      "vi": "Xóa cache thất bại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "key": "view.cache.clear.tip",
+      "vi": "Xóa cache cấu hình màn + combobox, rồi tải lại",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "key": "view.cache.cleared",
+      "vi": "Đã xóa cache và tải lại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 125
         }
       ]
     },
@@ -3079,11 +3481,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 55
+          "line": 62
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 61
+          "line": 68
         }
       ]
     },
@@ -3094,7 +3496,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 17
+          "line": 18
         }
       ]
     },
@@ -3105,7 +3507,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 89
+          "line": 97
         }
       ]
     },
@@ -3116,7 +3518,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 28
+          "line": 29
         }
       ]
     }

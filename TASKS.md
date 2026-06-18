@@ -75,6 +75,48 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 56 — 2026-06-18: Menu Builder hoàn thiện + i18n write-store + cache flush + View render modes)
+
+- [x] **MENU-UX** — Quản lý menu: thêm/sửa node qua **popup kéo-di-chuyển** (kéo tiêu đề); panel phải = **chi tiết
+      read-only** (bỏ Lưu/Thêm); **Đường dẫn = link mở tab mới** (lưới + chi tiết) để test giao diện; nút **Xóa mỗi
+      dòng + dialog xác nhận i18n** (node hệ thống không xóa); nút **▲▼ đổi thứ tự** (swap ThuTu, dùng lại Update).
+- [x] **MENU-GRID** — DxTreeList: **filter row theo từng cột đúng kiểu** (text→Chứa, bool→checkbox, số→numeric) +
+      **nút đổi toán tử lọc** (FilterMenuButtonDisplayMode=Always) + **resize/đổi vị trí cột** + nút thao tác dạng
+      pill nền trắng (đọc được khi dòng đang chọn). Cột Phân hệ/Loại lọc theo **nhãn hiển thị** (ModuleText/LoaiText),
+      không theo mã thô.
+- [x] **MENU-COMBO** — Module dropdown đọc từ **`HT_PhanHe`** (`db/055` + `GET /admin/menu/modules`); Icon **chọn từ
+      `Icon.razor`** (`RegisteredNames`, bỏ gõ tay); View/Node cha/Phân hệ = **DxComboBox bind nguyên object** (bỏ
+      ValueField/TextField — kiểu private nested làm reflection fail → Module lưu null). Override `DuongDan` (server
+      mặc định auto-derive, cho sửa khi sai).
+- [x] **I18N-WRITESTORE** — Dịch tên menu **inline trong popup** theo từng ngôn ngữ, lưu vào **`Sys_Resource`**:
+      `PUT /api/v1/resources` (upsert, `[Authorize]`+quyền), `GET .../overlay` + `.../translations`;
+      `LocalizationService` **gộp overlay DB lên lớp JSON tĩnh** + `Save/GetTranslationsAsync`. Khóa i18n **ASCII-hóa**
+      (`NavKeys.Slug`: bỏ dấu, bỏ prefix group./view.) — NavMenu + Menu Builder dùng chung NavKeys nên khóa khớp.
+- [x] **I18N-LANGS** — Ngôn ngữ **động theo `Sys_Language`**: `GET /api/v1/languages`; `LocalizationService` nạp manifest
+      từ API (fallback `languages.json`). Thêm ngôn ngữ = 1 dòng DB → popup dịch + bộ chuyển ngôn ngữ tự cập nhật (>2).
+- [x] **CACHE-FLUSH** — Xóa cache từ web: nút "↻ Xóa cache" trên màn View/Form + màn quản trị `/m/administration/cache`
+      (xóa theo mã View/Form/Lookup, xóa cache combobox client). **Cưỡng chế làm mới toàn bộ cache tenant**:
+      `ICacheVersion` (version-stamp **in-memory theo tenant** = **CC-4a** mức 1 instance) gắn vào ConfigCache +
+      MetadataEngine keys; `POST /api/v1/admin/cache/flush` bump version + `InvalidateTenant` nav; client tải lại cưỡng chế.
+- [x] **VIEW-RENDER** — `DataView`: render mode **Date/DateTime/Time** (ép kiểu client → DxGrid hiện date-picker lọc +
+      sort theo ngày) + **Template token** `{Field}` (vd "{Ma} - {Ten}"). `Render_Mode` không có CHECK → không cần migration.
+
+**Decisions Log (session 56):**
+- **DxComboBox PHẢI bind nguyên object** (Value/ValueChanged, KHÔNG ValueField/TextField) khi model là kiểu app —
+  reflection theo tên-trường của DevExpress fail với kiểu `private`/`internal` nested (fallback ToString, value=null).
+  Hiển thị qua `ToString()`; model là **public top-level** (`MenuBuilderModels.cs`). Đây là gốc lỗi "Module lưu null".
+- **i18n write-store dùng lại `Sys_Resource`** (không bảng mới); `LocalizationService` = lớp tĩnh JSON (base build) **+**
+  lớp DB overlay (sửa runtime, DB thắng); ngôn ngữ DB-driven (`Sys_Language`). Endpoint flush/upsert resources `[Authorize]`.
+- **CC-4a version-stamp mức 1 instance (in-memory `ConcurrentDictionary` theo tenant)** — bump = vô hiệu toàn bộ cache
+  config tenant không cần liệt kê key. Scale-out ≥2 instance → chuyển sang Redis `INCR cfgver:{tenant}` (CC-4a Redis).
+- **Khóa i18n menu = ASCII** (NavKeys.Slug bỏ dấu/đ→d): tránh unicode tiếng Việt trong key; NavMenu & Menu Builder
+  cùng đi qua `NavKeys.*` để khóa hiển thị = khóa tra cứu (nếu lệch thì dịch không ăn).
+
+> ⏳ Cần vận hành: chạy **`db/055`** (HT_PhanHe) trên Data DB tenant · rebuild + restart API · hard-refresh WASM.
+> Tùy chọn: seed `Sys_Language` thêm ngôn ngữ · seed node menu `administration.cache`.
+
+---
+
 ## ✅ Done (session 55 — 2026-06-17: Menu Builder web + WPF grid layout persistence + guides)
 
 - [x] **MENU-BUILDER** — Màn web "Quản lý menu" (`/m/administration/menu`) cấu hình cây `HT_ChucNang` bằng
@@ -304,7 +346,9 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [ ] **CC-3d** — Runtime enforce: web/handler đọc `GetFormPermissions` → ẩn nút + chặn thao tác (deny-by-default).
 
 ### Giai đoạn 4 — Invalidation nâng cấp (khi scale-out ≥2 instance)
-- [ ] **CC-4a** — Version-stamp: `cfgver:{tenant}:{form}` (metadata) / `cfgver:{tenant}` (i18n/lookup) trong Redis; key gắn `:v{n}`; version cache L1 TTL 10–30s.
+- [~] **CC-4a** — Version-stamp: ✅ **mức 1 instance (session 56)** — `ICacheVersion` in-memory theo tenant gắn vào
+      ConfigCache + MetadataEngine keys (`:v{n}`); flush qua `POST /api/v1/admin/cache/flush`. ⏳ Scale-out ≥2 instance →
+      chuyển version sang Redis `INCR cfgver:{tenant}` (`cfgver:{tenant}:{form}` cho metadata nếu cần tách).
 - [ ] **CC-4b** — ConfigStudio (WPF) write path → INCR version (hoặc gọi API invalidate) sau khi lưu cấu hình.
 - [ ] **CC-4c** — Bỏ dần Event-remove khi version-stamp ổn (giữ TTL làm lưới an toàn).
 

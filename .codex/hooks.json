@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node 'D:\\ICare247_Core\\.codex\\hooks\\stop_remind_memory.js'"
+          }
+        ]
+      }
+    ]
+  }
+}
