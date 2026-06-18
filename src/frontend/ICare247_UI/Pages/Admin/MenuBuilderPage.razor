@@ -64,7 +64,17 @@
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan"
-                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
+                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains">
+                        <CellDisplayTemplate>
+                            @{ var n = (MenuNodeVm)context.DataItem; }
+                            @if (!string.IsNullOrWhiteSpace(n.DuongDan))
+                            {
+                                <a href="@n.DuongDan" target="_blank" rel="noopener"
+                                   title="@Loc.L("admin.menu.route.open", "Mở trong tab mới")">@n.DuongDan</a>
+                            }
+                            else { <span>—</span> }
+                        </CellDisplayTemplate>
+                    </DxTreeListDataColumn>
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.active", "Bật")" FieldName="KichHoat" Width="70px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
@@ -122,7 +132,14 @@
                 <dd>@ModuleLabel(_selected.Module)</dd>
 
                 <dt>@Loc.L("admin.menu.col.route", "Đường dẫn")</dt>
-                <dd>@(string.IsNullOrEmpty(_selected.DuongDan) ? "—" : _selected.DuongDan)</dd>
+                <dd>
+                    @if (!string.IsNullOrWhiteSpace(_selected.DuongDan))
+                    {
+                        <a href="@_selected.DuongDan" target="_blank" rel="noopener"
+                           title="@Loc.L("admin.menu.route.open", "Mở trong tab mới")">@_selected.DuongDan</a>
+                    }
+                    else { <span>—</span> }
+                </dd>
 
                 <dt>@Loc.L("admin.menu.f.icon", "Icon")</dt>
                 <dd>
