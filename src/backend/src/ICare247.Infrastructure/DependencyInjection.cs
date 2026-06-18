@@ -74,6 +74,9 @@ public static class DependencyInjection
         // HybridCacheService — L1 Memory + L2 Redis (optional)
         services.AddSingleton<ICacheService, HybridCacheService>();
 
+        // Version-stamp cache theo tenant (singleton — chia sẻ mọi request). Bump = vô hiệu cache config tenant.
+        services.AddSingleton<ICacheVersion, Services.CacheVersion>();
+
         // ── Repositories ─────────────────────────────────────────────────────
         services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFieldRepository, FieldRepository>();

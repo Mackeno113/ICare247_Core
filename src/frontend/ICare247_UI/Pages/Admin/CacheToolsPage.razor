@@ -1,6 +1,7 @@
 @page "/m/administration/cache"
 @inject CacheAdminApiService Cache
 @inject LocalizationService Loc
+@inject NavigationManager Nav
 
 @*
     CacheToolsPage — màn quản trị Xóa cache.
@@ -16,6 +17,16 @@
     <div class="ct-head">
         <span class="ct-title">@Loc.L("admin.cache.title", "Xóa cache")</span>
         <span class="ct-sub">@Loc.L("admin.cache.sub", "Buộc nạp lại cấu hình/danh mục khi dữ liệu đã đổi ở DB nhưng cache còn giữ bản cũ.")</span>
+    </div>
+
+    <div class="ct-card ct-card--accent">
+        <span class="ct-card__title">@Loc.L("admin.cache.flush.title", "Cưỡng chế làm mới (xóa toàn bộ cache)")</span>
+        <p class="ct-help">
+            @Loc.L("admin.cache.flush.help", "Xóa toàn bộ cache của công ty hiện tại: cache dùng chung (cấu hình màn/form/combobox) + cache riêng từng người dùng (menu trên server). Sau đó trang sẽ tự tải lại để dựng lại dữ liệu mới.")
+        </p>
+        <button class="ct-btn ct-btn--primary" disabled="@_busy" @onclick="FlushAllAsync">
+            @(_flushing ? Loc.L("admin.cache.flush.running", "Đang làm mới & tải lại…") : Loc.L("admin.cache.flush.btn", "Cưỡng chế làm mới ngay"))
+        </button>
     </div>
 
     <div class="ct-card">
@@ -56,7 +67,23 @@
     private CacheTargetKind _kind = CacheTargetKind.Lookup;
     private string _code = "";
     private bool _busy;
+    private bool _flushing;
     private string? _status; private bool _statusErr;
+
+    /// <summary>Cưỡng chế làm mới: xóa toàn bộ cache tenant (server) + client rồi tải lại cưỡng chế trang.</summary>
+    private async Task FlushAllAsync()
+    {
+        _busy = true; _flushing = true; _status = null;
+        var res = await Cache.FlushTenantAsync();
+        if (!res.Ok)
+        {
+            _busy = false; _flushing = false;
+            SetStatus(res.Error ?? Loc.L("admin.cache.flush.err", "Cưỡng chế làm mới thất bại."), true);
+            return;
+        }
+        // Tải lại cưỡng chế → mọi cache phía trình duyệt (lookup, i18n, quyền…) được dựng lại từ server.
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
 
     private async Task ClearByCodeAsync()
     {
@@ -108,6 +135,7 @@
     .ct-title { font-size: 16px; font-weight: 600; }
     .ct-sub { display:block; font-size: 12px; opacity:.65; margin-top: 2px; }
     .ct-card { border:1px solid #e2e8f0; border-radius:8px; padding:14px; background:#fff; margin-bottom:14px; }
+    .ct-card--accent { border-color:#bfdbfe; background:#eff6ff; }
     .ct-card__title { font-size:14px; font-weight:600; }
     .ct-label { display:block; font-size:12px; font-weight:600; opacity:.75; margin:10px 0 4px; }
     .ct-input { width:100%; padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box; }

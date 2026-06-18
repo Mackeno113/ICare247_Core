@@ -47,6 +47,29 @@ public sealed class CacheAdminApiService
     /// <summary>Xóa toàn bộ cache lookup phía client (không gọi server).</summary>
     public void ClearClientLookupCache() => _lookup.Clear();
 
+    /// <summary>
+    /// Cưỡng chế làm mới: xóa TOÀN BỘ cache tenant trên server (config dùng chung + menu per-user)
+    /// và cache lookup phía client. Trả (Ok, Error). Caller nên tải lại trang để dựng lại mọi state.
+    /// </summary>
+    public async Task<CacheClearResult> FlushTenantAsync(CancellationToken ct = default)
+    {
+        CacheClearResult res;
+        try
+        {
+            using var resp = await _http.PostAsync("/api/v1/admin/cache/flush", content: null, ct);
+            res = resp.IsSuccessStatusCode
+                ? CacheClearResult.Success
+                : CacheClearResult.Fail($"Lỗi máy chủ ({(int)resp.StatusCode}).");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Cưỡng chế làm mới cache lỗi.");
+            res = CacheClearResult.Fail(ex.Message);
+        }
+        _lookup.Clear(); // bust client dù server ra sao
+        return res;
+    }
+
     private async Task<CacheClearResult> PostAsync(CacheTargetKind kind, string url, CancellationToken ct)
     {
         try

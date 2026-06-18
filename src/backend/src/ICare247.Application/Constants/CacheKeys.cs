@@ -54,10 +54,11 @@ public static class CacheKeys
 
     /// <summary>
     /// Cache key cho RuntimeFormContext (FormMetadata + ResourceMap) — dùng bởi MetadataEngine.
-    /// Prefix: icare:meta:rt:{tenantId}:{formCode}:lang:{langCode}
+    /// Gắn slot <c>:v{version}</c> (version-stamp theo tenant) để "cưỡng chế làm mới" vô hiệu hàng loạt.
+    /// Prefix: icare:meta:rt:{tenantId}:{formCode}:v{version}:lang:{langCode}
     /// </summary>
-    public static string RuntimeForm(string formCode, string langCode, int tenantId)
-        => $"icare:meta:rt:{tenantId}:{formCode.ToLowerInvariant()}:lang:{langCode}";
+    public static string RuntimeForm(string formCode, string langCode, int tenantId, int version)
+        => $"icare:meta:rt:{tenantId}:{formCode.ToLowerInvariant()}:v{version}:lang:{langCode}";
 
     /// <summary>
     /// Cache key cho ResourceMap của form theo ngôn ngữ.

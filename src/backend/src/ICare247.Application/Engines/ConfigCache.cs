@@ -37,6 +37,7 @@ public sealed class ConfigCache : IConfigCache
     private readonly ILookupRepository   _lookupRepo;
     private readonly IViewRepository     _viewRepo;
     private readonly ICacheService       _cache;
+    private readonly ICacheVersion       _version;
     private readonly ILogger<ConfigCache> _logger;
 
     // Config đổi hiếm → TTL dài hơn data; vẫn là lưới an toàn dưới version-stamp/event-remove.
@@ -47,8 +48,8 @@ public sealed class ConfigCache : IConfigCache
     // xuất hiện sớm (cửa sổ stale ~30s) thay vì đợi hết TTL dài.
     private static readonly TimeSpan NegTtl = TimeSpan.FromSeconds(30);
 
-    // Slot version cho cache key — placeholder cho version-stamp (CC-4a).
-    private const int CurrentVersion = 0;
+    // Version-stamp theo tenant (CC-4a) — "cưỡng chế làm mới" bump version → mọi key cũ vô hiệu.
+    private int CurrentVersion(int tenantId) => _version.Get(tenantId);
 
     // Ngôn ngữ phổ biến — xóa cache cho tất cả khi invalidate (giống MetadataEngine).
     private static readonly string[] KnownLangCodes = ["vi", "en"];
@@ -64,6 +65,7 @@ public sealed class ConfigCache : IConfigCache
         ILookupRepository   lookupRepo,
         IViewRepository     viewRepo,
         ICacheService       cache,
+        ICacheVersion       version,
         ILogger<ConfigCache> logger)
     {
         _metadataEngine = metadataEngine;
@@ -71,6 +73,7 @@ public sealed class ConfigCache : IConfigCache
         _lookupRepo     = lookupRepo;
         _viewRepo       = viewRepo;
         _cache          = cache;
+        _version        = version;
         _logger         = logger;
     }
 
@@ -85,7 +88,7 @@ public sealed class ConfigCache : IConfigCache
     public async Task<IReadOnlyDictionary<string, string>> GetResourceMapAsync(
         string scope, string langCode, int tenantId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.ConfigResourceMap(scope, langCode, tenantId, CurrentVersion);
+        var cacheKey = CacheKeys.ConfigResourceMap(scope, langCode, tenantId, CurrentVersion(tenantId));
 
         return await GetOrLoadAsync(
             cacheKey,
@@ -120,7 +123,7 @@ public sealed class ConfigCache : IConfigCache
     public async Task<IReadOnlyList<LookupItem>> GetLookupOptionsAsync(
         string lookupCode, string langCode, int tenantId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.ConfigLookup(lookupCode, langCode, tenantId, CurrentVersion);
+        var cacheKey = CacheKeys.ConfigLookup(lookupCode, langCode, tenantId, CurrentVersion(tenantId));
 
         return await GetOrLoadAsync(
             cacheKey,
@@ -134,9 +137,10 @@ public sealed class ConfigCache : IConfigCache
     /// <inheritdoc />
     public async Task InvalidateLookupAsync(string lookupCode, int tenantId)
     {
+        var version = CurrentVersion(tenantId);
         foreach (var lang in KnownLangCodes)
         {
-            var key = CacheKeys.ConfigLookup(lookupCode, lang, tenantId, CurrentVersion);
+            var key = CacheKeys.ConfigLookup(lookupCode, lang, tenantId, version);
             await _cache.RemoveAsync(key);
         }
 
@@ -158,7 +162,7 @@ public sealed class ConfigCache : IConfigCache
     public async Task<ViewMetadata?> GetViewAsync(
         string viewCode, string langCode, int tenantId, CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.View(viewCode, CurrentVersion, langCode, tenantId);
+        var cacheKey = CacheKeys.View(viewCode, CurrentVersion(tenantId), langCode, tenantId);
 
         var cached = await _cache.GetAsync<ViewMetadata>(cacheKey, ct);
         if (cached is not null)
@@ -178,9 +182,10 @@ public sealed class ConfigCache : IConfigCache
     /// <inheritdoc />
     public async Task InvalidateViewAsync(string viewCode, int tenantId)
     {
+        var version = CurrentVersion(tenantId);
         foreach (var lang in KnownLangCodes)
         {
-            var key = CacheKeys.View(viewCode, CurrentVersion, lang, tenantId);
+            var key = CacheKeys.View(viewCode, version, lang, tenantId);
             await _cache.RemoveAsync(key);
         }
 

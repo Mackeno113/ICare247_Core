@@ -27,6 +27,7 @@ public sealed class MetadataEngine : IMetadataEngine
     private readonly IFormRepository     _formRepo;
     private readonly IResourceRepository _resourceRepo;
     private readonly ICacheService       _cache;
+    private readonly ICacheVersion       _version;
     private readonly ILogger<MetadataEngine> _logger;
 
     // TTL cho RuntimeFormContext (FormMetadata + ResourceMap)
@@ -40,11 +41,13 @@ public sealed class MetadataEngine : IMetadataEngine
         IFormRepository     formRepo,
         IResourceRepository resourceRepo,
         ICacheService       cache,
+        ICacheVersion       version,
         ILogger<MetadataEngine> logger)
     {
         _formRepo     = formRepo;
         _resourceRepo = resourceRepo;
         _cache        = cache;
+        _version      = version;
         _logger       = logger;
     }
 
@@ -56,7 +59,7 @@ public sealed class MetadataEngine : IMetadataEngine
         int tenantId,
         CancellationToken ct = default)
     {
-        var cacheKey = CacheKeys.RuntimeForm(formCode, langCode, tenantId);
+        var cacheKey = CacheKeys.RuntimeForm(formCode, langCode, tenantId, _version.Get(tenantId));
 
         // ── L1/L2 cache lookup ────────────────────────────────────────────────
         var cached = await _cache.GetAsync<CachedFormMetadata>(cacheKey, ct);
@@ -109,9 +112,10 @@ public sealed class MetadataEngine : IMetadataEngine
     public async Task InvalidateFormCacheAsync(string formCode, int tenantId)
     {
         // Xóa cache cho tất cả ngôn ngữ đã biết
+        var version = _version.Get(tenantId);
         foreach (var lang in KnownLangCodes)
         {
-            var key = CacheKeys.RuntimeForm(formCode, lang, tenantId);
+            var key = CacheKeys.RuntimeForm(formCode, lang, tenantId, version);
             await _cache.RemoveAsync(key);
         }
 
