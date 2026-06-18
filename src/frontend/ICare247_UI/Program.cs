@@ -58,5 +58,6 @@ builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<MenuAdminApiService>();
 builder.Services.AddScoped<ConfigSyncApiService>();
+builder.Services.AddScoped<CacheAdminApiService>();
 
 await builder.Build().RunAsync();

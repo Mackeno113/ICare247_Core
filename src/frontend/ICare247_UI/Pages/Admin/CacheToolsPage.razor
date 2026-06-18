@@ -1,0 +1,120 @@
+@page "/m/administration/cache"
+@inject CacheAdminApiService Cache
+@inject LocalizationService Loc
+
+@*
+    CacheToolsPage — màn quản trị Xóa cache.
+    - Xóa cache config theo mã: Màn (View) | Form | Combobox (Sys_Lookup).
+      Lookup xóa cả server lẫn cache client để combobox nạp lại ngay.
+    - Nút riêng: xóa toàn bộ cache combobox phía client (khi không nhớ mã).
+    Dùng khi dữ liệu/cấu hình đổi từ DB nhưng cache đang giữ bản cũ.
+*@
+
+<PageTitle>@Loc.L("admin.cache.title", "Xóa cache") — ICare247</PageTitle>
+
+<div class="ct-wrap">
+    <div class="ct-head">
+        <span class="ct-title">@Loc.L("admin.cache.title", "Xóa cache")</span>
+        <span class="ct-sub">@Loc.L("admin.cache.sub", "Buộc nạp lại cấu hình/danh mục khi dữ liệu đã đổi ở DB nhưng cache còn giữ bản cũ.")</span>
+    </div>
+
+    <div class="ct-card">
+        <label class="ct-label">@Loc.L("admin.cache.kind", "Loại đối tượng")</label>
+        <select class="ct-input" @bind="_kind">
+            <option value="@CacheTargetKind.View">@Loc.L("admin.cache.kind.view", "Màn hình (View)")</option>
+            <option value="@CacheTargetKind.Lookup">@Loc.L("admin.cache.kind.lookup", "Combobox / Danh mục (Sys_Lookup)")</option>
+            <option value="@CacheTargetKind.Form">@Loc.L("admin.cache.kind.form", "Form nhập liệu")</option>
+        </select>
+
+        <label class="ct-label">@Loc.L("admin.cache.code", "Mã đối tượng")</label>
+        <input class="ct-input" @bind="_code" @bind:event="oninput"
+               placeholder="@CodePlaceholder()" />
+        <p class="ct-help">@CodeHelp()</p>
+
+        <button class="ct-btn ct-btn--primary" disabled="@_busy" @onclick="ClearByCodeAsync">
+            @(_busy ? Loc.L("common.btn.saving", "Đang xử lý…") : Loc.L("admin.cache.clear", "Xóa cache"))
+        </button>
+    </div>
+
+    <div class="ct-card">
+        <span class="ct-card__title">@Loc.L("admin.cache.client.title", "Cache combobox phía trình duyệt")</span>
+        <p class="ct-help">
+            @Loc.L("admin.cache.client.help", "Trình duyệt giữ tạm danh sách combobox (Sys_Lookup) trong phiên. Bấm để xóa toàn bộ — các combobox sẽ tải lại từ server khi mở.")
+        </p>
+        <button class="ct-btn" disabled="@_busy" @onclick="ClearClientAsync">
+            @Loc.L("admin.cache.client.clear", "Xóa cache combobox (trình duyệt)")
+        </button>
+    </div>
+
+    @if (_status is not null)
+    {
+        <div class="ct-note @(_statusErr ? "ct-note--err" : "ct-note--ok")">@_status</div>
+    }
+</div>
+
+@code {
+    private CacheTargetKind _kind = CacheTargetKind.Lookup;
+    private string _code = "";
+    private bool _busy;
+    private string? _status; private bool _statusErr;
+
+    private async Task ClearByCodeAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_code))
+        { SetStatus(Loc.L("admin.cache.err.code", "Hãy nhập mã đối tượng."), true); return; }
+
+        _busy = true; _status = null;
+        var code = _code.Trim();
+        var res = _kind switch
+        {
+            CacheTargetKind.View   => await Cache.InvalidateViewAsync(code),
+            CacheTargetKind.Form   => await Cache.InvalidateFormAsync(code),
+            _                      => await Cache.InvalidateLookupAsync(code),
+        };
+        _busy = false;
+
+        if (res.Ok)
+            SetStatus(Loc.L("admin.cache.done", "Đã xóa cache '{0}'. Lần truy cập kế sẽ nạp lại từ DB.", code), false);
+        else
+            SetStatus(res.Error ?? Loc.L("admin.cache.err", "Xóa cache thất bại."), true);
+    }
+
+    private void ClearClientAsync()
+    {
+        Cache.ClearClientLookupCache();
+        SetStatus(Loc.L("admin.cache.client.done", "Đã xóa cache combobox phía trình duyệt."), false);
+    }
+
+    private string CodePlaceholder() => _kind switch
+    {
+        CacheTargetKind.View => "Grid_KhachHang",
+        CacheTargetKind.Form => "qlns_nhanvien",
+        _                    => "GENDER",
+    };
+
+    private string CodeHelp() => _kind switch
+    {
+        CacheTargetKind.View => Loc.L("admin.cache.code.view", "Ui_View.View_Code của màn cần làm mới."),
+        CacheTargetKind.Form => Loc.L("admin.cache.code.form", "Ui_Form.Form_Code của form cần làm mới."),
+        _                    => Loc.L("admin.cache.code.lookup", "Sys_Lookup.Lookup_Code của danh mục/combobox cần làm mới."),
+    };
+
+    private void SetStatus(string msg, bool err) { _status = msg; _statusErr = err; }
+}
+
+<style>
+    .ct-wrap { max-width: 640px; padding: 16px; }
+    .ct-head { margin-bottom: 14px; }
+    .ct-title { font-size: 16px; font-weight: 600; }
+    .ct-sub { display:block; font-size: 12px; opacity:.65; margin-top: 2px; }
+    .ct-card { border:1px solid #e2e8f0; border-radius:8px; padding:14px; background:#fff; margin-bottom:14px; }
+    .ct-card__title { font-size:14px; font-weight:600; }
+    .ct-label { display:block; font-size:12px; font-weight:600; opacity:.75; margin:10px 0 4px; }
+    .ct-input { width:100%; padding:7px 9px; border:1px solid #cbd5e1; border-radius:6px; font-size:13px; box-sizing:border-box; }
+    .ct-help { font-size:11px; opacity:.65; margin:4px 0 0; line-height:1.45; }
+    .ct-btn { margin-top:12px; padding:7px 12px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; cursor:pointer; font-size:13px; }
+    .ct-btn--primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .ct-note { padding:8px 10px; border-radius:6px; font-size:12px; }
+    .ct-note--ok { background:#dcfce7; color:#166534; }
+    .ct-note--err { background:#fee2e2; color:#991b1b; }
+</style>

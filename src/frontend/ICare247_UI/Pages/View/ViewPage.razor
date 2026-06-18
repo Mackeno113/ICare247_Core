@@ -6,6 +6,7 @@
 @using ICare247_UI.Services
 @using ICare247_UI.Components.View
 @inject ViewApiService ViewApi
+@inject CacheAdminApiService Cache
 @inject NavigationManager Nav
 @inherits LocalizedComponentBase
 
@@ -27,10 +28,16 @@
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
                 <span class="md-list-sub">@Loc.L("view.subtitle", "Bảng {0} · {1}", _view.TableCode, _view.ViewType)</span>
             </div>
-            @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
-            {
-                <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
-            }
+            <div class="md-list-header__actions" style="display:flex; gap:8px; align-items:center;">
+                <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
+                        title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")">
+                    ↻ @Loc.L("view.cache.clear", "Xóa cache")
+                </button>
+                @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
+                {
+                    <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
+                }
+            </div>
         </div>
 
         @* Ô search nhanh (LIKE) chỉ cho nguồn Table — nguồn SP/SQL dùng panel lọc tham số. *@
@@ -71,6 +78,7 @@
     private List<Dictionary<string, object?>> _items = [];
     private int _total;
     private bool _loading = true;
+    private bool _clearingCache;
     private string? _error;
     private string? _search;
     private string? _notice;
@@ -100,6 +108,22 @@
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; }
+    }
+
+    /// <summary>
+    /// Xóa cache màn này (View metadata server) + cache combobox client, rồi nạp lại cấu hình + dữ liệu.
+    /// Dùng khi cấu hình/danh mục đã đổi ở DB nhưng màn vẫn hiện bản cũ.
+    /// </summary>
+    private async Task ClearCacheAsync()
+    {
+        _clearingCache = true; _notice = null;
+        var res = await Cache.InvalidateViewAsync(ViewCode);
+        Cache.ClearClientLookupCache();
+        await InitAsync();              // GET lại view info (cache đã xóa) + dữ liệu
+        _clearingCache = false;
+        _notice = res.Ok
+            ? Loc.L("view.cache.cleared", "Đã xóa cache và tải lại.")
+            : (res.Error ?? Loc.L("view.cache.clear.err", "Xóa cache thất bại."));
     }
 
     /// <summary>Tải lại dữ liệu: nguồn query → chạy lại bộ lọc gần nhất; nguồn Table → SELECT + search LIKE.</summary>

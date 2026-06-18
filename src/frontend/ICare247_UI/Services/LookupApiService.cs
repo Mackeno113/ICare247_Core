@@ -83,6 +83,15 @@ public sealed class LookupApiService
         }
     }
 
+    /// <summary>Xóa cache client của 1 lookup code → lần GET sau nạp lại từ server.</summary>
+    public void Invalidate(string lookupCode)
+    {
+        if (!string.IsNullOrWhiteSpace(lookupCode)) _cache.Remove(lookupCode);
+    }
+
+    /// <summary>Xóa toàn bộ cache lookup phía client (mọi combobox tĩnh nạp lại khi cần).</summary>
+    public void Clear() => _cache.Clear();
+
     /// <summary>
     /// Load options cho nhiều lookup codes cùng lúc (gọi song song).
     /// Trả Dictionary&lt;code, options&gt;.

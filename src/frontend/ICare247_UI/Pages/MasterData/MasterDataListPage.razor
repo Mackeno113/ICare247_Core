@@ -6,6 +6,7 @@
 @using ICare247_UI.Services
 @using ICare247_UI.Components.MasterData
 @inject MasterDataApiService MasterApi
+@inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject NavigationManager Nav
 @inherits LocalizedComponentBase
@@ -28,10 +29,16 @@
                 <h2>@Loc.L("masterdata.list.manage", "Quản lý: {0}", FormCode)</h2>
                 <span class="md-list-sub">@Loc.L("masterdata.list.subtitle", "Bảng {0}.{1} · chế độ {2}", _info.SchemaName, _info.TableName, _info.DisplayMode)</span>
             </div>
-            @if (_perm.Them)
-            {
-                <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ @Loc.L("common.action.create", "Thêm mới")</button>
-            }
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
+                        title="@Loc.L("masterdata.cache.clear.tip", "Xóa cache cấu hình form + combobox, rồi tải lại")">
+                    ↻ @Loc.L("masterdata.cache.clear", "Xóa cache")
+                </button>
+                @if (_perm.Them)
+                {
+                    <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ @Loc.L("common.action.create", "Thêm mới")</button>
+                }
+            </div>
         </div>
 
         <div class="md-list-toolbar">
@@ -84,6 +91,7 @@
     private List<Dictionary<string, object?>> _items = [];
     private int _total;
     private bool _loading = true;
+    private bool _clearingCache;
     private string? _error;
 
     private string? _search;
@@ -100,6 +108,16 @@
     private object? _deleteId;
 
     protected override async Task OnParametersSetAsync() => await InitAsync();
+
+    /// <summary>Xóa cache cấu hình form (server) + cache combobox client, rồi nạp lại form + danh sách.</summary>
+    private async Task ClearCacheAsync()
+    {
+        _clearingCache = true;
+        await Cache.InvalidateFormAsync(FormCode);
+        Cache.ClearClientLookupCache();
+        await InitAsync();
+        _clearingCache = false;
+    }
 
     private async Task InitAsync()
     {
