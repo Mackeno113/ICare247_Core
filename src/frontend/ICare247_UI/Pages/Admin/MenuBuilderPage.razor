@@ -39,12 +39,13 @@
             <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
                         AutoExpandAllNodes="true" ShowAllRows="true" HighlightRowOnHover="true"
                         FocusedRowEnabled="true" FocusedRowChanged="OnRowFocused"
-                        ShowSearchBox="true"
+                        ShowFilterRow="true"
                         AllowColumnReorder="true"
                         ColumnResizeMode="TreeListColumnResizeMode.ColumnsContainer"
                         CssClass="mb-treelist">
                 <Columns>
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.name", "Tên")" FieldName="Ten" />
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.name", "Tên")" FieldName="Ten"
+                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.kind", "Loại")" Width="90px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
@@ -53,13 +54,15 @@
                             </span>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.module", "Phân hệ")" Width="110px">
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.module", "Phân hệ")" FieldName="Module" Width="110px"
+                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
                             <span>@ModuleLabel(n.Module)</span>
                         </CellDisplayTemplate>
                     </DxTreeListDataColumn>
-                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan" />
+                    <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.route", "Đường dẫn")" FieldName="DuongDan"
+                                          FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
                     <DxTreeListDataColumn Caption="@Loc.L("admin.menu.col.active", "Bật")" Width="56px">
                         <CellDisplayTemplate>
                             @{ var n = (MenuNodeVm)context.DataItem; }
