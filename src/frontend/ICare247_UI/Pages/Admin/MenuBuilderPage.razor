@@ -146,9 +146,13 @@
 {
     <div class="mb-modal__root">
         <div class="mb-modal__backdrop" @onclick="ClosePopup"></div>
-        <div class="mb-modal">
+        @if (_dragging)
+        {
+            <div class="mb-drag-capture" @onpointermove="OnDragMove" @onpointerup="OnDragEnd" @onpointerleave="OnDragEnd"></div>
+        }
+        <div class="mb-modal" style="@ModalDragStyle">
             <div class="mb-modal__head">
-                <h3>
+                <h3 class="mb-drag-handle" @onpointerdown="OnDragStart" title="@Loc.L("admin.menu.drag.hint", "Kéo tiêu đề để di chuyển")">
                     @(_editingId is null
                         ? Loc.L("admin.menu.form.new", "Thêm node mới")
                         : Loc.L("admin.menu.form.edit", "Sửa node #{0}", _editingId))
@@ -176,7 +180,7 @@
                 @if (_kind == "View")
                 {
                     <label class="mb-label">@Loc.L("admin.menu.f.view", "View (đọc từ cấu hình)")</label>
-                    <DxComboBox Data="@ViewOpts" @bind-Value="ObjectCodeBound"
+                    <DxComboBox Data="@_viewOpts" @bind-Value="ObjectCodeBound"
                                 TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
                                 SearchMode="ListSearchMode.AutoSearch"
                                 ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
@@ -224,7 +228,7 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
-                <DxComboBox Data="@ParentOpts" @bind-Value="_parentId"
+                <DxComboBox Data="@_parentOpts" @bind-Value="_parentId"
                             TextField="@nameof(ParentOpt.Display)" ValueField="@nameof(ParentOpt.Id)"
                             SearchMode="ListSearchMode.AutoSearch"
                             ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
@@ -255,7 +259,7 @@
                 <div class="mb-row">
                     <div class="mb-col">
                         <label class="mb-label">@Loc.L("admin.menu.col.module", "Phân hệ")</label>
-                        <DxComboBox Data="@ModuleOpts" @bind-Value="_module"
+                        <DxComboBox Data="@_moduleOpts" @bind-Value="_module"
                                     TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
                                     SearchMode="ListSearchMode.AutoSearch"
                                     ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
@@ -368,6 +372,33 @@
     private MenuNodeVm? _confirmDelete;
     private bool _deleting;
     private string? _delStatus;
+
+    // ── Kéo di chuyển popup (drag bằng tiêu đề) ──
+    private bool _dragging;
+    private double _dragX, _dragY;          // độ dời hiện tại so với vị trí giữa
+    private double _dragOX, _dragOY;        // toạ độ con trỏ lúc bắt đầu kéo
+    private double _dragBX, _dragBY;        // độ dời tại thời điểm bắt đầu kéo
+
+    private string ModalDragStyle =>
+        (_dragX == 0 && _dragY == 0) ? "" : $"transform:translate({(int)_dragX}px,{(int)_dragY}px)";
+
+    private void ResetDrag() { _dragging = false; _dragX = 0; _dragY = 0; }
+
+    private void OnDragStart(PointerEventArgs e)
+    {
+        _dragging = true;
+        _dragOX = e.ClientX; _dragOY = e.ClientY;
+        _dragBX = _dragX; _dragBY = _dragY;
+    }
+
+    private void OnDragMove(PointerEventArgs e)
+    {
+        if (!_dragging) return;
+        _dragX = _dragBX + (e.ClientX - _dragOX);
+        _dragY = _dragBY + (e.ClientY - _dragOY);
+    }
+
+    private void OnDragEnd(PointerEventArgs e) => _dragging = false;
     private long? _editingId;
     private bool _editingSystem;
     private string _kind = "Group";
@@ -394,10 +425,15 @@
     /// <summary>Tùy chọn combo Node cha (khóa số).</summary>
     private sealed record ParentOpt(long Id, string Display);
 
-    private IEnumerable<ComboOpt> ViewOpts => _views.Select(v =>
-        new ComboOpt(v.ViewCode, string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})"));
-    private IEnumerable<ComboOpt> ModuleOpts => _modules.Select(m => new ComboOpt(m.Ma, $"{m.Ma} — {m.Ten}"));
-    private IEnumerable<ParentOpt> ParentOpts => ParentOptions().Select(p => new ParentOpt(p.Id, IndentedName(p)));
+    // Materialize 1 lần (tham chiếu ổn định) — DxComboBox không reset lựa chọn giữa các lần render.
+    private List<ComboOpt> _viewOpts = new();
+    private List<ComboOpt> _moduleOpts = new();
+    private List<ParentOpt> _parentOpts = new();
+
+    private void BuildViewOpts() => _viewOpts = _views.Select(v =>
+        new ComboOpt(v.ViewCode, string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})")).ToList();
+    private void BuildModuleOpts() => _moduleOpts = _modules.Select(m => new ComboOpt(m.Ma, $"{m.Ma} — {m.Ten}")).ToList();
+    private void BuildParentOpts() => _parentOpts = ParentOptions().Select(p => new ParentOpt(p.Id, IndentedName(p))).ToList();
 
     /// <summary>Bind cho combo View — chọn xong tự gợi ý Tên hiển thị nếu đang trống.</summary>
     private string? ObjectCodeBound
@@ -418,6 +454,8 @@
     {
         _views = await ViewApi.GetListAsync(pageSize: 200);
         _modules = await Api.GetModulesAsync();
+        BuildViewOpts();
+        BuildModuleOpts();
         await ReloadAsync();
     }
 
@@ -442,6 +480,8 @@
         _icon = ""; _module = null; _thuTu = 0; _kichHoat = true;
         _overridePath = false; _duongDan = "";
         _navKey = null; _trans = new(); _transOrig = new();
+        BuildParentOpts();
+        ResetDrag();
         _status = null; _popupOpen = true;
     }
 
@@ -475,6 +515,8 @@
         }
         _transOrig = new(_trans);
 
+        BuildParentOpts();
+        ResetDrag();
         _status = null; _popupOpen = true;
     }
 
@@ -792,6 +834,8 @@
     .mb-modal { position:relative; width:100%; max-width:560px; background:#fff; border-radius:10px;
                 box-shadow:0 20px 50px rgba(0,0,0,.25); display:flex; flex-direction:column; max-height:calc(100vh - 80px); }
     .mb-modal__head { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #e2e8f0; }
+    .mb-drag-handle { cursor:move; user-select:none; flex:1; touch-action:none; }
+    .mb-drag-capture { position:fixed; inset:0; z-index:1001; cursor:move; }
     .mb-modal__head h3 { margin:0; font-size:15px; }
     .mb-modal__body { padding:14px 18px; overflow:auto; }
     .mb-modal__foot { display:flex; align-items:center; gap:8px; padding:12px 18px; border-top:1px solid #e2e8f0; }
