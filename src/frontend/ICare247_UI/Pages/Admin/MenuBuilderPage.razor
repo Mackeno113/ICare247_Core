@@ -172,15 +172,12 @@
                 @if (_kind == "View")
                 {
                     <label class="mb-label">@Loc.L("admin.menu.f.view", "View (đọc từ cấu hình)")</label>
-                    <select class="mb-input" value="@_objectCode" @onchange="OnViewChanged">
-                        <option value="">@Loc.L("admin.menu.f.view.pick", "— Chọn View —")</option>
-                        @foreach (var v in _views)
-                        {
-                            <option value="@v.ViewCode" selected="@(v.ViewCode == _objectCode)">
-                                @(string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})")
-                            </option>
-                        }
-                    </select>
+                    <DxComboBox Data="@ViewOpts" @bind-Value="ObjectCodeBound"
+                                TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
+                                SearchMode="ListSearchMode.AutoSearch"
+                                ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                NullText="@Loc.L("admin.menu.f.view.pick", "— Chọn View —")"
+                                CssClass="mb-combo" Width="100%" />
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.name", "Tên hiển thị *")</label>
@@ -223,13 +220,12 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
-                <select class="mb-input" value="@(_parentId?.ToString() ?? "")" @onchange="OnParentChanged">
-                    <option value="">@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")</option>
-                    @foreach (var p in ParentOptions())
-                    {
-                        <option value="@p.Id" selected="@(p.Id == _parentId)">@IndentedName(p)</option>
-                    }
-                </select>
+                <DxComboBox Data="@ParentOpts" @bind-Value="_parentId"
+                            TextField="@nameof(ParentOpt.Display)" ValueField="@nameof(ParentOpt.Id)"
+                            SearchMode="ListSearchMode.AutoSearch"
+                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                            NullText="@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")"
+                            CssClass="mb-combo" Width="100%" />
 
                 @* ── Đường dẫn: server tự suy, cho phép tùy chỉnh ── *@
                 <label class="mb-label">@Loc.L("admin.menu.col.route", "Đường dẫn")</label>
@@ -255,13 +251,12 @@
                 <div class="mb-row">
                     <div class="mb-col">
                         <label class="mb-label">@Loc.L("admin.menu.col.module", "Phân hệ")</label>
-                        <select class="mb-input" value="@(_module ?? "")" @onchange="OnModuleChanged">
-                            <option value="">@Loc.L("admin.menu.f.module.none", "— Không —")</option>
-                            @foreach (var m in _modules)
-                            {
-                                <option value="@m.Ma" selected="@(m.Ma == _module)">@m.Ma — @m.Ten</option>
-                            }
-                        </select>
+                        <DxComboBox Data="@ModuleOpts" @bind-Value="_module"
+                                    TextField="@nameof(ComboOpt.Display)" ValueField="@nameof(ComboOpt.Code)"
+                                    SearchMode="ListSearchMode.AutoSearch"
+                                    ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                    NullText="@Loc.L("admin.menu.f.module.none", "— Không —")"
+                                    CssClass="mb-combo" Width="100%" />
                     </div>
                     <div class="mb-col mb-col--narrow">
                         <label class="mb-label">@Loc.L("admin.menu.f.order", "Thứ tự")</label>
@@ -350,6 +345,32 @@
     /// <summary>Các ngôn ngữ cần nhập bản dịch (mọi ngôn ngữ trừ ngôn ngữ gốc — gốc = ô "Tên hiển thị").</summary>
     private IEnumerable<LanguageInfo> TransLangs
         => Loc.Available.Where(l => l.Code != LocalizationService.BaseLanguage);
+
+    // ── Nguồn cho combobox có lọc (DxComboBox SearchMode=AutoSearch) ──
+    /// <summary>Tùy chọn combo khóa chuỗi (View, Phân hệ).</summary>
+    private sealed record ComboOpt(string Code, string Display);
+    /// <summary>Tùy chọn combo Node cha (khóa số).</summary>
+    private sealed record ParentOpt(long Id, string Display);
+
+    private IEnumerable<ComboOpt> ViewOpts => _views.Select(v =>
+        new ComboOpt(v.ViewCode, string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})"));
+    private IEnumerable<ComboOpt> ModuleOpts => _modules.Select(m => new ComboOpt(m.Ma, $"{m.Ma} — {m.Ten}"));
+    private IEnumerable<ParentOpt> ParentOpts => ParentOptions().Select(p => new ParentOpt(p.Id, IndentedName(p)));
+
+    /// <summary>Bind cho combo View — chọn xong tự gợi ý Tên hiển thị nếu đang trống.</summary>
+    private string? ObjectCodeBound
+    {
+        get => _objectCode;
+        set
+        {
+            _objectCode = value;
+            if (!string.IsNullOrEmpty(_objectCode) && string.IsNullOrWhiteSpace(_ten))
+            {
+                var v = _views.FirstOrDefault(x => x.ViewCode == _objectCode);
+                if (v is not null) _ten = string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : v.Title!;
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -457,25 +478,6 @@
     {
         _kind = e.Value?.ToString() ?? "Group";
         if (_kind == "Group") _objectCode = null;
-    }
-
-    private void OnViewChanged(ChangeEventArgs e)
-    {
-        _objectCode = e.Value?.ToString();
-        if (!string.IsNullOrEmpty(_objectCode) && string.IsNullOrWhiteSpace(_ten))
-        {
-            var v = _views.FirstOrDefault(x => x.ViewCode == _objectCode);
-            if (v is not null) _ten = string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : v.Title!;
-        }
-    }
-
-    private void OnParentChanged(ChangeEventArgs e)
-        => _parentId = long.TryParse(e.Value?.ToString(), out var id) ? id : null;
-
-    private void OnModuleChanged(ChangeEventArgs e)
-    {
-        var v = e.Value?.ToString();
-        _module = string.IsNullOrEmpty(v) ? null : v;
     }
 
     private void OnToggleOverride(ChangeEventArgs e)
