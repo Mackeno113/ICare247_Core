@@ -101,7 +101,7 @@ BEGIN
         Min_Width         INT            NULL,
         Text_Align        NVARCHAR(10)   NULL,                       -- left | center | right
         Display_Format    NVARCHAR(50)   NULL,                       -- n0 | dd/MM/yyyy ...
-        Render_Mode       NVARCHAR(20)   NOT NULL DEFAULT 'Text',    -- Text|Html|Image|Link|Badge|Boolean|Template
+        Render_Mode       NVARCHAR(20)   NOT NULL DEFAULT 'Text',    -- Text|Html|Image|Link|Badge|Boolean|Template|Date|DateTime|Time
         Cell_Template_Key NVARCHAR(150)  NULL,                       -- template/i18n cho Html/Badge/Link
         Is_Visible        BIT            NOT NULL DEFAULT 1,
         Order_No          INT            NOT NULL DEFAULT 0,

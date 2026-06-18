@@ -250,7 +250,8 @@ else
         var rm = (c.RenderMode ?? "").ToLowerInvariant();
         if (rm == "boolean") return GridFilterRowOperatorType.Equal;
         if ((c.TextAlign ?? "").ToLowerInvariant() == "right") return GridFilterRowOperatorType.Equal;
-        return rm is "text" or "html" or "link" or "badge" or ""
+        // date/datetime/time → Default (DevExpress tự cho editor ngày + toán tử ngày).
+        return rm is "text" or "html" or "link" or "badge" or "template" or ""
             ? GridFilterRowOperatorType.Contains
             : GridFilterRowOperatorType.Default;
     }
@@ -286,10 +287,26 @@ else
         if (!string.IsNullOrEmpty(style))
             builder.AddAttribute(1, "style", style);
 
-        if (value is not null)
+        var renderMode = col.RenderMode.ToLowerInvariant();
+
+        // Template gộp nhiều token {Field} → render cả khi ô FieldName rỗng.
+        if (renderMode == "template")
         {
-            switch (col.RenderMode.ToLowerInvariant())
+            builder.AddContent(17, RenderTemplate(row, col.DisplayFormat));
+        }
+        else if (value is not null)
+        {
+            switch (renderMode)
             {
+                case "date":
+                    builder.AddContent(18, FormatValue(value, col.DisplayFormat ?? "dd/MM/yyyy"));
+                    break;
+                case "datetime":
+                    builder.AddContent(19, FormatValue(value, col.DisplayFormat ?? "dd/MM/yyyy HH:mm"));
+                    break;
+                case "time":
+                    builder.AddContent(20, FormatValue(value, col.DisplayFormat ?? @"hh\:mm"));
+                    break;
                 case "boolean":
                     var on = value is bool b ? b : bool.TryParse(value.ToString(), out var pb) && pb;
                     builder.AddContent(2, on ? "✓" : "");
@@ -371,18 +388,50 @@ else
         }
     }
 
-    /// <summary>Chuyển từng dòng Dictionary → ExpandoObject (giữ nguyên key/giá trị CLR).</summary>
+    /// <summary>
+    /// Chuyển từng dòng Dictionary → ExpandoObject; ÉP KIỂU theo Render_Mode cho cột ngày/giờ
+    /// (server trả chuỗi JSON → parse sang DateTime/TimeSpan) để DxGrid hiện đúng editor lọc
+    /// (date-picker) + sort theo ngày, không phải lọc chữ.
+    /// </summary>
     private void BuildGridRows()
     {
+        var types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in View.Columns)
+            if (!string.IsNullOrWhiteSpace(c.FieldName))
+                types[c.FieldName] = c.RenderMode.ToLowerInvariant();
+
         var rows = new List<ExpandoObject>(Items.Count);
         foreach (var d in Items)
         {
             var e = new ExpandoObject();
             var ed = (IDictionary<string, object?>)e;
-            foreach (var kv in d) ed[kv.Key] = kv.Value;
+            foreach (var kv in d)
+                ed[kv.Key] = types.TryGetValue(kv.Key, out var rm) ? ConvertCell(kv.Value, rm) : kv.Value;
             rows.Add(e);
         }
         _gridRows = rows;
+    }
+
+    /// <summary>Ép kiểu giá trị ô theo render mode (date/datetime → DateTime; time → TimeSpan). Lỗi → giữ nguyên.</summary>
+    private static object? ConvertCell(object? v, string renderMode)
+    {
+        if (v is null) return null;
+        switch (renderMode)
+        {
+            case "date":
+            case "datetime":
+                if (v is DateTime) return v;
+                return DateTime.TryParse(v.ToString(), CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var dt) ? dt : v;
+            case "time":
+                if (v is TimeSpan) return v;
+                var s = v.ToString() ?? "";
+                if (TimeSpan.TryParse(s, CultureInfo.InvariantCulture, out var t)) return t;
+                return DateTime.TryParse(s, CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var d2) ? d2.TimeOfDay : v;
+            default:
+                return v;
+        }
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions JsonOpts =
@@ -504,15 +553,28 @@ else
         {
             switch (value)
             {
-                case long l:    return l.ToString(fmt, CultureInfo.CurrentCulture);
-                case int i:     return i.ToString(fmt, CultureInfo.CurrentCulture);
-                case decimal d: return d.ToString(fmt, CultureInfo.CurrentCulture);
-                case double db: return db.ToString(fmt, CultureInfo.CurrentCulture);
+                case long l:     return l.ToString(fmt, CultureInfo.CurrentCulture);
+                case int i:      return i.ToString(fmt, CultureInfo.CurrentCulture);
+                case decimal d:  return d.ToString(fmt, CultureInfo.CurrentCulture);
+                case double db:  return db.ToString(fmt, CultureInfo.CurrentCulture);
+                case DateTime dt2: return dt2.ToString(fmt, CultureInfo.CurrentCulture);
+                case TimeSpan tsp: return tsp.ToString(fmt, CultureInfo.CurrentCulture);
                 case string s when DateTime.TryParse(
                         s, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var dt):
                     return dt.ToString(fmt, CultureInfo.CurrentCulture);
             }
         }
         return value.ToString() ?? "";
+    }
+
+    /// <summary>Render template chèn token: thay "{Field}" bằng giá trị ô tương ứng (vd "{Ma} - {Ten}").</summary>
+    private static string RenderTemplate(IDictionary<string, object?> row, string? template)
+    {
+        if (string.IsNullOrEmpty(template)) return "";
+        return System.Text.RegularExpressions.Regex.Replace(template, @"\{(\w+)\}", m =>
+        {
+            var v = GetCell(row, m.Groups[1].Value);
+            return v?.ToString() ?? "";
+        });
     }
 }
