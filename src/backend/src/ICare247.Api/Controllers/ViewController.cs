@@ -10,6 +10,7 @@ using ICare247.Application.Features.Views.Queries.GetViewFilteredData;
 using ICare247.Application.Features.Views.Queries.GetViewsList;
 using ICare247.Application.Interfaces;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ICare247.Api.Controllers;
@@ -24,12 +25,16 @@ public sealed class ViewController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly IConfigCache _configCache;
+    private readonly IUserGridLayoutStore _layoutStore;
     private readonly ILogger<ViewController> _logger;
 
-    public ViewController(IMediator mediator, IConfigCache configCache, ILogger<ViewController> logger)
+    public ViewController(
+        IMediator mediator, IConfigCache configCache,
+        IUserGridLayoutStore layoutStore, ILogger<ViewController> logger)
     {
         _mediator = mediator;
         _configCache = configCache;
+        _layoutStore = layoutStore;
         _logger = logger;
     }
 
@@ -162,12 +167,66 @@ public sealed class ViewController : ControllerBase
         return Ok(new { message = $"Đã xóa cache View '{code}'." });
     }
 
+    // ── Layout lưới per-user (sở thích người dùng — Data DB, cache riêng) ───────────
+
+    /// <summary>Lấy layout lưới đã lưu của user hiện tại cho View (null nếu chưa tùy chỉnh).</summary>
+    [HttpGet("{code}/my-layout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyLayout(
+        string code, [FromQuery] string platform = "web", CancellationToken ct = default)
+    {
+        var json = await _layoutStore.GetAsync(GetUserId(), code, platform, GetTenantId(), ct);
+        return Ok(new { layoutJson = json });
+    }
+
+    /// <summary>Lưu (UPSERT) layout lưới của user cho View — write-through cache.</summary>
+    [HttpPut("{code}/my-layout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> SaveMyLayout(
+        string code, [FromBody] GridLayoutRequest body,
+        [FromQuery] string platform = "web", CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(body?.LayoutJson))
+            return BadRequest(new { message = "layoutJson rỗng." });
+
+        await _layoutStore.SaveAsync(GetUserId(), code, platform, GetTenantId(), body.LayoutJson, ct);
+        return NoContent();
+    }
+
+    /// <summary>Khôi phục mặc định: xóa layout của user cho View (quay về Ui_View).</summary>
+    [HttpDelete("{code}/my-layout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> ResetMyLayout(
+        string code, [FromQuery] string platform = "web", CancellationToken ct = default)
+    {
+        await _layoutStore.ResetAsync(GetUserId(), code, platform, GetTenantId(), ct);
+        return NoContent();
+    }
+
     /// <summary>
     /// Tenant_Id lấy từ TenantContext (TenantMiddleware đã phân giải qua subdomain/header).
     /// KHÔNG đọc header trực tiếp nữa để khớp đúng tenant đã mở DB (tránh rò cache chéo). ADR-018.
     /// </summary>
     private int GetTenantId()
         => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
+
+    /// <summary>NguoiDung_Id từ JWT (sub / NameIdentifier) — cho layout per-user.</summary>
+    private long GetUserId()
+    {
+        var raw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                  ?? User.FindFirst("sub")?.Value;
+        return long.TryParse(raw, out var id) ? id : 0;
+    }
+}
+
+/// <summary>Body cho PUT my-layout: chuỗi JSON serialize từ DxGrid GridPersistentLayout.</summary>
+public sealed class GridLayoutRequest
+{
+    public string? LayoutJson { get; init; }
 }
 
 /// <summary>Body cho endpoint Search: map Filter_Code → giá trị người dùng nhập (chuỗi thô).</summary>

@@ -88,6 +88,7 @@ public static class DependencyInjection
         services.AddScoped<IDynamicLookupRepository, DynamicLookupRepository>();
         services.AddScoped<IResourceRepository, ResourceRepository>();
         services.AddScoped<IMasterDataRepository, MasterDataRepository>();
+        services.AddScoped<IUserGridLayoutRepository, UserGridLayoutRepository>();
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
         services.AddScoped<IViewRepository, ViewRepository>();
 

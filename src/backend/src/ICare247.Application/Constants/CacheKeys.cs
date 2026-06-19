@@ -98,4 +98,12 @@ public static class CacheKeys
     /// </summary>
     public static string View(string viewCode, int version, string langCode, int tenantId)
         => $"icare:view:{tenantId}:{viewCode.ToLowerInvariant()}:v{version}:lang:{langCode}";
+
+    /// <summary>
+    /// Layout lưới per-user (DxGrid GridPersistentLayout). KEY-SPACE RIÊNG, KHÔNG version-stamp config
+    /// (vòng đời khác hẳn): single-writer + write-through. tenantId tách cache giữa các tenant.
+    /// Prefix: icare:gridlayout:{tenantId}:{userId}:{viewCode}:{platform}
+    /// </summary>
+    public static string UserGridLayout(int tenantId, long userId, string viewCode, string platform)
+        => $"icare:gridlayout:{tenantId}:{userId}:{viewCode.ToLowerInvariant()}:{platform}";
 }

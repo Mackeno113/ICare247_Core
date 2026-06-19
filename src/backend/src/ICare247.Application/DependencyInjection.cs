@@ -58,6 +58,9 @@ public static class DependencyInjection
         // Bọc MetadataEngine + repo i18n/lookup. Handler/web CHỈ inject IConfigCache (CC-0d).
         services.AddScoped<IConfigCache, ConfigCache>();
 
+        // ── Layout lưới per-user (cache-aside L1+L2, key-space riêng, write-through) ──
+        services.AddScoped<IUserGridLayoutStore, Engines.UserGridLayoutStore>();
+
         return services;
     }
 }
