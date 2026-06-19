@@ -5,6 +5,7 @@
 //           (khớp enforce-if-mapped ở server). Nạp 1 lần, dùng lại nhiều màn.
 
 using ICare247_UI.Navigation;
+using Microsoft.AspNetCore.Components.Authorization;
 
 namespace ICare247_UI.Services;
 
@@ -17,15 +18,37 @@ public readonly record struct PermFlags(bool Xem, bool Them, bool Sua, bool Xoa,
 /// <summary>Trạng thái quyền theo phiên (scoped). Inject vào màn cần ẩn nút theo quyền.</summary>
 public sealed class PermissionState
 {
-    private readonly NavigationApiService _navApi;
-    private IReadOnlyList<MeNavNode>? _nodes;
+    /// <summary>Mã vai trò super-admin — khớp <c>RequirePermissionForTargetAttribute.SuperAdminRole</c> ở backend.</summary>
+    private const string SuperAdminRole = "SUPERADMIN";
 
-    public PermissionState(NavigationApiService navApi) => _navApi = navApi;
+    private readonly NavigationApiService _navApi;
+    private readonly AuthenticationStateProvider _authProvider;
+    private IReadOnlyList<MeNavNode>? _nodes;
+    private bool? _isSuperAdmin;
+
+    public PermissionState(NavigationApiService navApi, AuthenticationStateProvider authProvider)
+    {
+        _navApi = navApi;
+        _authProvider = authProvider;
+    }
 
     /// <summary>Nạp cờ quyền 1 lần/phiên (idempotent). Gọi đầu màn trước khi tra cứu.</summary>
     public async Task EnsureLoadedAsync()
     {
         _nodes ??= await _navApi.GetNavigationAsync();
+    }
+
+    /// <summary>
+    /// True nếu user hiện tại có vai trò super-admin (role claim = "SUPERADMIN").
+    /// Dùng để ẩn/hiện công cụ quản trị (vd nút Xóa cache) khỏi người dùng cuối. Cache trong phiên.
+    /// </summary>
+    public async Task<bool> IsSuperAdminAsync()
+    {
+        if (_isSuperAdmin is { } cached) return cached;
+        var state = await _authProvider.GetAuthenticationStateAsync();
+        _isSuperAdmin = state.User.FindAll("role")
+            .Any(c => string.Equals(c.Value, SuperAdminRole, StringComparison.OrdinalIgnoreCase));
+        return _isSuperAdmin.Value;
     }
 
     /// <summary>

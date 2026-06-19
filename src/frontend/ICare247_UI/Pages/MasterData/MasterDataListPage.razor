@@ -30,10 +30,13 @@
                 <span class="md-list-sub">@Loc.L("masterdata.list.subtitle", "Bảng {0}.{1} · chế độ {2}", _info.SchemaName, _info.TableName, _info.DisplayMode)</span>
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
-                <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
-                        title="@Loc.L("masterdata.cache.clear.tip", "Xóa cache cấu hình form + combobox, rồi tải lại")">
-                    ↻ @Loc.L("masterdata.cache.clear", "Xóa cache")
-                </button>
+                @if (_isSuperAdmin)
+                {
+                    <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
+                            title="@Loc.L("masterdata.cache.clear.tip", "Xóa cache cấu hình form + combobox, rồi tải lại")">
+                        ↻ @Loc.L("masterdata.cache.clear", "Xóa cache")
+                    </button>
+                }
                 @if (_perm.Them)
                 {
                     <button class="btn btn-primary" @onclick="() => OpenForm(null)">+ @Loc.L("common.action.create", "Thêm mới")</button>
@@ -63,17 +66,13 @@
     }
 </div>
 
-@* ── Popup form (chỉ khi Display_Mode = Popup) ── *@
+@* ── Popup form (chỉ khi Display_Mode = Popup) — kéo được, chỉ đóng bằng nút ── *@
 @if (_showPopup && _info is not null)
 {
-    <div class="md-modal-backdrop" @onclick="CloseForm">
-        <div class="md-modal" @onclick:stopPropagation="true">
-            <div class="md-modal-body">
-                <MasterDataForm FormCode="@FormCode" Id="_editId"
-                                OnSaved="OnFormSaved" OnCancelled="CloseForm" />
-            </div>
-        </div>
-    </div>
+    <DraggableModal Title="@PopupTitle" OnClose="CloseForm">
+        <MasterDataForm FormCode="@FormCode" Id="_editId" ShowTitle="false"
+                        OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+    </DraggableModal>
 }
 
 @* ── Confirm delete dialog ── *@
@@ -92,6 +91,7 @@
     private int _total;
     private bool _loading = true;
     private bool _clearingCache;
+    private bool _isSuperAdmin;
     private string? _error;
 
     private string? _search;
@@ -106,6 +106,10 @@
     private bool _showPopup;
     private object? _editId;
     private object? _deleteId;
+
+    /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {FormCode}".</summary>
+    private string PopupTitle =>
+        $"{(_editId is null ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.update", "Cập nhật"))} — {FormCode}";
 
     protected override async Task OnParametersSetAsync() => await InitAsync();
 
@@ -129,6 +133,7 @@
 
             await Perms.EnsureLoadedAsync();
             _perm = Perms.ForTarget("Form", FormCode);
+            _isSuperAdmin = await Perms.IsSuperAdminAsync();
 
             // Cột lưới = Show_In_List; fallback toàn bộ cột nếu chưa cấu hình cờ nào
             _listColumns = _info.Columns.Where(c => c.ShowInList).ToList();

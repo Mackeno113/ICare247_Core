@@ -19,6 +19,25 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-06-19] VIEW-POPUP-UNIFY (Thêm/Sửa popup trên ViewPage + đồng bộ giao diện) — claude → codex
+
+- Status: FE done (build ICare247_UI **0 error**). Còn 1 việc nhỏ phía Codex (tùy chọn).
+- Bối cảnh: cùng bảng (vd DM_QuocGia) bị 2 hệ render: `/view/{code}` (ViewPage) và `/master/{code}`
+  (MasterDataListPage) → mở đầu khác giao diện lúc quay lại. Đã thống nhất: **ViewPage là lưới duy nhất
+  cho người dùng cuối; Thêm/Sửa = popup ngay trên ViewPage**, đóng/Lưu về đúng màn lưới (không nhảy trang).
+  MasterDataListPage **giữ lại cho mục đích nội bộ khác** (theo quyết định user).
+- Files FE (claude, đã xong):
+  - `Components/DraggableModal.razor` (mới) + `wwwroot/index.html` (`icare.enableDrag/disableDrag`)
+    + `wwwroot/css/app.css` (.dm-*): popup **kéo theo tiêu đề, CHỈ đóng bằng nút** (bỏ close-on-backdrop) — quy tắc thiết kế.
+  - `Pages/View/ViewPage.razor`: Thêm/Sửa/Xóa mở popup/dialog inline (bỏ `NavigateTo /master`).
+  - `Pages/MasterData/MasterDataListPage.razor`: popup chuyển sang DraggableModal.
+  - `Components/MasterData/MasterDataForm.razor`: thêm `ShowTitle`; đẩy `Ui_Form.Columns` → CSS `--form-cols`
+    (số cột form popup chạy thật — `FormRepository` đã SELECT `f.Form_Columns`).
+  - `Services/PermissionState.cs` + 2 page: nút **Xóa cache chỉ hiện cho super-admin** (role claim `SUPERADMIN`).
+- Việc Codex (tùy chọn): trong ConfigStudio WPF, đặt **default `Ui_Form.Display_Mode = Popup`** khi tạo form mới
+  (runtime đã tôn trọng Display_Mode; ViewPage hiện luôn dùng popup). Không bắt buộc — chỉ là default UX.
+- Cần biết: số cột popup cấu hình bằng `Ui_Form.Form_Columns` (1..4); số cột LƯỚI bằng `Ui_Field.Show_In_List`.
+
 ### [2026-06-16] CFGSTUDIO-SYSTABLE-PICKER (combobox chọn bảng/view thật) — claude
 
 - Status: done (build WPF **0/0**).

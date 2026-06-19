@@ -1,0 +1,54 @@
+@* File    : DraggableModal.razor
+   Purpose : Popup dùng chung theo quy tắc thiết kế ICare247:
+             - Kéo di chuyển bằng cách giữ chuột/chạm trên THANH TIÊU ĐỀ.
+             - CHỈ đóng khi bấm nút (✕ hoặc nút trong nội dung) — KHÔNG đóng khi click nền.
+             Bọc nội dung qua ChildContent; phát OnClose khi bấm ✕. *@
+
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="md-modal-backdrop">
+    <div class="md-modal dm-modal" @ref="_panel" style="@WidthStyle">
+        <div class="md-modal-header dm-header" @ref="_handle">
+            <span class="dm-title">@Title</span>
+            <button class="dm-close" type="button" @onclick="CloseAsync" aria-label="Đóng">✕</button>
+        </div>
+        <div class="md-modal-body dm-body">
+            @ChildContent
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>Tiêu đề hiển thị trên thanh kéo.</summary>
+    [Parameter] public string? Title { get; set; }
+    /// <summary>Bề rộng tùy chọn, vd "560px". Bỏ trống = mặc định CSS (.md-modal 720px).</summary>
+    [Parameter] public string? Width { get; set; }
+    /// <summary>Nội dung trong popup (form, v.v.).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    /// <summary>Phát khi người dùng bấm nút đóng ✕.</summary>
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private ElementReference _panel;
+    private ElementReference _handle;
+    private bool _dragInit;
+
+    private string? WidthStyle => string.IsNullOrWhiteSpace(Width) ? null : $"width:{Width}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _dragInit) return;
+        _dragInit = true;
+        // JS chưa sẵn (prerender) → bỏ qua; popup vẫn dùng được, chỉ không kéo.
+        try { await JS.InvokeVoidAsync("icare.enableDrag", _handle, _panel); }
+        catch { /* no-op */ }
+    }
+
+    private async Task CloseAsync() => await OnClose.InvokeAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("icare.disableDrag", _handle); }
+        catch { /* circuit đã đóng → bỏ qua */ }
+    }
+}

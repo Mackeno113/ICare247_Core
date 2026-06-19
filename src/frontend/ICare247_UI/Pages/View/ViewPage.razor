@@ -5,9 +5,10 @@
 @page "/view/{ViewCode}"
 @using ICare247_UI.Services
 @using ICare247_UI.Components.View
+@using ICare247_UI.Components.MasterData
 @inject ViewApiService ViewApi
 @inject CacheAdminApiService Cache
-@inject NavigationManager Nav
+@inject PermissionState Perms
 @inherits LocalizedComponentBase
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
@@ -26,28 +27,21 @@
         <div class="md-list-header">
             <div>
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
-                <span class="md-list-sub">@Loc.L("view.subtitle", "Bảng {0} · {1}", _view.TableCode, _view.ViewType)</span>
             </div>
             <div class="md-list-header__actions" style="display:flex; gap:8px; align-items:center;">
-                <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
-                        title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")">
-                    ↻ @Loc.L("view.cache.clear", "Xóa cache")
-                </button>
+                @if (_isSuperAdmin)
+                {
+                    <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
+                            title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")">
+                        ↻ @Loc.L("view.cache.clear", "Xóa cache")
+                    </button>
+                }
                 @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
                 {
                     <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
                 }
             </div>
         </div>
-
-        @* Ô search nhanh (LIKE) chỉ cho nguồn Table — nguồn SP/SQL dùng panel lọc tham số. *@
-        @if (_view.ShowSearchBox && !_view.HasFilterPanel)
-        {
-            <div class="md-list-toolbar">
-                <input class="md-search" placeholder="@Loc.L("common.search.placeholder", "🔍 Tìm kiếm…")" value="@_search"
-                       @onchange="OnSearchChanged" />
-            </div>
-        }
 
         <div class="@(_view.HasFilterPanel ? "dv-with-filter" : "")">
             @if (_view.HasFilterPanel)
@@ -71,6 +65,22 @@
     }
 </div>
 
+@* ── Popup Thêm/Sửa ngay trên màn lưới — đóng/Lưu xong ở nguyên màn này ── *@
+@if (_showForm && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
+{
+    <DraggableModal Title="@FormTitle" OnClose="CloseForm">
+        <MasterDataForm FormCode="@(_view.EditFormCode!)" Id="_editId" ShowTitle="false"
+                        OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+    </DraggableModal>
+}
+
+@* ── Dialog xác nhận xóa (qua Edit_Form của View) ── *@
+@if (_deleteId is not null && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
+{
+    <ConfirmDeleteDialog FormCode="@(_view.EditFormCode!)" Id="_deleteId"
+                         OnDeleted="OnRecordDeleted" OnClosed="() => _deleteId = null" />
+}
+
 @code {
     [Parameter] public string ViewCode { get; set; } = "";
 
@@ -79,12 +89,21 @@
     private int _total;
     private bool _loading = true;
     private bool _clearingCache;
+    private bool _isSuperAdmin;
     private string? _error;
-    private string? _search;
     private string? _notice;
 
     /// <summary>Giá trị panel lọc lần Tìm gần nhất — để Refresh chạy lại đúng bộ lọc (nguồn SP/SQL).</summary>
     private IReadOnlyDictionary<string, string?> _lastFilters = new Dictionary<string, string?>();
+
+    // ── Trạng thái popup Thêm/Sửa + dialog Xóa (inline trên màn lưới) ──
+    private bool    _showForm;
+    private object? _editId;     // null = Thêm, có giá trị = Sửa
+    private object? _deleteId;
+
+    /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {Edit_Form}".</summary>
+    private string FormTitle =>
+        $"{(_editId is null ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.update", "Cập nhật"))} — {_view?.EditFormCode}";
 
     protected override async Task OnParametersSetAsync() => await InitAsync();
 
@@ -93,6 +112,7 @@
         _loading = true; _error = null;
         try
         {
+            _isSuperAdmin = await Perms.IsSuperAdminAsync();
             _view = await ViewApi.GetInfoAsync(ViewCode);
             if (_view is null) { _error = Loc.L("view.notfound", "Không tìm thấy View '{0}'.", ViewCode); return; }
 
@@ -136,7 +156,7 @@
         }
 
         var pageSize = _view.PageSize < 1 ? 50 : _view.PageSize;
-        var result = await ViewApi.GetDataAsync(ViewCode, _search, page: 1, pageSize: pageSize);
+        var result = await ViewApi.GetDataAsync(ViewCode, search: null, page: 1, pageSize: pageSize);
         _items = result?.Items ?? [];
         _total = result?.TotalCount ?? 0;
     }
@@ -165,34 +185,51 @@
         }
     }
 
-    private async Task OnSearchChanged(ChangeEventArgs e)
-    {
-        _search = e.Value?.ToString();
-        await ReloadDataAsync();
-    }
-
-    /// <summary>Mở form Thêm của Edit_Form gắn với View (tab edit route).</summary>
+    /// <summary>Mở popup Thêm mới (Edit_Form của View) ngay trên màn lưới.</summary>
     private void OpenAdd()
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit");
+        _editId = null;
+        _showForm = true;
     }
 
-    /// <summary>Double-click dòng → Sửa: resolve khóa từ Key_Field rồi điều hướng form edit.</summary>
+    /// <summary>Double-click dòng → mở popup Sửa: resolve khóa từ Key_Field.</summary>
     private void OpenEdit(IDictionary<string, object?> row)
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || string.IsNullOrWhiteSpace(_view.KeyField)) return;
         var hit = row.FirstOrDefault(kv => kv.Key.Equals(_view.KeyField, StringComparison.OrdinalIgnoreCase));
         var id = hit.Value;
         if (id is null) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}");
+        _editId = id;
+        _showForm = true;
     }
 
-    /// <summary>Xóa: điều hướng sang màn danh mục của Edit_Form (có dialog xác nhận xóa).</summary>
+    /// <summary>Xóa: mở dialog xác nhận (soft-check tham chiếu) ngay trên màn lưới.</summary>
     private void OpenDelete(object? id)
     {
-        if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
-        Nav.NavigateTo($"/master/{Uri.EscapeDataString(_view.EditFormCode)}");
+        if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || id is null) return;
+        _deleteId = id;
+    }
+
+    /// <summary>Đóng popup Thêm/Sửa (Hủy hoặc nút ✕).</summary>
+    private void CloseForm()
+    {
+        _showForm = false;
+        _editId = null;
+    }
+
+    /// <summary>Lưu thành công → đóng popup + nạp lại dữ liệu lưới (ở nguyên màn này).</summary>
+    private async Task OnFormSaved(object? _)
+    {
+        CloseForm();
+        await ReloadDataAsync();
+    }
+
+    /// <summary>Xóa thành công → đóng dialog + nạp lại dữ liệu lưới.</summary>
+    private async Task OnRecordDeleted()
+    {
+        _deleteId = null;
+        await ReloadDataAsync();
     }
 
     /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>

@@ -97,6 +97,56 @@
                     this.setSelectionRange(newSel, newSel);
                 });
             },
+            // enableDrag(handle, panel) — cho phép kéo panel bằng cách giữ chuột/chạm trên handle.
+            // Dùng cho DraggableModal: kéo theo thanh tiêu đề; bỏ qua khi bấm nút đóng (.dm-close).
+            // Di chuyển bằng transform translate (panel đang được căn giữa bằng flex).
+            enableDrag: function (handle, panel) {
+                if (!handle || !panel || handle._icareDrag) return;
+                let startX = 0, startY = 0, baseX = 0, baseY = 0, dragging = false;
+
+                function getTranslate() {
+                    const m = /translate\((-?\d+(?:\.\d+)?)px,\s*(-?\d+(?:\.\d+)?)px\)/.exec(panel.style.transform || '');
+                    return m ? { x: parseFloat(m[1]), y: parseFloat(m[2]) } : { x: 0, y: 0 };
+                }
+                function point(e) { return e.touches && e.touches.length ? e.touches[0] : e; }
+
+                function onMove(e) {
+                    if (!dragging) return;
+                    const p = point(e);
+                    panel.style.transform =
+                        'translate(' + (baseX + (p.clientX - startX)) + 'px, ' + (baseY + (p.clientY - startY)) + 'px)';
+                    if (e.cancelable) e.preventDefault();
+                }
+                function onUp() {
+                    dragging = false;
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onMove);
+                    document.removeEventListener('touchend', onUp);
+                }
+                function onDown(e) {
+                    if (e.target.closest && e.target.closest('.dm-close')) return; // nút đóng không kéo
+                    dragging = true;
+                    const t = getTranslate(); baseX = t.x; baseY = t.y;
+                    const p = point(e); startX = p.clientX; startY = p.clientY;
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                    document.addEventListener('touchmove', onMove, { passive: false });
+                    document.addEventListener('touchend', onUp);
+                    if (e.cancelable) e.preventDefault();
+                }
+
+                handle.addEventListener('mousedown', onDown);
+                handle.addEventListener('touchstart', onDown, { passive: false });
+                handle._icareDrag = { onDown };
+            },
+            // disableDrag(handle) — gỡ listener kéo (gọi khi DraggableModal dispose).
+            disableDrag: function (handle) {
+                if (!handle || !handle._icareDrag) return;
+                handle.removeEventListener('mousedown', handle._icareDrag.onDown);
+                handle.removeEventListener('touchstart', handle._icareDrag.onDown);
+                handle._icareDrag = null;
+            },
             // downloadJson(filename, jsonText) — tạo blob và trigger download file .json
             downloadJson: function (filename, jsonText) {
                 const blob = new Blob([jsonText], { type: 'application/json' });

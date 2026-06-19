@@ -357,6 +357,16 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .md-modal-footer { padding: 12px 18px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--color-border); }
 /* (.btn-danger định nghĩa ở "HỆ NÚT CHUẨN" phía trên) */
 
+/* DraggableModal: thanh tiêu đề là tay kéo (cursor move), nút ✕ đóng. */
+/* Cột STT trong grid danh mục — căn giữa, chữ nhạt. */
+.dv-stt { display: block; text-align: center; color: var(--color-text-muted, #64748b); }
+
+.dm-modal { position: relative; }
+.dm-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: move; user-select: none; }
+.dm-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dm-close { cursor: pointer; border: none; background: transparent; font-size: 16px; line-height: 1; color: var(--color-text-muted, #64748b); padding: 4px 8px; border-radius: 6px; }
+.dm-close:hover { background: var(--color-hover, rgba(15,23,42,.06)); color: var(--color-text, #0f172a); }
+
 /* Popup mode: modal có thể chứa lưới field — đảm bảo responsive bên trong */
 @media (max-width: 767px) {
     .md-modal { width: 100%; }

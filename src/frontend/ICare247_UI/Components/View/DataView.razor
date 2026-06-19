@@ -77,11 +77,15 @@ else
             HighlightRowOnHover="true"
             FocusedRowEnabled="true">
         <Columns>
-            @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
-            {
-                @* Ghim trái + khai báo đầu tiên → checkbox luôn ngoài cùng bên trái, kể cả khi có cột ghim trái khác *@
-                <DxGridSelectionColumn Width="44px" FixedPosition="GridColumnFixedPosition.Left" />
-            }
+            @* Cột chọn (checkbox) — luôn ở ngoài cùng bên trái, baseline grid danh mục. *@
+            <DxGridSelectionColumn Width="40px" FixedPosition="GridColumnFixedPosition.Left" />
+
+            @* Cột STT — số thứ tự dòng hiển thị (đổi theo sort/paging). *@
+            <DxGridCommandColumn Width="56px" Caption="STT" FixedPosition="GridColumnFixedPosition.Left">
+                <CellDisplayTemplate>
+                    <span class="dv-stt">@(context.VisibleIndex + 1)</span>
+                </CellDisplayTemplate>
+            </DxGridCommandColumn>
 
             @foreach (var col in DataColumns)
             {
@@ -103,6 +107,26 @@ else
                         @RenderCell(AsRow(context.DataItem), c)
                     </CellDisplayTemplate>
                 </DxGridDataColumn>
+            }
+
+            @* Cột Thao tác — Sửa/Xóa theo dòng; tự ẩn nếu View không cho hoặc không có Edit_Form. *@
+            @if (HasRowActions)
+            {
+                <DxGridCommandColumn Width="96px" Caption="Thao tác" FixedPosition="GridColumnFixedPosition.Right">
+                    <CellDisplayTemplate>
+                        @{ var row = AsRow(context.DataItem); }
+                        @if (View.AllowEdit)
+                        {
+                            <button class="btn-icon" title="Sửa"
+                                    @onclick="() => OnEdit.InvokeAsync(row)">✏️</button>
+                        }
+                        @if (View.AllowDelete)
+                        {
+                            <button class="btn-icon btn-icon-danger" title="Xóa"
+                                    @onclick="() => DeleteRowAsync(row)">🗑️</button>
+                        }
+                    </CellDisplayTemplate>
+                </DxGridCommandColumn>
             }
 
         </Columns>
@@ -215,11 +239,21 @@ else
         await OnEdit.InvokeAsync(AsRow(item));
     }
 
+    // Mặc định Multiple → cột chọn hiển thị checkbox (chuẩn grid danh mục); chỉ "single" mới đơn chọn.
     private GridSelectionMode SelectionModeOf() => View.SelectionMode?.ToLowerInvariant() switch
     {
-        "multiple" => GridSelectionMode.Multiple,
-        _          => GridSelectionMode.Single
+        "single" => GridSelectionMode.Single,
+        _        => GridSelectionMode.Multiple
     };
+
+    /// <summary>Nút Xóa theo dòng → resolve khóa từ Key_Field rồi phát OnDelete (trang mở dialog xác nhận).</summary>
+    private async Task DeleteRowAsync(IDictionary<string, object?> row)
+    {
+        if (string.IsNullOrWhiteSpace(View.KeyField)) return;
+        var id = GetCell(row, View.KeyField!);
+        if (id is null) return;
+        await OnDelete.InvokeAsync(id);
+    }
 
     // Dòng grid là ExpandoObject (IDictionary<string,object>) — nhận diện qua IDictionary.
     private static IDictionary<string, object?> AsRow(object? dataItem)

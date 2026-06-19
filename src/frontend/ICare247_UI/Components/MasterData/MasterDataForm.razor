@@ -20,14 +20,17 @@ else if (_error is not null)
 else
 {
     <div class="md-form">
-        <h3 class="md-form-title">@(IsEditMode ? Loc.L("common.action.update", "Cập nhật") : Loc.L("common.action.create", "Thêm mới")) — @_formName</h3>
+        @if (ShowTitle)
+        {
+            <h3 class="md-form-title">@(IsEditMode ? Loc.L("common.action.update", "Cập nhật") : Loc.L("common.action.create", "Thêm mới")) — @_formName</h3>
+        }
 
         @if (_formError is not null)
         {
             <div class="result-invalid md-form-banner">@_formError</div>
         }
 
-        <div class="fields-grid">
+        <div class="fields-grid" style="--form-cols:@_formColumns">
             @foreach (var fs in _fieldStates)
             {
                 <FieldRenderer State="fs"
@@ -55,11 +58,15 @@ else
     [Parameter] public EventCallback<object?> OnSaved { get; set; }
     /// <summary>Phát khi user bấm Hủy.</summary>
     [Parameter] public EventCallback OnCancelled { get; set; }
+    /// <summary>Hiện tiêu đề h3 trong form. Đặt false khi popup đã có thanh tiêu đề riêng (DraggableModal).</summary>
+    [Parameter] public bool ShowTitle { get; set; } = true;
 
     private bool IsEditMode => Id is not null;
 
     private List<FieldState> _fieldStates = [];
     private string _formName = "";
+    /// <summary>Số cột lưới nền form (Ui_Form.Columns, 1..4). Đẩy vào CSS var --form-cols.</summary>
+    private int _formColumns = 4;
     private bool   _loading  = true;
     private bool   _saving;
     private string? _error;       // lỗi load
@@ -78,6 +85,7 @@ else
             var form = await FormApi.GetFormAsync(FormCode);
             if (form is null) { _error = Loc.L("masterdata.form.notfound", "Form '{0}' không tồn tại.", FormCode); return; }
             _formName = form.FormName.Length > 0 ? form.FormName : form.FormCode;
+            _formColumns = Math.Clamp(form.Columns ?? 4, 1, 4);
 
             // Build field states (mirror FormRunner). Bỏ field virtual (không map cột DB).
             _fieldStates = form.Fields
