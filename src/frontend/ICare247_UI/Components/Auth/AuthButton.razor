@@ -1,6 +1,7 @@
 @*
     AuthButton — nút chính (submit) cho màn xác thực. Hiển thị spinner khi Busy.
 *@
+@inject LocalizationService Loc
 
 <button type="@Type"
         class="auth-btn"
@@ -36,5 +37,5 @@
     /// <summary>Callback click (khi không dùng submit form).</summary>
     [Parameter] public EventCallback OnClick { get; set; }
 
-    private const string ChildContentText = "Đang xử lý...";
+    private string ChildContentText => Loc.L("common.status.processing", "Đang xử lý...");
 }

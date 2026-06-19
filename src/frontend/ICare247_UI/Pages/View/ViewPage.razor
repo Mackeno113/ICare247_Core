@@ -95,8 +95,7 @@
     <DraggableModal Title="@Loc.L("view.bulkDelete.title", "Xóa nhiều bản ghi")" Width="460px"
                     OnClose="() => _showBulkDelete = false">
         <div class="md-form">
-            <p>@((MarkupString)Loc.L("view.bulkDelete.confirm",
-                "Xóa <strong>{0}</strong> bản ghi đã chọn? Bản ghi đang được tham chiếu sẽ được giữ lại.", _selected.Count))</p>
+            <p>@((MarkupString)Loc.L("view.bulkDelete.confirm", "Xóa <strong>{0}</strong> bản ghi đã chọn? Bản ghi đang được tham chiếu sẽ được giữ lại.", _selected.Count))</p>
             <div class="md-form-footer">
                 <button class="btn btn-secondary" disabled="@_bulkBusy" @onclick="() => _showBulkDelete = false">
                     @Loc.L("common.action.cancel", "Hủy")
@@ -302,8 +301,7 @@
             _showBulkDelete = false;
             _selected = [];
             await ReloadDataAsync();
-            _notice = Loc.L("view.bulkDelete.result",
-                "Đã xóa {0} bản ghi. Bị tham chiếu (giữ lại): {1}. Lỗi: {2}.", deleted, blocked, failed);
+            _notice = Loc.L("view.bulkDelete.result", "Đã xóa {0} bản ghi. Bị tham chiếu (giữ lại): {1}. Lỗi: {2}.", deleted, blocked, failed);
         }
     }
 

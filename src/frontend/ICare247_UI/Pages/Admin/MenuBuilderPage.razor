@@ -224,8 +224,7 @@
                     {
                         <div class="mb-keybox"><code>@_navKey</code></div>
                         <p class="mb-help">
-                            @Loc.L("admin.menu.f.i18nkey.help",
-                                "Tên trên menu được dịch theo khóa này; \"Tên hiển thị\" ở trên là bản gốc (tiếng Việt) dùng khi chưa có bản dịch.")
+                            @Loc.L("admin.menu.f.i18nkey.help", "Tên trên menu được dịch theo khóa này; \"Tên hiển thị\" ở trên là bản gốc (tiếng Việt) dùng khi chưa có bản dịch.")
                         </p>
 
                         @if (TransLangs.Any())
@@ -263,8 +262,7 @@
                 @* ── Đường dẫn: server tự suy, cho phép tùy chỉnh ── *@
                 <label class="mb-label">@Loc.L("admin.menu.col.route", "Đường dẫn")</label>
                 <p class="mb-help">
-                    @Loc.L("admin.menu.f.route.help",
-                        "Đường dẫn là URL điều hướng khi bấm node trên menu. Mặc định hệ thống tự suy theo loại node: node Nhóm không có đường dẫn; node View trỏ /view/{mã}. Chỉ bật tùy chỉnh khi mặc định không đúng (vd node nhóm trỏ tới trang tĩnh /m/...).")
+                    @Loc.L("admin.menu.f.route.help", "Đường dẫn là URL điều hướng khi bấm node trên menu. Mặc định hệ thống tự suy theo loại node: node Nhóm không có đường dẫn; node View trỏ /view/{mã}. Chỉ bật tùy chỉnh khi mặc định không đúng (vd node nhóm trỏ tới trang tĩnh /m/...).")
                 </p>
                 <div class="mb-routebox">
                     <span class="mb-route-default">@Loc.L("admin.menu.f.route.default", "Mặc định:")
@@ -314,8 +312,7 @@
                     }
                 </div>
                 <p class="mb-help">
-                    @Loc.L("admin.menu.f.icon.help",
-                        "Danh sách icon đọc từ bộ icon dùng chung (Icon.razor). Thiếu icon? Kỹ thuật thêm vào src/frontend/ICare247.UI.Shared/Components/Icon.razor.")
+                    @Loc.L("admin.menu.f.icon.help", "Danh sách icon đọc từ bộ icon dùng chung (Icon.razor). Thiếu icon? Kỹ thuật thêm vào src/frontend/ICare247.UI.Shared/Components/Icon.razor.")
                 </p>
 
                 <label class="mb-check">
@@ -359,8 +356,7 @@
                 </button>
             </div>
             <div class="mb-modal__body">
-                <p>@((MarkupString)Loc.L("admin.menu.del.body",
-                    "Bạn chắc chắn xóa node <strong>{0}</strong>? Hành động không thể hoàn tác.", _confirmDelete.Ten))</p>
+                <p>@((MarkupString)Loc.L("admin.menu.del.body", "Bạn chắc chắn xóa node <strong>{0}</strong>? Hành động không thể hoàn tác.", _confirmDelete.Ten))</p>
                 @if (_delStatus is not null)
                 {
                     <div class="mb-note mb-note--err">@_delStatus</div>
