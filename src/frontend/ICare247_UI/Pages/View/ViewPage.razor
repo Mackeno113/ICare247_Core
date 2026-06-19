@@ -10,7 +10,6 @@
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject MasterDataApiService MasterApi
-@inject GridLayoutService Layouts
 @inherits LocalizedComponentBase
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
@@ -31,10 +30,6 @@
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
             </div>
             <div class="md-list-header__actions" style="display:flex; gap:8px; align-items:center;">
-                <button class="btn btn-secondary" @onclick="ResetLayoutAsync"
-                        title="@Loc.L("view.layout.reset.tip", "Khôi phục bố cục lưới mặc định (xóa tùy chỉnh của bạn)")">
-                    ↺ @Loc.L("view.layout.reset", "Mặc định")
-                </button>
                 @if (_isSuperAdmin)
                 {
                     <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
@@ -63,7 +58,7 @@
                              OnSearch="OnFilterSearchAsync" />
             }
             <div class="dv-grid-area">
-                <DataView @key="_gridKey" View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
+                <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
                           OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction"
                           SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged" />
 
@@ -138,18 +133,6 @@
     private IReadOnlyList<object> _selected = [];
     private bool _showBulkDelete;
     private bool _bulkBusy;
-
-    /// <summary>Tăng để ép dựng lại DataView (vd sau khi khôi phục layout mặc định).</summary>
-    private int _gridKey;
-
-    /// <summary>Khôi phục bố cục lưới mặc định: xóa layout user (localStorage + server) rồi dựng lại grid.</summary>
-    private async Task ResetLayoutAsync()
-    {
-        if (_view is null) return;
-        await Layouts.ResetAsync(_view.ViewCode);
-        _selected = [];
-        _gridKey++;   // đổi @key → DataView dựng mới → LayoutAutoLoading không thấy layout → mặc định Ui_View
-    }
 
     /// <summary>Cập nhật danh sách dòng đang tick (DxGrid SelectedDataItems = ExpandoObject).</summary>
     private void OnSelectionChanged(IReadOnlyList<object> items) => _selected = items;
