@@ -19,15 +19,18 @@ public sealed class GetFormByCodeQueryHandler
 {
     private readonly IFormRepository _formRepository;
     private readonly ICacheService _cache;
+    private readonly ICacheVersion _version;
     private readonly ILogger<GetFormByCodeQueryHandler> _logger;
 
     public GetFormByCodeQueryHandler(
         IFormRepository formRepository,
         ICacheService cache,
+        ICacheVersion version,
         ILogger<GetFormByCodeQueryHandler> logger)
     {
         _formRepository = formRepository;
         _cache = cache;
+        _version = version;
         _logger = logger;
     }
 
@@ -35,9 +38,11 @@ public sealed class GetFormByCodeQueryHandler
         GetFormByCodeQuery request, CancellationToken ct)
     {
         // ── Bước 1: Thử lấy từ cache ────────────────────────────────────────
-        // Chưa biết version → dùng version=0 làm "latest" key
+        // Key gắn version-stamp theo tenant → "Cưỡng chế làm mới" (Bump) vô hiệu được cache này.
+        // (Trước đây dùng version=0 cứng nên flush không chạm tới — form đổi cấu hình mà UI giữ bản cũ.)
         var cacheKey = CacheKeys.Form(
-            request.FormCode, 0, request.LangCode, request.Platform, request.TenantId);
+            request.FormCode, _version.Get(request.TenantId),
+            request.LangCode, request.Platform, request.TenantId);
 
         var cached = await _cache.GetAsync<FormMetadata>(cacheKey, ct);
         if (cached is not null)

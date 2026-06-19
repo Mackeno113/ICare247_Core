@@ -37,6 +37,9 @@ public sealed class MetadataEngine : IMetadataEngine
     // Ngôn ngữ mặc định khi invalidate (xóa cả các lang phổ biến)
     private static readonly string[] KnownLangCodes = ["vi", "en"];
 
+    // Nền tảng đã biết — invalidate xóa key của cả web lẫn mobile.
+    private static readonly string[] KnownPlatforms = ["web", "mobile"];
+
     public MetadataEngine(
         IFormRepository     formRepo,
         IResourceRepository resourceRepo,
@@ -91,6 +94,8 @@ public sealed class MetadataEngine : IMetadataEngine
             FormName    = formMeta.FormName,
             Version     = formMeta.Version,
             Platform    = formMeta.Platform,
+            MaxWidth    = formMeta.MaxWidth,   // NOTE: trước đây bị bỏ sót → form luôn mất Form_Columns/Max_Width
+            Columns     = formMeta.Columns,
             Tabs        = formMeta.Tabs,
             Sections    = formMeta.Sections,
             Fields      = formMeta.Fields,
@@ -115,8 +120,12 @@ public sealed class MetadataEngine : IMetadataEngine
         var version = _version.Get(tenantId);
         foreach (var lang in KnownLangCodes)
         {
-            var key = CacheKeys.RuntimeForm(formCode, lang, tenantId, version);
-            await _cache.RemoveAsync(key);
+            // (1) Key runtime của MetadataEngine (FormRunner full-page, validation).
+            await _cache.RemoveAsync(CacheKeys.RuntimeForm(formCode, lang, tenantId, version));
+
+            // (2) Key của GetFormByCodeQueryHandler (/config/forms/{code}) — popup Thêm/Sửa dùng đường này.
+            foreach (var platform in KnownPlatforms)
+                await _cache.RemoveAsync(CacheKeys.Form(formCode, version, lang, platform, tenantId));
         }
 
         _logger.LogInformation(
