@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-18 18:15:49",
+  "generatedAt": "2026-06-19 14:45:51",
   "source": "ICare247_UI",
-  "count": 301,
+  "count": 305,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -1812,7 +1812,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 42
+          "line": 45
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 102
         }
       ]
     },
@@ -1836,6 +1840,10 @@
       "vi": "Đóng",
       "source": "ICare247_UI",
       "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/DraggableModal.razor",
+          "line": 15
+        },
         {
           "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
           "line": 15
@@ -1868,11 +1876,15 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 23
+          "line": 25
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 39
+          "line": 42
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 112
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -1880,7 +1892,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 38
+          "line": 48
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 142
         }
       ]
     },
@@ -1892,6 +1908,10 @@
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataGrid.razor",
           "line": 61
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 132
         }
       ]
     },
@@ -1903,6 +1923,10 @@
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataGrid.razor",
           "line": 57
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 127
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -1969,7 +1993,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 44
+          "line": 47
         }
       ]
     },
@@ -1984,7 +2008,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 44
+          "line": 47
         }
       ]
     },
@@ -2017,7 +2041,15 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 23
+          "line": 25
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 112
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 142
         }
       ]
     },
@@ -2201,6 +2233,21 @@
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataGrid.razor",
           "line": 50
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "key": "common.column.stt",
+      "vi": "STT",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 89
         }
       ]
     },
@@ -2293,7 +2340,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 22
+          "line": 24
         }
       ]
     },
@@ -2382,7 +2429,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 165
+          "line": 173
         }
       ]
     },
@@ -2393,11 +2440,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 45
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 47
+          "line": 48
         }
       ]
     },
@@ -2563,6 +2606,10 @@
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor",
           "line": 49
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 105
         }
       ]
     },
@@ -2589,6 +2636,10 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
           "line": 375
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 105
         }
       ]
     },
@@ -3198,7 +3249,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 35
+          "line": 37
         }
       ]
     },
@@ -3209,7 +3260,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 34
+          "line": 36
         }
       ]
     },
@@ -3220,7 +3271,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 164
+          "line": 172
         }
       ]
     },
@@ -3246,7 +3297,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 79
+          "line": 86
         }
       ]
     },
@@ -3257,7 +3308,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 49
+          "line": 52
         }
       ]
     },
@@ -3290,7 +3341,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 128
+          "line": 132
         }
       ]
     },
@@ -3415,7 +3466,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 202
+          "line": 314
         }
       ]
     },
@@ -3426,7 +3477,51 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 203
+          "line": 315
+        }
+      ]
+    },
+    {
+      "key": "view.bulkDelete.btn",
+      "vi": "Xóa đã chọn ({0})",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "key": "view.bulkDelete.confirm",
+      "vi": "Xóa <strong>{0}</strong> bản ghi đã chọn? Bản ghi đang được tham chiếu sẽ được giữ lại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 98
+        }
+      ]
+    },
+    {
+      "key": "view.bulkDelete.result",
+      "vi": "Đã xóa {0} bản ghi. Bị tham chiếu (giữ lại): {1}. Lỗi: {2}.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 305
+        }
+      ]
+    },
+    {
+      "key": "view.bulkDelete.title",
+      "vi": "Xóa nhiều bản ghi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 95
         }
       ]
     },
@@ -3437,7 +3532,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 34
+          "line": 37
         }
       ]
     },
@@ -3448,7 +3543,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 126
+          "line": 182
         }
       ]
     },
@@ -3459,7 +3554,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 33
+          "line": 36
         }
       ]
     },
@@ -3470,7 +3565,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 125
+          "line": 181
         }
       ]
     },
@@ -3481,11 +3576,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 62
+          "line": 65
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 68
+          "line": 70
         }
       ]
     },
@@ -3496,7 +3591,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 18
+          "line": 20
         }
       ]
     },
@@ -3507,18 +3602,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 97
-        }
-      ]
-    },
-    {
-      "key": "view.subtitle",
-      "vi": "Bảng {0} · {1}",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 29
+          "line": 153
         }
       ]
     }

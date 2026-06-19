@@ -7,6 +7,7 @@
 @using ICare247_UI.Services
 @inject NavigationManager Navigation
 @inject GridLayoutService Layouts
+@inject LocalizationService Loc
 @implements IDisposable
 
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
@@ -85,7 +86,7 @@ else
             <DxGridSelectionColumn Width="40px" FixedPosition="GridColumnFixedPosition.Left" />
 
             @* Cột STT — số thứ tự dòng hiển thị (đổi theo sort/paging). *@
-            <DxGridCommandColumn Width="56px" Caption="STT" FixedPosition="GridColumnFixedPosition.Left"
+            <DxGridCommandColumn Width="56px" Caption="@Loc.L("common.column.stt", "STT")" FixedPosition="GridColumnFixedPosition.Left"
                                  NewButtonVisible="false">
                 <CellDisplayTemplate>
                     <span class="dv-stt">@(context.VisibleIndex + 1)</span>
@@ -117,18 +118,18 @@ else
             @* Cột Thao tác — Sửa/Xóa theo dòng; tự ẩn nếu View không cho hoặc không có Edit_Form. *@
             @if (HasRowActions)
             {
-                <DxGridCommandColumn Width="96px" Caption="Thao tác" FixedPosition="GridColumnFixedPosition.Right"
+                <DxGridCommandColumn Width="96px" Caption="@Loc.L("common.column.actions", "Thao tác")" FixedPosition="GridColumnFixedPosition.Right"
                                      NewButtonVisible="false">
                     <CellDisplayTemplate>
                         @{ var row = AsRow(context.DataItem); }
                         @if (View.AllowEdit)
                         {
-                            <button class="btn-icon" title="Sửa"
+                            <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")"
                                     @onclick="() => OnEdit.InvokeAsync(row)">✏️</button>
                         }
                         @if (View.AllowDelete)
                         {
-                            <button class="btn-icon btn-icon-danger" title="Xóa"
+                            <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")"
                                     @onclick="() => DeleteRowAsync(row)">🗑️</button>
                         }
                     </CellDisplayTemplate>

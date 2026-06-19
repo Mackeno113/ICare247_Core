@@ -6,12 +6,13 @@
 
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject LocalizationService Loc
 
 <div class="md-modal-backdrop">
     <div class="md-modal dm-modal" @ref="_panel" style="@WidthStyle">
         <div class="md-modal-header dm-header" @ref="_handle">
             <span class="dm-title">@Title</span>
-            <button class="dm-close" type="button" @onclick="CloseAsync" aria-label="Đóng">✕</button>
+            <button class="dm-close" type="button" @onclick="CloseAsync" aria-label="@Loc.L("common.action.close", "Đóng")">✕</button>
         </div>
         <div class="md-modal-body dm-body">
             @ChildContent
