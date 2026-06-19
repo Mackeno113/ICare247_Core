@@ -6,6 +6,8 @@
 @using System.Dynamic
 @using ICare247_UI.Services
 @inject NavigationManager Navigation
+@inject GridLayoutService Layouts
+@implements IDisposable
 
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
      && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
@@ -59,6 +61,8 @@ else
 
     <DxGrid @ref="_grid"
             Data="_gridRows"
+            LayoutAutoLoading="OnLayoutLoading"
+            LayoutAutoSaving="OnLayoutSaving"
             ShowFilterRow="View.ShowFilterRow"
             ShowGroupPanel="View.ShowGroupPanel"
             VirtualScrollingEnabled="View.VirtualScroll"
@@ -81,7 +85,8 @@ else
             <DxGridSelectionColumn Width="40px" FixedPosition="GridColumnFixedPosition.Left" />
 
             @* Cột STT — số thứ tự dòng hiển thị (đổi theo sort/paging). *@
-            <DxGridCommandColumn Width="56px" Caption="STT" FixedPosition="GridColumnFixedPosition.Left">
+            <DxGridCommandColumn Width="56px" Caption="STT" FixedPosition="GridColumnFixedPosition.Left"
+                                 NewButtonVisible="false">
                 <CellDisplayTemplate>
                     <span class="dv-stt">@(context.VisibleIndex + 1)</span>
                 </CellDisplayTemplate>
@@ -112,7 +117,8 @@ else
             @* Cột Thao tác — Sửa/Xóa theo dòng; tự ẩn nếu View không cho hoặc không có Edit_Form. *@
             @if (HasRowActions)
             {
-                <DxGridCommandColumn Width="96px" Caption="Thao tác" FixedPosition="GridColumnFixedPosition.Right">
+                <DxGridCommandColumn Width="96px" Caption="Thao tác" FixedPosition="GridColumnFixedPosition.Right"
+                                     NewButtonVisible="false">
                     <CellDisplayTemplate>
                         @{ var row = AsRow(context.DataItem); }
                         @if (View.AllowEdit)
@@ -148,6 +154,43 @@ else
     [Parameter] public EventCallback<IReadOnlyList<object>> SelectedDataItemsChanged { get; set; }
 
     private IGrid? _grid;
+
+    // ── Lưu/khôi phục layout lưới per-user (L0 localStorage + server) ──
+    private CancellationTokenSource? _saveCts;
+
+    /// <summary>Grid khởi tạo → nạp layout đã lưu của user (rỗng/hỏng → giữ mặc định Ui_View).</summary>
+    private async Task OnLayoutLoading(GridPersistentLayoutEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(View.ViewCode)) return;
+        var json = await Layouts.GetAsync(View.ViewCode);
+        if (string.IsNullOrEmpty(json)) return;
+        try { e.Layout = System.Text.Json.JsonSerializer.Deserialize<GridPersistentLayout>(json); }
+        catch { /* JSON layout cũ/khác cấu trúc → bỏ qua, dùng mặc định */ }
+    }
+
+    /// <summary>User đổi layout → debounce 600ms (gộp nhiều thao tác) → lưu localStorage + server.</summary>
+    private Task OnLayoutSaving(GridPersistentLayoutEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(View.ViewCode))
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(e.Layout);
+            _saveCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _saveCts = cts;
+            _ = DebouncedSaveAsync(json, cts.Token);
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task DebouncedSaveAsync(string json, CancellationToken token)
+    {
+        try { await Task.Delay(600, token); }
+        catch (TaskCanceledException) { return; }
+        if (token.IsCancellationRequested) return;
+        await Layouts.SaveAsync(View.ViewCode, json);
+    }
+
+    public void Dispose() => _saveCts?.Cancel();
 
     /// <summary>Nút toolbar (Scope = Toolbar | Both), sắp theo Order_No.</summary>
     private List<ViewActionDto> ToolbarActions => View.Actions

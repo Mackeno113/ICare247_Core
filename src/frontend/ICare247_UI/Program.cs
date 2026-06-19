@@ -59,5 +59,6 @@ builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<MenuAdminApiService>();
 builder.Services.AddScoped<ConfigSyncApiService>();
 builder.Services.AddScoped<CacheAdminApiService>();
+builder.Services.AddScoped<GridLayoutService>();
 
 await builder.Build().RunAsync();

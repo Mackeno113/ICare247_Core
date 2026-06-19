@@ -9,6 +9,8 @@
 @inject ViewApiService ViewApi
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
+@inject MasterDataApiService MasterApi
+@inject GridLayoutService Layouts
 @inherits LocalizedComponentBase
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
@@ -29,11 +31,21 @@
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
             </div>
             <div class="md-list-header__actions" style="display:flex; gap:8px; align-items:center;">
+                <button class="btn btn-secondary" @onclick="ResetLayoutAsync"
+                        title="@Loc.L("view.layout.reset.tip", "Khôi phục bố cục lưới mặc định (xóa tùy chỉnh của bạn)")">
+                    ↺ @Loc.L("view.layout.reset", "Mặc định")
+                </button>
                 @if (_isSuperAdmin)
                 {
                     <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
                             title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")">
                         ↻ @Loc.L("view.cache.clear", "Xóa cache")
+                    </button>
+                }
+                @if (_selected.Count > 0 && _view.AllowDelete && !string.IsNullOrWhiteSpace(_view.EditFormCode))
+                {
+                    <button class="btn btn-danger" @onclick="() => _showBulkDelete = true">
+                        🗑️ @Loc.L("view.bulkDelete.btn", "Xóa đã chọn ({0})", _selected.Count)
                     </button>
                 }
                 @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
@@ -51,8 +63,9 @@
                              OnSearch="OnFilterSearchAsync" />
             }
             <div class="dv-grid-area">
-                <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
-                          OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction" />
+                <DataView @key="_gridKey" View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
+                          OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction"
+                          SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged" />
 
                 @if (_notice is not null)
                 {
@@ -81,6 +94,26 @@
                          OnDeleted="OnRecordDeleted" OnClosed="() => _deleteId = null" />
 }
 
+@* ── Xác nhận xóa nhiều (các dòng đã tick checkbox) ── *@
+@if (_showBulkDelete && _view is not null)
+{
+    <DraggableModal Title="@Loc.L("view.bulkDelete.title", "Xóa nhiều bản ghi")" Width="460px"
+                    OnClose="() => _showBulkDelete = false">
+        <div class="md-form">
+            <p>@((MarkupString)Loc.L("view.bulkDelete.confirm",
+                "Xóa <strong>{0}</strong> bản ghi đã chọn? Bản ghi đang được tham chiếu sẽ được giữ lại.", _selected.Count))</p>
+            <div class="md-form-footer">
+                <button class="btn btn-secondary" disabled="@_bulkBusy" @onclick="() => _showBulkDelete = false">
+                    @Loc.L("common.action.cancel", "Hủy")
+                </button>
+                <button class="btn btn-danger" disabled="@_bulkBusy" @onclick="BulkDeleteAsync">
+                    @(_bulkBusy ? Loc.L("delete.deleting", "Đang xóa…") : "🗑️ " + Loc.L("delete.confirm.permanent", "Xóa vĩnh viễn"))
+                </button>
+            </div>
+        </div>
+    </DraggableModal>
+}
+
 @code {
     [Parameter] public string ViewCode { get; set; } = "";
 
@@ -101,9 +134,29 @@
     private object? _editId;     // null = Thêm, có giá trị = Sửa
     private object? _deleteId;
 
-    /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {Edit_Form}".</summary>
+    // ── Chọn nhiều dòng (checkbox) + xóa hàng loạt ──
+    private IReadOnlyList<object> _selected = [];
+    private bool _showBulkDelete;
+    private bool _bulkBusy;
+
+    /// <summary>Tăng để ép dựng lại DataView (vd sau khi khôi phục layout mặc định).</summary>
+    private int _gridKey;
+
+    /// <summary>Khôi phục bố cục lưới mặc định: xóa layout user (localStorage + server) rồi dựng lại grid.</summary>
+    private async Task ResetLayoutAsync()
+    {
+        if (_view is null) return;
+        await Layouts.ResetAsync(_view.ViewCode);
+        _selected = [];
+        _gridKey++;   // đổi @key → DataView dựng mới → LayoutAutoLoading không thấy layout → mặc định Ui_View
+    }
+
+    /// <summary>Cập nhật danh sách dòng đang tick (DxGrid SelectedDataItems = ExpandoObject).</summary>
+    private void OnSelectionChanged(IReadOnlyList<object> items) => _selected = items;
+
+    /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {Tên màn đã i18n}" (không lòi mã Form).</summary>
     private string FormTitle =>
-        $"{(_editId is null ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.update", "Cập nhật"))} — {_view?.EditFormCode}";
+        $"{(_editId is null ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.update", "Cập nhật"))} — {_view?.Title ?? _view?.ViewCode}";
 
     protected override async Task OnParametersSetAsync() => await InitAsync();
 
@@ -230,6 +283,45 @@
     {
         _deleteId = null;
         await ReloadDataAsync();
+    }
+
+    /// <summary>
+    /// Xóa hàng loạt các dòng đã tick: resolve khóa từ Key_Field rồi gọi xóa từng bản ghi.
+    /// Bản ghi đang bị tham chiếu (server chặn) được đếm riêng, không làm hỏng cả mẻ.
+    /// </summary>
+    private async Task BulkDeleteAsync()
+    {
+        if (_view is null || string.IsNullOrWhiteSpace(_view.EditFormCode) || string.IsNullOrWhiteSpace(_view.KeyField))
+            return;
+
+        _bulkBusy = true; _notice = null;
+        int deleted = 0, blocked = 0, failed = 0;
+        try
+        {
+            foreach (var item in _selected.ToList())
+            {
+                // ExpandoObject = IDictionary<string, object?> tại runtime (object? = object).
+                if (item is not IDictionary<string, object?> row) { failed++; continue; }
+                var hit = row.FirstOrDefault(kv => kv.Key.Equals(_view.KeyField, StringComparison.OrdinalIgnoreCase));
+                if (hit.Value is null) { failed++; continue; }
+
+                try
+                {
+                    var res = await MasterApi.DeleteAsync(_view.EditFormCode!, hit.Value);
+                    if (res.Success) deleted++; else blocked++;
+                }
+                catch { failed++; }
+            }
+        }
+        finally
+        {
+            _bulkBusy = false;
+            _showBulkDelete = false;
+            _selected = [];
+            await ReloadDataAsync();
+            _notice = Loc.L("view.bulkDelete.result",
+                "Đã xóa {0} bản ghi. Bị tham chiếu (giữ lại): {1}. Lỗi: {2}.", deleted, blocked, failed);
+        }
     }
 
     /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>
