@@ -12,8 +12,20 @@
 | GET | `/{code}/data` | Dữ liệu lưới (Source=Table) | `GetViewDataQuery` |
 | POST | `/{code}/search` | Lưới nâng cao (Source=Sp/Sql) + bộ lọc | `GetViewFilteredDataQuery` |
 | POST | `/{code}/invalidate-cache` | Xóa cache view | `IConfigCache.InvalidateViewAsync` |
+| GET | `/{code}/my-layout` | Layout lưới đã lưu của user (per-user) | `IUserGridLayoutStore.GetAsync` |
+| PUT | `/{code}/my-layout` | Lưu layout lưới của user (UPSERT, write-through) | `IUserGridLayoutStore.SaveAsync` |
+| DELETE | `/{code}/my-layout` | Khôi phục mặc định (xóa layout user) | `IUserGridLayoutStore.ResetAsync` |
 
-Header bắt buộc: `X-Tenant-Id: 1`.
+Header bắt buộc: `X-Tenant-Id: 1`. 3 endpoint `my-layout` cần `[Authorize]` (NguoiDung_Id lấy từ JWT `sub`).
+
+> **Layout lưới per-user (2026-06-19):** sở thích người dùng (rộng/thứ tự/sort/filter/paging) lưu ở **Data DB**
+> `HT_NguoiDung_LuoiLayout` (KHÔNG phải `Ui_View` config). Đường đọc: FE **L0 localStorage** → server (cache-aside
+> L1/L2 `CacheKeys.UserGridLayout`, key-space riêng, **không version-stamp** config) → DB. Single-writer → write-through.
+> FE nối qua `DxGrid.LayoutAutoLoading/Saving` (`GridLayoutService` + `DataView`). Lazy theo View; mở lại = 0 query DB.
+>
+> **Runtime ViewPage (2026-06-19):** Thêm/Sửa mở **popup ngay trên màn lưới** (`DraggableModal`, kéo tiêu đề, chỉ đóng
+> bằng nút), đóng/Lưu về đúng màn — KHÔNG còn điều hướng sang `/master`. Lưới chuẩn hóa: cột **chọn (checkbox) + STT +
+> Thao tác (Sửa/Xóa)** + **xóa hàng loạt**. Nút "Xóa cache" chỉ hiện cho **super-admin** (role `SUPERADMIN`).
 
 ## 2. Payload
 

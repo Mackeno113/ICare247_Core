@@ -20,6 +20,14 @@
 
 Header bắt buộc: `X-Tenant-Id: 1`.
 
+> **Fix cache form (2026-06-19) — 2 bug khiến đổi `Form_Columns`/cấu hình không ăn dù đã flush:**
+> 1. `MetadataEngine` rebuild `enriched` **bỏ sót `Columns`/`MaxWidth`** → form luôn mất `Form_Columns` (đã copy đủ).
+> 2. `GetFormByCodeQueryHandler` (đường `/config/forms/{code}` mà popup Thêm/Sửa dùng) dùng **version cache cứng = 0**
+>    → "Cưỡng chế làm mới" (Bump version) không chạm tới → đổi sang `_version.Get(tenantId)`.
+> 3. `InvalidateFormCacheAsync` giờ xóa **cả 2 key**: `CacheKeys.RuntimeForm` (MetadataEngine) + `CacheKeys.Form` (web+mobile).
+>
+> Số cột FORM popup = `Ui_Form.Form_Columns` (1..4 → CSS `--form-cols`); số cột LƯỚI = `Ui_Field.Show_In_List`.
+
 ## 2. Payload tiêu biểu
 
 - **GET list** (query): `?platform=web&tableId=5&isActive=true&search=abc&page=1&pageSize=20`

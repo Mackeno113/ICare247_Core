@@ -101,6 +101,16 @@ Section layout (3 cột):
 └───────────────────────┘
 ```
 
+> **Số cột nền của FORM** = `Ui_Form.Form_Columns` (1..4, mặc định 4) → đẩy vào CSS `--form-cols`. **Col Span**
+> của field là số cột con field chiếm trong lưới nền đó. Áp cho cả form full-page lẫn **popup Thêm/Sửa** — muốn
+> popup xếp **1 cột dọc** thì chỉnh ô **"Số cột" = 1** trong ConfigStudio (Form editor → Tab Form Info) rồi
+> **Lưu + Xóa cache form**. *(runtime wire 2026-06-19)*
+>
+> **Phân biệt 3 loại "cột" (hay nhầm):**
+> - **Số cột bố cục FORM** → `Ui_Form.Form_Columns` (1..4).
+> - **Độ rộng field trong form** → `Ui_Field.Col_Span` (1..4).
+> - **Cột hiển thị trên LƯỚI danh sách** → `Ui_Field.Show_In_List` (màn danh mục) hoặc `Ui_View_Column` (màn `/view`).
+
 ### 2.5 Display (i18n)
 
 | Trường | Mô tả | Ví dụ |

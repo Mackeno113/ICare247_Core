@@ -190,7 +190,11 @@ Tao Form --> Them Section/Field --> Cau hinh Field --> Dat Rule/Event --> Kiem t
 - O tim kiem de loc node
 
 **Cot phai — Tab chi tiet:**
-- **Tab Form Info**: metadata form (code, name, platform, table, version...)
+- **Tab Form Info**: metadata form (code, name, platform, table, version...) gom:
+  - **So cot** (combo 1..4 → `Ui_Form.Form_Columns`): so cot luoi nen cua form. Chon **1** = moi field 1 dong doc;
+    ap cho ca form full-page lan **popup Them/Sua**. Sau khi luu → bam **Xoa cache** form de runtime nap lai.
+  - **Che do mo form** (combo Popup / Tab → `Ui_Form.Display_Mode`): popup inline hay dieu huong tab.
+  - **Be rong toi da** (`Ui_Form.Max_Width`, px): null = mac dinh (Blazor 880px).
 - **Tab Sections & Fields**: thuoc tinh node dang chon trong cay
 - **Tab Events**: DataGrid event voi [+ Them Event] [Sua] [Xoa]
 - **Tab Permissions**: bang quyen theo role (Read / Write / Submit)

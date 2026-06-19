@@ -1,6 +1,34 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-18 (session 56 — Menu Builder hoàn thiện + i18n write-store + cache flush + View render modes)
+> Cập nhật: 2026-06-19 (session 57 — ViewPage popup + grid danh mục chuẩn hóa + fix cache form + layout lưới per-user)
+
+## Session 57 (2026-06-19) — đã làm
+
+> Iterate theo phản hồi user trên màn `/view/Grid_DM_QuocGia`. Build FE 0/0, BE Infra/App 0/0 (Api copy-lock do đang chạy).
+> Đã commit + **push** master từng nhóm (backend cache / frontend UI / backend layout / frontend layout / cleanup).
+
+- **VIEW-POPUP** — Thêm/Sửa mở **popup ngay trên ViewPage** (`DraggableModal` mới: kéo tiêu đề, **chỉ đóng bằng nút**,
+  JS `icare.enableDrag`), đóng/Lưu **về đúng màn lưới** (bỏ `NavigateTo /master` → hết "nhảy" Grid↔MasterDataList).
+  `MasterDataForm.ShowTitle`; popup MasterDataListPage cũng chuyển sang `DraggableModal`. Tiêu đề popup dùng **tên i18n**
+  (`_view.Title`) thay vì lòi mã Form.
+- **VIEW-GRID** — `DataView` chuẩn hóa: cột **chọn (checkbox) + STT + Thao tác (Sửa/Xóa)** + **xóa hàng loạt** (tick nhiều →
+  "Xóa đã chọn (N)" → confirm); bỏ nút ⊕ (`NewButtonVisible=false`). Bỏ subtitle + ô tìm kiếm ở ViewPage.
+- **VIEW-PERM** — nút "Xóa cache" chỉ hiện **super-admin** (`PermissionState.IsSuperAdminAsync`, role `SUPERADMIN`).
+- **FORM-COLS** — wire `Ui_Form.Columns` → CSS `--form-cols` (số cột popup chạy thật).
+- **CACHE-FIX** — `MetadataEngine` copy thiếu `Columns`/`MaxWidth`; `GetFormByCodeQueryHandler` version=0 cứng →
+  `_version.Get`; `InvalidateFormCacheAsync` xóa cả `RuntimeForm` + `Form` (web/mobile). → flush mới ăn cho popup.
+- **GRID-LAYOUT** — **lưu layout lưới per-user** (`db/056 HT_NguoiDung_LuoiLayout`, Data DB): repo Dapper + facade
+  cache-aside write-through (`CacheKeys.UserGridLayout`, key-space riêng) + endpoint `GET/PUT/DELETE /views/{code}/my-layout`
+  (`[Authorize]`). FE `GridLayoutService` (**L0 localStorage** → server) nối `DxGrid.LayoutAutoLoading/Saving` (debounce 600ms).
+  Lazy theo View → mở lại = 0 query DB. (Nút "Mặc định" đã bỏ theo yêu cầu — layout vẫn tự lưu/nạp.)
+
+### ⚠️ Cần làm khi tiếp tục
+- **Restart API** để nạp fix cache + endpoint my-layout (bản đang chạy còn cũ).
+- Migration `db/056` đã chạy (user xác nhận). 4 file i18n (catalog/en/report) = artifact tool, để nguyên.
+- ĐÍNH CHÍNH: ConfigStudio WPF **đã có sẵn** ô "Số cột" (`Form_Columns`) + "Chế độ mở form" (`Display_Mode`) ở
+  Form editor → Tab Form Info (FormEditorView.xaml). KHÔNG cần Codex thêm. Admin set ngay trong WPF, không cần UPDATE DB.
+
+---
 
 ## Session 56 (2026-06-18) — đã làm
 

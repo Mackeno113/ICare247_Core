@@ -325,6 +325,23 @@ qua **chuỗi code** (vd `TrangThai='HoatDong'`) + resolve ở tầng app.
 **Indexes:** `IX_HT_RefreshToken_NguoiDung (NguoiDung_Id)`, `IX_HT_RefreshToken_Hash (TokenHash)`
 > Bảng này KHÔNG có `Ma`; có thể bỏ `IsDeleted` (dùng `DaThuHoi`) — giữ khối chuẩn cho đồng nhất.
 
+### HT_NguoiDung_LuoiLayout  *(layout lưới per-user — sở thích người dùng)* — thêm `db/056` (2026-06-19)
+> Bố cục DxGrid mỗi user tự tinh chỉnh (rộng/thứ tự/ẩn cột, sort, filter, group, paging) theo từng View.
+> **Dữ liệu preference**, KHÔNG phải cấu hình admin (`Ui_View` ở Config DB). Single-writer (chỉ chủ ghi)
+> → backend cache write-through, không invalidate chéo; frontend còn cache **L0 localStorage** giảm round-trip.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Id | bigint | IDENTITY PK | |
+| NguoiDung_Id | bigint | NOT NULL FK→HT_NguoiDung | |
+| View_Code | nvarchar(100) | NOT NULL | `Ui_View.View_Code` |
+| Platform | varchar(10) | NOT NULL DEFAULT 'web' | `web` \| `mobile` |
+| Layout_Json | nvarchar(max) | NOT NULL | `GridPersistentLayout` serialize JSON |
+| UpdatedAt | datetime2(3) | NOT NULL DEFAULT SYSUTCDATETIME() | |
+
+**Constraints:** UNIQUE `(NguoiDung_Id, View_Code, Platform)` (UPSERT theo bộ khóa này).
+> Bảng tối giản (preference) — KHÔNG có `Ma`/`Tenant_Id` (Data DB per-tenant) và KHÔNG dùng khối auto-column đầy đủ.
+
 ---
 
 ## 4. Sơ đồ quan hệ (tóm tắt)

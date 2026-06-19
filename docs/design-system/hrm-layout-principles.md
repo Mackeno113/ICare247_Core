@@ -48,6 +48,15 @@ Xác định mỗi nhóm dữ liệu thuộc loại nào; loại dữ liệu quy
 
 - Toolbar grid: tìm nhanh · lọc nâng cao · sort · export Excel · **saved views** · **tùy chỉnh cột**.
 
+### Chuẩn lưới danh mục runtime (`DataView` — màn `/view`) *(2026-06-19)*
+
+- Cột chuẩn theo thứ tự: **chọn (checkbox) → STT → các cột data → Thao tác (Sửa ✏️ / Xóa 🗑️)**; hỗ trợ **xóa hàng loạt**
+  (tick nhiều dòng → "Xóa đã chọn (N)" → xác nhận). Nút Sửa/Xóa tự ẩn theo `Ui_View.Allow_Edit/Allow_Delete`.
+- **Bố cục lưới lưu theo từng user** (per-user layout): rộng/thứ tự/ẩn cột, sort, filter, group, paging — lưu Data DB
+  (`HT_NguoiDung_LuoiLayout`) + **L0 localStorage**, tự nạp lần sau. Đây là hiện thực của "saved views/tùy chỉnh cột".
+- **Quy tắc popup (bắt buộc):** Thêm/Sửa mở **popup ngay trên màn lưới** (`DraggableModal`) — **kéo di chuyển bằng thanh
+  tiêu đề, CHỈ đóng bằng nút** (không đóng khi click nền). Đóng/Lưu xong **về đúng màn lưới**, không nhảy trang.
+
 ## Đa công ty — phần bố cục (KHÔNG phải màu)
 
 - **Company switcher** luôn hiển thị (header góc trên trái, cạnh logo); có chế độ "Tất cả công ty" + từng công ty.

@@ -56,3 +56,18 @@ Ghi lại các quyết định kỹ thuật và quy trình ảnh hưởng đến
 - **Status:** `superseded`
 - **Superseded by:** DEC-2026-04-25-001
 - **Decision cũ (không còn áp dụng):** AGENTS.md là source có ưu tiên cao nhất.
+
+---
+
+## DEC-2026-06-19-001
+
+- **Date:** 2026-06-19
+- **Status:** `accepted`
+- **Context:** Lưới `/view` cần lưu tùy chỉnh hiển thị (rộng/thứ tự/sort/filter/paging) **theo từng user**, nhưng phải hạn chế tối đa truy vấn DB. Cũng cần tách bạch với cấu hình admin (`Ui_View`).
+- **Decision:**
+  1. **Layout lưới per-user = dữ liệu preference**, lưu ở **Data DB** `HT_NguoiDung_LuoiLayout` (per-tenant, không Tenant_Id), KHÔNG phải Config DB / `Ui_View`.
+  2. Vì **single-writer** (chỉ chủ sở hữu ghi) → cache server **write-through**, không invalidate chéo; **key-space cache RIÊNG** (`CacheKeys.UserGridLayout`), KHÔNG gắn version-stamp config (vòng đời khác).
+  3. Frontend thêm **L0 localStorage** (đọc trước → mở lại = 0 gọi server) + **lazy theo View**. Nối qua `DxGrid.LayoutAutoLoading/Saving`.
+  4. Runtime end-user dùng **`ViewPage` làm lưới duy nhất**; Thêm/Sửa = **popup trên chính ViewPage** (`DraggableModal`, kéo tiêu đề, chỉ đóng bằng nút) — KHÔNG điều hướng sang `/master`. `MasterDataListPage` giữ cho mục đích nội bộ.
+- **Consequences:** Cache config (`IConfigCache` + version-stamp/flush) và cache layout per-user **độc lập** — flush config không đụng layout. *(ĐÍNH CHÍNH: ConfigStudio WPF đã có sẵn ô "Số cột"/`Form_Columns` + "Chế độ mở form"/`Display_Mode` — không cần Codex thêm.)*
+- **Supersedes:** none
