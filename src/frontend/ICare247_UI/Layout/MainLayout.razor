@@ -28,7 +28,7 @@ else if (_authed)
                     <span class="app-brand__logo">IC</span>
                     <span class="app-brand__name">ICare247</span>
                 </div>
-                <NavMenu />
+                <NavMenu Collapsed="_rail" OnExpand="ExpandRail" />
             </div>
         </aside>
 
@@ -135,6 +135,14 @@ else if (_authed)
     {
         _rail = !_rail;
         await JS.InvokeVoidAsync("localStorage.setItem", RailKey, _rail ? "1" : "0");
+    }
+
+    /// <summary>Bung lại sidebar khi đang thu gọn (NavMenu gọi lúc bấm phân hệ). Lưu localStorage.</summary>
+    private async Task ExpandRail()
+    {
+        if (!_rail) return;
+        _rail = false;
+        await JS.InvokeVoidAsync("localStorage.setItem", RailKey, "0");
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);

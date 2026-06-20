@@ -1,13 +1,13 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-20 22:04_
+_Sinh tự động: 2026-06-20 22:47_
 
 ## 1. Chuỗi tiếng Việt hardcode (20) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:209` — "Tổng quan"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:226` — "Công cụ (Dev)"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:227` — "Tra cứu i18n"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:215` — "Tổng quan"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:232` — "Công cụ (Dev)"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:233` — "Tra cứu i18n"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:113` — "Thêm"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:114` — "Sửa"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Xóa"
@@ -38,12 +38,12 @@ _Sinh tự động: 2026-06-20 22:04_
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:81`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:94`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:96`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:246`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:248`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:251`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:252`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:254`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:257`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:265`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:260`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:263`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:271`
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:78`
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:109`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:5`

@@ -125,6 +125,12 @@
     private string _filter = "";
     private bool HasFilter => _filter.Length > 0;
 
+    /// <summary>Sidebar đang thu nhỏ về rail icon (do MainLayout truyền xuống).</summary>
+    [Parameter] public bool Collapsed { get; set; }
+
+    /// <summary>Yêu cầu MainLayout bung lại sidebar (khi bấm phân hệ lúc đang thu gọn).</summary>
+    [Parameter] public EventCallback OnExpand { get; set; }
+
     /// <summary>
     /// Khởi tạo: nạp menu theo quyền từ API (rỗng/lỗi → AppNav), xác định phân hệ theo URL,
     /// lắng nghe đổi URL + đổi ngôn ngữ.
@@ -287,8 +293,21 @@
         _currentModule = (segments.Length >= 2 && segments[0] == "m") ? segments[1] : null;
     }
 
-    private void ToggleModule(VmModule module)
+    /// <summary>
+    /// Bấm phân hệ. Sự kiện theo sau: đang thu gọn → bung lại sidebar + mở phân hệ vừa bấm;
+    /// ngược lại toggle accordion (đóng nếu đang mở, mở + điều hướng nếu đang đóng).
+    /// </summary>
+    private async Task ToggleModule(VmModule module)
     {
+        if (Collapsed)
+        {
+            // Rail: bấm icon = mở lại menu, mở đúng phân hệ vừa bấm + điều hướng tới nó.
+            await OnExpand.InvokeAsync();
+            _expanded = module.Key;
+            if (!string.IsNullOrEmpty(module.Href)) Nav.NavigateTo(module.Href);
+            return;
+        }
+
         if (_expanded == module.Key)
         {
             _expanded = null;

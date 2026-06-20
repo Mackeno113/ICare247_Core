@@ -55,6 +55,7 @@ public sealed class NavigationRepository : INavigationRepository
                 WHERE p.IsDeleted = 0 AND p.KichHoat = 1
             )
             SELECT DISTINCT
+                c.Id            AS Id,
                 c.Ma            AS Ma,
                 c.Ten           AS Ten,
                 pa.Ma           AS ChaMa,
@@ -75,7 +76,7 @@ public sealed class NavigationRepository : INavigationRepository
             JOIN (SELECT DISTINCT Id FROM Tree) tr ON tr.Id = c.Id
             LEFT JOIN dbo.HT_ChucNang pa ON pa.Id = c.ChucNang_Cha_Id
             LEFT JOIN Granted g ON g.ChucNang_Id = c.Id
-            ORDER BY c.ThuTu;
+            ORDER BY c.ThuTu, c.Id;   -- tiebreaker c.Id KHỚP lưới Menu Builder (ORDER BY ..., ThuTu, Id)
             """;
 
         using var conn = _db.CreateConnection();
