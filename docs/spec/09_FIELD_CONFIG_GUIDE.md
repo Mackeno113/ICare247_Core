@@ -65,6 +65,36 @@ Mỗi **Field** trong một Form được cấu hình qua 4 tab:
 | `LookupComboBox` | Danh mục tĩnh > 5 lựa chọn từ Sys_Lookup | `nvarchar` |
 | `LookupBox` | FK tham chiếu bảng nghiệp vụ (Phòng ban, Khách hàng) | `int` (FK) |
 
+#### 2.2.1 Phân biệt ComboBox / LookupComboBox / LookupBox
+
+Ba editor đều là dropdown nhưng khác nhau ở **nguồn options** và **kiểu cột lưu DB** — đây là điểm dễ nhầm nhất khi cấu hình field danh mục/khóa ngoại.
+
+| | **ComboBox** | **LookupComboBox** | **LookupBox** |
+|---|---|---|---|
+| **Nguồn options** | API động (endpoint trả list) | `Sys_Lookup` (danh mục tĩnh trong DB cấu hình) | **Bảng / View nghiệp vụ** (Quốc gia, Phòng ban, Khách hàng…) |
+| **Lưu vào DB** | tuỳ (thường mã chuỗi) | **chuỗi** mã lookup (`nvarchar`) | **FK `int`** (Id bản ghi cha) |
+| **Prop chính** | endpoint / API | `lookupCode` (vd `GENDER`) | Cột Value + Cột Display + Bảng/View + Filter SQL |
+| **Số lựa chọn** | bất kỳ (động) | tĩnh, > 5 mục | bất kỳ, **có popup tìm kiếm** |
+| **Quản trị danh mục** | hệ thống / API | **Quản lý Sys_Lookup** (admin thêm item) | người dùng cuối thêm bản ghi vào bảng nghiệp vụ |
+| **Quan hệ DB** | không ràng buộc | không FK | **có khóa ngoại** thật |
+
+**Cây quyết định:**
+
+```
+Giá trị chọn là 1 bản ghi của BẢNG nghiệp vụ khác (có FK int)?
+   → LookupBox        (vd: QuocGia_Id → DM_QuocGia)
+
+Là danh mục TĨNH cố định, ít thay đổi, lưu mã chuỗi?
+   ≤ 5 mục  → RadioGroup
+   > 5 mục  → LookupComboBox   (nguồn Sys_Lookup, vd LOAI_HINH, GENDER)
+
+Options đến từ API/endpoint động, không thuộc Sys_Lookup cũng không phải FK bảng?
+   → ComboBox
+```
+
+> **Nhớ nhanh:** **LookupBox** = khóa ngoại (`int`) sang bảng nghiệp vụ · **LookupComboBox** = mã chuỗi từ `Sys_Lookup` · **ComboBox** = API động.
+> Chi tiết props: `LookupComboBox` xem §3.6, `LookupBox` xem §3.7.
+
 ### 2.3 Behavior
 
 Ba thuộc tính tĩnh kiểm soát trạng thái của field — lưu thẳng vào bảng `Ui_Field`:

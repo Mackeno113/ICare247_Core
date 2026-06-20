@@ -83,7 +83,7 @@
 | Loại | Khác biệt |
 |---|---|
 | **ĐVT / Ngân hàng / Cấp phòng ban / Quốc gia** (phẳng) | Y hệt ví dụ. Đổi tên bảng + `View_Code` = `Grid_DM_DonViTinh` / `Grid_DM_NganHang` / `Grid_TC_CapPhongBan` / `Grid_DM_QuocGia`. |
-| **Tỉnh/TP, Phường/Xã** (có FK) | Bước 1 đăng ký **VIEW** (`vw_DM_TinhThanhPho` / `vw_DM_PhuongXa`) làm **nguồn lưới** (để hiện tên cha); Bước 2 form thêm **lookup** (Tỉnh→Quốc gia; Phường/Xã→Tỉnh, cascade). Cần chạy `db/052` trước. |
+| **Tỉnh/TP, Phường/Xã** (có FK) | Lưới dạng **tham chiếu** — hướng dẫn riêng đầy đủ: [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md). Tóm tắt: Bước 1 đăng ký **VIEW** (`vw_DM_TinhThanhPho` / `vw_DM_PhuongXa`) làm **nguồn lưới** + **TABLE** làm nguồn form; Bước 2 form thêm **LookupBox** (Tỉnh→Quốc gia; Phường/Xã→Tỉnh, cascade). Cần chạy `db/052` trước. |
 | **Công ty** (cây) | Bước 1 đăng ký `vw_TC_CongTy` (cần `db/051`). Bước 3: **View_Type = TreeList**, `View_Code = Tree_TC_CongTy`, **Key = Id**, **Parent = CongTy_Cha_Id**; lookup Cấp/Phường-Xã/Ngân hàng/Công ty cha. |
 
 ## Quy ước nhanh
@@ -92,3 +92,4 @@
 - **View_Code**: `{View_Type}_{Bảng}` — `Grid_*` cho lưới phẳng, `Tree_*` cho lưới cây. **PHẢI khớp** route `/view/{View_Code}` khai trong menu (`AppNav.NavScreen.Route` hoặc `HT_ChucNang.DuongDan`).
 - **Thứ tự cấu hình theo phụ thuộc**: danh mục (Quốc gia → Tỉnh → Phường/Xã; Cấp công ty…) **TRƯỚC** → rồi màn tham chiếu (Công ty…), để đủ nguồn lookup.
 - **Không cấu hình cột audit** (Id/CreatedBy/At/UpdatedBy/At/IsDeleted/Ver) vào form — engine tự xử lý.
+- **Chọn editor cho field danh mục/FK:** **LookupBox** = khóa ngoại (`int`) sang bảng nghiệp vụ (vd `QuocGia_Id → DM_QuocGia`) · **LookupComboBox** = mã chuỗi từ `Sys_Lookup` (vd `LoaiHinh`) · **ComboBox** = API động. Bảng so sánh + cây quyết định: xem [09_FIELD_CONFIG_GUIDE.md §2.2.1](../spec/09_FIELD_CONFIG_GUIDE.md).

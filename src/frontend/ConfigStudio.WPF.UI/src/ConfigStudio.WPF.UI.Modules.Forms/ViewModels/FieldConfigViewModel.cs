@@ -1187,14 +1187,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     public void OnNavigatedFrom(NavigationContext navigationContext)
     {
-        _cts.Cancel();
-        _cts = new CancellationTokenSource();
+        // KHÔNG hủy _cts ở đây. Khi user bấm field khác trong Left Navigator, view điều hướng
+        // tới CHÍNH NÓ (cùng instance VM) nên cặp OnNavigatedFrom/OnNavigatedTo chạy đua nhau;
+        // nếu hủy ở đây sẽ cancel luôn lần load vừa khởi động trong OnNavigatedTo → panel phải
+        // giữ nguyên dữ liệu field cũ (load mới ném OperationCanceledException rồi return).
+        // Việc hủy lần load TRƯỚC được xử lý ở đầu LoadDataAsync (last-navigation-wins).
     }
 
     // ── Load data (DB hoặc mock) ─────────────────────────────
 
     private async Task LoadDataAsync()
     {
+        // Hủy lần load TRƯỚC (nếu user bấm nhanh sang field khác) rồi mở token mới cho lần này.
+        // Đặt ở đây — KHÔNG đặt ở OnNavigatedFrom — để tránh race khi điều hướng tới cùng view:
+        // mỗi lần load tự hủy lần load cũ, đảm bảo "click cuối cùng thắng".
+        _cts.Cancel();
+        _cts.Dispose();
+        _cts = new CancellationTokenSource();
+
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
             await LoadFromDatabaseAsync();
@@ -1284,7 +1294,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     FormId             = field.FormId;
                     SectionId          = field.SectionId ?? 0;
                     SectionName        = field.SectionCode;
-                    SelectedColumn     = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId);
+                    // Khớp theo ColumnId trước; fallback theo ColumnCode khi Ui_Field.Column_Id đã
+                    // "lệch" so với Sys_Column hiện hành (cột bị tạo lại / Table_Id đổi) — nhờ vậy
+                    // ComboBox vẫn hiện đúng cột, và lần Lưu kế tiếp ghi lại Column_Id chuẩn.
+                    SelectedColumn     = AvailableColumns.FirstOrDefault(c => c.ColumnId == field.ColumnId)
+                                      ?? AvailableColumns.FirstOrDefault(c =>
+                                             string.Equals(c.ColumnCode, field.ColumnCode, StringComparison.OrdinalIgnoreCase));
                     ColumnCode         = field.ColumnCode;
                     FieldCode          = field.FieldCode ?? "";
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
