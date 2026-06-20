@@ -20,9 +20,9 @@
 
 | Route | Màn | Loại | Code | Tài liệu |
 |---|---|---|---|---|
-| `/` | Dashboard | Trang chủ (KPI placeholder) | [Dashboard.razor](../../src/frontend/ICare247_UI/Pages/Dashboard.razor) | ⬜ |
+| `/` | Dashboard + Shell | Sau đăng nhập: shell + menu server-driven (Dashboard KPI placeholder) | [Dashboard.razor](../../src/frontend/ICare247_UI/Pages/Dashboard.razor) | ✅ [shell-navigation](man-hinh/shell-navigation.md) |
 | `/m/{module}[/{screen}]` | ScreenView | Bộ khởi chạy module/màn (lưới thẻ + redirect) | [ScreenView.razor](../../src/frontend/ICare247_UI/Pages/ScreenView.razor) | ⬜ |
-| *(layout)* | MainLayout + NavMenu | Sidebar + topbar + menu server-driven | [NavMenu.razor](../../src/frontend/ICare247_UI/Layout/NavMenu.razor) | ⬜ *(xem sơ đồ widget trong chat)* |
+| *(layout)* | MainLayout + NavMenu | Sidebar + topbar + menu server-driven | [NavMenu.razor](../../src/frontend/ICare247_UI/Layout/NavMenu.razor) | ✅ [shell-navigation](man-hinh/shell-navigation.md) |
 
 ## Nhóm: Xác thực (Auth)
 
