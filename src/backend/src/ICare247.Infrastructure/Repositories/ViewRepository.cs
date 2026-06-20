@@ -284,26 +284,14 @@ public sealed partial class ViewRepository : IViewRepository
     public async Task<ViewDataResult> GetDataAsync(
         ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default)
     {
-        if (!string.Equals(view.SourceType, "Table", StringComparison.OrdinalIgnoreCase))
+        // Đọc trực tiếp chỉ áp cho Table/View (SELECT giống nhau). Sp/Sql đi qua GetFilteredDataAsync (panel lọc).
+        if (!IsDirectReadSource(view.SourceType))
             throw new NotSupportedException(
-                $"View '{view.ViewCode}': Source_Type='{view.SourceType}' chưa hỗ trợ (chỉ 'Table').");
+                $"View '{view.ViewCode}': Source_Type='{view.SourceType}' chưa hỗ trợ đọc trực tiếp " +
+                $"(chỉ 'Table'/'View'; nguồn 'Sp'/'Sql' phải qua panel lọc).");
 
-        // ── Bảng vật lý từ Sys_Table (Config DB) ──────────────────────────
-        TableRow? tbl;
-        using (var cfg = _db.CreateConnection())
-        {
-            tbl = await cfg.QueryFirstOrDefaultAsync<TableRow>(new CommandDefinition(
-                "SELECT Schema_Name AS SchemaName, Table_Code AS TableName FROM dbo.Sys_Table WHERE Table_Id = @TableId",
-                new { view.TableId }, cancellationToken: ct));
-        }
-        if (tbl is null)
-            throw new InvalidOperationException(
-                $"View '{view.ViewCode}': bảng nguồn Table_Id={view.TableId} không tồn tại.");
-
-        var schema = SafeIdentifierRegex().IsMatch(tbl.SchemaName ?? "") ? tbl.SchemaName! : "dbo";
-        if (string.IsNullOrWhiteSpace(tbl.TableName) || !SafeIdentifierRegex().IsMatch(tbl.TableName))
-            throw new InvalidOperationException($"View '{view.ViewCode}': tên bảng không hợp lệ.");
-        var table = $"{Bracket(schema)}.{Bracket(tbl.TableName)}";
+        // ── Nguồn FROM: bảng vật lý (Sys_Table) hoặc SQL View (Source_Object) ──
+        var table = await ResolveFromTargetAsync(view, ct);
 
         // ── Cột Data (Field_Name) — whitelist ─────────────────────────────
         var dataCols = view.Columns
@@ -355,6 +343,52 @@ public sealed partial class ViewRepository : IViewRepository
                         .ToList(),
             TotalCount = total
         };
+    }
+
+    /// <summary>Nguồn cho phép đọc trực tiếp bằng SELECT (Table hoặc SQL View). Sp/Sql thì không.</summary>
+    private static bool IsDirectReadSource(string? sourceType) =>
+        string.Equals(sourceType, "Table", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(sourceType, "View", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Phân giải đối tượng FROM cho SELECT trực tiếp: <c>Source_Type='View'</c> kèm <c>Source_Object</c>
+    /// → đọc thẳng view đó (cho phép 'schema.object'); ngược lại lấy bảng vật lý từ <c>Sys_Table</c> theo Table_Id.
+    /// Mọi identifier whitelist qua <see cref="SafeIdentifierRegex"/> (chống injection).
+    /// </summary>
+    private async Task<string> ResolveFromTargetAsync(ViewMetadata view, CancellationToken ct)
+    {
+        // 'View' + có Source_Object → FROM chính view đó (vd vw_DM_TinhThanhPho — JOIN sẵn tên cha).
+        if (string.Equals(view.SourceType, "View", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(view.SourceObject))
+            return ParseQualifiedName(view.SourceObject!, view.ViewCode);
+
+        // Mặc định: bảng/view vật lý từ Sys_Table (Config DB).
+        TableRow? tbl;
+        using (var cfg = _db.CreateConnection())
+        {
+            tbl = await cfg.QueryFirstOrDefaultAsync<TableRow>(new CommandDefinition(
+                "SELECT Schema_Name AS SchemaName, Table_Code AS TableName FROM dbo.Sys_Table WHERE Table_Id = @TableId",
+                new { view.TableId }, cancellationToken: ct));
+        }
+        if (tbl is null)
+            throw new InvalidOperationException(
+                $"View '{view.ViewCode}': bảng nguồn Table_Id={view.TableId} không tồn tại.");
+
+        var schema = SafeIdentifierRegex().IsMatch(tbl.SchemaName ?? "") ? tbl.SchemaName! : "dbo";
+        if (string.IsNullOrWhiteSpace(tbl.TableName) || !SafeIdentifierRegex().IsMatch(tbl.TableName))
+            throw new InvalidOperationException($"View '{view.ViewCode}': tên bảng không hợp lệ.");
+        return $"{Bracket(schema)}.{Bracket(tbl.TableName)}";
+    }
+
+    /// <summary>Tách 'schema.object' hoặc 'object' → '[schema].[object]' (mặc định schema dbo); mỗi phần whitelist.</summary>
+    private static string ParseQualifiedName(string name, string viewCode)
+    {
+        var parts = name.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+            throw new InvalidOperationException($"View '{viewCode}': tên nguồn '{name}' không hợp lệ.");
+        return parts.Length == 2
+            ? $"{Bracket(parts[0])}.{Bracket(parts[1])}"
+            : $"[dbo].{Bracket(parts[0])}";
     }
 
     /// <inheritdoc />

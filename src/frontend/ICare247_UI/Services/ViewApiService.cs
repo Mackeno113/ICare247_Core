@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Services.I18n;
 using Microsoft.Extensions.Logging;
 
 namespace ICare247_UI.Services;
@@ -17,12 +18,14 @@ public sealed class ViewApiService
 {
     private readonly HttpClient _http;
     private readonly ILogger<ViewApiService> _logger;
+    private readonly LocalizationService _loc;
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
-    public ViewApiService(HttpClient http, ILogger<ViewApiService> logger)
+    public ViewApiService(HttpClient http, ILogger<ViewApiService> logger, LocalizationService loc)
     {
         _http = http;
         _logger = logger;
+        _loc = loc;
     }
 
     /// <summary>Danh sách View (header tóm tắt) cho màn chọn — có filter active + search.</summary>
@@ -77,7 +80,7 @@ public sealed class ViewApiService
         var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/info?lang={Uri.EscapeDataString(lang)}";
         var resp = await _http.GetAsync(url, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
-        await EnsureOkAsync(resp, $"GetInfo {viewCode}");
+        await EnsureOkAsync(resp, "GetInfo", viewCode);
         return await resp.Content.ReadFromJsonAsync<ViewMetadataDto>(JsonOpts, ct);
     }
 
@@ -91,7 +94,7 @@ public sealed class ViewApiService
 
         var resp = await _http.GetAsync(url, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
-        await EnsureOkAsync(resp, $"GetData {viewCode}");
+        await EnsureOkAsync(resp, "GetData", viewCode);
 
         var dto = await resp.Content.ReadFromJsonAsync<ViewDataResultDto>(JsonOpts, ct)
                   ?? new ViewDataResultDto();
@@ -122,7 +125,7 @@ public sealed class ViewApiService
             _logger.LogWarning("Search 400 [{Code}]: {Body}", viewCode, problem);
             throw new HttpRequestException(ExtractMessage(problem));
         }
-        await EnsureOkAsync(resp, $"Search {viewCode}");
+        await EnsureOkAsync(resp, "Search", viewCode);
 
         var dto = await resp.Content.ReadFromJsonAsync<ViewDataResultDto>(JsonOpts, ct)
                   ?? new ViewDataResultDto();
@@ -159,12 +162,60 @@ public sealed class ViewApiService
         };
     }
 
-    private async Task EnsureOkAsync(HttpResponseMessage resp, string ctx)
+    /// <summary>
+    /// Bảo đảm 2xx; nếu không, log chi tiết kỹ thuật (console) rồi ném <see cref="HttpRequestException"/>
+    /// với thông điệp ĐÃ i18n + nêu rõ nguyên nhân cho người dùng (không lòi mã endpoint/HTTP thô).
+    /// </summary>
+    /// <param name="resp">Phản hồi HTTP.</param>
+    /// <param name="ctx">Ngữ cảnh kỹ thuật cho log (vd "GetInfo").</param>
+    /// <param name="target">Mã/đối tượng để chèn vào thông điệp (vd View_Code) — null nếu không có.</param>
+    private async Task EnsureOkAsync(HttpResponseMessage resp, string ctx, string? target = null)
     {
         if (resp.IsSuccessStatusCode) return;
         var body = await resp.Content.ReadAsStringAsync();
-        _logger.LogError("View API lỗi [{Ctx}] {Status}: {Body}", ctx, (int)resp.StatusCode, body);
-        throw new HttpRequestException($"{ctx} → {(int)resp.StatusCode}");
+        _logger.LogError("View API lỗi [{Ctx} {Target}] {Status}: {Body}", ctx, target, (int)resp.StatusCode, body);
+        throw new HttpRequestException(BuildFriendlyMessage(resp.StatusCode, body, target));
+    }
+
+    /// <summary>
+    /// Dựng thông điệp lỗi thân thiện + i18n theo mã trạng thái. Nêu rõ nguyên nhân:
+    /// 401 = chưa/đã hết phiên · 403 = thiếu quyền xem màn · 404 = không tồn tại · timeout · 5xx.
+    /// Mã khác → ưu tiên trường <c>detail</c> của ProblemDetails từ server, fallback thông điệp chung.
+    /// </summary>
+    private string BuildFriendlyMessage(HttpStatusCode status, string body, string? target)
+    {
+        // Đối tượng đưa vào câu (vd " 'Grid_DM_TinhThanhPho'") — rỗng nếu không có.
+        var label = string.IsNullOrWhiteSpace(target) ? "" : $" '{target}'";
+        return (int)status switch
+        {
+            401 => _loc.L("api.error.unauthorized",
+                "Phiên đăng nhập đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng đăng nhập lại."),
+            403 => _loc.L("api.error.forbidden.view",
+                "Bạn không có quyền xem màn hình{0}. Vui lòng liên hệ quản trị viên để được cấp quyền.", label),
+            404 => _loc.L("api.error.notfound.view",
+                "Không tìm thấy màn hình{0} hoặc màn đã bị ẩn.", label),
+            408 or 504 => _loc.L("api.error.timeout",
+                "Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối rồi thử lại."),
+            >= 500 => _loc.L("api.error.server",
+                "Máy chủ đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên."),
+            _ => ProblemDetail(body)
+                 ?? _loc.L("api.error.generic", "Đã xảy ra lỗi khi tải dữ liệu (mã {0}).", (int)status)
+        };
+    }
+
+    /// <summary>Bóc trường "detail"/"title" trong ProblemDetails (RFC 7807); null nếu không phải JSON hợp lệ.</summary>
+    private static string? ProblemDetail(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
+                return d.GetString();
+            if (doc.RootElement.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
+                return t.GetString();
+        }
+        catch { /* không phải JSON → để caller dùng fallback */ }
+        return null;
     }
 }
 
