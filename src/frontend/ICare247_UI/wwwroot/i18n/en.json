@@ -296,6 +296,8 @@
   "masterdata.list.subtitle": "",
   "masterdata.tab.backToList": "",
   "nav.dashboard": "",
+  "nav.filter.empty": "",
+  "nav.filter.placeholder": "",
   "screen.notfound": "",
   "screen.notfound.module": "",
   "screen.open": "",

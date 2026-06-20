@@ -12,65 +12,106 @@
 *@
 
 <nav class="nav-menu">
-    @foreach (var item in _top)
+    @* Ô lọc menu — gõ tới đâu lọc tới đó theo nhãn ĐÃ DỊCH (ngôn ngữ giao diện hiện tại). *@
+    <div class="nav-filter">
+        <span class="nav-filter__icon"><Icon Name="search" Size="16" StrokeWidth="2" /></span>
+        <input class="nav-filter__input" type="search" autocomplete="off"
+               placeholder="@Loc.L("nav.filter.placeholder", "Lọc menu…")"
+               aria-label="@Loc.L("nav.filter.placeholder", "Lọc menu…")"
+               value="@_filter" @oninput="OnFilterInput" />
+        @if (HasFilter)
+        {
+            <button type="button" class="nav-filter__clear" @onclick="ClearFilter"
+                    title="@Loc.L("common.action.clear", "Xóa")"
+                    aria-label="@Loc.L("common.action.clear", "Xóa")">
+                <Icon Name="x" Size="14" StrokeWidth="2" />
+            </button>
+        }
+    </div>
+
+    @{ var top = FilteredTop(); }
+    @foreach (var item in top)
     {
         <NavLink class="nav-item" href="@item.Href" Match="@(item.Href == "" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
             <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
-            <span>@Loc.L(item.TitleKey, item.Title)</span>
+            <span class="nav-item__label">@Loc.L(item.TitleKey, item.Title)</span>
         </NavLink>
     }
 
-    @foreach (var section in _sections)
+    @{ var sections = FilteredSections(); }
+    @foreach (var section in sections)
     {
         <div class="nav-section">
             <div class="nav-section__label">@Loc.L(section.TitleKey, section.Title)</div>
-            @foreach (var module in section.Modules)
+            @* Con của nhóm (phân hệ + màn treo thẳng) đã trộn & sắp theo Thứ tự cấu hình. *@
+            @foreach (var child in FilteredChildren(section))
             {
-                var isOpen = _expanded == module.Key;
-                var isActive = _currentModule == module.Key;
-                <div class="nav-group @(isActive ? "nav-group--active" : "")">
-                    <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module)">
-                        <span class="nav-item__icon"><Icon Name="@module.Icon" /></span>
-                        <span class="nav-group__title">@Loc.L(module.TitleKey, module.Title)</span>
-                        <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
-                            <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
-                        </span>
-                    </button>
-                    @if (isOpen)
-                    {
-                        <div class="nav-group__items">
-                            @foreach (var screen in module.Screens)
-                            {
-                                <NavLink class="nav-subitem" href="@screen.Href">
-                                    @Loc.L(screen.TitleKey, screen.Title)
-                                </NavLink>
-                            }
-                        </div>
-                    }
-                </div>
+                if (child.Module is { } module)
+                {
+                    var isOpen = IsOpen(module);
+                    var isActive = _currentModule == module.Key;
+                    <div class="nav-group @(isActive ? "nav-group--active" : "")">
+                        <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module)"
+                                title="@Loc.L(module.TitleKey, module.Title)">
+                            <span class="nav-item__icon"><Icon Name="@module.Icon" /></span>
+                            <span class="nav-group__title">@Loc.L(module.TitleKey, module.Title)</span>
+                            <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
+                                <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
+                            </span>
+                        </button>
+                        @if (isOpen)
+                        {
+                            <div class="nav-group__items">
+                                @foreach (var screen in VisibleScreens(module))
+                                {
+                                    <NavLink class="nav-subitem" href="@screen.Href" title="@Loc.L(screen.TitleKey, screen.Title)">
+                                        <span class="nav-item__icon nav-subitem__icon"><Icon Name="@screen.Icon" Size="16" /></span>
+                                        <span class="nav-item__label">@Loc.L(screen.TitleKey, screen.Title)</span>
+                                    </NavLink>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else if (child.Item is { } item)
+                {
+                    @* Màn treo thẳng nhóm (không qua phân hệ) — vd Tỉnh/Thành phố, Quốc gia. *@
+                    <NavLink class="nav-item" href="@item.Href" title="@Loc.L(item.TitleKey, item.Title)">
+                        <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
+                        <span class="nav-item__label">@Loc.L(item.TitleKey, item.Title)</span>
+                    </NavLink>
+                }
             }
         </div>
     }
 
-    @if (_bottom.Count > 0)
+    @{ var bottom = FilteredBottom(); }
+    @if (bottom.Count > 0)
     {
         <div class="nav-sep"></div>
-        @foreach (var item in _bottom)
+        @foreach (var item in bottom)
         {
-            <NavLink class="nav-item nav-item--muted" href="@item.Href">
+            <NavLink class="nav-item nav-item--muted" href="@item.Href" title="@Loc.L(item.TitleKey, item.Title)">
                 <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
-                <span>@Loc.L(item.TitleKey, item.Title)</span>
+                <span class="nav-item__label">@Loc.L(item.TitleKey, item.Title)</span>
             </NavLink>
         }
+    }
+
+    @if (HasFilter && top.Count == 0 && sections.Count == 0 && bottom.Count == 0)
+    {
+        <div class="nav-empty">@Loc.L("nav.filter.empty", "Không có mục phù hợp")</div>
     }
 </nav>
 
 @code {
     // ── View-model: cây menu sau khi dựng (từ API hoặc AppNav) ──────────────
     private sealed record VmItem(string Key, string TitleKey, string Title, string Icon, string Href);
-    private sealed record VmScreen(string Href, string TitleKey, string Title);
+    private sealed record VmScreen(string Href, string TitleKey, string Title, string Icon);
     private sealed record VmModule(string Key, string TitleKey, string Title, string Icon, string Href, List<VmScreen> Screens);
-    private sealed record VmSection(string TitleKey, string Title, List<VmModule> Modules);
+    // Con của 1 nhóm: hoặc là phân hệ (Module) hoặc là màn treo thẳng (Item) — đã sắp theo Thứ tự.
+    private sealed record VmChild(VmModule? Module, VmItem? Item);
+    private sealed record VmSection(string TitleKey, string Title, List<VmChild> Children);
 
     private List<VmItem> _top = new();
     private List<VmSection> _sections = new();
@@ -79,6 +120,10 @@
     // Khóa phân hệ đang mở (accordion — chỉ 1 mở) + phân hệ ứng với URL (tô đậm).
     private string? _expanded;
     private string? _currentModule;
+
+    // Chuỗi lọc menu (so khớp với nhãn ĐÃ DỊCH theo ngôn ngữ giao diện hiện tại).
+    private string _filter = "";
+    private bool HasFilter => _filter.Length > 0;
 
     /// <summary>
     /// Khởi tạo: nạp menu theo quyền từ API (rỗng/lỗi → AppNav), xác định phân hệ theo URL,
@@ -113,32 +158,50 @@
             else _top.Add(item);
         }
 
-        // Nhóm (Loai=Menu, không cha) → phân hệ (Loai=Menu, cha=nhóm) → màn (cha=phân hệ).
+        // Nhóm (Loai=Menu, không cha) → con của nhóm gồm phân hệ (Loai=Menu) LẪN màn treo thẳng
+        // (Loai=ManHinh). Trộn chung 1 danh sách rồi sắp theo Thứ tự (ThuTu) — đúng thứ tự đã cấu hình.
         foreach (var grp in vis.Where(n => n.ChaMa is null && n.Loai == "Menu").OrderBy(n => n.ThuTu))
         {
             var grpKey = grp.Ma.StartsWith("group.") ? grp.Ma["group.".Length..] : grp.Ma;
-            var modules = new List<VmModule>();
-            foreach (var mod in vis.Where(n => n.ChaMa == grp.Ma && n.Loai == "Menu").OrderBy(n => n.ThuTu))
+            var children = new List<VmChild>();
+            foreach (var node in vis.Where(n => n.ChaMa == grp.Ma && n.Loai is "Menu" or "ManHinh")
+                                     .OrderBy(n => n.ThuTu))
             {
-                var modKey = Href(mod.DuongDan).Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } s && s[0] == "m"
-                    ? s[1] : mod.Ma;
-                var screens = vis.Where(n => n.ChaMa == mod.Ma).OrderBy(n => n.ThuTu)
-                    .Select(sc => new VmScreen(Href(sc.DuongDan), ScreenKey(sc.Ma, modKey), sc.Ten))
-                    .ToList();
-                modules.Add(new VmModule(modKey, NavKeys.Module(modKey), mod.Ten, mod.Icon ?? "circle", Href(mod.DuongDan), screens));
+                if (node.Loai == "Menu")
+                {
+                    // Phân hệ — có thể chứa các màn con (cha = phân hệ).
+                    var modKey = Href(node.DuongDan).Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } s && s[0] == "m"
+                        ? s[1] : node.Ma;
+                    var screens = vis.Where(n => n.ChaMa == node.Ma).OrderBy(n => n.ThuTu)
+                        .Select(sc => new VmScreen(Href(sc.DuongDan), ScreenKey(sc.Ma, modKey), sc.Ten, sc.Icon ?? "dot"))
+                        .ToList();
+                    children.Add(new VmChild(
+                        new VmModule(modKey, NavKeys.Module(modKey), node.Ten, node.Icon ?? "circle", Href(node.DuongDan), screens),
+                        null));
+                }
+                else
+                {
+                    // Màn treo THẲNG vào nhóm — không qua phân hệ (vd Tỉnh/Thành phố, Quốc gia).
+                    children.Add(new VmChild(
+                        null,
+                        new VmItem(node.Ma, NavKeys.Screen(grpKey, AfterDot(node.Ma)), node.Ten, node.Icon ?? "circle", Href(node.DuongDan))));
+                }
             }
-            if (modules.Count > 0)
-                _sections.Add(new VmSection(NavKeys.Group(grpKey), grp.Ten, modules));
+
+            if (children.Count > 0)
+                _sections.Add(new VmSection(NavKeys.Group(grpKey), grp.Ten, children));
         }
     }
 
-    /// <summary>Suy key i18n cho màn: Ma "organization.company" → nav.screen.organization.company.</summary>
-    private static string ScreenKey(string ma, string modKey)
+    /// <summary>Đoạn sau dấu chấm đầu của Ma: "organization.company" → "company".</summary>
+    private static string AfterDot(string ma)
     {
         var dot = ma.IndexOf('.');
-        var screenKey = dot >= 0 ? ma[(dot + 1)..] : ma;
-        return NavKeys.Screen(modKey, screenKey);
+        return dot >= 0 ? ma[(dot + 1)..] : ma;
     }
+
+    /// <summary>Suy key i18n cho màn: Ma "organization.company" → nav.screen.organization.company.</summary>
+    private static string ScreenKey(string ma, string modKey) => NavKeys.Screen(modKey, AfterDot(ma));
 
     // ── Dựng VM từ AppNav (fallback tĩnh khi API rỗng/lỗi) ──────────────────
     private void BuildFromAppNav()
@@ -147,19 +210,65 @@
 
         foreach (var group in AppNav.Groups)
         {
-            var modules = AppNav.Modules.Where(m => m.Group == group.Key).Select(m =>
-                new VmModule(
-                    m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}",
-                    m.Screens.Select(s => new VmScreen(
-                        string.IsNullOrEmpty(s.Route) ? $"m/{m.Key}/{s.Key}" : s.Route.TrimStart('/'),
-                        NavKeys.Screen(m.Key, s.Key), s.Title)).ToList()))
+            var children = AppNav.Modules.Where(m => m.Group == group.Key).Select(m =>
+                new VmChild(
+                    new VmModule(
+                        m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}",
+                        m.Screens.Select(s => new VmScreen(
+                            string.IsNullOrEmpty(s.Route) ? $"m/{m.Key}/{s.Key}" : s.Route.TrimStart('/'),
+                            NavKeys.Screen(m.Key, s.Key), s.Title, "dot")).ToList()),
+                    null))
                 .ToList();
-            if (modules.Count > 0)
-                _sections.Add(new VmSection(NavKeys.Group(group.Key), group.Title, modules));
+            if (children.Count > 0)
+                _sections.Add(new VmSection(NavKeys.Group(group.Key), group.Title, children));
         }
 
         _bottom.Add(new VmItem("devtools", "nav.devtools", "Công cụ (Dev)", "wrench", "dev/forms"));
         _bottom.Add(new VmItem("i18ntools", "nav.i18ntools", "Tra cứu i18n", "languages", "dev/i18n"));
+    }
+
+    // ── Lọc menu ────────────────────────────────────────────────────────────
+    /// <summary>Cập nhật chuỗi lọc khi gõ. Sự kiện theo sau: danh sách render lọc lại + nhóm tự bung.</summary>
+    private void OnFilterInput(ChangeEventArgs e) => _filter = (e.Value?.ToString() ?? "").Trim();
+
+    /// <summary>Xóa chuỗi lọc, hiện lại toàn bộ menu.</summary>
+    private void ClearFilter() => _filter = "";
+
+    /// <summary>Khớp lọc: rỗng = nhận hết; ngược lại so chứa, không phân biệt hoa thường.</summary>
+    private bool Match(string label) =>
+        !HasFilter || label.Contains(_filter, StringComparison.CurrentCultureIgnoreCase);
+
+    /// <summary>Khi đang lọc thì bung mọi phân hệ có kết quả; ngược lại theo accordion.</summary>
+    private bool IsOpen(VmModule m) => HasFilter || _expanded == m.Key;
+
+    /// <summary>Màn con hiện ra: lọc rỗng / khớp tên phân hệ → tất cả; ngược lại chỉ màn khớp.</summary>
+    private List<VmScreen> VisibleScreens(VmModule m) =>
+        (!HasFilter || Match(Loc.L(m.TitleKey, m.Title)))
+            ? m.Screens
+            : m.Screens.Where(s => Match(Loc.L(s.TitleKey, s.Title))).ToList();
+
+    private bool ModuleVisible(VmModule m) =>
+        !HasFilter || Match(Loc.L(m.TitleKey, m.Title)) || VisibleScreens(m).Count > 0;
+
+    private List<VmItem> FilteredTop() =>
+        _top.Where(i => Match(Loc.L(i.TitleKey, i.Title))).ToList();
+
+    private List<VmItem> FilteredBottom() =>
+        _bottom.Where(i => Match(Loc.L(i.TitleKey, i.Title))).ToList();
+
+    /// <summary>Con của nhóm khớp lọc (giữ nguyên thứ tự đã sắp): phân hệ có kết quả / màn khớp tên.</summary>
+    private List<VmChild> FilteredChildren(VmSection s) =>
+        !HasFilter
+            ? s.Children
+            : s.Children.Where(c =>
+                c.Module is { } m ? ModuleVisible(m)
+                : c.Item is { } i && Match(Loc.L(i.TitleKey, i.Title))).ToList();
+
+    /// <summary>Nhóm còn hiện nếu có con khớp lọc; loại bỏ nhóm rỗng.</summary>
+    private List<VmSection> FilteredSections()
+    {
+        if (!HasFilter) return _sections;
+        return _sections.Where(s => FilteredChildren(s).Count > 0).ToList();
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);

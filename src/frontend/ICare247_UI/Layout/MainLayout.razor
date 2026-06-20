@@ -5,6 +5,7 @@
 @inject LocalizationService Loc
 @inject IAuthService Auth
 @inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
 
 @*
     MainLayout — Shell ERP responsive + đa ngôn ngữ + bảo vệ đăng nhập.
@@ -20,19 +21,26 @@
 }
 else if (_authed)
 {
-    <div class="app-shell @(_navOpen ? "app-shell--nav-open" : "")">
+    <div class="app-shell @(_navOpen ? "app-shell--nav-open" : "") @(_rail ? "app-shell--rail" : "")">
         <aside class="app-sidebar">
-            <div class="app-brand">
-                <span class="app-brand__logo">IC</span>
-                <span class="app-brand__name">ICare247</span>
+            <div class="app-sidebar__inner">
+                <div class="app-brand">
+                    <span class="app-brand__logo">IC</span>
+                    <span class="app-brand__name">ICare247</span>
+                </div>
+                <NavMenu />
             </div>
-            <NavMenu />
         </aside>
 
         <div class="app-backdrop" @onclick="CloseNav"></div>
 
         <div class="app-body">
             <header class="app-topbar">
+                <button type="button" class="app-railtoggle" @onclick="ToggleRail"
+                        title="@(_rail ? Loc.L("common.action.expand", "Mở rộng") : Loc.L("common.action.collapse", "Thu nhỏ"))"
+                        aria-label="@(_rail ? Loc.L("common.action.expand", "Mở rộng") : Loc.L("common.action.collapse", "Thu nhỏ"))">
+                    <Icon Name="chevrons-left" Size="18" />
+                </button>
                 <button type="button" class="app-navtoggle" @onclick="ToggleNav" aria-label="@Loc.L("common.app.openmenu", "Mở menu")">☰</button>
                 <div class="app-company">
                     @* TODO(phase-org): thay bằng DxComboBox chọn công ty từ AppState/API *@
@@ -62,6 +70,10 @@ else if (_authed)
     // Trạng thái mở sidebar trên mobile.
     private bool _navOpen;
 
+    // Trạng thái thu nhỏ sidebar về rail icon (desktop) — nhớ qua localStorage.
+    private const string RailKey = "ic247.nav.rail";
+    private bool _rail;
+
     // Trạng thái xác thực.
     private bool _authChecked;
     private bool _authed;
@@ -84,6 +96,7 @@ else if (_authed)
         Loc.RegisterSource("i18n");
 
         await Loc.InitializeAsync();
+        _rail = await JS.InvokeAsync<string?>("localStorage.getItem", RailKey) == "1";
         await Auth.InitializeAsync();      // nạp token + gắn header Bearer
         await CheckAuthAsync();
     }
@@ -116,6 +129,13 @@ else if (_authed)
 
     /// <summary>Đóng sidebar.</summary>
     private void CloseNav() => _navOpen = false;
+
+    /// <summary>Thu nhỏ/mở rộng sidebar (desktop) + lưu localStorage. Sự kiện theo sau: shell thêm/bỏ --rail.</summary>
+    private async Task ToggleRail()
+    {
+        _rail = !_rail;
+        await JS.InvokeVoidAsync("localStorage.setItem", RailKey, _rail ? "1" : "0");
+    }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
 

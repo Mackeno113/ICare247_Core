@@ -1,5 +1,40 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-20 (session 58 — NavMenu sidebar: thu nhỏ rail + bộ lọc i18n + icon sub-menu + đúng thứ tự cấu hình)
+
+## Session 58 (2026-06-20) — đã làm
+
+> Ad-hoc theo phản hồi user trên sidebar/menu. Build FE 0/0 (`src/frontend/ICare247.UI.slnx`); web UI đã tắt khi build.
+
+- **NAV-RAIL** — Nút thu nhỏ/mở rộng sidebar về **rail icon** (~72px), đặt ở **topbar** (luôn bấm được), nhớ qua
+  **localStorage** `ic247.nav.rail`. Thu gọn = chỉ icon + tooltip (ẩn nhãn/caption/caret/ô lọc, giữ logo). Bỏ overlay
+  hover (gây "không ghim lại được"). Tách lớp `app-sidebar__inner` (nền/viền) cho layout ổn định. Rail chỉ desktop.
+- **NAV-FILTER** — Ô lọc menu live đầu sidebar, placeholder i18n (`nav.filter.placeholder`), lọc theo **nhãn đã dịch**
+  (ngôn ngữ giao diện — so khớp `Loc.L`), nhóm có kết quả tự bung, không khớp → `nav.filter.empty`, nút xóa "x".
+- **NAV-CSS-DEEP (gốc lỗi link thô)** — scoped CSS NavMenu KHÔNG ăn vào `<a>` của `<NavLink>` (component con không
+  nhận thuộc tính scope) → mọi NavLink xanh/gạch chân, icon sai màu. Bọc **`::deep`** cho `.nav-item`/`.nav-subitem`/icon/label.
+- **NAV-SUBICON** — Sub-item có **icon riêng** (icon DB nếu có, mặc định `dot`); thêm icon `dot`/`languages`/
+  `chevrons-left` vào `Icon.razor`. Bỏ đường rail dọc.
+- **NAV-GROUPSCREEN** — Màn `ManHinh` treo thẳng nhóm (Tỉnh/Thành phố, Quốc gia) trước bị `BuildFromApi` bỏ qua →
+  nay dựng thành mục đơn có icon trong nhóm.
+- **NAV-ORDER** — Con của nhóm (phân hệ `Menu` + màn `ManHinh`) trộn 1 danh sách **sắp theo ThuTu** (`VmChild` =
+  Module|Item) = đúng thứ tự cấu hình ở Menu Builder (trước đây luôn render hết phân hệ rồi mới tới màn → sai thứ tự).
+
+### Quyết định
+- Nút thu nhỏ ở **topbar** (không trong sidebar) + **bỏ hover-expand**: rail đoán được, bung = 1 nút luôn thấy.
+- **`::deep` cho mọi rule nhắm NavLink**: gốc lỗi link xanh/gạch chân + icon sai màu (thẻ `<a>` component con không scoped).
+- **`VmChild` (Module|Item) — 1 sequence theo ThuTu**: sidebar khớp thứ tự lưới Menu Builder.
+
+### ⚠️ Lưu ý vận hành (đã lưu auto-memory `feedback-no-build-while-app-running`)
+- KHÔNG `dotnet build` UI khi web đang chạy → race xóa/ghi `_framework/*.wasm|*.pdb` gây 404/SRI integrity (KHÔNG
+  phải bug code). Sửa = tắt server → chạy lại run-ui.bat → hard reload (Empty Cache and Hard Reload).
+- File `_UI/wwwroot/i18n/{catalog,en,...}.json` đổi = artifact I18nScanner tự sinh khi build, để nguyên.
+
+### Việc tiếp theo gợi ý
+- Quay lại roadmap chính: **F1 E2E** (db/050 + config-sync) → **F2 engine-hóa màn Công ty**.
+
+---
+
 > Cập nhật: 2026-06-19 (session 57 — ViewPage popup + grid danh mục chuẩn hóa + fix cache form + layout lưới per-user)
 
 ## Session 57 (2026-06-19) — đã làm

@@ -8,8 +8,78 @@
     overflow-y: auto;
 }
 
-/* ── Icon line (currentColor → theo màu mục) ──────────────────────────── */
-.nav-item__icon {
+/* ── Ô lọc menu ───────────────────────────────────────────────────────── */
+.nav-filter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.nav-filter__icon {
+    position: absolute;
+    left: var(--space-3);
+    display: inline-flex;
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+
+.nav-filter__input {
+    width: 100%;
+    height: 34px;
+    padding: 0 calc(var(--space-3) + 22px) 0 calc(var(--space-3) + 24px);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-tight);
+}
+
+.nav-filter__input::placeholder { color: var(--color-text-muted); }
+
+.nav-filter__input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+/* Bỏ nút "x" mặc định của input type=search (ta tự vẽ nút xóa) */
+.nav-filter__input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+.nav-filter__clear {
+    position: absolute;
+    right: var(--space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.nav-filter__clear:hover {
+    background: var(--gray-100);
+    color: var(--color-text);
+}
+
+/* Không có mục khớp lọc */
+.nav-empty {
+    padding: var(--space-4) var(--space-3);
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+    text-align: center;
+}
+
+/* ── Icon line (currentColor → theo màu mục) ──────────────────────────────
+   Dùng ::deep vì các mục là <NavLink> (component con) — thẻ <a> không nhận
+   thuộc tính scope của component, nên rule scoped thường KHÔNG ăn vào. */
+.nav-menu ::deep .nav-item__icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -19,8 +89,8 @@
     color: var(--color-text-muted);
 }
 
-/* ── Mục đơn (Tổng quan, Dev) ─────────────────────────────────────────── */
-.nav-item {
+/* ── Mục đơn (Tổng quan, Tỉnh/Thành phố, Dev) ─────────────────────────── */
+.nav-menu ::deep .nav-item {
     display: flex;
     align-items: center;
     gap: var(--space-3);
@@ -32,26 +102,35 @@
     line-height: var(--lh-tight);
 }
 
-.nav-item:hover {
+/* Nhãn mục — cắt gọn 1 dòng; cũng là phần bị ẩn khi sidebar thu về rail icon. */
+.nav-menu ::deep .nav-item__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-menu ::deep .nav-item:hover {
     background: var(--gray-100);
     color: var(--color-text);
 }
 
-.nav-item:hover .nav-item__icon {
+.nav-menu ::deep .nav-item:hover .nav-item__icon {
     color: var(--color-text-secondary);
 }
 
-.nav-item.active {
+.nav-menu ::deep .nav-item.active {
     background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-semibold);
 }
 
-.nav-item.active .nav-item__icon {
+.nav-menu ::deep .nav-item.active .nav-item__icon {
     color: var(--color-primary);
 }
 
-.nav-item--muted {
+.nav-menu ::deep .nav-item--muted {
     color: var(--color-text-muted);
 }
 
@@ -147,28 +226,19 @@
     .nav-group__caret { transition: none; }
 }
 
-/* ── Màn con — đường rail dọc gom theo nhóm ───────────────────────────── */
+/* ── Màn con — có icon riêng, thụt nhẹ dưới phân hệ ────────────────────── */
 .nav-group__items {
     display: flex;
     flex-direction: column;
     gap: 1px;
     margin: 1px 0 var(--space-2);
-    position: relative;
 }
 
-.nav-group__items::before {
-    content: "";
-    position: absolute;
-    top: 2px;
-    bottom: 2px;
-    left: calc(var(--space-3) + 9px);
-    width: 1px;
-    background: var(--color-border);
-}
-
-.nav-subitem {
-    display: block;
-    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 33px);
+.nav-menu ::deep .nav-subitem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 16px);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     text-decoration: none;
@@ -176,14 +246,30 @@
     line-height: var(--lh-tight);
 }
 
-.nav-subitem:hover {
+/* Icon màn con — nhỏ hơn icon phân hệ, màu nhạt */
+.nav-menu ::deep .nav-subitem__icon {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    color: var(--color-text-muted);
+}
+
+.nav-menu ::deep .nav-subitem:hover {
     background: var(--gray-100);
     color: var(--color-text);
 }
 
-.nav-subitem.active {
+.nav-menu ::deep .nav-subitem:hover .nav-subitem__icon {
+    color: var(--color-text-secondary);
+}
+
+.nav-menu ::deep .nav-subitem.active {
     color: var(--color-primary);
     font-weight: var(--fw-medium);
+}
+
+.nav-menu ::deep .nav-subitem.active .nav-subitem__icon {
+    color: var(--color-primary);
 }
 
 .nav-sep {

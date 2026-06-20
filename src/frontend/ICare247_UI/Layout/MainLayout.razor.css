@@ -13,14 +13,36 @@
 .app-sidebar {
     width: var(--sidebar-expanded);
     flex: 0 0 var(--sidebar-expanded);
-    background: var(--color-card);
-    border-right: 1px solid var(--color-border);
-    display: flex;
-    flex-direction: column;
     position: sticky;
     top: 0;
     height: 100vh;
     z-index: var(--z-sidebar);
+}
+
+/* Lớp trong — chứa nền/viền + brand + NavMenu. Tách khỏi aside để khi thu rail có thể
+   bung tạm (overlay) lúc hover mà KHÔNG đẩy nội dung. */
+.app-sidebar__inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-card);
+    border-right: 1px solid var(--color-border);
+    overflow: hidden;
+    transition: width .16s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-sidebar__inner { transition: none; }
+}
+
+/* NavMenu lấp đầy chiều cao còn lại + cuộn riêng trong lớp trong */
+.app-sidebar__inner ::deep .nav-menu {
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .app-brand {
@@ -30,6 +52,30 @@
     gap: var(--space-3);
     padding: 0 var(--space-5);
     border-bottom: 1px solid var(--color-border);
+}
+
+/* Nút thu nhỏ/mở rộng sidebar — đặt ở topbar nên luôn bấm được (desktop) */
+.app-railtoggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+}
+
+.app-railtoggle:hover {
+    background: var(--gray-100);
+    color: var(--color-text);
+}
+
+/* Đang thu gọn → xoay 180° để mũi tên chỉ ra ngoài (nghĩa "mở rộng") */
+.app-shell--rail .app-railtoggle {
+    transform: rotate(180deg);
 }
 
 .app-brand__logo {
@@ -188,11 +234,48 @@
     display: none;
 }
 
+/* ── Thu nhỏ về rail icon (chỉ desktop > 768px) ───────────────────────── */
+@media (min-width: 769px) {
+    .app-shell--rail .app-sidebar {
+        width: var(--sidebar-collapsed);
+        flex-basis: var(--sidebar-collapsed);
+    }
+
+    /* Chỉ chừa icon — ẩn nhãn/caption/caret/ô lọc/tên brand + thu gọn submenu.
+       Logo vẫn hiện (căn giữa); bung lại bằng nút ở topbar. */
+    .app-shell--rail .app-brand__name,
+    .app-shell--rail ::deep .nav-item__label,
+    .app-shell--rail ::deep .nav-group__title,
+    .app-shell--rail ::deep .nav-group__caret,
+    .app-shell--rail ::deep .nav-section__label,
+    .app-shell--rail ::deep .nav-filter,
+    .app-shell--rail ::deep .nav-group__items {
+        display: none;
+    }
+
+    /* Căn giữa logo + icon khi thu gọn */
+    .app-shell--rail .app-brand {
+        justify-content: center;
+        padding: 0;
+    }
+
+    .app-shell--rail ::deep .nav-item,
+    .app-shell--rail ::deep .nav-group__header {
+        justify-content: center;
+        gap: 0;
+    }
+}
+
 /* ── Responsive: <= 768px ─────────────────────────────────────────────── */
 @media (max-width: 768px) {
     .app-navtoggle {
         display: inline-flex;
         align-items: center;
+    }
+
+    /* Rail là tính năng desktop — trên mobile luôn dùng off-canvas đầy đủ */
+    .app-railtoggle {
+        display: none;
     }
 
     /* Sidebar trượt từ trái, đè lên nội dung */

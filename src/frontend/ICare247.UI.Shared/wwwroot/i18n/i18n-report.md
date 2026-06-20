@@ -1,13 +1,13 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-20 15:36_
+_Sinh tự động: 2026-06-20 22:04_
 
 ## 1. Chuỗi tiếng Việt hardcode (20) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:146` — "Tổng quan"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:161` — "Công cụ (Dev)"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:162` — "Tra cứu i18n"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:209` — "Tổng quan"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:226` — "Công cụ (Dev)"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:227` — "Tra cứu i18n"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:113` — "Thêm"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:114` — "Sửa"
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Xóa"
@@ -25,14 +25,25 @@ _Sinh tự động: 2026-06-20 15:36_
 - `src/frontend/ICare247_UI/Services/ViewApiService.cs:200` — "Máy chủ đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
 - `src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs:67` — "Tiếng Việt"
 
-## 2. L() key dựng động (12) — chỉ runtime (phương án A) lấy được
+## 2. L() key dựng động (23) — chỉ runtime (phương án A) lấy được
 
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:10`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:19`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:26`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:34`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:37`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:45`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:62`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:55`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:57`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:67`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:69`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:79`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:81`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:94`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:96`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:246`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:248`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:251`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:254`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:257`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:265`
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:78`
 - `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:109`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:5`

@@ -75,6 +75,40 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 58 — 2026-06-20: NavMenu sidebar — thu nhỏ rail + bộ lọc i18n + icon sub-menu + đúng thứ tự cấu hình)
+
+> Ad-hoc theo phản hồi user trên sidebar shell (`MainLayout`/`NavMenu`). Build FE 0/0 (`src/frontend/ICare247.UI.slnx`).
+
+- [x] **NAV-RAIL** — Nút thu nhỏ/mở rộng sidebar về **rail icon** (~72px, token `--sidebar-collapsed`), đặt ở
+      **topbar** (luôn bấm được), nhớ trạng thái qua **localStorage** `ic247.nav.rail`. Thu gọn = chỉ icon + tooltip
+      (ẩn nhãn/caption/caret/ô lọc, giữ logo); bỏ overlay hover (gây "không ghim lại được"). Lớp `app-sidebar__inner`
+      tách nền/viền để layout ổn định. Rail chỉ desktop (>768px); mobile vẫn off-canvas ☰.
+- [x] **NAV-FILTER** — Ô lọc menu live đầu sidebar (placeholder i18n `nav.filter.placeholder`), lọc theo **nhãn đã
+      dịch** (ngôn ngữ giao diện hiện tại — so khớp trên `Loc.L`), nhóm có kết quả tự bung, rỗng → `nav.filter.empty`,
+      nút xóa "x".
+- [x] **NAV-CSS-DEEP** — Fix GỐC "link thô/xanh gạch chân, icon sai màu": scoped CSS NavMenu KHÔNG ăn vào thẻ `<a>`
+      do `<NavLink>` (component con) sinh → bọc **`::deep`** cho `.nav-item`/`.nav-subitem`/icon/label. Buttons
+      (plain element) vẫn scoped OK nên trước đây chỉ NavLink bị lỗi.
+- [x] **NAV-SUBICON** — Màn con (sub-item) có **icon riêng** (icon màn nếu DB set, mặc định `dot`); thêm icon
+      `dot`/`languages`/`chevrons-left` vào `Icon.razor` (+ RegisteredNames). Bỏ đường rail dọc cũ.
+- [x] **NAV-GROUPSCREEN** — Màn `Loai=ManHinh` treo THẲNG vào nhóm (vd Tỉnh/Thành phố, Quốc gia) trước bị
+      `BuildFromApi` bỏ qua → render thô; nay dựng thành mục đơn có icon trong nhóm.
+- [x] **NAV-ORDER** — Trộn phân hệ (`Menu`) + màn treo thẳng (`ManHinh`) của 1 nhóm thành **một danh sách sắp theo
+      `ThuTu`** (`VmChild` = Module|Item) = đúng thứ tự cấu hình ở Menu Builder, thay vì luôn nhét màn xuống cuối.
+
+**Decisions Log (session 58):**
+- **Nút thu nhỏ đặt ở topbar, KHÔNG trong sidebar** + bỏ hover-expand overlay: tránh "không ghim lại được" khi nút
+  bị overlay che / chỉ hiện lúc hover. Rail đơn giản, đoán được; bung = 1 nút luôn thấy.
+- **`::deep` cho mọi rule nhắm `<NavLink>`** (NavMenu.razor.css): thẻ `<a>` của component con KHÔNG nhận thuộc tính
+  scope `b-xxx` → rule scoped thường rớt (gốc lỗi link xanh/gạch chân + icon sai màu). Pattern bắt buộc khi style
+  NavLink/component con bằng scoped CSS.
+- **Con của nhóm = 1 sequence theo ThuTu** (`VmChild`): sidebar khớp thứ tự lưới Menu Builder.
+
+> ⚠️ Vận hành (auto-memory `feedback-no-build-while-app-running`): KHÔNG `dotnet build` UI khi web đang chạy → race
+> xóa/ghi `_framework/*.wasm|*.pdb` gây 404/SRI integrity (KHÔNG phải bug). Sửa = tắt server → run-ui.bat → hard reload.
+
+---
+
 ## ✅ Done (session 56 — 2026-06-18: Menu Builder hoàn thiện + i18n write-store + cache flush + View render modes)
 
 - [x] **MENU-UX** — Quản lý menu: thêm/sửa node qua **popup kéo-di-chuyển** (kéo tiêu đề); panel phải = **chi tiết

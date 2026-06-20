@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-20 15:36:31",
+  "generatedAt": "2026-06-20 22:04:47",
   "source": "ICare247_UI",
-  "count": 312,
+  "count": 314,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -1892,6 +1892,14 @@
       "source": "ICare247_UI",
       "occurrences": [
         {
+          "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
+          "line": 25
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
+          "line": 26
+        },
+        {
           "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
           "line": 26
         },
@@ -1918,9 +1926,17 @@
     },
     {
       "key": "common.action.collapse",
-      "vi": "Thu gọn",
+      "vi": "Thu nhỏ",
       "source": "ICare247_UI",
       "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
+          "line": 40
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
+          "line": 41
+        },
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
           "line": 14
@@ -2002,9 +2018,17 @@
     },
     {
       "key": "common.action.expand",
-      "vi": "Mở",
+      "vi": "Mở rộng",
       "source": "ICare247_UI",
       "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
+          "line": 40
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
+          "line": 41
+        },
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
           "line": 14
@@ -2126,7 +2150,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
-          "line": 39
+          "line": 47
         }
       ]
     },
@@ -2137,7 +2161,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
-          "line": 19
+          "line": 20
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
@@ -2156,7 +2180,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
-          "line": 50
+          "line": 58
         }
       ]
     },
@@ -2167,7 +2191,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
-          "line": 40
+          "line": 48
         }
       ]
     },
@@ -2178,7 +2202,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/MainLayout.razor",
-          "line": 36
+          "line": 44
         }
       ]
     },
@@ -3467,6 +3491,32 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Dashboard.razor",
           "line": 10
+        }
+      ]
+    },
+    {
+      "key": "nav.filter.empty",
+      "vi": "Không có mục phù hợp",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
+          "line": 103
+        }
+      ]
+    },
+    {
+      "key": "nav.filter.placeholder",
+      "vi": "Lọc menu…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
+          "line": 19
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
+          "line": 20
         }
       ]
     },

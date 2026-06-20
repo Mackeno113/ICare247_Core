@@ -73,6 +73,24 @@
             <path d="m9 6 6 6-6 6" />
             break;
 
+        case "dot":
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+            break;
+
+        case "chevrons-left":
+            <path d="m11 17-5-5 5-5" />
+            <path d="m18 17-5-5 5-5" />
+            break;
+
+        case "languages":
+            <path d="m5 8 6 6" />
+            <path d="m4 14 6-6 2-3" />
+            <path d="M2 5h12" />
+            <path d="M7 2h1" />
+            <path d="m22 22-5-10-5 10" />
+            <path d="M14 18h6" />
+            break;
+
         @* ── Bổ sung dùng chung (toolbar/form) ── *@
         case "plus":
             <path d="M12 5v14M5 12h14" />
@@ -115,8 +133,8 @@
     public static readonly IReadOnlyList<string> RegisteredNames = new[]
     {
         "layout-grid", "building", "users", "clock", "package", "credit-card",
-        "bar-chart", "sliders", "wrench", "chevron-right", "plus", "search",
-        "x", "pencil", "trash"
+        "bar-chart", "sliders", "wrench", "chevron-right", "chevrons-left",
+        "dot", "languages", "plus", "search", "x", "pencil", "trash"
     };
 
     /// <summary>Tên icon (kiểu Lucide), vd "building", "users", "plus". Không tìm thấy → chấm tròn.</summary>
