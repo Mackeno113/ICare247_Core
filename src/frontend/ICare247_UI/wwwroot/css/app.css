@@ -412,6 +412,17 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
     --dxbl-text-edit-font-size:          var(--input-font);
 }
 
+/* ── Fix link trong dòng focus/selected của lưới (Grid + TreeList) ─────────
+   Theme Fluent đã ép màu CHỮ THƯỜNG sang trắng trên nền dòng focus (xanh) / selected
+   (navy) — text hiển thị tốt. NHƯNG <a> tùy biến trong cell giữ màu link riêng (xanh)
+   nên chìm trên nền xanh/navy. Ép link về token chữ-trên-nền-tối (neutral-10 ≈ #fff)
+   + gạch chân. Loại trừ .dxbl-btn (DX tự lo màu nút của nó). */
+.dxbl-grid .dxbl-grid-focused-row a:not(.dxbl-btn),
+.dxbl-grid .dxbl-grid-selected-row a:not(.dxbl-btn) {
+    color: var(--dxds-color-content-neutral-default-static-dark-rest);
+    text-decoration: underline;
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    Theme DevExpress = Fluent Light (link trong index.html). KHÔNG re-tint thủ
    công nữa: Fluent tự lo màu accent (xanh #0f6cbd) cho mọi control DX. Token

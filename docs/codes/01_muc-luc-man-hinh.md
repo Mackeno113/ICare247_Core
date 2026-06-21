@@ -11,6 +11,7 @@
 | `/form/{FormCode}` | FormRunner | **Form engine** chạy thử (validation runtime) | [FormRunner.razor](../../src/frontend/ICare247_UI/Pages/FormRunner.razor) | ⬜ |
 | `/master/{FormCode}` | MasterDataListPage | Danh mục: list + popup Thêm/Sửa (engine) | [MasterDataListPage.razor](../../src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor) | ⬜ |
 | `/master/{FormCode}/edit[/{Id}]` | MasterDataTabPage | Danh mục: Thêm/Sửa dạng trang | [MasterDataTabPage.razor](../../src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor) | ⬜ |
+| *(component)* | MasterDataForm | **Luồng GHI**: Thêm/Sửa 1 bản ghi (validate + INSERT/UPDATE + audit) | [MasterDataForm.razor](../../src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor) | ✅ [masterdata-form](man-hinh/masterdata-form.md) |
 
 > Component lõi dùng lại: [DataView.razor](../../src/frontend/ICare247_UI/Components/View/DataView.razor),
 > [MasterDataForm.razor](../../src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor),
