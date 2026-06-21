@@ -1,6 +1,35 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-20 (session 58 — NavMenu sidebar: thu nhỏ rail + bộ lọc i18n + icon sub-menu + đúng thứ tự cấu hình)
+> Cập nhật: 2026-06-21 (session 59 — Lưới View xem hết dữ liệu + LookupBox popup teleport + cờ tắt cache + bề rộng modal/popup)
+
+## Session 59 (2026-06-21) — đã làm
+
+> Ad-hoc khi user test màn danh mục Xã/Phường (engine-driven View). Build BE + FE 0/0
+> (`src/backend/ICare247.slnx`, `src/frontend/ICare247_UI.slnx`).
+
+- **VIEW-LOADALL** — Lưới View kẹt 1 trang server (20/3321, không xem tiếp): `ViewPage.ReloadDataAsync` nạp **toàn bộ**
+  (`pageSize: int.MaxValue`) → DxGrid tự phân trang/cuộn ảo client (tương tự MasterDataListPage). User chọn "tải hết".
+- **VIEW-VSCROLL-H** — Cuộn ảo cần chiều cao: `.dv-dxgrid { height: calc(100vh - 220px); min-height:320px }`.
+- **LOOKUP-TELEPORT** — Popup LookupBox trong DraggableModal bị cắt (modal kéo bằng `transform` + `overflow:auto`) →
+  **teleport node ra `<body>`** (`icare.teleportPopup`/`restorePopup`); teleport ở `OnAfterRenderAsync`, restore ở
+  `HidePopupAsync` TRƯỚC khi ẩn. "Rỗng/không chọn được" thực chất chỉ là **bị cắt**, KHÔNG phải lỗi data/query.
+- **LOOKUP-DISPLAY** — FK hiện id thô ("2") → sau LoadDataAsync resolve lại `_inputText = GetSelectedDisplay()`.
+- **CACHE-TOGGLE** — Cờ `Cache:Enabled` (appsettings, mặc định true; **Development=false**) → `CacheSettings` +
+  `HybridCacheService` (phủ form/view/lookup/resource) + `NavigationCache` (menu). Đọc lúc khởi động → đổi phải restart BE.
+- **MODAL-WIDTH** — Modal Thêm/Sửa hẹp theo số cột form (1=480, 2=680, 3=900, ≥4=1080) qua `OnWidthResolved`.
+- **POPUP-WIDTH** — Popup combobox/lookup mặc định = bề rộng control (bỏ width cố định 600).
+
+### Quyết định
+- **DraggableModal kéo bằng `transform`** → dropdown custom trong modal luôn bị clip; chuẩn = teleport ra body
+  (memory mới `project-draggablemodal-dropdown-clip`). DevExpress overlay tự thoát nên miễn nhiễm.
+- **Cache tắt theo MÔI TRƯỜNG, không theo build Debug/Release**: Development tự tắt, publish=Production cache bật.
+- **Tải hết dữ liệu lưới (Cách B)** — hợp danh mục cỡ vừa; bảng cực lớn về sau chuyển server-side paging.
+
+### Việc tiếp theo gợi ý
+- Quay lại roadmap chính: **F1 E2E** (db/050 + config-sync) → **F2 engine-hóa màn Công ty**.
+- (Tuỳ chọn) Khi gặp bảng danh mục cực lớn: chuyển lưới View sang **server-side paging** thật.
+
+---
 
 ## Session 58 (2026-06-20) — đã làm
 

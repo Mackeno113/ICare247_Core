@@ -60,6 +60,9 @@ else
     [Parameter] public EventCallback OnCancelled { get; set; }
     /// <summary>Hiện tiêu đề h3 trong form. Đặt false khi popup đã có thanh tiêu đề riêng (DraggableModal).</summary>
     [Parameter] public bool ShowTitle { get; set; } = true;
+    /// <summary>Phát bề rộng modal hài hòa theo số cột form (vd "460px") sau khi load metadata —
+    /// để popup chứa form (DraggableModal) thu hẹp khi form 1 cột, rộng dần khi nhiều cột.</summary>
+    [Parameter] public EventCallback<string> OnWidthResolved { get; set; }
 
     private bool IsEditMode => Id is not null;
 
@@ -86,6 +89,8 @@ else
             if (form is null) { _error = Loc.L("masterdata.form.notfound", "Form '{0}' không tồn tại.", FormCode); return; }
             _formName = form.FormName.Length > 0 ? form.FormName : form.FormCode;
             _formColumns = Math.Clamp(form.Columns ?? 4, 1, 4);
+            // Báo bề rộng modal phù hợp số cột (popup chứa form tự co/giãn cho hài hòa).
+            await OnWidthResolved.InvokeAsync(ModalWidthForColumns(_formColumns));
 
             // Build field states (mirror FormRunner). Bỏ field virtual (không map cột DB).
             _fieldStates = form.Fields
@@ -196,6 +201,15 @@ else
             if (!string.IsNullOrWhiteSpace(fs.LookupCode) && map.TryGetValue(fs.LookupCode, out var opts))
                 fs.Options = opts;
     }
+
+    /// <summary>Bề rộng modal hài hòa theo số cột form: 1 cột hẹp, nhiều cột rộng dần.</summary>
+    private static string ModalWidthForColumns(int cols) => cols switch
+    {
+        1 => "480px",
+        2 => "680px",
+        3 => "900px",
+        _ => "1080px"
+    };
 
     private static string NormalizeFieldType(string dbType, string? lookupSource)
         => dbType.ToLower() switch

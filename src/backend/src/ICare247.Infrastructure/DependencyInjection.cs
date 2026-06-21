@@ -48,6 +48,9 @@ public static class DependencyInjection
         services.AddSingleton<ITenantConnectionResolver, TenantConnectionResolver>();
 
         // ── Cache ─────────────────────────────────────────────────────────────
+        // Cờ bật/tắt cache toàn cục (Cache:Enabled). Mặc định true; đặt false (dev) để test cấu hình.
+        services.Configure<Caching.CacheSettings>(configuration.GetSection("Cache"));
+
         services.AddMemoryCache();
 
         // Redis — chỉ đăng ký khi có connection string.

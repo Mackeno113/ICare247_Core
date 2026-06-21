@@ -69,9 +69,10 @@
 @* ── Popup form (chỉ khi Display_Mode = Popup) — kéo được, chỉ đóng bằng nút ── *@
 @if (_showPopup && _info is not null)
 {
-    <DraggableModal Title="@PopupTitle" OnClose="CloseForm">
+    <DraggableModal Title="@PopupTitle" Width="@_formWidth" OnClose="CloseForm">
         <MasterDataForm FormCode="@FormCode" Id="_editId" ShowTitle="false"
-                        OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+                        OnSaved="OnFormSaved" OnCancelled="CloseForm"
+                        OnWidthResolved="(w) => _formWidth = w" />
     </DraggableModal>
 }
 
@@ -106,6 +107,7 @@
     private bool _showPopup;
     private object? _editId;
     private object? _deleteId;
+    private string? _formWidth;  // bề rộng modal theo số cột form (MasterDataForm phát ra)
 
     /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {FormCode}".</summary>
     private string PopupTitle =>
@@ -147,7 +149,11 @@
 
     private async Task ReloadListAsync()
     {
-        var result = await MasterApi.GetListAsync(FormCode, _search, _activeOnly ? true : null);
+        // Tải toàn bộ bản ghi 1 lần (page=1, pageSize tối đa) rồi để DxGrid tự phân trang/
+        // cuộn phía client. Không phân trang server: pager + bộ chọn pageSize của lưới lật
+        // trên đám dòng đã nạp sẵn nên xem được hết dữ liệu, không bị kẹt ở trang đầu.
+        var result = await MasterApi.GetListAsync(FormCode, _search, _activeOnly ? true : null,
+                                                  page: 1, pageSize: int.MaxValue);
         _items = result.Items;
         _total = result.TotalCount;
     }
@@ -182,7 +188,7 @@
         _showPopup = true;
     }
 
-    private void CloseForm() { _showPopup = false; _editId = null; }
+    private void CloseForm() { _showPopup = false; _editId = null; _formWidth = null; }
 
     private async Task OnFormSaved(object? _)
     {

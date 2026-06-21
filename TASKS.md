@@ -75,6 +75,39 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 59 — 2026-06-21: Lưới View xem hết dữ liệu + LookupBox popup teleport + cờ tắt cache + bề rộng modal/popup)
+
+> Ad-hoc theo phản hồi user khi test màn danh mục Xã/Phường (engine-driven View). Build BE + FE 0/0
+> (`src/backend/ICare247.slnx`, `src/frontend/ICare247_UI.slnx`).
+
+- [x] **VIEW-LOADALL** — Lưới View kẹt ở 1 trang server (chỉ 20/3321 dòng, không xem tiếp được): `ViewPage.ReloadDataAsync`
+      nạp **toàn bộ** (`pageSize: int.MaxValue`) → DxGrid tự phân trang/cuộn ảo client. Tương tự `MasterDataListPage`.
+      Backend đã có OFFSET/FETCH, không cap pageSize. Hướng đã chốt với user = **tải hết 1 lần** (hợp danh mục cỡ vừa;
+      bảng cực lớn về sau dùng server-side paging).
+- [x] **VIEW-VSCROLL-H** — Cuộn ảo cần lưới có chiều cao giới hạn: `.dv-dxgrid { height: calc(100vh - 220px); min-height:320px }`
+      (trước `overflow:visible` không set height → không virtualize).
+- [x] **LOOKUP-TELEPORT** — Popup LookupBox trong `DraggableModal` bị cắt (modal kéo bằng `transform` = containing-block +
+      `overflow:auto`). Fix: **teleport node popup ra `<body>`** + định vị `fixed` theo ô neo (`icare.teleportPopup`/
+      `restorePopup` trong index.html); `LookupBoxRenderer` teleport ở `OnAfterRenderAsync`, restore ở `HidePopupAsync`
+      TRƯỚC khi ẩn (Blazor remove đúng vị trí gốc, không vỡ diff). → xem [[project-draggablemodal-dropdown-clip]].
+- [x] **LOOKUP-DISPLAY** — FK LookupBox hiện id thô ("2") thay vì tên: sau `LoadDataAsync` resolve lại `_inputText =
+      GetSelectedDisplay()` (OnParametersSet chạy trước khi data về). Áp dụng mọi field LookupBox.
+- [x] **CACHE-TOGGLE** — Cờ `Cache:Enabled` (section appsettings, mặc định true; **Development=false**) bind `CacheSettings`,
+      chèn vào `HybridCacheService` (Get→miss/Set→no-op, phủ form/view/lookup/resource vì MetadataEngine dùng chung
+      ICacheService) + `NavigationCache` (menu). Log cảnh báo khi tắt. Đọc lúc khởi động → đổi phải restart BE.
+- [x] **MODAL-WIDTH** — Modal Thêm/Sửa thu hẹp theo số cột form (`MasterDataForm.OnWidthResolved` → ViewPage/
+      MasterDataListPage truyền `DraggableModal.Width`): 1 cột=480px (trước 720), 2=680, 3=900, ≥4=1080.
+- [x] **POPUP-WIDTH** — Popup combobox/lookup mặc định = **bề rộng control** (bỏ width cố định 600; teleport đặt
+      `minWidth = bề rộng ô`; tại chỗ dùng CSS `min-width:100%`).
+
+**Decisions Log (session 59):**
+- **DraggableModal kéo bằng `transform`** → mọi dropdown custom trong modal bị clip (kể cả `fixed`); chuẩn xử lý =
+  teleport ra body. DxComboBox/DevExpress tự render overlay cấp body nên miễn nhiễm. (memory mới: `project-draggablemodal-dropdown-clip`.)
+- **Lookup "rỗng/không chọn được" thực chất là popup bị cắt**, KHÔNG phải lỗi data/query — không cần đụng `Ui_Field_Lookup`/BE.
+- **Cache tắt theo môi trường, không theo build config**: Development (`dotnet run`/launchSettings) tự tắt; bản publish =
+  Production → cache bật. An toàn mặc định cho prod.
+- **Tải hết dữ liệu lưới (Cách B)** do user chọn — hợp danh mục cỡ vừa; cảnh báo bảng cực lớn nên chuyển server-side paging.
+
 ## ✅ Done (session 58 — 2026-06-20: NavMenu sidebar — thu nhỏ rail + bộ lọc i18n + icon sub-menu + đúng thứ tự cấu hình)
 
 > Ad-hoc theo phản hồi user trên sidebar shell (`MainLayout`/`NavMenu`). Build FE 0/0 (`src/frontend/ICare247.UI.slnx`).

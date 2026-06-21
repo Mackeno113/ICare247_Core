@@ -158,6 +158,49 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
+            },
+            // teleportPopup(anchor, popup) — đưa popup lookup ra <body> + định vị fixed dưới ô nhập.
+            // Cần vì DraggableModal kéo-thả bằng transform (tạo containing-block) + overflow:auto
+            // → mọi dropdown trong modal đều bị cắt, kể cả position:fixed. Lưu vị trí gốc để trả về.
+            teleportPopup: function (anchor, popup) {
+                if (!anchor || !popup) return;
+                if (!popup._icareHome) {
+                    popup._icareHome = { parent: popup.parentNode, next: popup.nextSibling };
+                }
+                document.body.appendChild(popup);
+                popup.style.position = 'fixed';
+                popup.style.margin   = '0';
+                popup.style.zIndex   = '3000';   // nổi trên modal
+                var place = function () {
+                    var r = anchor.getBoundingClientRect();
+                    // Mặc định bề rộng popup = bề rộng control (huỷ min-width:100% vốn = bề rộng body khi ở body).
+                    popup.style.minWidth = r.width + 'px';
+                    var w = popup.offsetWidth || r.width;
+                    var left = Math.min(r.left, window.innerWidth - w - 8);  // không tràn mép phải
+                    popup.style.left = Math.max(8, left) + 'px';
+                    popup.style.top  = (r.bottom + 2) + 'px';
+                };
+                place();
+                popup._icarePlace = place;
+                window.addEventListener('scroll', place, true);
+                window.addEventListener('resize', place);
+            },
+            // restorePopup(popup) — trả popup về đúng chỗ cũ trong DOM + gỡ listener.
+            // Gọi TRƯỚC khi ẩn (Blazor sẽ remove node ở vị trí gốc → không lỗi diff). Idempotent.
+            restorePopup: function (popup) {
+                if (!popup) return;
+                if (popup._icarePlace) {
+                    window.removeEventListener('scroll', popup._icarePlace, true);
+                    window.removeEventListener('resize', popup._icarePlace);
+                    popup._icarePlace = null;
+                }
+                var home = popup._icareHome;
+                if (home && home.parent) {
+                    home.parent.insertBefore(popup, home.next);
+                    popup._icareHome = null;
+                }
+                popup.style.position = popup.style.left = popup.style.top = '';
+                popup.style.margin = popup.style.minWidth = popup.style.zIndex = '';
             }
         };
     </script>

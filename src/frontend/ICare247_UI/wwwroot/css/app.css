@@ -326,7 +326,10 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .dv-rowmenu-ic { font-size: var(--fs-base); line-height: 1; }
 
 /* ── Polish lưới DataView (gần mockup Client Data) ────────────────────── */
-.dv-dxgrid { border-radius: 10px; overflow: visible; }
+/* Cuộn ảo (VirtualScroll) cần lưới có chiều cao giới hạn thì DevExpress mới
+   virtualize + hiện thanh cuộn trong lưới (header cột dính trên). Lấp đầy viewport:
+   trừ topbar + tiêu đề màn + footer (~220px); min-height giữ dùng được trên màn thấp. */
+.dv-dxgrid { border-radius: 10px; overflow: visible; height: calc(100vh - 220px); min-height: 320px; }
 .dv-dxgrid .dxbl-grid-header-content { font-weight: var(--fw-semibold); color: var(--gray-700); }
 .md-list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .md-list-footer { margin-top: 12px; }

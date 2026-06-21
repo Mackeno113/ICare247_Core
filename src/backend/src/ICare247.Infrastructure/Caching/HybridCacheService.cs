@@ -8,6 +8,7 @@ using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace ICare247.Infrastructure.Caching;
 
@@ -29,6 +30,9 @@ public sealed class HybridCacheService : ICacheService
     private readonly IDistributedCache? _redis;
     private readonly ILogger<HybridCacheService> _logger;
 
+    /// <summary>Cờ bật cache (Cache:Enabled). False = mọi Get trả miss, Set bỏ qua → luôn đọc DB.</summary>
+    private readonly bool _enabled;
+
     /// <summary>JSON options dùng chung — camelCase, ignore null.</summary>
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
@@ -39,16 +43,24 @@ public sealed class HybridCacheService : ICacheService
     public HybridCacheService(
         IMemoryCache memory,
         IDistributedCache? redis,
-        ILogger<HybridCacheService> logger)
+        ILogger<HybridCacheService> logger,
+        IOptions<CacheSettings> cacheOptions)
     {
         _memory = memory;
         _redis = redis;
         _logger = logger;
+        _enabled = cacheOptions.Value.Enabled;
+
+        if (!_enabled)
+            _logger.LogWarning("⚠ CACHE ĐANG TẮT (Cache:Enabled=false) — luôn đọc DB. Chỉ dùng cho DEV.");
     }
 
     /// <inheritdoc />
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
     {
+        // Cache tắt → coi như miss để caller luôn nạp lại từ DB (test cấu hình).
+        if (!_enabled) return null;
+
         // ── L1: MemoryCache ─────────────────────────────────────────────────
         if (_memory.TryGetValue(key, out T? cached) && cached is not null)
         {
@@ -87,6 +99,9 @@ public sealed class HybridCacheService : ICacheService
         TimeSpan? redisTtl = null,
         CancellationToken ct = default) where T : class
     {
+        // Cache tắt → không lưu gì (giữ trạng thái luôn miss).
+        if (!_enabled) return;
+
         // ── L1: MemoryCache ─────────────────────────────────────────────────
         _memory.Set(key, value, memoryTtl ?? DefaultMemoryTtl);
 

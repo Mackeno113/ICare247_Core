@@ -8,7 +8,9 @@
 using System.Collections.Concurrent;
 using ICare247.Application.Features.Navigation;
 using ICare247.Application.Interfaces;
+using ICare247.Infrastructure.Caching;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
 namespace ICare247.Infrastructure.Services;
@@ -19,13 +21,21 @@ public sealed class NavigationCache : INavigationCache
     private static readonly TimeSpan Ttl = TimeSpan.FromMinutes(10);
 
     private readonly IMemoryCache _cache;
+    private readonly bool _enabled;
     private readonly ConcurrentDictionary<int, CancellationTokenSource> _tenantTokens = new();
 
-    public NavigationCache(IMemoryCache cache) => _cache = cache;
+    public NavigationCache(IMemoryCache cache, IOptions<CacheSettings> cacheOptions)
+    {
+        _cache = cache;
+        _enabled = cacheOptions.Value.Enabled;
+    }
 
     /// <inheritdoc />
     public async Task<MeNavigationDto> GetOrLoadAsync(int tenantId, long userId, Func<Task<MeNavigationDto>> load)
     {
+        // Cache tắt (Cache:Enabled=false) → luôn nạp mới, không lưu (test menu).
+        if (!_enabled) return await load();
+
         var key = $"nav:{tenantId}:{userId}";
         if (_cache.TryGetValue(key, out MeNavigationDto? cached) && cached is not null)
             return cached;

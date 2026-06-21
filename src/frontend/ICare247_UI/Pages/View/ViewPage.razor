@@ -76,9 +76,10 @@
 @* ── Popup Thêm/Sửa ngay trên màn lưới — đóng/Lưu xong ở nguyên màn này ── *@
 @if (_showForm && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
 {
-    <DraggableModal Title="@FormTitle" OnClose="CloseForm">
+    <DraggableModal Title="@FormTitle" Width="@_formWidth" OnClose="CloseForm">
         <MasterDataForm FormCode="@(_view.EditFormCode!)" Id="_editId" ShowTitle="false"
-                        OnSaved="OnFormSaved" OnCancelled="CloseForm" />
+                        OnSaved="OnFormSaved" OnCancelled="CloseForm"
+                        OnWidthResolved="(w) => _formWidth = w" />
     </DraggableModal>
 }
 
@@ -127,6 +128,7 @@
     private bool    _showForm;
     private object? _editId;     // null = Thêm, có giá trị = Sửa
     private object? _deleteId;
+    private string? _formWidth;  // bề rộng modal Thêm/Sửa theo số cột form (MasterDataForm phát ra)
 
     // ── Chọn nhiều dòng (checkbox) + xóa hàng loạt ──
     private IReadOnlyList<object> _selected = [];
@@ -190,8 +192,10 @@
             return;
         }
 
-        var pageSize = _view.PageSize < 1 ? 50 : _view.PageSize;
-        var result = await ViewApi.GetDataAsync(ViewCode, search: null, page: 1, pageSize: pageSize);
+        // Tải TOÀN BỘ bản ghi 1 lần (pageSize tối đa) rồi để DxGrid tự phân trang/cuộn ảo phía
+        // client theo Page_Size cấu hình. Nếu chỉ lấy đúng Page_Size (vd 20) thì lưới chỉ có 1
+        // trang server trong bộ nhớ → không cuộn/sang trang xem hết được phần dữ liệu còn lại.
+        var result = await ViewApi.GetDataAsync(ViewCode, search: null, page: 1, pageSize: int.MaxValue);
         _items = result?.Items ?? [];
         _total = result?.TotalCount ?? 0;
     }
@@ -251,6 +255,7 @@
     {
         _showForm = false;
         _editId = null;
+        _formWidth = null;   // reset để lần mở sau tính lại theo form tương ứng
     }
 
     /// <summary>Lưu thành công → đóng popup + nạp lại dữ liệu lưới (ở nguyên màn này).</summary>

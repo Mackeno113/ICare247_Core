@@ -7,11 +7,12 @@
 
 @using System.Text.Json.Serialization
 @inject ILookupQueryService LookupQuerySvc
+@inject IJSRuntime JS
 @inherits LocalizedComponentBase
 
 <div class="lookupbox-wrapper">
     @* ── Search input trực tiếp trên control ── *@
-    <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")">
+    <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")" @ref="_editboxRef">
         <input type="text"
                class="lookupbox-search-input"
                placeholder="@Loc.L("common.lookup.choose", "-- Chọn --")"
@@ -33,7 +34,9 @@
     @* ── Dropdown list ── *@
     @if (_popupVisible)
     {
-        <div class="lookupbox-popup" style="width:@(State?.LookupConfig?.DropDownWidth ?? 400)px">
+        @* Không set width cố định → mặc định khớp bề rộng control (CSS min-width:100% khi tại chỗ;
+           JS đặt minWidth = bề rộng control khi teleport ra body). *@
+        <div class="lookupbox-popup" @ref="_popupRef">
             @if (_loading)
             {
                 <div class="popup-loading">⏳ @Loc.L("common.lookup.loadingData", "Đang tải dữ liệu...")</div>
@@ -105,6 +108,46 @@
     private object? _lastTriggerValue;
     private int     _highlightIndex = -1; // index dòng đang được highlight để chọn bằng Enter / phím mũi tên
     private bool    _showAddDialog;       // mở dialog "thêm mới" entity
+
+    private ElementReference _editboxRef;  // neo định vị popup khi teleport
+    private ElementReference _popupRef;     // node popup được đưa ra <body>
+    private bool             _teleported;   // popup đang nằm ở <body> hay chưa
+
+    /// <summary>
+    /// Sau render: nếu popup đang mở mà chưa teleport → đưa node ra &lt;body&gt; + định vị fixed dưới ô
+    /// nhập (thoát clip do modal kéo-thả dùng transform + overflow:auto).
+    /// Sự kiện theo sau: popup hiển thị đầy đủ ngoài phạm vi modal.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_popupVisible && !_teleported)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("icare.teleportPopup", _editboxRef, _popupRef);
+                _teleported = true;
+            }
+            catch { /* JS chưa sẵn / node chưa render → bỏ qua, popup vẫn hiện tại chỗ */ }
+        }
+    }
+
+    /// <summary>
+    /// Đóng popup: trả node về vị trí gốc trong DOM (TRƯỚC khi ẩn để Blazor remove đúng chỗ) rồi ẩn +
+    /// khôi phục display text. Idempotent — gọi nhiều lần không lỗi.
+    /// </summary>
+    private async Task HidePopupAsync()
+    {
+        if (_teleported)
+        {
+            try { await JS.InvokeVoidAsync("icare.restorePopup", _popupRef); }
+            catch { /* circuit/JS lỗi → bỏ qua */ }
+            _teleported = false;
+        }
+        _popupVisible   = false;
+        _searchText     = "";
+        _inputText      = GetSelectedDisplay();
+        _highlightIndex = -1;
+    }
 
     /// <summary>True khi field bật AllowAddNew + có AddFormCode hợp lệ + không readonly.</summary>
     private bool CanAddNew =>
@@ -205,6 +248,11 @@
             State.DynamicRows = [];
         }
         finally { _loading = false; }
+
+        // Có data → resolve TÊN hiển thị cho giá trị đang chọn (popup đóng) để ô khỏi hiện id thô
+        // (vd "2"). OnParametersSet chạy TRƯỚC khi data về nên không tự cập nhật được chỗ này.
+        if (!_popupVisible)
+            _inputText = GetSelectedDisplay();
     }
 
     // ── UI Interactions ────────────────────────────────────────────────────────
@@ -216,20 +264,17 @@
     private async Task TogglePopup()
     {
         if (State?.EffectiveReadOnly == true) return;
-        _popupVisible = !_popupVisible;
 
         if (_popupVisible)
         {
-            _searchText = "";
-            if (State?.DynamicRows.Count == 0 && !_loading)
-                await LoadDataAsync();
+            await HidePopupAsync();
+            return;
         }
-        else
-        {
-            // Đóng → khôi phục display text của giá trị đang chọn
-            _inputText  = GetSelectedDisplay();
-            _searchText = "";
-        }
+
+        _popupVisible = true;
+        _searchText   = "";
+        if (State?.DynamicRows.Count == 0 && !_loading)
+            await LoadDataAsync();
     }
 
     /// <summary>
@@ -251,32 +296,22 @@
     /// Khi input mất focus: đóng dropdown, khôi phục display text.
     /// Dùng onblur — SelectRow dùng onmousedown để chạy trước blur.
     /// </summary>
-    private void OnInputBlur()
+    private async Task OnInputBlur()
     {
-        // Delay nhỏ để SelectRow (onmousedown) kịp chạy trước khi đóng popup
-        _popupVisible = false;
-        _searchText   = "";
-        _inputText    = GetSelectedDisplay();
+        // SelectRow dùng onmousedown nên chạy trước blur; HidePopupAsync idempotent nếu đã đóng.
+        await HidePopupAsync();
     }
 
-    private void ClosePopup()
-    {
-        _popupVisible = false;
-        _searchText   = "";
-        _inputText    = GetSelectedDisplay();
-        _highlightIndex = -1;
-    }
+    private async Task ClosePopup() => await HidePopupAsync();
 
     /// <summary>
     /// Mở dialog thêm mới: đóng popup list, hiện modal LookupAddDialog.
     /// Sự kiện theo sau: _showAddDialog = true → render LookupAddDialog.
     /// </summary>
-    private void OpenAddDialog()
+    private async Task OpenAddDialog()
     {
-        _popupVisible   = false;
-        _searchText     = "";
-        _highlightIndex = -1;
-        _showAddDialog  = true;
+        await HidePopupAsync();   // trả popup về DOM gốc trước khi ẩn để mở dialog
+        _showAddDialog = true;
     }
 
     private void CloseAddDialog() => _showAddDialog = false;
@@ -311,10 +346,7 @@
 
         var val = GetVal(row);
         State.Value = val;
-        _inputText  = GetSelectedDisplay();
-        _popupVisible = false;
-        _searchText   = "";
-        _highlightIndex = -1;
+        await HidePopupAsync();   // trả popup về DOM gốc + ẩn; _inputText = display mới
 
         await OnChange.InvokeAsync((State.FieldCode, val));
         await OnBlur.InvokeAsync(State.FieldCode);
@@ -383,7 +415,7 @@
                 break;
 
             case "Escape":
-                ClosePopup();
+                await ClosePopup();
                 break;
         }
     }
