@@ -8,11 +8,13 @@ Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Đã chốt: Cách 2 (F1 trước → 
 giữ bản tenant khi xung đột · trigger provisioning+nút thủ công super admin · xóa=`Is_Active=0` tombstone.
 
 ### ⏳ VIỆC CÒN LẠI CỦA F1 (theo thứ tự)
-1. **Chạy `db/050`** trên Config DB (4 cờ + bảng log) → **E2E**: login `admin` → `POST /api/v1/admin/config-sync/preview`
-   rồi `POST .../config-sync` → kiểm `Sys_Config_Sync_Log`. (dev: master=tenant nên gần như no-op, chỉ set `Is_System`.)
+1. ✅ **E2E xác minh 2026-06-21** — db/050 đã chạy, login `admin` → preview + apply → ghi `Sys_Config_Sync_Log`
+   (#4 Status=Success, Updated 32/Skipped 9). Trong lúc E2E sửa 3 bug: JWT bypass SUPERADMIN (commit `9851c8a`),
+   thiếu cờ `Sys_Column` + transaction nhánh apply (commit `9abec54`).
 2. **Mở rộng descriptor** các bảng còn lại vào `ConfigSyncTables.Order` (Sys_Resource/Sys_Lookup/Ui_Tab/Ui_View*/Val_Rule).
 3. Hook **provisioning full-sync** khi tạo tenant mới · invalidate **ConfigCache** version-stamp (CC-4) ·
-   seed node `administration.config-sync` vào `HT_ChucNang`.
+   ✅ **db/057 (2026-06-21)** seed node `administration.config-sync` vào `HT_ChucNang` + grant SUPERADMIN
+   → màn hiện trên menu Quản trị (verify `/me/navigation` trả node sau khi flush cache).
 
 ✅ **UI web (session 53)** — màn "Đồng bộ cấu hình" `/m/administration/config-sync`: `ConfigSyncApiService` +
 `ConfigSyncModels` + `ConfigSyncPage.razor(.css)` (toolbar mỏng, nút "Xem trước" dry-run + CTA "Áp dụng từ master"
@@ -52,7 +54,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       `IConfigSyncService`, invalidate `INavigationCache`) + `AdminConfigSyncController` `POST /api/v1/admin/config-sync`
       (áp thật, `[RequirePermission(administration.config-sync, Sua)]`) + `/preview` (dry-run, `Xem`). SUPERADMIN bypass.
       Build BE 0/0. CÒN: hook **provisioning full-sync** (khi tạo tenant mới) · invalidate **ConfigCache** version-stamp
-      (chờ CC-4) · seed node `administration.config-sync` vào `HT_ChucNang` (để cấp quyền role khác — super admin chạy được luôn).
+      (chờ CC-4) · ✅ seed node `administration.config-sync` (db/057, 2026-06-21) — hiện trên menu + cấp quyền role khác.
 
 ### F2 — Engine-hóa màn Công ty (sau F1)
 - [x] **ORG-CFG-1** — `SchemaInspectorService.GetTableNamesAsync`: `TABLE_TYPE IN ('BASE TABLE','VIEW')` → liệt kê cả
