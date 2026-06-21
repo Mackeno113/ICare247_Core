@@ -214,7 +214,10 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.name", "Tên hiển thị *")</label>
-                <input class="mb-input" @bind="_ten" @bind:event="oninput"
+                @* @bind mặc định (onchange) — KHÔNG dùng oninput: mỗi keystroke với oninput re-render
+                   cả trang (DxTreeList + TreeSelectBox + combobox + lưới icon) gây lag. _navKey suy 1 lần
+                   lúc mở popup nên không cần cập nhật live theo tên gõ. *@
+                <input class="mb-input" @bind="_ten"
                        placeholder="@Loc.L("admin.menu.f.name.ph", "VD: Khách hàng")" />
 
                 @if (_editingId is not null)
@@ -278,7 +281,7 @@
                 </div>
                 @if (_overridePath)
                 {
-                    <input class="mb-input" @bind="_duongDan" @bind:event="oninput"
+                    <input class="mb-input" @bind="_duongDan"
                            placeholder="@Loc.L("admin.menu.f.route.ph", "VD: /m/organization")" />
                 }
 
