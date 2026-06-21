@@ -42,4 +42,23 @@ public interface ISchemaInspectorService
         string schemaName,
         string tableName,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy danh sách cột của result-set đầu tiên do một Stored Procedure trả về.
+    /// Dùng <c>sys.dm_exec_describe_first_result_set</c> — phân tích tĩnh, KHÔNG thực thi SP.
+    /// Chỉ hợp lệ với SP dạng "inline table" (luôn trả đúng 1 bảng dữ liệu).
+    /// </summary>
+    /// <param name="connectionString">Connection string tới Target DB.</param>
+    /// <param name="schemaName">Schema SQL (thường là "dbo").</param>
+    /// <param name="procName">Tên Stored Procedure (không có schema prefix).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// Danh sách ColumnSchemaDto (IsPrimaryKey/IsIdentity = false vì là cột dẫn xuất).
+    /// Trả list rỗng nếu SP không tồn tại hoặc không xác định được result-set.
+    /// </returns>
+    Task<IReadOnlyList<ColumnSchemaDto>> GetProcedureColumnsAsync(
+        string connectionString,
+        string schemaName,
+        string procName,
+        CancellationToken ct = default);
 }

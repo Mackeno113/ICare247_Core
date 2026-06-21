@@ -27,6 +27,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly IViewDataService? _viewData;
     private readonly IFormDataService? _formData;
     private readonly IFieldDataService? _fieldData;
+    private readonly ISchemaInspectorService? _schemaInspector;
     private readonly IDialogService? _dialogService;
     private readonly IAppConfigService? _appConfig;
     private readonly INavigationHistoryService? _history;
@@ -36,8 +37,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// <summary>Tạm ngưng rekey i18n khi đang nạp dữ liệu / reset editor (set key theo lô).</summary>
     private bool _suppressRekey;
 
-    /// <summary>Table_Id đã nạp danh sách cột (tránh nạp lại Sys_Column thừa).</summary>
-    private int _columnsLoadedForTableId = -1;
+    /// <summary>Khóa (SourceType|TableId|SourceObject) đã nạp danh sách cột — tránh nạp lại thừa.</summary>
+    private string _columnsLoadedKey = "";
 
     // ── Dropdown sources (literal — không i18n) ────────────────
     public IReadOnlyList<string> ViewTypeOptions { get; } = ["Grid", "TreeList", "Cards"];
@@ -63,7 +64,10 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public ObservableCollection<TableLookupRecord> Tables { get; } = [];
     public ObservableCollection<FormRecord> Forms { get; } = [];
 
-    /// <summary>Danh sách cột Sys_Column của bảng nguồn — nạp lười khi mở column picker.</summary>
+    /// <summary>
+    /// Danh sách cột của nguồn — nạp lười khi mở column picker.
+    /// Table → đọc Sys_Column (Config DB); View/SP → đọc trực tiếp Target DB (INFORMATION_SCHEMA / describe_first_result_set).
+    /// </summary>
     public ObservableCollection<ColumnInfoDto> AvailableColumns { get; } = [];
 
     // ── Master list ────────────────────────────────────────────
@@ -393,7 +397,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     /// </summary>
     /// <param name="viewData">Service truy vấn Ui_View.</param>
     /// <param name="formData">Service tra cứu Sys_Table + Ui_Form cho dropdown.</param>
-    /// <param name="fieldData">Service tra cứu cột Sys_Column cho column picker.</param>
+    /// <param name="fieldData">Service tra cứu cột Sys_Column cho column picker (nguồn Table).</param>
+    /// <param name="schemaInspector">Đọc cấu trúc cột trực tiếp từ Target DB (nguồn View/SP).</param>
     /// <param name="dialogService">Mở popup i18n + column picker.</param>
     /// <param name="appConfig">Cấu hình DB + tenant.</param>
     /// <param name="history">Lịch sử điều hướng (breadcrumb).</param>
@@ -402,6 +407,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         IViewDataService? viewData = null,
         IFormDataService? formData = null,
         IFieldDataService? fieldData = null,
+        ISchemaInspectorService? schemaInspector = null,
         IDialogService? dialogService = null,
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
@@ -410,6 +416,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         _viewData = viewData;
         _formData = formData;
         _fieldData = fieldData;
+        _schemaInspector = schemaInspector;
         _dialogService = dialogService;
         _appConfig = appConfig;
         _history = history;
@@ -1088,25 +1095,104 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         OpenI18nDialog(act.LabelKey!, $"Nhãn action {act.ActionCode}");
     }
 
-    /// <summary>Nạp danh sách cột Sys_Column của bảng nguồn (1 lần / bảng).</summary>
+    /// <summary>
+    /// Nạp danh sách cột của nguồn (1 lần / khóa nguồn). Rẽ nhánh theo Source_Type:
+    /// <list type="bullet">
+    /// <item>Table → đọc Sys_Column trong Config DB (cột đã sync), Column_Id thật.</item>
+    /// <item>View/SP → đọc cấu trúc trực tiếp từ Target DB (View qua INFORMATION_SCHEMA,
+    ///       SP qua describe_first_result_set); Column_Id = 0 ⇒ lưu NULL (unbound).</item>
+    /// </list>
+    /// Ném <see cref="InvalidOperationException"/> khi nguồn View/SP mà chưa cấu hình Target DB
+    /// hoặc đối tượng không trả về cột nào.
+    /// </summary>
     private async Task EnsureColumnsLoadedAsync()
     {
-        if (_fieldData is null || EditTable is null) return;
-        if (_columnsLoadedForTableId == EditTable.TableId && AvailableColumns.Count > 0) return;
+        if (EditTable is null) return;
 
-        var cols = await _fieldData.GetColumnsByTableAsync(EditTable.TableId);
+        var key = $"{EditSourceType}|{EditTable.TableId}|{EditSourceObject}";
+        if (_columnsLoadedKey == key && AvailableColumns.Count > 0) return;
+
+        var isDbObject = string.Equals(EditSourceType, "View", StringComparison.OrdinalIgnoreCase)
+                      || string.Equals(EditSourceType, "Sp", StringComparison.OrdinalIgnoreCase);
+
         AvailableColumns.Clear();
-        foreach (var c in cols)
-            AvailableColumns.Add(new ColumnInfoDto
-            {
-                ColumnId = c.ColumnId,
-                ColumnCode = c.ColumnCode,
-                DataType = c.DataType,
-                NetType = c.NetType,
-                MaxLength = c.MaxLength,
-                IsNullable = c.IsNullable
-            });
-        _columnsLoadedForTableId = EditTable.TableId;
+
+        if (isDbObject)
+        {
+            // ── View/SP: cấu trúc KHÔNG nằm trong Sys_Column → đọc thẳng Target DB ──
+            if (_schemaInspector is null || _appConfig is null) return;
+            if (!_appConfig.IsTargetConfigured
+             || string.IsNullOrWhiteSpace(_appConfig.TargetConnectionString))
+                throw new InvalidOperationException(
+                    "Chưa cấu hình Target DB. Vào Settings → Target Database để đọc cột của View/SP.");
+
+            var (schema, name) = ResolveSourceObject();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+            var isSp = string.Equals(EditSourceType, "Sp", StringComparison.OrdinalIgnoreCase);
+            var cols = isSp
+                ? await _schemaInspector.GetProcedureColumnsAsync(
+                    _appConfig.TargetConnectionString, schema, name, cts.Token)
+                : await _schemaInspector.GetColumnsAsync(
+                    _appConfig.TargetConnectionString, schema, name, cts.Token);
+
+            if (cols.Count == 0)
+                throw new InvalidOperationException(
+                    $"Không đọc được cột của {EditSourceType} '{schema}.{name}' từ Target DB " +
+                    "(không tồn tại hoặc không xác định được result-set).");
+
+            foreach (var c in cols)
+                AvailableColumns.Add(new ColumnInfoDto
+                {
+                    ColumnId = 0,               // View/SP không có Sys_Column → Column_Id = NULL khi lưu
+                    ColumnCode = c.ColumnName,
+                    DataType = c.DataType,
+                    NetType = c.NetType,
+                    MaxLength = c.MaxLength,
+                    IsNullable = c.IsNullable
+                });
+        }
+        else
+        {
+            // ── Table: cột lấy từ Sys_Column (Config DB) như cũ ──
+            if (_fieldData is null) return;
+
+            var cols = await _fieldData.GetColumnsByTableAsync(EditTable.TableId);
+            foreach (var c in cols)
+                AvailableColumns.Add(new ColumnInfoDto
+                {
+                    ColumnId = c.ColumnId,
+                    ColumnCode = c.ColumnCode,
+                    DataType = c.DataType,
+                    NetType = c.NetType,
+                    MaxLength = c.MaxLength,
+                    IsNullable = c.IsNullable
+                });
+        }
+
+        _columnsLoadedKey = key;
+    }
+
+    /// <summary>
+    /// Xác định (schema, tên đối tượng) để đọc cột cho nguồn View/SP.
+    /// Ưu tiên Source_Object (nếu nhập, hỗ trợ dạng "schema.object"); nếu trống dùng Table_Code.
+    /// Schema mặc định lấy theo Sys_Table (fallback "dbo").
+    /// </summary>
+    /// <returns>Cặp (schema, tên đối tượng) đã bỏ ngoặc vuông.</returns>
+    private (string Schema, string Name) ResolveSourceObject()
+    {
+        var raw = string.IsNullOrWhiteSpace(EditSourceObject)
+            ? EditTable!.TableCode
+            : EditSourceObject.Trim();
+        var schema = string.IsNullOrWhiteSpace(EditTable!.SchemaName) ? "dbo" : EditTable.SchemaName.Trim();
+
+        var dot = raw.IndexOf('.');
+        if (dot > 0)
+        {
+            schema = raw[..dot].Trim('[', ']', ' ');
+            raw = raw[(dot + 1)..];
+        }
+        return (schema, raw.Trim('[', ']', ' '));
     }
 
     /// <summary>
@@ -1153,7 +1239,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
                 {
                     OrderNo = EditColumns.Count,
                     FieldName = col.ColumnCode,
-                    ColumnId = col.ColumnId
+                    // View/SP không có Sys_Column (ColumnId=0) → lưu NULL tránh vi phạm FK_Ui_View_Column_Column
+                    ColumnId = col.ColumnId > 0 ? col.ColumnId : (int?)null
                 };
                 EditColumns.Add(row);
                 last = row;

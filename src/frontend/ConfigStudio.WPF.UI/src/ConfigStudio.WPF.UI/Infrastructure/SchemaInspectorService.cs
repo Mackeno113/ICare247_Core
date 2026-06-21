@@ -121,6 +121,86 @@ public sealed class SchemaInspectorService : ISchemaInspectorService
         return result.AsReadOnly();
     }
 
+    // ── GetProcedureColumnsAsync ──────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ColumnSchemaDto>> GetProcedureColumnsAsync(
+        string connectionString,
+        string schemaName,
+        string procName,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)
+         || string.IsNullOrWhiteSpace(procName))
+            return [];
+
+        await using var conn = new SqlConnection(connectionString);
+
+        // ── Phân tích result-set đầu tiên của SP (không thực thi) ──
+        // sys.dm_exec_describe_first_result_set(@tsql, @params, @browse) — @browse=0.
+        // system_type_name dạng "nvarchar(50)" / "decimal(18,2)" / "int" → parse base + length.
+        const string sql = """
+            SELECT
+                r.column_ordinal   AS OrdinalPosition,
+                r.name             AS ColumnName,
+                r.system_type_name AS SystemTypeName,
+                r.is_nullable      AS IsNullable
+            FROM sys.dm_exec_describe_first_result_set(@Tsql, NULL, 0) AS r
+            WHERE  r.is_hidden = 0
+              AND  r.name IS NOT NULL
+              AND  r.name <> ''
+            ORDER BY r.column_ordinal
+            """;
+
+        var schema = string.IsNullOrWhiteSpace(schemaName) ? "dbo" : schemaName;
+        var tsql = $"EXEC [{schema}].[{procName}]";
+
+        var rows = await conn.QueryAsync<RawProcColumnRow>(
+            new CommandDefinition(sql, new { Tsql = tsql }, cancellationToken: ct));
+
+        var result = rows.Select(r =>
+        {
+            var (baseType, maxLength) = ParseSystemTypeName(r.SystemTypeName);
+            return new ColumnSchemaDto
+            {
+                ColumnName        = r.ColumnName,
+                DataType          = baseType,
+                NetType           = DataTypeMapper.ToNetType(baseType),
+                DefaultEditorType = DataTypeMapper.ToEditorType(baseType),
+                IsNullable        = r.IsNullable,
+                IsIdentity        = false,   // cột dẫn xuất từ SP — không có identity/PK
+                IsPrimaryKey      = false,
+                OrdinalPosition   = r.OrdinalPosition,
+                MaxLength         = maxLength,
+            };
+        }).ToList();
+
+        return result.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Tách "nvarchar(50)" → ("nvarchar", 50); "decimal(18,2)" → ("decimal", null);
+    /// "nvarchar(max)" → ("nvarchar", null); "int" → ("int", null).
+    /// </summary>
+    /// <param name="systemTypeName">Giá trị system_type_name từ dm_exec_describe_first_result_set.</param>
+    /// <returns>Cặp (kiểu cơ sở, độ dài tối đa nếu là chuỗi 1 tham số).</returns>
+    private static (string BaseType, int? MaxLength) ParseSystemTypeName(string? systemTypeName)
+    {
+        if (string.IsNullOrWhiteSpace(systemTypeName))
+            return ("", null);
+
+        var open = systemTypeName.IndexOf('(');
+        if (open < 0) return (systemTypeName.Trim(), null);
+
+        var baseType = systemTypeName[..open].Trim();
+        var close = systemTypeName.IndexOf(')', open);
+        if (close <= open) return (baseType, null);
+
+        // Chỉ lấy MaxLength khi tham số là 1 số nguyên (char types); bỏ qua "max" và "p,s".
+        var inner = systemTypeName[(open + 1)..close].Trim();
+        return int.TryParse(inner, out var len) ? (baseType, len) : (baseType, null);
+    }
+
     // ── Internal raw record — chỉ dùng để Dapper map ─────────
 
     /// <summary>
@@ -138,5 +218,16 @@ public sealed class SchemaInspectorService : ISchemaInspectorService
         public bool    IsNullable       { get; init; }
         public bool    IsIdentity       { get; init; }
         public bool    IsPrimaryKey     { get; init; }
+    }
+
+    /// <summary>
+    /// POCO nội bộ — map từ result của sys.dm_exec_describe_first_result_set.
+    /// </summary>
+    private sealed class RawProcColumnRow
+    {
+        public int    OrdinalPosition { get; init; }
+        public string ColumnName      { get; init; } = "";
+        public string SystemTypeName  { get; init; } = "";
+        public bool   IsNullable      { get; init; }
     }
 }
