@@ -2,7 +2,7 @@
 
 ## 🔴 Đang làm (In Progress)
 
-**F1 — Đồng bộ config master→tenant: CFGSYNC-0→3 ĐÃ CODE XONG (session 53, build BE 0/0). ⏳ CÒN: chạy `db/050` + E2E.**
+**F1 — Đồng bộ config master→tenant: CFGSYNC-0→3 ĐÃ CODE XONG (session 53, build BE 0/0). `db/050` ✅ ĐÃ CHẠY 2026-06-21. ⏳ CÒN: E2E.**
 Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Đã chốt: Cách 2 (F1 trước → F2 sau), engine-driven (ADR-024), 1 DB/tenant (ADR-025).
 5 quyết định mở DUYỆT 2026-06-15 (toàn bộ khuyến nghị): master=Config DB canonical · bảo vệ **row-level** (`Is_Customized`) ·
 giữ bản tenant khi xung đột · trigger provisioning+nút thủ công super admin · xóa=`Is_Active=0` tombstone.
@@ -41,12 +41,12 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       (master=Config DB canonical · row-level `DaTuyBien` · giữ bản tenant · provisioning+nút thủ công · `Is_Active=0`).
 - [x] **CFGSYNC-1** — `db/050_alter_config_sync_flags.sql`: thêm cờ **`Is_System`+`Is_Customized`** (+`Synced_At`+`Source_Ver`,
       tên tiếng Anh cho nhất quán config DB) vào 11 bảng `Sys_Table`/`Sys_Resource`/`Sys_Lookup`/`Ui_Form`/`Ui_Tab`/
-      `Ui_Section`/`Ui_Field`/`Ui_View*`/`Val_Rule` + bảng log `Sys_Config_Sync_Log`. Idempotent. ⏳ **CẦN CHẠY** trên Config DB.
+      `Ui_Section`/`Ui_Field`/`Ui_View*`/`Val_Rule` + bảng log `Sys_Config_Sync_Log`. Idempotent. ✅ **ĐÃ CHẠY 2026-06-21** (Config DB; 11 bảng + log).
 - [~] **CFGSYNC-2** — `IConfigSyncService` (Application) + `ConfigSyncService` (Infrastructure): engine **descriptor-driven**
       UPSERT theo MÃ + re-link FK theo mã, đúng thứ tự phụ thuộc, một chiều, transaction/tenant, dry-run, tombstone
       `Is_Active=0`, giữ bản `Is_Customized`. Ghi `Sys_Config_Sync_Log`. Master = `ConnectionStrings:Config`. Build BE 0/0.
       **VERTICAL SLICE 5 bảng** (`Sys_Table→Sys_Column→Ui_Form→Ui_Section→Ui_Field`) — `ConfigSyncTables.Order`.
-      ⏳ CHƯA verify chạy thật (cần chạy db/050 + trigger). **Mở rộng bảng còn lại** (Sys_Resource/Sys_Lookup/Ui_Tab/
+      `db/050` ✅ đã chạy 2026-06-21; ⏳ CHƯA verify E2E (cần trigger preview/apply). **Mở rộng bảng còn lại** (Sys_Resource/Sys_Lookup/Ui_Tab/
       Ui_View*/Val_Rule) = nối descriptor vào `ConfigSyncTables` theo cùng khuôn — đợt sau.
 - [~] **CFGSYNC-3** — Action super admin "Cập nhật cấu hình từ master": `SyncConfigCommand`+Handler (gọi
       `IConfigSyncService`, invalidate `INavigationCache`) + `AdminConfigSyncController` `POST /api/v1/admin/config-sync`
@@ -58,7 +58,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **ORG-CFG-1** — `SchemaInspectorService.GetTableNamesAsync`: `TABLE_TYPE IN ('BASE TABLE','VIEW')` → liệt kê cả
       VIEW để design trên `vw_TC_CongTy`. Build WPF 0/0.
 - [x] **ORG-CFG-2** — `db/051_create_vw_tc_congty.sql` (Data DB): `CREATE OR ALTER VIEW vw_TC_CongTy` JOIN cấp/phường-xã/
-      tỉnh/ngân hàng/cha (FK id + tên), lọc IsDeleted=0, expose Id+CongTy_Cha_Id cho TreeList. ⏳ **CẦN CHẠY** trên Data DB.
+      tỉnh/ngân hàng/cha (FK id + tên), lọc IsDeleted=0, expose Id+CongTy_Cha_Id cho TreeList. ✅ **ĐÃ CHẠY 2026-06-21** (Data DB).
 - [ ] **ORG-CFG-3** — ⏳ **THAO TÁC TAY trong ConfigStudio** (no-code, không SQL seed): đăng ký `vw_TC_CongTy`+`TC_CongTy`
       → `Ui_Form` Popup (TC_CongTy, lookup CapCongTy/PhuongXa/NganHang/Cha, i18n) + `Ui_View` TreeList **View_Code=`Tree_TC_CongTy`**
       (Key=Id, Parent=CongTy_Cha_Id, Edit_Form=form trên) → chạy config-sync. Hướng dẫn ở AI_HANDOFF. Tham chiếu blueprint Công ty.
@@ -69,7 +69,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 > 7 danh mục db/037, module "Danh mục" (nhóm Hệ thống). Thứ tự config theo phụ thuộc:
 > Quốc gia → Tỉnh/TP → Phường/Xã (cascade); ĐVT/Ngân hàng/Cấp công ty/Cấp phòng ban độc lập.
 - [x] **CAT-CFG-1 (code)** — `db/052_create_vw_danhmuc.sql`: `vw_DM_TinhThanhPho` (+TenQuocGia) + `vw_DM_PhuongXa`
-      (+TenTinhThanhPho). 5 danh mục phẳng dùng base table. ⏳ **CẦN CHẠY** trên Data DB. + AppNav module `catalog`
+      (+TenTinhThanhPho). 5 danh mục phẳng dùng base table. ✅ **ĐÃ CHẠY 2026-06-21** (Data DB). + AppNav module `catalog`
       (7 NavScreen Route `/view/Grid_*`). Build FE 0/0.
 - [ ] **CAT-CFG-2 (cấu hình tay)** — ConfigStudio: mỗi danh mục → Sys_Table (base/vw) + `Ui_Form` Popup + `Ui_View`
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
@@ -179,7 +179,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - **Khóa i18n menu = ASCII** (NavKeys.Slug bỏ dấu/đ→d): tránh unicode tiếng Việt trong key; NavMenu & Menu Builder
   cùng đi qua `NavKeys.*` để khóa hiển thị = khóa tra cứu (nếu lệch thì dịch không ăn).
 
-> ⏳ Cần vận hành: chạy **`db/055`** (HT_PhanHe) trên Data DB tenant · rebuild + restart API · hard-refresh WASM.
+> `db/055` (HT_PhanHe) ✅ ĐÃ CHẠY 2026-06-21 (Data DB). ⏳ Cần vận hành: rebuild + restart API · hard-refresh WASM.
 > Tùy chọn: seed `Sys_Language` thêm ngôn ngữ · seed node menu `administration.cache`.
 
 ---
@@ -193,7 +193,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       `MenuAdminRepository` (`IDataDbConnectionFactory`) + DI. Sau ghi → `INavigationCache.InvalidateTenant`.
       Web: `MenuBuilderPage.razor` (DxTreeList + form) + `MenuAdminApiService` + DI. `db/054` seed node
       `administration.menu` + grant SUPERADMIN. CRUD đầy đủ; chặn xóa node hệ thống/còn con; chống vòng lặp cha-con.
-      Build BE 0/0, FE 0/0. ⏳ chạy `db/054` + E2E (login admin). (ADR-026)
+      Build BE 0/0, FE 0/0. `db/054` ✅ ĐÃ CHẠY 2026-06-21. ⏳ E2E (login admin). (ADR-026)
 - [x] **WPF-GRID-LAYOUT** — Mọi `dxg:GridControl` trong ConfigStudio: cho **kéo chỉnh độ rộng cột** + **tự lưu/phục
       hồi layout ra file local** (`%LOCALAPPDATA%\ICare247\ConfigStudio\GridLayouts\*.xml`, KHÔNG vào DB). Gắn 1 lần
       qua implicit `TableView` style (`Themes/Controls.xaml`): `AutoWidth=False` + `AllowResizing=True` +
@@ -218,7 +218,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **VALIDATION-TOKEN** — Thông báo `required` + `unique` hỗ trợ token **`{0}`=giá trị nhập · `{1}`=nhãn field**
       (thay ở CẢ message per-field lẫn template): `ResourceResolver.ResolveRequired/ResolveUnique` (+helper `ApplyTokens`),
       `SaveMasterDataCommandHandler`/`InsertLookupCommandHandler` (block unique). `db/053` chuẩn hóa template
-      `sys.val.Unique/Required` ({1}=nhãn). Build BE 0/0. ⏳ chạy db/053 (Config DB).
+      `sys.val.Unique/Required` ({1}=nhãn). Build BE 0/0. `db/053` ✅ ĐÃ CHẠY 2026-06-21 (Config DB).
 - [x] **DOC-GUIDE** — `docs/guide/cau-hinh-man-danh-muc.md`: hướng dẫn cấu hình màn engine-driven (ví dụ Cấp công ty)
       + biến thể danh mục phẳng/FK/cây + quy ước Form_Code/View_Code.
 
