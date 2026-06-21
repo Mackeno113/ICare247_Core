@@ -338,3 +338,51 @@
 - **Files:** `MenuAdminController` · `Features/Admin/Menu/*` · `MenuAdminRepository` · `MenuBuilderPage.razor` +
   `MenuAdminApiService` · `db/054`. Guide: `docs/guide/cau-hinh-menu.md`.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-023 (menu/authz), phân tích 2-factory (đọc Config vs ghi Data).
+
+## ADR-027: Cơ chế sắp xếp cây cha-con dùng chung — `ThuTu` (input) + `ThuTuCay`/`DuongDanCay` (dẫn xuất) (2026-06-21)
+- **Context:** Mọi cây tự tham chiếu trong nền tảng (`TC_CongTy`, `TC_PhongBan`, `HT_ChucNang`, + cây generic qua
+  `Ui_View.Parent_Field`) cần thứ tự hiển thị nhất quán: gốc theo thứ tự, con nằm ngay dưới cha, đánh số liên tục
+  trên→dưới để show UI + truy vấn nhanh. Tham khảo SP `PhongBan` (recursive CTE → chuỗi đường dẫn → renumber).
+- **Decision — 2 tầng tách bạch:**
+  - **Tầng 1 — `ThuTu` (INT, input người dùng):** thứ tự **trong cùng cha/cùng cấp**, người dùng tự đặt.
+    - ▲▼ = **swap `ThuTu`** với anh em liền kề (2 dòng).
+    - Kéo-thả = đổi `Cha_Id` (nếu sang cha khác) + đánh lại `ThuTu` **dày đặc 1..n** cho nhóm anh em đích;
+      **chặn vòng lặp** (không thả node vào con-cháu của chính nó). KHÔNG dùng gap/sparse hay LexoRank (quá mức cho quy mô này).
+  - **Tầng 2 — cột DẪN XUẤT, tính lại tự động NGAY SAU KHI GHI (recompute-on-write):**
+    - **`DuongDanCay`** NVARCHAR — chuỗi `001.002.003`, **3 chữ số/bậc** (max 999 node/cấp), nối `.`;
+      mỗi bậc = `ROW_NUMBER() PARTITION BY Cha_Id ORDER BY ThuTu, Id`. Sort chuỗi = duyệt cây cha→con, trên→dưới.
+    - **`ThuTuCay`** INT — `ROW_NUMBER() OVER (ORDER BY DuongDanCay)` → **liên tục 1..N cả bảng**.
+  - **Hiện thực = 1 stored proc GENERIC** (tham số: bảng, cột Key/Parent/Order, + cột Scope tùy chọn để xếp gốc),
+    do **write-path (repository C#) gọi sau khi ghi** — logic CTE nằm ở SQL, KHÔNG lặp proc per-table.
+- **Quy ước chuẩn ICare247:**
+  - **Gốc chính = `Cha_Id IS NULL` HOẶC `Cha_Id = 0`** (hỗ trợ cả 2 quy ước).
+  - Luôn lọc `IsDeleted = 0` (và `KichHoat`/`TrangThai` nếu cây đó có).
+  - **Tiebreaker `Id`** trong `ORDER BY ThuTu, Id` — `ThuTu` có thể trùng → tránh thứ tự bất định.
+  - **`TC_PhongBan`:** cây = toàn bộ cấu trúc công ty (công ty đóng vai gốc → tổ → bộ phận) → đánh số **liên tục cả
+    bảng** là đúng; xếp gốc theo **công ty trước, rồi `ThuTu`** để mỗi công ty nằm liền khối (công ty 1 → công ty 2 → …).
+- **Áp dụng:** `TC_CongTy`, `TC_PhongBan`, `HT_ChucNang` (+ cây generic). Triển khai khi code: (1) migration thêm
+  `ThuTuCay`/`DuongDanCay` + index; (2) proc generic; (3) nối write-path (▲▼ / kéo-thả).
+- **Tài liệu:** `docs/spec/17_TREE_ORDERING_SPEC.md`.
+- **Liên quan:** ADR-023 (cây menu HT_ChucNang), session 58 (sidebar order theo `ThuTu`), nav repo (tiebreaker `Id`).
+
+## ADR-028: Đọc cột cho `Ui_View` theo Source_Type — Table từ Sys_Column, View/SP từ Target DB (2026-06-21)
+- **Context:** Màn "Quản lý View" (ConfigStudio WPF), tab Cột: khi `Source_Type=View` (vd `vw_DM_PhuongXa`,
+  Table_Id=5) column picker vẫn query `SELECT … FROM dbo.Sys_Column WHERE Table_Id=@TableId` → **rỗng**, vì
+  `Sys_Column` chỉ lưu cột của **BASE TABLE** (do sync/seed). View/SP không bao giờ ghi vào đó. Nhưng View/SP là
+  đối tượng thật trong DB (đã có Table_Code) → đọc cấu trúc trực tiếp được — đó mới đúng luồng.
+- **Decision — rẽ nhánh theo `Source_Type` khi nạp cột cho `Ui_View`:**
+  - **`Table`** → giữ nguyên: đọc `Sys_Column` (Config DB), `Column_Id` thật.
+  - **`View`/`Sp`** → đọc cấu trúc **trực tiếp từ Target DB** (`IAppConfigService.TargetConnectionString`):
+    - View dùng `SchemaInspectorService.GetColumnsAsync` (INFORMATION_SCHEMA.COLUMNS — liệt kê cột View y như table).
+    - SP dùng method mới `GetProcedureColumnsAsync` qua `sys.dm_exec_describe_first_result_set` (phân tích tĩnh,
+      **không thực thi** SP; chỉ hợp SP **inline-table** = luôn trả đúng 1 result-set, theo chốt của user).
+    - Cột View/SP → `Ui_View_Column.Column_Id = NULL` (cột vốn nullable = "unbound/computed"); chỉ giữ `Field_Name`.
+      Trong VM map `ColumnId 0 → null` để tránh vi phạm `FK_Ui_View_Column_Column`.
+  - **Chưa cấu hình Target DB → báo lỗi rõ ràng, KHÔNG fallback** sang Sys_Column (tránh trả rỗng gây hiểu nhầm).
+  - Tên đối tượng: ưu tiên `Source_Object` (hỗ trợ `schema.object`), trống → dùng `Table_Code`; schema fallback `dbo`.
+    Cache theo khóa `SourceType|TableId|SourceObject`.
+- **Files:** `ISchemaInspectorService`/`SchemaInspectorService` (thêm `GetProcedureColumnsAsync` + parse
+  `system_type_name`); `ViewManagerViewModel` (`EnsureColumnsLoadedAsync` rẽ nhánh + `ResolveSourceObject`).
+  `Api`/`Sql` để sau (api: nguồn cột chưa rõ).
+- **Liên quan:** ADR-015 (Ui_View), ADR-016 (Ui_View_Filter Source_Type Sp/Sql), ADR-007 (ConfigStudio Direct DB).
+- **Status:** ✅ code xong, compile xanh (build chỉ fail copy DLL do app đang chạy — cần đóng app build lại để chạy thử).

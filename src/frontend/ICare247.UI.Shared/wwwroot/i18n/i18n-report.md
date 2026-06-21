@@ -1,6 +1,6 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-20 22:55_
+_Sinh tự động: 2026-06-21 12:36_
 
 ## 1. Chuỗi tiếng Việt hardcode (20) — cần bọc L()
 
