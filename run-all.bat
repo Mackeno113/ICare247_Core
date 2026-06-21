@@ -26,23 +26,23 @@ echo   Moi project se mo trong cua so rieng.
 echo.
 
 :: ── Bước 1: Backend API ────────────────────────────────────
-echo  >> Khoi dong Backend API...
+echo  ^>^> Khoi dong Backend API...
 start "ICare247 - Backend API" cmd /k "cd /d %~dp0src\backend && echo. && echo  https://localhost:7130 && echo. && dotnet run --project src\ICare247.Api\ICare247.Api.csproj --launch-profile https"
 
 :: Đợi 5 giây để API khởi động trước
-echo  >> Doi 5 giay de API san sang...
+echo  ^>^> Doi 5 giay de API san sang...
 timeout /t 5 /nobreak >nul
 
 :: ── Bước 2: Blazor RuntimeCheck ────────────────────────────
-echo  >> Khoi dong Blazor RuntimeCheck...
+echo  ^>^> Khoi dong Blazor RuntimeCheck...
 start "ICare247 - Blazor" cmd /k "cd /d %~dp0src\frontend && echo. && echo  https://localhost:7017 && echo. && dotnet run --project ICare247.Blazor.RuntimeCheck\ICare247.Blazor.RuntimeCheck.csproj --launch-profile https"
 
 :: ── Bước 3: ConfigStudio WPF ───────────────────────────────
-echo  >> Khoi dong ConfigStudio WPF...
+echo  ^>^> Khoi dong ConfigStudio WPF...
 start "ICare247 - ConfigStudio WPF" cmd /k "cd /d %~dp0src\frontend\ConfigStudio.WPF.UI && echo. && echo  ConfigStudio WPF && echo. && dotnet run --project src\ConfigStudio.WPF.UI\ConfigStudio.WPF.UI.csproj"
 
 echo.
-echo  >> Tat ca project da duoc khoi dong!
-echo  >> Dong cua so nay hoac nhan phim bat ky.
+echo  ^>^> Tat ca project da duoc khoi dong!
+echo  ^>^> Dong cua so nay hoac nhan phim bat ky.
 echo.
 pause
