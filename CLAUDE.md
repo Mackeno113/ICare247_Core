@@ -50,6 +50,7 @@
 | `.claude-rules/api-response.md` | Response format, ProblemDetails, RFC 7807 |
 | `.claude-rules/comment-rules.md` | File header, class/method/logic block comments |
 | `.claude-rules/wpf-configstudio.md` | Prism 9, DevExpress WPF, MVVM, navigation |
+| `.claude-rules/blazor-ui.md` | Blazor WASM: tránh `oninput` gây re-render lag, debounce, ghim header lưới |
 
 ## Specification → đọc khi cần tra cứu
 
