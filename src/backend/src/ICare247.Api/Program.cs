@@ -102,6 +102,12 @@ try
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opts =>
         {
+            // Giữ NGUYÊN tên claim ngắn ("sub"/"role"/"unique_name"…) — KHÔNG remap sang URI dài
+            // của ClaimTypes. Token phát ra dùng tên ngắn (JwtTokenService); filter phân quyền
+            // bypass SUPERADMIN qua claim "role". Nếu để mặc định (true), "role" bị map sang
+            // ClaimTypes.Role → FindAll("role") rỗng → bypass hỏng cho mọi endpoint admin-only.
+            opts.MapInboundClaims = false;
+
             opts.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
@@ -112,7 +118,10 @@ try
                 ValidAudience = jwtSection["Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(secretKey!)),
-                ClockSkew = TimeSpan.FromMinutes(2)
+                ClockSkew = TimeSpan.FromMinutes(2),
+                // Claim tên ngắn — để [Authorize(Roles)]/IsInRole + User.Identity.Name khớp đúng.
+                NameClaimType = "unique_name",
+                RoleClaimType = "role"
             };
 
             // Development: cho phép anonymous (không bắt buộc token)
