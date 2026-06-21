@@ -252,36 +252,15 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
-                @* Dropdown chứa cây node (DxTreeList) — chọn cha trực quan theo phân cấp ── *@
-                <DxDropDownBox Value="_parentNode" ValueChanged="@((object? v) => OnParentValueChanged(v))"
-                               QueryDisplayText="ParentDisplayText"
-                               ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                @* Control dùng chung: chọn node cha theo cây (full cây + lọc theo tên). *@
+                <TreeSelectBox TItem="MenuNodeVm" Data="_parentTreeNodes"
+                               KeyFieldName="Id" ParentKeyFieldName="ChaId" TextFieldName="Ten"
+                               TextSelector="@(n => n.Ten)"
+                               Value="_parentNode" ValueChanged="@OnParentChanged"
                                NullText="@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")"
-                               CssClass="mb-combo" Width="100%">
-                    <DropDownBodyTemplate Context="dd">
-                        <div class="mb-parenttree">
-                            @if (_parentTreeNodes.Count == 0)
-                            {
-                                <div class="mb-parenttree__empty">@Loc.L("admin.menu.f.parent.none", "Không có node cha khả dụng.")</div>
-                            }
-                            else
-                            {
-                                <DxTreeList Data="_parentTreeNodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
-                                            SelectionMode="TreeListSelectionMode.Single"
-                                            SelectedDataItem="_parentNode"
-                                            SelectedDataItemChanged="@((object item) => OnParentTreePicked(item, dd))"
-                                            AutoExpandAllNodes="true" ShowFilterRow="true" ShowAllRows="true"
-                                            FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Never"
-                                            CssClass="mb-parenttree__list">
-                                    <Columns>
-                                        <DxTreeListDataColumn FieldName="Ten" Caption="@Loc.L("admin.menu.col.name", "Tên")"
-                                                              FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
-                                    </Columns>
-                                </DxTreeList>
-                            }
-                        </div>
-                    </DropDownBodyTemplate>
-                </DxDropDownBox>
+                               EmptyText="@Loc.L("admin.menu.f.parent.none", "Không có node cha khả dụng.")"
+                               ColumnCaption="@Loc.L("admin.menu.col.name", "Tên")"
+                               CssClass="mb-combo" />
 
                 @* ── Đường dẫn: server tự suy, cho phép tùy chỉnh ── *@
                 <label class="mb-label">@Loc.L("admin.menu.col.route", "Đường dẫn")</label>
@@ -493,23 +472,11 @@
         _parentNode = _parentId is { } pid ? _nodes.FirstOrDefault(n => n.Id == pid) : null;
     }
 
-    /// <summary>Text hiển thị trong ô dropdown node cha = tên node đang chọn (rỗng → NullText).</summary>
-    private string ParentDisplayText(DropDownBoxQueryDisplayTextContext ctx)
-        => (ctx.Value as MenuNodeVm)?.Ten ?? string.Empty;
-
-    /// <summary>Đổi giá trị từ ô dropdown (vd nút xóa → null).</summary>
-    private void OnParentValueChanged(object? v)
+    /// <summary>Đổi node cha (chọn trên cây hoặc xóa → null) — giữ _parentId làm nguồn sự thật.</summary>
+    private void OnParentChanged(MenuNodeVm? node)
     {
-        _parentNode = v as MenuNodeVm;
-        _parentId = _parentNode?.Id;
-    }
-
-    /// <summary>Chọn 1 node trên cây → gán cha + đóng dropdown.</summary>
-    private void OnParentTreePicked(object item, DropDownBoxTemplateContext dd)
-    {
-        _parentNode = item as MenuNodeVm;
-        _parentId = _parentNode?.Id;
-        dd.DropDownBox.HideDropDown();
+        _parentNode = node;
+        _parentId = node?.Id;
     }
 
     private void OnViewSelChanged(ComboOpt? o)
@@ -869,11 +836,6 @@
     .mb-iconchip:hover { background:#f1f5f9; }
     .mb-iconchip.is-sel { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
     .mb-iconchip--none { color:#94a3b8; }
-
-    /* Node cha = cây trong dropdown */
-    .mb-parenttree { min-width:340px; max-height:340px; overflow:auto; padding:4px; }
-    .mb-parenttree__empty { padding:16px; text-align:center; opacity:.6; font-size:13px; }
-    .mb-parenttree__list { border:none; }
 
     /* Khóa i18n read-only */
     .mb-keybox { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:7px 9px; }

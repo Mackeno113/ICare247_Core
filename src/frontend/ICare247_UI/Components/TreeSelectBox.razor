@@ -1,0 +1,108 @@
+@* File    : TreeSelectBox.razor
+   Module  : ICare247_UI / Components
+   Purpose : Control DÙNG CHUNG chọn 1 phần tử theo CÂY — DxDropDownBox + DxTreeList.
+             Generic theo TItem (kiểu node). Hiện full cây (ShowAllRows), có ô lọc theo tên,
+             chọn 1 dòng → đóng dropdown. Bind giá trị = chính node đang chọn (Value/ValueChanged).
+             Dùng cho mọi nơi chọn cha trong cây: Node cha (menu), cha Công ty/Phòng ban, v.v.
+   API DevExpress 25.2.3 đã verify: DxDropDownBox.{Value,ValueChanged,QueryDisplayText,
+             DropDownBodyTemplate,NullText,ClearButtonDisplayMode}; DxTreeList.{SelectionMode,
+             SelectedDataItem,SelectedDataItemChanged,ShowAllRows}. *@
+
+@typeparam TItem where TItem : class
+
+<DxDropDownBox Value="Value" ValueChanged="@OnValueChanged"
+               QueryDisplayText="@QueryText"
+               ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+               NullText="@NullText" CssClass="@CssClass" Width="@Width">
+    <DropDownBodyTemplate Context="dd">
+        <div class="tsb-body" style="max-height:@MaxBodyHeight; min-width:@MinBodyWidth;">
+            @if (Data is null || Data.Count == 0)
+            {
+                <div class="tsb-empty">@EmptyText</div>
+            }
+            else
+            {
+                <DxTreeList Data="Data" KeyFieldName="@KeyFieldName" ParentKeyFieldName="@ParentKeyFieldName"
+                            SelectionMode="TreeListSelectionMode.Single"
+                            SelectedDataItem="Value"
+                            SelectedDataItemChanged="@((object item) => OnTreePicked(item, dd))"
+                            AutoExpandAllNodes="true" ShowAllRows="true"
+                            ShowFilterRow="@ShowFilter"
+                            FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Never"
+                            CssClass="tsb-list">
+                    <Columns>
+                        <DxTreeListDataColumn FieldName="@TextFieldName" Caption="@ColumnCaption"
+                                              FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
+                    </Columns>
+                </DxTreeList>
+            }
+        </div>
+    </DropDownBodyTemplate>
+</DxDropDownBox>
+
+@code {
+    /// <summary>Nguồn dữ liệu phẳng có quan hệ cha-con (mỗi item có KeyField + ParentKeyField).</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<TItem>? Data { get; set; }
+
+    /// <summary>Tên cột khóa (DxTreeList.KeyFieldName), vd "Id".</summary>
+    [Parameter, EditorRequired] public string KeyFieldName { get; set; } = "";
+
+    /// <summary>Tên cột khóa cha (DxTreeList.ParentKeyFieldName), vd "ChaId".</summary>
+    [Parameter, EditorRequired] public string ParentKeyFieldName { get; set; } = "";
+
+    /// <summary>Tên cột hiển thị + lọc trên cây, vd "Ten".</summary>
+    [Parameter, EditorRequired] public string TextFieldName { get; set; } = "";
+
+    /// <summary>Hàm lấy text hiển thị trong ô (từ node đang chọn). Bắt buộc để hiện đúng tên.</summary>
+    [Parameter, EditorRequired] public Func<TItem, string> TextSelector { get; set; } = _ => "";
+
+    /// <summary>Node đang chọn (null = chưa chọn).</summary>
+    [Parameter] public TItem? Value { get; set; }
+
+    /// <summary>Phát khi đổi node đang chọn (chọn trên cây hoặc bấm nút xóa → null).</summary>
+    [Parameter] public EventCallback<TItem?> ValueChanged { get; set; }
+
+    /// <summary>Text khi chưa chọn gì.</summary>
+    [Parameter] public string NullText { get; set; } = "— Chọn —";
+
+    /// <summary>Text khi cây rỗng.</summary>
+    [Parameter] public string EmptyText { get; set; } = "Không có dữ liệu.";
+
+    /// <summary>Caption cột trên cây (thường ẩn trực quan, vẫn cần cho cấu trúc).</summary>
+    [Parameter] public string ColumnCaption { get; set; } = "";
+
+    /// <summary>Bật ô lọc theo tên trong dropdown.</summary>
+    [Parameter] public bool ShowFilter { get; set; } = true;
+
+    /// <summary>Bề rộng ô (mặc định full).</summary>
+    [Parameter] public string Width { get; set; } = "100%";
+
+    /// <summary>Class CSS thêm cho ô.</summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    /// <summary>Chiều cao tối đa thân dropdown (cuộn khi vượt).</summary>
+    [Parameter] public string MaxBodyHeight { get; set; } = "340px";
+
+    /// <summary>Bề rộng tối thiểu thân dropdown.</summary>
+    [Parameter] public string MinBodyWidth { get; set; } = "340px";
+
+    /// <summary>Text hiển thị trong ô input = tên node đang chọn (rỗng → NullText).</summary>
+    private string QueryText(DropDownBoxQueryDisplayTextContext ctx)
+        => ctx.Value is TItem it ? TextSelector(it) : string.Empty;
+
+    /// <summary>Đổi giá trị từ ô (vd nút xóa → null).</summary>
+    private async Task OnValueChanged(object? v) => await ValueChanged.InvokeAsync(v as TItem);
+
+    /// <summary>Chọn 1 node trên cây → phát giá trị + đóng dropdown.</summary>
+    private async Task OnTreePicked(object item, DropDownBoxTemplateContext dd)
+    {
+        await ValueChanged.InvokeAsync(item as TItem);
+        dd.DropDownBox.HideDropDown();
+    }
+}
+
+<style>
+    .tsb-body { overflow:auto; padding:4px; }
+    .tsb-empty { padding:16px; text-align:center; opacity:.6; font-size:13px; }
+    .tsb-list { border:none; }
+</style>
