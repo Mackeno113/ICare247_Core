@@ -801,6 +801,11 @@
     .mb-tree, .mb-detail { border:1px solid #e2e8f0; border-radius:8px; padding:12px; background:#fff; }
     .mb-empty { padding:24px; text-align:center; opacity:.6; }
 
+    /* Giới hạn chiều cao tree → DevExpress sinh scroll nội bộ + GHIM hàng tiêu đề
+       khi kéo xem dữ liệu (cùng cơ chế với .dv-dxgrid ở app.css). Không set height
+       thì tree mọc hết cỡ, cả trang cuộn nên header trôi mất. */
+    .mb-treelist { height: calc(100vh - 230px); min-height: 320px; }
+
     /* Cột thứ tự ▲▼ */
     .mb-order { display:flex; gap:2px; }
     .mb-arrow { width:22px; height:22px; line-height:1; border:1px solid #cbd5e1; border-radius:4px;
