@@ -110,8 +110,9 @@ public sealed class ConfigSyncService : IConfigSyncService
         states[d.TableName] = state;
 
         // (1) Tập cột ghi = giao cột master ∩ tenant, bỏ cột Id. Bắt buộc có 4 cột cờ (db/050).
-        var masterCols = await GetColumnsAsync(master, d.TableName, ct);
-        var tenantCols = await GetColumnsAsync(tenant, d.TableName, ct);
+        //     Master chỉ đọc (không tx); tenant trong nhánh apply có tx → phải truyền tx.
+        var masterCols = await GetColumnsAsync(master, d.TableName, null, ct);
+        var tenantCols = await GetColumnsAsync(tenant, d.TableName, tx, ct);
         EnsureSyncFlags(d.TableName, masterCols);
         EnsureSyncFlags(d.TableName, tenantCols);
         var writeCols = masterCols
@@ -306,14 +307,18 @@ public sealed class ConfigSyncService : IConfigSyncService
     // ── Đọc dữ liệu ────────────────────────────────────────────────────────────
 
     /// <summary>Tên cột thực tế của bảng (INFORMATION_SCHEMA) — để dựng SELECT/INSERT tường minh, không SELECT *.</summary>
-    private static async Task<HashSet<string>> GetColumnsAsync(IDbConnection conn, string table, CancellationToken ct)
+    /// <remarks>Phải truyền <paramref name="tx"/> khi đọc trên connection đang có transaction (nhánh apply trên
+    /// tenant); nếu không SqlClient ném "command ... in a pending local transaction".</remarks>
+    private static async Task<HashSet<string>> GetColumnsAsync(
+        IDbConnection conn, string table, IDbTransaction? tx, CancellationToken ct)
     {
         const string sql = """
             SELECT COLUMN_NAME
             FROM   INFORMATION_SCHEMA.COLUMNS
             WHERE  TABLE_NAME = @t AND TABLE_SCHEMA = 'dbo';
             """;
-        var cols = await conn.QueryAsync<string>(new CommandDefinition(sql, new { t = table }, cancellationToken: ct));
+        var cols = await conn.QueryAsync<string>(
+            new CommandDefinition(sql, new { t = table }, transaction: tx, cancellationToken: ct));
         return new HashSet<string>(cols, StringComparer.OrdinalIgnoreCase);
     }
 
@@ -363,7 +368,7 @@ public sealed class ConfigSyncService : IConfigSyncService
         IDbConnection tenant, IDbTransaction? transaction, ConfigSyncOptions options,
         ConfigSyncResult result, CancellationToken ct)
     {
-        if (await GetColumnsAsync(tenant, "Sys_Config_Sync_Log", ct) is { Count: 0 }) return;
+        if (await GetColumnsAsync(tenant, "Sys_Config_Sync_Log", transaction, ct) is { Count: 0 }) return;
 
         const string sql = """
             INSERT INTO dbo.Sys_Config_Sync_Log

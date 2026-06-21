@@ -21,13 +21,15 @@ SET XACT_ABORT ON;
 GO
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 1) Thêm 4 cột cờ vào 11 bảng config (theo spec §7).
---    Danh sách bám đúng phạm vi sync §2: bảng "đầu thực thể" mang cờ; con sát
---    (Sys_Column/Ui_Field_Lookup/lookup items) đi theo cha — bảo vệ ở mức cha.
+-- 1) Thêm 4 cột cờ vào các bảng config (theo spec §7).
+--    Danh sách bám đúng phạm vi sync §2 + descriptor ConfigSyncTables.Order: mỗi bảng
+--    engine UPSERT trực tiếp (kể cả con như Sys_Column — có ContextParent/RelinkParents
+--    riêng) PHẢI mang cờ, vì ConfigSyncService.EnsureSyncFlags kiểm trên từng bảng.
 -- ─────────────────────────────────────────────────────────────────────────────
 DECLARE @tables TABLE (TableName SYSNAME);
 INSERT INTO @tables (TableName) VALUES
     (N'Sys_Table'),
+    (N'Sys_Column'),
     (N'Sys_Resource'),
     (N'Sys_Lookup'),
     (N'Ui_Form'),
