@@ -252,12 +252,36 @@
                 }
 
                 <label class="mb-label">@Loc.L("admin.menu.f.parent", "Node cha")</label>
-                <DxComboBox TData="ParentOpt" TValue="ParentOpt" Data="@_parentOpts"
-                            Value="@_parentSel" ValueChanged="@OnParentSelChanged"
-                            SearchMode="ListSearchMode.AutoSearch"
-                            ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
-                            NullText="@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")"
-                            CssClass="mb-combo" Width="100%" />
+                @* Dropdown chứa cây node (DxTreeList) — chọn cha trực quan theo phân cấp ── *@
+                <DxDropDownBox Value="_parentNode" ValueChanged="@((object? v) => OnParentValueChanged(v))"
+                               QueryDisplayText="ParentDisplayText"
+                               ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                               NullText="@Loc.L("admin.menu.f.parent.root", "— Gốc (không cha) —")"
+                               CssClass="mb-combo" Width="100%">
+                    <DropDownBodyTemplate Context="dd">
+                        <div class="mb-parenttree">
+                            @if (_parentTreeNodes.Count == 0)
+                            {
+                                <div class="mb-parenttree__empty">@Loc.L("admin.menu.f.parent.none", "Không có node cha khả dụng.")</div>
+                            }
+                            else
+                            {
+                                <DxTreeList Data="_parentTreeNodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
+                                            SelectionMode="TreeListSelectionMode.Single"
+                                            SelectedDataItem="_parentNode"
+                                            SelectedDataItemChanged="@((object item) => OnParentTreePicked(item, dd))"
+                                            AutoExpandAllNodes="true" ShowFilterRow="true"
+                                            FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Never"
+                                            CssClass="mb-parenttree__list">
+                                    <Columns>
+                                        <DxTreeListDataColumn FieldName="Ten" Caption="@Loc.L("admin.menu.col.name", "Tên")"
+                                                              FilterRowOperatorType="TreeListFilterRowOperatorType.Contains" />
+                                    </Columns>
+                                </DxTreeList>
+                            }
+                        </div>
+                    </DropDownBodyTemplate>
+                </DxDropDownBox>
 
                 @* ── Đường dẫn: server tự suy, cho phép tùy chỉnh ── *@
                 <label class="mb-label">@Loc.L("admin.menu.col.route", "Đường dẫn")</label>
@@ -440,29 +464,52 @@
     private IEnumerable<LanguageInfo> TransLangs
         => Loc.Available.Where(l => l.Code != LocalizationService.BaseLanguage);
 
-    // Nguồn combobox (ComboOpt/ParentOpt) là kiểu public top-level — xem MenuBuilderModels.cs.
+    // Nguồn combobox (ComboOpt) là kiểu public top-level — xem MenuBuilderModels.cs.
     // Materialize 1 lần (tham chiếu ổn định) — DxComboBox không reset lựa chọn giữa các lần render.
     private List<ComboOpt> _viewOpts = new();
     private List<ComboOpt> _moduleOpts = new();
-    private List<ParentOpt> _parentOpts = new();
+
+    // ── Node cha = cây (DxDropDownBox + DxTreeList). Nguồn cây + node đang chọn. ──
+    private List<MenuNodeVm> _parentTreeNodes = new();
+    private MenuNodeVm? _parentNode;
 
     // Item ĐANG CHỌN (bind nguyên object — KHÔNG dùng ValueField để tránh reflection theo tên-trường,
     // vốn fail với kiểu app → trước đây Module bind ra null). Hiển thị qua ToString()=Display.
     private ComboOpt? _viewSel;
     private ComboOpt? _moduleSel;
-    private ParentOpt? _parentSel;
 
     private void BuildViewOpts() => _viewOpts = _views.Select(v =>
         new ComboOpt(v.ViewCode, string.IsNullOrWhiteSpace(v.Title) ? v.ViewCode : $"{v.Title} ({v.ViewCode})")).ToList();
     private void BuildModuleOpts() => _moduleOpts = _modules.Select(m => new ComboOpt(m.Ma, $"{m.Ma} — {m.Ten}")).ToList();
-    private void BuildParentOpts() => _parentOpts = ParentOptions().Select(p => new ParentOpt(p.Id, IndentedName(p))).ToList();
+
+    /// <summary>Dựng nguồn cây node cha (loại trừ chính node + nhánh con để chống vòng lặp).</summary>
+    private void BuildParentTree() => _parentTreeNodes = ParentOptions().ToList();
 
     /// <summary>Đồng bộ item đang chọn từ giá trị nguyên thủy hiện tại (gọi khi mở popup).</summary>
     private void SyncCombosFromValues()
     {
         _viewSel   = string.IsNullOrEmpty(_objectCode) ? null : _viewOpts.FirstOrDefault(o => o.Code == _objectCode);
         _moduleSel = string.IsNullOrEmpty(_module)     ? null : _moduleOpts.FirstOrDefault(o => o.Code == _module);
-        _parentSel = _parentId is { } pid ? _parentOpts.FirstOrDefault(o => o.Id == pid) : null;
+        _parentNode = _parentId is { } pid ? _nodes.FirstOrDefault(n => n.Id == pid) : null;
+    }
+
+    /// <summary>Text hiển thị trong ô dropdown node cha = tên node đang chọn (rỗng → NullText).</summary>
+    private string ParentDisplayText(DropDownBoxQueryDisplayTextContext ctx)
+        => (ctx.Value as MenuNodeVm)?.Ten ?? string.Empty;
+
+    /// <summary>Đổi giá trị từ ô dropdown (vd nút xóa → null).</summary>
+    private void OnParentValueChanged(object? v)
+    {
+        _parentNode = v as MenuNodeVm;
+        _parentId = _parentNode?.Id;
+    }
+
+    /// <summary>Chọn 1 node trên cây → gán cha + đóng dropdown.</summary>
+    private void OnParentTreePicked(object item, DropDownBoxTemplateContext dd)
+    {
+        _parentNode = item as MenuNodeVm;
+        _parentId = _parentNode?.Id;
+        dd.DropDownBox.HideDropDown();
     }
 
     private void OnViewSelChanged(ComboOpt? o)
@@ -478,7 +525,6 @@
     }
 
     private void OnModuleSelChanged(ComboOpt? o) { _moduleSel = o; _module = o?.Code; }
-    private void OnParentSelChanged(ParentOpt? o) { _parentSel = o; _parentId = o?.Id; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -512,7 +558,7 @@
         _icon = ""; _module = null; _thuTu = 0; _kichHoat = true;
         _overridePath = false; _duongDan = "";
         _navKey = null; _trans = new(); _transOrig = new();
-        BuildParentOpts();
+        BuildParentTree();
         SyncCombosFromValues();
         ResetDrag();
         _status = null; _popupOpen = true;
@@ -548,7 +594,7 @@
         }
         _transOrig = new(_trans);
 
-        BuildParentOpts();
+        BuildParentTree();
         SyncCombosFromValues();
         ResetDrag();
         _status = null; _popupOpen = true;
@@ -763,18 +809,6 @@
         return set;
     }
 
-    private string IndentedName(MenuNodeVm n)
-    {
-        int depth = 0; var cur = n.ChaId;
-        var guard = 0;
-        while (cur is { } c && guard++ < 50)
-        {
-            depth++;
-            cur = _nodes.FirstOrDefault(x => x.Id == c)?.ChaId;
-        }
-        return new string('—', depth) + (depth > 0 ? " " : "") + n.Ten;
-    }
-
     private string KindLabel(MenuNodeVm n) => n.LoaiDoiTuong switch
     {
         "View" => Loc.L("admin.menu.kind.view.short", "View"),
@@ -835,6 +869,11 @@
     .mb-iconchip:hover { background:#f1f5f9; }
     .mb-iconchip.is-sel { border-color:#2563eb; background:#eff6ff; color:#2563eb; }
     .mb-iconchip--none { color:#94a3b8; }
+
+    /* Node cha = cây trong dropdown */
+    .mb-parenttree { min-width:340px; max-height:340px; overflow:auto; padding:4px; }
+    .mb-parenttree__empty { padding:16px; text-align:center; opacity:.6; font-size:13px; }
+    .mb-parenttree__list { border:none; }
 
     /* Khóa i18n read-only */
     .mb-keybox { background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:7px 9px; }

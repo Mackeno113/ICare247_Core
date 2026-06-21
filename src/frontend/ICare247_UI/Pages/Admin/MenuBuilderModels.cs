@@ -14,8 +14,5 @@ public sealed record ComboOpt(string Code, string Display)
     public override string ToString() => Display;
 }
 
-/// <summary>Tùy chọn combo Node cha (khóa số).</summary>
-public sealed record ParentOpt(long Id, string Display)
-{
-    public override string ToString() => Display;
-}
+// Node cha trước dùng combo (ParentOpt); nay chuyển sang DxDropDownBox + DxTreeList (chọn theo cây)
+// nên không cần kiểu riêng — bind thẳng MenuNodeVm.
