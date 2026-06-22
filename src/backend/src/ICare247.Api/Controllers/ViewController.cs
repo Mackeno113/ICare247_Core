@@ -4,6 +4,7 @@
 // Purpose : REST endpoint cho cấu hình hiển thị danh sách (Ui_View) — metadata cho Blazor DataView.
 
 using ICare247.Api.Authorization;
+using ICare247.Application.Features.Views.Queries.GetFilterOptions;
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
 using ICare247.Application.Features.Views.Queries.GetViewFilteredData;
@@ -156,6 +157,43 @@ public sealed class ViewController : ControllerBase
     }
 
     /// <summary>
+    /// Nạp options cho 1 control lọc cascade (Combo/MultiSelect/Radio) — ADR-030. Body chứa giá trị
+    /// filter cha hiện tại (key = Filter_Code); engine bind whitelist (Depends_On) + token ngữ cảnh.
+    /// </summary>
+    /// <param name="code">Ui_View.View_Code.</param>
+    /// <param name="filterCode">Ui_View_Filter.Filter_Code của control cần options.</param>
+    /// <param name="body">Giá trị filter cha hiện tại (cascade).</param>
+    /// <param name="lang">Ngôn ngữ resolve metadata + nhãn lookup (mặc định "vi").</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpPost("{code}/filter-options/{filterCode}")]
+    [RequirePermissionForTarget("View", PermissionOp.Xem, "code")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> FilterOptions(
+        string code, string filterCode,
+        [FromBody] FilterOptionsRequest? body,
+        [FromQuery] string lang = "vi",
+        CancellationToken ct = default)
+    {
+        var parents = body?.Parents ?? new Dictionary<string, string?>();
+        try
+        {
+            var query = new GetFilterOptionsQuery(code, filterCode, GetTenantId(), parents, lang);
+            var result = await _mediator.Send(query, ct);
+
+            if (result is null)
+                return NotFound(new { message = $"View '{code}' không tồn tại hoặc đã bị ẩn." });
+
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Xóa cache metadata của một View (mọi ngôn ngữ) — gọi sau khi admin sửa View ở ConfigStudio.
     /// </summary>
     /// <param name="code">Ui_View.View_Code cần invalidate.</param>
@@ -234,4 +272,11 @@ public sealed class ViewSearchRequest
 {
     /// <summary>Key = Ui_View_Filter.Filter_Code; value = giá trị thô (engine ép kiểu theo Param_Type).</summary>
     public Dictionary<string, string?> Filters { get; init; } = new();
+}
+
+/// <summary>Body cho endpoint filter-options: map Filter_Code cha → giá trị hiện tại (cascade).</summary>
+public sealed class FilterOptionsRequest
+{
+    /// <summary>Key = Filter_Code của control CHA; value = giá trị đang chọn (engine ép kiểu).</summary>
+    public Dictionary<string, string?> Parents { get; init; } = new();
 }

@@ -53,9 +53,9 @@
         <div class="@(_view.HasFilterPanel ? "dv-with-filter" : "")">
             @if (_view.HasFilterPanel)
             {
-                <FilterPanel Filters="_view.Filters" SearchLabel="_view.SearchLabel"
+                <FilterPanel ViewCode="ViewCode" Filters="_view.Filters" SearchLabel="_view.SearchLabel"
                              ResetLabel="_view.ResetLabel" Collapsible="_view.FilterCollapsible"
-                             OnSearch="OnFilterSearchAsync" />
+                             OnSearch="OnFilterSearchAsync" OnValuesChanged="OnFilterValuesChanged" />
             }
             <div class="dv-grid-area">
                 <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
@@ -78,6 +78,7 @@
 {
     <DraggableModal Title="@FormTitle" Width="@_formWidth" OnClose="CloseForm">
         <MasterDataForm FormCode="@(_view.EditFormCode!)" Id="_editId" ShowTitle="false"
+                        InitialValues="_prefillValues" LockedFields="_prefillLocked"
                         OnSaved="OnFormSaved" OnCancelled="CloseForm"
                         OnWidthResolved="(w) => _formWidth = w" />
     </DraggableModal>
@@ -123,6 +124,14 @@
 
     /// <summary>Giá trị panel lọc lần Tìm gần nhất — để Refresh chạy lại đúng bộ lọc (nguồn SP/SQL).</summary>
     private IReadOnlyDictionary<string, string?> _lastFilters = new Dictionary<string, string?>();
+
+    /// <summary>Giá trị panel lọc HIỆN TẠI (cập nhật mỗi khi đổi) — dùng để prefill khi Thêm mới (ADR-030).</summary>
+    private IReadOnlyDictionary<string, string?> _currentFilters = new Dictionary<string, string?>();
+
+    /// <summary>Prefill cho form Thêm mới: Field_Code → giá trị (đổ từ panel khi mở Thêm).</summary>
+    private Dictionary<string, object?>? _prefillValues;
+    /// <summary>Field_Code khóa read-only khi prefill (Default_Lock=1).</summary>
+    private HashSet<string>? _prefillLocked;
 
     // ── Trạng thái popup Thêm/Sửa + dialog Xóa (inline trên màn lưới) ──
     private bool    _showForm;
@@ -224,12 +233,38 @@
         }
     }
 
-    /// <summary>Mở popup Thêm mới (Edit_Form của View) ngay trên màn lưới.</summary>
+    /// <summary>Panel lọc đổi giá trị → ghi nhận để prefill khi Thêm mới (không chạy Tìm).</summary>
+    private void OnFilterValuesChanged(IReadOnlyDictionary<string, string?> values) => _currentFilters = values;
+
+    /// <summary>Mở popup Thêm mới (Edit_Form của View) — đổ giá trị panel lọc vào field theo Default_To_Field.</summary>
     private void OpenAdd()
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode)) return;
+        BuildPrefill();
         _editId = null;
         _showForm = true;
+    }
+
+    /// <summary>
+    /// Dựng map prefill từ giá trị panel hiện tại: với mỗi filter có Default_To_Field + đang có giá trị →
+    /// đổ vào field đó; Default_Lock=1 → khóa read-only. Chỉ áp cho View có panel lọc.
+    /// </summary>
+    private void BuildPrefill()
+    {
+        _prefillValues = null;
+        _prefillLocked = null;
+        if (_view is null || !_view.HasFilterPanel) return;
+
+        var values = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        var locked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in _view.Filters)
+        {
+            if (string.IsNullOrWhiteSpace(f.DefaultToField)) continue;
+            if (!_currentFilters.TryGetValue(f.FilterCode, out var raw) || string.IsNullOrWhiteSpace(raw)) continue;
+            values[f.DefaultToField!] = raw;
+            if (f.DefaultLock) locked.Add(f.DefaultToField!);
+        }
+        if (values.Count > 0) { _prefillValues = values; _prefillLocked = locked; }
     }
 
     /// <summary>Double-click dòng → mở popup Sửa: resolve khóa từ Key_Field.</summary>

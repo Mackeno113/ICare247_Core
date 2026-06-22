@@ -1,9 +1,11 @@
-﻿@* File    : FilterPanel.razor
-   Purpose : Panel lọc trái của lưới nâng cao (Ui_View_Filter). Render control theo Control_Type,
-             validate Required (thông báo i18n + focus ô lỗi đầu tiên), nút Tìm/Đặt lại.
-             Bấm Tìm → raise OnSearch với map Filter_Code → giá trị thô (engine ép kiểu). *@
+@* File    : FilterPanel.razor
+   Purpose : Panel lọc trái của lưới nâng cao (Ui_View_Filter). Render control theo Control_Type
+             (gồm Combo/MultiSelect/Radio nạp options qua API), liên kết cascade (cha đổi → nạp lại con +
+             xóa giá trị con), validate Required, nút Tìm/Đặt lại. Bấm Tìm → OnSearch (map Filter_Code →
+             giá trị). Mỗi lần đổi → OnValuesChanged (để màn prefill khi Thêm mới). ADR-030. *@
 
 @using ICare247_UI.Services
+@inject ViewApiService Api
 @inherits LocalizedComponentBase
 
 <div class="fp-panel @(Collapsed ? "fp-collapsed" : "")">
@@ -43,12 +45,15 @@
                 @(_searching ? SearchingText : SearchLabelText)
             </button>
             <button class="btn btn-light fp-reset" type="button" disabled="@_searching"
-                    @onclick="DoReset">@ResetLabelText</button>
+                    @onclick="DoResetAsync">@ResetLabelText</button>
         </div>
     }
 </div>
 
 @code {
+    /// <summary>View_Code (để gọi endpoint nạp options cascade).</summary>
+    [Parameter] public string ViewCode { get; set; } = "";
+
     /// <summary>Danh sách control lọc (đã resolve i18n) từ ViewMetadata.</summary>
     [Parameter] public List<ViewFilterDto> Filters { get; set; } = [];
 
@@ -60,9 +65,14 @@
     /// <summary>Bấm Tìm (đã validate) → trả map Filter_Code → giá trị thô.</summary>
     [Parameter] public EventCallback<IReadOnlyDictionary<string, string?>> OnSearch { get; set; }
 
+    /// <summary>Mỗi lần đổi giá trị → trả snapshot Filter_Code → giá trị (cho prefill khi Thêm mới).</summary>
+    [Parameter] public EventCallback<IReadOnlyDictionary<string, string?>> OnValuesChanged { get; set; }
+
     private readonly Dictionary<string, string?> _values = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ElementReference> _refs = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _errors = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<FilterOptionDto>> _options = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _loadingOpts = new(StringComparer.OrdinalIgnoreCase);
     private bool _searching;
     private bool _initialized;
 
@@ -90,13 +100,68 @@
             _values[f.FilterCode] = f.DefaultValue;
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        // Nạp options cho các control độc lập (không phụ thuộc cha) ngay khi mở panel.
+        foreach (var f in Filters.Where(f => f.HasOptions && f.ParentFilterCodes.Count == 0))
+            await LoadOptionsAsync(f);
+        await NotifyValuesAsync();
+    }
+
     /// <summary>Giá trị hiện tại của một filter (an toàn null).</summary>
     private string? ValueOf(string code) => _values.TryGetValue(code, out var v) ? v : null;
 
-    private void SetValue(string code, string? value)
+    /// <summary>Đặt giá trị + xóa lỗi ô đó + thông báo ra ngoài + cascade nạp lại các control con.</summary>
+    private async Task SetValueAsync(string code, string? value)
     {
         _values[code] = value;
-        _errors.Remove(code); // gõ lại → xóa lỗi cũ của ô đó
+        _errors.Remove(code);
+        await NotifyValuesAsync();
+        await CascadeReloadChildrenAsync(code);
+    }
+
+    /// <summary>Phát snapshot giá trị hiện tại ra ngoài (cho prefill khi Thêm mới).</summary>
+    private Task NotifyValuesAsync()
+        => OnValuesChanged.InvokeAsync(new Dictionary<string, string?>(_values, StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>Cha đổi → với mỗi control con: xóa giá trị + options cũ, nạp lại nếu đủ cha; lan tiếp xuống cháu.</summary>
+    private async Task CascadeReloadChildrenAsync(string parentCode)
+    {
+        var children = Filters.Where(f => f.HasOptions
+            && f.ParentFilterCodes.Any(p => p.Equals(parentCode, StringComparison.OrdinalIgnoreCase))).ToList();
+        if (children.Count == 0) return;
+
+        foreach (var child in children)
+        {
+            _values[child.FilterCode] = null;   // cha đổi → giá trị con không còn hợp lệ
+            _options.Remove(child.FilterCode);
+
+            if (ParentsSatisfied(child))
+                await LoadOptionsAsync(child);
+
+            await NotifyValuesAsync();
+            await CascadeReloadChildrenAsync(child.FilterCode);   // lan xuống cháu
+        }
+        StateHasChanged();
+    }
+
+    /// <summary>Mọi filter cha (Depends_On) của <paramref name="f"/> đã có giá trị?</summary>
+    private bool ParentsSatisfied(ViewFilterDto f)
+        => f.ParentFilterCodes.All(p => !string.IsNullOrWhiteSpace(ValueOf(p)));
+
+    /// <summary>Nạp options control (static/dynamic + cascade) qua API, bind giá trị cha hiện tại.</summary>
+    private async Task LoadOptionsAsync(ViewFilterDto f)
+    {
+        var parents = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in f.ParentFilterCodes)
+            parents[p] = ValueOf(p);
+
+        _loadingOpts.Add(f.FilterCode);
+        StateHasChanged();
+        var opts = await Api.GetFilterOptionsAsync(ViewCode, f.FilterCode, parents, lang: Loc.CurrentLanguage);
+        _options[f.FilterCode] = opts;
+        _loadingOpts.Remove(f.FilterCode);
+        StateHasChanged();
     }
 
     /// <summary>Validate Required → nếu lỗi: đánh dấu + focus ô đầu tiên; ngược lại raise OnSearch.</summary>
@@ -109,7 +174,6 @@
 
         if (_errors.Count > 0)
         {
-            // Focus ô lỗi đầu tiên theo thứ tự hiển thị.
             var first = VisibleFilters.First(f => _errors.Contains(f.FilterCode));
             if (_refs.TryGetValue(first.FilterCode, out var er))
                 await er.FocusAsync();
@@ -119,7 +183,6 @@
         _searching = true;
         try
         {
-            // Chỉ gửi giá trị có nhập (bỏ rỗng → engine coi NULL = bỏ lọc).
             var payload = _values
                 .Where(kv => !string.IsNullOrWhiteSpace(kv.Value))
                 .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
@@ -128,27 +191,102 @@
         finally { _searching = false; }
     }
 
-    /// <summary>Đặt lại về giá trị mặc định + xóa lỗi (không tự Tìm).</summary>
-    private void DoReset()
+    /// <summary>Đặt lại về mặc định + xóa lỗi + nạp lại options độc lập + xóa options phụ thuộc.</summary>
+    private async Task DoResetAsync()
     {
         _errors.Clear();
         foreach (var f in Filters)
             _values[f.FilterCode] = f.DefaultValue;
+
+        foreach (var f in Filters.Where(f => f.HasOptions))
+        {
+            if (f.ParentFilterCodes.Count == 0)
+                await LoadOptionsAsync(f);
+            else
+                _options.Remove(f.FilterCode);
+        }
+        await NotifyValuesAsync();
     }
 
-    /// <summary>Render editor theo Control_Type. v1: Text/Number/Date/Checkbox native;
-    /// Combo/Radio/MultiSelect tạm fallback text (load options đợt 2 cùng MultiSelect→IN).</summary>
+    /// <summary>Render editor theo Control_Type: Combo/MultiSelect/Radio (options) + Text/Number/Date/Checkbox.</summary>
     private RenderFragment RenderControl(ViewFilterDto f, bool hasErr) => builder =>
     {
         var css = "fp-input" + (hasErr ? " fp-input-err" : "");
-        var type = f.ControlType.ToLowerInvariant() switch
-        {
-            "number" => "number",
-            "date"   => "date",
-            _        => "text"
-        };
+        var ct = f.ControlType.ToLowerInvariant();
 
-        if (f.ControlType.Equals("Checkbox", StringComparison.OrdinalIgnoreCase))
+        // ── Combo / Radio / MultiSelect: cần options ──
+        if (f.HasOptions)
+        {
+            var loading = _loadingOpts.Contains(f.FilterCode);
+            var opts = _options.TryGetValue(f.FilterCode, out var o) ? o : null;
+            var waitParents = f.ParentFilterCodes.Count > 0 && !ParentsSatisfied(f);
+
+            if (ct == "radio" && !waitParents && opts is not null)
+            {
+                var seq = 0;
+                foreach (var opt in opts)
+                {
+                    var val = opt.Value;
+                    builder.OpenElement(seq++, "label");
+                    builder.AddAttribute(seq++, "class", "fp-radio");
+                    builder.OpenElement(seq++, "input");
+                    builder.AddAttribute(seq++, "type", "radio");
+                    builder.AddAttribute(seq++, "name", f.FilterCode);
+                    builder.AddAttribute(seq++, "checked", ValueOf(f.FilterCode) == val);
+                    builder.AddAttribute(seq++, "onchange",
+                        EventCallback.Factory.Create<ChangeEventArgs>(this, _ => SetValueAsync(f.FilterCode, val)));
+                    builder.CloseElement();
+                    builder.AddContent(seq++, " " + opt.Display);
+                    builder.CloseElement();
+                }
+                return;
+            }
+
+            var multi = ct == "multiselect";
+            builder.OpenElement(10, "select");
+            builder.AddAttribute(11, "class", css);
+            builder.AddAttribute(12, "title", f.Tooltip ?? "");
+            if (multi) builder.AddAttribute(13, "multiple", true);
+            if (loading || waitParents) builder.AddAttribute(14, "disabled", true);
+            builder.AddAttribute(15, "onchange",
+                EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnSelectChangedAsync(f.FilterCode, e, multi)));
+            builder.AddElementReferenceCapture(16, er => _refs[f.FilterCode] = er);
+
+            if (!multi)
+            {
+                // Option rỗng đầu = placeholder (không chọn).
+                builder.OpenElement(20, "option");
+                builder.AddAttribute(21, "value", "");
+                builder.AddContent(22, waitParents
+                    ? Loc.L("common.filter.selectParent", "— chọn mục phụ thuộc trước —")
+                    : loading ? Loc.L("common.filter.loadingOpts", "Đang tải…")
+                              : (f.Placeholder ?? Loc.L("common.filter.choose", "— chọn —")));
+                builder.CloseElement();
+            }
+
+            var cur = ValueOf(f.FilterCode);
+            var curSet = multi
+                ? new HashSet<string>((cur ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries))
+                : null;
+            if (opts is not null && !waitParents)
+            {
+                var s = 30;
+                foreach (var opt in opts)
+                {
+                    builder.OpenElement(s++, "option");
+                    builder.AddAttribute(s++, "value", opt.Value);
+                    var sel = multi ? curSet!.Contains(opt.Value) : cur == opt.Value;
+                    if (sel) builder.AddAttribute(s++, "selected", true);
+                    builder.AddContent(s++, opt.Display);
+                    builder.CloseElement();
+                }
+            }
+            builder.CloseElement();
+            return;
+        }
+
+        // ── Checkbox ──
+        if (ct == "checkbox")
         {
             builder.OpenElement(0, "input");
             builder.AddAttribute(1, "type", "checkbox");
@@ -156,22 +294,36 @@
             builder.AddAttribute(3, "checked", ValueOf(f.FilterCode) == "true");
             builder.AddAttribute(4, "onchange",
                 EventCallback.Factory.Create<ChangeEventArgs>(this,
-                    e => SetValue(f.FilterCode, (e.Value is true) ? "true" : null)));
+                    e => SetValueAsync(f.FilterCode, (e.Value is true) ? "true" : null)));
             builder.AddElementReferenceCapture(5, er => _refs[f.FilterCode] = er);
             builder.CloseElement();
             return;
         }
 
-        builder.OpenElement(10, "input");
-        builder.AddAttribute(11, "type", type);
-        builder.AddAttribute(12, "class", css);
-        builder.AddAttribute(13, "placeholder", f.Placeholder ?? "");
-        builder.AddAttribute(14, "title", f.Tooltip ?? "");
-        builder.AddAttribute(15, "value", ValueOf(f.FilterCode) ?? "");
-        builder.AddAttribute(16, "onchange",
+        // ── Text / Number / Date ──
+        var type = ct switch { "number" => "number", "date" => "date", _ => "text" };
+        builder.OpenElement(40, "input");
+        builder.AddAttribute(41, "type", type);
+        builder.AddAttribute(42, "class", css);
+        builder.AddAttribute(43, "placeholder", f.Placeholder ?? "");
+        builder.AddAttribute(44, "title", f.Tooltip ?? "");
+        builder.AddAttribute(45, "value", ValueOf(f.FilterCode) ?? "");
+        builder.AddAttribute(46, "onchange",
             EventCallback.Factory.Create<ChangeEventArgs>(this,
-                e => SetValue(f.FilterCode, e.Value?.ToString())));
-        builder.AddElementReferenceCapture(17, er => _refs[f.FilterCode] = er);
+                e => SetValueAsync(f.FilterCode, e.Value?.ToString())));
+        builder.AddElementReferenceCapture(47, er => _refs[f.FilterCode] = er);
         builder.CloseElement();
     };
+
+    /// <summary>Xử lý đổi giá trị select (đơn → string; multiple → string[] nối dấu phẩy).</summary>
+    private Task OnSelectChangedAsync(string code, ChangeEventArgs e, bool multi)
+    {
+        string? val;
+        if (multi && e.Value is string[] arr)
+            val = arr.Length == 0 ? null : string.Join(",", arr);
+        else
+            val = e.Value?.ToString();
+        if (string.IsNullOrEmpty(val)) val = null;
+        return SetValueAsync(code, val);
+    }
 }

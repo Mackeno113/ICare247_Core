@@ -2,7 +2,7 @@
 -- File    : spc_Grid_DM_PhuongXa.sql
 -- Database: ICare247_Solution (Data DB per-tenant)
 -- Purpose : SVHOOK-6 — VALIDATE trước khi ghi cho màn Xã/Phường (engine-driven).
---           Nhận toàn bộ field màn qua @PayloadJson + người thực hiện + @Id (0=thêm mới).
+--           Nhận toàn bộ field màn qua @PayloadJson + @NguoiDungID (người thực hiện) + @Id (0=thêm mới).
 --           Trả result set lỗi: error_key, args_json, field_name, severity (RỖNG = hợp lệ).
 --           Token args (theo vị trí): {0}=giá trị · {1}=nhãn. Handler resolve i18n server-side.
 -- Lưu ý   : Required/Unique cũng được ValidationEngine + unique-check (C#) chặn TRƯỚC store
@@ -16,11 +16,11 @@ USE [ICare247_Solution];
 GO
 
 CREATE OR ALTER PROCEDURE dbo.spc_Grid_DM_PhuongXa
-    @Id            BIGINT,
-    @TenantId      INT,
-    @NguoiThucHien BIGINT,
-    @LangCode      NVARCHAR(10),
-    @PayloadJson   NVARCHAR(MAX)
+    @Id           BIGINT,
+    @TenantId     INT,
+    @NguoiDungID  BIGINT,
+    @LangCode     NVARCHAR(10),
+    @PayloadJson  NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;

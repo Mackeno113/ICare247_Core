@@ -51,6 +51,20 @@ public interface IViewRepository
         ViewMetadata view, IReadOnlyDictionary<string, string?> filterValues, CancellationToken ct = default);
 
     /// <summary>
+    /// Nạp options cho 1 control lọc Combo/MultiSelect/Radio (cascade — ADR-030). Nguồn:
+    /// <c>static</c> → Sys_Lookup theo Lookup_Code; <c>dynamic</c> → chạy Lookup_Sql (Data DB) bind giá trị
+    /// filter CHA (whitelist theo <c>Depends_On</c>) + token ngữ cảnh (<c>Sys_Context_Param</c>, spec 19).
+    /// </summary>
+    /// <param name="view">Metadata View chứa filter.</param>
+    /// <param name="filterCode">Filter_Code của control cần nạp options.</param>
+    /// <param name="parentValues">Giá trị filter cha hiện tại (key = Filter_Code) — chỉ cha hợp lệ được bind.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Danh sách (value, display); rỗng nếu cha chưa đủ giá trị hoặc không có nguồn.</returns>
+    Task<IReadOnlyList<FilterOption>> GetFilterOptionsAsync(
+        ViewMetadata view, string filterCode, IReadOnlyDictionary<string, string?> parentValues,
+        string langCode = "vi", CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy danh sách View (header tóm tắt) có phân trang + filter — không nạp cột/action.
     /// Ưu tiên bản tenant-specific hơn bản global khi trùng View_Code (chỉ trả 1 dòng/code).
     /// </summary>
@@ -79,6 +93,16 @@ public sealed class ViewListItem
     public int ColumnCount { get; init; }
     public int Version { get; init; }
     public bool IsActive { get; init; }
+}
+
+/// <summary>Một option cho control lọc Combo/MultiSelect/Radio (cascade — ADR-030).</summary>
+public sealed class FilterOption
+{
+    /// <summary>Giá trị gửi lên khi chọn (Filter value → @param).</summary>
+    public string Value { get; init; } = string.Empty;
+
+    /// <summary>Nhãn hiển thị.</summary>
+    public string Display { get; init; } = string.Empty;
 }
 
 /// <summary>Kết quả truy vấn dữ liệu cho một View (rows + tổng số).</summary>

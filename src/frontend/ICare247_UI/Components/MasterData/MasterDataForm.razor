@@ -75,6 +75,12 @@ else
     /// để popup chứa form (DraggableModal) thu hẹp khi form 1 cột, rộng dần khi nhiều cột.</summary>
     [Parameter] public EventCallback<string> OnWidthResolved { get; set; }
 
+    /// <summary>Giá trị đổ sẵn khi Thêm mới (prefill từ panel lọc — ADR-030), key = Field_Code.</summary>
+    [Parameter] public IReadOnlyDictionary<string, object?>? InitialValues { get; set; }
+
+    /// <summary>Field_Code khóa (read-only) khi prefill — không cho sửa lại giá trị đổ sẵn.</summary>
+    [Parameter] public IReadOnlyCollection<string>? LockedFields { get; set; }
+
     private bool IsEditMode => Id is not null;
 
     private List<FieldState> _fieldStates = [];
@@ -139,6 +145,22 @@ else
                             kv => kv.Key.Equals(fs.FieldCode, StringComparison.OrdinalIgnoreCase));
                         if (!hit.Equals(default(KeyValuePair<string, object?>)))
                             fs.Value = hit.Value;
+                    }
+                }
+            }
+            // Prefill khi Thêm mới — đổ giá trị từ panel lọc (ADR-030); LockedFields → khóa read-only.
+            else if (!IsEditMode && InitialValues is not null && InitialValues.Count > 0)
+            {
+                var init = new Dictionary<string, object?>(InitialValues, StringComparer.OrdinalIgnoreCase);
+                var locked = LockedFields is null
+                    ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                    : new HashSet<string>(LockedFields, StringComparer.OrdinalIgnoreCase);
+                foreach (var fs in _fieldStates)
+                {
+                    if (init.TryGetValue(fs.FieldCode, out var val) && val is not null)
+                    {
+                        fs.Value = val;
+                        if (locked.Contains(fs.FieldCode)) fs.IsReadOnly = true;
                     }
                 }
             }

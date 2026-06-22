@@ -338,3 +338,61 @@ query `?lang=vi`. Trả `ViewDataResult` (rows + total). Tham số bắt buộc 
 | `Ui_View_Filter.Control_Type` | chọn editor DevExpress (DxTextBox/DxDateEdit/DxComboBox/…) |
 | `Is_Required` | validate trước khi gọi `/search` + thông báo + focus |
 | `Auto_Search_On_Load` | gọi `/search` ngay khi mở (nếu true) |
+
+---
+
+## 10. Bộ lọc liên kết (cascade) + đổ giá trị sang Thêm mới (ADR-030, 2026-06-22)
+
+Mở rộng §9 cho 3 nhu cầu: (a) control lọc **phụ thuộc nhau** (chọn Công ty → nạp Phòng ban →
+chọn Năm → nạp Nhân viên); (b) **lọc theo tài khoản đăng nhập** (chỉ đơn vị user được phân quyền);
+(c) **đổ giá trị filter sang form Thêm mới** (cho sửa lại hoặc khóa). Vẫn **Hướng A** — chỉ thêm cột
+vào `Ui_View_Filter`, KHÔNG bảng song song.
+
+### 10.1 `Ui_View_Filter` — thêm 3 cột (Migration 059)
+
+| Cột | Kiểu | Mặc định | Mô tả |
+|---|---|---|---|
+| `Depends_On` | nvarchar(255) | NULL | CSV `Filter_Code` **cha**; cha đổi giá trị → nạp lại options control con. NULL = độc lập. |
+| `Default_To_Field` | nvarchar(100) | NULL | `Field_Code` trên form (`Edit_Form_Id`) nhận giá trị filter khi **Thêm mới**. NULL = không prefill. |
+| `Default_Lock` | bit | 0 | `1` = khóa (đổ sẵn, read-only) · `0` = đổ sẵn cho sửa lại. |
+
+### 10.2 Token ngữ cảnh trong `Lookup_Sql` (registry — spec 19)
+
+Cascade + scope theo tài khoản viết bằng **SQL động** (`Lookup_Source='dynamic'`, `Lookup_Sql`).
+Engine bind SERVER-SIDE các token đăng ký ở `Sys_Context_Param` + giá trị filter cha. **Whitelist** khi
+chạy = (`Sys_Context_Param` Is_Active) ∪ (param khai trong `Ui_View_Filter` của View) — ngoài danh
+sách → chặn (chống injection). Quy ước tên: `@__xxx` nội bộ engine (cấm) · `@NguoiDungID` định danh ·
+hậu tố `_Active` = phạm vi UI chọn (server-validate). Chi tiết: **spec 19_CONTEXT_PARAM_SPEC**.
+
+Token lõi: `@NguoiDungID` (NguoiDung_Id user — ranh giới bảo mật cứng), `@TenantId`, `@LangCode`,
+`@CongTyID_Active` (công ty đang chọn ở switcher; `0` = mọi công ty được phân quyền, thu hẹp MỀM).
+
+### 10.3 Cascade — hành vi engine
+
+1. Filter độc lập (`Depends_On` NULL) nạp options khi mở panel (bind token ngữ cảnh).
+2. Filter con nạp options khi **mọi cha** trong `Depends_On` đã có giá trị; chưa đủ → disable/trống.
+3. Cha đổi giá trị → **nạp lại con + xóa giá trị con đang chọn** (lan truyền theo thứ tự topo).
+4. `Lookup_Sql` của con tham chiếu `@<Param_Name cha>` (chỉ filter khai trong `Depends_On` được bind)
+   + token ngữ cảnh. VD Phòng ban: `… WHERE CongTy_Id = @CongTyId AND <scope @NguoiDungID>`.
+
+### 10.4 Prefill khi Thêm mới
+
+Bấm **Thêm mới** trên View → ViewPage truyền giá trị panel hiện tại sang form. Với mỗi filter có
+`Default_To_Field`: set field đó = giá trị filter; `Default_Lock=1` → render read-only (tái dùng
+`Lock_On_Edit`/EffectiveReadOnly); `=0` → đổ sẵn cho sửa. Field không khai → bỏ qua.
+
+### 10.5 Ví dụ — View "Danh sách nhân viên"
+
+| Filter (`Filter_Code`) | `Param_Name` | `Depends_On` | `Lookup_Sql` (rút gọn) | `Default_To_Field` / `Default_Lock` |
+|---|---|---|---|---|
+| `cong_ty` | `@CongTyId` | — | `…TC_CongTy c JOIN <bảng quyền> q ON q.CongTy_Id=c.Id WHERE q.NguoiDung_Id=@NguoiDungID` | `CongTy_Id` / `1` |
+| `phong_ban` | `@PhongBanId` | `cong_ty` | `…TC_PhongBan WHERE CongTy_Id=@CongTyId AND <scope @NguoiDungID>` | `PhongBan_Id` / `0` |
+| `nam` | `@Nam` | — | (Number, không prefill) | — |
+
+Lưới (`Source_Type=Sp/Sql`) nhận `@CongTyId/@PhongBanId/@Nam`, lọc `NgayBatDau` theo năm.
+
+### 10.6 Tiền đề runtime
+
+Cascade cần **load options thật** cho Combo/MultiSelect (hiện fallback text — "đợt 2" §9.4.5). Khi sang
+giai đoạn code runtime phải làm phần load options trước. Bản ghi/giá trị bên trong màn = **dữ liệu thật
+theo cấu hình**, không mock.

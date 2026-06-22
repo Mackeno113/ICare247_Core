@@ -62,6 +62,9 @@ try
     // Hàng đợi + tiến trình nền ghi NK_ đăng ký trong AddInfrastructure.
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IAuditWriter, ICare247.Api.Audit.HttpAuditWriter>();
+    // Token ngữ cảnh: cấp claim/header thật cho ContextParamResolver (spec 19, ADR-030).
+    builder.Services.AddScoped<ICare247.Application.Interfaces.IRequestContextAccessor,
+        ICare247.Api.Context.HttpRequestContextAccessor>();
 
     // ── JWT Auth ────────────────────────────────────────────────────────────
     var jwtSection = builder.Configuration.GetSection("Jwt");

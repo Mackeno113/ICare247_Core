@@ -96,6 +96,9 @@ public static class DependencyInjection
         services.AddScoped<IUserGridLayoutRepository, UserGridLayoutRepository>();
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
         services.AddScoped<IViewRepository, ViewRepository>();
+        // Token ngữ cảnh (Sys_Context_Param) — registry + resolver (Claim/Header/ActiveScope). Spec 19, ADR-030.
+        services.AddScoped<IContextParamRepository, ContextParamRepository>();
+        services.AddScoped<IContextParamResolver, ContextParamResolver>();
 
         // ── Config Sync (F1 — đồng bộ config master→tenant, spec 16) ─────────
         // Scoped: dùng IDbConnectionFactory tenant-aware (đích) + đọc master từ ConnectionStrings:Config.

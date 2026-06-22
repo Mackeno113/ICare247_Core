@@ -135,6 +135,33 @@ public sealed class ViewApiService
         return dto;
     }
 
+    /// <summary>
+    /// Nạp options cho 1 control lọc cascade (Combo/MultiSelect/Radio). <paramref name="parents"/> = giá trị
+    /// filter cha hiện tại (key = Filter_Code). Trả rỗng nếu lỗi/không có nguồn (không ném — UX không vỡ).
+    /// </summary>
+    public async Task<List<FilterOptionDto>> GetFilterOptionsAsync(
+        string viewCode, string filterCode, IReadOnlyDictionary<string, string?> parents,
+        string lang = "vi", CancellationToken ct = default)
+    {
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/filter-options/{Uri.EscapeDataString(filterCode)}"
+                  + $"?lang={Uri.EscapeDataString(lang)}";
+        try
+        {
+            var resp = await _http.PostAsJsonAsync(url, new { parents }, JsonOpts, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("FilterOptions {Status} [{View}/{Filter}]", (int)resp.StatusCode, viewCode, filterCode);
+                return [];
+            }
+            return await resp.Content.ReadFromJsonAsync<List<FilterOptionDto>>(JsonOpts, ct) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "FilterOptions lỗi [{View}/{Filter}]", viewCode, filterCode);
+            return [];
+        }
+    }
+
     /// <summary>Bóc trường "message" trong body lỗi JSON; fallback nguyên văn nếu không parse được.</summary>
     private static string ExtractMessage(string body)
     {
@@ -289,8 +316,38 @@ public sealed class ViewFilterDto
     public string? LookupSource { get; set; }
     public string? LookupCode { get; set; }
 
+    // ── Cascade + prefill (ADR-030) ───────────────────────────
+    /// <summary>CSV Filter_Code cha (cascade) — cha đổi → nạp lại options control này. NULL = độc lập.</summary>
+    public string? DependsOn { get; set; }
+
+    /// <summary>Field_Code trên form Thêm/Sửa nhận giá trị filter khi Thêm mới (prefill). NULL = không.</summary>
+    public string? DefaultToField { get; set; }
+
+    /// <summary>Prefill: true = khóa (read-only) · false = cho sửa lại.</summary>
+    public bool DefaultLock { get; set; }
+
     /// <summary>Nhãn hiển thị: Label (i18n) hoặc fallback Filter_Code.</summary>
     public string DisplayLabel => string.IsNullOrWhiteSpace(Label) ? FilterCode : Label!;
+
+    /// <summary>Control có nạp options (Combo/MultiSelect/Radio + có Lookup_Source).</summary>
+    public bool HasOptions =>
+        !string.IsNullOrWhiteSpace(LookupSource)
+        && (ControlType.Equals("Combo", StringComparison.OrdinalIgnoreCase)
+            || ControlType.Equals("MultiSelect", StringComparison.OrdinalIgnoreCase)
+            || ControlType.Equals("Radio", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Các Filter_Code cha tách từ DependsOn (CSV) — rỗng nếu độc lập.</summary>
+    public IReadOnlyList<string> ParentFilterCodes =>
+        string.IsNullOrWhiteSpace(DependsOn)
+            ? []
+            : DependsOn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}
+
+/// <summary>Một option của control lọc cascade (value gửi lên + nhãn hiển thị).</summary>
+public sealed class FilterOptionDto
+{
+    public string Value { get; set; } = "";
+    public string Display { get; set; } = "";
 }
 
 public sealed class ViewColumnDto

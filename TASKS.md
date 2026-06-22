@@ -88,6 +88,46 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       referential Tỉnh tồn tại (store-only, engine không làm được). after-save: pass-through + ví dụ. ⏳ **CẦN: chạy 2 file
       trên Data DB + rebuild/restart API + chạy db/058 (Config) → E2E** màn Xã/Phường (nhập sai → thấy lỗi store i18n).
 
+## 📋 Roadmap — Bộ lọc liên kết (cascade) + token ngữ cảnh + prefill Thêm mới — ADR-030
+
+> **Phạm vi đợt này = THIẾT KẾ** (user chốt "thiết kế trước, duyệt mô hình rồi mới code"). Spec + migration + cấu hình
+> WPF + đồng nhất hook store đã viết; **runtime CHƯA code**. Xem `docs/spec/14` §10 + `docs/spec/19` + ADR-030.
+
+**Đã làm (thiết kế, session này):**
+- [x] **VFILTER-D1** — `db/059_alter_ui_view_filter_cascade.sql`: +`Depends_On`/`Default_To_Field`/`Default_Lock`.
+- [x] **VFILTER-D2** — `db/060_create_sys_context_param.sql`: bảng registry + seed 4 token (NguoiDungID/TenantId/LangCode/CongTyID_Active).
+- [x] **VFILTER-D3** — spec `14` §10 (cascade + prefill) + spec mới `19_CONTEXT_PARAM_SPEC.md` + ADR-030.
+- [x] **VFILTER-D4** — ConfigStudio WPF tab "Bộ lọc": `ViewFilterRecord` +3 thuộc tính + lưới +5 cột (LookupSrc/Lookup_Sql/Phụ thuộc/Đổ vào field/Khóa) + `ViewDataService` SQL.
+- [x] **VFILTER-D5** — Đồng nhất hook store `@NguoiThucHien`→`@NguoiDungID`: 2 proc + `MasterDataRepository`/`HookStoreTemplate` + spec 18.
+
+**⏳ CẦN chạy/đồng bộ:**
+- Chạy `db/059` + `db/060` trên **Config DB**.
+- Chạy lại `db/procs/spc_Grid_DM_PhuongXa.sql` + `sp_AfterSave_Grid_DM_PhuongXa.sql` trên **Data DB** (vì đổi `@NguoiDungID`) → rebuild/restart API.
+- Đóng ConfigStudio → rebuild để nạp lưới Bộ lọc mới.
+
+**Runtime (đã code — build BE `ICare247.slnx` 0/0 + FE `ICare247_UI.slnx` 0/0):**
+- [x] **VFILTER-1 + CTXPARAM-2** — `ViewRepository.GetFilterOptionsAsync` (static Sys_Lookup / dynamic Lookup_Sql)
+      + bind whitelist (filter cha theo Depends_On) ∪ token ngữ cảnh (regex `@name` cho SQL · `sys.parameters` cho SP)
+      vào `GetFilteredDataAsync`. Endpoint `POST /views/{code}/filter-options/{filterCode}` + Query/Handler.
+- [x] **CTXPARAM-1** — `ContextParam` entity + `IContextParamRepository`/`ContextParamRepository` (Config DB) +
+      `IContextParamResolver`/`ContextParamResolver` (Claim/Header/ActiveScope + Validate_Sql, fail-safe Default) +
+      `IRequestContextAccessor`/`HttpRequestContextAccessor` (Api, claim/header). DI Infra + Api.
+- [x] **VFILTER-2** — `FilterPanel.razor` cascade: render Combo/MultiSelect/Radio nạp options qua API; cha đổi →
+      nạp lại con + xóa giá trị con (đệ quy xuống cháu); `ViewApiService.GetFilterOptionsAsync` + `FilterOptionDto`.
+- [x] **VFILTER-3** — Prefill: `FilterPanel.OnValuesChanged` → `ViewPage` dựng map Default_To_Field → giá trị →
+      `MasterDataForm.InitialValues`/`LockedFields` (Default_Lock=1 → `IsReadOnly`).
+- [x] **VFILTER-DOC** — Hướng dẫn cấu hình `docs/guide/cau-hinh-bo-loc-lien-ket.md` (token ngữ cảnh, cascade, scope
+      theo tài khoản, prefill, ví dụ Công ty→Phòng ban→Năm→Nhân viên, thêm token no-code, khắc phục sự cố).
+
+> **Build verify (finish-task 2026-06-22):** Backend `ICare247.slnx` 0/0 · Frontend `ICare247_UI.slnx` 0/0 ·
+> ConfigStudio WPF `ConfigStudio.WPF.UI.slnx` 0/0.
+
+**⏳ Runtime còn lại:**
+- [ ] **CTXPARAM-3** — ConfigStudio WPF màn "Tham số ngữ cảnh" (CRUD `Sys_Context_Param`); hiện seed SQL đủ chạy.
+- [ ] **VFILTER-ACTIVE** — Company-switcher UI + gửi header `X-Active-CongTy` (DelegatingHandler). Chưa có switcher →
+      `@CongTyID_Active` mặc định 0 = mọi công ty được phân quyền (scope-by-user `@NguoiDungID` vẫn áp).
+- [ ] **VFILTER-OPEN** — Chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` đang MẪU `HT_NguoiDung_CongTy`).
+
 ## 📋 Roadmap — Engine-hóa màn nghiệp vụ + Đồng bộ config (ADR-024/025)
 
 > Màn Công ty (và mọi màn nghiệp vụ chuẩn) = **no-code engine-driven**, KHÔNG bespoke. Thiết kế ở

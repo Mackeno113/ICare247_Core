@@ -38,11 +38,11 @@ Khớp convention spec 10: `sys.val.Required/Unique/Length/Compare…` (template
 
 ```sql
 CREATE PROC dbo.spc_Grid_DM_PhuongXa
-    @Id            BIGINT,            -- 0 = thêm mới, >0 = sửa
-    @TenantId      INT,
-    @NguoiThucHien BIGINT,           -- user id thao tác (claim sub)
-    @LangCode      NVARCHAR(10),
-    @PayloadJson   NVARCHAR(MAX)      -- toàn bộ field động của màn (JSON)
+    @Id           BIGINT,            -- 0 = thêm mới, >0 = sửa
+    @TenantId     INT,
+    @NguoiDungID  BIGINT,            -- user id thao tác (claim sub) — token chuẩn, xem spec 19
+    @LangCode     NVARCHAR(10),
+    @PayloadJson  NVARCHAR(MAX)      -- toàn bộ field động của màn (JSON)
 AS
 -- SELECT error_key, args_json, field_name, severity   (RỖNG = hợp lệ)
 ```
@@ -67,7 +67,7 @@ AS
 ### 3.2 Quy ước truyền dữ liệu (đã chốt: JSON + OPENJSON)
 
 - **Field động** của màn → `@PayloadJson` (parse bằng `JSON_VALUE`/`OPENJSON`).
-- **Context cố định** (`@Id/@TenantId/@NguoiThucHien/@LangCode`) → tham số rời, có kiểu rõ ràng.
+- **Context cố định** (`@Id/@TenantId/@NguoiDungID/@LangCode`) → tham số rời, có kiểu rõ ràng. Tên `@NguoiDungID` đồng nhất với registry token (spec 19).
 - `Id` của command: `null` (insert) **quy đổi `→ 0`** khi truyền vào store.
 
 > Phương án thay thế cân nhắc & loại: **TVP** (chỉ đáng dùng khi save batch nhiều dòng — mất kiểu native);
@@ -128,7 +128,7 @@ After-save lỗi ⇒ rollback cả bản ghi (toàn vẹn dữ liệu). **DDL kh
 IF OBJECT_ID('dbo.spc_Grid_DM_PhuongXa','P') IS NULL
 EXEC('
 CREATE PROC dbo.spc_Grid_DM_PhuongXa
-    @Id BIGINT, @TenantId INT, @NguoiThucHien BIGINT,
+    @Id BIGINT, @TenantId INT, @NguoiDungID BIGINT,
     @LangCode NVARCHAR(10), @PayloadJson NVARCHAR(MAX)
 AS
 BEGIN

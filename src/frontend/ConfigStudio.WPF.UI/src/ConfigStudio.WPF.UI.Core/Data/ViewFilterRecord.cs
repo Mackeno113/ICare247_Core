@@ -73,6 +73,18 @@ public sealed class ViewFilterRecord : BindableBase
     private string? _lookupSql;
     public string? LookupSql { get => _lookupSql; set => SetProperty(ref _lookupSql, value); }
 
+    private string? _dependsOn;
+    /// <summary>CSV Filter_Code cha (cascade) — cha đổi → nạp lại options control con. NULL = độc lập.</summary>
+    public string? DependsOn { get => _dependsOn; set => SetProperty(ref _dependsOn, value); }
+
+    private string? _defaultToField;
+    /// <summary>Field_Code trên form (Edit_Form_Id) nhận giá trị filter khi Thêm mới. NULL = không prefill.</summary>
+    public string? DefaultToField { get => _defaultToField; set => SetProperty(ref _defaultToField, value); }
+
+    private bool _defaultLock;
+    /// <summary>Prefill: true = khóa (read-only) · false = đổ sẵn cho sửa lại.</summary>
+    public bool DefaultLock { get => _defaultLock; set => SetProperty(ref _defaultLock, value); }
+
     private string? _propsJson;
     public string? PropsJson { get => _propsJson; set => SetProperty(ref _propsJson, value); }
 

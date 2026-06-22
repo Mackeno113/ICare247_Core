@@ -665,6 +665,16 @@
                                         <dxg:GridColumn Header="ColSpan" FieldName="ColSpan" Width="65" />
                                         <dxg:GridColumn Header="LookupCode" FieldName="LookupCode" Width="110"
                                                         ToolTip="Combo tĩnh: Sys_Lookup.Lookup_Code" />
+                                        <dxg:GridColumn Header="LookupSrc" FieldName="LookupSource" Width="90"
+                                                        ToolTip="NULL | static (Sys_Lookup) | dynamic (Lookup_Sql). Cascade/scope dùng dynamic." />
+                                        <dxg:GridColumn Header="Lookup_Sql" FieldName="LookupSql" Width="220"
+                                                        ToolTip="SELECT value,display. Cascade: tham chiếu @&lt;param cha&gt; (khai ở Phụ thuộc). Scope: token ngữ cảnh @NguoiDungID / @CongTyID_Active (xem Sys_Context_Param)." />
+                                        <dxg:GridColumn Header="Phụ thuộc" FieldName="DependsOn" Width="120"
+                                                        ToolTip="CSV Filter_Code cha (cascade). Cha đổi → nạp lại options control này." />
+                                        <dxg:GridColumn Header="Đổ vào field" FieldName="DefaultToField" Width="120"
+                                                        ToolTip="Field_Code trên form Thêm/Sửa nhận giá trị filter khi Thêm mới (prefill)." />
+                                        <dxg:GridColumn Header="Khóa" FieldName="DefaultLock" Width="55"
+                                                        ToolTip="Prefill: bật = khóa (read-only) · tắt = cho sửa lại." />
                                         <dxg:GridColumn Header="Order" FieldName="OrderNo" Width="55" AllowEditing="False" />
                                     </dxg:GridControl.Columns>
                                 </dxg:GridControl>

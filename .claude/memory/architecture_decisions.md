@@ -420,3 +420,30 @@
 - **Spec:** `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md` (§9 cache).
 - **Liên quan:** ADR-024 (engine-driven), ADR-014 (ConfigCache resolve i18n + cache-aside), spec 10 (Resource Key), spec 14 (View).
 - **Status:** ✅ code xong (session 60, build BE/FE/WPF 0/0) + cache-aside cờ store. ⏳ E2E (SVHOOK-6: chạy SQL).
+- **Cập nhật (ADR-030, 2026-06-22):** đổi context param `@NguoiThucHien` → **`@NguoiDungID`** (đồng nhất registry).
+
+## ADR-030: Bộ lọc liên kết (cascade) + token ngữ cảnh `Sys_Context_Param` + prefill Thêm mới (2026-06-22)
+- **Context:** Mở rộng "Lưới nâng cao" (ADR-016) cho 3 nhu cầu user: (a) control lọc phụ thuộc nhau (Công ty →
+  Phòng ban → Năm → Nhân viên); (b) lọc theo tài khoản đăng nhập (chỉ đơn vị được phân quyền); (c) đổ giá trị
+  filter sang form Thêm mới, cho sửa lại hoặc khóa. Phát sinh khi rà "đồng nhất tên tham số người dùng hiện tại".
+- **Quyết định (qua hỏi-đáp, user chốt từng điểm):**
+  1. **Vẫn Hướng A** — chỉ thêm 3 cột vào `Ui_View_Filter` (KHÔNG bảng song song): `Depends_On` (CSV Filter_Code cha,
+     cascade) · `Default_To_Field` (Field_Code form nhận prefill) · `Default_Lock` (1=khóa, 0=cho sửa). Migration `db/059`.
+  2. **Token ngữ cảnh = registry no-code** `Sys_Context_Param` (`db/060`): engine bind SERVER-SIDE token cho mọi SQL
+     admin tự viết (Lookup_Sql, Source SP/SQL). Whitelist = (registry Is_Active) ∪ (param khai trong Ui_View_Filter).
+     Source_Kind: `Claim` (JWT, bất biến) · `Header` · `ActiveScope` (header + `Validate_Sql` theo quyền). Seed 4 token.
+  3. **Tên chuẩn `@NguoiDungID`** (định danh user) thay `@NguoiThucHien` — đồng nhất CẢ hook store (ADR-029): đổi
+     đồng loạt 2 proc + `MasterDataRepository.SaveWithHooksAsync` + `HookStoreTemplate` + spec 18. Quy ước: `@__xxx` =
+     nội bộ engine (cấm trong SQL config) · `@<registry>` công khai · hậu tố `_Active` = phạm vi UI chọn (server-validate).
+  4. **`@CongTyID_Active`** (ActiveScope, header `X-Active-CongTy`): công ty đang chọn ở switcher cho user quản nhiều
+     công ty. `0` = mọi công ty được phân quyền (thu hẹp MỀM); ranh giới CỨNG do `@NguoiDungID` giữ. Server validate
+     giá trị ∈ tập được giao qua `Validate_Sql`; sai → 0.
+  5. **Prefill:** ViewPage truyền giá trị panel → form; `Default_Lock=1` render read-only (tái dùng Lock_On_Edit).
+- **Phạm vi đợt này = THIẾT KẾ** (user chốt "thiết kế trước, duyệt mô hình rồi mới code"): spec 14 §10 + spec 19 +
+  migration 059/060 + cấu hình ConfigStudio WPF (3 cột tab Bộ lọc) + đồng nhất hook store. **CHƯA code runtime**
+  (resolver server + bind + load options Combo + cascade Blazor + màn CRUD Sys_Context_Param).
+- **Spec:** `docs/spec/14_VIEW_CONFIG_SPEC.md` §10 · `docs/spec/19_CONTEXT_PARAM_SPEC.md`.
+- **Liên quan:** ADR-016 (Ui_View_Filter), ADR-029 (hook store — đồng nhất tên), ADR-023 (phân quyền), spec 11 (Data DB).
+- **Mở:** chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` đang là MẪU).
+- **Status:** ✅ thiết kế + cấu hình DB/WPF (build chưa chạy — app có thể đang mở). ⏳ chạy `db/059`+`db/060` (Config DB),
+  chạy lại 2 proc `spc_/sp_AfterSave_Grid_DM_PhuongXa` (Data DB, vì đổi `@NguoiDungID`); roadmap runtime `VFILTER-*`/`CTXPARAM-*`.

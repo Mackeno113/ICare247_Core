@@ -24,16 +24,28 @@ public sealed partial class ViewRepository : IViewRepository
 {
     private readonly IDbConnectionFactory _db;
     private readonly IDataDbConnectionFactory _dataDb;
+    private readonly IContextParamResolver _contextResolver;
+    private readonly ILookupRepository _lookupRepository;
+    private readonly ITenantContext _tenant;
     private readonly ILogger<ViewRepository> _logger;
 
     [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
     private static partial Regex SafeIdentifierRegex();
 
+    /// <summary>Trích các tên tham số <c>@name</c> tham chiếu trong một đoạn SQL (cho whitelist context).</summary>
+    [GeneratedRegex(@"@([a-zA-Z_][a-zA-Z0-9_]*)", RegexOptions.Compiled)]
+    private static partial Regex ParamRefRegex();
+
     public ViewRepository(
-        IDbConnectionFactory db, IDataDbConnectionFactory dataDb, ILogger<ViewRepository> logger)
+        IDbConnectionFactory db, IDataDbConnectionFactory dataDb,
+        IContextParamResolver contextResolver, ILookupRepository lookupRepository,
+        ITenantContext tenant, ILogger<ViewRepository> logger)
     {
         _db = db;
         _dataDb = dataDb;
+        _contextResolver = contextResolver;
+        _lookupRepository = lookupRepository;
+        _tenant = tenant;
         _logger = logger;
     }
 
@@ -191,7 +203,10 @@ public sealed partial class ViewRepository : IViewRepository
                    f.Lookup_Source    AS LookupSource,
                    f.Lookup_Code      AS LookupCode,
                    f.Lookup_Sql       AS LookupSql,
-                   f.Props_Json       AS PropsJson
+                   f.Props_Json       AS PropsJson,
+                   f.Depends_On       AS DependsOn,
+                   f.Default_To_Field AS DefaultToField,
+                   f.Default_Lock     AS DefaultLock
             FROM   dbo.Ui_View_Filter f
             LEFT JOIN dbo.Sys_Resource rfl ON rfl.Resource_Key = f.Label_Key
                                           AND rfl.Lang_Code     = @LangCode
@@ -407,6 +422,7 @@ public sealed partial class ViewRepository : IViewRepository
 
         // ── Bind tham số: CHỈ từ view.Filters (whitelist). Code lạ trong filterValues bị bỏ qua. ──
         var dp = new DynamicParameters();
+        var boundNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var f in view.Filters)
         {
             if (string.IsNullOrWhiteSpace(f.ParamName))
@@ -424,10 +440,18 @@ public sealed partial class ViewRepository : IViewRepository
 
             var value = ConvertFilterValue(raw, f.ParamType, f.Operator, f.FilterCode);
             // Luôn add (NULL khi rỗng) → SP/SQL kiểu `WHERE (@x IS NULL OR col=@x)` bỏ lọc đúng.
-            dp.Add(NormalizeParamName(f.ParamName), value);
+            var name = NormalizeParamName(f.ParamName);
+            dp.Add(name, value);
+            boundNames.Add(name);
         }
 
         using var data = _dataDb.CreateConnection();
+
+        // ── Token ngữ cảnh (Sys_Context_Param) tham chiếu trong SQL/SP → bind server-side (spec 19). ──
+        var candidates = isSp
+            ? await GetProcParamNamesAsync(data, view.SourceObject!, ct)
+            : ParamRefRegex().Matches(view.SourceObject!).Select(m => m.Groups[1].Value);
+        await BindContextParamsAsync(dp, candidates, boundNames, ct);
 
         var rows = isSp
             ? await data.QueryAsync(new CommandDefinition(
@@ -443,6 +467,113 @@ public sealed partial class ViewRepository : IViewRepository
 
         // SP/SQL trả nguyên tập đã lọc → client phân trang. TotalCount = số dòng trả về.
         return new ViewDataResult { Items = items, TotalCount = items.Count };
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<FilterOption>> GetFilterOptionsAsync(
+        ViewMetadata view, string filterCode, IReadOnlyDictionary<string, string?> parentValues,
+        string langCode = "vi", CancellationToken ct = default)
+    {
+        var f = view.Filters.FirstOrDefault(x =>
+            string.Equals(x.FilterCode, filterCode, StringComparison.OrdinalIgnoreCase))
+            ?? throw new ArgumentException(
+                $"Filter '{filterCode}' không tồn tại trong View '{view.ViewCode}'.", nameof(filterCode));
+
+        // ── static: Sys_Lookup theo Lookup_Code ───────────────────────────
+        if (string.Equals(f.LookupSource, "static", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(f.LookupCode))
+                return [];
+            var items = await _lookupRepository.GetByCodeAsync(f.LookupCode, _tenant.TenantId, langCode, ct);
+            return items.Where(i => i.IsActive)
+                .Select(i => new FilterOption { Value = i.ItemCode, Display = i.Label })
+                .ToList();
+        }
+
+        // ── dynamic: Lookup_Sql bind cha (whitelist Depends_On) + token ngữ cảnh ──
+        if (string.Equals(f.LookupSource, "dynamic", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(f.LookupSql))
+                return [];
+
+            var dp = new DynamicParameters();
+            var boundNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Chỉ bind cha khai trong Depends_On (whitelist); tên param = Param_Name của filter cha.
+            var parentCodes = new HashSet<string>(f.ParentFilterCodes, StringComparer.OrdinalIgnoreCase);
+            foreach (var parent in view.Filters.Where(x => parentCodes.Contains(x.FilterCode)))
+            {
+                if (string.IsNullOrWhiteSpace(parent.ParamName))
+                    continue;
+                parentValues.TryGetValue(parent.FilterCode, out var raw);
+                var value = ConvertFilterValue(raw, parent.ParamType, "=", parent.FilterCode);
+                var name = NormalizeParamName(parent.ParamName);
+                dp.Add(name, value);
+                boundNames.Add(name);
+            }
+
+            // Token ngữ cảnh tham chiếu trong Lookup_Sql (vd @NguoiDungID, @CongTyID_Active).
+            await BindContextParamsAsync(
+                dp, ParamRefRegex().Matches(f.LookupSql).Select(m => m.Groups[1].Value), boundNames, ct);
+
+            using var data = _dataDb.CreateConnection();
+            var rows = await data.QueryAsync(new CommandDefinition(
+                f.LookupSql, dp, commandType: System.Data.CommandType.Text, cancellationToken: ct));
+            return rows.Select(r => MapOption((IDictionary<string, object>)r))
+                       .Where(o => o is not null).Select(o => o!).ToList();
+        }
+
+        return [];
+    }
+
+    /// <summary>Map 1 dòng Lookup_Sql → FilterOption: ưu tiên cột tên 'value'/'display', không có thì 2 cột đầu.</summary>
+    private static FilterOption? MapOption(IDictionary<string, object> row)
+    {
+        string? value = null, display = null;
+        foreach (var kv in row)
+        {
+            if (string.Equals(kv.Key, "value", StringComparison.OrdinalIgnoreCase)) value = kv.Value?.ToString();
+            else if (string.Equals(kv.Key, "display", StringComparison.OrdinalIgnoreCase)) display = kv.Value?.ToString();
+        }
+        if (value is null && display is null)
+        {
+            var vals = row.Values.ToList();
+            if (vals.Count >= 1) value = vals[0]?.ToString();
+            if (vals.Count >= 2) display = vals[1]?.ToString();
+        }
+        return value is null ? null : new FilterOption { Value = value, Display = display ?? value };
+    }
+
+    /// <summary>Resolve + bind token ngữ cảnh (candidate) chưa trùng tham số đã bind (filter/cha thắng khi trùng).</summary>
+    private async Task BindContextParamsAsync(
+        DynamicParameters dp, IEnumerable<string> candidateNames,
+        HashSet<string> alreadyBound, CancellationToken ct)
+    {
+        var wanted = candidateNames
+            .Select(n => n.TrimStart('@'))
+            .Where(n => !alreadyBound.Contains(n))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (wanted.Count == 0)
+            return;
+
+        var values = await _contextResolver.ResolveAsync(wanted, ct);
+        foreach (var (name, value) in values)
+        {
+            if (alreadyBound.Contains(name))
+                continue;
+            dp.Add(name, value);
+            alreadyBound.Add(name);
+        }
+    }
+
+    /// <summary>Tên tham số (không '@') một stored procedure khai báo — để bind token an toàn (tránh "too many arguments").</summary>
+    private static async Task<IReadOnlyList<string>> GetProcParamNamesAsync(
+        System.Data.IDbConnection data, string spName, CancellationToken ct)
+    {
+        const string sql = "SELECT REPLACE(p.name, '@', '') FROM sys.parameters p WHERE p.object_id = OBJECT_ID(@Sp)";
+        var rows = await data.QueryAsync<string>(new CommandDefinition(sql, new { Sp = spName }, cancellationToken: ct));
+        return rows.AsList();
     }
 
     /// <summary>Bỏ tiền tố '@' để Dapper tự thêm (tránh '@@'); whitelist ký tự an toàn.</summary>

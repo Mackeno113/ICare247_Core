@@ -41,7 +41,7 @@ public static class HookStoreTemplate
             IF OBJECT_ID('{{s}}.{{proc}}','P') IS NULL
             EXEC('
             CREATE PROCEDURE {{s}}.{{proc}}
-                @Id BIGINT, @TenantId INT, @NguoiThucHien BIGINT,
+                @Id BIGINT, @TenantId INT, @NguoiDungID BIGINT,
                 @LangCode NVARCHAR(10), @PayloadJson NVARCHAR(MAX)
             AS
             BEGIN
@@ -85,7 +85,7 @@ public static class HookStoreTemplate
             IF OBJECT_ID('{{s}}.{{proc}}','P') IS NULL
             EXEC('
             CREATE PROCEDURE {{s}}.{{proc}}
-                @Id BIGINT, @TenantId INT, @NguoiThucHien BIGINT,
+                @Id BIGINT, @TenantId INT, @NguoiDungID BIGINT,
                 @LangCode NVARCHAR(10), @PayloadJson NVARCHAR(MAX)
             AS
             BEGIN

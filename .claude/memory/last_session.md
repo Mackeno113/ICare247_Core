@@ -1,5 +1,49 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-22 (session 61 — THIẾT KẾ bộ lọc liên kết/cascade + token ngữ cảnh Sys_Context_Param + prefill Thêm mới · ADR-030)
+
+## Session 61 (2026-06-22) — đã làm (THIẾT KẾ, chưa code runtime)
+
+> Tính năng mới: panel lọc trái tổ hợp control **liên kết nhau + theo tài khoản đăng nhập** (Công ty→Phòng ban→Năm→
+> Nhân viên), và **đổ giá trị filter sang form Thêm mới** (cho sửa/khóa). Phát sinh khi user yêu cầu "đồng nhất tên
+> tham số người dùng" — rà thấy `@NguoiThucHien` (hook store) vs đề xuất token bộ lọc. User chốt qua hỏi-đáp:
+> **thiết kế trước** (duyệt mô hình rồi code) · token **`@NguoiDungID`** · prefill = cột trên Ui_View_Filter ·
+> registry **`Sys_Context_Param`** no-code · active-scope qua header `X-Active-*` · thêm `@CongTyID_Active`.
+
+- **Mô hình (ADR-030):** mở rộng Hướng A — `Ui_View_Filter` +3 cột (`Depends_On` cascade, `Default_To_Field`+`Default_Lock`
+  prefill). Token ngữ cảnh registry `Sys_Context_Param` (Claim/Header/ActiveScope+Validate_Sql); whitelist bind =
+  (registry) ∪ (filter params). `@NguoiDungID` = ranh giới cứng (JOIN bảng quyền); `@CongTyID_Active` (0=mọi cty được
+  quyền) thu hẹp mềm, server validate. Quy ước `@__`=nội bộ engine, `_Active`=UI chọn.
+- **Đã viết (thiết kế):** `db/059` (3 cột) · `db/060` (Sys_Context_Param + seed 4 token) · spec 14 §10 + spec mới
+  `19_CONTEXT_PARAM_SPEC.md` + ADR-030 · ConfigStudio WPF (ViewFilterRecord +3 prop, tab Bộ lọc +5 cột, ViewDataService SQL).
+- **Đồng nhất hook store:** đổi `@NguoiThucHien`→`@NguoiDungID` ở 2 proc PhuongXa + `MasterDataRepository.SaveWithHooksAsync`
+  + `HookStoreTemplate` + spec 18.
+
+### Runtime — ĐÃ CODE (user chốt "code runtime"; build BE `ICare247.slnx` 0/0 + FE `ICare247_UI.slnx` 0/0)
+- **Backend context-param:** `ContextParam` (Domain) · `IContextParamRepository`/`ContextParamRepository` (Config DB) ·
+  `IContextParamResolver`/`ContextParamResolver` (Claim/Header/ActiveScope + Validate_Sql, fail-safe Default) ·
+  `IRequestContextAccessor`/`HttpRequestContextAccessor` (Api). DI Infra + Api.
+- **Backend bind + options:** `ViewRepository` bind whitelist = filter params ∪ token ngữ cảnh (regex `@name` cho SQL,
+  `sys.parameters` cho SP) trong `GetFilteredDataAsync`; `GetFilterOptionsAsync` (static Sys_Lookup / dynamic Lookup_Sql
+  bind cha theo Depends_On). Endpoint `POST /views/{code}/filter-options/{filterCode}` + Query/Handler.
+- **Frontend:** `FilterPanel.razor` render Combo/MultiSelect/Radio nạp options + cascade (cha đổi → nạp lại con + xóa con,
+  đệ quy); `ViewApiService.GetFilterOptionsAsync`/`FilterOptionDto`; prefill `OnValuesChanged`→`ViewPage`→
+  `MasterDataForm.InitialValues`/`LockedFields` (Default_Lock → IsReadOnly). ViewFilterDto +3 field.
+- **Tài liệu:** `docs/guide/cau-hinh-bo-loc-lien-ket.md` (hướng dẫn cấu hình đầy đủ + ví dụ + khắc phục sự cố).
+- **Build verify (finish-task):** Backend `ICare247.slnx` 0/0 · Frontend `ICare247_UI.slnx` 0/0 · WPF `ConfigStudio.WPF.UI.slnx` 0/0.
+- **Chip nền:** ẩn `Lookup_Sql` khỏi response `/views/{code}/info` (rò rỉ có sẵn — client không dùng trường này).
+
+### ⏳ Việc cần làm
+1. Chạy `db/059` + `db/060` trên **Config DB**.
+2. Chạy lại 2 proc `spc_/sp_AfterSave_Grid_DM_PhuongXa` trên **Data DB** (đổi `@NguoiDungID`) + rebuild/restart API.
+3. Đóng ConfigStudio → rebuild nạp lưới Bộ lọc mới.
+4. **Flush cache View** (hoặc restart API) để metadata nạp 3 cột filter mới + cấu hình Combo Lookup_Source/Lookup_Sql.
+5. Cấu hình 1 View mẫu (Combo dynamic + Depends_On + Default_To_Field) để E2E cascade + prefill.
+6. **Mở:** chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` MẪU); WPF màn Sys_Context_Param;
+   company-switcher gửi header `X-Active-CongTy` (`VFILTER-ACTIVE`). Xem TASKS.md.
+
+---
+
 > Cập nhật: 2026-06-22 (session 60 — THIẾT KẾ save hook store per màn: spc_Grid_/sp_AfterSave_Grid_ + i18n + codegen)
 
 ## Session 60 (2026-06-22) — đã làm (THIẾT KẾ, CHƯA CODE)

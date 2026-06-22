@@ -1,6 +1,22 @@
 # Project Current Phase
 
-> Cập nhật lần cuối: 2026-06-16
+> Cập nhật lần cuối: 2026-06-22
+
+## Tiến độ session 61 (2026-06-22) — Bộ lọc liên kết (cascade) + token ngữ cảnh + prefill Thêm mới (ADR-030)
+
+Tính năng ad-hoc (ngoài roadmap chính F1/F2). Mở rộng panel lọc lưới nâng cao: **cascade** (Công ty→Phòng ban→Năm→
+Nhân viên), **lọc theo tài khoản** (token `@NguoiDungID` JOIN bảng quyền), **đổ giá trị sang form Thêm mới**
+(cho sửa/khóa). Registry token no-code `Sys_Context_Param` (Claim/Header/ActiveScope+Validate_Sql); đồng nhất tên
+`@NguoiThucHien`→`@NguoiDungID` cả hook store. **Full-stack ĐÃ CODE** — build BE/FE/WPF 0/0.
+
+- DB: `db/059` (3 cột Ui_View_Filter) + `db/060` (Sys_Context_Param + seed 4 token). Spec 14 §10 + spec mới 19 + ADR-030.
+- BE: ContextParam entity/repo/resolver + IRequestContextAccessor (Api) + `ViewRepository` bind whitelist (registry ∪
+  filter params) + `GetFilterOptionsAsync` + endpoint `/views/{code}/filter-options/{filterCode}`.
+- FE: `FilterPanel` cascade + load options; prefill `ViewPage`→`MasterDataForm`. Tài liệu `cau-hinh-bo-loc-lien-ket.md`.
+- ⏳ Còn: chạy `db/059`+`db/060` (Config) + chạy lại 2 proc PhuongXa (Data, đổi `@NguoiDungID`); company-switcher gửi
+  header `X-Active-CongTy`; WPF màn `Sys_Context_Param`; chốt bảng phân công user↔công ty thật.
+
+→ **Roadmap chính giữ nguyên:** F1 E2E mở rộng descriptor → **F2 engine-hóa màn Công ty**.
 
 ## Tiến độ session 54 (2026-06-16) — F1 UI + khởi động F2 + công cụ cấu hình
 

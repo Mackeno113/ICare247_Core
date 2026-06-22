@@ -384,12 +384,12 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var dp = new DynamicParameters();
         dp.Add("Id", id is null ? 0L : id);          // null (Insert) → 0 theo quy ước ID=0 là thêm mới
         dp.Add("TenantId", tenantId);
-        dp.Add("NguoiThucHien", userId);             // null → SQL NULL
+        dp.Add("NguoiDungID", userId);               // null → SQL NULL (token chuẩn — xem spec 19)
         dp.Add("LangCode", string.IsNullOrWhiteSpace(langCode) ? "vi" : langCode);
         dp.Add("PayloadJson", JsonSerializer.Serialize(values));
 
         var sql = $"EXEC dbo.{Bracket(procName)} " +
-                  "@Id=@Id, @TenantId=@TenantId, @NguoiThucHien=@NguoiThucHien, " +
+                  "@Id=@Id, @TenantId=@TenantId, @NguoiDungID=@NguoiDungID, " +
                   "@LangCode=@LangCode, @PayloadJson=@PayloadJson";
 
         var rows = await data.QueryAsync(new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));

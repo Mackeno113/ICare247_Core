@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-22 00:30:18",
+  "generatedAt": "2026-06-22 22:29:41",
   "source": "ICare247_UI",
-  "count": 315,
+  "count": 318,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -1265,7 +1265,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 193
+          "line": 220
         }
       ]
     },
@@ -1276,7 +1276,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 202
+          "line": 229
         }
       ]
     },
@@ -1287,7 +1287,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 195
+          "line": 222
         }
       ]
     },
@@ -1298,7 +1298,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 199
+          "line": 226
         }
       ]
     },
@@ -1309,7 +1309,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 197
+          "line": 224
         }
       ]
     },
@@ -1320,7 +1320,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 191
+          "line": 218
         }
       ]
     },
@@ -1893,11 +1893,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 45
+          "line": 56
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 102
+          "line": 103
         }
       ]
     },
@@ -1954,7 +1954,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 14
+          "line": 16
         }
       ]
     },
@@ -1993,7 +1993,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 143
+          "line": 152
         }
       ]
     },
@@ -2046,7 +2046,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 14
+          "line": 16
         }
       ]
     },
@@ -2098,7 +2098,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 47
+          "line": 58
         }
       ]
     },
@@ -2113,7 +2113,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 47
+          "line": 58
         }
       ]
     },
@@ -2154,7 +2154,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 143
+          "line": 152
         }
       ]
     },
@@ -2394,13 +2394,35 @@
       ]
     },
     {
+      "key": "common.filter.choose",
+      "vi": "— chọn —",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
+          "line": 263
+        }
+      ]
+    },
+    {
+      "key": "common.filter.loadingOpts",
+      "vi": "Đang tải…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
+          "line": 262
+        }
+      ]
+    },
+    {
       "key": "common.filter.reset",
       "vi": "Đặt lại",
       "source": "ICare247_UI",
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 77
+          "line": 87
         }
       ]
     },
@@ -2411,7 +2433,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 75
+          "line": 85
         }
       ]
     },
@@ -2422,7 +2444,18 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 78
+          "line": 88
+        }
+      ]
+    },
+    {
+      "key": "common.filter.selectParent",
+      "vi": "— chọn mục phụ thuộc trước —",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
+          "line": 261
         }
       ]
     },
@@ -2534,7 +2567,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 178
+          "line": 217
         }
       ]
     },
@@ -2578,7 +2611,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
-          "line": 82
+          "line": 92
         }
       ]
     },
@@ -2725,7 +2758,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 105
+          "line": 106
         }
       ]
     },
@@ -2755,7 +2788,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 105
+          "line": 106
         }
       ]
     },
@@ -3387,7 +3420,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 177
+          "line": 216
         }
       ]
     },
@@ -3413,7 +3446,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 89
+          "line": 107
         }
       ]
     },
@@ -3608,7 +3641,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 317
+          "line": 352
         }
       ]
     },
@@ -3619,7 +3652,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 318
+          "line": 353
         }
       ]
     },
@@ -3641,7 +3674,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 99
+          "line": 100
         }
       ]
     },
@@ -3652,7 +3685,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 309
+          "line": 344
         }
       ]
     },
@@ -3663,7 +3696,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 96
+          "line": 97
         }
       ]
     },
@@ -3685,7 +3718,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 183
+          "line": 192
         }
       ]
     },
@@ -3707,7 +3740,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 182
+          "line": 191
         }
       ]
     },
@@ -3744,7 +3777,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 154
+          "line": 163
         }
       ]
     }

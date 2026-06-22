@@ -69,4 +69,20 @@ public sealed class ViewFilter
     public string? LookupSql { get; init; }
 
     public string? PropsJson { get; init; }
+
+    // ── Cascade + prefill (ADR-030) ───────────────────────────
+    /// <summary>CSV <c>Filter_Code</c> cha (cascade) — cha đổi → nạp lại options control này. NULL = độc lập.</summary>
+    public string? DependsOn { get; init; }
+
+    /// <summary>Field_Code trên form (Edit_Form_Id) nhận giá trị filter khi Thêm mới (prefill). NULL = không.</summary>
+    public string? DefaultToField { get; init; }
+
+    /// <summary>Prefill: true = khóa (read-only) · false = đổ sẵn cho sửa lại.</summary>
+    public bool DefaultLock { get; init; }
+
+    /// <summary>Các <c>Filter_Code</c> cha tách từ <see cref="DependsOn"/> (CSV) — rỗng nếu độc lập.</summary>
+    public IReadOnlyList<string> ParentFilterCodes =>
+        string.IsNullOrWhiteSpace(DependsOn)
+            ? []
+            : DependsOn.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

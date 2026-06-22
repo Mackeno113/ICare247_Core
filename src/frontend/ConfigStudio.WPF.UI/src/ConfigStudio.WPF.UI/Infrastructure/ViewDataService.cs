@@ -137,6 +137,7 @@ public sealed class ViewDataService : IViewDataService
             "       Default_Value AS DefaultValue, Is_Required AS IsRequired, Is_Visible AS IsVisible,\n" +
             "       Order_No AS OrderNo, Col_Span AS ColSpan, Lookup_Source AS LookupSource,\n" +
             "       Lookup_Code AS LookupCode, Lookup_Sql AS LookupSql, Props_Json AS PropsJson,\n" +
+            "       Depends_On AS DependsOn, Default_To_Field AS DefaultToField, Default_Lock AS DefaultLock,\n" +
             "       Is_Active AS IsActive\n" +
             "FROM   dbo.Ui_View_Filter\n" +
             "WHERE  View_Id = @ViewId\n" +
@@ -443,10 +444,12 @@ public sealed class ViewDataService : IViewDataService
         const string sql =
             "INSERT INTO dbo.Ui_View_Filter (View_Id, Filter_Code, Control_Type, Label_Key, Placeholder_Key,\n" +
             "    Tooltip_Key, Param_Name, Param_Type, Operator, Default_Value, Is_Required, Is_Visible, Order_No,\n" +
-            "    Col_Span, Lookup_Source, Lookup_Code, Lookup_Sql, Props_Json, Is_Active)\n" +
+            "    Col_Span, Lookup_Source, Lookup_Code, Lookup_Sql, Props_Json,\n" +
+            "    Depends_On, Default_To_Field, Default_Lock, Is_Active)\n" +
             "VALUES (@ViewId, @FilterCode, @ControlType, @LabelKey, @PlaceholderKey, @TooltipKey, @ParamName,\n" +
             "    @ParamType, @Operator, @DefaultValue, @IsRequired, @IsVisible, @OrderNo, @ColSpan, @LookupSource,\n" +
-            "    @LookupCode, @LookupSql, @PropsJson, @IsActive)";
+            "    @LookupCode, @LookupSql, @PropsJson,\n" +
+            "    @DependsOn, @DefaultToField, @DefaultLock, @IsActive)";
 
         var order = 0;
         foreach (var f in filters)
@@ -473,6 +476,9 @@ public sealed class ViewDataService : IViewDataService
                 LookupCode = NullIfEmpty(f.LookupCode),
                 LookupSql = NullIfEmpty(f.LookupSql),
                 PropsJson = NullIfEmpty(f.PropsJson),
+                DependsOn = NullIfEmpty(f.DependsOn),
+                DefaultToField = NullIfEmpty(f.DefaultToField),
+                f.DefaultLock,
                 f.IsActive,
             }, tx, cancellationToken: ct));
         }

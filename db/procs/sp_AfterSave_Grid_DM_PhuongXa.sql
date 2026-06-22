@@ -15,11 +15,11 @@ USE [ICare247_Solution];
 GO
 
 CREATE OR ALTER PROCEDURE dbo.sp_AfterSave_Grid_DM_PhuongXa
-    @Id            BIGINT,
-    @TenantId      INT,
-    @NguoiThucHien BIGINT,
-    @LangCode      NVARCHAR(10),
-    @PayloadJson   NVARCHAR(MAX)
+    @Id           BIGINT,
+    @TenantId     INT,
+    @NguoiDungID  BIGINT,
+    @LangCode     NVARCHAR(10),
+    @PayloadJson  NVARCHAR(MAX)
 AS
 BEGIN
     SET NOCOUNT ON;
