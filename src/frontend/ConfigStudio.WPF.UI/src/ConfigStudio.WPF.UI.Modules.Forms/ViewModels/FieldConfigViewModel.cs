@@ -28,6 +28,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 {
     private readonly IRegionManager _regionManager;
     private readonly IFieldDataService? _fieldService;
+    private readonly IFormDataService? _formService;
     private readonly II18nDataService? _i18nService;
     private readonly IRuleDataService? _ruleService;
     private readonly IEventDataService? _eventService;
@@ -622,7 +623,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool AllowAddNew
     {
         get => _allowAddNew;
-        set { if (SetProperty(ref _allowAddNew, value)) IsDirty = true; }
+        set
+        {
+            if (SetProperty(ref _allowAddNew, value))
+            {
+                IsDirty = true;
+                // Bật thêm mới → nạp danh sách Form_Code cho combobox chọn form (nếu chưa có)
+                if (value && AvailableFormCodes.Count == 0) _ = LoadFormCodesAsync();
+            }
+        }
     }
 
     private string _addFormCode = "";
@@ -631,6 +640,33 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         get => _addFormCode;
         set { if (SetProperty(ref _addFormCode, value)) IsDirty = true; }
+    }
+
+    /// <summary>Danh sách Form_Code có sẵn của tenant — nguồn cho combobox chọn form dialog thêm mới.</summary>
+    public ObservableCollection<string> AvailableFormCodes { get; } = [];
+
+    /// <summary>
+    /// Nạp danh sách Form_Code thật từ <c>Ui_Form</c> của tenant qua <see cref="IFormDataService"/>.
+    /// Dùng cho combobox "Form Code dialog thêm mới". Sau sự kiện: combobox có dữ liệu để chọn.
+    /// </summary>
+    private async Task LoadFormCodesAsync()
+    {
+        if (_formService is null || _appConfig is not { IsConfigured: true }) return;
+        try
+        {
+            var forms = await _formService.GetAllFormsAsync(_appConfig.TenantId, false, _cts.Token);
+            AvailableFormCodes.Clear();
+            foreach (var code in forms.Select(f => f.FormCode)
+                                      .Where(c => !string.IsNullOrWhiteSpace(c))
+                                      .Distinct()
+                                      .OrderBy(c => c, StringComparer.OrdinalIgnoreCase))
+                AvailableFormCodes.Add(code);
+        }
+        catch (Exception ex)
+        {
+            // Log lỗi — thường do bảng Ui_Form chưa cấu hình hoặc connection lỗi
+            _logger?.Capture(ex, "FieldConfig.LoadFormCodes");
+        }
     }
 
     // ── TreeLookupBox props (Migration 021) ───────────────────────────
@@ -1093,6 +1129,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public FieldConfigViewModel(
         IRegionManager regionManager,
         IFieldDataService? fieldService = null,
+        IFormDataService? formService = null,
         II18nDataService? i18nService = null,
         IRuleDataService? ruleService = null,
         IEventDataService? eventService = null,
@@ -1105,6 +1142,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         _regionManager     = regionManager;
         _fieldService      = fieldService;
+        _formService       = formService;
         _i18nService       = i18nService;
         _ruleService       = ruleService;
         _eventService      = eventService;
@@ -1410,6 +1448,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             RaisePropertyChanged(nameof(ReloadTriggerField));
                             RaisePropertyChanged(nameof(AllowAddNew));
                             RaisePropertyChanged(nameof(AddFormCode));
+                            // Field đã bật thêm mới → nạp danh sách Form_Code cho combobox chọn form
+                            if (_allowAddNew) await LoadFormCodesAsync();
                             skipFkRestore:;
                         }
                         catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }

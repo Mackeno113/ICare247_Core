@@ -417,12 +417,15 @@
                 <StackPanel Visibility="{Binding AllowAddNew, Converter={StaticResource BoolToVis}}">
                     <TextBlock Text="Form Code dialog thêm mới *" FontSize="11" FontWeight="SemiBold"
                                Foreground="#374151" Margin="0,0,0,4" />
-                    <dxe:TextEdit Text="{Binding AddFormCode, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" FontFamily="Consolas"
-                                  NullText="VD: DS_XaPhuong — Form_Code của Ui_Form bound vào bảng nguồn" />
+                    <dxe:ComboBoxEdit ItemsSource="{Binding AvailableFormCodes}"
+                                      EditValue="{Binding AddFormCode, UpdateSourceTrigger=PropertyChanged}"
+                                      IsTextEditable="True"
+                                      IncrementalFiltering="True" ImmediatePopup="True"
+                                      Height="32" FontFamily="Consolas"
+                                      NullText="Chọn hoặc gõ Form_Code — VD: DS_XaPhuong" />
                     <TextBlock FontSize="10" Foreground="#64748B" Opacity="0.75" Margin="0,4,0,0"
                                TextWrapping="Wrap"
-                               Text="Bắt buộc khi bật. Form phải bound đúng bảng nguồn; field code = tên cột DB để insert." />
+                               Text="Bắt buộc khi bật. Chọn Form_Code của Ui_Form bound đúng bảng nguồn; field code = tên cột DB để insert." />
                 </StackPanel>
             </StackPanel>
         </Border>
