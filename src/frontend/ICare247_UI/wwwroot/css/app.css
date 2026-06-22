@@ -347,6 +347,8 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .md-form { padding: 4px; }
 .md-form-title { margin: 0 0 14px; font-size: 17px; font-weight: var(--fw-semibold); }
 .md-form-banner { margin-bottom: 12px; }
+.md-form-banner-list { margin: 6px 0 0; padding-left: 18px; }
+.md-form-banner-list li { margin: 2px 0; }
 .md-form-loading { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); padding: 16px; }
 .md-form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); }
 .md-legacy-tag { color: #92400e; background: var(--color-accent-soft); border-radius: var(--radius-sm); padding: 0 6px; font-size: 11px; margin-left: 4px; }

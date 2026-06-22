@@ -4,6 +4,8 @@
 // Purpose : Dapper implementation của IMasterDataRepository — CRUD generic, metadata-driven.
 //           Đọc bảng đích từ Ui_Form → Sys_Table (Config DB), thực thi CRUD trên Data DB.
 
+using System.Data;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
@@ -243,6 +245,18 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        using var data = _dataDb.CreateConnection();
+        return await InsertCoreAsync(data, tx: null, info, values, userId, ct);
+    }
+
+    /// <summary>
+    /// INSERT lõi — dùng connection (+transaction nếu có) truyền vào, để chia sẻ với
+    /// <see cref="SaveWithHooksAsync"/> (ghi trong CÙNG transaction với hook store).
+    /// </summary>
+    private async Task<object?> InsertCoreAsync(
+        IDbConnection data, IDbTransaction? tx,
+        MasterDataFormInfo info, Dictionary<string, object?> values, long? userId, CancellationToken ct)
+    {
         var table = QualifiedTable(info);
         var pk    = SafeCol(info.PkColumn, "PK");
 
@@ -250,8 +264,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         if (cols.Count == 0)
             throw new InvalidOperationException("MasterData Insert: không có cột hợp lệ để thêm.");
 
-        using var data = _dataDb.CreateConnection();
-        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct);
+        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct, tx);
 
         // (cột, biểu thức giá trị) — field = @param; audit = bơm tự động (CreatedBy/At nếu bảng có).
         var insCols = cols.Select(Bracket).ToList();
@@ -265,7 +278,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var sql = $"INSERT INTO {table} ({string.Join(", ", insCols)}) " +
                   $"OUTPUT INSERTED.{Bracket(pk)} AS NewId VALUES ({string.Join(", ", insVals)})";
 
-        return await data.ExecuteScalarAsync<object>(new CommandDefinition(sql, dp, cancellationToken: ct));
+        return await data.ExecuteScalarAsync<object>(
+            new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
     }
 
     // ── Update ──────────────────────────────────────────────────────────────────
@@ -277,6 +291,17 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        using var data = _dataDb.CreateConnection();
+        return await UpdateCoreAsync(data, tx: null, info, id, values, userId, ct);
+    }
+
+    /// <summary>
+    /// UPDATE lõi — dùng connection (+transaction nếu có) truyền vào (chia sẻ với <see cref="SaveWithHooksAsync"/>).
+    /// </summary>
+    private async Task<int> UpdateCoreAsync(
+        IDbConnection data, IDbTransaction? tx,
+        MasterDataFormInfo info, object id, Dictionary<string, object?> values, long? userId, CancellationToken ct)
+    {
         var table = QualifiedTable(info);
         var pk    = SafeCol(info.PkColumn, "PK");
 
@@ -284,8 +309,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         if (cols.Count == 0)
             throw new InvalidOperationException("MasterData Update: không có cột hợp lệ để cập nhật.");
 
-        using var data = _dataDb.CreateConnection();
-        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct);
+        var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct, tx);
 
         var setParts = cols.Select(c => $"{Bracket(c)} = @{c}").ToList();
         if (audit.Contains("UpdatedBy") && userId is not null)
@@ -297,15 +321,114 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         dp.Add("__Id", id);
         var sql = $"UPDATE {table} SET {string.Join(", ", setParts)} WHERE {Bracket(pk)} = @__Id";
 
-        return await data.ExecuteAsync(new CommandDefinition(sql, dp, cancellationToken: ct));
+        return await data.ExecuteAsync(new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
     }
+
+    // ── Save qua hook store (validate trước → ghi → after-save, 1 transaction) ─────
+
+    /// <inheritdoc />
+    public async Task<MasterDataHookSaveResult> SaveWithHooksAsync(
+        string formCode, int tenantId, object? id,
+        Dictionary<string, object?> values, long? userId, string langCode,
+        CancellationToken ct = default)
+    {
+        var info = await GetFormInfoAsync(formCode, tenantId, ct)
+                   ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        var tableName = SafeCol(info.TableName, "Table");   // dùng dựng tên store, validate identifier
+
+        using var data = _dataDb.CreateConnection();
+        if (data.State != ConnectionState.Open) data.Open();   // BeginTransaction cần connection mở
+        using var tx = data.BeginTransaction();
+
+        // 1) Validate store (opt-in). Có lỗi → KHÔNG commit → rollback khi dispose, KHÔNG ghi.
+        var validateProc = $"spc_Grid_{tableName}";
+        if (await ProcExistsAsync(data, tx, validateProc, ct))
+        {
+            var errors = await RunHookProcAsync(data, tx, validateProc, id, tenantId, userId, langCode, values, ct);
+            if (errors.Count > 0)
+                return new MasterDataHookSaveResult { Success = false, Id = null, Errors = errors };
+        }
+
+        // 2) Ghi DB trong CÙNG transaction.
+        object? resultId;
+        if (id is null)
+            resultId = await InsertCoreAsync(data, tx, info, values, userId, ct);
+        else
+        {
+            await UpdateCoreAsync(data, tx, info, id, values, userId, ct);
+            resultId = id;
+        }
+
+        // 3) After-save store (opt-in). Trả lỗi / RAISERROR → rollback cả bản ghi vừa ghi.
+        var afterProc = $"sp_AfterSave_Grid_{tableName}";
+        if (await ProcExistsAsync(data, tx, afterProc, ct))
+        {
+            var afterErrors = await RunHookProcAsync(data, tx, afterProc, resultId, tenantId, userId, langCode, values, ct);
+            if (afterErrors.Count > 0)
+                return new MasterDataHookSaveResult { Success = false, Id = null, Errors = afterErrors };
+        }
+
+        tx.Commit();
+        return new MasterDataHookSaveResult { Success = true, Id = resultId, Errors = [] };
+    }
+
+    /// <summary>Store có tồn tại không (opt-in từng màn): <c>OBJECT_ID('dbo.&lt;proc&gt;','P')</c>.</summary>
+    private static async Task<bool> ProcExistsAsync(
+        IDbConnection data, IDbTransaction tx, string procName, CancellationToken ct)
+    {
+        var objId = await data.ExecuteScalarAsync<int?>(new CommandDefinition(
+            "SELECT OBJECT_ID(@Name, 'P')",
+            new { Name = "dbo." + procName }, transaction: tx, cancellationToken: ct));
+        return objId.HasValue;
+    }
+
+    /// <summary>
+    /// Gọi 1 hook store (EXEC) trong transaction, đọc result set lỗi nếu có.
+    /// Tham số: field động → @PayloadJson; context cố định → param rời. Trả rỗng = không lỗi.
+    /// </summary>
+    private static async Task<List<ProcError>> RunHookProcAsync(
+        IDbConnection data, IDbTransaction tx, string procName,
+        object? id, int tenantId, long? userId, string langCode,
+        Dictionary<string, object?> values, CancellationToken ct)
+    {
+        var dp = new DynamicParameters();
+        dp.Add("Id", id is null ? 0L : id);          // null (Insert) → 0 theo quy ước ID=0 là thêm mới
+        dp.Add("TenantId", tenantId);
+        dp.Add("NguoiThucHien", userId);             // null → SQL NULL
+        dp.Add("LangCode", string.IsNullOrWhiteSpace(langCode) ? "vi" : langCode);
+        dp.Add("PayloadJson", JsonSerializer.Serialize(values));
+
+        var sql = $"EXEC dbo.{Bracket(procName)} " +
+                  "@Id=@Id, @TenantId=@TenantId, @NguoiThucHien=@NguoiThucHien, " +
+                  "@LangCode=@LangCode, @PayloadJson=@PayloadJson";
+
+        var rows = await data.QueryAsync(new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
+
+        var errors = new List<ProcError>();
+        foreach (var row in rows)
+        {
+            if (row is not IDictionary<string, object> d) continue;
+            var key = RowStr(d, "error_key");
+            if (string.IsNullOrWhiteSpace(key)) continue;   // dòng rỗng / không đúng contract → bỏ
+            errors.Add(new ProcError(
+                key!,
+                RowStr(d, "args_json"),
+                RowStr(d, "field_name"),
+                RowStr(d, "severity") ?? "error"));
+        }
+        return errors;
+    }
+
+    /// <summary>Đọc 1 ô của Dapper row theo tên cột (case-insensitive), null khi thiếu / DBNull.</summary>
+    private static string? RowStr(IDictionary<string, object> row, string col)
+        => row.TryGetValue(col, out var v) && v is not null and not DBNull ? v.ToString() : null;
 
     /// <summary>
     /// Cột audit (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt) THỰC SỰ có trên bảng đích — để engine
     /// chỉ bơm cột tồn tại (bảng cũ không có cột audit thì bỏ qua, không vỡ).
     /// </summary>
     private static async Task<HashSet<string>> GetAuditColumnsAsync(
-        System.Data.IDbConnection data, string schema, string table, CancellationToken ct)
+        IDbConnection data, string schema, string table, CancellationToken ct, IDbTransaction? tx = null)
     {
         const string sql = """
             SELECT COLUMN_NAME
@@ -314,7 +437,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
               AND  COLUMN_NAME IN ('CreatedBy','CreatedAt','UpdatedBy','UpdatedAt')
             """;
         var rows = await data.QueryAsync<string>(
-            new CommandDefinition(sql, new { Schema = schema, Table = table }, cancellationToken: ct));
+            new CommandDefinition(sql, new { Schema = schema, Table = table }, transaction: tx, cancellationToken: ct));
         return rows.ToHashSet(StringComparer.OrdinalIgnoreCase);
     }
 

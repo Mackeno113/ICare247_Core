@@ -25,9 +25,20 @@ else
             <h3 class="md-form-title">@(IsEditMode ? Loc.L("common.action.update", "Cập nhật") : Loc.L("common.action.create", "Thêm mới")) — @_formName</h3>
         }
 
-        @if (_formError is not null)
+        @if (_formError is not null || _formMessages.Count > 0)
         {
-            <div class="result-invalid md-form-banner">@_formError</div>
+            <div class="result-invalid md-form-banner">
+                @if (_formError is not null)
+                {
+                    <div>@_formError</div>
+                }
+                @if (_formMessages.Count > 0)
+                {
+                    <ul class="md-form-banner-list">
+                        @foreach (var m in _formMessages) { <li>@m</li> }
+                    </ul>
+                }
+            </div>
         }
 
         <div class="fields-grid" style="--form-cols:@_formColumns">
@@ -73,7 +84,8 @@ else
     private bool   _loading  = true;
     private bool   _saving;
     private string? _error;       // lỗi load
-    private string? _formError;   // lỗi validation/save hiển thị đầu form
+    private string? _formError;   // dòng tóm tắt lỗi hiển thị đầu form (vd "Có N lỗi cần sửa")
+    private List<string> _formMessages = [];  // lỗi CẤP FORM (field_name rỗng / không khớp field) — banner
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,7 +94,7 @@ else
 
     private async Task LoadAsync()
     {
-        _loading = true; _error = null; _formError = null;
+        _loading = true; _error = null; _formError = null; _formMessages.Clear();
         try
         {
             var form = await FormApi.GetFormAsync(FormCode);
@@ -147,7 +159,7 @@ else
 
     private async Task SaveAsync()
     {
-        _saving = true; _formError = null;
+        _saving = true; _formError = null; _formMessages.Clear();
         foreach (var fs in _fieldStates) fs.Errors.Clear();
         try
         {
@@ -166,16 +178,21 @@ else
                 return;
             }
 
-            // Map lỗi validation về field + banner
+            // Map lỗi: khớp field → tô đỏ ô; lỗi cấp form (field_name rỗng / không khớp field) → banner.
             foreach (var err in result.Errors)
             {
-                var fs = _fieldStates.FirstOrDefault(
-                    f => f.FieldCode.Equals(err.FieldCode, StringComparison.OrdinalIgnoreCase));
+                var fs = string.IsNullOrEmpty(err.FieldCode)
+                    ? null
+                    : _fieldStates.FirstOrDefault(
+                        f => f.FieldCode.Equals(err.FieldCode, StringComparison.OrdinalIgnoreCase));
                 if (fs is not null) fs.Errors.Add(err.Message);
+                else _formMessages.Add(err.Message);
             }
-            _formError = result.Errors.Count > 0
-                ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", result.Errors.Count)
-                : Loc.L("common.msg.saveFailed", "Lưu thất bại.");
+
+            var fieldErrorCount = result.Errors.Count - _formMessages.Count;
+            _formError = fieldErrorCount > 0
+                ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", fieldErrorCount)
+                : (_formMessages.Count == 0 ? Loc.L("common.msg.saveFailed", "Lưu thất bại.") : null);
         }
         catch (Exception ex) { _formError = ex.Message; }
         finally { _saving = false; }

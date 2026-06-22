@@ -32,6 +32,53 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
   tenant về sau = đổi nguồn master trong ctor `ConfigSyncService`.
 - **CFGSYNC-2 phạm vi = vertical slice 5 bảng** (user chốt) để verify pattern trước khi mở rộng toàn bộ §2.
 
+## 📋 Roadmap — Save hook store per màn (validate trước + hậu xử lý) — ADR-029
+
+> Mỗi màn engine-driven (vd Xã/Phường) thêm 2 store TÙY CHỌN ở pipeline `SaveMasterData`:
+> **`spc_Grid_<Table>`** (validate TRƯỚC ghi) + **`sp_AfterSave_Grid_<Table>`** (hậu xử lý SAU ghi).
+> Nhận: toàn bộ field màn (JSON) + người thực hiện + `Id` (`0`=thêm mới). Lỗi trả `error_key`+args (i18n
+> server resolve). Spec: `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md`. ADR-029.
+>
+> **Chốt:** result-set lỗi (key/args/field/severity) · JSON+OPENJSON · server resolve i18n · bọc transaction ·
+> store thiếu = opt-in (`OBJECT_ID`) · codegen skeleton rỗng pass-through trong ConfigStudio WPF · Id null→0.
+>
+> **✅ CODE XONG (session 60, 2026-06-22)** — build BE `ICare247.slnx` 0/0, FE/WPF 0/0. ⏳ CÒN: chạy SQL + E2E (SVHOOK-6).
+
+**Decisions Log (session 60 — SVHOOK):**
+- **Store trả KEY, không trả text** → số bản dịch = số rule (hữu hạn), giải bài "thông báo vô chừng". Handler resolve
+  i18n **server-side** qua `IConfigCache.ResolveKeyAsync` (nhất quán code unique cũ). Token `{0}`=giá trị·`{1}`=nhãn (db/053/058).
+- **JSON+OPENJSON cho field động + context param rời**; TVP chỉ khi save batch; Id `null→0` (quy ước ID=0 thêm mới).
+- **Opt-in qua `OBJECT_ID`** → màn chưa có store chạy y như cũ; app account KHÔNG cần quyền DDL. Tạo store qua
+  **codegen ConfigStudio** (skeleton rỗng, `IF OBJECT_ID IS NULL`, không ghi đè). Store nguồn thật dùng `CREATE OR ALTER`.
+- **Bọc 1 transaction** validate→ghi→after-save → after-save lỗi rollback cả bản ghi.
+
+- [x] **SVHOOK-1** — `db/058_seed_sys_val_general_messages.sql`: seed (MERGE idempotent) `sys.val.Invalid/Forbidden/Conflict/NotFound`
+      (cấp form) + `sys.val.Integer/Numeric/Regex/Length/MinLength/Range/Compare` (template field) + `sys.msg.raw` (passthrough),
+      vi+en. Token `{0}`=giá trị · `{1}`=nhãn · `{2}/{3}`=giới hạn (đồng nhất `ResourceResolver.ApplyTokens`/db/053).
+      KHÔNG đụng `sys.val.Required/Unique` (db/053). ⏳ **CHƯA chạy DB** (Config DB; sẽ sync xuống tenant qua config-sync).
+- [x] **SVHOOK-2** — `IMasterDataRepository`/`MasterDataRepository`: `SaveWithHooksAsync` + DTO `MasterDataHookSaveResult`/`ProcError`.
+      Gói `spc_Grid_<T> → INSERT/UPDATE → sp_AfterSave_Grid_<T>` trong **1 transaction** Data DB; opt-in qua `OBJECT_ID`
+      (store thiếu → bỏ qua); spc_/after-save trả lỗi → rollback. Tách `InsertCoreAsync`/`UpdateCoreAsync` (nhận conn+tx,
+      tái dùng `BuildColumnParams`+audit); `GetAuditColumnsAsync` thêm tham số tx. EXEC: field động→`@PayloadJson` (JSON),
+      context→param rời; `@Id` null→0. Đọc result set qua Dapper row (RowStr — không phụ thuộc underscore map). Build Infra 0/0.
+- [x] **SVHOOK-3** — `SaveMasterDataCommandHandler`: chuyển ghi DB sang `_repo.SaveWithHooksAsync` (thay Insert/UpdateAsync);
+      store fail → resolve `ProcError`(key+args)→text qua `IConfigCache.ResolveKeyAsync` (fallback=errorKey), thay token
+      `{0..n}` theo vị trí args (arg là KEY i18n → resolve lồng), trả `MasterDataFieldError(field_name, text)`. Audit gộp
+      Create/Update theo `r.Id`. ValidationEngine + unique-check giữ nguyên (chạy TRƯỚC). Build App+Infra 0/0. langCode="vi"
+      (luồng thật = cải tiến sau).
+- [x] **SVHOOK-4** — `MasterDataForm.razor`: gom lỗi `FieldCode` rỗng/không khớp field → `_formMessages` (banner dạng list);
+      lỗi khớp field vẫn tô đỏ ô. Banner hiện dòng tóm tắt "Có N lỗi" (chỉ đếm lỗi field) + danh sách lỗi cấp form.
+      Reset `_formMessages` ở Load/Save. CSS `.md-form-banner-list` (app.css). Build FE 0/0.
+- [x] **SVHOOK-5** — ConfigStudio WPF: nút **"⚙ Sinh store"** ở màn Sys_Table (SysTableManagerView) → sinh
+      `spc_Grid_<Table>.sql` + `sp_AfterSave_Grid_<Table>.sql` skeleton **rỗng pass-through** cho bảng đang chọn vào
+      `db/procs` (tự dò repo root, fallback `%APPDATA%\ICare247\ConfigStudio\procs`). **KHÔNG ghi đè** file đã có;
+      skeleton bọc `IF OBJECT_ID IS NULL EXEC('CREATE PROC…')`. Helper `HookStoreTemplate` (Core, pure string) +
+      `GenerateHookStoreCommand` (VM). Build WPF Forms+Core 0/0. ⚠️ Đóng ConfigStudio để rebuild nạp bản mới.
+- [~] **SVHOOK-6** — 2 store thật cho **DM_PhuongXa** (`db/procs/spc_Grid_DM_PhuongXa.sql` + `sp_AfterSave_Grid_DM_PhuongXa.sql`,
+      `CREATE OR ALTER`). spc_: Required (Ma/Ten/TinhThanhPho_Id) + Unique Ma (IsDeleted=0, loại trừ @Id, STRING_ESCAPE) +
+      referential Tỉnh tồn tại (store-only, engine không làm được). after-save: pass-through + ví dụ. ⏳ **CẦN: chạy 2 file
+      trên Data DB + rebuild/restart API + chạy db/058 (Config) → E2E** màn Xã/Phường (nhập sai → thấy lỗi store i18n).
+
 ## 📋 Roadmap — Engine-hóa màn nghiệp vụ + Đồng bộ config (ADR-024/025)
 
 > Màn Công ty (và mọi màn nghiệp vụ chuẩn) = **no-code engine-driven**, KHÔNG bespoke. Thiết kế ở

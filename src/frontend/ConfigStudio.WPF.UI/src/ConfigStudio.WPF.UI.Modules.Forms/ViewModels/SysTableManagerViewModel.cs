@@ -5,6 +5,7 @@
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
@@ -121,7 +122,10 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         set
         {
             if (SetProperty(ref _editTableCode, value))
+            {
                 SaveCommand.RaiseCanExecuteChanged();
+                GenerateHookStoreCommand?.RaiseCanExecuteChanged();
+            }
         }
     }
 
@@ -185,6 +189,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                 RaisePropertyChanged(nameof(IsNotBusy));
                 SaveCommand.RaiseCanExecuteChanged();
                 NewCommand.RaiseCanExecuteChanged();
+                GenerateHookStoreCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -230,6 +235,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand NewCommand { get; }
     public DelegateCommand SaveCommand { get; }
+    /// <summary>Sinh file .sql skeleton hook store (spc_/sp_AfterSave_) cho bảng đang chọn (SVHOOK-5).</summary>
+    public DelegateCommand GenerateHookStoreCommand { get; }
 
     private readonly INavigationHistoryService? _history;
 
@@ -252,6 +259,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         RefreshCommand = new DelegateCommand(async () => await LoadDataSafeAsync());
         NewCommand = new DelegateCommand(ExecuteNew, () => IsNotBusy);
         SaveCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), CanSave);
+        GenerateHookStoreCommand = new DelegateCommand(ExecuteGenerateHookStore, CanGenerateHookStore);
 
         ResetEditorForNew();
     }
@@ -493,6 +501,86 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         {
             IsBusy = false;
         }
+    }
+
+    // ── Sinh hook store skeleton (SVHOOK-5, ADR-029) ─────────────────────────────
+
+    private bool CanGenerateHookStore()
+        => IsNotBusy && !string.IsNullOrWhiteSpace(EditTableCode);
+
+    /// <summary>
+    /// Sinh 2 file .sql skeleton (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn vào db/procs.
+    /// KHÔNG ghi đè file đã có (bảo vệ logic đã viết tay); skeleton bọc IF OBJECT_ID IS NULL.
+    /// </summary>
+    private void ExecuteGenerateHookStore()
+    {
+        SaveStatusMessage = "";
+        IsSaveStatusError = false;
+
+        var tableCode = EditTableCode.Trim();
+        var schema = string.IsNullOrWhiteSpace(EditSchemaName) ? "dbo" : EditSchemaName.Trim();
+
+        if (!IsSafeIdentifier(tableCode))
+        {
+            SetSaveError("Table_Code không hợp lệ để sinh store (chỉ chữ/số/_, không khoảng trắng).");
+            return;
+        }
+
+        try
+        {
+            var dir = ResolveProcsDirectory();
+            Directory.CreateDirectory(dir);
+
+            var written = new List<string>();
+            var skipped = new List<string>();
+            WriteIfAbsent(Path.Combine(dir, HookStoreTemplate.ValidateProcName(tableCode) + ".sql"),
+                HookStoreTemplate.BuildValidateProc(schema, tableCode), written, skipped);
+            WriteIfAbsent(Path.Combine(dir, HookStoreTemplate.AfterSaveProcName(tableCode) + ".sql"),
+                HookStoreTemplate.BuildAfterSaveProc(schema, tableCode), written, skipped);
+
+            var msg = new System.Text.StringBuilder();
+            if (written.Count > 0)
+                msg.Append($"Đã sinh {written.Count} file: {string.Join(", ", written.Select(Path.GetFileName))}. ");
+            if (skipped.Count > 0)
+                msg.Append($"Bỏ qua {skipped.Count} file đã có: {string.Join(", ", skipped.Select(Path.GetFileName))}. ");
+            msg.Append($"Thư mục: {dir}. Mở review rồi chạy trên Data DB (idempotent — chỉ tạo nếu chưa có).");
+
+            SaveStatusMessage = msg.ToString();
+            IsSaveStatusError = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.GenerateHookStore");
+            SetSaveError($"Lỗi sinh store: {ex.Message}");
+        }
+    }
+
+    private static void WriteIfAbsent(string path, string content, List<string> written, List<string> skipped)
+    {
+        if (File.Exists(path)) { skipped.Add(path); return; }
+        File.WriteAllText(path, content, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        written.Add(path);
+    }
+
+    private static bool IsSafeIdentifier(string s)
+        => !string.IsNullOrWhiteSpace(s)
+        && System.Text.RegularExpressions.Regex.IsMatch(s, "^[A-Za-z_][A-Za-z0-9_]*$");
+
+    /// <summary>
+    /// Tìm thư mục db/procs: đi ngược từ thư mục chạy app tới khi gặp folder chứa subfolder "db"
+    /// (repo dev) → &lt;repo&gt;/db/procs. Không thấy → fallback %APPDATA%\ICare247\ConfigStudio\procs.
+    /// </summary>
+    private static string ResolveProcsDirectory()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        for (var i = 0; i < 12 && dir is not null; i++, dir = dir.Parent)
+        {
+            var dbPath = Path.Combine(dir.FullName, "db");
+            if (Directory.Exists(dbPath))
+                return Path.Combine(dbPath, "procs");
+        }
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        return Path.Combine(appData, "ICare247", "ConfigStudio", "procs");
     }
 
     private void ApplySelectedTable(SysTableRecord? table)

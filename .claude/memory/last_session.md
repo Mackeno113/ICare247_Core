@@ -1,5 +1,47 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-22 (session 60 — THIẾT KẾ save hook store per màn: spc_Grid_/sp_AfterSave_Grid_ + i18n + codegen)
+
+## Session 60 (2026-06-22) — đã làm (THIẾT KẾ, CHƯA CODE)
+
+> Xuất phát từ màn Xã/Phường: user muốn thêm 2 store ở pipeline lưu — validate trước + hậu xử lý sau — nhận
+> toàn bộ field màn + người thực hiện + Id (0=thêm mới); hỏi cách dịch "thông báo vô chừng" và cách truyền data
+> khi view không cố định trường. Đã khảo sát luồng save hiện tại + chốt phương án qua hỏi-đáp. Tạo tài liệu + ghi kế hoạch.
+
+- **Khảo sát:** màn engine-driven chạy qua pipeline `SaveMasterData` (KHÔNG có store). Luồng: `MasterDataForm.razor`
+  → `MasterDataApiService.SaveAsync` → `MasterDataController` → `SaveMasterDataCommandHandler` (ValidationEngine +
+  unique-check, i18n resolve **server-side** "vi") → `MasterDataRepository.Insert/UpdateAsync` (SQL động, Data DB).
+- **Chốt (ADR-029):** store trả `error_key`+`args` (KHÔNG text) → số dịch = số rule (hữu hạn); result-set
+  `error_key/args_json/field_name/severity` (rỗng=hợp lệ, field NULL=banner); JSON+OPENJSON cho field động +
+  context param rời; **server resolve** i18n; **bọc transaction** validate→ghi→after-save; store thiếu = **opt-in**
+  (`OBJECT_ID IS NULL`→bỏ qua, app KHÔNG cần quyền DDL); tạo store qua **nút codegen ConfigStudio WPF** → file
+  `db/procs/*.sql` skeleton **rỗng pass-through**; Id null→0. Naming: `spc_Grid_<T>` / `sp_AfterSave_Grid_<T>`.
+- **i18n thông báo bất kỳ:** câu biết trước = 1 key (`sys.val.Invalid`, field NULL); text tự do = `sys.msg.raw`="{0}"
+  (escape hatch, mất đa ngôn ngữ).
+- **Tài liệu/kế hoạch:** tạo `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md` · ADR-029 (architecture_decisions.md) ·
+  roadmap **SVHOOK-1→6** trong TASKS.md.
+
+### Đã code (SVHOOK-1→6, cùng session 60)
+- **SVHOOK-1** — `db/058_seed_sys_val_general_messages.sql`: seed `sys.val.Invalid/Forbidden/Conflict/NotFound` +
+  `Integer/Numeric/Regex/Length/MinLength/Range/Compare` + `sys.msg.raw` (vi+en). Token `{0}`=giá trị·`{1}`=nhãn.
+- **SVHOOK-2** — `IMasterDataRepository.SaveWithHooksAsync` + `MasterDataHookSaveResult`/`ProcError`; impl 1 transaction
+  Data DB (spc_→ghi→after-save), opt-in `OBJECT_ID`, tách `Insert/UpdateCoreAsync`. Build Infra 0/0.
+- **SVHOOK-3** — `SaveMasterDataCommandHandler` chuyển ghi sang `SaveWithHooksAsync`; resolve `ProcError`(key+args)→text
+  qua `IConfigCache.ResolveKeyAsync` + thay token `{0..n}` (arg là key → resolve lồng). Build App 0/0.
+- **SVHOOK-4** — `MasterDataForm.razor`: gom lỗi `FieldCode` rỗng → banner list `_formMessages` (+ CSS). Build FE 0/0.
+- **SVHOOK-5** — ConfigStudio WPF: nút "⚙ Sinh store" (SysTableManagerView) + `HookStoreTemplate` (Core) → sinh
+  `db/procs/*.sql` skeleton rỗng pass-through cho bảng đang chọn (không ghi đè). Build WPF 0/0.
+- **SVHOOK-6** — `db/procs/spc_Grid_DM_PhuongXa.sql` (Required+Unique+referential Tỉnh) + `sp_AfterSave_…` (pass-through).
+
+### ⏳ Việc cần làm để E2E SVHOOK
+1. Chạy `db/058` trên **Config DB** (i18n keys).
+2. Chạy `db/procs/spc_Grid_DM_PhuongXa.sql` + `sp_AfterSave_Grid_DM_PhuongXa.sql` trên **Data DB** (ICare247_Solution).
+3. **Rebuild + restart API** (nạp handler/repo mới).
+4. Test màn Xã/Phường: nhập sai (vd Tỉnh không tồn tại) → thấy lỗi store i18n; field lỗi tô đỏ, lỗi cấp form lên banner.
+- ⚠️ Đóng ConfigStudio để rebuild nạp nút "Sinh store".
+
+---
+
 > Cập nhật: 2026-06-21 (session 59 — Lưới View xem hết dữ liệu + LookupBox popup teleport + cờ tắt cache + bề rộng modal/popup)
 
 ## Session 59 (2026-06-21) — đã làm

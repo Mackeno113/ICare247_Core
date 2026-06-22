@@ -386,3 +386,32 @@
   `Api`/`Sql` để sau (api: nguồn cột chưa rõ).
 - **Liên quan:** ADR-015 (Ui_View), ADR-016 (Ui_View_Filter Source_Type Sp/Sql), ADR-007 (ConfigStudio Direct DB).
 - **Status:** ✅ code xong, compile xanh (build chỉ fail copy DLL do app đang chạy — cần đóng app build lại để chạy thử).
+
+## ADR-029: Save hook stored-proc per màn — `spc_Grid_<T>` (validate trước) + `sp_AfterSave_Grid_<T>` (hậu xử lý) (2026-06-22)
+- **Context:** Màn engine-driven (vd Xã/Phường, pipeline `SaveMasterData`) cần thêm lớp validation cuối ở DB +
+  hậu xử lý sau ghi, nhận **toàn bộ field của màn** + **người thực hiện** + **khóa chính `Id`** (`Id=0` = thêm mới).
+  Câu hỏi gốc của user: "số lượng thông báo lỗi vô chừng thì dịch i18n thế nào?" và "truyền data khi view không cố
+  định trường — ngoài JSON còn cách nào?".
+- **Quyết định (qua hỏi-đáp nhiều vòng):**
+  1. **Lỗi vô chừng = dịch hữu hạn:** store **KHÔNG trả chuỗi tiếng Việt**, trả `error_key` + `args`. Số bản dịch =
+     số RULE (hữu hạn), không phải số lần lỗi. Khớp `sys.val.*` (spec 10).
+  2. **Cơ chế lỗi:** store `SELECT error_key, args_json, field_name, severity` (rỗng = hợp lệ). `field_name=NULL` =
+     thông báo cấp form (banner). Thông báo bất kỳ biết trước = 1 key (`sys.val.Invalid`); text tự do = escape hatch
+     `sys.msg.raw` = "{0}" (mất đa ngôn ngữ, chỉ debug/1 ngôn ngữ).
+  3. **Truyền data = JSON + OPENJSON** cho field động; **context cố định** (`@Id/@TenantId/@NguoiThucHien/@LangCode`)
+     = param rời. (TVP chỉ khi save batch; XML/dynamic-sql loại.)
+  4. **i18n resolve SERVER-SIDE** qua `IConfigCache.ResolveKeyAsync` (giống code unique hiện có) → DTO
+     `MasterDataFieldError` giữ nguyên (mang text đã dịch).
+  5. **Bọc transaction:** `spc_ → INSERT/UPDATE → sp_AfterSave_` trong 1 transaction Data DB; after-save lỗi → rollback.
+  6. **Store thiếu = opt-in:** runtime `OBJECT_ID IS NULL` → bỏ qua (app account KHÔNG cần quyền DDL). Tạo store qua
+     **nút codegen trong ConfigStudio WPF** → sinh file `db/procs/*.sql` skeleton **rỗng pass-through** (review rồi
+     chạy tay; `IF OBJECT_ID IS NULL CREATE` → không ghi đè logic đã viết).
+  7. **Id:** command `null` (insert) → quy đổi `0` khi vào store.
+- **Naming:** validate trước = `spc_Grid_<TableCode>` · hậu xử lý = `sp_AfterSave_Grid_<TableCode>` (TableCode =
+  `Sys_Table.Table_Code`, vd `spc_Grid_DM_PhuongXa`).
+- **Điểm chạm:** `MasterDataRepository` (method transaction + opt-in) · `SaveMasterDataCommandHandler` (dòng 84:
+  gọi proc-validate + merge + resolve) · `MasterDataForm.razor` (dòng 170: gom lỗi field rỗng vào banner) ·
+  ConfigStudio WPF (nút codegen) · migration seed `sys.val.*`/`sys.val.Invalid`/`sys.msg.raw`.
+- **Spec:** `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md`.
+- **Liên quan:** ADR-024 (engine-driven), ADR-014 (ConfigCache resolve i18n), spec 10 (Resource Key), spec 14 (View).
+- **Status:** 📋 thiết kế CHỐT — chưa code. Việc theo TASKS.md mục "Save hook store per màn".

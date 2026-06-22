@@ -3,6 +3,7 @@
 // Layer   : Application
 // Purpose : Handler Insert/Update — chạy ValidationEngine server-side trước khi ghi DB.
 
+using System.Text.Json;
 using ICare247.Application.Features.MasterData.Models;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
@@ -89,20 +90,67 @@ public sealed class SaveMasterDataCommandHandler
             return new MasterDataSaveResult(Success: false, Id: null, Errors: errors);
         }
 
-        // ── Ghi DB ────────────────────────────────────────────────────────────
-        if (r.Id is null)
+        // ── Ghi DB qua HOOK STORE (spc_Grid_<T> validate → ghi → sp_AfterSave_Grid_<T>, 1 transaction) ──
+        // Store thiếu → repo tự bỏ qua (opt-in). Store trả KEY → resolve text server-side ở đây (ADR-029).
+        var saved = await _repo.SaveWithHooksAsync(
+            r.FormCode, r.TenantId, r.Id, r.Values, r.UserId, langCode: "vi", ct);
+
+        if (!saved.Success)
         {
-            var newId = await _repo.InsertAsync(r.FormCode, r.TenantId, r.Values, r.UserId, ct);
-            _logger.LogInformation("SaveMasterData INSERT '{Form}' → Id={Id}.", r.FormCode, newId);
-            AuditData(r, AuditAction.DataCreate, newId);
-            return new MasterDataSaveResult(Success: true, Id: newId, Errors: []);
+            var procErrors = new List<MasterDataFieldError>(saved.Errors.Count);
+            foreach (var e in saved.Errors)
+                procErrors.Add(new MasterDataFieldError(
+                    e.FieldName ?? "", await ResolveProcMessageAsync(e, "vi", r.TenantId, ct)));
+            _logger.LogDebug("SaveMasterData '{Form}' store validation fail: {Count} lỗi.", r.FormCode, procErrors.Count);
+            return new MasterDataSaveResult(Success: false, Id: null, Errors: procErrors);
         }
 
-        await _repo.UpdateAsync(r.FormCode, r.TenantId, r.Id, r.Values, r.UserId, ct);
-        _logger.LogInformation("SaveMasterData UPDATE '{Form}' Id={Id}.", r.FormCode, r.Id);
-        AuditData(r, AuditAction.DataUpdate, r.Id);
-        return new MasterDataSaveResult(Success: true, Id: r.Id, Errors: []);
+        var action = r.Id is null ? AuditAction.DataCreate : AuditAction.DataUpdate;
+        _logger.LogInformation("SaveMasterData {Op} '{Form}' → Id={Id}.",
+            r.Id is null ? "INSERT" : "UPDATE", r.FormCode, saved.Id);
+        AuditData(r, action, saved.Id);
+        return new MasterDataSaveResult(Success: true, Id: saved.Id, Errors: []);
     }
+
+    /// <summary>
+    /// Resolve 1 <see cref="ProcError"/> (key + args) → text theo i18n (server-side, ADR-014).
+    /// Template lấy qua <see cref="IConfigCache.ResolveKeyAsync"/> (fallback = chính errorKey để dev thấy key).
+    /// Thay token <c>{0}/{1}/…</c> theo vị trí mảng args; arg nào là KEY i18n (label) thì resolve lồng.
+    /// </summary>
+    private async Task<string> ResolveProcMessageAsync(ProcError e, string lang, int tenantId, CancellationToken ct)
+    {
+        var template = await _config.ResolveKeyAsync(e.ErrorKey, lang, tenantId, ct) ?? e.ErrorKey;
+        var args = ParseArgs(e.ArgsJson);
+        for (var i = 0; i < args.Count; i++)
+        {
+            var val = args[i];
+            // arg có thể là KEY i18n (vd label key) → resolve để {0}/{1} cũng đa ngôn ngữ.
+            if (LooksLikeKey(val))
+                val = await _config.ResolveKeyAsync(val, lang, tenantId, ct) ?? val;
+            template = template.Replace("{" + i + "}", val);
+        }
+        return template;
+    }
+
+    /// <summary>Parse mảng tham số JSON của store (<c>["00433","Mã Xã/Phường"]</c>) → list chuỗi theo vị trí.</summary>
+    private static List<string> ParseArgs(string? argsJson)
+    {
+        if (string.IsNullOrWhiteSpace(argsJson)) return [];
+        try
+        {
+            using var doc = JsonDocument.Parse(argsJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return [];
+            var list = new List<string>();
+            foreach (var el in doc.RootElement.EnumerateArray())
+                list.Add(el.ValueKind == JsonValueKind.String ? el.GetString() ?? "" : el.ToString());
+            return list;
+        }
+        catch { return []; }   // args lỗi định dạng → coi như không có tham số (không crash)
+    }
+
+    /// <summary>Heuristic: chuỗi trông giống KEY i18n (có dấu chấm, không khoảng trắng) → thử resolve.</summary>
+    private static bool LooksLikeKey(string s)
+        => s.Length > 0 && s.Contains('.') && !s.Contains(' ');
 
     /// <summary>Ghi nhật ký 1 thao tác ghi danh mục (non-blocking). GiaTriMoi = JSON các giá trị gửi lên.</summary>
     private void AuditData(SaveMasterDataCommand r, string action, object? id)
