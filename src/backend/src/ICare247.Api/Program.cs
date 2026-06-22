@@ -38,15 +38,20 @@ try
     DebugLogger.Configure(builder.Configuration);
 
     // ── Serilog ─────────────────────────────────────────────────────────────
+    // Template GẮN [{CorrelationId}] vào mỗi dòng → khách báo "Mã lỗi" nào, grep thẳng log ra
+    // toàn bộ request + thời điểm + stacktrace (CorrelationId enrich từ LogContext bởi CorrelationMiddleware).
+    const string logTemplate =
+        "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{CorrelationId}] {Message:lj}{NewLine}{Exception}";
     builder.Host.UseSerilog((ctx, services, cfg) => cfg
         .ReadFrom.Configuration(ctx.Configuration)
         .ReadFrom.Services(services)
         .Enrich.FromLogContext()
         .Enrich.WithMachineName()
         .Enrich.WithProperty("Application", "ICare247.Api")
-        .WriteTo.Console()
+        .WriteTo.Console(outputTemplate: logTemplate)
         .WriteTo.File(
             path: "logs/icare247-.log",
+            outputTemplate: logTemplate,
             rollingInterval: RollingInterval.Day,
             retainedFileCountLimit: 30));
 

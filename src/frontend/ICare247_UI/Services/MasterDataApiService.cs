@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Services.Http;
 using Microsoft.Extensions.Logging;
 
 namespace ICare247_UI.Services;
@@ -169,7 +170,10 @@ public sealed class MasterDataApiService
             if (string.IsNullOrWhiteSpace(body)) return $"HTTP {(int)resp.StatusCode}";
             using var doc = JsonDocument.Parse(body);
             var detail = doc.RootElement.TryGetProperty("detail", out var d) ? d.GetString() : null;
-            return detail ?? (body.Length > 300 ? body[..300] : body);
+            var corr   = doc.RootElement.TryGetProperty("correlationId", out var c) ? c.GetString() : null;
+            var msg = detail ?? (body.Length > 300 ? body[..300] : body);
+            // Nối "Mã lỗi" → người dùng đọc được mã định danh để báo, dev grep log theo mã đó.
+            return ApiErrorHelper.WithErrorCode(msg, corr);
         }
         catch { return $"HTTP {(int)resp.StatusCode}"; }
     }

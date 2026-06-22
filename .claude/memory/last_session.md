@@ -1,5 +1,30 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-23 (session 61b — Ẩn Lookup_Sql khỏi /info (DTO) + Observability: correlationId in log + "Mã lỗi" client)
+
+## Session 61b (2026-06-23) — đã làm (ĐÃ CODE; build BE `ICare247.slnx` 0/0, FE Shared+UI 0/0)
+
+> Xuất phát: user soi response `/views/{code}/info` rò `Lookup_Sql` (SQL admin có tên bảng quyền/cột/token) cho mọi
+> user đã đăng nhập; rồi hỏi lỗi 500 khi Lưu Xã/Phường "không đủ thông tin để tìm". Hai việc:
+
+- **Bảo mật — ẩn `Lookup_Sql` khỏi `/info`:** tạo response DTO `ViewInfoResponse` (+ `ViewFilterInfo` bỏ đúng `LookupSql`,
+  GIỮ `LookupCode`) ở Application; `GetViewByCodeQuery`/Handler trả DTO (map `FromEntity`), KHÔNG đụng entity trong cache.
+  Lý do không dùng `[JsonIgnore]`: `HybridCacheService` serialize entity qua System.Text.Json cho L2 → JsonIgnore sẽ
+  mất `LookupSql` sau round-trip → vỡ `GetFilterOptionsAsync`. Cột/Action tái dùng entity (không chứa SQL).
+- **Observability — "key định danh lỗi" cho vận hành:** (1) Serilog `outputTemplate` thêm `[{CorrelationId}]` mỗi dòng
+  (Program.cs) → grep log theo mã. (2) Helper chung `ICare247.UI.Shared/Services/Http/ApiErrorHelper.cs` bóc
+  `correlationId` (root body — `[JsonExtensionData]`) + nối "(Mã lỗi: 8 ký tự đầu)"; wire vào 5 ApiService
+  (MasterData/View/Form/Runtime/ConfigSync). Log file: `src/backend/src/ICare247.Api/logs/icare247-YYYYMMDD.log`.
+- **Chẩn lỗi 500 Xã/Phường:** đọc log → `SqlException: proc 'spc_Grid_DM_PhuongXa' expects '@NguoiThucHien'` =
+  proc DB cũ lệch param (code/.sql đã đổi `@NguoiDungID`). **User đã sửa store** (re-deploy proc) — việc cần làm #2 (S61) ✅.
+
+### ⏳ Còn lại (S61b)
+- CORS expose header `X-Correlation-Id` (tùy chọn — body đã đủ cho thông báo).
+- MenuAdmin/AdminPermission ApiService chưa gắn "Mã lỗi" (không có điểm parse ProblemDetails sẵn).
+- Restart API + hard reload UI để 2 miếng vá có hiệu lực thật (server đang chạy code cũ lúc sửa).
+
+---
+
 > Cập nhật: 2026-06-22 (session 61 — THIẾT KẾ bộ lọc liên kết/cascade + token ngữ cảnh Sys_Context_Param + prefill Thêm mới · ADR-030)
 
 ## Session 61 (2026-06-22) — đã làm (THIẾT KẾ, chưa code runtime)

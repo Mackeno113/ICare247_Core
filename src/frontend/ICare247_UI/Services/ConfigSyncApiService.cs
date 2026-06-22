@@ -4,6 +4,7 @@
 
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Services.Http;
 using ICare247_UI.Models;
 using Microsoft.Extensions.Logging;
 
@@ -58,10 +59,11 @@ public sealed class ConfigSyncApiService
         try
         {
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync(ct));
+            var corr = doc.RootElement.TryGetProperty("correlationId", out var c) ? c.GetString() : null;
             if (doc.RootElement.TryGetProperty("detail", out var d) && d.ValueKind == JsonValueKind.String)
-                return d.GetString();
+                return ApiErrorHelper.WithErrorCode(d.GetString() ?? "", corr);
             if (doc.RootElement.TryGetProperty("title", out var t) && t.ValueKind == JsonValueKind.String)
-                return t.GetString();
+                return ApiErrorHelper.WithErrorCode(t.GetString() ?? "", corr);
         }
         catch { /* không phải JSON — bỏ qua */ }
         return null;

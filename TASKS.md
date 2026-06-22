@@ -173,6 +173,29 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## ✅ Done (session 61b — 2026-06-23: Ẩn Lookup_Sql khỏi /info + Observability correlationId/"Mã lỗi")
+
+> Ad-hoc theo phản hồi user: rò `Lookup_Sql` ở `/views/{code}/info` + lỗi 500 chung chung khó truy khi vận hành.
+> Build BE `ICare247.slnx` 0/0 · FE Shared + ICare247_UI 0/0.
+
+- [x] **SEC-VIEW-INFO** — Ẩn `ViewFilter.LookupSql` (SQL admin: tên bảng quyền/cột/token `@NguoiDungID`/`@CongTyID_Active`)
+      khỏi response `/info`. Tạo `ViewInfoResponse` + `ViewFilterInfo` (bỏ `LookupSql`, giữ `LookupCode`) ở Application;
+      `GetViewByCodeQuery`/Handler trả DTO (`FromEntity`). **KHÔNG** `[JsonIgnore]` lên entity (cache L2 serialize cùng
+      kiểu → mất `LookupSql` sau round-trip → vỡ `GetFilterOptionsAsync`). Cột/Action tái dùng entity (không chứa SQL).
+- [x] **OBS-LOG-CORR** — Serilog `outputTemplate` thêm `[{CorrelationId}]` mỗi dòng (Console+File) → khách báo "Mã lỗi",
+      `grep "<mã>" logs/icare247-*.log` ra request + thời điểm + stacktrace.
+- [x] **OBS-CLIENT-CODE** — Helper chung `ApiErrorHelper` (UI.Shared) bóc `correlationId` (root body, `[JsonExtensionData]`)
+      + nối "(Mã lỗi: 8 ký tự đầu)"; wire MasterData/View/Form/Runtime/ConfigSync ApiService.
+
+**Decisions Log (session 61b):**
+- **Lộ config nhạy cảm = chặn ở tầng serialize-ra-client bằng DTO riêng**, KHÔNG `[JsonIgnore]` entity bị cache (sẽ mất
+  field server cần). Cache giữ entity đầy đủ; chỉ `/info` map sang DTO sạch. → [[project-error-correlation-observability]].
+- **Lỗi 500 chung chung KHÔNG phải thiếu thông tin**: chi tiết ở log server theo `correlationId` (giờ in mỗi dòng). Câu
+  chung chung là cố ý (không lộ exception/SQL). Client chỉ cần hiện "Mã lỗi" để nối về log.
+- **Gotcha**: 500 Lưu masterdata = proc DB cũ lệch param (`@NguoiThucHien` vs `@NguoiDungID` đã đổi) → re-deploy
+  `db/procs/spc_/sp_AfterSave_Grid_*.sql`. Sửa hook proc nhớ deploy lại DB, không chỉ sửa file. (User đã sửa store.)
+- **CHƯA làm (tùy chọn)**: CORS expose `X-Correlation-Id`; gắn "Mã lỗi" cho MenuAdmin/AdminPermission ApiService.
+
 ## ✅ Done (session 59 — 2026-06-21: Lưới View xem hết dữ liệu + LookupBox popup teleport + cờ tắt cache + bề rộng modal/popup)
 
 > Ad-hoc theo phản hồi user khi test màn danh mục Xã/Phường (engine-driven View). Build BE + FE 0/0

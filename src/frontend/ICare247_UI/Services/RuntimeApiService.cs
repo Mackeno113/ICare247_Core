@@ -5,6 +5,7 @@
 
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Services.Http;
 using ICare247_UI.Models;
 using Microsoft.Extensions.Logging;
 
@@ -151,9 +152,11 @@ public sealed class RuntimeApiService
 
             var title  = root.TryGetProperty("title",  out var t) ? t.GetString() : null;
             var detail = root.TryGetProperty("detail", out var d) ? d.GetString() : null;
+            var corr   = root.TryGetProperty("correlationId", out var c) ? c.GetString() : null;
 
             if (title is not null || detail is not null)
-                return string.Join(" — ", new[] { title, detail }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                return ApiErrorHelper.WithErrorCode(
+                    string.Join(" — ", new[] { title, detail }.Where(s => !string.IsNullOrWhiteSpace(s))), corr);
 
             return body.Length > 300 ? body[..300] + "..." : body;
         }

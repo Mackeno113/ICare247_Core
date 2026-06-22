@@ -6,6 +6,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Services.Http;
 using ICare247.UI.Shared.Services.I18n;
 using Microsoft.Extensions.Logging;
 
@@ -201,7 +202,9 @@ public sealed class ViewApiService
         if (resp.IsSuccessStatusCode) return;
         var body = await resp.Content.ReadAsStringAsync();
         _logger.LogError("View API lỗi [{Ctx} {Target}] {Status}: {Body}", ctx, target, (int)resp.StatusCode, body);
-        throw new HttpRequestException(BuildFriendlyMessage(resp.StatusCode, body, target));
+        // Nối "Mã lỗi" (correlationId) vào thông điệp i18n để truy log server theo mã.
+        throw new HttpRequestException(
+            ApiErrorHelper.WithErrorCodeFromBody(BuildFriendlyMessage(resp.StatusCode, body, target), body));
     }
 
     /// <summary>
