@@ -75,6 +75,7 @@
   "admin.menu.f.name.ph": "",
   "admin.menu.f.order": "",
   "admin.menu.f.parent": "",
+  "admin.menu.f.parent.none": "",
   "admin.menu.f.parent.root": "",
   "admin.menu.f.route.default": "",
   "admin.menu.f.route.empty": "",

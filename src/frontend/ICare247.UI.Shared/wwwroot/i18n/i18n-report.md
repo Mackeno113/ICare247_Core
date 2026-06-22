@@ -1,10 +1,12 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-21 12:36_
+_Sinh tự động: 2026-06-22 00:30_
 
-## 1. Chuỗi tiếng Việt hardcode (20) — cần bọc L()
+## 1. Chuỗi tiếng Việt hardcode (22) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
+- `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:66` — "— Chọn —"
+- `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:69` — "Không có dữ liệu."
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:215` — "Tổng quan"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:232` — "Công cụ (Dev)"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:233` — "Tra cứu i18n"
