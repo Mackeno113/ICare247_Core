@@ -166,6 +166,19 @@ END');
 
 ---
 
+## 9. Cache tồn tại store — KHÔNG query khi lưu
+
+Mỗi lần lưu **không** chạy `OBJECT_ID`. Cờ tồn tại 2 store đọc qua **`IHookStoreCatalog`** (cache-aside
+L1 mem + L2 redis, gắn version-stamp tenant `:v{n}`). Cold-miss = **1 query gộp** 2 `OBJECT_ID` rồi cache
+(mem 10′, redis 60′).
+
+- **Nạp sẵn lúc mở list/form:** `GetMasterDataFormInfoQueryHandler` gọi `GetAsync(tableName,…)` → cache ấm trước khi lưu.
+- **Khi lưu:** `SaveMasterDataCommandHandler` đọc cờ từ catalog → truyền `hasValidate/hasAfterSave` vào
+  `SaveWithHooksAsync` → 0 query khi cache ấm.
+- **Tạo store mới:** "Cưỡng chế làm mới cache" (bump `ICacheVersion`) đổi version trong key → mở list lần sau nạp lại.
+- **Màn View** (ViewController): chưa pre-warm ở list-open (key store = bảng của **edit form**, không phải view nguồn)
+  → cache **tự nạp** ở lần lưu đầu (1 query gộp), các lần sau 0 query.
+
 ## 8. Quyết định đã chốt (tóm tắt)
 
 | Hạng mục | Chốt |

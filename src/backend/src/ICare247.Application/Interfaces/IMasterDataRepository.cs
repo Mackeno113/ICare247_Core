@@ -63,8 +63,9 @@ public interface IMasterDataRepository
     /// Kiểm tra giá trị đã tồn tại ở cột chưa (chống trùng — field Is_Unique).
     /// excludeId = PK loại trừ khi Update. Trả false nếu value rỗng.
     /// </summary>
+    /// <param name="info">Metadata bảng đích (caller đã load — tránh GetFormInfoAsync mỗi field unique).</param>
     Task<bool> ExistsValueAsync(
-        string formCode, int tenantId, string column, object? value, object? excludeId,
+        MasterDataFormInfo info, string column, object? value, object? excludeId,
         CancellationToken ct = default);
 
     /// <summary>
@@ -79,11 +80,15 @@ public interface IMasterDataRepository
     /// </list>
     /// Store trả KEY (chưa resolve text) — handler resolve i18n server-side.
     /// </remarks>
+    /// <param name="info">Metadata bảng đích (caller đã load — tránh GetFormInfoAsync lần 2 trong save path).</param>
     /// <param name="id">PK: null = Insert, có giá trị = Update. Truyền vào store <c>@Id</c> (null → 0).</param>
     /// <param name="langCode">Ngôn ngữ truyền cho store (<c>@LangCode</c>).</param>
+    /// <param name="hasValidateProc">Có <c>spc_Grid_&lt;Table&gt;</c> không (tra qua <see cref="IHookStoreCatalog"/> — KHÔNG query lúc lưu).</param>
+    /// <param name="hasAfterSaveProc">Có <c>sp_AfterSave_Grid_&lt;Table&gt;</c> không.</param>
     Task<MasterDataHookSaveResult> SaveWithHooksAsync(
-        string formCode, int tenantId, object? id,
+        MasterDataFormInfo info, int tenantId, object? id,
         Dictionary<string, object?> values, long? userId, string langCode,
+        bool hasValidateProc, bool hasAfterSaveProc,
         CancellationToken ct = default);
 }
 

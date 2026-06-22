@@ -19,6 +19,7 @@ public sealed class SaveMasterDataCommandHandler
     private readonly IMasterDataRepository _repo;
     private readonly IValidationEngine     _validation;
     private readonly IConfigCache          _config;
+    private readonly IHookStoreCatalog     _hookCatalog;
     private readonly IAuditWriter          _audit;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
@@ -26,14 +27,16 @@ public sealed class SaveMasterDataCommandHandler
         IMasterDataRepository repo,
         IValidationEngine validation,
         IConfigCache config,
+        IHookStoreCatalog hookCatalog,
         IAuditWriter audit,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
-        _repo       = repo;
-        _validation = validation;
-        _config     = config;
-        _audit      = audit;
-        _logger     = logger;
+        _repo        = repo;
+        _validation  = validation;
+        _config      = config;
+        _hookCatalog = hookCatalog;
+        _audit       = audit;
+        _logger      = logger;
     }
 
     /// <summary>
@@ -68,7 +71,7 @@ public sealed class SaveMasterDataCommandHandler
                 || val is null || string.IsNullOrWhiteSpace(val.ToString()))
                 continue;
 
-            if (await _repo.ExistsValueAsync(r.FormCode, r.TenantId, col.ColumnCode, val, r.Id, ct))
+            if (await _repo.ExistsValueAsync(info, col.ColumnCode, val, r.Id, ct))
             {
                 var key = $"{info.TableName.ToLowerInvariant()}.val.{col.ColumnCode.ToLowerInvariant()}.unique";
                 var label = col.Label.Length > 0 ? col.Label : col.ColumnCode;
@@ -91,9 +94,12 @@ public sealed class SaveMasterDataCommandHandler
         }
 
         // ── Ghi DB qua HOOK STORE (spc_Grid_<T> validate → ghi → sp_AfterSave_Grid_<T>, 1 transaction) ──
-        // Store thiếu → repo tự bỏ qua (opt-in). Store trả KEY → resolve text server-side ở đây (ADR-029).
+        // Cờ tồn tại store đọc QUA CACHE (IHookStoreCatalog) — KHÔNG query OBJECT_ID lúc lưu (ADR-029).
+        // Store trả KEY → resolve text server-side ở đây.
+        var hook = await _hookCatalog.GetAsync(info.TableName, r.TenantId, ct);
         var saved = await _repo.SaveWithHooksAsync(
-            r.FormCode, r.TenantId, r.Id, r.Values, r.UserId, langCode: "vi", ct);
+            info, r.TenantId, r.Id, r.Values, r.UserId, langCode: "vi",
+            hook.HasValidate, hook.HasAfterSave, ct);
 
         if (!saved.Success)
         {

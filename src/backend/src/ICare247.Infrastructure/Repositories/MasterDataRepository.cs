@@ -120,13 +120,12 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
     /// <inheritdoc />
     public async Task<bool> ExistsValueAsync(
-        string formCode, int tenantId, string column, object? value, object? excludeId,
+        MasterDataFormInfo info, string column, object? value, object? excludeId,
         CancellationToken ct = default)
     {
         if (value is null || string.IsNullOrWhiteSpace(value.ToString())) return false;
 
-        var info = await GetFormInfoAsync(formCode, tenantId, ct)
-                   ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        // info do caller (handler) truyền vào — KHÔNG GetFormInfoAsync mỗi field unique.
         var table = QualifiedTable(info);
         var col   = SafeCol(column, "column");
         var pk    = SafeCol(info.PkColumn, "PK");
@@ -328,23 +327,24 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
     /// <inheritdoc />
     public async Task<MasterDataHookSaveResult> SaveWithHooksAsync(
-        string formCode, int tenantId, object? id,
+        MasterDataFormInfo info, int tenantId, object? id,
         Dictionary<string, object?> values, long? userId, string langCode,
+        bool hasValidateProc, bool hasAfterSaveProc,
         CancellationToken ct = default)
     {
-        var info = await GetFormInfoAsync(formCode, tenantId, ct)
-                   ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
+        // info do caller (handler) truyền vào — KHÔNG GetFormInfoAsync lần 2 trong save path.
         var tableName = SafeCol(info.TableName, "Table");   // dùng dựng tên store, validate identifier
 
         using var data = _dataDb.CreateConnection();
         if (data.State != ConnectionState.Open) data.Open();   // BeginTransaction cần connection mở
         using var tx = data.BeginTransaction();
 
-        // 1) Validate store (opt-in). Có lỗi → KHÔNG commit → rollback khi dispose, KHÔNG ghi.
-        var validateProc = $"spc_Grid_{tableName}";
-        if (await ProcExistsAsync(data, tx, validateProc, ct))
+        // 1) Validate store (opt-in qua catalog — KHÔNG query OBJECT_ID lúc lưu).
+        //    Có lỗi → KHÔNG commit → rollback khi dispose, KHÔNG ghi.
+        if (hasValidateProc)
         {
-            var errors = await RunHookProcAsync(data, tx, validateProc, id, tenantId, userId, langCode, values, ct);
+            var errors = await RunHookProcAsync(data, tx, $"spc_Grid_{tableName}",
+                id, tenantId, userId, langCode, values, ct);
             if (errors.Count > 0)
                 return new MasterDataHookSaveResult { Success = false, Id = null, Errors = errors };
         }
@@ -360,26 +360,16 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         }
 
         // 3) After-save store (opt-in). Trả lỗi / RAISERROR → rollback cả bản ghi vừa ghi.
-        var afterProc = $"sp_AfterSave_Grid_{tableName}";
-        if (await ProcExistsAsync(data, tx, afterProc, ct))
+        if (hasAfterSaveProc)
         {
-            var afterErrors = await RunHookProcAsync(data, tx, afterProc, resultId, tenantId, userId, langCode, values, ct);
+            var afterErrors = await RunHookProcAsync(data, tx, $"sp_AfterSave_Grid_{tableName}",
+                resultId, tenantId, userId, langCode, values, ct);
             if (afterErrors.Count > 0)
                 return new MasterDataHookSaveResult { Success = false, Id = null, Errors = afterErrors };
         }
 
         tx.Commit();
         return new MasterDataHookSaveResult { Success = true, Id = resultId, Errors = [] };
-    }
-
-    /// <summary>Store có tồn tại không (opt-in từng màn): <c>OBJECT_ID('dbo.&lt;proc&gt;','P')</c>.</summary>
-    private static async Task<bool> ProcExistsAsync(
-        IDbConnection data, IDbTransaction tx, string procName, CancellationToken ct)
-    {
-        var objId = await data.ExecuteScalarAsync<int?>(new CommandDefinition(
-            "SELECT OBJECT_ID(@Name, 'P')",
-            new { Name = "dbo." + procName }, transaction: tx, cancellationToken: ct));
-        return objId.HasValue;
     }
 
     /// <summary>

@@ -2,6 +2,12 @@
 
 > Agent ghi lại mỗi khi user sửa lỗi coding style để không lặp lại.
 
+## [2026-06-22] Commit message KHÔNG có trailer `Co-Authored-By`
+
+**Why:** Quy tắc của user cho repo này — không nhét `Co-Authored-By: Claude ...` vào commit message.
+
+**How to apply:** Mọi `git commit` → **bỏ hẳn** dòng `Co-Authored-By:` (kể cả khi hướng dẫn mặc định của harness yêu cầu thêm). Message chỉ gồm tiêu đề + thân mô tả.
+
 ## [2026-03-20] Không dùng MaterialDesign trong ConfigStudio WPF
 
 Khi viết XAML mới cho Forms module, dùng MaterialDesign (`md:Card`, `md:PackIcon`, `MaterialDesignRaisedButton`) mà không đọc code hiện có trước.

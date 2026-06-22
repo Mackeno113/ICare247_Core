@@ -412,6 +412,11 @@
 - **Điểm chạm:** `MasterDataRepository` (method transaction + opt-in) · `SaveMasterDataCommandHandler` (dòng 84:
   gọi proc-validate + merge + resolve) · `MasterDataForm.razor` (dòng 170: gom lỗi field rỗng vào banner) ·
   ConfigStudio WPF (nút codegen) · migration seed `sys.val.*`/`sys.val.Invalid`/`sys.msg.raw`.
-- **Spec:** `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md`.
-- **Liên quan:** ADR-024 (engine-driven), ADR-014 (ConfigCache resolve i18n), spec 10 (Resource Key), spec 14 (View).
-- **Status:** 📋 thiết kế CHỐT — chưa code. Việc theo TASKS.md mục "Save hook store per màn".
+- **Cache tồn tại store (không query khi lưu — bổ sung sau phản hồi user):** `IHookStoreCatalog` cache-aside
+  (L1/L2 + version-stamp tenant) thay vì `OBJECT_ID` mỗi lần lưu. Nạp sẵn ở `GetMasterDataFormInfoQueryHandler`
+  (mở list MasterData); save đọc cờ → truyền `hasValidate/hasAfterSave` vào `SaveWithHooksAsync` (bỏ `ProcExistsAsync`
+  trong repo). Cold-miss = 1 query gộp 2 `OBJECT_ID`; flush cache (bump `ICacheVersion`) = nhận store mới. Màn View
+  tự nạp ở lần lưu đầu (không pre-warm vì key store = bảng edit-form, không phải view nguồn).
+- **Spec:** `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md` (§9 cache).
+- **Liên quan:** ADR-024 (engine-driven), ADR-014 (ConfigCache resolve i18n + cache-aside), spec 10 (Resource Key), spec 14 (View).
+- **Status:** ✅ code xong (session 60, build BE/FE/WPF 0/0) + cache-aside cờ store. ⏳ E2E (SVHOOK-6: chạy SQL).

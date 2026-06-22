@@ -32,6 +32,9 @@
 - **SVHOOK-5** — ConfigStudio WPF: nút "⚙ Sinh store" (SysTableManagerView) + `HookStoreTemplate` (Core) → sinh
   `db/procs/*.sql` skeleton rỗng pass-through cho bảng đang chọn (không ghi đè). Build WPF 0/0.
 - **SVHOOK-6** — `db/procs/spc_Grid_DM_PhuongXa.sql` (Required+Unique+referential Tỉnh) + `sp_AfterSave_…` (pass-through).
+- **SVHOOK-7** (sau phản hồi user) — `IHookStoreCatalog` cache-aside (L1/L2 + version-stamp) → save đọc cache thay vì
+  query `OBJECT_ID` mỗi lần lưu; nạp sẵn lúc mở list (`GetMasterDataFormInfoQueryHandler`); `SaveWithHooksAsync` nhận
+  `hasValidate/hasAfterSave` (bỏ `ProcExistsAsync`); `CacheKeys.HookStore` + DI. Build BE 0/0.
 
 ### ⏳ Việc cần làm để E2E SVHOOK
 1. Chạy `db/058` trên **Config DB** (i18n keys).

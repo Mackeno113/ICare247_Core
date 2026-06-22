@@ -100,6 +100,14 @@ public static class CacheKeys
         => $"icare:view:{tenantId}:{viewCode.ToLowerInvariant()}:v{version}:lang:{langCode}";
 
     /// <summary>
+    /// Hook store catalog — cờ tồn tại spc_Grid_/sp_AfterSave_Grid_ của 1 bảng (ADR-029).
+    /// Gắn <c>:v{version}</c> (version-stamp tenant) → "Cưỡng chế làm mới cache" vô hiệu luôn cache này
+    /// khi admin tạo store mới. Prefix: icare:hookstore:{tenantId}:v{version}:{tableName}
+    /// </summary>
+    public static string HookStore(string tableName, int tenantId, int version)
+        => $"icare:hookstore:{tenantId}:v{version}:{tableName.ToLowerInvariant()}";
+
+    /// <summary>
     /// Layout lưới per-user (DxGrid GridPersistentLayout). KEY-SPACE RIÊNG, KHÔNG version-stamp config
     /// (vòng đời khác hẳn): single-writer + write-through. tenantId tách cache giữa các tenant.
     /// Prefix: icare:gridlayout:{tenantId}:{userId}:{viewCode}:{platform}

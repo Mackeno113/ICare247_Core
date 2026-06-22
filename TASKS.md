@@ -74,6 +74,15 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       `db/procs` (tự dò repo root, fallback `%APPDATA%\ICare247\ConfigStudio\procs`). **KHÔNG ghi đè** file đã có;
       skeleton bọc `IF OBJECT_ID IS NULL EXEC('CREATE PROC…')`. Helper `HookStoreTemplate` (Core, pure string) +
       `GenerateHookStoreCommand` (VM). Build WPF Forms+Core 0/0. ⚠️ Đóng ConfigStudio để rebuild nạp bản mới.
+- [x] **SVHOOK-7** — Cache tồn tại store (`IHookStoreCatalog` cache-aside L1/L2 + version-stamp) → save **đọc cache thay
+      vì query `OBJECT_ID`** mỗi lần lưu. Nạp sẵn lúc mở list (`GetMasterDataFormInfoQueryHandler`); cold-miss = 1 query
+      gộp 2 OBJECT_ID (mem 10′/redis 60′). `SaveWithHooksAsync` nhận `hasValidate/hasAfterSave` (bỏ `ProcExistsAsync`);
+      handler đọc `_hookCatalog.GetAsync(info.TableName,…)`. Flush cache = nhận store mới. Màn View tự nạp ở lần lưu đầu.
+      `CacheKeys.HookStore` + DI. Build BE 0/0. (Bổ sung sau phản hồi user.)
+      **+ Dedup form-info trong save path:** `SaveWithHooksAsync` + `ExistsValueAsync` đều nhận `MasterDataFormInfo info`
+      (handler truyền vào) thay vì `formCode` → bỏ HẾT `GetFormInfoAsync` thừa khi lưu (trước: 1 ở SaveWithHooks +
+      1 mỗi field unique; nay: chỉ 1 lần duy nhất ở đầu handler). Nặng hơn nhiều so với OBJECT_ID nên đây là phần
+      giảm query thực sự khi lưu.
 - [~] **SVHOOK-6** — 2 store thật cho **DM_PhuongXa** (`db/procs/spc_Grid_DM_PhuongXa.sql` + `sp_AfterSave_Grid_DM_PhuongXa.sql`,
       `CREATE OR ALTER`). spc_: Required (Ma/Ten/TinhThanhPho_Id) + Unique Ma (IsDeleted=0, loại trừ @Id, STRING_ESCAPE) +
       referential Tỉnh tồn tại (store-only, engine không làm được). after-save: pass-through + ví dụ. ⏳ **CẦN: chạy 2 file
