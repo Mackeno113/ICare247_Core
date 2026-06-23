@@ -165,7 +165,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-2) var(--space-3);
+    /* Thụt lề trái tăng theo cấp sâu (--nav-depth do component đặt; mặc định 0). */
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + var(--nav-depth, 0) * 14px);
     border: none;
     background: transparent;
     border-radius: var(--radius-md);
@@ -238,7 +239,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 16px);
+    /* Lá ở cấp d (depth đã tính việc là con) → cùng công thức thụt lề với header cùng cấp. */
+    padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + var(--nav-depth, 0) * 14px);
     border-radius: var(--radius-md);
     color: var(--color-text-secondary);
     text-decoration: none;

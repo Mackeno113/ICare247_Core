@@ -4,11 +4,13 @@
 @inject NavigationApiService NavApi
 
 @*
-    NavMenu — điều hướng dọc dạng accordion.
+    NavMenu — điều hướng dọc dạng accordion, ĐỆ QUY (cây sâu tùy ý — ADR-023 §5).
     - Nguồn dữ liệu: API /me/navigation (đã lọc theo quyền). Rỗng/lỗi → fallback AppNav tĩnh.
-    - Dựng cây từ node phẳng (group → module → screen), chỉ hiện node ViTriHienThi = Sidebar/Ca2.
+    - Dựng cây từ node phẳng: node gốc Loai=Menu → "nhóm" (overline caption); con bên dưới
+      vẽ ĐỆ QUY: node có con → cụm thu/mở (collapsible), node có route lá → liên kết.
+    - Node nhóm rỗng (không con, không route) bị BỎ (vd Menu chưa gắn màn) — không vẽ link hỏng.
     - Tiêu đề qua Loc.L(key, base vi): key suy từ cấu trúc; base là Ten/Title.
-    - Tự vẽ lại khi đổi ngôn ngữ.
+    - Tự vẽ lại khi đổi ngôn ngữ; tự bung nhánh chứa URL hiện tại.
 *@
 
 <nav class="nav-menu">
@@ -43,44 +45,10 @@
     {
         <div class="nav-section">
             <div class="nav-section__label">@Loc.L(section.TitleKey, section.Title)</div>
-            @* Con của nhóm (phân hệ + màn treo thẳng) đã trộn & sắp theo Thứ tự cấu hình. *@
-            @foreach (var child in FilteredChildren(section))
+            @* Con của nhóm vẽ ĐỆ QUY từ cấp 0 — cụm con lồng cụm con sâu tùy ý. *@
+            @foreach (var child in FilteredChildren(section.Children))
             {
-                if (child.Module is { } module)
-                {
-                    var isOpen = IsOpen(module);
-                    var isActive = _currentModule == module.Key;
-                    <div class="nav-group @(isActive ? "nav-group--active" : "")">
-                        <button type="button" class="nav-group__header" @onclick="() => ToggleModule(module)"
-                                title="@Loc.L(module.TitleKey, module.Title)">
-                            <span class="nav-item__icon"><Icon Name="@module.Icon" /></span>
-                            <span class="nav-group__title">@Loc.L(module.TitleKey, module.Title)</span>
-                            <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
-                                <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
-                            </span>
-                        </button>
-                        @if (isOpen)
-                        {
-                            <div class="nav-group__items">
-                                @foreach (var screen in VisibleScreens(module))
-                                {
-                                    <NavLink class="nav-subitem" href="@screen.Href" title="@Loc.L(screen.TitleKey, screen.Title)">
-                                        <span class="nav-item__icon nav-subitem__icon"><Icon Name="@screen.Icon" Size="16" /></span>
-                                        <span class="nav-item__label">@Loc.L(screen.TitleKey, screen.Title)</span>
-                                    </NavLink>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-                else if (child.Item is { } item)
-                {
-                    @* Màn treo thẳng nhóm (không qua phân hệ) — vd Tỉnh/Thành phố, Quốc gia. *@
-                    <NavLink class="nav-item" href="@item.Href" title="@Loc.L(item.TitleKey, item.Title)">
-                        <span class="nav-item__icon"><Icon Name="@item.Icon" /></span>
-                        <span class="nav-item__label">@Loc.L(item.TitleKey, item.Title)</span>
-                    </NavLink>
-                }
+                @RenderNode(child, 0)
             }
         </div>
     }
@@ -106,20 +74,20 @@
 
 @code {
     // ── View-model: cây menu sau khi dựng (từ API hoặc AppNav) ──────────────
+    // Mục đơn cấp gốc (Tổng quan / Công cụ Dev) — không vào cây đệ quy.
     private sealed record VmItem(string Key, string TitleKey, string Title, string Icon, string Href);
-    private sealed record VmScreen(string Href, string TitleKey, string Title, string Icon);
-    private sealed record VmModule(string Key, string TitleKey, string Title, string Icon, string Href, List<VmScreen> Screens);
-    // Con của 1 nhóm: hoặc là phân hệ (Module) hoặc là màn treo thẳng (Item) — đã sắp theo Thứ tự.
-    private sealed record VmChild(VmModule? Module, VmItem? Item);
-    private sealed record VmSection(string TitleKey, string Title, List<VmChild> Children);
+    // 1 node trong cây đệ quy: IsGroup=true → cụm thu/mở (có Children); false → liên kết lá (có Href).
+    private sealed record VmNode(string Key, string TitleKey, string Title, string Icon, string Href, bool IsGroup, List<VmNode> Children);
+    // Nhóm gốc (overline caption) — con là cây node đệ quy.
+    private sealed record VmSection(string Key, string TitleKey, string Title, List<VmNode> Children);
 
     private List<VmItem> _top = new();
     private List<VmSection> _sections = new();
     private List<VmItem> _bottom = new();
 
-    // Khóa phân hệ đang mở (accordion — chỉ 1 mở) + phân hệ ứng với URL (tô đậm).
-    private string? _expanded;
-    private string? _currentModule;
+    // Tập khóa node đang mở (multi-expand cho cây sâu) + đường dẫn URL hiện tại (tô đậm nhánh).
+    private readonly HashSet<string> _expanded = new(StringComparer.Ordinal);
+    private string _currentPath = "";
 
     // Chuỗi lọc menu (so khớp với nhãn ĐÃ DỊCH theo ngôn ngữ giao diện hiện tại).
     private string _filter = "";
@@ -128,11 +96,11 @@
     /// <summary>Sidebar đang thu nhỏ về rail icon (do MainLayout truyền xuống).</summary>
     [Parameter] public bool Collapsed { get; set; }
 
-    /// <summary>Yêu cầu MainLayout bung lại sidebar (khi bấm phân hệ lúc đang thu gọn).</summary>
+    /// <summary>Yêu cầu MainLayout bung lại sidebar (khi bấm cụm lúc đang thu gọn).</summary>
     [Parameter] public EventCallback OnExpand { get; set; }
 
     /// <summary>
-    /// Khởi tạo: nạp menu theo quyền từ API (rỗng/lỗi → AppNav), xác định phân hệ theo URL,
+    /// Khởi tạo: nạp menu theo quyền từ API (rỗng/lỗi → AppNav), bung nhánh chứa URL,
     /// lắng nghe đổi URL + đổi ngôn ngữ.
     /// </summary>
     protected override async Task OnInitializedAsync()
@@ -142,12 +110,12 @@
         else BuildFromAppNav();
 
         SyncFromUri();
-        _expanded ??= _currentModule;
+        ExpandActivePath();
         Nav.LocationChanged += OnLocationChanged;
         Loc.OnChanged += OnLanguageChanged;
     }
 
-    // ── Dựng VM từ API (node phẳng → cây) ───────────────────────────────────
+    // ── Dựng VM từ API (node phẳng → cây đệ quy) ────────────────────────────
     private void BuildFromApi(IReadOnlyList<MeNavNode> nodes)
     {
         // Chỉ hiện ở sidebar: ViTriHienThi Sidebar/Ca2.
@@ -155,6 +123,29 @@
         var vis = nodes.Where(OnSidebar).ToList();
 
         string Href(string? duongDan) => (duongDan ?? "").TrimStart('/');
+
+        // Con trực tiếp của 1 node (theo ChaMa), đã sắp theo Thứ tự.
+        List<MeNavNode> ChildrenOf(string? ma) =>
+            vis.Where(n => n.ChaMa == ma).OrderBy(n => n.ThuTu).ToList();
+
+        // Dựng 1 node + toàn bộ con (đệ quy). Trả null nếu là nhóm rỗng / lá không route → bỏ.
+        // moduleSlug = slug của cụm tổ tiên gần nhất (để suy key màn theo quy ước nav.screen.{module}.{man}).
+        VmNode? BuildNode(MeNavNode n, string moduleSlug)
+        {
+            var slug = NavKeys.Slug(n.Ma);
+            var kids = ChildrenOf(n.Ma)
+                .Select(c => BuildNode(c, slug))
+                .Where(c => c is not null).Select(c => c!).ToList();
+            var href = Href(n.DuongDan);
+
+            // Nhóm không con & không route → không có gì để mở/đi → bỏ (tránh link hỏng).
+            if (kids.Count == 0 && href.Length == 0) return null;
+
+            var isGroup = kids.Count > 0;
+            var titleKey = isGroup ? NavKeys.Module(slug) : NavKeys.Screen(moduleSlug, slug);
+            var icon = n.Icon ?? (isGroup ? "circle" : "dot");
+            return new VmNode(n.Ma, titleKey, n.Ten, icon, href, isGroup, kids);
+        }
 
         // Mục đơn cấp gốc (Loai=ManHinh, không cha): Tổng quan + Công cụ Dev.
         foreach (var n in vis.Where(n => n.ChaMa is null && n.Loai == "ManHinh").OrderBy(n => n.ThuTu))
@@ -164,50 +155,17 @@
             else _top.Add(item);
         }
 
-        // Nhóm (Loai=Menu, không cha) → con của nhóm gồm phân hệ (Loai=Menu) LẪN màn treo thẳng
-        // (Loai=ManHinh). Trộn chung 1 danh sách rồi sắp theo Thứ tự (ThuTu) — đúng thứ tự đã cấu hình.
+        // Nhóm gốc (Loai=Menu, không cha) → overline caption; con vẽ đệ quy bên dưới.
         foreach (var grp in vis.Where(n => n.ChaMa is null && n.Loai == "Menu").OrderBy(n => n.ThuTu))
         {
             var grpKey = grp.Ma.StartsWith("group.") ? grp.Ma["group.".Length..] : grp.Ma;
-            var children = new List<VmChild>();
-            foreach (var node in vis.Where(n => n.ChaMa == grp.Ma && n.Loai is "Menu" or "ManHinh")
-                                     .OrderBy(n => n.ThuTu))
-            {
-                if (node.Loai == "Menu")
-                {
-                    // Phân hệ — có thể chứa các màn con (cha = phân hệ).
-                    var modKey = Href(node.DuongDan).Split('/', StringSplitOptions.RemoveEmptyEntries) is { Length: >= 2 } s && s[0] == "m"
-                        ? s[1] : node.Ma;
-                    var screens = vis.Where(n => n.ChaMa == node.Ma).OrderBy(n => n.ThuTu)
-                        .Select(sc => new VmScreen(Href(sc.DuongDan), ScreenKey(sc.Ma, modKey), sc.Ten, sc.Icon ?? "dot"))
-                        .ToList();
-                    children.Add(new VmChild(
-                        new VmModule(modKey, NavKeys.Module(modKey), node.Ten, node.Icon ?? "circle", Href(node.DuongDan), screens),
-                        null));
-                }
-                else
-                {
-                    // Màn treo THẲNG vào nhóm — không qua phân hệ (vd Tỉnh/Thành phố, Quốc gia).
-                    children.Add(new VmChild(
-                        null,
-                        new VmItem(node.Ma, NavKeys.Screen(grpKey, AfterDot(node.Ma)), node.Ten, node.Icon ?? "circle", Href(node.DuongDan))));
-                }
-            }
-
+            var children = ChildrenOf(grp.Ma)
+                .Select(c => BuildNode(c, NavKeys.Slug(grpKey)))
+                .Where(c => c is not null).Select(c => c!).ToList();
             if (children.Count > 0)
-                _sections.Add(new VmSection(NavKeys.Group(grpKey), grp.Ten, children));
+                _sections.Add(new VmSection(grp.Ma, NavKeys.Group(grpKey), grp.Ten, children));
         }
     }
-
-    /// <summary>Đoạn sau dấu chấm đầu của Ma: "organization.company" → "company".</summary>
-    private static string AfterDot(string ma)
-    {
-        var dot = ma.IndexOf('.');
-        return dot >= 0 ? ma[(dot + 1)..] : ma;
-    }
-
-    /// <summary>Suy key i18n cho màn: Ma "organization.company" → nav.screen.organization.company.</summary>
-    private static string ScreenKey(string ma, string modKey) => NavKeys.Screen(modKey, AfterDot(ma));
 
     // ── Dựng VM từ AppNav (fallback tĩnh khi API rỗng/lỗi) ──────────────────
     private void BuildFromAppNav()
@@ -217,24 +175,61 @@
         foreach (var group in AppNav.Groups)
         {
             var children = AppNav.Modules.Where(m => m.Group == group.Key).Select(m =>
-                new VmChild(
-                    new VmModule(
-                        m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}",
-                        m.Screens.Select(s => new VmScreen(
-                            string.IsNullOrEmpty(s.Route) ? $"m/{m.Key}/{s.Key}" : s.Route.TrimStart('/'),
-                            NavKeys.Screen(m.Key, s.Key), s.Title, "dot")).ToList()),
-                    null))
+                new VmNode(
+                    m.Key, NavKeys.Module(m.Key), m.Title, m.Icon, $"m/{m.Key}", true,
+                    m.Screens.Select(s => new VmNode(
+                        s.Key,
+                        NavKeys.Screen(m.Key, s.Key), s.Title, "dot",
+                        string.IsNullOrEmpty(s.Route) ? $"m/{m.Key}/{s.Key}" : s.Route.TrimStart('/'),
+                        false, new List<VmNode>())).ToList()))
                 .ToList();
             if (children.Count > 0)
-                _sections.Add(new VmSection(NavKeys.Group(group.Key), group.Title, children));
+                _sections.Add(new VmSection(group.Key, NavKeys.Group(group.Key), group.Title, children));
         }
 
         _bottom.Add(new VmItem("devtools", "nav.devtools", "Công cụ (Dev)", "wrench", "dev/forms"));
         _bottom.Add(new VmItem("i18ntools", "nav.i18ntools", "Tra cứu i18n", "languages", "dev/i18n"));
     }
 
+    // ── Render đệ quy 1 node (cụm thu/mở hoặc liên kết lá) ───────────────────
+    /// <summary>Vẽ 1 node theo cấp sâu (depth) — thụt lề tăng dần qua biến CSS --nav-depth.</summary>
+    private RenderFragment RenderNode(VmNode node, int depth) =>@<text>
+        @if (node.IsGroup)
+        {
+            var isOpen = IsOpen(node);
+            var isActive = IsActivePath(node);
+            <div class="nav-group @(isActive ? "nav-group--active" : "")">
+                <button type="button" class="nav-group__header" style="@($"--nav-depth:{depth}")"
+                        @onclick="() => ToggleNode(node)" title="@Loc.L(node.TitleKey, node.Title)">
+                    <span class="nav-item__icon"><Icon Name="@node.Icon" /></span>
+                    <span class="nav-group__title">@Loc.L(node.TitleKey, node.Title)</span>
+                    <span class="nav-group__caret @(isOpen ? "nav-group__caret--open" : "")">
+                        <Icon Name="chevron-right" Size="14" StrokeWidth="2" />
+                    </span>
+                </button>
+                @if (isOpen)
+                {
+                    <div class="nav-group__items">
+                        @foreach (var child in FilteredChildren(node.Children))
+                        {
+                            @RenderNode(child, depth + 1)
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <NavLink class="nav-subitem" href="@node.Href" style="@($"--nav-depth:{depth}")"
+                     title="@Loc.L(node.TitleKey, node.Title)">
+                <span class="nav-item__icon nav-subitem__icon"><Icon Name="@node.Icon" Size="16" /></span>
+                <span class="nav-item__label">@Loc.L(node.TitleKey, node.Title)</span>
+            </NavLink>
+        }
+    </text>;
+
     // ── Lọc menu ────────────────────────────────────────────────────────────
-    /// <summary>Cập nhật chuỗi lọc khi gõ. Sự kiện theo sau: danh sách render lọc lại + nhóm tự bung.</summary>
+    /// <summary>Cập nhật chuỗi lọc khi gõ. Sự kiện theo sau: danh sách render lọc lại + nhánh tự bung.</summary>
     private void OnFilterInput(ChangeEventArgs e) => _filter = (e.Value?.ToString() ?? "").Trim();
 
     /// <summary>Xóa chuỗi lọc, hiện lại toàn bộ menu.</summary>
@@ -244,17 +239,18 @@
     private bool Match(string label) =>
         !HasFilter || label.Contains(_filter, StringComparison.CurrentCultureIgnoreCase);
 
-    /// <summary>Khi đang lọc thì bung mọi phân hệ có kết quả; ngược lại theo accordion.</summary>
-    private bool IsOpen(VmModule m) => HasFilter || _expanded == m.Key;
+    /// <summary>Nhãn đã dịch của 1 node (để lọc/hiển thị).</summary>
+    private string Label(VmNode n) => Loc.L(n.TitleKey, n.Title);
 
-    /// <summary>Màn con hiện ra: lọc rỗng / khớp tên phân hệ → tất cả; ngược lại chỉ màn khớp.</summary>
-    private List<VmScreen> VisibleScreens(VmModule m) =>
-        (!HasFilter || Match(Loc.L(m.TitleKey, m.Title)))
-            ? m.Screens
-            : m.Screens.Where(s => Match(Loc.L(s.TitleKey, s.Title))).ToList();
+    /// <summary>Node khớp lọc nếu chính nó khớp HOẶC có hậu duệ khớp.</summary>
+    private bool NodeMatches(VmNode n) => Match(Label(n)) || n.Children.Any(NodeMatches);
 
-    private bool ModuleVisible(VmModule m) =>
-        !HasFilter || Match(Loc.L(m.TitleKey, m.Title)) || VisibleScreens(m).Count > 0;
+    /// <summary>Mở cụm khi: đang lọc (bung mọi nhánh có kết quả) HOẶC nằm trong tập đang mở.</summary>
+    private bool IsOpen(VmNode n) => HasFilter || _expanded.Contains(n.Key);
+
+    /// <summary>Con khớp lọc (giữ nguyên thứ tự); không lọc → giữ tất cả.</summary>
+    private List<VmNode> FilteredChildren(List<VmNode> nodes) =>
+        !HasFilter ? nodes : nodes.Where(NodeMatches).ToList();
 
     private List<VmItem> FilteredTop() =>
         _top.Where(i => Match(Loc.L(i.TitleKey, i.Title))).ToList();
@@ -262,19 +258,35 @@
     private List<VmItem> FilteredBottom() =>
         _bottom.Where(i => Match(Loc.L(i.TitleKey, i.Title))).ToList();
 
-    /// <summary>Con của nhóm khớp lọc (giữ nguyên thứ tự đã sắp): phân hệ có kết quả / màn khớp tên.</summary>
-    private List<VmChild> FilteredChildren(VmSection s) =>
-        !HasFilter
-            ? s.Children
-            : s.Children.Where(c =>
-                c.Module is { } m ? ModuleVisible(m)
-                : c.Item is { } i && Match(Loc.L(i.TitleKey, i.Title))).ToList();
-
     /// <summary>Nhóm còn hiện nếu có con khớp lọc; loại bỏ nhóm rỗng.</summary>
     private List<VmSection> FilteredSections()
     {
         if (!HasFilter) return _sections;
-        return _sections.Where(s => FilteredChildren(s).Count > 0).ToList();
+        return _sections.Where(s => s.Children.Any(NodeMatches)).ToList();
+    }
+
+    // ── Trạng thái active / bung theo URL ───────────────────────────────────
+    /// <summary>Route lá khớp URL hiện tại (đúng hệt hoặc là tiền tố segment).</summary>
+    private bool PathMatches(string href) =>
+        href.Length > 0 &&
+        (string.Equals(_currentPath, href, StringComparison.OrdinalIgnoreCase) ||
+         _currentPath.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Node nằm trên nhánh đang xem nếu chính nó hoặc một hậu duệ khớp URL.</summary>
+    private bool IsActivePath(VmNode n) => PathMatches(n.Href) || n.Children.Any(IsActivePath);
+
+    /// <summary>Tự bung mọi cụm tổ tiên của màn đang xem (giữ các cụm khác nguyên trạng).</summary>
+    private void ExpandActivePath()
+    {
+        void Walk(IEnumerable<VmNode> nodes)
+        {
+            foreach (var n in nodes.Where(n => n.IsGroup && IsActivePath(n)))
+            {
+                _expanded.Add(n.Key);
+                Walk(n.Children);
+            }
+        }
+        foreach (var s in _sections) Walk(s.Children);
     }
 
     private void OnLanguageChanged() => InvokeAsync(StateHasChanged);
@@ -282,40 +294,30 @@
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         SyncFromUri();
-        if (_currentModule is not null) _expanded = _currentModule;
+        ExpandActivePath();
         StateHasChanged();
     }
 
-    private void SyncFromUri()
-    {
-        var path = Nav.ToBaseRelativePath(Nav.Uri);
-        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        _currentModule = (segments.Length >= 2 && segments[0] == "m") ? segments[1] : null;
-    }
+    private void SyncFromUri() => _currentPath = Nav.ToBaseRelativePath(Nav.Uri);
 
     /// <summary>
-    /// Bấm phân hệ. Sự kiện theo sau: đang thu gọn → bung lại sidebar + mở phân hệ vừa bấm;
-    /// ngược lại toggle accordion (đóng nếu đang mở, mở + điều hướng nếu đang đóng).
+    /// Bấm cụm. Sự kiện theo sau: đang thu gọn → bung lại sidebar + mở cụm vừa bấm (+ điều hướng nếu có route);
+    /// ngược lại toggle (đóng nếu đang mở; mở + điều hướng nếu đang đóng và có route).
     /// </summary>
-    private async Task ToggleModule(VmModule module)
+    private async Task ToggleNode(VmNode node)
     {
         if (Collapsed)
         {
-            // Rail: bấm icon = mở lại menu, mở đúng phân hệ vừa bấm + điều hướng tới nó.
             await OnExpand.InvokeAsync();
-            _expanded = module.Key;
-            if (!string.IsNullOrEmpty(module.Href)) Nav.NavigateTo(module.Href);
+            _expanded.Add(node.Key);
+            if (node.Href.Length > 0) Nav.NavigateTo(node.Href);
             return;
         }
 
-        if (_expanded == module.Key)
+        if (!_expanded.Remove(node.Key))
         {
-            _expanded = null;
-        }
-        else
-        {
-            _expanded = module.Key;
-            if (!string.IsNullOrEmpty(module.Href)) Nav.NavigateTo(module.Href);
+            _expanded.Add(node.Key);
+            if (node.Href.Length > 0) Nav.NavigateTo(node.Href);
         }
     }
 
