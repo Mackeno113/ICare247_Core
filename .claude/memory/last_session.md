@@ -1,5 +1,36 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-23 (session 62 — Phân tích code review + ghi backlog tối ưu OPT-1..8)
+
+## Session 62 (2026-06-23) — đã làm (KHÔNG CODE; chỉ phân tích + ghi task)
+
+> User yêu cầu phân tích toàn bộ codebase tìm vấn đề và tối ưu hóa.
+> Không có thay đổi code. Kết quả = 8 task backlog trong TASKS.md.
+
+- **Phân tích codebase** — Đọc toàn bộ BRAIN.md, TASKS.md, last_session.md + khảo sát 483 file .cs + 72 file .razor.
+  Đọc kỹ: `MasterDataRepository.cs`, `ViewRepository.cs` (709 dòng), `HybridCacheService.cs`,
+  `SaveMasterDataCommandHandler.cs`, `ValidationBehavior.cs`, `Program.cs`.
+- **8 task tối ưu ghi vào TASKS.md** (section "Backlog — Tối ưu code"):
+  - **OPT-1** 🔴 `SELECT *` trong `GetByIdAsync` (vi phạm Hard Constraint #9) — `MasterDataRepository.cs:229`
+  - **OPT-2** 🔴 `GetAuditColumnsAsync` query `INFORMATION_SCHEMA` mỗi lần save — `MasterDataRepository.cs:266,311`
+  - **OPT-3** 🟡 2 query riêng list+count thay vì `QueryMultipleAsync` — `MasterDataRepository.cs` + `ViewRepository.cs`
+  - **OPT-4** 🟡 `ViewRepository.GetByCodeAsync` 4 roundtrip tuần tự (709 dòng) — nên gộp `QueryMultipleAsync`
+  - **OPT-5** 🟠 Bulk delete không transactional — `ViewPage.razor`
+  - **OPT-6** 🟠 `CacheVersion` in-memory không sync cross-instance (ADR-021 đã ghi nhận)
+  - **OPT-7** 🟢 Magic string i18n key → nên khai báo constants
+  - **OPT-8** 🟢 `StateHasChanged()` gọi rải rác 14+ chỗ → nên batch cuối async method
+
+### ⏳ Còn lại từ session 61b
+- CORS expose header `X-Correlation-Id` (tùy chọn — body đã đủ cho thông báo).
+- MenuAdmin/AdminPermission ApiService chưa gắn "Mã lỗi".
+- Restart API + hard reload UI để bản vá 61b có hiệu lực.
+
+### Việc tiếp theo gợi ý
+1. **OPT-1 + OPT-2** (fix nhanh, 30–60 phút, tác động performance rõ nhất)
+2. Quay lại roadmap chính: **F1 E2E** (chạy db/058,059,060 + E2E config-sync + hook store Xã/Phường)
+
+---
+
 > Cập nhật: 2026-06-23 (session 61b — Ẩn Lookup_Sql khỏi /info (DTO) + Observability: correlationId in log + "Mã lỗi" client)
 
 ## Session 61b (2026-06-23) — đã làm (ĐÃ CODE; build BE `ICare247.slnx` 0/0, FE Shared+UI 0/0)
