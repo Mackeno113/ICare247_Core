@@ -269,10 +269,19 @@
                         <dx:SimpleButton Command="{Binding NewCommand}" Content="Làm mới form nhập" Margin="0,0,8,0" />
 
                         <dx:SimpleButton Command="{Binding GenerateHookStoreCommand}"
-                                         ToolTip="Sinh file .sql skeleton hook store (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn vào db/procs — review rồi chạy tay.">
+                                         ToolTip="Tạo store skeleton (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn TRỰC TIẾP trên Target DB — hỏi xác nhận, chỉ tạo nếu chưa có (không đè proc đã sửa).">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="⚙" VerticalAlignment="Center" />
-                                <TextBlock Text="Sinh store" Margin="6,0,0,0" />
+                                <TextBlock Text="Tạo store" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </dx:SimpleButton>
+
+                        <dx:SimpleButton Command="{Binding CheckAuditColumnsCommand}"
+                                         Margin="8,0,0,0"
+                                         ToolTip="Đối chiếu khối cột auto chuẩn (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver) của bảng đang chọn với Target DB. Thiếu → hỏi xác nhận rồi ALTER trực tiếp lên Target DB (idempotent).">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="🧩" VerticalAlignment="Center" />
+                                <TextBlock Text="Kiểm tra cột chuẩn" Margin="6,0,0,0" />
                             </StackPanel>
                         </dx:SimpleButton>
                     </StackPanel>

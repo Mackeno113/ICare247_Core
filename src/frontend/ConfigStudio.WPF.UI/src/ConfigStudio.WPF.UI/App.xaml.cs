@@ -70,6 +70,7 @@ public partial class App : PrismApplication
         containerRegistry.Register<IPublishCheckService, PublishCheckService>();
         containerRegistry.Register<IImpactPreviewService, ImpactPreviewService>();
         containerRegistry.Register<ISchemaInspectorService, SchemaInspectorService>();
+        containerRegistry.Register<ISchemaMaintenanceService, SchemaMaintenanceService>();
 
         containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>(ViewNames.Dashboard);
         containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>(ViewNames.Settings);

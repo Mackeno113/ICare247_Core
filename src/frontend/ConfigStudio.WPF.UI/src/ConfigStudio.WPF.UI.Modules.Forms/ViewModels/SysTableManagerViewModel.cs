@@ -5,7 +5,6 @@
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
@@ -25,6 +24,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     private readonly IFormDataService? _formDataService;
     private readonly IAppConfigService? _appConfig;
     private readonly ISchemaInspectorService? _schemaInspector;
+    private readonly ISchemaMaintenanceService? _schemaMaintenance;
     private readonly IAppLogger? _logger;
     private bool _isProgrammaticEditorUpdate;
 
@@ -125,6 +125,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
             {
                 SaveCommand.RaiseCanExecuteChanged();
                 GenerateHookStoreCommand?.RaiseCanExecuteChanged();
+                CheckAuditColumnsCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -190,6 +191,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                 SaveCommand.RaiseCanExecuteChanged();
                 NewCommand.RaiseCanExecuteChanged();
                 GenerateHookStoreCommand?.RaiseCanExecuteChanged();
+                CheckAuditColumnsCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -237,6 +239,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public DelegateCommand SaveCommand { get; }
     /// <summary>Sinh file .sql skeleton hook store (spc_/sp_AfterSave_) cho bảng đang chọn (SVHOOK-5).</summary>
     public DelegateCommand GenerateHookStoreCommand { get; }
+    /// <summary>Đối chiếu cột auto chuẩn (§0.1) của bảng đang chọn với Target DB → sinh .sql ALTER nếu thiếu.</summary>
+    public DelegateCommand CheckAuditColumnsCommand { get; }
 
     private readonly INavigationHistoryService? _history;
 
@@ -245,12 +249,14 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
         ISchemaInspectorService? schemaInspector = null,
+        ISchemaMaintenanceService? schemaMaintenance = null,
         IAppLogger? logger = null)
     {
         _formDataService = formDataService;
         _appConfig = appConfig;
         _history = history;
         _schemaInspector = schemaInspector;
+        _schemaMaintenance = schemaMaintenance;
         _logger = logger;
 
         TablesView = CollectionViewSource.GetDefaultView(Tables);
@@ -259,7 +265,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         RefreshCommand = new DelegateCommand(async () => await LoadDataSafeAsync());
         NewCommand = new DelegateCommand(ExecuteNew, () => IsNotBusy);
         SaveCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), CanSave);
-        GenerateHookStoreCommand = new DelegateCommand(ExecuteGenerateHookStore, CanGenerateHookStore);
+        GenerateHookStoreCommand = new DelegateCommand(async () => await ExecuteGenerateHookStoreAsync(), CanGenerateHookStore);
+        CheckAuditColumnsCommand = new DelegateCommand(async () => await ExecuteCheckAuditColumnsAsync(), CanCheckAuditColumns);
 
         ResetEditorForNew();
     }
@@ -503,16 +510,21 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         }
     }
 
-    // ── Sinh hook store skeleton (SVHOOK-5, ADR-029) ─────────────────────────────
+    // ── Tạo hook store skeleton trực tiếp trên Target DB (SVHOOK-5, ADR-029) ─────
 
     private bool CanGenerateHookStore()
-        => IsNotBusy && !string.IsNullOrWhiteSpace(EditTableCode);
+        => IsNotBusy
+        && !string.IsNullOrWhiteSpace(EditTableCode)
+        && _schemaInspector is not null
+        && _schemaMaintenance is not null
+        && _appConfig?.IsTargetConfigured == true;
 
     /// <summary>
-    /// Sinh 2 file .sql skeleton (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn vào db/procs.
-    /// KHÔNG ghi đè file đã có (bảo vệ logic đã viết tay); skeleton bọc IF OBJECT_ID IS NULL.
+    /// Tạo 2 store skeleton (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn TRỰC TIẾP trên
+    /// Target DB. Hỏi xác nhận (báo store nào sẽ tạo / đã có), rồi chạy batch idempotent
+    /// (IF OBJECT_ID IS NULL EXEC('CREATE PROCEDURE…')) — chỉ tạo khi chưa có, KHÔNG đè proc đã sửa.
     /// </summary>
-    private void ExecuteGenerateHookStore()
+    private async Task ExecuteGenerateHookStoreAsync()
     {
         SaveStatusMessage = "";
         IsSaveStatusError = false;
@@ -522,65 +534,164 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 
         if (!IsSafeIdentifier(tableCode))
         {
-            SetSaveError("Table_Code không hợp lệ để sinh store (chỉ chữ/số/_, không khoảng trắng).");
+            SetSaveError("Table_Code không hợp lệ để tạo store (chỉ chữ/số/_, không khoảng trắng).");
             return;
         }
 
+        await EnsureAppConfigLoadedAsync();
+        if (_schemaInspector is null || _schemaMaintenance is null || _appConfig is null
+            || !_appConfig.IsTargetConfigured
+            || string.IsNullOrWhiteSpace(_appConfig.TargetConnectionString))
+        {
+            SetSaveError("Chưa cấu hình Target DB. Vào Settings để cấu hình trước khi tạo store.");
+            return;
+        }
+
+        IsBusy = true;
         try
         {
-            var dir = ResolveProcsDirectory();
-            Directory.CreateDirectory(dir);
+            var conn = _appConfig.TargetConnectionString;
+            var validateName = HookStoreTemplate.ValidateProcName(tableCode);
+            var afterSaveName = HookStoreTemplate.AfterSaveProcName(tableCode);
 
-            var written = new List<string>();
-            var skipped = new List<string>();
-            WriteIfAbsent(Path.Combine(dir, HookStoreTemplate.ValidateProcName(tableCode) + ".sql"),
-                HookStoreTemplate.BuildValidateProc(schema, tableCode), written, skipped);
-            WriteIfAbsent(Path.Combine(dir, HookStoreTemplate.AfterSaveProcName(tableCode) + ".sql"),
-                HookStoreTemplate.BuildAfterSaveProc(schema, tableCode), written, skipped);
+            // Báo trước store nào đã có (skeleton chỉ tạo cái chưa có).
+            var validateExists = await _schemaInspector.ProcedureExistsAsync(conn, schema, validateName);
+            var afterSaveExists = await _schemaInspector.ProcedureExistsAsync(conn, schema, afterSaveName);
 
-            var msg = new System.Text.StringBuilder();
-            if (written.Count > 0)
-                msg.Append($"Đã sinh {written.Count} file: {string.Join(", ", written.Select(Path.GetFileName))}. ");
-            if (skipped.Count > 0)
-                msg.Append($"Bỏ qua {skipped.Count} file đã có: {string.Join(", ", skipped.Select(Path.GetFileName))}. ");
-            msg.Append($"Thư mục: {dir}. Mở review rồi chạy trên Data DB (idempotent — chỉ tạo nếu chưa có).");
+            var toCreate = new List<string>();
+            if (!validateExists) toCreate.Add(validateName);
+            if (!afterSaveExists) toCreate.Add(afterSaveName);
 
-            SaveStatusMessage = msg.ToString();
+            if (toCreate.Count == 0)
+            {
+                SaveStatusMessage = $"Cả 2 store đã có sẵn trên Target DB ({validateName}, {afterSaveName}) — không tạo lại (không đè).";
+                IsSaveStatusError = false;
+                return;
+            }
+
+            var existsNote = (validateExists || afterSaveExists)
+                ? $"\n\nĐã có sẵn (giữ nguyên): {string.Join(", ", new[] { validateExists ? validateName : null, afterSaveExists ? afterSaveName : null }.Where(n => n is not null))}."
+                : "";
+
+            var confirm = System.Windows.MessageBox.Show(
+                $"Tạo {toCreate.Count} store skeleton trên Target DB cho bảng [{schema}].[{tableCode}]:\n\n  • {string.Join("\n  • ", toCreate)}\n\n"
+                + "Skeleton pass-through (chỉ tạo nếu chưa có, không đè proc đã sửa tay)." + existsNote,
+                "Tạo hook store", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No);
+            if (confirm != System.Windows.MessageBoxResult.Yes)
+            {
+                SaveStatusMessage = "Đã huỷ — không thay đổi Target DB.";
+                IsSaveStatusError = false;
+                return;
+            }
+
+            var batches = HookStoreTemplate.BuildProcBatches(schema, tableCode);
+            await _schemaMaintenance.ExecuteStatementsAsync(conn, batches);
+
+            SaveStatusMessage = $"Đã tạo {toCreate.Count} store skeleton trên [{schema}]: {string.Join(", ", toCreate)}. Viết logic bằng ALTER PROCEDURE trực tiếp trên Target DB (skeleton không lưu file db/procs).";
             IsSaveStatusError = false;
         }
         catch (Exception ex)
         {
             _logger?.Capture(ex, "SysTableManager.GenerateHookStore");
-            SetSaveError($"Lỗi sinh store: {ex.Message}");
+            SetSaveError($"Lỗi tạo store: {ex.Message}");
         }
-    }
-
-    private static void WriteIfAbsent(string path, string content, List<string> written, List<string> skipped)
-    {
-        if (File.Exists(path)) { skipped.Add(path); return; }
-        File.WriteAllText(path, content, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
-        written.Add(path);
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private static bool IsSafeIdentifier(string s)
         => !string.IsNullOrWhiteSpace(s)
         && System.Text.RegularExpressions.Regex.IsMatch(s, "^[A-Za-z_][A-Za-z0-9_]*$");
 
+    // ── Kiểm tra & bổ sung cột auto chuẩn (§0.1 spec 11) ─────────────────────────
+
+    private bool CanCheckAuditColumns()
+        => IsNotBusy
+        && !string.IsNullOrWhiteSpace(EditTableCode)
+        && _schemaInspector is not null
+        && _schemaMaintenance is not null
+        && _appConfig?.IsTargetConfigured == true;
+
     /// <summary>
-    /// Tìm thư mục db/procs: đi ngược từ thư mục chạy app tới khi gặp folder chứa subfolder "db"
-    /// (repo dev) → &lt;repo&gt;/db/procs. Không thấy → fallback %APPDATA%\ICare247\ConfigStudio\procs.
+    /// Đọc cột thật của bảng từ Target DB, đối chiếu khối cột auto chuẩn. Đủ → báo OK;
+    /// thiếu → hỏi xác nhận (liệt kê cột) rồi thực thi ALTER TRỰC TIẾP lên Target DB
+    /// (idempotent — mỗi cột bọc IF COL_LENGTH IS NULL, chạy trong 1 transaction).
     /// </summary>
-    private static string ResolveProcsDirectory()
+    private async Task ExecuteCheckAuditColumnsAsync()
     {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        for (var i = 0; i < 12 && dir is not null; i++, dir = dir.Parent)
+        SaveStatusMessage = "";
+        IsSaveStatusError = false;
+
+        var tableCode = EditTableCode.Trim();
+        var schema = string.IsNullOrWhiteSpace(EditSchemaName) ? "dbo" : EditSchemaName.Trim();
+
+        if (!IsSafeIdentifier(tableCode))
         {
-            var dbPath = Path.Combine(dir.FullName, "db");
-            if (Directory.Exists(dbPath))
-                return Path.Combine(dbPath, "procs");
+            SetSaveError("Table_Code không hợp lệ để ALTER (chỉ chữ/số/_, không khoảng trắng).");
+            return;
         }
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        return Path.Combine(appData, "ICare247", "ConfigStudio", "procs");
+
+        await EnsureAppConfigLoadedAsync();
+        if (_schemaInspector is null || _schemaMaintenance is null || _appConfig is null
+            || !_appConfig.IsTargetConfigured
+            || string.IsNullOrWhiteSpace(_appConfig.TargetConnectionString))
+        {
+            SetSaveError("Chưa cấu hình Target DB. Vào Settings để cấu hình trước khi kiểm tra cột.");
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var columns = await _schemaInspector.GetColumnsAsync(
+                _appConfig.TargetConnectionString, schema, tableCode);
+
+            if (columns.Count == 0)
+            {
+                SetSaveError($"Không đọc được cột của [{schema}].[{tableCode}] — bảng không tồn tại trong Target DB hoặc Table_Code là mã logic (không phải bảng vật lý).");
+                return;
+            }
+
+            var missing = AuditColumnTemplate.FindMissing(columns.Select(c => c.ColumnName));
+            if (missing.Count == 0)
+            {
+                SaveStatusMessage = $"[{schema}].[{tableCode}] đã đủ khối cột auto chuẩn ({string.Join(", ", AuditColumnTemplate.RequiredColumns)}). Không cần bổ sung.";
+                IsSaveStatusError = false;
+                return;
+            }
+
+            // Xác nhận trước khi đổi schema DB thật.
+            var confirm = System.Windows.MessageBox.Show(
+                $"Bảng [{schema}].[{tableCode}] thiếu {missing.Count} cột auto:\n\n  • {string.Join("\n  • ", missing)}\n\n"
+                + "Thêm các cột này trực tiếp vào Target DB? (idempotent — chỉ thêm cột chưa có)",
+                "Bổ sung cột chuẩn", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No);
+            if (confirm != System.Windows.MessageBoxResult.Yes)
+            {
+                SaveStatusMessage = "Đã huỷ — không thay đổi Target DB.";
+                IsSaveStatusError = false;
+                return;
+            }
+
+            var statements = AuditColumnTemplate.BuildAlterStatements(schema, tableCode, missing);
+            var executed = await _schemaMaintenance.ExecuteStatementsAsync(
+                _appConfig.TargetConnectionString, statements);
+
+            SaveStatusMessage = $"Đã thêm {executed} cột vào [{schema}].[{tableCode}]: {string.Join(", ", missing)}.";
+            IsSaveStatusError = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.CheckAuditColumns");
+            SetSaveError($"Lỗi bổ sung cột chuẩn: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     private void ApplySelectedTable(SysTableRecord? table)

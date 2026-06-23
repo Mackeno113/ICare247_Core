@@ -178,6 +178,30 @@ public sealed class SchemaInspectorService : ISchemaInspectorService
         return result.AsReadOnly();
     }
 
+    // ── ProcedureExistsAsync ──────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<bool> ProcedureExistsAsync(
+        string connectionString,
+        string schemaName,
+        string procName,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString)
+         || string.IsNullOrWhiteSpace(procName))
+            return false;
+
+        await using var conn = new SqlConnection(connectionString);
+
+        var schema = string.IsNullOrWhiteSpace(schemaName) ? "dbo" : schemaName;
+        const string sql = "SELECT CASE WHEN OBJECT_ID(@FullName, 'P') IS NULL THEN 0 ELSE 1 END";
+
+        var exists = await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(sql, new { FullName = $"{schema}.{procName}" }, cancellationToken: ct));
+
+        return exists == 1;
+    }
+
     /// <summary>
     /// Tách "nvarchar(50)" → ("nvarchar", 50); "decimal(18,2)" → ("decimal", null);
     /// "nvarchar(max)" → ("nvarchar", null); "int" → ("int", null).

@@ -98,6 +98,40 @@ public static class HookStoreTemplate
             """;
     }
 
+    /// <summary>
+    /// Tách 2 skeleton (validate + after-save) thành danh sách batch T-SQL thực thi được
+    /// (bỏ dòng <c>GO</c>) để chạy trực tiếp lên Target DB qua SqlCommand. Mỗi batch vẫn bọc
+    /// <c>IF OBJECT_ID IS NULL EXEC('CREATE PROCEDURE…')</c> → chỉ tạo khi chưa có, KHÔNG đè.
+    /// </summary>
+    public static IReadOnlyList<string> BuildProcBatches(string schema, string tableCode)
+    {
+        var batches = new List<string>();
+        foreach (var script in new[] { BuildValidateProc(schema, tableCode), BuildAfterSaveProc(schema, tableCode) })
+            batches.AddRange(SplitOnGo(script));
+        return batches;
+    }
+
+    /// <summary>Tách 1 script thành các batch theo dòng <c>GO</c> (đứng riêng), bỏ batch rỗng.</summary>
+    private static IEnumerable<string> SplitOnGo(string script)
+    {
+        var current = new System.Text.StringBuilder();
+        foreach (var line in script.Replace("\r\n", "\n").Split('\n'))
+        {
+            if (string.Equals(line.Trim(), "GO", StringComparison.OrdinalIgnoreCase))
+            {
+                var batch = current.ToString().Trim();
+                if (batch.Length > 0) yield return batch;
+                current.Clear();
+            }
+            else
+            {
+                current.AppendLine(line);
+            }
+        }
+        var tail = current.ToString().Trim();
+        if (tail.Length > 0) yield return tail;
+    }
+
     private static string NormalizeSchema(string? schema)
         => string.IsNullOrWhiteSpace(schema) ? "dbo" : schema.Trim();
 }

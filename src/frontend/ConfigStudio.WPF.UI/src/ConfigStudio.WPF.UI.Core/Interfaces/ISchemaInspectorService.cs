@@ -61,4 +61,18 @@ public interface ISchemaInspectorService
         string schemaName,
         string procName,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Kiểm tra Stored Procedure đã tồn tại trong Target DB chưa (OBJECT_ID ... 'P').
+    /// Dùng để báo trước store nào sẽ được tạo / đã có (skeleton chỉ tạo khi chưa có).
+    /// </summary>
+    /// <param name="connectionString">Connection string tới Target DB.</param>
+    /// <param name="schemaName">Schema SQL (thường là "dbo").</param>
+    /// <param name="procName">Tên Stored Procedure (không có schema prefix).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<bool> ProcedureExistsAsync(
+        string connectionString,
+        string schemaName,
+        string procName,
+        CancellationToken ct = default);
 }

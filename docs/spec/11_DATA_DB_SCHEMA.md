@@ -39,6 +39,15 @@ Mọi bảng dưới đây **đều có** khối cột auto sau (không liệt k
 | IsDeleted | bit | NOT NULL DEFAULT 0 | Soft delete |
 | Ver | int | NOT NULL DEFAULT 0 | Optimistic concurrency |
 
+> **Đảm bảo khối cột (dev hay quên):** chạy [`db/061_ensure_audit_columns.sql`](../../db/061_ensure_audit_columns.sql)
+> — guard **idempotent** quét mọi bảng theo prefix module (whitelist `DM_/TC_/HT_/NS_/TM_/GD_/TT_/NK_`),
+> `ALTER ADD` các cột auto còn thiếu + tạo index trên cột FK còn thiếu, TRỪ danh sách **opt-out** (bảng cố ý
+> lệch chuẩn, vd `HT_NguoiDung_LuoiLayout`). Chạy lúc provisioning/migrate tenant. `CreatedBy` thêm NOT NULL
+> **không default** (insert phải set tường minh); bản ghi cũ backfill = 0. Bảng thiếu `Id` (PK identity) chỉ
+> **cảnh báo** (xử lý tay). Trong ConfigStudio: màn **Sys_Table → nút "Kiểm tra cột chuẩn"** đối chiếu 1 bảng
+> với Target DB, hỏi xác nhận rồi **ALTER trực tiếp** lên Target DB (idempotent, 1 transaction) — dùng connection
+> string đã cấu hình, không cần mở SSMS.
+
 ### 0.2 `Ma` / `Ten` — cột theo archetype (KHÔNG phải auto-column)
 
 `Ma`, `Ten`, `MoTa` là **cột nghiệp vụ theo loại bảng**, không ép cứng mọi bảng. Áp theo bảng sau:
