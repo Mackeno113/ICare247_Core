@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-22 22:29:41",
+  "generatedAt": "2026-06-23 22:51:14",
   "source": "ICare247_UI",
   "count": 318,
   "entries": [
@@ -1265,7 +1265,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 220
+          "line": 223
         }
       ]
     },
@@ -1276,7 +1276,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 229
+          "line": 232
         }
       ]
     },
@@ -1287,7 +1287,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 222
+          "line": 225
         }
       ]
     },
@@ -1298,7 +1298,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 226
+          "line": 229
         }
       ]
     },
@@ -1309,7 +1309,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 224
+          "line": 227
         }
       ]
     },
@@ -1320,7 +1320,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 218
+          "line": 221
         }
       ]
     },
