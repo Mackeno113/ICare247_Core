@@ -69,6 +69,27 @@
 - [x] Polish: giu `formId/fieldCode/tableCode/sectionName` khi FieldConfig -> EventEditor va khi Rule/Event quay ve FieldConfig.
 - [x] Encoding scan: touched XAML/CS khong co mojibake pattern.
 
+### Phase 5 — Theme control tập trung + Combo filter (2026-06-24)
+
+> Mục tiêu: "sửa 1 nơi" — token + style implicit cho mọi control, bỏ hex inline.
+> Style implicit có tiền lệ chạy tốt trong app (`dxg:TableView` ở Controls.xaml).
+
+- [x] **Combo filter dùng chung:** style implicit `dxe:ComboBoxEdit` + `dxe:ComboBoxEditSettings`
+      bật `IsTextEditable + ImmediatePopup + IncrementalFiltering + FilterCondition=Contains`
+      (API verify qua reflection DevExpress v25.2). Gỡ 30 chỗ ép `IsTextEditable="False"` để filter có hiệu lực.
+- [x] **Token mở rộng (`DesignTokens.xaml`):** thêm màu (`AppTextStrong/Secondary`, họ `AppInfo*`,
+      `AppWarningLight`, `AppDangerDark`) + token kích thước (font size, radius, input/button height, padding/border).
+- [x] **Style implicit control (`Controls.xaml`):** `BaseEdit`→`TextEdit/MemoEdit/SpinEdit/ComboBoxEdit`,
+      `CheckEdit/ToggleSwitchEdit`, `dx:SimpleButton`, `dxg:GridControl` — đọc token, chỉ đặt mặc định (value inline vẫn thắng).
+- [x] **Migrate hex→token:** 784 hex inline trên 28 view → `{DynamicResource App…Brush/Color}`
+      (attribute-aware). Còn 2 màu alpha shadow giữ nguyên. Palette ~115 hex → 30 token (gom hue nhẹ:
+      gray→slate, cyan/teal→Info, indigo/violet→Accent).
+- [x] Verify: 28 view + 2 theme file đều well-formed XML; mọi token tham chiếu đều đã định nghĩa.
+- [ ] **Build verify (PENDING):** app đang chạy lúc làm → chưa rebuild. Cần đóng app → rebuild →
+      rà FormEditor/ViewManager/FieldConfig/RelationManager/ValidationRule: editor không vỡ template,
+      combo gõ-lọc được, màu đúng (trừ chỗ gom hue). Nếu editor vỡ theme → thêm `BasedOn` style mặc định DevExpress.
+- [ ] (Tùy chọn) Tách token teal/indigo riêng nếu muốn giữ làm accent phụ (hiện gom về Info/Accent).
+
 ---
 
 ### ✅ Bug Fix — ControlProps TextBox blank (2026-03-27)

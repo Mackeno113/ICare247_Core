@@ -25,14 +25,14 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
         <Style x:Key="HelpText" TargetType="TextBlock" BasedOn="{StaticResource AppHelpTextStyle}">
             <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="#64748B" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
             <Setter Property="Margin" Value="0,3,0,0" />
             <Setter Property="TextWrapping" Value="Wrap" />
         </Style>
         <Style x:Key="FieldLabel" TargetType="TextBlock" BasedOn="{StaticResource AppFieldLabelStyle}">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#374151" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Margin" Value="0,0,0,4" />
         </Style>
         <Style x:Key="FieldGroup" TargetType="StackPanel" BasedOn="{StaticResource AppFieldGroupStyle}">
@@ -64,14 +64,14 @@
                                 Padding="0" Cursor="Hand"
                                 ToolTip="Quay lại Cấu hình Field">
                             <TextBlock Text="← Cấu hình Field" FontSize="12"
-                                       Foreground="#3B82F6" TextDecorations="Underline" />
+                                       Foreground="{DynamicResource AppAccentBrush}" TextDecorations="Underline" />
                         </Button>
-                        <TextBlock Text=" › " FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" />
-                        <TextBlock FontSize="12" Foreground="#64748B" VerticalAlignment="Center">
+                        <TextBlock Text=" › " FontSize="12" Foreground="{DynamicResource AppTextSubtleBrush}" VerticalAlignment="Center" />
+                        <TextBlock FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}" VerticalAlignment="Center">
                             <Run Text="{Binding SectionName, Mode=OneWay}" />
                         </TextBlock>
-                        <TextBlock Text=" › " FontSize="12" Foreground="#94A3B8" VerticalAlignment="Center" />
-                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#1E293B" VerticalAlignment="Center">
+                        <TextBlock Text=" › " FontSize="12" Foreground="{DynamicResource AppTextSubtleBrush}" VerticalAlignment="Center" />
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AppTextBrush}" VerticalAlignment="Center">
                             <Run Text="{Binding FieldCode, Mode=OneWay}" />
                         </TextBlock>
                     </StackPanel>
@@ -83,14 +83,14 @@
 
                     <!-- Summary -->
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                        <TextBlock FontSize="12" Foreground="#64748B">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}">
                             <Run Text="{Binding Rules.Count, Mode=OneWay}" />
                             <Run Text="rule(s) — " />
                             <Run Text="Field Id: " />
                             <Run Text="{Binding FieldId, Mode=OneWay}" />
                         </TextBlock>
                         <TextBlock Text=" • Có thay đổi chưa lưu" FontSize="12"
-                                   Foreground="#F59E0B" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppWarningBrush}" FontWeight="SemiBold"
                                    Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}" />
                     </StackPanel>
                 </StackPanel>
@@ -163,11 +163,11 @@
                         <dxg:GridColumn Header="Loại Rule" FieldName="RuleTypeCode" Width="100">
                             <dxg:GridColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Border Background="#EFF6FF" CornerRadius="3" Padding="6,2"
+                                    <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="3" Padding="6,2"
                                             HorizontalAlignment="Left" VerticalAlignment="Center">
                                         <TextBlock Text="{Binding Row.RuleTypeCode}"
                                                    FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="#2563EB" />
+                                                   Foreground="{DynamicResource AppAccentBrush}" />
                                     </Border>
                                 </DataTemplate>
                             </dxg:GridColumn.CellTemplate>
@@ -178,7 +178,7 @@
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Row.ExpressionPreview}"
                                                FontFamily="Consolas" FontSize="12"
-                                               Foreground="#374151" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center"
                                                Margin="4,0" />
                                 </DataTemplate>
                             </dxg:GridColumn.CellTemplate>
@@ -194,14 +194,14 @@
                                             <Style TargetType="TextBlock">
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Row.Severity}" Value="Error">
-                                                        <Setter Property="Foreground" Value="#EF4444" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AppDangerBrush}" />
                                                         <Setter Property="FontWeight" Value="SemiBold" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Row.Severity}" Value="Warning">
-                                                        <Setter Property="Foreground" Value="#F59E0B" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AppWarningBrush}" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Row.Severity}" Value="Info">
-                                                        <Setter Property="Foreground" Value="#3B82F6" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -233,7 +233,7 @@
                                         <Button Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                 CommandParameter="{Binding Row}"
                                                 ToolTip="Xóa rule" Width="40" Height="28"
-                                                Foreground="#EF4444"
+                                                Foreground="{DynamicResource AppDangerBrush}"
                                                 Background="Transparent" BorderBrush="Transparent">
                                             <TextBlock Text="🗑" />
                                         </Button>
@@ -254,7 +254,7 @@
                     <StackPanel>
                         <TextBlock Text="Chi tiết Rule"
                                    FontSize="16" FontWeight="Bold"
-                                   Foreground="#1E293B"
+                                   Foreground="{DynamicResource AppTextBrush}"
                                    Margin="0,0,0,16" />
 
                         <!-- Loại Rule -->
@@ -264,7 +264,7 @@
                                               EditValue="{Binding EditRuleType}" />
                             <TextBlock Text="{Binding EditRuleTypeDescription}"
                                        Style="{StaticResource HelpText}"
-                                       Foreground="#2563EB" />
+                                       Foreground="{DynamicResource AppAccentBrush}" />
                         </StackPanel>
 
                         <!-- Thông báo lỗi (auto-generated, readonly) -->
@@ -272,7 +272,7 @@
                             <TextBlock Text="Thông báo lỗi (i18n Key)" Style="{StaticResource FieldLabel}" />
                             <dxe:TextEdit EditValue="{Binding AutoErrorKey, Mode=OneWay}"
                                           IsReadOnly="True"
-                                          Foreground="#2563EB"
+                                          Foreground="{DynamicResource AppAccentBrush}"
                                           FontFamily="Consolas" />
                             <TextBlock Style="{StaticResource HelpText}"
                                        Text="Auto-generated: {table}.val.{field}.{type} — lưu vào Sys_Resource." />
@@ -298,15 +298,15 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Min" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <TextBlock Text="Min" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,2" />
                                     <dxe:TextEdit EditValue="{Binding EditRangeMin, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="{Binding RangeMinPlaceholder}" />
                                 </StackPanel>
                                 <TextBlock Grid.Column="1" Text="–"
                                            VerticalAlignment="Bottom" HorizontalAlignment="Center"
-                                           Margin="0,0,0,6" Foreground="#94A3B8" FontSize="16" />
+                                           Margin="0,0,0,6" Foreground="{DynamicResource AppTextSubtleBrush}" FontSize="16" />
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Max" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <TextBlock Text="Max" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,2" />
                                     <dxe:TextEdit EditValue="{Binding EditRangeMax, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="{Binding RangeMaxPlaceholder}" />
                                 </StackPanel>
@@ -314,13 +314,13 @@
                             <TextBlock Style="{StaticResource HelpText}"
                                        Text="Để trống một đầu = không giới hạn đầu đó. Áp dụng cho số, ngày, độ dài string." />
                             <!-- Preview expression được build tự động -->
-                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceMutedBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
                                     BorderThickness="1" CornerRadius="3"
                                     Padding="8,5" Margin="0,6,0,0"
                                     Visibility="{Binding HasRangePreview, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{Binding RangeExpressionPreview}"
                                            FontFamily="Consolas" FontSize="11"
-                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                                           Foreground="{DynamicResource AppInfoBrush}" TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>
 
@@ -349,8 +349,8 @@
                                                     Margin="0,0,6,6"
                                                     Padding="10,4"
                                                     Cursor="Hand"
-                                                    Background="#EFF6FF"
-                                                    BorderBrush="#BFDBFE"
+                                                    Background="{DynamicResource AppAccentSoftBrush}"
+                                                    BorderBrush="{DynamicResource AppAccentLightBrush}"
                                                     BorderThickness="1">
                                                 <Button.Template>
                                                     <ControlTemplate TargetType="Button">
@@ -364,25 +364,25 @@
                                                         </Border>
                                                         <ControlTemplate.Triggers>
                                                             <Trigger Property="IsMouseOver" Value="True">
-                                                                <Setter Property="Background" Value="#DBEAFE" />
+                                                                <Setter Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
                                                             </Trigger>
                                                         </ControlTemplate.Triggers>
                                                     </ControlTemplate>
                                                 </Button.Template>
-                                                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="#2563EB" />
+                                                <TextBlock Text="{Binding Label}" FontSize="11" Foreground="{DynamicResource AppAccentBrush}" />
                                             </Button>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </WrapPanel>
                             <!-- Preview pattern đang chọn -->
-                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceMutedBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
                                     BorderThickness="1" CornerRadius="3"
                                     Padding="8,5" Margin="0,4,0,0"
                                     Visibility="{Binding HasRegexPattern, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{Binding EditRegexPattern}"
                                            FontFamily="Consolas" FontSize="11"
-                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                                           Foreground="{DynamicResource AppInfoBrush}" TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>
 
@@ -397,14 +397,14 @@
                                     <ColumnDefinition Width="80" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Field Code" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <TextBlock Text="Field Code" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,2" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding AvailableCompareFields}"
                                                       EditValue="{Binding EditCompareField, UpdateSourceTrigger=PropertyChanged}"
-                                                      IsTextEditable="False"
+
                                                       NullText="Chọn field code" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Toán tử" FontSize="11" Foreground="#64748B" Margin="0,0,0,2" />
+                                    <TextBlock Text="Toán tử" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,2" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding CompareOpOptions}"
                                                       EditValue="{Binding EditCompareOp}" />
                                 </StackPanel>
@@ -412,13 +412,13 @@
                             <TextBlock Style="{StaticResource HelpText}"
                                        Text="FieldCode phân biệt hoa thường. VD: NgayNghiViec >= NgayVaoLam" />
                             <!-- Preview expression tự sinh -->
-                            <Border Background="#F8FAFC" BorderBrush="#E2E8F0"
+                            <Border Background="{DynamicResource AppSurfaceMutedBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
                                     BorderThickness="1" CornerRadius="3"
                                     Padding="8,5" Margin="0,6,0,0"
                                     Visibility="{Binding HasComparePreview, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{Binding CompareExpressionPreview}"
                                            FontFamily="Consolas" FontSize="11"
-                                           Foreground="#0891B2" TextWrapping="Wrap" />
+                                           Foreground="{DynamicResource AppInfoBrush}" TextWrapping="Wrap" />
                             </Border>
                         </StackPanel>
 
@@ -444,7 +444,7 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                             <Button Command="{Binding CancelEditCommand}"
                                     Content="Hủy" Margin="0,0,10,0" Height="32" Padding="14,0"
-                                    Background="Transparent" BorderBrush="#CBD5E1" />
+                                    Background="Transparent" BorderBrush="{DynamicResource AppBorderStrongBrush}" />
                             <dx:SimpleButton Command="{Binding SaveRuleCommand}"
                                              Content="Áp dụng &amp; Lưu" Height="32" Padding="14,0" />
                         </StackPanel>
@@ -457,7 +457,7 @@
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="#EEF5FF" CornerRadius="4">
+                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🛡" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">

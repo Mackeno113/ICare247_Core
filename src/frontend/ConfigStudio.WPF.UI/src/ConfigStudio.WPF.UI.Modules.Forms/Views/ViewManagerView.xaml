@@ -125,7 +125,7 @@
         <!-- ── Header ───────────────────────────────────────── -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -157,18 +157,18 @@
                     <dxe:CheckEdit Content="Hiện cả View ẩn (inactive)"
                                    IsChecked="{Binding ShowInactive}"
                                    VerticalAlignment="Center" Margin="0,0,12,0" />
-                    <Border Background="#EEF5FF" BorderBrush="#DCEAFE" BorderThickness="1"
+                    <Border Background="{DynamicResource AppAccentSoftBrush}" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1"
                             CornerRadius="4" Padding="10,5">
-                        <TextBlock FontSize="12" Foreground="#1E3A8A" FontWeight="SemiBold"
+                        <TextBlock FontSize="12" Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold"
                                    Text="{Binding TenantId, Mode=OneWay, StringFormat=Tenant_Id: {0}}" />
                     </Border>
                 </StackPanel>
 
                 <Border Grid.Row="2" Margin="0,10,0,0" Padding="10,8"
-                        Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="6"
+                        Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1" CornerRadius="6"
                         Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
                     <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding LoadErrorMessage}" Foreground="#991B1B"
+                        <TextBlock Text="{Binding LoadErrorMessage}" Foreground="{DynamicResource AppDangerDarkBrush}"
                                    FontSize="12" TextWrapping="Wrap" />
                     </ScrollViewer>
                 </Border>
@@ -192,14 +192,14 @@
                     <ControlTemplate TargetType="GridSplitter">
                         <Border Background="{TemplateBinding Background}">
                             <Border Width="2" HorizontalAlignment="Center" CornerRadius="1"
-                                    Background="#CBD5E1" />
+                                    Background="{DynamicResource AppBorderStrongBrush}" />
                         </Border>
                     </ControlTemplate>
                 </GridSplitter.Template>
             </GridSplitter>
 
             <!-- Lưới danh sách View -->
-            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border Grid.Column="0" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                 <dxg:GridControl ItemsSource="{Binding ViewsView}"
                                  SelectedItem="{Binding SelectedView, Mode=TwoWay}"
                                  AutoGenerateColumns="None">
@@ -218,8 +218,8 @@
             </Border>
 
             <!-- Editor -->
-            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
-                    Background="#FCFDFF">
+            <Border Grid.Column="2" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6"
+                    Background="{DynamicResource AppSurfaceBrush}">
                 <Grid Margin="14">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -241,15 +241,15 @@
                                     <TextBlock Text="① View_Type * (quyết định tiền tố View_Code)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding ViewTypeOptions}"
                                                       EditValue="{Binding EditViewType}"
-                                                      IsTextEditable="False" Margin="0,0,0,10" />
+ Margin="0,0,0,10" />
 
                                     <!-- 2. View_Code = {View_Type}_ + phần user nhập -->
                                     <TextBlock Text="② View_Code * (tự ghép: {View_Type}_ + phần bạn nhập)" Style="{StaticResource EditorLabel}" />
                                     <DockPanel Margin="0,0,0,2">
-                                        <Border DockPanel.Dock="Left" Background="#EEF2FF" BorderBrush="#C7D2FE"
+                                        <Border DockPanel.Dock="Left" Background="{DynamicResource AppAccentSoftBrush}" BorderBrush="{DynamicResource AppAccentLightBrush}"
                                                 BorderThickness="1,1,0,1" CornerRadius="3,0,0,3" Padding="9,0">
                                             <TextBlock Text="{Binding ViewCodePrefix}" VerticalAlignment="Center"
-                                                       FontWeight="SemiBold" Foreground="#3730A3" />
+                                                       FontWeight="SemiBold" Foreground="{DynamicResource AppAccentDarkBrush}" />
                                         </Border>
                                         <dxe:TextEdit EditValue="{Binding EditViewCodeSuffix, UpdateSourceTrigger=PropertyChanged}"
                                                       NullText="VD: TrinhDoVanHoa, KhachHang" />
@@ -262,7 +262,7 @@
                                     <dxe:ComboBoxEdit ItemsSource="{Binding Tables}"
                                                       DisplayMember="DisplayText"
                                                       SelectedItem="{Binding EditTable}"
-                                                      IsTextEditable="False"
+
                                                       NullText="Chọn bảng..." Margin="0,0,0,10" />
 
                                     <!-- 4. Nguồn nâng cao (khi ≠ Table) -->
@@ -275,7 +275,7 @@
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Source_Type" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="120" ItemsSource="{Binding SourceTypeOptions}"
-                                                              EditValue="{Binding EditSourceType}" IsTextEditable="False" />
+                                                              EditValue="{Binding EditSourceType}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Source_Object (view/SP/SQL/endpoint khi ≠ Table)" Style="{StaticResource EditorLabel}" />
@@ -309,7 +309,7 @@
                                     <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
                                              AcceptsReturn="True" TextWrapping="Wrap"
                                              VerticalScrollBarVisibility="Auto" MinHeight="70" Padding="8"
-                                             BorderBrush="#D5DEED" BorderThickness="1" />
+                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" />
                                 </StackPanel>
                             </ScrollViewer>
                         </dx:DXTabItem>
@@ -333,7 +333,7 @@
                                             <TextBlock Text="Selection_Mode" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="160" HorizontalAlignment="Left"
                                                               ItemsSource="{Binding SelectionModeOptions}"
-                                                              EditValue="{Binding EditSelectionMode}" IsTextEditable="False" />
+                                                              EditValue="{Binding EditSelectionMode}" />
                                         </StackPanel>
                                     </Grid>
 
@@ -344,7 +344,7 @@
                                     <dxe:CheckEdit Content="Show_Search_Box — ô tìm kiếm" IsChecked="{Binding EditShowSearchBox}" Margin="0,2" />
                                     <dxe:CheckEdit Content="Show_Column_Chooser — chọn cột" IsChecked="{Binding EditShowColumnChooser}" Margin="0,2" />
 
-                                    <Border Height="1" Background="#E2E8F0" Margin="0,10" />
+                                    <Border Height="1" Background="{DynamicResource AppBorderBrush}" Margin="0,10" />
                                     <TextBlock Text="Quyền CRUD trên lưới" Style="{StaticResource EditorLabel}" />
                                     <dxe:CheckEdit Content="Allow_Add — cho thêm mới" IsChecked="{Binding EditAllowAdd}" Margin="0,2" />
                                     <dxe:CheckEdit Content="Allow_Edit — cho sửa" IsChecked="{Binding EditAllowEdit}" Margin="0,2" />
@@ -374,9 +374,9 @@
 
                                     <dxe:CheckEdit Content="Allow_Print — cho in" IsChecked="{Binding EditAllowPrint}" Margin="0,2" />
 
-                                    <Border Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                                    <Border Background="{DynamicResource AppInfoSoftBrush}" BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1"
                                             CornerRadius="6" Padding="12,10" Margin="0,12,0,0">
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#0369A1">
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AppInfoBrush}">
                                             xlsx/csv xuất client-side qua DxGrid; pdf/docx xuất server-side theo template.
                                             Export luôn lấy giá trị thuần (bỏ Render_Mode). Chi tiết nút xuất khai báo ở tab Actions.
                                         </TextBlock>
@@ -389,10 +389,10 @@
                         <dx:DXTabItem Header="Cây (TreeList)">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8,8,0">
                                 <StackPanel>
-                                    <Border Background="#FEF9C3" BorderBrush="#FDE68A" BorderThickness="1"
+                                    <Border Background="{DynamicResource AppWarningSoftBrush}" BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1"
                                             CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
                                             Visibility="{Binding IsTreeList, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#854D0E"
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AppWarningDarkBrush}"
                                                    Text="View_Type = TreeList — cần Key_Field (đặt ở tab Cơ bản) + cột cha + cấp mở sẵn để dựng cây." />
                                     </Border>
                                     <TextBlock Text="Parent_Field — cột cha (hierarchy)" Style="{StaticResource EditorLabel}" />
@@ -570,9 +570,9 @@
 
                                 <!-- Cờ panel -->
                                 <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                                    <Border Background="#F0F9FF" BorderBrush="#BAE6FD" BorderThickness="1"
+                                    <Border Background="{DynamicResource AppInfoSoftBrush}" BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1"
                                             CornerRadius="6" Padding="12,10" Margin="0,0,0,10">
-                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#0369A1"
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AppInfoBrush}"
                                                    Text="Panel lọc trái chỉ hiển thị khi Source_Type = Sp hoặc Sql (tab Cơ bản) và có ≥1 control. Mỗi tham số = 1 dòng; nhãn/placeholder/tooltip là i18n; giá trị luôn parameterized (whitelist tham số)." />
                                     </Border>
                                     <dxe:CheckEdit Content="Filter_Panel_Enabled — bật panel lọc trái"
@@ -591,7 +591,7 @@
                                             <TextBlock Text="Vị trí panel" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="120" HorizontalAlignment="Left"
                                                               ItemsSource="{Binding FilterPanelPositionOptions}"
-                                                              EditValue="{Binding EditFilterPanelPosition}" IsTextEditable="False" />
+                                                              EditValue="{Binding EditFilterPanelPosition}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Nhãn nút Tìm / Đặt lại (i18n — null = nút mặc định)" Style="{StaticResource EditorLabel}" />
@@ -700,13 +700,13 @@
                             Visibility="{Binding HasSaveStatus, Converter={StaticResource BoolToVis}}">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="#DCFCE7" />
-                                <Setter Property="BorderBrush" Value="#86EFAC" />
+                                <Setter Property="Background" Value="{DynamicResource AppSuccessLightBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessLightBrush}" />
                                 <Setter Property="BorderThickness" Value="1" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
-                                        <Setter Property="Background" Value="#FEE2E2" />
-                                        <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                        <Setter Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AppDangerLightBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -714,10 +714,10 @@
                         <TextBlock Text="{Binding SaveStatusMessage}" FontSize="12" TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#166534" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AppSuccessDarkBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
-                                            <Setter Property="Foreground" Value="#991B1B" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AppDangerDarkBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -729,7 +729,7 @@
         </Grid>
 
         <!-- ── Footer ───────────────────────────────────────── -->
-        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6" Background="#EEF5FF" CornerRadius="4">
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6" Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">

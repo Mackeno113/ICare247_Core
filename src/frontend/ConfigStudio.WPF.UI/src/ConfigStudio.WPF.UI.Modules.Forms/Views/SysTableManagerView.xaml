@@ -31,7 +31,7 @@
 
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -69,13 +69,13 @@
                                    VerticalAlignment="Center"
                                    Margin="0,0,12,0" />
 
-                    <Border Background="#EEF5FF"
-                            BorderBrush="#DCEAFE"
+                    <Border Background="{DynamicResource AppAccentSoftBrush}"
+                            BorderBrush="{DynamicResource AppAccentLightBrush}"
                             BorderThickness="1"
                             CornerRadius="4"
                             Padding="10,5">
                         <TextBlock FontSize="12"
-                                   Foreground="#1E3A8A"
+                                   Foreground="{DynamicResource AppAccentDarkBrush}"
                                    FontWeight="SemiBold"
                                    Text="{Binding TenantId, Mode=OneWay, StringFormat=Tenant_Id: {0}}" />
                     </Border>
@@ -84,14 +84,14 @@
                 <Border Grid.Row="2"
                         Margin="0,10,0,0"
                         Padding="10,8"
-                        Background="#FEE2E2"
-                        BorderBrush="#FCA5A5"
+                        Background="{DynamicResource AppDangerSoftBrush}"
+                        BorderBrush="{DynamicResource AppDangerLightBrush}"
                         BorderThickness="1"
                         CornerRadius="6"
                         Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
                     <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
                         <TextBlock Text="{Binding LoadErrorMessage}"
-               Foreground="#991B1B"
+               Foreground="{DynamicResource AppDangerDarkBrush}"
                FontSize="12"
                TextWrapping="Wrap" />
                     </ScrollViewer>
@@ -107,7 +107,7 @@
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
-                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                    BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                 <dxg:GridControl ItemsSource="{Binding TablesView}"
                                  SelectedItem="{Binding SelectedTable, Mode=TwoWay}"
                                  AutoGenerateColumns="None">
@@ -132,8 +132,8 @@
             </Border>
 
             <Border Grid.Column="2"
-                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
-                    Background="#FCFDFF" Padding="16">
+                    BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6"
+                    Background="{DynamicResource AppSurfaceBrush}" Padding="16">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -254,7 +254,7 @@
                                  VerticalScrollBarVisibility="Auto"
                                  MinHeight="120"
                                  Padding="8"
-                                 BorderBrush="#D5DEED"
+                                 BorderBrush="{DynamicResource AppBorderBrush}"
                                  BorderThickness="1" />
                     </StackPanel>
 
@@ -293,13 +293,13 @@
                             Visibility="{Binding HasSaveStatus, Converter={StaticResource BoolToVis}}">
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="#DCFCE7" />
-                                <Setter Property="BorderBrush" Value="#86EFAC" />
+                                <Setter Property="Background" Value="{DynamicResource AppSuccessLightBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessLightBrush}" />
                                 <Setter Property="BorderThickness" Value="1" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
-                                        <Setter Property="Background" Value="#FEE2E2" />
-                                        <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                        <Setter Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource AppDangerLightBrush}" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
@@ -307,10 +307,10 @@
                         <TextBlock Text="{Binding SaveStatusMessage}" FontSize="12">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="#166534" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AppSuccessDarkBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSaveStatusError}" Value="True">
-                                            <Setter Property="Foreground" Value="#991B1B" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AppDangerDarkBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -322,7 +322,7 @@
         </Grid>
 
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="#EEF5FF" CornerRadius="4">
+                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="ℹ" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">

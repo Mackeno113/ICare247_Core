@@ -31,7 +31,7 @@
         <!-- ── Header ──────────────────────────────────────────── -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="14,10"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="📋" FontSize="20" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <StackPanel>
@@ -58,7 +58,7 @@
             <!-- ─── Left: Lookup Code list ─────────────────────── -->
             <Border Grid.Column="0"
                     Background="{DynamicResource ShellContentBackgroundBrush}"
-                    BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                    BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -67,8 +67,8 @@
                     </Grid.RowDefinitions>
 
                     <!-- Header left -->
-                    <Border Grid.Row="0" Padding="10,8" Background="#EBF4FF"
-                            CornerRadius="6,6,0,0" BorderBrush="#D0E4FF" BorderThickness="0,0,0,1">
+                    <Border Grid.Row="0" Padding="10,8" Background="{DynamicResource AppAccentSoftBrush}"
+                            CornerRadius="6,6,0,0" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,0,0,1">
                         <TextBlock Text="Lookup Codes" FontWeight="SemiBold" FontSize="13"/>
                     </Border>
 
@@ -87,7 +87,7 @@
 
                     <!-- Add new code footer -->
                     <Border Grid.Row="2" Padding="8"
-                            BorderBrush="#D0E4FF" BorderThickness="0,1,0,0">
+                            BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,1,0,0">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -126,7 +126,7 @@
 
                 <Border Grid.Row="0"
                         Background="{DynamicResource ShellContentBackgroundBrush}"
-                        BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                        BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -134,14 +134,14 @@
                         </Grid.RowDefinitions>
 
                         <!-- Toolbar items -->
-                        <Border Grid.Row="0" Padding="10,8" Background="#EBF4FF"
-                                CornerRadius="6,6,0,0" BorderBrush="#D0E4FF" BorderThickness="0,0,0,1">
+                        <Border Grid.Row="0" Padding="10,8" Background="{DynamicResource AppAccentSoftBrush}"
+                                CornerRadius="6,6,0,0" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,0,0,1">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock VerticalAlignment="Center"
                                            FontWeight="SemiBold" FontSize="13">
                                     <Run Text="Items —"/>
                                     <Run Text="{Binding SelectedCode, TargetNullValue='(chọn code bên trái)'}"
-                                         FontFamily="Consolas" Foreground="#1565C0"/>
+                                         FontFamily="Consolas" Foreground="{DynamicResource AppAccentDarkBrush}"/>
                                 </TextBlock>
                                 <dx:SimpleButton Content="+ Thêm Item" Margin="16,0,4,0"
                                                  Command="{Binding AddItemCommand}"/>
@@ -205,7 +205,7 @@
                 <Border Grid.Row="1" Margin="0,8,0,0" Padding="14,12"
                         Visibility="{Binding IsEditorVisible, Converter={StaticResource BoolToVis}}"
                         Background="{DynamicResource ShellContentBackgroundBrush}"
-                        BorderBrush="#FFA000" BorderThickness="1" CornerRadius="6">
+                        BorderBrush="{DynamicResource AppWarningBrush}" BorderThickness="1" CornerRadius="6">
                     <StackPanel>
                         <!-- Header editor -->
                         <TextBlock FontSize="13" FontWeight="SemiBold" Margin="0,0,0,10">
@@ -289,7 +289,7 @@
         <!-- ── Status bar ────────────────────────────────────────── -->
         <Border Grid.Row="2" Margin="16,6,16,10" Padding="10,5"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="4">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="4">
             <TextBlock Text="{Binding StatusMessage}" FontSize="12" Opacity="0.75"/>
         </Border>
     </Grid>

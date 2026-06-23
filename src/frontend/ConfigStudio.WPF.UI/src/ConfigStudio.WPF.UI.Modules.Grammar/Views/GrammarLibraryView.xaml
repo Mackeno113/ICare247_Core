@@ -25,7 +25,7 @@
         <!-- Header -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                     <TextBlock Text="Grammar Library"
@@ -43,7 +43,7 @@
 
         <!-- TabControl: Functions + Operators -->
         <Border Grid.Row="1" Margin="16,8,16,16"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <TabControl SelectedIndex="{Binding SelectedTabIndex}">
 
                 <!-- Tab 1: Functions -->
@@ -89,7 +89,7 @@
                                         <DataTemplate>
                                             <Button Command="{Binding DataContext.DeleteFunctionCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                     CommandParameter="{Binding Row}"
-                                                    Foreground="#EF4444"
+                                                    Foreground="{DynamicResource AppDangerBrush}"
                                                     ToolTip="Xóa" Width="28" Height="28"
                                                     Background="Transparent" BorderBrush="Transparent">
                                                 <TextBlock Text="🗑" />
@@ -138,7 +138,7 @@
                                         <DataTemplate>
                                             <Button Command="{Binding DataContext.DeleteOperatorCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                     CommandParameter="{Binding Row}"
-                                                    Foreground="#EF4444"
+                                                    Foreground="{DynamicResource AppDangerBrush}"
                                                     ToolTip="Xóa" Width="28" Height="28"
                                                     Background="Transparent" BorderBrush="Transparent">
                                                 <TextBlock Text="🗑" />

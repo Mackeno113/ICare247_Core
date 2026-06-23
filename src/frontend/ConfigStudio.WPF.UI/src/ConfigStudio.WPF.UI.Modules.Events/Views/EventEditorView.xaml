@@ -144,7 +144,7 @@
                                             </Button>
                                             <Button Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                     CommandParameter="{Binding Row}"
-                                                    Foreground="#EF4444"
+                                                    Foreground="{DynamicResource AppDangerBrush}"
                                                     ToolTip="Xóa event" Width="30" Height="30"
                                                     Background="Transparent" BorderBrush="Transparent">
                                                 <TextBlock Text="🗑" />
@@ -181,7 +181,7 @@
 
                     <!-- ── Detail editor cho action đang chọn ───────────── -->
                     <Border DockPanel.Dock="Bottom" Margin="12,8,12,12" Padding="12"
-                            Background="#F8FAFC" CornerRadius="6"
+                            Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
                             Visibility="{Binding IsActionSelected, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
@@ -189,13 +189,13 @@
                                        Margin="0,0,0,8"
                                        Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
 
-                            <TextBlock Text="Loại action" FontSize="12" Foreground="#64748B"
+                            <TextBlock Text="Loại action" FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}"
                                        Margin="0,0,0,4" />
                             <ComboBox ItemsSource="{Binding ActionTypeOptions}"
                                       SelectedItem="{Binding SelectedAction.ActionType, Mode=TwoWay}"
                                       Margin="0,0,0,10" Height="30" />
 
-                            <TextBlock Text="Target field" FontSize="12" Foreground="#64748B"
+                            <TextBlock Text="Target field" FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}"
                                        Margin="0,0,0,4" />
                             <TextBox Text="{Binding SelectedAction.TargetField, UpdateSourceTrigger=PropertyChanged}"
                                      Height="30" VerticalContentAlignment="Center"
@@ -205,7 +205,7 @@
                             <StackPanel Visibility="{Binding SelectedAction.IsShowMessage, Converter={StaticResource BoolToVis}}">
                                 <Border Height="1" Background="{DynamicResource AppBorderBrush}"
                                         Margin="0,6,0,8" />
-                                <TextBlock Text="Message Key (i18n)" FontSize="12" Foreground="#64748B"
+                                <TextBlock Text="Message Key (i18n)" FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}"
                                            Margin="0,0,0,4" />
                                 <DockPanel Margin="0,0,0,10">
                                     <Button DockPanel.Dock="Right"
@@ -218,7 +218,7 @@
                                              Height="30" VerticalContentAlignment="Center"
                                              ToolTip="Resource key của nội dung thông báo, vd: donhang.warn.tong_tien_lon" />
                                 </DockPanel>
-                                <TextBlock Text="Mức độ (severity)" FontSize="12" Foreground="#64748B"
+                                <TextBlock Text="Mức độ (severity)" FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}"
                                            Margin="0,0,0,4" />
                                 <ComboBox ItemsSource="{Binding SeverityOptions}"
                                           SelectedItem="{Binding SelectedAction.Severity, Mode=TwoWay}"
@@ -244,7 +244,7 @@
                                     <DataTemplate>
                                         <Button Command="{Binding DataContext.DeleteActionCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                 CommandParameter="{Binding Row}"
-                                                Foreground="#EF4444"
+                                                Foreground="{DynamicResource AppDangerBrush}"
                                                 ToolTip="Xóa action" Width="28" Height="28"
                                                 Background="Transparent" BorderBrush="Transparent">
                                             <TextBlock Text="✕" />
@@ -262,7 +262,7 @@
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="#EEF5FF" CornerRadius="4">
+                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="⚡" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">

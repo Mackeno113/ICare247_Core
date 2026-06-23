@@ -7,7 +7,7 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="540" MinHeight="320" MaxHeight="640"
              mc:Ignorable="d"
-             Background="#F8FAFC">
+             Background="{DynamicResource AppSurfaceMutedBrush}">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -44,19 +44,19 @@
         <!-- Ghost button (secondary) -->
         <Style x:Key="GhostBtnStyle" TargetType="Button" BasedOn="{StaticResource ActionBtnStyle}">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="6"
-                                BorderBrush="#CBD5E1" BorderThickness="1"
+                                BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F1F5F9" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppPageBackgroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -67,7 +67,7 @@
         <!-- Value TextBox với rounded border -->
         <Style x:Key="ValueBoxStyle" TargetType="TextBox">
             <Setter Property="BorderThickness"          Value="1" />
-            <Setter Property="BorderBrush"              Value="#CBD5E1" />
+            <Setter Property="BorderBrush"              Value="{DynamicResource AppBorderStrongBrush}" />
             <Setter Property="Background"               Value="White" />
             <Setter Property="MinHeight"                Value="34" />
             <Setter Property="Padding"                  Value="9,7" />
@@ -102,10 +102,10 @@
 
         <!-- HEADER -->
         <Border Grid.Row="0" Background="White"
-                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                 Padding="20,16">
             <StackPanel Orientation="Horizontal">
-                <Border Background="#EFF6FF" CornerRadius="8" Width="36" Height="36"
+                <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="8" Width="36" Height="36"
                         Margin="0,0,12,0" VerticalAlignment="Center">
                     <TextBlock Text="🌐" FontSize="18"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -113,12 +113,12 @@
                 <StackPanel VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Dịch đa ngôn ngữ"
-                                   FontSize="16" FontWeight="SemiBold" Foreground="#0F172A" />
-                        <Border Background="#F1F5F9" CornerRadius="4" Padding="7,2"
+                                   FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrongBrush}" />
+                        <Border Background="{DynamicResource AppPageBackgroundBrush}" CornerRadius="4" Padding="7,2"
                                 Margin="10,0,0,0" VerticalAlignment="Center"
                                 Visibility="{Binding HasContextLabel, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{Binding ContextLabel}" FontSize="11"
-                                       Foreground="#475569" />
+                                       Foreground="{DynamicResource AppTextSecondaryBrush}" />
                         </Border>
                     </StackPanel>
                     <!-- Key (readonly — tự sinh từ caller) -->
@@ -126,7 +126,7 @@
                              IsReadOnly="True"
                              BorderThickness="0" Background="Transparent"
                              FontFamily="Cascadia Code, Consolas, monospace"
-                             FontSize="11" Foreground="#64748B" Margin="0,2,0,0"
+                             FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0"
                              ToolTip="{Binding ResourceKey}" />
                 </StackPanel>
             </StackPanel>
@@ -147,9 +147,9 @@
                             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,5">
                                 <TextBlock Text="{Binding DisplayLang}"
                                            FontSize="12" FontWeight="SemiBold"
-                                           Foreground="#475569" />
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                 <TextBlock Text=" *" FontSize="12" FontWeight="Bold"
-                                           Foreground="#DC2626"
+                                           Foreground="{DynamicResource AppDangerBrush}"
                                            Visibility="{Binding IsDefault, Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
                             <!-- Value -->
@@ -163,21 +163,21 @@
         </ScrollViewer>
 
         <!-- ERROR -->
-        <Border Grid.Row="2" Background="#FEF2F2"
-                BorderBrush="#FECACA" BorderThickness="0,1,0,0"
+        <Border Grid.Row="2" Background="{DynamicResource AppDangerSoftBrush}"
+                BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="0,1,0,0"
                 Padding="20,10"
                 Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="⚠" FontSize="14" Margin="0,0,8,0"
                            VerticalAlignment="Center" />
-                <TextBlock Text="{Binding ErrorMessage}" Foreground="#DC2626"
+                <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource AppDangerBrush}"
                            FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center" />
             </StackPanel>
         </Border>
 
         <!-- FOOTER -->
         <Border Grid.Row="3" Background="White"
-                BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0"
                 Padding="20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -194,7 +194,7 @@
                 <Button Grid.Column="3"
                         Command="{Binding SaveCommand}"
                         Style="{StaticResource ActionBtnStyle}"
-                        Background="#3B82F6" Foreground="White">
+                        Background="{DynamicResource AppAccentBrush}" Foreground="White">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="💾" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBlock Text="Lưu tất cả" VerticalAlignment="Center" />

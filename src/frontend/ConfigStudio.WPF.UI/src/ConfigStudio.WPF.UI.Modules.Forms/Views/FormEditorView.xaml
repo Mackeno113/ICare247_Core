@@ -47,9 +47,9 @@
 
         <!-- ── Shadows ──────────────────────────────────────── -->
         <DropShadowEffect x:Key="CardShadow" BlurRadius="8" ShadowDepth="1"
-                          Direction="270" Opacity="0.08" Color="#000000" />
+                          Direction="270" Opacity="0.08" Color="{DynamicResource AppTextStrongColor}" />
         <DropShadowEffect x:Key="ElevatedShadow" BlurRadius="16" ShadowDepth="2"
-                          Direction="270" Opacity="0.12" Color="#000000" />
+                          Direction="270" Opacity="0.12" Color="{DynamicResource AppTextStrongColor}" />
 
         <!-- ── Form Label ───────────────────────────────────── -->
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
@@ -78,7 +78,7 @@
             <Setter Property="FontSize"     Value="13" />
             <Setter Property="FontFamily"   Value="Cascadia Code, Consolas, monospace" />
             <Setter Property="Foreground"   Value="{StaticResource MutedBrush}" />
-            <Setter Property="Background"   Value="#F8FAFC" />
+            <Setter Property="Background"   Value="{DynamicResource AppSurfaceMutedBrush}" />
             <Setter Property="Padding"      Value="10,8" />
         </Style>
 
@@ -97,7 +97,7 @@
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize"   Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#1E293B" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
             <Setter Property="Margin"     Value="0,0,0,14" />
         </Style>
 
@@ -117,7 +117,7 @@
             <Setter Property="Margin"          Value="1,0" />
             <Setter Property="Cursor"          Value="Hand" />
             <Setter Property="FontSize"        Value="14" />
-            <Setter Property="Foreground"      Value="#475569" />
+            <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Background"      Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
@@ -131,7 +131,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E2E8F0" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppBorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4" />
@@ -161,7 +161,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#FEE2E2" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -212,11 +212,11 @@
                 <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                     <!-- Create mode -->
                     <TextBlock Text="Tạo Form Mới"
-                               FontSize="18" FontWeight="Bold" Foreground="#0F172A"
+                               FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AppTextStrongBrush}"
                                Visibility="{Binding IsNewForm, Converter={StaticResource BoolToVis}}" />
                     <!-- Edit mode -->
                     <TextBlock Text="{Binding FormName}"
-                               FontSize="18" FontWeight="Bold" Foreground="#0F172A"
+                               FontSize="18" FontWeight="Bold" Foreground="{DynamicResource AppTextStrongBrush}"
                                Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}" />
                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
                                 Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}">
@@ -227,9 +227,9 @@
                         <TextBlock Text="{Binding Version}" FontSize="12"
                                    Foreground="{StaticResource MutedBrush}" />
                         <TextBlock Text="  ·  " FontSize="12" Foreground="{StaticResource MutedBrush}" />
-                        <Border Background="#F0FDF4" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
                             <TextBlock Text="{Binding Platform}" FontSize="11"
-                                       Foreground="#16A34A" FontWeight="SemiBold" />
+                                       Foreground="{DynamicResource AppSuccessBrush}" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </StackPanel>
@@ -240,7 +240,7 @@
                         Visibility="{Binding IsDirty, Converter={StaticResource BoolToVis}}">
                     <Border Style="{DynamicResource AppDirtyIndicatorPillStyle}">
                         <TextBlock Text="Chưa lưu" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="#D97706" />
+                                   Foreground="{DynamicResource AppWarningBrush}" />
                     </Border>
                 </Border>
 
@@ -364,7 +364,7 @@
                         <TextBlock Text="Đồng bộ Schema" Margin="5,0,0,0" FontSize="12" />
                         <!-- Badge số issues — chỉ hiện khi HasSchemaSyncIssues -->
                         <Border Margin="5,0,0,0" CornerRadius="8" Padding="5,1"
-                                Background="#F59E0B" VerticalAlignment="Center"
+                                Background="{DynamicResource AppWarningBrush}" VerticalAlignment="Center"
                                 Visibility="{Binding HasSchemaSyncIssues,
                                              Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{Binding SchemaSyncBadgeCount}"
@@ -395,7 +395,7 @@
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                         <DockPanel>
                             <TextBlock Text="Cấu trúc Form" FontSize="13" FontWeight="SemiBold"
-                                       Foreground="#1E293B" VerticalAlignment="Center" />
+                                       Foreground="{DynamicResource AppTextBrush}" VerticalAlignment="Center" />
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                         HorizontalAlignment="Right">
                                 <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}"
@@ -475,14 +475,14 @@
                                                 VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}"
                                                    FontSize="13" FontWeight="Medium"
-                                                   Foreground="#1E293B" />
+                                                   Foreground="{DynamicResource AppTextBrush}" />
                                         <TextBlock Text="{Binding SubText}"
                                                    FontSize="11"
                                                    Foreground="{StaticResource MutedBrush}" />
                                     </StackPanel>
 
                                     <!-- Required badge -->
-                                    <Border Grid.Column="3" Background="#FEE2E2"
+                                    <Border Grid.Column="3" Background="{DynamicResource AppDangerSoftBrush}"
                                             CornerRadius="4" Padding="4,1"
                                             VerticalAlignment="Center"
                                             Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}">
@@ -535,9 +535,9 @@
                             <StackPanel Margin="24,20,24,24">
 
                                 <!-- ── Intro Panel: Giới thiệu màn hình ── -->
-                                <Border Background="#F0F9FF" CornerRadius="8"
+                                <Border Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="8"
                                         Padding="16,14" Margin="0,0,0,16"
-                                        BorderBrush="#BAE6FD" BorderThickness="1">
+                                        BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1">
                                     <DockPanel>
                                         <Border DockPanel.Dock="Left" Width="36" Height="36"
                                                 CornerRadius="18" Background="{StaticResource AccentLightBrush}"
@@ -549,9 +549,9 @@
                                         <StackPanel>
                                             <TextBlock Text="Cấu hình metadata của Form"
                                                        FontSize="14" FontWeight="SemiBold"
-                                                       Foreground="#0C4A6E" Margin="0,0,0,4" />
+                                                       Foreground="{DynamicResource AppInfoDarkBrush}" Margin="0,0,0,4" />
                                             <TextBlock TextWrapping="Wrap" FontSize="12"
-                                                       Foreground="#0369A1" LineHeight="18">
+                                                       Foreground="{DynamicResource AppInfoBrush}" LineHeight="18">
                                                 Màn hình này dùng để thiết lập thông tin cơ bản cho một Form trong hệ thống.
                                                 Mỗi Form đại diện cho một giao diện nhập liệu (ví dụ: Đơn đặt hàng, Nghỉ phép, Nhập kho...)
                                                 và được gắn với một bảng dữ liệu (Business Table) để xác định nguồn dữ liệu mà form sẽ đọc/ghi.
@@ -676,11 +676,11 @@
                                                 <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                            <Border Grid.Column="0" Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                                     Padding="10,8" VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding FormTitleVi}"
-                                                           FontSize="13" Foreground="#1E293B"
+                                                           FontSize="13" Foreground="{DynamicResource AppTextBrush}"
                                                            TextTrimming="CharacterEllipsis"
                                                            ToolTip="Tiêu đề hiển thị tiếng Việt hiện tại" />
                                             </Border>
@@ -724,7 +724,7 @@
                                                            Style="{StaticResource FieldLabelStyle}" />
                                                 <dxe:ComboBoxEdit ItemsSource="{Binding FormColumnsOptions}"
                                                                   EditValue="{Binding FormColumns}"
-                                                                  IsTextEditable="False"
+
                                                                   NullText="Mặc định (4)"
                                                                   ToolTip="Số cột lưới nền. Chọn 1 = mỗi field 1 dòng." />
                                                 <TextBlock Style="{StaticResource HelpTextStyle}"
@@ -767,7 +767,7 @@
                                             <StackPanel Grid.Column="0">
                                                 <TextBlock Text="Version"
                                                            Style="{StaticResource FieldLabelStyle}" />
-                                                <Border Background="#F8FAFC" CornerRadius="6"
+                                                <Border Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                         Padding="14,8" MinWidth="80"
                                                         ToolTip="Số phiên bản hiện tại. Tự tăng mỗi lần Publish thành công.">
                                                     <TextBlock FontSize="20" FontWeight="Bold"
@@ -791,8 +791,8 @@
                                 </Border>
 
                                 <!-- ── Error Message (create mode) ──── -->
-                                <Border Background="#FEF2F2" CornerRadius="8" Padding="14,10"
-                                        BorderBrush="#FECACA" BorderThickness="1"
+                                <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="8" Padding="14,10"
+                                        BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1"
                                         Margin="0,0,0,12"
                                         Visibility="{Binding HasCreateError, Converter={StaticResource BoolToVis}}">
                                     <DockPanel>
@@ -800,7 +800,7 @@
                                                    FontSize="16" Margin="0,0,10,0"
                                                    VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding CreateErrorMessage}"
-                                                   Foreground="#DC2626" FontSize="12"
+                                                   Foreground="{DynamicResource AppDangerBrush}" FontSize="12"
                                                    TextWrapping="Wrap"
                                                    VerticalAlignment="Center" />
                                     </DockPanel>
@@ -819,7 +819,7 @@
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Visibility="{Binding IsNodeSelected, Converter={StaticResource InvBoolToVis}}">
                                 <Border Width="64" Height="64" CornerRadius="32"
-                                        Background="#F1F5F9"
+                                        Background="{DynamicResource AppPageBackgroundBrush}"
                                         HorizontalAlignment="Center" Margin="0,0,0,16">
                                     <TextBlock Text="☝" FontSize="28"
                                                HorizontalAlignment="Center"
@@ -857,11 +857,11 @@
                                                                   NullText="VD: thong_tin_co_ban"
                                                                   ToolTip="Mã định danh duy nhất trong form. Dùng chữ thường, số và dấu _. Không thay đổi được sau khi các rule/event tham chiếu." />
                                                     <!-- Lỗi validation -->
-                                                    <Border Background="#FEF2F2" CornerRadius="4" Padding="8,4"
+                                                    <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4" Padding="8,4"
                                                             Margin="0,4,0,0"
                                                             Visibility="{Binding HasSectionCodeError, Converter={StaticResource BoolToVis}}">
                                                         <TextBlock Text="{Binding SectionCodeError}"
-                                                                   Foreground="#DC2626" FontSize="11" />
+                                                                   Foreground="{DynamicResource AppDangerBrush}" FontSize="11" />
                                                     </Border>
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Chỉ dùng chữ thường (a-z), số (0-9), dấu gạch dưới (_). VD: ho_ten, dia_chi" />
@@ -877,7 +877,7 @@
                                                             <ColumnDefinition Width="Auto" />
                                                         </Grid.ColumnDefinitions>
                                                         <Border Grid.Column="0"
-                                                                Background="#F8FAFC" CornerRadius="6"
+                                                                Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                                 BorderBrush="{StaticResource BorderBrush}"
                                                                 BorderThickness="1" Padding="10,7">
                                                             <TextBlock Text="{Binding SectionTitleKeyPreview}"
@@ -923,7 +923,7 @@
                                                                       EditValue="{Binding SelectedNode.TabId, Mode=TwoWay}"
                                                                       ValueMember="TabId"
                                                                       DisplayMember="DisplayLabel"
-                                                                      IsTextEditable="False"
+
                                                                       NullText="(Không thuộc tab nào — form phẳng)"
                                                                       ToolTip="Gán section vào một tab. Để trống = section không thuộc tab nào (render phẳng). Cần nhấn Lưu Section để áp dụng." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
@@ -943,11 +943,11 @@
                                                         <ColumnDefinition Width="12" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                                    <Border Grid.Column="0" Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                                             Padding="10,8" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding SelectedNode.ResourceVi}"
-                                                                   FontSize="13" Foreground="#1E293B"
+                                                                   FontSize="13" Foreground="{DynamicResource AppTextBrush}"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    ToolTip="Tên hiển thị tiếng Việt hiện tại" />
                                                     </Border>
@@ -1068,13 +1068,13 @@
                                         </Border>
 
                                         <!-- Hint card -->
-                                        <Border Background="#F0F9FF" CornerRadius="8"
+                                        <Border Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="8"
                                                 Padding="14,12"
-                                                BorderBrush="#BAE6FD" BorderThickness="1">
+                                                BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1">
                                             <StackPanel>
                                                 <TextBlock Text="💡  Mở Chi tiết để cấu hình:"
                                                            FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#0369A1"
+                                                           Foreground="{DynamicResource AppInfoBrush}"
                                                            Margin="0,0,0,6" />
                                                 <TextBlock Text="  •  Control Properties (min, max, format...)"
                                                            FontSize="12" Foreground="{StaticResource MutedBrush}" />
@@ -1116,12 +1116,12 @@
                             <Border Grid.Row="0" Padding="12,8"
                                     BorderBrush="{StaticResource BorderBrush}"
                                     BorderThickness="0,0,0,1"
-                                    Background="#FAFBFC">
+                                    Background="{DynamicResource AppSurfaceMutedBrush}">
                                 <DockPanel>
                                     <TextBlock Text="Danh sách Events" FontSize="13"
                                                FontWeight="SemiBold"
                                                VerticalAlignment="Center"
-                                               Foreground="#1E293B" />
+                                               Foreground="{DynamicResource AppTextBrush}" />
                                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                                                 HorizontalAlignment="Right">
                                         <Button Style="{StaticResource InlineBtnStyle}"
@@ -1234,8 +1234,8 @@
 
                             <!-- Info bar -->
                             <Border Grid.Row="0" Padding="12,8"
-                                    Background="#F0F9FF"
-                                    BorderBrush="#BAE6FD" BorderThickness="0,0,0,1">
+                                    Background="{DynamicResource AppInfoSoftBrush}"
+                                    BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="0,0,0,1">
                                 <DockPanel>
                                     <TextBlock Text="💡" Margin="0,0,8,0" FontSize="13"
                                                VerticalAlignment="Center" />
@@ -1324,11 +1324,11 @@
                         <DockPanel>
                             <!-- Header hint -->
                             <Border DockPanel.Dock="Top" Margin="14,12,14,6" Padding="10,7"
-                                    Background="#EFF6FF"
-                                    BorderBrush="#BFDBFE" BorderThickness="1"
+                                    Background="{DynamicResource AppAccentSoftBrush}"
+                                    BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1"
                                     CornerRadius="5">
                                 <TextBlock FontSize="11"
-                                           Foreground="#1E40AF"
+                                           Foreground="{DynamicResource AppAccentDarkBrush}"
                                            TextWrapping="Wrap">
                                     <Run Text="ℹ" />
                                     <Run Text=" Edit trực tiếp trên bảng — Tab/Enter chuyển ô, F2 vào edit mode, mỗi ô tự lưu sau 800ms. Sửa đồng bộ với TreeView." />
@@ -1379,7 +1379,7 @@
                                     <!-- EditorType (combo edit) -->
                                     <dxg:GridColumn Header="Editor" FieldName="EditorType" Width="130">
                                         <dxg:GridColumn.EditSettings>
-                                            <dxe:ComboBoxEditSettings IsTextEditable="False"
+                                            <dxe:ComboBoxEditSettings
                                                                       ItemsSource="{Binding DataContext.AvailableEditorTypes, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
                                         </dxg:GridColumn.EditSettings>
                                     </dxg:GridColumn>
@@ -1387,7 +1387,7 @@
                                     <!-- ColSpan (combo edit) -->
                                     <dxg:GridColumn Header="ColSpan" FieldName="ColSpan" Width="80">
                                         <dxg:GridColumn.EditSettings>
-                                            <dxe:ComboBoxEditSettings IsTextEditable="False"
+                                            <dxe:ComboBoxEditSettings
                                                                       ItemsSource="{Binding DataContext.ColSpanOptions, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
                                         </dxg:GridColumn.EditSettings>
                                     </dxg:GridColumn>
@@ -1450,10 +1450,10 @@
                             <DockPanel Grid.Column="0">
                                 <Border DockPanel.Dock="Top" Padding="12,8"
                                         BorderBrush="{StaticResource BorderBrush}"
-                                        BorderThickness="0,0,0,1" Background="#FAFBFC">
+                                        BorderThickness="0,0,0,1" Background="{DynamicResource AppSurfaceMutedBrush}">
                                     <DockPanel>
                                         <TextBlock Text="Danh sách Tab" FontSize="13"
-                                                   FontWeight="SemiBold" Foreground="#1E293B"
+                                                   FontWeight="SemiBold" Foreground="{DynamicResource AppTextBrush}"
                                                    VerticalAlignment="Center" />
                                         <dx:SimpleButton DockPanel.Dock="Right"
                                                          Command="{Binding AddTabCommand}"
@@ -1494,18 +1494,18 @@
                                                             VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding DisplayLabel}"
                                                                FontSize="13" FontWeight="Medium"
-                                                               Foreground="#1E293B" />
+                                                               Foreground="{DynamicResource AppTextBrush}" />
                                                     <TextBlock Text="{Binding TabCode}"
                                                                FontSize="11"
                                                                FontFamily="Cascadia Code, Consolas"
                                                                Foreground="{StaticResource MutedBrush}" />
                                                 </StackPanel>
-                                                <Border Grid.Column="2" Background="#F0FDF4"
+                                                <Border Grid.Column="2" Background="{DynamicResource AppSuccessSoftBrush}"
                                                         CornerRadius="4" Padding="5,1"
                                                         VerticalAlignment="Center"
                                                         Visibility="{Binding IsDefault, Converter={StaticResource BoolToVis}}">
                                                     <TextBlock Text="mặc định" FontSize="10"
-                                                               Foreground="#16A34A" FontWeight="SemiBold" />
+                                                               Foreground="{DynamicResource AppSuccessBrush}" FontWeight="SemiBold" />
                                                 </Border>
                                             </Grid>
                                         </DataTemplate>
@@ -1519,7 +1519,7 @@
                                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                             Visibility="{Binding IsTabSelected, Converter={StaticResource InvBoolToVis}}">
                                     <Border Width="64" Height="64" CornerRadius="32"
-                                            Background="#F1F5F9"
+                                            Background="{DynamicResource AppPageBackgroundBrush}"
                                             HorizontalAlignment="Center" Margin="0,0,0,16">
                                         <TextBlock Text="📑" FontSize="26"
                                                    HorizontalAlignment="Center"
@@ -1551,11 +1551,11 @@
                                                     <dxe:TextEdit EditValue="{Binding SelectedTab.TabCode, UpdateSourceTrigger=PropertyChanged}"
                                                                   NullText="VD: thong_tin"
                                                                   ToolTip="Mã định danh tab, duy nhất trong form. Chữ thường, số, dấu _." />
-                                                    <Border Background="#FEF2F2" CornerRadius="4" Padding="8,4"
+                                                    <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4" Padding="8,4"
                                                             Margin="0,4,0,0"
                                                             Visibility="{Binding HasTabCodeError, Converter={StaticResource BoolToVis}}">
                                                         <TextBlock Text="{Binding TabCodeError}"
-                                                                   Foreground="#DC2626" FontSize="11" />
+                                                                   Foreground="{DynamicResource AppDangerBrush}" FontSize="11" />
                                                     </Border>
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Chỉ a-z, 0-9, dấu gạch dưới (_). VD: thong_tin, bao_hiem" />
@@ -1565,7 +1565,7 @@
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Title Key (tự động)"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <Border Background="#F8FAFC" CornerRadius="6"
+                                                    <Border Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                             BorderBrush="{StaticResource BorderBrush}"
                                                             BorderThickness="1" Padding="10,7">
                                                         <TextBlock Text="{Binding TabTitleKeyPreview}"
@@ -1620,11 +1620,11 @@
                                                         <ColumnDefinition Width="12" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
-                                                    <Border Grid.Column="0" Background="#F8FAFC" CornerRadius="6"
+                                                    <Border Grid.Column="0" Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6"
                                                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                                                             Padding="10,8" VerticalAlignment="Center">
                                                         <TextBlock Text="{Binding SelectedTab.ResourceVi}"
-                                                                   FontSize="13" Foreground="#1E293B"
+                                                                   FontSize="13" Foreground="{DynamicResource AppTextBrush}"
                                                                    TextTrimming="CharacterEllipsis"
                                                                    ToolTip="Tiêu đề tab tiếng Việt hiện tại" />
                                                     </Border>
@@ -1725,7 +1725,7 @@
                                   Width="130" Height="28"
                                   ItemsSource="{Binding AvailableEditorTypes}"
                                   EditValue="{Binding SelectedNode.EditorType, UpdateSourceTrigger=PropertyChanged}"
-                                  IsTextEditable="False"
+
                                   Margin="0,0,12,0" VerticalAlignment="Center" />
 
                 <!-- ColSpan -->
@@ -1736,7 +1736,7 @@
                                   Width="60" Height="28"
                                   ItemsSource="{Binding ColSpanOptions}"
                                   EditValue="{Binding SelectedNode.ColSpan, UpdateSourceTrigger=PropertyChanged}"
-                                  IsTextEditable="False"
+
                                   Margin="0,0,14,0" VerticalAlignment="Center"
                                   ToolTip="1=1/4, 2=Half, 3=3/4, 4=Full" />
 
@@ -1788,8 +1788,8 @@
         <!-- Bulk-edit mode (D2) — visible khi ≥ 2 field duoc tick -->
         <Border Grid.Row="3"
                 Margin="16,8,16,0" Padding="14,10"
-                Background="#FFFBEB"
-                BorderBrush="#F59E0B" BorderThickness="1"
+                Background="{DynamicResource AppWarningSoftBrush}"
+                BorderBrush="{DynamicResource AppWarningBrush}" BorderThickness="1"
                 CornerRadius="8"
                 Effect="{StaticResource CardShadow}"
                 Visibility="{Binding IsBulkMode, Converter={StaticResource BoolToVis}}">
@@ -1808,7 +1808,7 @@
 
                 <!-- Bulk count badge -->
                 <Border Grid.Column="0"
-                        Background="#F59E0B"
+                        Background="{DynamicResource AppWarningBrush}"
                         CornerRadius="4" Padding="8,3" Margin="0,0,12,0"
                         VerticalAlignment="Center">
                     <TextBlock VerticalAlignment="Center">
@@ -1826,7 +1826,7 @@
                                   Width="130" Height="28"
                                   ItemsSource="{Binding BulkEditorTypeOptions}"
                                   EditValue="{Binding BulkEditorType, UpdateSourceTrigger=PropertyChanged}"
-                                  IsTextEditable="False"
+
                                   NullText="(giữ nguyên)"
                                   Margin="0,0,12,0" VerticalAlignment="Center"
                                   ToolTip="Trống = giữ nguyên cho mỗi field" />
@@ -1839,7 +1839,7 @@
                                   Width="78" Height="28"
                                   ItemsSource="{Binding BulkColSpanOptions}"
                                   EditValue="{Binding BulkColSpan, UpdateSourceTrigger=PropertyChanged}"
-                                  IsTextEditable="False"
+
                                   Margin="0,0,14,0" VerticalAlignment="Center"
                                   ToolTip="0 = giữ nguyên, 1..4 = đổi sang ColSpan đó" />
 
@@ -1874,7 +1874,7 @@
                                  ToolTip="Áp dụng các thay đổi vào tất cả field đã chọn">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="✓" FontSize="13" VerticalAlignment="Center"
-                                   FontWeight="Bold" Foreground="#16A34A" />
+                                   FontWeight="Bold" Foreground="{DynamicResource AppSuccessBrush}" />
                         <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold">
                             <Run Text="Apply (" /><Run Text="{Binding BulkCount, Mode=OneWay}" /><Run Text=")" />
                         </TextBlock>

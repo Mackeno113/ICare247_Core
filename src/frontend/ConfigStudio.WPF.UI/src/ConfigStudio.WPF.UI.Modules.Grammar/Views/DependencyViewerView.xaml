@@ -73,14 +73,14 @@
         <!-- ── Detail Panel (Bottom) ──────────────────────────── -->
         <Border DockPanel.Dock="Bottom"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,1,0,0"
                 Padding="16,8">
             <DockPanel MinHeight="90">
                 <!-- Cột phải: Circular dependency warning -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,0,0,0"
                             Visibility="{Binding HasCircularDependencies, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-                    <TextBlock Text="⚠" FontSize="16" Foreground="#EF5350" VerticalAlignment="Center" />
-                    <TextBlock Foreground="#EF5350" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold">
+                    <TextBlock Text="⚠" FontSize="16" Foreground="{DynamicResource AppDangerBrush}" VerticalAlignment="Center" />
+                    <TextBlock Foreground="{DynamicResource AppDangerBrush}" VerticalAlignment="Center" Margin="6,0,0,0" FontWeight="SemiBold">
                         <Run Text="{Binding CircularDependencyCount, Mode=OneWay}" />
                         <Run Text=" circular dependencies" />
                     </TextBlock>
@@ -88,7 +88,7 @@
 
                 <!-- Load error -->
                 <TextBlock DockPanel.Dock="Top"
-                           Text="{Binding LoadError}" Foreground="#EF5350" FontSize="12"
+                           Text="{Binding LoadError}" Foreground="{DynamicResource AppDangerBrush}" FontSize="12"
                            Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                            Margin="0,0,0,4" />
 
@@ -100,16 +100,16 @@
                         <Border CornerRadius="4" Padding="8,2" Margin="0,0,12,0" VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Background" Value="#757575" />
+                                    <Setter Property="Background" Value="{DynamicResource AppTextMutedBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Field">
-                                            <Setter Property="Background" Value="#3F51B5" />
+                                            <Setter Property="Background" Value="{DynamicResource AppAccentBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Rule">
-                                            <Setter Property="Background" Value="#009688" />
+                                            <Setter Property="Background" Value="{DynamicResource AppInfoBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding SelectedNode.NodeType}" Value="Event">
-                                            <Setter Property="Background" Value="#FF8F00" />
+                                            <Setter Property="Background" Value="{DynamicResource AppWarningBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -155,16 +155,16 @@
                                     <Border CornerRadius="12" Margin="0,0,6,4" Padding="10,3">
                                         <Border.Style>
                                             <Style TargetType="Border">
-                                                <Setter Property="Background" Value="#E8EAF6" />
+                                                <Setter Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding Type}" Value="rule">
-                                                        <Setter Property="Background" Value="#E0F2F1" />
+                                                        <Setter Property="Background" Value="{DynamicResource AppInfoSoftBrush}" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Type}" Value="event">
-                                                        <Setter Property="Background" Value="#FFF8E1" />
+                                                        <Setter Property="Background" Value="{DynamicResource AppWarningSoftBrush}" />
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding Type}" Value="field">
-                                                        <Setter Property="Background" Value="#E8EAF6" />
+                                                        <Setter Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
@@ -174,13 +174,13 @@
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
                                                         <Setter Property="Text" Value="●" />
-                                                        <Setter Property="Foreground" Value="#3F51B5" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AppAccentBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Type}" Value="rule">
-                                                                <Setter Property="Foreground" Value="#009688" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource AppInfoBrush}" />
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Type}" Value="event">
-                                                                <Setter Property="Foreground" Value="#FF8F00" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource AppWarningBrush}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
@@ -246,13 +246,13 @@
 
                     <!-- Legend -->
                     <StackPanel Canvas.Left="10" Canvas.Top="10" Orientation="Horizontal">
-                        <Border Background="#3F51B5" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                        <Border Background="{DynamicResource AppAccentBrush}" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
                             <TextBlock Text="Field" Foreground="White" FontSize="11" />
                         </Border>
-                        <Border Background="#009688" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
+                        <Border Background="{DynamicResource AppInfoBrush}" CornerRadius="3" Padding="8,2" Margin="0,0,8,0">
                             <TextBlock Text="Rule" Foreground="White" FontSize="11" />
                         </Border>
-                        <Border Background="#FF8F00" CornerRadius="3" Padding="8,2">
+                        <Border Background="{DynamicResource AppWarningBrush}" CornerRadius="3" Padding="8,2">
                             <TextBlock Text="Event" Foreground="White" FontSize="11" />
                         </Border>
                     </StackPanel>
@@ -317,7 +317,7 @@
                                                     <Setter Property="BorderBrush" Value="White" />
                                                 </DataTrigger>
                                                 <DataTrigger Binding="{Binding HasWarning}" Value="True">
-                                                    <Setter Property="BorderBrush" Value="#EF5350" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource AppDangerBrush}" />
                                                 </DataTrigger>
                                             </Style.Triggers>
                                         </Style>
@@ -331,7 +331,7 @@
                                         <TextBlock Text="{Binding Label}" Foreground="White"
                                                    FontWeight="SemiBold" FontSize="13"
                                                    TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding SubLabel}" Foreground="#B0BEC5"
+                                        <TextBlock Text="{Binding SubLabel}" Foreground="{DynamicResource AppTextSubtleBrush}"
                                                    FontSize="11" TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </Border>

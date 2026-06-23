@@ -447,3 +447,17 @@
 - **Mở:** chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` đang là MẪU).
 - **Status:** ✅ thiết kế + cấu hình DB/WPF (build chưa chạy — app có thể đang mở). ⏳ chạy `db/059`+`db/060` (Config DB),
   chạy lại 2 proc `spc_/sp_AfterSave_Grid_DM_PhuongXa` (Data DB, vì đổi `@NguoiDungID`); roadmap runtime `VFILTER-*`/`CTXPARAM-*`.
+
+## ADR-031: Theme control tập trung WPF ConfigStudio (2026-06-24)
+- **Context:** Style lặp + 685 hex inline rải 30 view → muốn "sửa 1 nơi".
+- **Decision:** 3 lớp ở `src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/Themes/`:
+  1. `DesignTokens.xaml` = nguồn DUY NHẤT (màu + token kích thước: font size, radius, input/button height, padding/border).
+  2. `Controls.xaml` = style **implicit** mỗi loại control (BaseEdit→TextEdit/MemoEdit/SpinEdit/ComboBoxEdit,
+     CheckEdit/ToggleSwitchEdit, dx:SimpleButton, dxg:GridControl/TableView), đọc token, chỉ đặt MẶC ĐỊNH.
+  3. View chỉ tham chiếu `{DynamicResource App…Brush/Color}`, không còn hex (trừ 2 màu alpha shadow).
+- **Combo filter:** implicit ComboBoxEdit/ComboBoxEditSettings bật IsTextEditable+ImmediatePopup+IncrementalFiltering+FilterCondition=Contains.
+- **Rule:** style implicit OK ở app này (tiền lệ dxg:TableView). Combo nào ép `IsTextEditable="False"` tại chỗ → filter chết, đã gỡ.
+- **Palette:** ~115 hex → 30 token (gom hue nhẹ: gray→slate, cyan/teal→Info, indigo/violet→Accent).
+- **Verify:** API DevExpress v25.2 qua reflection (CornerRadius/Background/BorderBrush là DP thật). XML well-formed; token đủ.
+- **Status:** ⏳ build PENDING (app đang chạy lúc làm). Rủi ro: editor mất template nếu DevExpress theme phản ứng → fix = `BasedOn` style mặc định DX.
+- **Liên quan:** Phase 5 trong `docs/ICare247 Config Studio/TASKS_WPF.md`; ADR-003/004 (Prism/DevExpress).

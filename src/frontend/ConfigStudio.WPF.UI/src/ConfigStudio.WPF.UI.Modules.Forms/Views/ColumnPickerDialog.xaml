@@ -7,7 +7,7 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="520" MinHeight="360" MaxHeight="600"
              mc:Ignorable="d"
-             Background="#F8FAFC">
+             Background="{DynamicResource AppSurfaceMutedBrush}">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -44,19 +44,19 @@
         <!-- ── Ghost button ──────────────────────────────────── -->
         <Style x:Key="GhostBtnStyle" TargetType="Button" BasedOn="{StaticResource ActionBtnStyle}">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="6"
-                                BorderBrush="#CBD5E1" BorderThickness="1"
+                                BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F1F5F9" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppPageBackgroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -73,17 +73,17 @@
                     <ControlTemplate TargetType="ListBoxItem">
                         <Border x:Name="ItemBd"
                                 Background="White"
-                                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                                 Padding="14,9">
                             <ContentPresenter />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#F0F9FF" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource AppInfoSoftBrush}" />
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="ItemBd" Property="Background" Value="#DBEAFE" />
-                                <Setter TargetName="ItemBd" Property="BorderBrush" Value="#93C5FD" />
+                                <Setter TargetName="ItemBd" Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
+                                <Setter TargetName="ItemBd" Property="BorderBrush" Value="{DynamicResource AppAccentLightBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -104,19 +104,19 @@
         <!-- HEADER                                              -->
         <!-- ═══════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Background="White"
-                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                 Padding="20,16">
             <StackPanel Orientation="Horizontal">
-                <Border Background="#EFF6FF" CornerRadius="8" Width="36" Height="36"
+                <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="8" Width="36" Height="36"
                         Margin="0,0,12,0" VerticalAlignment="Center">
                     <TextBlock Text="📋" FontSize="18"
                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Chọn Column"
-                               FontSize="16" FontWeight="SemiBold" Foreground="#0F172A" />
+                               FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrongBrush}" />
                     <TextBlock Text="{Binding FilteredColumns.Count, StringFormat={}{0} column khả dụng}"
-                               FontSize="12" Foreground="#64748B" Margin="0,2,0,0" />
+                               FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0" />
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -124,8 +124,8 @@
         <!-- ═══════════════════════════════════════════════════ -->
         <!-- SEARCH BAR                                          -->
         <!-- ═══════════════════════════════════════════════════ -->
-        <Border Grid.Row="1" Background="#F8FAFC"
-                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+        <Border Grid.Row="1" Background="{DynamicResource AppSurfaceMutedBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                 Padding="14,10">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -135,11 +135,11 @@
 
                 <TextBlock Grid.Column="0" Text="🔍" FontSize="14"
                            VerticalAlignment="Center" Margin="0,0,8,0"
-                           Foreground="#94A3B8" />
+                           Foreground="{DynamicResource AppTextSubtleBrush}" />
 
                 <TextBox Grid.Column="1"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                         BorderThickness="1" BorderBrush="#CBD5E1"
+                         BorderThickness="1" BorderBrush="{DynamicResource AppBorderStrongBrush}"
                          Background="White" Height="32" Padding="8,0"
                          VerticalContentAlignment="Center" FontSize="13"
                          ToolTip="Tìm theo Column Code hoặc Data Type">
@@ -223,25 +223,25 @@
                         <TextBlock Grid.Column="1"
                                    Text="{Binding Column.ColumnCode}"
                                    FontSize="13" FontWeight="SemiBold"
-                                   Foreground="#1E293B"
+                                   Foreground="{DynamicResource AppTextBrush}"
                                    VerticalAlignment="Center" />
 
                         <!-- Badge "đã thêm" -->
                         <Border Grid.Column="2"
-                                Background="#E2E8F0" CornerRadius="4"
+                                Background="{DynamicResource AppBorderBrush}" CornerRadius="4"
                                 Padding="7,2" VerticalAlignment="Center" Margin="0,0,6,0"
                                 Visibility="{Binding IsAlreadyUsed, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="đã thêm" FontSize="11" FontWeight="SemiBold"
-                                       Foreground="#475569" />
+                                       Foreground="{DynamicResource AppTextSecondaryBrush}" />
                         </Border>
 
                         <!-- DataType badge -->
                         <Border Grid.Column="3"
-                                Background="#EFF6FF" CornerRadius="4"
+                                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4"
                                 Padding="7,2" VerticalAlignment="Center"
                                 Margin="0,0,6,0">
                             <TextBlock Text="{Binding Column.DataType}"
-                                       FontSize="11" Foreground="#1D4ED8"
+                                       FontSize="11" Foreground="{DynamicResource AppAccentDarkBrush}"
                                        FontFamily="Cascadia Code, Consolas" />
                         </Border>
 
@@ -251,10 +251,10 @@
                                 VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Background" Value="#FEF3C7" />
+                                    <Setter Property="Background" Value="{DynamicResource AppWarningSoftBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Column.IsNullable}" Value="False">
-                                            <Setter Property="Background" Value="#F1F5F9" />
+                                            <Setter Property="Background" Value="{DynamicResource AppPageBackgroundBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -263,11 +263,11 @@
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text"       Value="NULL" />
-                                        <Setter Property="Foreground" Value="#92400E" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AppWarningDarkBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding Column.IsNullable}" Value="False">
                                                 <Setter Property="Text"       Value="NOT NULL" />
-                                                <Setter Property="Foreground" Value="#475569" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -283,7 +283,7 @@
         <!-- FOOTER BUTTONS                                       -->
         <!-- ═══════════════════════════════════════════════════ -->
         <Border Grid.Row="3" Background="White"
-                BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0"
                 Padding="20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -301,7 +301,7 @@
                 <Button Grid.Column="3"
                         Command="{Binding SelectCommand}"
                         Style="{StaticResource ActionBtnStyle}"
-                        Background="#3B82F6" Foreground="White">
+                        Background="{DynamicResource AppAccentBrush}" Foreground="White">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="✓" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBlock Text="{Binding SelectButtonText}" VerticalAlignment="Center" />

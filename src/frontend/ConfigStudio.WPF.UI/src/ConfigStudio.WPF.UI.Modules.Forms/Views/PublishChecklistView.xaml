@@ -52,7 +52,7 @@
         <!-- ── Footer ─────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom" Height="60"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,1,0,0"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
@@ -80,7 +80,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type models:ChecklistItem}">
                         <Border Padding="12,10" Margin="0,0,0,6"
-                                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="4"
+                                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="4"
                                 Background="{DynamicResource ShellContentBackgroundBrush}">
                             <DockPanel>
                                 <!-- Jump To button -->
@@ -106,7 +106,7 @@
                                     <TextBlock Text="{Binding Description}" FontSize="14"
                                                Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                                     <TextBlock Text="{Binding Detail}" FontSize="12"
-                                               Foreground="#EF5350" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource AppDangerBrush}" TextWrapping="Wrap"
                                                Margin="0,2,0,0"
                                                Visibility="{Binding Detail, Converter={StaticResource NullableToVisibilityConverter}, FallbackValue=Collapsed}" />
                                 </StackPanel>

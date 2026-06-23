@@ -51,7 +51,7 @@
 
         <!-- ── Shadows ────────────────────────────────────────── -->
         <DropShadowEffect x:Key="CardShadow" BlurRadius="8" ShadowDepth="1"
-                          Direction="270" Opacity="0.08" Color="#000000" />
+                          Direction="270" Opacity="0.08" Color="{DynamicResource AppTextStrongColor}" />
 
         <!-- ── Section Card ───────────────────────────────────── -->
         <Style x:Key="SectionCardStyle" TargetType="Border">
@@ -68,7 +68,7 @@
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize"   Value="13" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#1E293B" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextBrush}" />
             <Setter Property="Margin"     Value="0,0,0,14" />
         </Style>
 
@@ -100,7 +100,7 @@
             <Setter Property="Height"          Value="32" />
             <Setter Property="Cursor"          Value="Hand" />
             <Setter Property="FontSize"        Value="14" />
-            <Setter Property="Foreground"      Value="#475569" />
+            <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Background"      Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
@@ -113,7 +113,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#E2E8F0" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppBorderBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.4" />
@@ -139,7 +139,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#FEE2E2" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -172,7 +172,7 @@
                                 <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentLightBrush}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#BFDBFE"/>
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentLightBrush}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -211,7 +211,7 @@
             <StackPanel Style="{StaticResource FieldGroupStyle}" Orientation="Horizontal">
                 <dxe:ToggleSwitchEdit IsChecked="{Binding Value}" Margin="0,0,10,0" />
                 <TextBlock Text="{Binding Definition.Label}" VerticalAlignment="Center"
-                           FontSize="13" Foreground="#374151" />
+                           FontSize="13" Foreground="{DynamicResource AppTextSecondaryBrush}" />
             </StackPanel>
         </DataTemplate>
 
@@ -262,7 +262,7 @@
                 <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Cấu hình Field" FontSize="17" FontWeight="Bold"
-                                   Foreground="#0F172A" />
+                                   Foreground="{DynamicResource AppTextStrongBrush}" />
                         <!-- Dirty indicator -->
                         <TextBlock Text=" ●" FontSize="14" Foreground="{StaticResource WarnBrush}"
                                    VerticalAlignment="Center"
@@ -284,20 +284,20 @@
                     <!-- Badge row: EditorType | IsRequired | DataType -->
                     <StackPanel Orientation="Horizontal">
                         <!-- EditorType badge -->
-                        <Border Background="#EFF6FF" CornerRadius="4" Padding="7,2" Margin="0,0,6,0">
+                        <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4" Padding="7,2" Margin="0,0,6,0">
                             <TextBlock Text="{Binding SelectedEditorType}" FontSize="11"
-                                       Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                       Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                         </Border>
                         <!-- IsRequired badge (chỉ hiện khi IsRequired = true) -->
-                        <Border Background="#FEF2F2" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
+                        <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
                                 Visibility="{Binding IsRequired, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="Required" FontSize="11" Foreground="#DC2626" FontWeight="SemiBold" />
+                            <TextBlock Text="Required" FontSize="11" Foreground="{DynamicResource AppDangerBrush}" FontWeight="SemiBold" />
                         </Border>
                         <!-- DataType badge (chỉ hiện khi có column được chọn) -->
-                        <Border Background="#F0FDF4" CornerRadius="4" Padding="7,2"
+                        <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="4" Padding="7,2"
                                 Visibility="{Binding HasDataType, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{Binding DataTypeDisplay}" FontSize="11"
-                                       Foreground="#15803D" FontFamily="Cascadia Code, Consolas" />
+                                       Foreground="{DynamicResource AppSuccessDarkBrush}" FontFamily="Cascadia Code, Consolas" />
                         </Border>
                     </StackPanel>
                 </StackPanel>
@@ -324,10 +324,10 @@
                 Style="{DynamicResource AppErrorBannerStyle}"
                 Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="⚠" FontSize="14" Foreground="#DC2626"
+                <TextBlock Text="⚠" FontSize="14" Foreground="{DynamicResource AppDangerBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding LoadError, Mode=OneWay}"
-                           FontSize="12" Foreground="#DC2626"
+                           FontSize="12" Foreground="{DynamicResource AppDangerBrush}"
                            VerticalAlignment="Center" TextWrapping="Wrap" />
             </StackPanel>
         </Border>
@@ -340,10 +340,10 @@
                 Margin="0,32,0,0"
                 Visibility="{Binding HasSaveError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="💾" FontSize="14" Foreground="#C2410C"
+                <TextBlock Text="💾" FontSize="14" Foreground="{DynamicResource AppWarningDarkBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding SaveError, Mode=OneWay}"
-                           FontSize="12" Foreground="#C2410C"
+                           FontSize="12" Foreground="{DynamicResource AppWarningDarkBrush}"
                            VerticalAlignment="Center" TextWrapping="Wrap" />
             </StackPanel>
         </Border>
@@ -356,7 +356,7 @@
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <!-- Panel header -->
-                <Border DockPanel.Dock="Top" Background="#F8FAFC"
+                <Border DockPanel.Dock="Top" Background="{DynamicResource AppSurfaceMutedBrush}"
                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1"
                         Padding="12,6">
                     <DockPanel>
@@ -379,7 +379,7 @@
                             <DataTemplate>
                                 <StackPanel>
                                     <!-- Section header -->
-                                    <Border Background="#F1F5F9" Padding="10,5">
+                                    <Border Background="{DynamicResource AppPageBackgroundBrush}" Padding="10,5">
                                         <TextBlock Text="{Binding SectionCode}"
                                                    FontSize="10" FontWeight="SemiBold"
                                                    Foreground="{StaticResource MutedBrush}"
@@ -429,7 +429,7 @@
                                                                            TextTrimming="CharacterEllipsis">
                                                                     <TextBlock.Style>
                                                                         <Style TargetType="TextBlock">
-                                                                            <Setter Property="Foreground" Value="#374151" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
                                                                             <Style.Triggers>
                                                                                 <DataTrigger Binding="{Binding IsCurrentField}" Value="True">
                                                                                     <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
@@ -548,10 +548,10 @@
                                                   Margin="0,4,0,0" />
 
                                     <!-- Hint khi list rỗng và không phải virtual -->
-                                    <Border Background="#FEF9C3" CornerRadius="4" Padding="8,6" Margin="0,4,0,0"
-                                            BorderBrush="#FDE68A" BorderThickness="1"
+                                    <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="4" Padding="8,6" Margin="0,4,0,0"
+                                            BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1"
                                             Visibility="{Binding IsColumnListEmpty, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap">
                                             <Run Text="⚠" /><Run Text=" Sys_Column chưa có cột. Nhập tên cột — sẽ tự tạo khi lưu. Hoặc chạy " />
                                             <Run Text="Đồng bộ Schema" FontWeight="SemiBold" /><Run Text=" trước." />
                                         </TextBlock>
@@ -567,7 +567,7 @@
                                     <TextBlock Text="Net Type" Style="{StaticResource FieldLabelStyle}" />
                                     <TextBlock Text="{Binding NetType}" FontSize="13"
                                                FontFamily="Cascadia Code, Consolas"
-                                               Foreground="#0891B2" Background="#F8FAFC"
+                                               Foreground="{DynamicResource AppInfoBrush}" Background="{DynamicResource AppSurfaceMutedBrush}"
                                                Padding="10,8" />
                                     <TextBlock Text="Kiểu dữ liệu .NET tự động xác định từ column đã chọn."
                                                Style="{StaticResource HelpTextStyle}" />
@@ -585,8 +585,8 @@
 
                                 <!-- Guide Card — hiển thị khi chọn EditorType -->
                                 <Border Visibility="{Binding HasEditorTypeGuide, Converter={StaticResource BoolToVis}}"
-                                        Background="#F0F9FF"
-                                        BorderBrush="#BAE6FD"
+                                        Background="{DynamicResource AppInfoSoftBrush}"
+                                        BorderBrush="{DynamicResource AppInfoBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Padding="14,12"
@@ -602,7 +602,7 @@
                                             <TextBlock Text="{Binding EditorTypeGuide.Title}"
                                                        FontSize="14"
                                                        FontWeight="SemiBold"
-                                                       Foreground="#0369A1"
+                                                       Foreground="{DynamicResource AppInfoBrush}"
                                                        VerticalAlignment="Center" />
                                         </DockPanel>
 
@@ -611,10 +611,10 @@
                                             <TextBlock Text="Khi nào dùng: "
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
-                                                       Foreground="#475569" />
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                             <TextBlock Text="{Binding EditorTypeGuide.WhenToUse}"
                                                        FontSize="12"
-                                                       Foreground="#475569"
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                        TextWrapping="Wrap" />
                                         </StackPanel>
 
@@ -623,11 +623,11 @@
                                             <TextBlock Text="Column type: "
                                                        FontSize="12"
                                                        FontWeight="SemiBold"
-                                                       Foreground="#475569" />
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}" />
                                             <TextBlock Text="{Binding EditorTypeGuide.ColumnType}"
                                                        FontSize="12"
                                                        FontFamily="Cascadia Code, Consolas"
-                                                       Foreground="#0891B2" />
+                                                       Foreground="{DynamicResource AppInfoBrush}" />
                                         </StackPanel>
 
                                         <!-- Bảng key properties -->
@@ -635,19 +635,19 @@
                                                       Visibility="{Binding EditorTypeGuide.HasProps, Converter={StaticResource BoolToVis}}">
                                             <ItemsControl.Template>
                                                 <ControlTemplate TargetType="ItemsControl">
-                                                    <Border BorderBrush="#BAE6FD" BorderThickness="1" CornerRadius="4">
+                                                    <Border BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1" CornerRadius="4">
                                                         <StackPanel>
                                                             <!-- Tiêu đề bảng -->
-                                                            <Border Background="#BAE6FD" CornerRadius="3,3,0,0" Padding="8,4">
+                                                            <Border Background="{DynamicResource AppInfoBorderBrush}" CornerRadius="3,3,0,0" Padding="8,4">
                                                                 <DockPanel>
                                                                     <TextBlock Text="Property"
                                                                                FontSize="11" FontWeight="Bold"
-                                                                               Foreground="#0369A1"
+                                                                               Foreground="{DynamicResource AppInfoBrush}"
                                                                                Width="140"
                                                                                DockPanel.Dock="Left" />
                                                                     <TextBlock Text="Ý nghĩa"
                                                                                FontSize="11" FontWeight="Bold"
-                                                                               Foreground="#0369A1" />
+                                                                               Foreground="{DynamicResource AppInfoBrush}" />
                                                                 </DockPanel>
                                                             </Border>
                                                             <ItemsPresenter />
@@ -657,17 +657,17 @@
                                             </ItemsControl.Template>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate DataType="{x:Type models:PropHintRow}">
-                                                    <Border BorderBrush="#E0F2FE" BorderThickness="0,0,0,1" Padding="8,5">
+                                                    <Border BorderBrush="{DynamicResource AppInfoSoftBrush}" BorderThickness="0,0,0,1" Padding="8,5">
                                                         <DockPanel>
                                                             <TextBlock Text="{Binding Name}"
                                                                        FontSize="12"
                                                                        FontFamily="Cascadia Code, Consolas"
-                                                                       Foreground="#0891B2"
+                                                                       Foreground="{DynamicResource AppInfoBrush}"
                                                                        Width="140"
                                                                        DockPanel.Dock="Left" />
                                                             <TextBlock Text="{Binding Hint}"
                                                                        FontSize="12"
-                                                                       Foreground="#334155"
+                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"
                                                                        TextWrapping="Wrap" />
                                                         </DockPanel>
                                                     </Border>
@@ -676,10 +676,10 @@
                                         </ItemsControl>
 
                                         <!-- Footer hint: validation → tab Rules -->
-                                        <Border Background="#FEF9C3" BorderBrush="#FDE68A"
+                                        <Border Background="{DynamicResource AppWarningSoftBrush}" BorderBrush="{DynamicResource AppWarningLightBrush}"
                                                 BorderThickness="1" CornerRadius="4"
                                                 Padding="8,6" Margin="0,10,0,0">
-                                            <TextBlock FontSize="11" Foreground="#92400E" TextWrapping="Wrap">
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap">
                                                 <Run Text="💡" />
                                                 <Run Text=" Validation (bắt buộc, độ dài, regex, khoảng giá trị...) → cấu hình tại tab " />
                                                 <Run Text="Rules" FontWeight="Bold" />
@@ -745,118 +745,118 @@
 
                                     <!-- IsVisible -->
                                     <Border Grid.Column="0" Grid.Row="0"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding IsVisible}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock Text="Hiển thị" FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center" />
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center" />
                                             </DockPanel>
                                             <TextBlock Text="Field có hiển thị trên form."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
                                     <!-- IsReadOnly -->
                                     <Border Grid.Column="2" Grid.Row="0"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding IsReadOnly}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                                     <Run Text="🔒" /><Run Text=" Chỉ đọc" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Hiển thị nhưng không cho chỉnh sửa. Vẫn submit."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
                                     <!-- IsRequired -->
                                     <Border Grid.Column="0" Grid.Row="2"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding IsRequired}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
-                                                    <Run Text="✱" Foreground="#EF4444" /><Run Text=" Bắt buộc" />
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
+                                                    <Run Text="✱" Foreground="{DynamicResource AppDangerBrush}" /><Run Text=" Bắt buộc" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Không cho phép để trống khi submit."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
                                     <!-- LockOnEdit (ADR-017): khoa field khi form mo o che do Edit -->
                                     <Border Grid.Column="2" Grid.Row="2"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding LockOnEdit}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                                     <Run Text="🔒" /><Run Text=" Khóa khi sửa" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Cho nhập khi tạo, không cho đổi khi update (key/code/audit field)."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
                                     <!-- ShowInList: hiển thị cột trong lưới danh sách Master Data -->
                                     <Border Grid.Column="2" Grid.Row="4"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding ShowInList}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                                     <Run Text="📋" /><Run Text=" Hiện trong danh sách" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Hiển thị cột này trong lưới danh sách Master Data. Tắt = chỉ hiện trong form chi tiết."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
 
                                     <!-- IsVirtual: field UI-only, khong luu DB -->
                                     <Border Grid.Column="0" Grid.Row="4"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding IsVirtual}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                                     <Run Text="🔮" /><Run Text=" Field ảo" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="UI-only, không lưu DB. Dùng cho helper field cascading (ví dụ: TinhThanh lọc XaPhuong)."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
 
                                             <!-- Field Code — hiện inline khi IsVirtual = true -->
                                             <StackPanel Margin="0,10,0,0"
                                                         Visibility="{Binding IsVirtual, Converter={StaticResource BoolToVis}}">
                                                 <DockPanel>
                                                     <TextBlock DockPanel.Dock="Right" Text=" *"
-                                                               Foreground="#EF4444" FontWeight="Bold"
+                                                               Foreground="{DynamicResource AppDangerBrush}" FontWeight="Bold"
                                                                VerticalAlignment="Center" />
                                                     <TextBlock Text="Field Code" Style="{StaticResource FieldLabelStyle}"
                                                                Margin="0,0,0,4" />
                                                 </DockPanel>
                                                 <dxe:TextEdit EditValue="{Binding FieldCode, UpdateSourceTrigger=PropertyChanged}"
                                                               NullText="vd: NoiSinh_TinhThanh" />
-                                                <TextBlock FontSize="11" Foreground="#94A3B8"
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}"
                                                            Margin="0,4,0,0" TextWrapping="Wrap">
                                                     <Run Text="Mã dùng trong rules/events. Phải unique trong form." />
-                                                    <Run Text=" Bắt buộc." Foreground="#EF4444" />
+                                                    <Run Text=" Bắt buộc." Foreground="{DynamicResource AppDangerBrush}" />
                                                 </TextBlock>
                                             </StackPanel>
                                         </StackPanel>
@@ -864,30 +864,30 @@
 
                                     <!-- IsUnique: chống trùng mã (backend check + nên kèm UNIQUE INDEX) -->
                                     <Border Grid.Column="0" Grid.Row="6"
-                                            BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
                                                 <dxe:ToggleSwitchEdit IsChecked="{Binding IsUnique}"
                                                                        DockPanel.Dock="Right" HorizontalAlignment="Right" />
                                                 <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                           Foreground="#374151" VerticalAlignment="Center">
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                                     <Run Text="🔑" /><Run Text=" Duy nhất (chống trùng)" />
                                                 </TextBlock>
                                             </DockPanel>
                                             <TextBlock Text="Không cho phép trùng giá trị (vd: Mã). Backend kiểm tra trước khi lưu. Nên tạo thêm UNIQUE INDEX ở DB."
-                                                       FontSize="11" Foreground="#94A3B8" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>
 
                                 <!-- ── Required Error Key (chỉ hiện khi IsRequired = true) ── -->
                                 <Border Margin="0,12,0,0" Padding="12,10"
-                                        Background="#FEF2F2" CornerRadius="6"
-                                        BorderBrush="#FECACA" BorderThickness="1"
+                                        Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1"
                                         Visibility="{Binding IsRequiredExpanded, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
                                         <TextBlock Margin="0,0,0,8" FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="#DC2626">
+                                                   Foreground="{DynamicResource AppDangerBrush}">
                                             <Run Text="✱" /><Run Text=" Thông báo lỗi khi để trống (i18n)" />
                                         </TextBlock>
                                         <!-- Input full-width -->
@@ -909,14 +909,14 @@
                                             </Button>
                                         </StackPanel>
                                         <!-- Preview VI -->
-                                        <Border Background="#FFF0F0" CornerRadius="4" Padding="8,5"
+                                        <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4" Padding="8,5"
                                                 Visibility="{Binding HasRequiredErrorKeyPreview, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock FontSize="11" Foreground="#991B1B">
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource AppDangerDarkBrush}">
                                                 <Run Text="→ " />
                                                 <Run Text="{Binding RequiredErrorKeyPreview, Mode=OneWay}" FontWeight="SemiBold" />
                                             </TextBlock>
                                         </Border>
-                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#B91C1C"
+                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="{DynamicResource AppDangerDarkBrush}"
                                                    FontFamily="Cascadia Code, Consolas">
                                             <Run Text="Pattern: {tableCode}.val.{fieldCode}.required" />
                                         </TextBlock>
@@ -925,12 +925,12 @@
 
                                 <!-- ── Unique Error Key (chỉ hiện khi IsUnique = true) ── -->
                                 <Border Margin="0,12,0,0" Padding="12,10"
-                                        Background="#F0F9FF" CornerRadius="6"
-                                        BorderBrush="#BAE6FD" BorderThickness="1"
+                                        Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="6"
+                                        BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1"
                                         Visibility="{Binding IsUniqueExpanded, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
                                         <TextBlock Margin="0,0,0,8" FontSize="12" FontWeight="SemiBold"
-                                                   Foreground="#0369A1">
+                                                   Foreground="{DynamicResource AppInfoBrush}">
                                             <Run Text="🔑" /><Run Text=" Thông báo khi trùng (i18n)" />
                                         </TextBlock>
                                         <!-- Input full-width (key tự sinh, readonly) -->
@@ -945,14 +945,14 @@
                                             </Button>
                                         </StackPanel>
                                         <!-- Preview VI -->
-                                        <Border Background="#ECFEFF" CornerRadius="4" Padding="8,5"
+                                        <Border Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="4" Padding="8,5"
                                                 Visibility="{Binding HasUniqueErrorKeyPreview, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock FontSize="11" Foreground="#155E75">
+                                            <TextBlock FontSize="11" Foreground="{DynamicResource AppInfoBrush}">
                                                 <Run Text="→ " />
                                                 <Run Text="{Binding UniqueErrorKeyPreview, Mode=OneWay}" FontWeight="SemiBold" />
                                             </TextBlock>
                                         </Border>
-                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="#0369A1"
+                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="{DynamicResource AppInfoBrush}"
                                                    FontFamily="Cascadia Code, Consolas">
                                             <Run Text="Pattern: {tableCode}.val.{fieldCode}.unique — tự tạo khi lưu field" />
                                         </TextBlock>
@@ -996,8 +996,8 @@
                                             <TextBlock Text="🌐 Dịch" FontSize="11" />
                                         </Button>
                                     </StackPanel>
-                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
-                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                    <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource AppInfoBrush}">
                                             <Run Text="→ " />
                                             <Run Text="{Binding LabelPreview, Mode=OneWay}" FontWeight="SemiBold" />
                                         </TextBlock>
@@ -1025,8 +1025,8 @@
                                             <TextBlock Text="🌐 Dịch" FontSize="11" />
                                         </Button>
                                     </StackPanel>
-                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
-                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                    <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource AppInfoBrush}">
                                             <Run Text="→ " />
                                             <Run Text="{Binding PlaceholderPreview, Mode=OneWay}" FontWeight="SemiBold" />
                                         </TextBlock>
@@ -1052,8 +1052,8 @@
                                             <TextBlock Text="🌐 Dịch" FontSize="11" />
                                         </Button>
                                     </StackPanel>
-                                    <Border Background="#F0FDFA" CornerRadius="4" Padding="8,5">
-                                        <TextBlock FontSize="11" Foreground="#0D9488">
+                                    <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="4" Padding="8,5">
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource AppInfoBrush}">
                                             <Run Text="→ " />
                                             <Run Text="{Binding TooltipPreview, Mode=OneWay}" FontWeight="SemiBold" />
                                         </TextBlock>
@@ -1091,7 +1091,7 @@
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                                     <TextBlock Text="Cấu hình cho " FontSize="13" FontWeight="SemiBold"
-                                               Foreground="#1E293B" VerticalAlignment="Center" />
+                                               Foreground="{DynamicResource AppTextBrush}" VerticalAlignment="Center" />
                                     <Border Background="{StaticResource AccentLightBrush}"
                                             CornerRadius="4" Padding="8,3">
                                         <TextBlock Text="{Binding SelectedEditorType}" FontSize="12"
@@ -1133,7 +1133,7 @@
                                 Visibility="{Binding IsRadioGroupEditor, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <TextBlock Text="Cấu hình Lookup — Sys_Lookup" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="#1E293B" Margin="0,0,0,12" />
+                                           Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,12" />
                                 <TextBlock Text="Lookup Code" FontSize="11"
                                            Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
                                 <dxe:ComboBoxEdit ItemsSource="{Binding AvailableLookupCodes}"
@@ -1179,11 +1179,11 @@
                         <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
                             <StackPanel>
                                 <TextBlock Text="Cấu hình FK Lookup" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="#1E293B" Margin="0,0,0,14" />
+                                           Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,14" />
 
                                 <!-- ── Mode selector ──────────────────────────── -->
                                 <TextBlock Text="Chế độ truy vấn" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="#374151" Margin="0,0,0,8"/>
+                                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                                     <RadioButton Content="Bảng / View"
                                              IsChecked="{Binding IsTableMode, Mode=OneWay}"
@@ -1244,15 +1244,15 @@
                                     <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,8">
                                         <Run Text="Tham số hệ thống tự động: "/>
                                         <Run Text="@TenantId  @Today  @CurrentUser"
-                                             FontFamily="Consolas" Foreground="#059669"/>
+                                             FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}"/>
                                     </TextBlock>
                                 </StackPanel>
 
                                 <!-- ════ Panel: Function (TVF) ════════════ -->
                                 <StackPanel Visibility="{Binding IsFunctionMode, Converter={StaticResource BoolToVis}}">
-                                    <Border Background="#FFF7ED" CornerRadius="6" Padding="10,6"
-                                            Margin="0,0,0,10" BorderBrush="#FED7AA" BorderThickness="1">
-                                        <TextBlock FontSize="10" Foreground="#92400E" TextWrapping="Wrap">
+                                    <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="6" Padding="10,6"
+                                            Margin="0,0,0,10" BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1">
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap">
                                             <Run Text="⚡ TVF: "/>
                                             <Run Text="SELECT ... FROM fn_Tên(@P1, @P2)" FontFamily="Consolas"/>
                                             <LineBreak/>
@@ -1266,7 +1266,7 @@
                                                   NullText="VD: fn_GetPhongBanHieuLuc"/>
                                     <DockPanel Margin="0,0,0,8">
                                         <TextBlock Text="Tham số hàm (theo thứ tự)" FontSize="11" FontWeight="SemiBold"
-                                                   Foreground="#374151" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                                                   Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
                                         <Button Content="+ Thêm" DockPanel.Dock="Right" HorizontalAlignment="Right"
                                                 Command="{Binding AddFunctionParamCommand}"
                                                 Style="{StaticResource SmallSecondaryButtonStyle}"/>
@@ -1275,8 +1275,8 @@
                                                   AlternationCount="{Binding FkFunctionParams.Count}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border Background="#FFFBEB" CornerRadius="4"
-                                                        BorderBrush="#FDE68A" BorderThickness="1"
+                                                <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="4"
+                                                        BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1"
                                                         Padding="10,8" Margin="0,0,0,6">
                                                     <Grid>
                                                         <Grid.ColumnDefinitions>
@@ -1299,7 +1299,7 @@
                                                         <StackPanel Grid.Column="2">
                                                             <TextBlock Text="Nguồn giá trị" FontSize="10"
                                                                        Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                            <dxe:ComboBoxEdit Height="28" IsTextEditable="False"
+                                                            <dxe:ComboBoxEdit Height="28"
                                                                               EditValue="{Binding SourceType}"
                                                                               ItemsSource="{Binding DataContext.FunctionParamSourceTypes,
                                                                                 RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -1318,7 +1318,7 @@
                                                                                     Converter={StaticResource BoolToVis}}">
                                                                 <TextBlock Text="Tham số hệ thống" FontSize="10"
                                                                            Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                                <dxe:ComboBoxEdit Height="28" IsTextEditable="False"
+                                                                <dxe:ComboBoxEdit Height="28"
                                                                                   EditValue="{Binding SystemKey}"
                                                                                   ItemsSource="{Binding DataContext.SystemKeyOptions,
                                                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"/>
@@ -1326,7 +1326,7 @@
                                                         </StackPanel>
                                                         <!-- Xóa -->
                                                         <Button Grid.Column="5" Content="×" FontSize="16" FontWeight="Bold"
-                                                                Foreground="#EF4444" Background="Transparent"
+                                                                Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
                                                                 BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"
                                                                 Command="{Binding DataContext.RemoveFunctionParamCommand,
                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1340,9 +1340,9 @@
 
                                 <!-- ════ Panel: SQL tùy chỉnh ════════════ -->
                                 <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}">
-                                    <Border Background="#FFF1F2" CornerRadius="6" Padding="10,6"
-                                            Margin="0,0,0,10" BorderBrush="#FECDD3" BorderThickness="1">
-                                        <TextBlock FontSize="10" Foreground="#9F1239" TextWrapping="Wrap">
+                                    <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="6" Padding="10,6"
+                                            Margin="0,0,0,10" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1">
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppDangerDarkBrush}" TextWrapping="Wrap">
                                             <Run Text="⚠ Chỉ dùng @Param — tuyệt đối không string interpolation.  "/>
                                             <Run Text="Alias trong SELECT phải khớp Cột Value và Cột Display."/>
                                         </TextBlock>
@@ -1356,17 +1356,17 @@
                                     <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,8">
                                         <Run Text="Tham số hệ thống tự động: "/>
                                         <Run Text="@TenantId  @Today  @CurrentUser"
-                                             FontFamily="Consolas" Foreground="#059669"/>
+                                             FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}"/>
                                     </TextBlock>
                                 </StackPanel>
 
                                 <!-- Filter Params — Table mode + SQL mode -->
-                                <Border Background="#F0FDF4" CornerRadius="6" Padding="12,10"
+                                <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="6" Padding="12,10"
                                         Margin="0,0,0,12"
-                                        BorderBrush="#BBF7D0" BorderThickness="1">
+                                        BorderBrush="{DynamicResource AppSuccessLightBrush}" BorderThickness="1">
                                     <StackPanel>
                                         <DockPanel Margin="0,0,0,8">
-                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#166534"
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppSuccessDarkBrush}"
                                                        DockPanel.Dock="Left" VerticalAlignment="Center">
                                                 <Run Text="⚡ "/>
                                                 <Run Text="Tham số từ field khác trong form"/>
@@ -1382,7 +1382,7 @@
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Background="White" CornerRadius="4"
-                                                            BorderBrush="#BBF7D0" BorderThickness="1"
+                                                            BorderBrush="{DynamicResource AppSuccessLightBrush}" BorderThickness="1"
                                                             Padding="10,8" Margin="0,0,0,6">
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
@@ -1404,7 +1404,7 @@
                                                                               Text="{Binding Param, UpdateSourceTrigger=PropertyChanged}"
                                                                               NullText="VD: TuNgay"
                                                                               FontFamily="Consolas" FontSize="11"/>
-                                                                <TextBlock FontSize="9" Foreground="#6B7280" Margin="0,2,0,0">
+                                                                <TextBlock FontSize="9" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0">
                                                                     <Run Text="Dùng trong SQL: "/>
                                                                     <Run Text="@TuNgay" FontFamily="Consolas" Foreground="{StaticResource AccentDarkBrush}"/>
                                                                 </TextBlock>
@@ -1419,7 +1419,7 @@
                                                                 <dxe:TextEdit Height="28"
                                                                               Text="{Binding FieldRef, UpdateSourceTrigger=PropertyChanged}"
                                                                               NullText="VD: NgayVaoLam"/>
-                                                                <TextBlock FontSize="9" Foreground="#6B7280" Margin="0,2,0,0"
+                                                                <TextBlock FontSize="9" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0"
                                                                            Text="Field trên form cung cấp giá trị lúc runtime"/>
                                                             </StackPanel>
                                                             <!-- Kiểu -->
@@ -1430,12 +1430,12 @@
                                                                                   ItemsSource="{Binding DataContext.FkParamTypes,
                                                                                     RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                                   EditValue="{Binding Type}"
-                                                                                  IsTextEditable="False"/>
+/>
                                                             </StackPanel>
                                                             <!-- Xóa -->
                                                             <Button Grid.Column="5" Content="×"
                                                                     FontSize="16" FontWeight="Bold"
-                                                                    Foreground="#EF4444" Background="Transparent"
+                                                                    Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
                                                                     BorderThickness="0" Cursor="Hand"
                                                                     VerticalAlignment="Bottom" Margin="4,0,0,2"
                                                                     Command="{Binding DataContext.RemoveFkFilterParamCommand,
@@ -1448,7 +1448,7 @@
                                         </ItemsControl>
 
                                         <!-- Ghi chú -->
-                                        <TextBlock FontSize="10" Foreground="#166534" Margin="0,6,0,0">
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,6,0,0">
                                             <Run Text="Dùng trong filterSql như: "/>
                                             <Run Text="Ngay_Hieu_Luc &lt;= @NgayVaoLam" FontFamily="Consolas"/>
                                             <LineBreak/>
@@ -1480,7 +1480,7 @@
                                 <!-- Cột popup -->
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Cột hiển thị trong popup" FontSize="11" FontWeight="SemiBold"
-                                               Foreground="#374151" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
                                     <Button Content="+ Thêm cột" DockPanel.Dock="Right"
                                             Command="{Binding AddFkColumnCommand}"
                                             HorizontalAlignment="Right"
@@ -1507,7 +1507,7 @@
                                                 <dxg:GridColumn.CellTemplate>
                                                     <DataTemplate>
                                                         <Button Content="×" FontSize="14" FontWeight="Bold"
-                                                                Foreground="#EF4444" Background="Transparent"
+                                                                Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
                                                                 BorderThickness="0" Cursor="Hand"
                                                                 Command="{Binding DataContext.RemoveFkColumnCommand,
                                                                           RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
@@ -1529,7 +1529,7 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="#374151" VerticalAlignment="Center">
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                         <Run Text="🔄 "/>
                                         <Run Text="Tự động reload khi field thay đổi"/>
                                     </TextBlock>
@@ -1546,14 +1546,14 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#DBEAFE" CornerRadius="12" Padding="10,4"
+                                            <Border Background="{DynamicResource AppAccentLightBrush}" CornerRadius="12" Padding="10,4"
                                                     Margin="0,0,6,6">
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding}" FontSize="11" FontWeight="SemiBold"
-                                                               Foreground="#1D4ED8" FontFamily="Consolas"
+                                                               Foreground="{DynamicResource AppAccentDarkBrush}" FontFamily="Consolas"
                                                                VerticalAlignment="Center"/>
                                                     <Button Content="×" FontSize="12" FontWeight="Bold"
-                                                            Foreground="#1D4ED8" Background="Transparent"
+                                                            Foreground="{DynamicResource AppAccentDarkBrush}" Background="Transparent"
                                                             BorderThickness="0" Cursor="Hand" Margin="6,0,0,0"
                                                             Command="{Binding DataContext.RemoveReloadFieldCommand,
                                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -1591,7 +1591,7 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="#374151" VerticalAlignment="Center">
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                         <Run Text="🔀 "/>
                                         <Run Text="Điều kiện đổi bảng nguồn"/>
                                     </TextBlock>
@@ -1606,17 +1606,17 @@
                                 <ItemsControl ItemsSource="{Binding DataSourceConditions}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Background="#FFFBEB" CornerRadius="6"
-                                                    BorderBrush="#FDE68A" BorderThickness="1"
+                                            <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="6"
+                                                    BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1"
                                                     Padding="12,10" Margin="0,0,0,8">
                                                 <StackPanel>
                                                     <!-- Header: điều kiện -->
                                                     <DockPanel Margin="0,0,0,8">
                                                         <TextBlock DockPanel.Dock="Left"
-                                                                   FontSize="11" FontWeight="SemiBold" Foreground="#92400E"
+                                                                   FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppWarningDarkBrush}"
                                                                    VerticalAlignment="Center" Text="Nếu:"/>
                                                         <Button DockPanel.Dock="Right" Content="× Xoá"
-                                                                FontSize="11" Foreground="#EF4444"
+                                                                FontSize="11" Foreground="{DynamicResource AppDangerBrush}"
                                                                 Background="Transparent" BorderThickness="0"
                                                                 Cursor="Hand"
                                                                 Command="{Binding DataContext.RemoveDataSourceConditionCommand,
@@ -1647,7 +1647,7 @@
                                                                               ItemsSource="{Binding DataContext.WhenOpOptions,
                                                                                 RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                               EditValue="{Binding WhenOp}"
-                                                                              IsTextEditable="False"/>
+/>
                                                         </StackPanel>
                                                         <StackPanel Grid.Column="4">
                                                             <TextBlock Text="Giá trị so sánh" FontSize="10"
@@ -1660,7 +1660,7 @@
 
                                                     <!-- Dòng 2: tableName / displayField -->
                                                     <TextBlock Text="→ Thì dùng:" FontSize="10" FontWeight="SemiBold"
-                                                               Foreground="#92400E" Margin="0,0,0,6"/>
+                                                               Foreground="{DynamicResource AppWarningDarkBrush}" Margin="0,0,0,6"/>
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*"/>
@@ -1702,7 +1702,7 @@
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="#374151" VerticalAlignment="Center">
+                                               Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                         <Run Text="🔍 "/>
                                         <Run Text="Kiểm tra &amp; Diễn giải cấu hình"/>
                                     </TextBlock>
@@ -1720,12 +1720,12 @@
 
                                 <!-- Kết quả diễn giải -->
                                 <Border Visibility="{Binding HasConfigExplanation, Converter={StaticResource BoolToVis}}"
-                                        Background="#F8FAFC" CornerRadius="6" Padding="12"
+                                        Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6" Padding="12"
                                         BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                                     <TextBox Text="{Binding ConfigExplanation, Mode=OneWay}"
                                              IsReadOnly="True"
                                              FontFamily="Cascadia Code, Consolas" FontSize="11"
-                                             Foreground="#1E293B"
+                                             Foreground="{DynamicResource AppTextBrush}"
                                              Background="Transparent" BorderThickness="0"
                                              TextWrapping="Wrap" AcceptsReturn="True"/>
                                 </Border>
@@ -1737,12 +1737,12 @@
 
                     <!-- ── CỘT PHẢI: JSON Preview Sidebar ────────────────── -->
                     <Border Grid.Column="2" Margin="0,12,0,0"
-                            Background="#F8FAFC" CornerRadius="8"
+                            Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="8"
                             BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                         <DockPanel>
                             <!-- Header -->
                             <Border DockPanel.Dock="Top"
-                                    Background="#EFF6FF" CornerRadius="8,8,0,0"
+                                    Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="8,8,0,0"
                                     Padding="12,8"
                                     BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
                                 <DockPanel>
@@ -1769,7 +1769,7 @@
                                          AcceptsReturn="True" TextWrapping="NoWrap"
                                          Background="Transparent" BorderThickness="0"
                                          Padding="12,10"
-                                         Foreground="#1E293B" />
+                                         Foreground="{DynamicResource AppTextBrush}" />
                             </ScrollViewer>
                         </DockPanel>
                     </Border>

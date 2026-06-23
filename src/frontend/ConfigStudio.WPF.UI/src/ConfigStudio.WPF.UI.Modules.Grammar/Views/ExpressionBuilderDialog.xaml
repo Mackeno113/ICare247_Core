@@ -37,7 +37,7 @@
                            Foreground="White" FontSize="16" FontWeight="SemiBold"
                            VerticalAlignment="Center" />
                 <TextBlock DockPanel.Dock="Right" Margin="16,0,0,0"
-                           Foreground="#90CAF9" FontSize="12" VerticalAlignment="Center">
+                           Foreground="{DynamicResource AppAccentLightBrush}" FontSize="12" VerticalAlignment="Center">
                     <Run Text="Expected: " />
                     <Run Text="{Binding ExpectedReturnType, Mode=OneWay}" FontWeight="Bold" />
                     <Run Text="  " />
@@ -49,7 +49,7 @@
         <!-- ── Footer ─────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom" Height="52"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,1,0,0"
                 Padding="16,0">
             <DockPanel VerticalAlignment="Center">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
@@ -93,7 +93,7 @@
             <!-- ═══ COL 1: Palette ═════════════════════════════ -->
             <Border Grid.Column="0"
                     Background="{DynamicResource ShellContentBackgroundBrush}"
-                    BorderBrush="#D0E4FF" BorderThickness="0,0,1,0">
+                    BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="0,0,1,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="8">
 
@@ -143,7 +143,7 @@
                                         </Border.InputBindings>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="f()" Width="14" FontSize="11"
-                                                       Foreground="#0891B2"
+                                                       Foreground="{DynamicResource AppInfoBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding DisplayName}" FontFamily="Consolas" FontSize="12" />
                                         </StackPanel>
@@ -172,7 +172,7 @@
                                         </Border.InputBindings>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="●" Width="14" FontSize="11"
-                                                       Foreground="#66BB6A"
+                                                       Foreground="{DynamicResource AppSuccessBrush}"
                                                        VerticalAlignment="Center" Margin="0,0,6,0" />
                                             <TextBlock Text="{Binding Code}" FontWeight="SemiBold" FontSize="12" />
                                             <TextBlock Text="{Binding NetType, StringFormat=' ({0})'}"
@@ -189,7 +189,7 @@
 
             <!-- GridSplitter -->
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
-                          Background="#D0E4FF" />
+                          Background="{DynamicResource AppAccentLightBrush}" />
 
             <!-- ═══ COL 3: Right Panel ═════════════════════════ -->
             <Grid Grid.Column="2" Margin="8">
@@ -202,7 +202,7 @@
 
                 <!-- AST Tree -->
                 <Border Grid.Row="0" Padding="8" Margin="0,0,0,8"
-                        BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                        BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                     <DockPanel>
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                             <TextBlock Text="AST Tree" FontSize="14" FontWeight="SemiBold"
@@ -239,7 +239,7 @@
                                         <TextBlock Text="{Binding IconText}"
                                                    Width="18" FontSize="13"
                                                    VerticalAlignment="Center"
-                                                   Foreground="#0891B2" />
+                                                   Foreground="{DynamicResource AppInfoBrush}" />
                                         <TextBlock Text="{Binding DisplayText}" Margin="6,0,0,0"
                                                    FontSize="13" VerticalAlignment="Center" />
                                     </StackPanel>
@@ -251,12 +251,12 @@
 
                 <!-- ── Literal Editor — hiện khi chọn node Literal ── -->
                 <Border Grid.Row="1" Padding="12" Margin="0,0,0,8"
-                        BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6"
-                        Background="#FFFBEB"
+                        BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1" CornerRadius="6"
+                        Background="{DynamicResource AppWarningSoftBrush}"
                         Visibility="{Binding IsLiteralSelected, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <TextBlock Text="✏ Nhập giá trị Literal" FontSize="12" FontWeight="SemiBold"
-                                   Foreground="#92400E" Margin="0,0,0,10" />
+                                   Foreground="{DynamicResource AppWarningDarkBrush}" Margin="0,0,0,10" />
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -268,7 +268,7 @@
 
                             <!-- Value input -->
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Giá trị" FontSize="11" Foreground="#92400E" Margin="0,0,0,3" />
+                                <TextBlock Text="Giá trị" FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" Margin="0,0,0,3" />
                                 <dxe:TextEdit EditValue="{Binding LiteralValue, UpdateSourceTrigger=PropertyChanged}"
                                              NullText='vd: "nv001"  hoặc  10  hoặc  true'
                                              Height="32" />
@@ -276,10 +276,10 @@
 
                             <!-- NetType selector -->
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Kiểu dữ liệu" FontSize="11" Foreground="#92400E" Margin="0,0,0,3" />
+                                <TextBlock Text="Kiểu dữ liệu" FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" Margin="0,0,0,3" />
                                 <dxe:ComboBoxEdit ItemsSource="{Binding LiteralNetTypeOptions}"
                                                  EditValue="{Binding LiteralNetType}"
-                                                 IsTextEditable="False"
+
                                                  Height="32" />
                             </StackPanel>
 
@@ -291,7 +291,7 @@
                             </dx:SimpleButton>
                         </Grid>
 
-                        <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="#A16207" TextWrapping="Wrap">
+                        <TextBlock Margin="0,6,0,0" FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap">
                             <Run Text="💡 Ví dụ: " FontWeight="SemiBold" />
                             <Run Text='String → "nv001"   ·   Int32 → 10   ·   Boolean → true / false   ·   DateTime → 2026-01-31' />
                         </TextBlock>
@@ -300,7 +300,7 @@
 
                 <!-- Preview & Validation -->
                 <Border Grid.Row="2" Padding="12" Margin="0,0,0,8"
-                        BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                        BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                     <StackPanel>
                         <TextBlock Text="Preview &amp; Validation" FontSize="13" FontWeight="SemiBold"
                                    Foreground="{DynamicResource ShellTitleBarBackgroundBrush}"
@@ -337,10 +337,10 @@
                             <Border CornerRadius="4" Padding="6,2" Margin="0,0,0,4">
                                 <Border.Style>
                                     <Style TargetType="Border">
-                                        <Setter Property="Background" Value="#C62828" />
+                                        <Setter Property="Background" Value="{DynamicResource AppDangerDarkBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsValid}" Value="True">
-                                                <Setter Property="Background" Value="#2E7D32" />
+                                                <Setter Property="Background" Value="{DynamicResource AppSuccessDarkBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -368,9 +368,9 @@
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" Margin="0,2">
                                         <TextBlock Text="⚠" Width="14" FontSize="11"
-                                                   Foreground="#EF5350" VerticalAlignment="Center" />
+                                                   Foreground="{DynamicResource AppDangerBrush}" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding}" Margin="6,0,0,0" FontSize="12"
-                                                   Foreground="#EF5350" TextWrapping="Wrap" />
+                                                   Foreground="{DynamicResource AppDangerBrush}" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

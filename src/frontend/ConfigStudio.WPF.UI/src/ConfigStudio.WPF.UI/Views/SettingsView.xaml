@@ -18,7 +18,7 @@
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize"     Value="12" />
             <Setter Property="FontWeight"   Value="SemiBold" />
-            <Setter Property="Foreground"   Value="#475569" />
+            <Setter Property="Foreground"   Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Margin"       Value="0,0,0,5" />
         </Style>
 
@@ -29,13 +29,13 @@
             <Setter Property="FontSize"         Value="13" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Background"       Value="White" />
-            <Setter Property="BorderBrush"      Value="#CBD5E1" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource AppBorderStrongBrush}" />
             <Setter Property="BorderThickness"  Value="1" />
-            <Setter Property="Foreground"       Value="#1E293B" />
-            <Setter Property="CaretBrush"       Value="#2563EB" />
+            <Setter Property="Foreground"       Value="{DynamicResource AppTextBrush}" />
+            <Setter Property="CaretBrush"       Value="{DynamicResource AppAccentBrush}" />
             <Style.Triggers>
                 <Trigger Property="IsFocused" Value="True">
-                    <Setter Property="BorderBrush" Value="#2563EB" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
@@ -47,9 +47,9 @@
             <Setter Property="FontSize"         Value="13" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Background"       Value="White" />
-            <Setter Property="BorderBrush"      Value="#CBD5E1" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource AppBorderStrongBrush}" />
             <Setter Property="BorderThickness"  Value="1" />
-            <Setter Property="Foreground"       Value="#1E293B" />
+            <Setter Property="Foreground"       Value="{DynamicResource AppTextBrush}" />
         </Style>
 
         <!-- ── Action button base ──────────────────────────── -->
@@ -89,14 +89,14 @@
         <!-- ── Test button: outlined blue (Config DB) ─────── -->
         <Style x:Key="TestButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
             <Setter Property="Background"   Value="White" />
-            <Setter Property="Foreground"   Value="#2563EB" />
+            <Setter Property="Foreground"   Value="{DynamicResource AppAccentBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd"
                                 Background="White"
                                 CornerRadius="6"
-                                BorderBrush="#2563EB"
+                                BorderBrush="{DynamicResource AppAccentBrush}"
                                 BorderThickness="1.5"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
@@ -104,10 +104,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#EFF6FF" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentSoftBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#DBEAFE" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
@@ -121,14 +121,14 @@
         <!-- ── Test button: outlined green (Target DB) ─────── -->
         <Style x:Key="TargetTestButtonStyle" TargetType="Button" BasedOn="{StaticResource ActionButtonStyle}">
             <Setter Property="Background"   Value="White" />
-            <Setter Property="Foreground"   Value="#059669" />
+            <Setter Property="Foreground"   Value="{DynamicResource AppSuccessDarkBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd"
                                 Background="White"
                                 CornerRadius="6"
-                                BorderBrush="#059669"
+                                BorderBrush="{DynamicResource AppSuccessDarkBrush}"
                                 BorderThickness="1.5"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
@@ -136,10 +136,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#ECFDF5" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppSuccessSoftBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#D1FAE5" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppSuccessLightBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
@@ -154,7 +154,7 @@
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background"       Value="White" />
             <Setter Property="CornerRadius"     Value="8" />
-            <Setter Property="BorderBrush"      Value="#E2E8F0" />
+            <Setter Property="BorderBrush"      Value="{DynamicResource AppBorderBrush}" />
             <Setter Property="BorderThickness"  Value="1" />
             <Setter Property="Padding"          Value="24" />
             <Setter Property="Effect">
@@ -189,17 +189,17 @@
             <!-- HEADER                                          -->
             <!-- ═══════════════════════════════════════════════ -->
             <StackPanel Grid.Row="0" Orientation="Horizontal">
-                <Border Background="#EFF6FF" CornerRadius="10" Width="44" Height="44"
+                <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="10" Width="44" Height="44"
                         Margin="0,0,14,0" VerticalAlignment="Center">
                     <TextBlock Text="⚙" FontSize="22" HorizontalAlignment="Center"
-                               VerticalAlignment="Center" Foreground="#2563EB" />
+                               VerticalAlignment="Center" Foreground="{DynamicResource AppAccentBrush}" />
                 </Border>
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="Cài Đặt Kết Nối"
                                FontSize="22" FontWeight="SemiBold"
                                Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
                     <TextBlock Text="Thiết lập kết nối SQL Server cho ConfigStudio"
-                               FontSize="13" Foreground="#64748B" Margin="0,3,0,0" />
+                               FontSize="13" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,3,0,0" />
                 </StackPanel>
             </StackPanel>
 
@@ -213,7 +213,7 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
                         <TextBlock Text="Kết nối SQL Server"
                                    FontSize="14" FontWeight="SemiBold"
-                                   Foreground="#1E293B" />
+                                   Foreground="{DynamicResource AppTextBrush}" />
                     </StackPanel>
 
                     <!-- Server -->
@@ -256,7 +256,7 @@
                     <CheckBox IsChecked="{Binding TrustServerCertificate}"
                               Margin="0,4,0,0">
                         <TextBlock Text="Trust Server Certificate  (bỏ qua kiểm tra SSL — dùng cho môi trường dev)"
-                                   FontSize="12" Foreground="#475569" />
+                                   FontSize="12" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                     </CheckBox>
 
                 </StackPanel>
@@ -272,11 +272,11 @@
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,18">
                         <TextBlock Text="Target Database"
                                    FontSize="14" FontWeight="SemiBold"
-                                   Foreground="#1E293B" />
-                        <Border Background="#FEF3C7" CornerRadius="4" Padding="6,2"
+                                   Foreground="{DynamicResource AppTextBrush}" />
+                        <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="4" Padding="6,2"
                                 Margin="10,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="DB ứng dụng thực sự — dùng để đọc cấu trúc cột"
-                                       FontSize="11" Foreground="#92400E" />
+                                       FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" />
                         </Border>
                     </StackPanel>
 
@@ -320,7 +320,7 @@
                     <CheckBox IsChecked="{Binding TargetTrustServerCertificate}"
                               Margin="0,4,0,14">
                         <TextBlock Text="Trust Server Certificate  (bỏ qua kiểm tra SSL — dùng cho môi trường dev)"
-                                   FontSize="12" Foreground="#475569" />
+                                   FontSize="12" Foreground="{DynamicResource AppTextSecondaryBrush}" />
                     </CheckBox>
 
                     <!-- Test button + inline status -->
@@ -328,7 +328,7 @@
                         <Button Content="🔌  Test Target DB"
                                 Command="{Binding TestTargetConnectionCommand}"
                                 Style="{StaticResource AppTargetTestButtonStyle}"
-                                Foreground="#059669" />
+                                Foreground="{DynamicResource AppSuccessDarkBrush}" />
 
                         <!-- Inline status cho Target DB -->
                         <Border Margin="14,0,0,0"
@@ -337,17 +337,17 @@
                                 Visibility="{Binding IsTargetStatusVisible, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Background"  Value="#EFF6FF" />
-                                    <Setter Property="BorderBrush" Value="#93C5FD" />
+                                    <Setter Property="Background"  Value="{DynamicResource AppAccentSoftBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentLightBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsTargetStatusSuccess}" Value="True">
-                                            <Setter Property="Background"  Value="#F0FDF4" />
-                                            <Setter Property="BorderBrush" Value="#86EFAC" />
+                                            <Setter Property="Background"  Value="{DynamicResource AppSuccessSoftBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AppSuccessLightBrush}" />
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsTargetStatusError}" Value="True">
-                                            <Setter Property="Background"  Value="#FEF2F2" />
-                                            <Setter Property="BorderBrush" Value="#FCA5A5" />
+                                            <Setter Property="Background"  Value="{DynamicResource AppDangerSoftBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource AppDangerLightBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -356,13 +356,13 @@
                                        FontSize="12" TextWrapping="Wrap" MaxWidth="360">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#1D4ED8" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AppAccentDarkBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsTargetStatusSuccess}" Value="True">
-                                                <Setter Property="Foreground" Value="#16A34A" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AppSuccessBrush}" />
                                             </DataTrigger>
                                             <DataTrigger Binding="{Binding IsTargetStatusError}" Value="True">
-                                                <Setter Property="Foreground" Value="#DC2626" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AppDangerBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -386,9 +386,9 @@
 
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="Tenant ID"
-                                   FontSize="14" FontWeight="SemiBold" Foreground="#1E293B" />
+                                   FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AppTextBrush}" />
                         <TextBlock Text="Định danh tenant mặc định cho phiên làm việc này"
-                                   FontSize="12" Foreground="#64748B" Margin="0,4,0,0" />
+                                   FontSize="12" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,4,0,0" />
                     </StackPanel>
 
                     <TextBox Grid.Column="1"
@@ -416,20 +416,20 @@
                         Content="🔌  Test Kết Nối"
                         Command="{Binding TestConnectionCommand}"
                         Style="{StaticResource AppTestButtonStyle}"
-                        Foreground="#2563EB" />
+                        Foreground="{DynamicResource AppAccentBrush}" />
 
                 <!-- Save button -->
                 <Button Grid.Column="2"
                         Content="💾  Lưu Cài Đặt"
                         Command="{Binding SaveCommand}"
                         Style="{StaticResource AppActionButtonStyle}"
-                        Background="#2563EB" Foreground="White" />
+                        Background="{DynamicResource AppAccentBrush}" Foreground="White" />
 
                 <!-- Busy spinner placeholder (visible when IsBusy) -->
                 <Border Grid.Column="4"
                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
                         VerticalAlignment="Center">
-                    <TextBlock Text="..." FontSize="20" Foreground="#64748B"
+                    <TextBlock Text="..." FontSize="20" Foreground="{DynamicResource AppTextMutedBrush}"
                                VerticalAlignment="Center" />
                 </Border>
             </Grid>
@@ -445,17 +445,17 @@
                 <Border.Style>
                     <Style TargetType="Border">
                         <!-- Default: info/testing (xanh) -->
-                        <Setter Property="Background"   Value="#EFF6FF" />
-                        <Setter Property="BorderBrush"  Value="#93C5FD" />
+                        <Setter Property="Background"   Value="{DynamicResource AppAccentSoftBrush}" />
+                        <Setter Property="BorderBrush"  Value="{DynamicResource AppAccentLightBrush}" />
                         <Setter Property="BorderThickness" Value="1" />
                         <Style.Triggers>
                             <DataTrigger Binding="{Binding IsStatusSuccess}" Value="True">
-                                <Setter Property="Background"   Value="#F0FDF4" />
-                                <Setter Property="BorderBrush"  Value="#86EFAC" />
+                                <Setter Property="Background"   Value="{DynamicResource AppSuccessSoftBrush}" />
+                                <Setter Property="BorderBrush"  Value="{DynamicResource AppSuccessLightBrush}" />
                             </DataTrigger>
                             <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                                <Setter Property="Background"   Value="#FEF2F2" />
-                                <Setter Property="BorderBrush"  Value="#FCA5A5" />
+                                <Setter Property="Background"   Value="{DynamicResource AppDangerSoftBrush}" />
+                                <Setter Property="BorderBrush"  Value="{DynamicResource AppDangerLightBrush}" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -465,13 +465,13 @@
                            FontSize="13" TextWrapping="Wrap">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
-                            <Setter Property="Foreground" Value="#1D4ED8" />
+                            <Setter Property="Foreground" Value="{DynamicResource AppAccentDarkBrush}" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsStatusSuccess}" Value="True">
-                                    <Setter Property="Foreground" Value="#16A34A" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AppSuccessBrush}" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                                    <Setter Property="Foreground" Value="#DC2626" />
+                                    <Setter Property="Foreground" Value="{DynamicResource AppDangerBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -483,13 +483,13 @@
             <!-- FOOTER — config file path                       -->
             <!-- ═══════════════════════════════════════════════ -->
             <Border Grid.Row="10"
-                    BorderBrush="#E2E8F0" BorderThickness="0,1,0,0"
+                    BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0"
                     Padding="0,12,0,0" Margin="0,16,0,0">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="📁 File cấu hình: "
-                               FontSize="11" Foreground="#94A3B8" />
+                               FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" />
                     <TextBlock Text="{Binding ConfigFilePath}"
-                               FontSize="11" Foreground="#94A3B8"
+                               FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}"
                                FontFamily="Consolas" />
                 </StackPanel>
             </Border>

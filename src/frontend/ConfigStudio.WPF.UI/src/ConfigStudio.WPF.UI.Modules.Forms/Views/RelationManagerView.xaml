@@ -39,7 +39,7 @@
         <!-- ── Header ───────────────────────────────────────── -->
         <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -48,9 +48,9 @@
                 <StackPanel Grid.Row="0" Orientation="Horizontal">
                     <TextBlock Text="🔗 Quản lý quan hệ (Sys_Relation)" FontSize="20" FontWeight="Bold"
                                Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                    <Border Background="#EEF5FF" BorderBrush="#DCEAFE" BorderThickness="1"
+                    <Border Background="{DynamicResource AppAccentSoftBrush}" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1"
                             CornerRadius="4" Padding="10,5" Margin="14,0,0,0" VerticalAlignment="Center">
-                        <TextBlock FontSize="12" Foreground="#1E3A8A"
+                        <TextBlock FontSize="12" Foreground="{DynamicResource AppAccentDarkBrush}"
                                    Text="Registry quan hệ master-detail + soft-check FK khi xóa" />
                     </Border>
                     <dxe:CheckEdit Content="Hiện đã ẩn" IsChecked="{Binding ShowInactive}"
@@ -58,10 +58,10 @@
                 </StackPanel>
 
                 <Border Grid.Row="1" Margin="0,10,0,0" Padding="10,8"
-                        Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="6"
+                        Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1" CornerRadius="6"
                         Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
                     <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
-                        <TextBlock Text="{Binding LoadErrorMessage}" Foreground="#991B1B"
+                        <TextBlock Text="{Binding LoadErrorMessage}" Foreground="{DynamicResource AppDangerDarkBrush}"
                                    FontSize="12" TextWrapping="Wrap" />
                     </ScrollViewer>
                 </Border>
@@ -84,14 +84,14 @@
                     <ControlTemplate TargetType="GridSplitter">
                         <Border Background="{TemplateBinding Background}">
                             <Border Width="2" HorizontalAlignment="Center" CornerRadius="1"
-                                    Background="#CBD5E1" />
+                                    Background="{DynamicResource AppBorderStrongBrush}" />
                         </Border>
                     </ControlTemplate>
                 </GridSplitter.Template>
             </GridSplitter>
 
             <!-- Lưới danh sách quan hệ -->
-            <Border Grid.Column="0" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+            <Border Grid.Column="0" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
                 <dxg:GridControl ItemsSource="{Binding Relations}"
                                  SelectedItem="{Binding SelectedRelation, Mode=TwoWay}"
                                  AutoGenerateColumns="None">
@@ -113,8 +113,8 @@
             </Border>
 
             <!-- Editor -->
-            <Border Grid.Column="2" BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6"
-                    Background="#FCFDFF">
+            <Border Grid.Column="2" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6"
+                    Background="{DynamicResource AppSurfaceBrush}">
                 <Grid Margin="14">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -134,7 +134,7 @@
                             <TextBlock Text="Bảng cha (Master) * — phía '1'" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
                                               SelectedItem="{Binding EditMasterTable}"
-                                              IsTextEditable="False" NullText="Chọn bảng cha..." Margin="0,0,0,10" />
+ NullText="Chọn bảng cha..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Master_Key_Column (cột khóa bảng cha)" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
@@ -144,7 +144,7 @@
                             <TextBlock Text="Bảng con (Detail) * — phía 'N'" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
                                               SelectedItem="{Binding EditDetailTable}"
-                                              IsTextEditable="False" NullText="Chọn bảng con..." Margin="0,0,0,10" />
+ NullText="Chọn bảng con..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Detail_FK_Column * — cột FK ở bảng con trỏ về cha" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding DetailColumns}"
@@ -160,12 +160,12 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Relation_Type" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding RelationTypeOptions}"
-                                                      EditValue="{Binding EditRelationType}" IsTextEditable="False" />
+                                                      EditValue="{Binding EditRelationType}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="On_Delete (xóa master)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding OnDeleteOptions}"
-                                                      EditValue="{Binding EditOnDelete}" IsTextEditable="False" />
+                                                      EditValue="{Binding EditOnDelete}" />
                                 </StackPanel>
                             </Grid>
 
@@ -200,7 +200,7 @@
         <!-- ── Thanh hành động ──────────────────────────────── -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,10"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <StackPanel Orientation="Horizontal">
                 <dx:SimpleButton Content="＋ Tạo mới" Width="100" Command="{Binding NewCommand}"
                                  ToolTip="Ctrl+N — soạn quan hệ mới" />

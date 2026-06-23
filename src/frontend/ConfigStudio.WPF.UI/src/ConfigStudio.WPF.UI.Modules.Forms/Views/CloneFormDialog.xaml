@@ -18,9 +18,9 @@
             <Setter Property="Padding"         Value="20,6" />
             <Setter Property="Cursor"          Value="Hand" />
             <Setter Property="FontSize"        Value="13" />
-            <Setter Property="Foreground"      Value="#374151" />
+            <Setter Property="Foreground"      Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Background"      Value="White" />
-            <Setter Property="BorderBrush"     Value="#D1D5DB" />
+            <Setter Property="BorderBrush"     Value="{DynamicResource AppBorderStrongBrush}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -35,7 +35,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F3F4F6" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppSurfaceMutedBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -50,7 +50,7 @@
             <Setter Property="FontSize"        Value="13" />
             <Setter Property="FontWeight"      Value="Medium" />
             <Setter Property="Foreground"      Value="White" />
-            <Setter Property="Background"      Value="#3B82F6" />
+            <Setter Property="Background"      Value="{DynamicResource AppAccentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -63,13 +63,13 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Bd" Property="Background" Value="#93C5FD" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentLightBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2563EB" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentBrush}" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#1D4ED8" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppAccentDarkBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -80,7 +80,7 @@
     </UserControl.Resources>
 
     <Border Background="White"
-            BorderBrush="#E2E8F0"
+            BorderBrush="{DynamicResource AppBorderBrush}"
             BorderThickness="1"
             CornerRadius="6"
             ClipToBounds="True">
@@ -92,7 +92,7 @@
             </Grid.RowDefinitions>
 
             <!-- ── Header ─────────────────────────────────────────── -->
-            <Border Grid.Row="0" Background="#3B82F6" Padding="20,14">
+            <Border Grid.Row="0" Background="{DynamicResource AppAccentBrush}" Padding="20,14">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Text="⧉" FontSize="16" Foreground="White"
                                VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -106,7 +106,7 @@
             <StackPanel Grid.Row="1" Margin="20,18,20,14">
 
                 <!-- Mô tả -->
-                <TextBlock FontSize="13" Foreground="#374151" TextWrapping="Wrap">
+                <TextBlock FontSize="13" Foreground="{DynamicResource AppTextSecondaryBrush}" TextWrapping="Wrap">
                     <Run Text="Tạo bản sao của form " />
                     <Run FontWeight="Bold" Text="{Binding SourceFormCode, Mode=OneWay}" />
                     <Run Text=". Sections, Fields và Events sẽ được nhân bản sang form mới." />
@@ -114,7 +114,7 @@
 
                 <!-- Label -->
                 <TextBlock Margin="0,16,0,4" FontSize="12" FontWeight="SemiBold"
-                           Foreground="#374151" Text="Form_Code mới *" />
+                           Foreground="{DynamicResource AppTextSecondaryBrush}" Text="Form_Code mới *" />
 
                 <!-- Input — dùng DevExpress TextEdit cho nhất quán -->
                 <dxe:TextEdit EditValue="{Binding NewFormCode, UpdateSourceTrigger=PropertyChanged}"
@@ -123,28 +123,28 @@
                               MaxLength="100" />
 
                 <!-- Gợi ý format -->
-                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="#9CA3AF"
+                <TextBlock Margin="0,4,0,0" FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}"
                            Text="Chỉ dùng chữ HOA, số và dấu gạch dưới (A-Z, 0-9, _)." />
 
                 <!-- Validation error -->
-                <Border Margin="0,10,0,0" Background="#FEE2E2" BorderBrush="#FCA5A5"
+                <Border Margin="0,10,0,0" Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}"
                         BorderThickness="1" CornerRadius="4" Padding="10,7"
                         Visibility="{Binding HasValidationError, Converter={StaticResource BoolToVis}}">
                     <TextBlock Text="{Binding ValidationMessage}"
-                               FontSize="12" Foreground="#DC2626" TextWrapping="Wrap" />
+                               FontSize="12" Foreground="{DynamicResource AppDangerBrush}" TextWrapping="Wrap" />
                 </Border>
 
                 <!-- Info box -->
-                <Border Margin="0,10,0,0" Background="#EFF6FF" BorderBrush="#BFDBFE"
+                <Border Margin="0,10,0,0" Background="{DynamicResource AppAccentSoftBrush}" BorderBrush="{DynamicResource AppAccentLightBrush}"
                         BorderThickness="1" CornerRadius="4" Padding="10,7">
-                    <TextBlock FontSize="12" Foreground="#1E40AF"
+                    <TextBlock FontSize="12" Foreground="{DynamicResource AppAccentDarkBrush}"
                                Text="Form mới sẽ có Version = 1 và trạng thái Active." />
                 </Border>
 
             </StackPanel>
 
             <!-- ── Footer ─────────────────────────────────────────── -->
-            <Border Grid.Row="2" Background="#F8FAFC" BorderBrush="#E2E8F0"
+            <Border Grid.Row="2" Background="{DynamicResource AppSurfaceMutedBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
                     BorderThickness="0,1,0,0" Padding="20,10">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="Hủy"

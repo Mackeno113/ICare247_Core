@@ -40,7 +40,7 @@
 
         <!-- Style count badge trong tab header -->
         <Style x:Key="TabBadgeStyle" TargetType="Border">
-            <Setter Property="Background"   Value="#DBEAFE" />
+            <Setter Property="Background"   Value="{DynamicResource AppAccentLightBrush}" />
             <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Padding"      Value="6,1" />
             <Setter Property="Margin"       Value="5,0,0,0" />
@@ -66,13 +66,13 @@
              ROW 0: Error banner — hiện khi HasError=true
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Margin="16,12,16,0" Padding="14,10"
-                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="6"
+                Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1" CornerRadius="6"
                 Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="⚠" FontSize="15" Foreground="#DC2626"
+                <TextBlock Text="⚠" FontSize="15" Foreground="{DynamicResource AppDangerBrush}"
                            VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="{Binding ErrorMessage}" FontSize="13"
-                           Foreground="#DC2626" VerticalAlignment="Center"
+                           Foreground="{DynamicResource AppDangerBrush}" VerticalAlignment="Center"
                            TextWrapping="Wrap" />
             </StackPanel>
         </Border>
@@ -82,7 +82,7 @@
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Margin="16,16,16,0" Padding="16"
                 Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />   <!-- Breadcrumb + toolbar -->
@@ -107,10 +107,10 @@
                                 VerticalAlignment="Center">
                             <Border.Style>
                                 <Style TargetType="Border">
-                                    <Setter Property="Background" Value="#F1F5F9" />
+                                    <Setter Property="Background" Value="{DynamicResource AppPageBackgroundBrush}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                            <Setter Property="Background" Value="#DCFCE7" />
+                                            <Setter Property="Background" Value="{DynamicResource AppSuccessLightBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -119,10 +119,10 @@
                                        Text="{Binding StatusText}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
-                                        <Setter Property="Foreground" Value="#64748B" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsActive}" Value="True">
-                                                <Setter Property="Foreground" Value="#16A34A" />
+                                                <Setter Property="Foreground" Value="{DynamicResource AppSuccessBrush}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -156,7 +156,7 @@
                 </DockPanel>
 
                 <!-- Separator -->
-                <Border Grid.Row="1" Height="1" Background="#E2EAFF" Margin="0,12" />
+                <Border Grid.Row="1" Height="1" Background="{DynamicResource AppAccentSoftBrush}" Margin="0,12" />
 
                 <!-- Metadata grid — 3 cột, mỗi cột có label + value -->
                 <Grid Grid.Row="2">
@@ -213,7 +213,7 @@
              ROW 2: TabControl — Sections | Fields | Events | Rules | Audit Log
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16"
-                BorderBrush="#D0E4FF" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
             <TabControl BorderThickness="0" Background="Transparent">
 
                 <!-- ── TAB: Sections ─────────────────────────────── -->
@@ -223,7 +223,7 @@
                             <TextBlock Text="Sections" Style="{StaticResource TabHeaderStyle}" />
                             <Border Style="{StaticResource TabBadgeStyle}">
                                 <TextBlock Text="{Binding SectionCount}" FontSize="11"
-                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                           Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
@@ -252,7 +252,7 @@
                             <TextBlock Text="Fields" Style="{StaticResource TabHeaderStyle}" />
                             <Border Style="{StaticResource TabBadgeStyle}">
                                 <TextBlock Text="{Binding FieldCount}" FontSize="11"
-                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                           Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
@@ -281,11 +281,11 @@
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text"       Value="○" />
-                                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource AppTextSubtleBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Row.IsVisible}" Value="True">
                                                             <Setter Property="Text"       Value="●" />
-                                                            <Setter Property="Foreground" Value="#16A34A" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource AppSuccessBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -305,11 +305,11 @@
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Text"       Value="○" />
-                                                    <Setter Property="Foreground" Value="#94A3B8" />
+                                                    <Setter Property="Foreground" Value="{DynamicResource AppTextSubtleBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Row.IsReadOnly}" Value="True">
                                                             <Setter Property="Text"       Value="🔒" />
-                                                            <Setter Property="Foreground" Value="#D97706" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource AppWarningBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -329,7 +329,7 @@
                             <TextBlock Text="Events" Style="{StaticResource TabHeaderStyle}" />
                             <Border Style="{StaticResource TabBadgeStyle}">
                                 <TextBlock Text="{Binding EventCount}" FontSize="11"
-                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                           Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
@@ -368,7 +368,7 @@
                             <TextBlock Text="Rules" Style="{StaticResource TabHeaderStyle}" />
                             <Border Style="{StaticResource TabBadgeStyle}">
                                 <TextBlock Text="{Binding RuleCount}" FontSize="11"
-                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                           Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
@@ -406,7 +406,7 @@
                             <TextBlock Text="Audit Log" Style="{StaticResource TabHeaderStyle}" />
                             <Border Style="{StaticResource TabBadgeStyle}">
                                 <TextBlock Text="{Binding AuditCount}" FontSize="11"
-                                           Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                           Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                             </Border>
                         </StackPanel>
                     </TabItem.Header>
@@ -438,10 +438,10 @@
                                                 HorizontalAlignment="Left" VerticalAlignment="Center">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="#FEF3C7" />
+                                                    <Setter Property="Background" Value="{DynamicResource AppWarningSoftBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding Row.ActionType}" Value="INSERT">
-                                                            <Setter Property="Background" Value="#DCFCE7" />
+                                                            <Setter Property="Background" Value="{DynamicResource AppSuccessLightBrush}" />
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -450,10 +450,10 @@
                                                        Text="{Binding Row.ActionType}">
                                                 <TextBlock.Style>
                                                     <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="#92400E" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource AppWarningDarkBrush}" />
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding Row.ActionType}" Value="INSERT">
-                                                                <Setter Property="Foreground" Value="#15803D" />
+                                                                <Setter Property="Foreground" Value="{DynamicResource AppSuccessDarkBrush}" />
                                                             </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>

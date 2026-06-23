@@ -147,7 +147,7 @@
                             <DataTemplate>
                                 <Button Command="{Binding DataContext.DeleteEntryCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                         CommandParameter="{Binding Row}"
-                                        Foreground="#EF4444"
+                                        Foreground="{DynamicResource AppDangerBrush}"
                                         ToolTip="Xóa key" Width="26" Height="26"
                                         Background="Transparent" BorderBrush="Transparent">
                                     <TextBlock Text="🗑" />
@@ -163,7 +163,7 @@
              ROW 2: Status bar
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,6"
-                Background="#EEF5FF" CornerRadius="4">
+                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="🌐" Margin="0,0,6,0" VerticalAlignment="Center" Opacity="0.5" />
                 <TextBlock FontSize="12" Opacity="0.6" VerticalAlignment="Center">

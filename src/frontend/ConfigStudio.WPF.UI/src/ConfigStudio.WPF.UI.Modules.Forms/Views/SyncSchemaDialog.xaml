@@ -7,7 +7,7 @@
              prism:ViewModelLocator.AutoWireViewModel="True"
              Width="620" MinHeight="440" MaxHeight="700"
              mc:Ignorable="d"
-             Background="#F8FAFC">
+             Background="{DynamicResource AppSurfaceMutedBrush}">
 
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
@@ -44,19 +44,19 @@
         <!-- ── Ghost button ──────────────────────────────────── -->
         <Style x:Key="GhostBtnStyle" TargetType="Button" BasedOn="{StaticResource ActionBtnStyle}">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="#475569" />
+            <Setter Property="Foreground" Value="{DynamicResource AppTextSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="Bd" Background="Transparent" CornerRadius="6"
-                                BorderBrush="#CBD5E1" BorderThickness="1"
+                                BorderBrush="{DynamicResource AppBorderStrongBrush}" BorderThickness="1"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#F1F5F9" />
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AppPageBackgroundBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -67,7 +67,7 @@
         <!-- ── Row item (warning/mismatch list) ─────────────── -->
         <Style x:Key="IssueRowStyle" TargetType="Border">
             <Setter Property="Background"      Value="White" />
-            <Setter Property="BorderBrush"     Value="#E2E8F0" />
+            <Setter Property="BorderBrush"     Value="{DynamicResource AppBorderBrush}" />
             <Setter Property="BorderThickness" Value="0,0,0,1" />
             <Setter Property="Padding"         Value="14,10" />
         </Style>
@@ -85,35 +85,35 @@
         <!-- HEADER                                              -->
         <!-- ═══════════════════════════════════════════════════ -->
         <Border Grid.Row="0" Background="White"
-                BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                 Padding="20,16">
             <StackPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Border Background="#FFF7ED" CornerRadius="8" Width="36" Height="36"
+                    <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="8" Width="36" Height="36"
                             Margin="0,0,12,0" VerticalAlignment="Center">
                         <TextBlock Text="🔄" FontSize="18"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <TextBlock Text="Đồng bộ cấu trúc cột DB"
-                                   FontSize="16" FontWeight="SemiBold" Foreground="#0F172A" />
+                                   FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource AppTextStrongBrush}" />
                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                             <!-- Cột cần thêm -->
-                            <Border Background="#EFF6FF" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
+                            <Border Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
                                     Visibility="{Binding AddCount, Converter={StaticResource BoolToVis}}">
-                                <TextBlock FontSize="11" Foreground="#1D4ED8"
+                                <TextBlock FontSize="11" Foreground="{DynamicResource AppAccentDarkBrush}"
                                            Text="{Binding AddCount, StringFormat={}+{0} cột mới}" />
                             </Border>
                             <!-- Field cảnh báo -->
-                            <Border Background="#FEF3C7" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
+                            <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="4" Padding="7,2" Margin="0,0,6,0"
                                     Visibility="{Binding RemoveCount, Converter={StaticResource BoolToVis}}">
-                                <TextBlock FontSize="11" Foreground="#92400E"
+                                <TextBlock FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}"
                                            Text="{Binding RemoveCount, StringFormat={}{0} field mồ côi}" />
                             </Border>
                             <!-- Type mismatch -->
-                            <Border Background="#FEF2F2" CornerRadius="4" Padding="7,2"
+                            <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4" Padding="7,2"
                                     Visibility="{Binding MismatchCount, Converter={StaticResource BoolToVis}}">
-                                <TextBlock FontSize="11" Foreground="#DC2626"
+                                <TextBlock FontSize="11" Foreground="{DynamicResource AppDangerBrush}"
                                            Text="{Binding MismatchCount, StringFormat={}{0} type lỗi}" />
                             </Border>
                         </StackPanel>
@@ -133,10 +133,10 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Có thể thêm" VerticalAlignment="Center" />
-                        <Border Background="#DBEAFE" CornerRadius="10" Padding="6,1"
+                        <Border Background="{DynamicResource AppAccentLightBrush}" CornerRadius="10" Padding="6,1"
                                 Margin="6,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding ColumnsToAdd.Count}"
-                                       FontSize="11" Foreground="#1D4ED8" FontWeight="SemiBold" />
+                                       FontSize="11" Foreground="{DynamicResource AppAccentDarkBrush}" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </TabItem.Header>
@@ -148,12 +148,12 @@
                     </Grid.RowDefinitions>
 
                     <!-- Toolbar: Select All / Deselect All -->
-                    <Border Grid.Row="0" Background="#F8FAFC"
-                            BorderBrush="#E2E8F0" BorderThickness="0,0,0,1"
+                    <Border Grid.Row="0" Background="{DynamicResource AppSurfaceMutedBrush}"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,0,0,1"
                             Padding="14,8">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="Chọn cột cần thêm field:"
-                                       FontSize="12" FontWeight="SemiBold" Foreground="#475569"
+                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}"
                                        VerticalAlignment="Center" Margin="0,0,12,0" />
                             <Button Content="Tất cả" Command="{Binding SelectAllAddCommand}"
                                     Style="{StaticResource GhostBtnStyle}"
@@ -187,21 +187,21 @@
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Column.ColumnName}"
                                                                FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="#1E293B" />
+                                                               Foreground="{DynamicResource AppTextBrush}" />
                                                     <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                                         <TextBlock Text="{Binding Column.DataType}"
-                                                                   FontSize="11" Foreground="#64748B"
+                                                                   FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                                                    FontFamily="Cascadia Code, Consolas" />
-                                                        <TextBlock Text=" · " FontSize="11" Foreground="#CBD5E1" />
+                                                        <TextBlock Text=" · " FontSize="11" Foreground="{DynamicResource AppBorderStrongBrush}" />
                                                         <TextBlock FontSize="11">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
                                                                     <Setter Property="Text"       Value="NOT NULL" />
-                                                                    <Setter Property="Foreground" Value="#64748B" />
+                                                                    <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
                                                                     <Style.Triggers>
                                                                         <DataTrigger Binding="{Binding Column.IsNullable}" Value="True">
                                                                             <Setter Property="Text"       Value="NULL" />
-                                                                            <Setter Property="Foreground" Value="#94A3B8" />
+                                                                            <Setter Property="Foreground" Value="{DynamicResource AppTextSubtleBrush}" />
                                                                         </DataTrigger>
                                                                     </Style.Triggers>
                                                                 </Style>
@@ -215,7 +215,7 @@
                                                         CornerRadius="4" Padding="7,2"
                                                         VerticalAlignment="Center">
                                                     <Border.Background>
-                                                        <SolidColorBrush Color="#E0E7FF" Opacity="0.6" />
+                                                        <SolidColorBrush Color="{DynamicResource AppAccentLightColor}" Opacity="0.6" />
                                                     </Border.Background>
                                                     <TextBlock Text="{Binding Column.DefaultEditorType}"
                                                                FontSize="11" FontWeight="SemiBold"
@@ -236,11 +236,11 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚠ Cảnh báo" VerticalAlignment="Center"
-                                   Foreground="#D97706" />
-                        <Border Background="#FEF3C7" CornerRadius="10" Padding="6,1"
+                                   Foreground="{DynamicResource AppWarningBrush}" />
+                        <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="10" Padding="6,1"
                                 Margin="6,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding OrphanedFields.Count}"
-                                       FontSize="11" Foreground="#92400E" FontWeight="SemiBold" />
+                                       FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </TabItem.Header>
@@ -250,8 +250,8 @@
                         <StackPanel>
                             <!-- Hướng dẫn -->
                             <Border Margin="14,12,14,4" CornerRadius="6" Padding="12,8"
-                                    Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1">
-                                <TextBlock FontSize="12" Foreground="#78350F" TextWrapping="Wrap"
+                                    Background="{DynamicResource AppWarningSoftBrush}" BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap"
                                            Text="Các field sau đang tham chiếu cột không còn tồn tại trong Target DB. Tích chọn để xóa khỏi form." />
                             </Border>
 
@@ -274,20 +274,20 @@
                                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Field.Code}"
                                                                FontSize="13" FontWeight="SemiBold"
-                                                               Foreground="#1E293B" />
+                                                               Foreground="{DynamicResource AppTextBrush}" />
                                                     <TextBlock Margin="0,2,0,0" FontSize="11"
-                                                               Foreground="#94A3B8"
+                                                               Foreground="{DynamicResource AppTextSubtleBrush}"
                                                                Text="{Binding SectionName,
                                                                       StringFormat={}Section: {0}}" />
                                                 </StackPanel>
 
                                                 <!-- Danger badge -->
                                                 <Border Grid.Column="2"
-                                                        Background="#FEE2E2" CornerRadius="4"
+                                                        Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="4"
                                                         Padding="7,2" VerticalAlignment="Center">
                                                     <TextBlock Text="Mồ côi" FontSize="11"
                                                                FontWeight="SemiBold"
-                                                               Foreground="#DC2626" />
+                                                               Foreground="{DynamicResource AppDangerBrush}" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -304,11 +304,11 @@
                 <TabItem.Header>
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Type Mismatch" VerticalAlignment="Center"
-                                   Foreground="#DC2626" />
-                        <Border Background="#FEE2E2" CornerRadius="10" Padding="6,1"
+                                   Foreground="{DynamicResource AppDangerBrush}" />
+                        <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="10" Padding="6,1"
                                 Margin="6,0,0,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding TypeMismatches.Count}"
-                                       FontSize="11" Foreground="#DC2626" FontWeight="SemiBold" />
+                                       FontSize="11" Foreground="{DynamicResource AppDangerBrush}" FontWeight="SemiBold" />
                         </Border>
                     </StackPanel>
                 </TabItem.Header>
@@ -318,8 +318,8 @@
                         <StackPanel>
                             <!-- Hướng dẫn -->
                             <Border Margin="14,12,14,4" CornerRadius="6" Padding="12,8"
-                                    Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1">
-                                <TextBlock FontSize="12" Foreground="#7F1D1D" TextWrapping="Wrap"
+                                    Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource AppDangerDarkBrush}" TextWrapping="Wrap"
                                            Text="Các field sau có EditorType không còn phù hợp với kiểu dữ liệu hiện tại. Vui lòng chỉnh thủ công trong FieldConfig." />
                             </Border>
 
@@ -330,9 +330,9 @@
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Field.Code}"
                                                            FontSize="13" FontWeight="SemiBold"
-                                                           Foreground="#1E293B" />
+                                                           Foreground="{DynamicResource AppTextBrush}" />
                                                 <TextBlock Text="{Binding Description}"
-                                                           FontSize="11" Foreground="#64748B"
+                                                           FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                                            TextWrapping="Wrap"
                                                            Margin="0,4,0,0" />
                                             </StackPanel>
@@ -349,8 +349,8 @@
         <!-- ═══════════════════════════════════════════════════ -->
         <!-- SECTION PICKER (chỉ cho tab "Có thể thêm")         -->
         <!-- ═══════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Background="#F8FAFC"
-                BorderBrush="#E2E8F0" BorderThickness="0,1,0,1"
+        <Border Grid.Row="2" Background="{DynamicResource AppSurfaceMutedBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,1"
                 Padding="20,12"
                 Visibility="{Binding ColumnsToAdd.Count, Converter={StaticResource BoolToVis}}">
             <Grid>
@@ -359,7 +359,7 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="Thêm vào Section:"
-                           FontSize="12" FontWeight="SemiBold" Foreground="#475569"
+                           FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AppTextSecondaryBrush}"
                            VerticalAlignment="Center" Margin="0,0,12,0" />
                 <ComboBox Grid.Column="1"
                           ItemsSource="{Binding AvailableSections}"
@@ -391,7 +391,7 @@
                 <Button Grid.Column="3"
                         Command="{Binding ApplyCommand}"
                         Style="{StaticResource ActionBtnStyle}"
-                        Background="#F59E0B" Foreground="White">
+                        Background="{DynamicResource AppWarningBrush}" Foreground="White">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🔄" VerticalAlignment="Center" Margin="0,0,6,0" />
                         <TextBlock VerticalAlignment="Center">
