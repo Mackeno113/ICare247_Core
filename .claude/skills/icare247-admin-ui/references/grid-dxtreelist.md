@@ -26,7 +26,8 @@ Cấu hình View: `View_Type="TreeList"`, `Key_Field` = khóa, `Parent_Field` = 
 ## Riêng của TreeList
 
 - **Cột FixedPosition:** `DxTreeListDataColumn.FixedPosition` kiểu `TreeListColumnFixedPosition`.
-- **Cuộn dọc giữ header:** `VirtualScrollingEnabled="true"` — **cần đặt chiều cao** cho TreeList qua `CssClass`.
+- **Header LUÔN ghim (bắt buộc):** lưới cây cũng phải ghim tiêu đề như lưới phẳng — đặt `VirtualScrollingEnabled="true"` + **chiều cao giới hạn** cho TreeList qua `CssClass`. Tiêu đề không bao giờ trôi khi cuộn dọc cây. Không ngoại lệ. Xem `.claude-rules/blazor-ui.md` §"BẮT BUỘC — GHIM hàng tiêu đề".
+  - ⚠️ **`ShowAllRows="true"` triệt tiêu ghim header** — nó render hết dòng, KHÔNG sinh vùng cuộn nội bộ nên header nằm trong vùng cuộn và trôi theo. Muốn ghim → dùng **`VirtualScrollingEnabled="true"`** (loại bỏ `ShowAllRows`). Chỉ `height` qua CSS là **chưa đủ** cho TreeList.
 - **Bung/thu node:** `AutoExpandAllNodes` (cây nông → bung sẵn). Cấu hình theo nghiệp vụ.
 - **Filter/Search:** `ShowFilterRow`, `ShowSearchBox` lọc theo node (giữ tổ tiên).
 - Cột Data: `Width`/`MinWidth`, `TextAlignment`, `AllowSort` — như Grid.

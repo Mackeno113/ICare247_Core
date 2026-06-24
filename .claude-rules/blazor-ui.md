@@ -36,18 +36,31 @@ Chỉ khi có nhu cầu rõ ràng (validate tức thời, preview khóa/slug the
 > Lưu ý: giá trị suy-một-lần (vd khóa i18n `_navKey` tính lúc MỞ popup) thì KHÔNG cần
 > live — đừng để nó kéo theo `oninput`.
 
-## Liên quan — chiều cao lưới để GHIM header
+## BẮT BUỘC — GHIM hàng tiêu đề cho MỌI lưới chứa data
 
-`DxGrid`/`DxTreeList` muốn **ghim hàng tiêu đề** khi cuộn: cho component một **chiều cao
-giới hạn** (vd `height: calc(100vh - 220px); min-height: 320px;` qua `CssClass`) → DevExpress
-sinh vùng cuộn nội bộ + header cố định. Không set height → lưới mọc hết cỡ, cả trang cuộn,
-header trôi. Pattern chuẩn: `.dv-dxgrid` (`wwwroot/css/app.css`).
+> **Quy tắc cứng:** **MỌI** lưới chứa dữ liệu — `DxGrid` (phẳng) **và** `DxTreeList` (cây) —
+> **LUÔN** ghim hàng tiêu đề (sticky header) khi cuộn. Tiêu đề **không bao giờ** được trôi
+> đi mất khi người dùng cuộn danh sách. Không có ngoại lệ "lưới ngắn nên thôi".
+
+Cách làm: cho component một **chiều cao giới hạn** (vd `height: calc(100vh - 220px);
+min-height: 320px;` qua `CssClass`) → DevExpress sinh vùng cuộn nội bộ + header cố định.
+Không set height → lưới mọc hết cỡ, cả trang cuộn, header trôi (SAI). Pattern chuẩn:
+`.dv-dxgrid` (`wwwroot/css/app.css`).
+
+- `DxTreeList`: kèm `VirtualScrollingEnabled="true"` để header giữ cố định khi cuộn dọc cây.
+  ⚠️ **`ShowAllRows="true"` triệt tiêu ghim header** (render hết dòng, không sinh vùng cuộn) — bỏ nó, dùng `VirtualScrollingEnabled`.
+- Chiều cao là **baseline component** (`DataView.razor`/`MasterDataGrid.razor`), không cấu hình lại từng màn.
+- ⚠️ **Height phải đặt ở CSS GLOBAL (`wwwroot/css/app.css`), KHÔNG ở `.razor.css` scoped.**
+  CSS isolation không gắn scope `[b-xxx]` lên **root của component con** (`DxGrid`/`DxTreeList`) → rule scoped
+  `.my-grid { height }` thành `.my-grid[b-xxx]` **không khớp** root lưới → height không áp → header trôi.
+  (Các rule `::deep td/th` vẫn chạy vì `::deep` bỏ scope ở con — dễ tưởng nhầm height cũng áp.)
+  Cách đúng: để selector height ở app.css global; hoặc bọc lưới trong 1 div scoped rồi `.wrap ::deep .my-grid { height: 100% }`.
 
 ## Checklist review (Blazor)
 
 - [ ] Không có `@bind:event="oninput"` trên input của trang/popup nặng (trừ khi đã debounce/cô lập).
 - [ ] Input commit-on-change đủ dùng (không cần live từng ký tự).
-- [ ] `DxGrid`/`DxTreeList` cuộn nhiều → đã set height để ghim header.
+- [ ] **MỌI** `DxGrid`/`DxTreeList` (kể cả lưới cây) đã set height → header LUÔN ghim, không trôi khi cuộn (bắt buộc, không ngoại lệ).
 - [ ] Mọi chuỗi UI qua `Loc.L` (xem skill `icare247-admin-ui` + `references/i18n.md`).
 
 ## Tham chiếu

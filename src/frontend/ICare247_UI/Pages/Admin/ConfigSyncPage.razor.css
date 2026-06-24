@@ -119,5 +119,8 @@
 .cfg-badge-preview { color: var(--color-primary); }
 .cfg-badge-fail { color: var(--color-danger); }
 
+/* Chiều cao ghim header đặt ở app.css GLOBAL — CSS isolation không gắn scope lên root DxGrid
+   nên `.cfg-grid { max-height }` scoped sẽ KHÔNG áp. Xem .cfg-grid ở app.css. */
+
 /* Số liệu canh phải dùng tabular-nums cho thẳng cột */
 .cfg-grid ::deep td { font-variant-numeric: tabular-nums; }

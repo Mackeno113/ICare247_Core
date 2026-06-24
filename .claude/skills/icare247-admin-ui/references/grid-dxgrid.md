@@ -39,7 +39,9 @@
 
 ## Định dạng thị giác (theo skill chính)
 
-- Ranh giới = **row-divider 1px nhạt**, KHÔNG vạch dọc từng cột (tránh cảm giác Excel). Header nền chênh 1 bậc, 12–13px/600, sticky. Zebra: KHÔNG (hover là tín hiệu chính). Row ~36–40px.
+- Ranh giới = **row-divider 1px nhạt**, KHÔNG vạch dọc từng cột (tránh cảm giác Excel). Header nền chênh 1 bậc, 12–13px/600. Zebra: KHÔNG (hover là tín hiệu chính). Row ~36–40px.
+- **Header LUÔN ghim (bắt buộc):** mọi lưới chứa data phải set chiều cao giới hạn (qua `CssClass`, vd `.dv-dxgrid`) để DevExpress sinh vùng cuộn nội bộ + tiêu đề cố định. Tiêu đề **không bao giờ** trôi đi khi cuộn — không ngoại lệ. Xem `.claude-rules/blazor-ui.md` §"BẮT BUỘC — GHIM hàng tiêu đề".
+  - ⚠️ **Đặt rule `height` ở CSS GLOBAL (`app.css`), KHÔNG ở `.razor.css` scoped:** CSS isolation không gắn scope `[b-xxx]` lên root `DxGrid` (component con) → `.my-grid { height }` scoped không khớp root, height vô hiệu, header trôi (rule `::deep` vẫn chạy nên dễ tưởng nhầm đã áp).
 - Trạng thái = **badge text-màu**, ≤ 2–3 màu.
 
 ## Verify khi đụng API DevExpress

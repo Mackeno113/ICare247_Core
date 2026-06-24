@@ -13,10 +13,12 @@
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
      && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
 {
+    @* VirtualScrollingEnabled + height ở .dv-treelist → header GHIM khi cuộn cây (bắt buộc mọi lưới data). *@
     <DxTreeList Data="_gridRows"
                 KeyFieldName="@View.KeyField"
                 ParentKeyFieldName="@View.ParentField"
                 ShowFilterRow="View.ShowFilterRow"
+                VirtualScrollingEnabled="true"
                 CssClass="dv-treelist"
                 TextWrapEnabled="true"
                 AllowColumnReorder="true"

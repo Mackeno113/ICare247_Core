@@ -331,6 +331,16 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
    trừ topbar + tiêu đề màn + footer (~220px); min-height giữ dùng được trên màn thấp. */
 .dv-dxgrid { border-radius: 10px; overflow: visible; height: calc(100vh - 220px); min-height: 320px; }
 .dv-dxgrid .dxbl-grid-header-content { font-weight: var(--fw-semibold); color: var(--gray-700); }
+/* Lưới cây metadata-driven: cùng chiều cao giới hạn → DevExpress sinh scroll nội bộ + GHIM
+   hàng tiêu đề khi cuộn (bắt buộc cho mọi lưới data, kể cả tree). Không set height = header trôi. */
+.dv-treelist { border-radius: 10px; height: calc(100vh - 220px); min-height: 320px; }
+/* Lưới danh mục (MasterDataGrid): GHIM tiêu đề như mọi lưới data — giới hạn chiều cao để cuộn nội bộ. */
+.md-dxgrid { border-radius: 10px; height: calc(100vh - 220px); min-height: 320px; }
+/* Cây phân quyền + lưới kết quả đồng bộ cấu hình: ĐẶT Ở ĐÂY (global), KHÔNG ở .razor.css.
+   CSS isolation không gắn scope [b-xxx] lên root DxTreeList/DxGrid (component con) → rule scoped
+   `.perm-tree{height}` không khớp root, height không áp, header trôi. Global thì áp đúng root. */
+.perm-tree { height: calc(100vh - 230px); min-height: 320px; }
+.cfg-grid { max-height: calc(100vh - 320px); min-height: 160px; }
 .md-list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .md-list-footer { margin-top: 12px; }
 /* Nút icon-only (tròn vuông, canh giữa) */

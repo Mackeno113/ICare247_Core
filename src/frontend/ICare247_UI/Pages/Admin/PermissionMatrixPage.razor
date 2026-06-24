@@ -43,8 +43,10 @@ else if (_nodes.Count == 0)
 }
 else
 {
+    @* VirtualScrollingEnabled (thay ShowAllRows) + height ở .perm-tree → DevExpress tách header ra
+       ngoài vùng cuộn = GHIM tiêu đề khi cuộn cây. ShowAllRows render hết dòng, header trôi theo. *@
     <DxTreeList Data="_nodes" KeyFieldName="Id" ParentKeyFieldName="ChaId"
-                AutoExpandAllNodes="true" ShowAllRows="true" HighlightRowOnHover="true"
+                AutoExpandAllNodes="true" VirtualScrollingEnabled="true" HighlightRowOnHover="true"
                 CssClass="perm-tree">
         <Columns>
             <DxTreeListDataColumn Caption="@Loc.L("admin.perm.func", "Chức năng")" FieldName="Ten" />
