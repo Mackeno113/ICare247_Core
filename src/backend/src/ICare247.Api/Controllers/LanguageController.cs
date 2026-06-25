@@ -6,6 +6,7 @@
 
 using ICare247.Application.Features.Languages.GetLanguages;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ICare247.Api.Controllers;
@@ -13,6 +14,7 @@ namespace ICare247.Api.Controllers;
 /// <summary>Danh sách ngôn ngữ hệ thống (Sys_Language).</summary>
 [ApiController]
 [Route("api/v1/languages")]
+[AllowAnonymous] // SEC1-2: danh sách ngôn ngữ là cấu hình hệ thống, đọc cả trước login (bộ chuyển ngôn ngữ màn login)
 public sealed class LanguageController : ControllerBase
 {
     private readonly IMediator _mediator;

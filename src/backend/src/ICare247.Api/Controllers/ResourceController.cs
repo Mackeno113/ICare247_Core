@@ -32,6 +32,7 @@ public sealed class ResourceController : ControllerBase
     /// <param name="lang">Ngôn ngữ resolve (mặc định "vi").</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
+    [AllowAnonymous] // SEC1-2: chuỗi i18n UI tĩnh (nút/nhãn chung) — cần cả trước login, không nhạy cảm
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(
         [FromQuery] string keys = "",
@@ -49,6 +50,7 @@ public sealed class ResourceController : ControllerBase
     /// </summary>
     /// <remarks>GET /api/v1/resources/overlay?lang=en&amp;prefix=nav.</remarks>
     [HttpGet("overlay")]
+    [AllowAnonymous] // SEC1-2: overlay i18n cho LocalizationService — nạp cả trước login (màn login/shell)
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOverlay(
         [FromQuery] string lang = "vi",

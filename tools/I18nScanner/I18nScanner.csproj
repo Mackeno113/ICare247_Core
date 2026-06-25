@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <!-- Roslyn để phân tích .cs (tìm invocation L, phân biệt key literal vs key động) -->
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
 </Project>

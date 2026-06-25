@@ -8,12 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DevExpress.Blazor" Version="25.2.3" />
-    <PackageReference Include="DevExpress.Blazor.Themes" Version="25.2.3" />
-    <PackageReference Include="DevExpress.Blazor.Themes.Fluent" Version="25.2.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.3" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.3" />
+    <PackageReference Include="DevExpress.Blazor" />
+    <PackageReference Include="DevExpress.Blazor.Themes" />
+    <PackageReference Include="DevExpress.Blazor.Themes.Fluent" />
+    <PackageReference Include="HtmlSanitizer" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,14 +24,9 @@
   <!-- #3 i18n: tự chạy I18nScanner trước build (chỉ Debug) để catalog.json + {lang}.json luôn mới.
        Incremental qua Inputs/Outputs → chỉ chạy khi .razor/.cs đổi. ContinueOnError → scanner lỗi
        KHÔNG chặn build. Tắt khi cần: dotnet build -p:I18nScanOnBuild=false -->
-  <Target Name="RunI18nScanner"
-          BeforeTargets="BeforeBuild"
-          Condition="'$(I18nScanOnBuild)' != 'false' and '$(Configuration)' == 'Debug'"
-          Inputs="$(MSBuildProjectDirectory)\**\*.razor;$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\..\ICare247.UI.Shared\**\*.razor;$(MSBuildProjectDirectory)\..\ICare247.UI.Shared\**\*.cs"
-          Outputs="$(MSBuildProjectDirectory)\wwwroot\i18n\catalog.json">
+  <Target Name="RunI18nScanner" BeforeTargets="BeforeBuild" Condition="'$(I18nScanOnBuild)' != 'false' and '$(Configuration)' == 'Debug'" Inputs="$(MSBuildProjectDirectory)\**\*.razor;$(MSBuildProjectDirectory)\**\*.cs;$(MSBuildProjectDirectory)\..\ICare247.UI.Shared\**\*.razor;$(MSBuildProjectDirectory)\..\ICare247.UI.Shared\**\*.cs" Outputs="$(MSBuildProjectDirectory)\wwwroot\i18n\catalog.json">
     <Message Importance="high" Text="i18n: quét catalog (I18nScanner)…" />
-    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\..\..\tools\I18nScanner\I18nScanner.csproj&quot; -c Debug -- --write"
-          ContinueOnError="true" />
+    <Exec Command="dotnet run --project &quot;$(MSBuildThisFileDirectory)..\..\..\tools\I18nScanner\I18nScanner.csproj&quot; -c Debug -- --write" ContinueOnError="true" />
   </Target>
 
 </Project>

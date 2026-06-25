@@ -1,0 +1,88 @@
+<!-- Central Package Management (CPM) — version mọi NuGet package quản tập trung tại đây.
+     PackageReference trong từng .csproj KHÔNG còn ghi Version. Thêm/đổi version package = sửa file này.
+     Xung đột version đã hợp nhất: Microsoft.Data.SqlClient→6.1.4, Serilog.Sinks.File→7.0.0. -->
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Cho phép giữ floating version (vd 11.*) — nhiều package vốn khai báo dạng này có chủ đích. -->
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
+    <!-- Cho phép ép version package TRANSITIVE qua PackageVersion (vá lỗ hổng dependency gián tiếp). -->
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Data / SQL -->
+    <PackageVersion Include="Dapper" Version="2.1.66" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.11.8" />
+    <PackageVersion Include="dbup-sqlserver" Version="5.0.37" />
+
+    <!-- Auth / Security -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.*" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.0" />
+    <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.0.2" />
+    <!-- 9.0.892 = bản vá GHSA-j92c-7v7g-gj3f (vuln < 9.0.892) + còn netstandard2.0 (WASM-compatible; 9.1.x bỏ netstandard). -->
+    <PackageVersion Include="HtmlSanitizer" Version="9.0.892" />
+
+    <!-- API / Web -->
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.13" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.*" />
+    <PackageVersion Include="MediatR" Version="12.*" />
+    <PackageVersion Include="FluentValidation" Version="11.*" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.*" />
+
+    <!-- Microsoft.Extensions / runtime -->
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.3" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+
+    <!-- Logging / Observability -->
+    <PackageVersion Include="Serilog" Version="4.*" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.*" />
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
+    <!-- SEC5-2: transitive pin vá lỗ hổng (GHSA). -->
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
+
+    <!-- Roslyn / Reflection (tooling) -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageVersion Include="System.Reflection.MetadataLoadContext" Version="9.0.0" />
+
+    <!-- Blazor WASM (frontend web) -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="9.0.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="9.0.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="9.0.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.3" />
+
+    <!-- DevExpress Blazor -->
+    <PackageVersion Include="DevExpress.Blazor" Version="25.2.3" />
+    <PackageVersion Include="DevExpress.Blazor.Themes" Version="25.2.3" />
+    <PackageVersion Include="DevExpress.Blazor.Themes.Fluent" Version="25.2.3" />
+
+    <!-- WPF ConfigStudio (DevExpress WPF + Prism) -->
+    <PackageVersion Include="DevExpress.Wpf.Controls" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.Core" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.Grid" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.LayoutControl" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.NavBar" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.PrismAdapters" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.Themes.Office2019Colorful" Version="25.2.4" />
+    <PackageVersion Include="Prism.Core" Version="9.*" />
+    <PackageVersion Include="Prism.Unity" Version="9.*" />
+    <PackageVersion Include="Prism.Wpf" Version="9.*" />
+
+    <!-- Test -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.*" />
+    <PackageVersion Include="xunit" Version="2.*" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.*" />
+  </ItemGroup>
+
+</Project>

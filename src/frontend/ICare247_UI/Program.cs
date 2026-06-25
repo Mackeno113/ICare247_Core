@@ -8,6 +8,7 @@ using ICare247_UI;
 using ICare247_UI.Models;
 using ICare247_UI.Services;
 using ICare247.UI.Shared;
+using ICare247.UI.Shared.Services.Auth;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -27,10 +28,30 @@ builder.Services.AddSingleton(apiSettings);
 
 // ── HttpClient — gọi backend API ──────────────────────────────────────────
 // BaseAddress = URL API backend (không phải URL của Blazor app)
+
+// SEC2-2: TokenRefresher dùng HttpClient RIÊNG (bare, KHÔNG gắn RefreshTokenHandler) → tránh đệ quy
+// khi /auth/refresh được gọi từ trong handler 401.
 builder.Services.AddScoped(sp =>
 {
     var settings = sp.GetRequiredService<ApiSettings>();
-    var client = new HttpClient
+    var bare = new HttpClient { BaseAddress = new Uri(settings.BaseUrl) };
+    bare.DefaultRequestHeaders.Add("X-Tenant-Id", settings.TenantId.ToString());
+    return new TokenRefresher(bare,
+        sp.GetRequiredService<TokenStore>(),
+        sp.GetRequiredService<JwtAuthenticationStateProvider>());
+});
+
+// HttpClient chính: gắn RefreshTokenHandler (tự đính Bearer từ TokenStore + 401→refresh→retry).
+builder.Services.AddScoped(sp =>
+{
+    var settings = sp.GetRequiredService<ApiSettings>();
+    var handler = new RefreshTokenHandler(
+        sp.GetRequiredService<TokenStore>(),
+        sp.GetRequiredService<TokenRefresher>())
+    {
+        InnerHandler = new HttpClientHandler()
+    };
+    var client = new HttpClient(handler)
     {
         BaseAddress = new Uri(settings.BaseUrl)
     };

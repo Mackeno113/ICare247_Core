@@ -15,6 +15,7 @@ using ICare247.Api.Authorization;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ICare247.Api.Controllers;
@@ -44,6 +45,7 @@ public sealed class FormController : ControllerBase
     /// Lấy danh sách form có phân trang và filter.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: quản lý cấu hình form = việc builder → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList(
         [FromQuery] string? platform = null,
@@ -93,6 +95,7 @@ public sealed class FormController : ControllerBase
     /// Lấy audit log của form theo Form_Id.
     /// </summary>
     [HttpGet("{code}/audit")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: audit log cấu hình form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAuditLog(
@@ -125,6 +128,7 @@ public sealed class FormController : ControllerBase
     /// Tạo form mới.
     /// </summary>
     [HttpPost]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: tạo định nghĩa form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create(
@@ -149,6 +153,7 @@ public sealed class FormController : ControllerBase
     /// Cập nhật form theo Form_Code.
     /// </summary>
     [HttpPut("{code}")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: sửa định nghĩa form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(
@@ -169,6 +174,7 @@ public sealed class FormController : ControllerBase
     /// Vô hiệu hóa form (soft delete).
     /// </summary>
     [HttpPost("{code}/deactivate")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: vô hiệu hóa form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Deactivate(string code, CancellationToken ct = default)
@@ -182,6 +188,7 @@ public sealed class FormController : ControllerBase
     /// Khôi phục form đã bị vô hiệu hóa.
     /// </summary>
     [HttpPost("{code}/restore")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: khôi phục form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Restore(string code, CancellationToken ct = default)
@@ -195,6 +202,7 @@ public sealed class FormController : ControllerBase
     /// Nhân bản form sang Form_Code mới.
     /// </summary>
     [HttpPost("{code}/clone")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: nhân bản định nghĩa form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -223,6 +231,7 @@ public sealed class FormController : ControllerBase
     /// và cache lại với dữ liệu mới nhất.
     /// </remarks>
     [HttpPost("{code}/invalidate-cache")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: xóa cache cấu hình form → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> InvalidateCache(string code)
     {

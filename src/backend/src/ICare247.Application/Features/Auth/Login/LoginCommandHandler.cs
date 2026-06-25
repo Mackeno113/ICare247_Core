@@ -133,7 +133,7 @@ public sealed class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResu
             user.CongTyMacDinh_Id, roles, user.DoiMatKhauLanSau);
 
         return new AuthResult(AuthStatus.Success, access.Token, refresh.Token,
-            access.ExpiresInSeconds, info);
+            access.ExpiresInSeconds, info, RefreshExpiresAtUtc: refreshExpiry);
     }
 
     /// <summary>Ghi nhật ký 1 lần đăng nhập (non-blocking). Username luôn lấy từ input để truy vết.</summary>

@@ -1,18 +1,18 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-23 22:51_
+_Sinh tự động: 2026-06-25 11:47_
 
 ## 1. Chuỗi tiếng Việt hardcode (23) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:66` — "— Chọn —"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:69` — "Không có dữ liệu."
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:215` — "Tổng quan"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:232` — "Công cụ (Dev)"
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:233` — "Tra cứu i18n"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:113` — "Thêm"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:114` — "Sửa"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Xóa"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:173` — "Tổng quan"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:190` — "Công cụ (Dev)"
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:191` — "Tra cứu i18n"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Thêm"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:116` — "Sửa"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:117` — "Xóa"
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:62` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:79` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/FormApiService.cs:134` — "HTTP {(int)response.StatusCode} — body rỗng"
@@ -28,27 +28,22 @@ _Sinh tự động: 2026-06-23 22:51_
 - `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorHelper.cs:54` — "{message} (Mã lỗi: {code})"
 - `src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs:67` — "Tiếng Việt"
 
-## 2. L() key dựng động (23) — chỉ runtime (phương án A) lấy được
+## 2. L() key dựng động (18) — chỉ runtime (phương án A) lấy được
 
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:10`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:37`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:45`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:55`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:57`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:67`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:69`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:79`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:81`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:94`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:96`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:252`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:254`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:257`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:260`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:263`
-- `src/frontend/ICare247_UI/Layout/NavMenu.razor:271`
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:78`
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:109`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:12`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:39`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:47`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:62`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:64`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:203`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:205`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:224`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:226`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:243`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:256`
+- `src/frontend/ICare247_UI/Layout/NavMenu.razor:259`
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:80`
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:111`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:5`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:23`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:37`

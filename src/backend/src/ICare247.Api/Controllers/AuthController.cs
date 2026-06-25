@@ -13,6 +13,8 @@ using ICare247.Application.Interfaces;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 namespace ICare247.Api.Controllers;
@@ -20,15 +22,30 @@ namespace ICare247.Api.Controllers;
 /// <summary>
 /// Xác thực người dùng. Tenant lấy qua TenantMiddleware (subdomain hoặc header X-Tenant-Id).
 /// Tài khoản đọc từ HT_NguoiDung trong Data DB của tenant.
+/// SEC2-1: refresh token đặt trong cookie HttpOnly (không trả JSON, JS không đọc được).
+/// [AllowAnonymous] gắn TỪNG endpoint công khai — riêng logout-all yêu cầu đăng nhập (FallbackPolicy).
 /// </summary>
 [ApiController]
 [Route("api/v1/auth")]
-[AllowAnonymous]
+[EnableRateLimiting("auth")] // SEC3-3: chặt cho /auth/* — chống brute-force/credential-stuffing
 public sealed class AuthController : ControllerBase
 {
+    /// <summary>Tên cookie chứa refresh token.</summary>
+    private const string RefreshCookieName = "ic247.rt";
+
+    /// <summary>Path giới hạn cookie — chỉ gửi cho các endpoint /api/v1/auth.</summary>
+    private const string RefreshCookiePath = "/api/v1/auth";
+
     private readonly IMediator _mediator;
 
-    public AuthController(IMediator mediator) => _mediator = mediator;
+    /// <summary>Domain cookie refresh — rỗng/null = host-only (đúng cho localhost + prod 1-host API). Cấu hình prod qua Auth:RefreshCookie:Domain.</summary>
+    private readonly string? _refreshCookieDomain;
+
+    public AuthController(IMediator mediator, IConfiguration config)
+    {
+        _mediator = mediator;
+        _refreshCookieDomain = config["Auth:RefreshCookie:Domain"];
+    }
 
     /// <summary>
     /// Đăng nhập bằng tên đăng nhập + mật khẩu.
@@ -36,35 +53,65 @@ public sealed class AuthController : ControllerBase
     /// <remarks>
     /// POST /api/v1/auth/login (header X-Tenant-Id)
     /// Body: { "username": "admin", "password": "...", "rememberMe": true }
-    /// 200: { accessToken, refreshToken, tokenType, expiresIn, user{...} }
+    /// 200: { accessToken, tokenType, expiresIn, user{...} } — refresh token đặt trong cookie HttpOnly.
     /// </remarks>
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest body, CancellationToken ct)
     {
         var cmd = new LoginCommand(
             body.Username ?? "", body.Password ?? "", GetTenantId(),
             body.RememberMe, GetClientIp(), GetUserAgent());
         var result = await _mediator.Send(cmd, ct);
-        return result.Status == AuthStatus.Success ? Ok(ToTokenResponse(result)) : MapFailure(result);
+        if (result.Status != AuthStatus.Success) return MapFailure(result);
+
+        SetRefreshCookie(result.RefreshToken!, result.RefreshExpiresAtUtc);
+        return Ok(ToTokenResponse(result));
     }
 
-    /// <summary>Làm mới cặp token từ refresh token còn hiệu lực (rotate).</summary>
-    /// <remarks>POST /api/v1/auth/refresh — Body: { "refreshToken": "..." }</remarks>
+    /// <summary>Làm mới cặp token từ refresh token trong cookie HttpOnly (rotate).</summary>
+    /// <remarks>POST /api/v1/auth/refresh — refresh token đọc TỪ COOKIE (không nhận body).</remarks>
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] RefreshRequest body, CancellationToken ct)
+    [AllowAnonymous]
+    public async Task<IActionResult> Refresh(CancellationToken ct)
     {
-        var cmd = new RefreshTokenCommand(body.RefreshToken ?? "", GetTenantId(), GetClientIp(), GetUserAgent());
+        var rt = Request.Cookies[RefreshCookieName] ?? "";
+        var cmd = new RefreshTokenCommand(rt, GetTenantId(), GetClientIp(), GetUserAgent());
         var result = await _mediator.Send(cmd, ct);
-        return result.Status == AuthStatus.Success ? Ok(ToTokenResponse(result)) : MapFailure(result);
+        if (result.Status != AuthStatus.Success)
+        {
+            ClearRefreshCookie(); // refresh hỏng/hết hạn/đã thu hồi → dọn cookie
+            return MapFailure(result);
+        }
+
+        SetRefreshCookie(result.RefreshToken!, result.RefreshExpiresAtUtc);
+        return Ok(ToTokenResponse(result));
     }
 
-    /// <summary>Đăng xuất — thu hồi refresh token của phiên.</summary>
-    /// <remarks>POST /api/v1/auth/logout — Body: { "refreshToken": "..." }</remarks>
+    /// <summary>Đăng xuất phiên hiện tại — thu hồi refresh token (đọc từ cookie) + xóa cookie.</summary>
+    /// <remarks>POST /api/v1/auth/logout — refresh token đọc TỪ COOKIE.</remarks>
     [HttpPost("logout")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Logout([FromBody] RefreshRequest body, CancellationToken ct)
+    public async Task<IActionResult> Logout(CancellationToken ct)
     {
-        await _mediator.Send(new LogoutCommand(body.RefreshToken, GetTenantId()), ct);
+        var rt = Request.Cookies[RefreshCookieName];
+        await _mediator.Send(new LogoutCommand(rt, GetTenantId()), ct);
+        ClearRefreshCookie();
+        return NoContent();
+    }
+
+    /// <summary>SEC2-3: Đăng xuất MỌI thiết bị — thu hồi toàn bộ refresh token của user hiện tại + xóa cookie.</summary>
+    /// <remarks>POST /api/v1/auth/logout-all — YÊU CẦU đăng nhập (lấy user từ token).</remarks>
+    [HttpPost("logout-all")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> LogoutAll(CancellationToken ct)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        await _mediator.Send(new LogoutAllCommand(userId.Value, GetTenantId()), ct);
+        ClearRefreshCookie();
         return NoContent();
     }
 
@@ -73,6 +120,7 @@ public sealed class AuthController : ControllerBase
     /// </summary>
     /// <remarks>POST /api/v1/auth/forgot-password — Body: { "usernameOrEmail": "..." }</remarks>
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest body, CancellationToken ct)
     {
         await _mediator.Send(new ForgotPasswordCommand(body.UsernameOrEmail ?? "", GetTenantId()), ct);
@@ -82,6 +130,7 @@ public sealed class AuthController : ControllerBase
     /// <summary>Đặt lại mật khẩu bằng token (STUB — chưa hỗ trợ).</summary>
     /// <remarks>POST /api/v1/auth/reset-password — Body: { "token": "...", "newPassword": "..." }</remarks>
     [HttpPost("reset-password")]
+    [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest body, CancellationToken ct)
     {
         var ok = await _mediator.Send(
@@ -126,11 +175,41 @@ public sealed class AuthController : ControllerBase
         Detail = detail
     });
 
-    /// <summary>Tạo payload token trả client (camelCase qua JSON options mặc định).</summary>
+    // ── Refresh cookie (SEC2-1) ────────────────────────────────────────────────
+
+    /// <summary>Đặt refresh token vào cookie HttpOnly. Sự kiện theo sau: trình duyệt giữ cookie, JS không đọc được.</summary>
+    private void SetRefreshCookie(string refreshToken, DateTime? expiresAtUtc)
+        => Response.Cookies.Append(RefreshCookieName, refreshToken, BuildCookieOptions(expiresAtUtc));
+
+    /// <summary>Xóa refresh cookie (đăng xuất). Options phải khớp lúc set để trình duyệt xóa đúng.</summary>
+    private void ClearRefreshCookie()
+        => Response.Cookies.Delete(RefreshCookieName, BuildCookieOptions(expiresAtUtc: null));
+
+    /// <summary>
+    /// Options cookie refresh: HttpOnly (chặn JS) + Secure (chỉ HTTPS) + SameSite=Lax (app &amp; API
+    /// cùng site: subdomain hoặc khác port localhost) + Path giới hạn /api/v1/auth.
+    /// </summary>
+    private CookieOptions BuildCookieOptions(DateTime? expiresAtUtc) => new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        SameSite = SameSiteMode.Lax,
+        Path = RefreshCookiePath,
+        Domain = string.IsNullOrWhiteSpace(_refreshCookieDomain) ? null : _refreshCookieDomain,
+        Expires = expiresAtUtc is { } e ? new DateTimeOffset(e, TimeSpan.Zero) : null
+    };
+
+    /// <summary>UserId từ claim (sub / NameIdentifier) — null nếu chưa xác thực.</summary>
+    private long? GetUserId()
+    {
+        var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
+        return long.TryParse(raw, out var id) ? id : null;
+    }
+
+    /// <summary>Tạo payload token trả client. SEC2-1: KHÔNG trả refreshToken (đã đặt trong cookie HttpOnly).</summary>
     private static object ToTokenResponse(AuthResult r) => new
     {
         accessToken = r.AccessToken,
-        refreshToken = r.RefreshToken,
         tokenType = "Bearer",
         expiresIn = r.ExpiresInSeconds,
         user = r.User is null ? null : new

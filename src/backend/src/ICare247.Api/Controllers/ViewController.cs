@@ -49,6 +49,7 @@ public sealed class ViewController : ControllerBase
     /// <param name="pageSize">Số dòng mỗi trang.</param>
     /// <param name="ct">Cancellation token.</param>
     [HttpGet]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: listing quản trị view (cấu hình) → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList(
         [FromQuery] string lang = "vi",
@@ -198,6 +199,7 @@ public sealed class ViewController : ControllerBase
     /// </summary>
     /// <param name="code">Ui_View.View_Code cần invalidate.</param>
     [HttpPost("{code}/invalidate-cache")]
+    [Authorize(Roles = "SUPERADMIN")] // SEC1-4: xóa cache cấu hình view → chỉ SUPERADMIN
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> InvalidateCache(string code)
     {

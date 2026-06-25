@@ -71,7 +71,8 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
 
         var access = _jwt.CreateAccessToken(subject);
         var newRefresh = _jwt.CreateRefreshToken();
-        await _refresh.InsertAsync(user.Id, newRefresh.TokenHash, now.AddDays(RefreshDays),
+        var newRefreshExpiry = now.AddDays(RefreshDays);
+        await _refresh.InsertAsync(user.Id, newRefresh.TokenHash, newRefreshExpiry,
             request.IpAddress, request.Device, ct);
 
         _logger.LogInformation("Làm mới token — UserId={UserId}", user.Id);
@@ -91,6 +92,6 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
             user.CongTyMacDinh_Id, roles, user.DoiMatKhauLanSau);
 
         return new AuthResult(AuthStatus.Success, access.Token, newRefresh.Token,
-            access.ExpiresInSeconds, info);
+            access.ExpiresInSeconds, info, RefreshExpiresAtUtc: newRefreshExpiry);
     }
 }

@@ -4,6 +4,7 @@
 
 @using System.Globalization
 @using System.Dynamic
+@using Ganss.Xss
 @using ICare247_UI.Services
 @inject NavigationManager Navigation
 @inject GridLayoutService Layouts
@@ -392,23 +393,39 @@ else
                     builder.AddContent(2, on ? "✓" : "");
                     break;
                 case "html":
-                    builder.AddContent(3, (MarkupString)(value.ToString() ?? ""));
+                    // SEC4-3: sanitize HTML trước khi render (bỏ <script>/on*/javascript: …) → chống stored-XSS
+                    builder.AddContent(3, (MarkupString)_htmlSanitizer.Sanitize(value.ToString() ?? ""));
                     break;
                 case "image":
-                    builder.OpenElement(4, "img");
-                    builder.AddAttribute(5, "src", value.ToString());
-                    builder.AddAttribute(6, "class", "dv-cell-img");
-                    builder.AddAttribute(7, "alt", col.FieldName);
-                    builder.CloseElement();
+                    var imgSrc = value.ToString() ?? "";
+                    if (IsSafeUrl(imgSrc))
+                    {
+                        builder.OpenElement(4, "img");
+                        builder.AddAttribute(5, "src", imgSrc);
+                        builder.AddAttribute(6, "class", "dv-cell-img");
+                        builder.AddAttribute(7, "alt", col.FieldName);
+                        builder.CloseElement();
+                    }
+                    else
+                    {
+                        builder.AddContent(4, imgSrc); // src không an toàn → hiện text, không render <img>
+                    }
                     break;
                 case "link":
                     var href = value.ToString() ?? "";
-                    builder.OpenElement(8, "a");
-                    builder.AddAttribute(9, "href", href);
-                    builder.AddAttribute(10, "target", "_blank");
-                    builder.AddAttribute(11, "rel", "noopener");
-                    builder.AddContent(12, href);
-                    builder.CloseElement();
+                    if (IsSafeUrl(href))
+                    {
+                        builder.OpenElement(8, "a");
+                        builder.AddAttribute(9, "href", href);
+                        builder.AddAttribute(10, "target", "_blank");
+                        builder.AddAttribute(11, "rel", "noopener");
+                        builder.AddContent(12, href);
+                        builder.CloseElement();
+                    }
+                    else
+                    {
+                        builder.AddContent(8, href); // SEC4-2: href không an toàn (vd javascript:) → render text thường
+                    }
                     break;
                 case "badge":
                     builder.OpenElement(13, "span");
@@ -625,6 +642,29 @@ else
         public string? Field { get; set; }
         public string? Op { get; set; }
         public System.Text.Json.JsonElement Value { get; set; }
+    }
+
+    /// <summary>
+    /// SEC4-3: sanitizer dùng chung cho cột renderMode "html" — cấu hình mặc định Ganss.Xss
+    /// (giữ tag/attr an toàn, loại <c>&lt;script&gt;</c>, handler <c>on*</c>, URL <c>javascript:</c>…).
+    /// Tái dùng 1 instance (Sanitize thread-safe; WASM đơn luồng).
+    /// </summary>
+    private static readonly HtmlSanitizer _htmlSanitizer = new();
+
+    /// <summary>
+    /// SEC4-2: chỉ cho phép URL an toàn cho cột link/image — chặn scheme thực thi mã
+    /// (<c>javascript:</c>, <c>data:</c>, <c>vbscript:</c>). Cho phép tương đối + http(s)/mailto/tel.
+    /// </summary>
+    private static bool IsSafeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return false;
+        var u = url.TrimStart();
+        if (u.StartsWith('/') || u.StartsWith('#') || u.StartsWith('?') || u.StartsWith('.'))
+            return true; // đường dẫn tương đối
+        return u.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || u.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || u.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
+            || u.StartsWith("tel:", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FormatValue(object value, string? fmt)

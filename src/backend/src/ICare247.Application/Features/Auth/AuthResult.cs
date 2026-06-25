@@ -55,13 +55,15 @@ public sealed record AuthUserInfo(
 /// <param name="ExpiresInSeconds">Số giây access token còn hiệu lực.</param>
 /// <param name="User">Thông tin người dùng (null nếu thất bại).</param>
 /// <param name="LockUntilUtc">Thời điểm hết khóa (UTC) khi Status = Locked.</param>
+/// <param name="RefreshExpiresAtUtc">Hạn refresh token (UTC) — controller dùng đặt thời hạn cookie HttpOnly (SEC2-1).</param>
 public sealed record AuthResult(
     AuthStatus Status,
     string? AccessToken = null,
     string? RefreshToken = null,
     int ExpiresInSeconds = 0,
     AuthUserInfo? User = null,
-    DateTime? LockUntilUtc = null)
+    DateTime? LockUntilUtc = null,
+    DateTime? RefreshExpiresAtUtc = null)
 {
     /// <summary>Tạo kết quả thất bại chỉ gồm trạng thái.</summary>
     public static AuthResult Fail(AuthStatus status, DateTime? lockUntilUtc = null)

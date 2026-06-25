@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23 22:51:14",
+  "generatedAt": "2026-06-25 11:47:48",
   "source": "ICare247_UI",
   "count": 318,
   "entries": [
@@ -1195,7 +1195,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 56
+          "line": 58
         }
       ]
     },
@@ -1217,7 +1217,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 50
+          "line": 52
         }
       ]
     },
@@ -1908,11 +1908,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
-          "line": 25
+          "line": 27
         },
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
-          "line": 26
+          "line": 28
         },
         {
           "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
@@ -2008,7 +2008,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 132
+          "line": 135
         }
       ]
     },
@@ -2023,7 +2023,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 127
+          "line": 130
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -2341,7 +2341,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 121
+          "line": 124
         }
       ]
     },
@@ -2352,7 +2352,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 89
+          "line": 92
         }
       ]
     },
@@ -3549,7 +3549,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
-          "line": 103
+          "line": 71
         }
       ]
     },
@@ -3560,11 +3560,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
-          "line": 19
+          "line": 21
         },
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
-          "line": 20
+          "line": 22
         }
       ]
     },

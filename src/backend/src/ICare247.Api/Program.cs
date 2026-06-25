@@ -4,6 +4,7 @@
 // Purpose : Composition root — khởi tạo host, đăng ký DI, cấu hình middleware pipeline.
 
 using System.Text;
+using System.Threading.RateLimiting;
 using ICare247.Api;
 using Microsoft.AspNetCore.DataProtection;
 using ICare247.Api.Middleware;
@@ -11,6 +12,7 @@ using ICare247.Application;
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 using Serilog;
@@ -139,7 +141,16 @@ try
             }
         });
 
-    builder.Services.AddAuthorization();
+    // SEC1-1 (spec 20): Deny-by-default — mọi endpoint YÊU CẦU đã xác thực, trừ endpoint gắn
+    // [AllowAnonymous] tường minh. Vá lỗ hổng "quên gắn attribute = mở" (trước đây
+    // LookupController/FormController-config/View list không có filter quyền nào → gọi được vô danh).
+    // Phân quyền chi tiết vẫn do [RequirePermission]/[RequirePermissionForTarget] đảm nhiệm (defense in depth).
+    builder.Services.AddAuthorization(options =>
+    {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
 
     // ── DataProtection — keyring chia sẻ cho scale-out nhiều IIS (ADR-021) ──────
     // Khi tách site (app/web/từng module = IIS riêng) hoặc ≥2 instance API, MỌI node
@@ -195,6 +206,51 @@ try
     // ── Health Checks ────────────────────────────────────────────────────────
     builder.Services.AddHealthChecks();
 
+    // ── SEC3-3 (spec 20): Rate limiting ────────────────────────────────────────
+    // Global per-IP (rộng tay — app WASM gọi nhiều request lúc tải, tránh chặn nhầm UX) +
+    // policy "auth" chặt cho /auth/* (chống brute-force/credential-stuffing; bổ trợ lockout 5 lần).
+    // TODO(prod): sau reverse proxy, partition theo IP thật cần UseForwardedHeaders; tinh chỉnh ngưỡng.
+    builder.Services.AddRateLimiter(options =>
+    {
+        options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        {
+            var path = ctx.Request.Path.Value ?? string.Empty;
+            if (path.StartsWith("/health", StringComparison.OrdinalIgnoreCase))
+                return RateLimitPartition.GetNoLimiter("health");
+
+            var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 200,
+                Window = TimeSpan.FromSeconds(10),
+                QueueLimit = 0
+            });
+        });
+
+        options.AddPolicy("auth", ctx =>
+        {
+            var ip = ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            return RateLimitPartition.GetFixedWindowLimiter("auth:" + ip, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+        });
+
+        options.OnRejected = async (context, token) =>
+        {
+            context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            context.HttpContext.Response.ContentType = "application/problem+json";
+            if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                context.HttpContext.Response.Headers.RetryAfter =
+                    ((int)retryAfter.TotalSeconds).ToString();
+            await context.HttpContext.Response.WriteAsync(
+                "{\"type\":\"https://icare247.vn/errors/rate-limit\",\"title\":\"Quá nhiều yêu cầu\"," +
+                "\"status\":429,\"detail\":\"Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.\"}", token);
+        };
+    });
+
     // ────────────────────────────────────────────────────────────────────────
     var app = builder.Build();
 
@@ -206,6 +262,9 @@ try
 
     // 1. Exception handling — phải đầu tiên để catch tất cả
     app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    // 1b. SEC3-1: security header cho MỌI response (kể cả lỗi) — đặt ngay sau exception handling.
+    app.UseMiddleware<SecurityHeadersMiddleware>();
 
     // 2. Correlation-Id — generate/extract trước khi log
     app.UseMiddleware<CorrelationMiddleware>();
@@ -220,24 +279,36 @@ try
         };
     });
 
-    // 4. Dev-only: OpenAPI + Scalar UI
+    // 4. Dev-only: OpenAPI + Scalar UI (AllowAnonymous — công cụ dev, không khóa sau FallbackPolicy SEC1-1)
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference();
+        app.MapOpenApi().AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
 
-    // 5. Health check endpoint
-    app.MapHealthChecks("/health");
+    // 5. Health check endpoint (AllowAnonymous — cho monitoring/probe gọi không cần token)
+    app.MapHealthChecks("/health").AllowAnonymous();
+
+    // SEC3-2: HSTS chỉ ở môi trường ngoài Development (HSTS qua localhost http vô nghĩa).
+    if (!app.Environment.IsDevelopment())
+        app.UseHsts();
 
     app.UseHttpsRedirection();
     app.UseCors();
+
+    // SEC3-3: rate limiting — đặt sớm để chặn trước khi tốn công xử lý.
+    app.UseRateLimiter();
 
     // 6. Tenant extraction — sau CORS, trước Auth
     app.UseMiddleware<TenantMiddleware>();
 
     // 7. Auth
     app.UseAuthentication();
+
+    // 7b. SEC1-3: so khớp claim tenant (token) vs tenant đã phân giải (subdomain/header) → chống nhảy tenant.
+    //     Đặt sau UseAuthentication (cần User claim) + sau TenantMiddleware (cần TenantContext).
+    app.UseMiddleware<TenantClaimGuardMiddleware>();
+
     app.UseAuthorization();
 
     // 8. Controllers
