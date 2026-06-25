@@ -1,5 +1,41 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-25 (session 62 — F1/CFGSYNC-2: mở rộng descriptor phủ trọn §2 + nâng engine khóa ghép/không-Id)
+
+## Session 62 (2026-06-25) — đã làm (ĐÃ CODE; build Infrastructure 0/0)
+
+> User chốt "làm tiếp F1" → mở rộng `ConfigSyncTables.Order` từ vertical-slice 5 bảng lên **phủ trọn §2 (12 bảng)**.
+> Qua hỏi-đáp user chốt: **cả 7 bảng còn lại** + **nâng engine bằng `LocalKeyColumns` (generic)**.
+
+- **Nâng engine ConfigSync** (Infrastructure):
+  - `ConfigTableDescriptor`: `IdColumn` → **nullable** (bảng không có Id int identity); thêm `LocalKeyColumns`
+    (khóa ghép nhiều cột) + `KeyColumns` (ưu tiên list, fallback `LocalKeyColumn` đơn — tương thích descriptor cũ).
+  - `ConfigSyncService`: helper `BuildLocalCode` ghép cột khóa; `BuildKey` nhận local dựng sẵn; guard map Id chỉ khi
+    `IdColumn != null`; `InsertRowAsync` nhánh **không-Id** (INSERT thuần, không OUTPUT, trả 0); `UpdateRowAsync` WHERE
+    theo **khóa nghiệp vụ** khi không-Id (loại cột khóa khỏi SET, guard SET rỗng); `ReadTenantRowsAsync` đọc đủ cột khóa
+    ghép + guard Id null.
+- **+9 descriptor** → tổng **14 bảng** (đúng thứ tự phụ thuộc): `Ui_Tab` (cha Ui_Form) · `Val_Rule` (cha Ui_Field,
+  khóa `Error_Key` unique toàn cục) · `Ui_Field_Lookup` (con 1-1 Ui_Field, **khóa CHỈ theo cha** — KeyColumns rỗng) ·
+  `Sys_Resource` (**không Id**, khóa ghép `[Resource_Key,Lang_Code]`, không tombstone) · `Sys_Lookup` (khóa ghép
+  `[Lookup_Code,Item_Code]`) · `Ui_View` (re-link Table/EditForm/Detail self-FK) · `Ui_View_Column` (cha Ui_View,
+  khóa `Field_Name`, re-link Column_Id) · `Ui_View_Action` (cha Ui_View) · `Ui_View_Filter` (cha Ui_View, khóa `Filter_Code`).
+- **`db/062`** (mới) — cấp 4 cờ sync cho `Ui_Field_Lookup` + `Ui_View_Filter` (db/050 bỏ sót). ⏳ CẦN chạy Config DB.
+
+### Phát hiện quan trọng (đối chiếu schema thật user cung cấp)
+- **`Val_Rule_Field` đã bị DROP ở migration 003** → junction không còn; `Val_Rule` mang `Field_Id` trực tiếp
+  (1 rule/1 field) + `Error_Key` unique toàn cục. "Sync Val_Rule_Field" vô nghĩa → chỉ sync `Val_Rule`.
+- **`Sys_Resource` không có Id identity** (PK ghép) → engine hỗ trợ match/UPDATE theo khóa nghiệp vụ (đã làm).
+- **`Ui_Field_Lookup` (form FK-lookup) + `Ui_View_Filter` (panel lọc cascade) thiếu cờ sync** → bổ sung db/062 +
+  2 descriptor (engine thêm khóa-theo-cha cho bảng 1-1). Cần cho F2: form lookup + bộ lọc sync xuống tenant.
+
+### ⏳ Còn lại (S62)
+- **Chạy `db/062`** trên Config DB (cấp cờ 2 bảng mới) → rebuild + restart API.
+- **E2E** preview/apply xác minh số dòng I/U/skip cho 9 bảng mới (login admin → màn Đồng bộ cấu hình).
+- Rà self-FK `Ui_View.Detail_View_Id` khi dùng master-detail (hiện NULL nên an toàn).
+- F1 còn: hook provisioning full-sync + invalidate ConfigCache version-stamp (CC-4) → rồi **F2 engine-hóa màn Công ty**.
+
+---
+
 > Cập nhật: 2026-06-23 (session 61b — Ẩn Lookup_Sql khỏi /info (DTO) + Observability: correlationId in log + "Mã lỗi" client)
 
 ## Session 61b (2026-06-23) — đã làm (ĐÃ CODE; build BE `ICare247.slnx` 0/0, FE Shared+UI 0/0)

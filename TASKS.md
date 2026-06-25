@@ -11,7 +11,13 @@ giữ bản tenant khi xung đột · trigger provisioning+nút thủ công supe
 1. ✅ **E2E xác minh 2026-06-21** — db/050 đã chạy, login `admin` → preview + apply → ghi `Sys_Config_Sync_Log`
    (#4 Status=Success, Updated 32/Skipped 9). Trong lúc E2E sửa 3 bug: JWT bypass SUPERADMIN (commit `9851c8a`),
    thiếu cờ `Sys_Column` + transaction nhánh apply (commit `9abec54`).
-2. **Mở rộng descriptor** các bảng còn lại vào `ConfigSyncTables.Order` (Sys_Resource/Sys_Lookup/Ui_Tab/Ui_View*/Val_Rule).
+2. ✅ **Mở rộng descriptor (2026-06-25)** — `ConfigSyncTables.Order` phủ **14 bảng**: +Ui_Tab, Val_Rule,
+   Ui_Field_Lookup, Sys_Resource, Sys_Lookup, Ui_View, Ui_View_Column, Ui_View_Action, Ui_View_Filter. Nâng engine:
+   khóa ghép nhiều cột (`LocalKeyColumns`: Sys_Resource/Sys_Lookup) + bảng KHÔNG Id identity (Sys_Resource — match/UPDATE
+   theo khóa nghiệp vụ) + khóa CHỈ-theo-cha cho bảng mở rộng 1-1 (`Ui_Field_Lookup`, KeyColumns rỗng).
+   **Migration mới `db/062`** (cấp 4 cờ sync cho Ui_Field_Lookup + Ui_View_Filter — db/050 bỏ sót) — ⏳ CẦN chạy trên Config DB.
+   Build Infrastructure 0/0. ⏳ CÒN: E2E preview/apply xác minh số dòng; rà self-FK `Ui_View.Detail_View_Id` (master-detail).
+   Ngoài phạm vi: `Sys_Relation` (chưa engine-hóa master-detail); `Val_Rule_Field` (đã DROP ở migration 003).
 3. Hook **provisioning full-sync** khi tạo tenant mới · invalidate **ConfigCache** version-stamp (CC-4) ·
    ✅ **db/057 (2026-06-21)** seed node `administration.config-sync` vào `HT_ChucNang` + grant SUPERADMIN
    → màn hiện trên menu Quản trị (verify `/me/navigation` trả node sau khi flush cache).
@@ -189,12 +195,18 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **CFGSYNC-1** — `db/050_alter_config_sync_flags.sql`: thêm cờ **`Is_System`+`Is_Customized`** (+`Synced_At`+`Source_Ver`,
       tên tiếng Anh cho nhất quán config DB) vào 11 bảng `Sys_Table`/`Sys_Resource`/`Sys_Lookup`/`Ui_Form`/`Ui_Tab`/
       `Ui_Section`/`Ui_Field`/`Ui_View*`/`Val_Rule` + bảng log `Sys_Config_Sync_Log`. Idempotent. ✅ **ĐÃ CHẠY 2026-06-21** (Config DB; 11 bảng + log).
-- [~] **CFGSYNC-2** — `IConfigSyncService` (Application) + `ConfigSyncService` (Infrastructure): engine **descriptor-driven**
+- [x] **CFGSYNC-2** — `IConfigSyncService` (Application) + `ConfigSyncService` (Infrastructure): engine **descriptor-driven**
       UPSERT theo MÃ + re-link FK theo mã, đúng thứ tự phụ thuộc, một chiều, transaction/tenant, dry-run, tombstone
-      `Is_Active=0`, giữ bản `Is_Customized`. Ghi `Sys_Config_Sync_Log`. Master = `ConnectionStrings:Config`. Build BE 0/0.
-      **VERTICAL SLICE 5 bảng** (`Sys_Table→Sys_Column→Ui_Form→Ui_Section→Ui_Field`) — `ConfigSyncTables.Order`.
-      `db/050` ✅ đã chạy 2026-06-21; ⏳ CHƯA verify E2E (cần trigger preview/apply). **Mở rộng bảng còn lại** (Sys_Resource/Sys_Lookup/Ui_Tab/
-      Ui_View*/Val_Rule) = nối descriptor vào `ConfigSyncTables` theo cùng khuôn — đợt sau.
+      `Is_Active=0`, giữ bản `Is_Customized`. Ghi `Sys_Config_Sync_Log`. Master = `ConnectionStrings:Config`.
+      **✅ PHỦ TRỌN §2 + config-con (2026-06-25)** — `ConfigSyncTables.Order` **14 bảng**: `Sys_Table→Sys_Column→
+      Ui_Form→Ui_Section→Ui_Field→Ui_Tab→Val_Rule→Ui_Field_Lookup→Sys_Resource→Sys_Lookup→Ui_View→Ui_View_Column→
+      Ui_View_Action→Ui_View_Filter`. Engine nâng: khóa ghép nhiều cột (`LocalKeyColumns`: Sys_Resource=[Resource_Key,
+      Lang_Code], Sys_Lookup=[Lookup_Code,Item_Code]) + bảng KHÔNG Id identity (Sys_Resource — INSERT không OUTPUT,
+      match/UPDATE theo khóa nghiệp vụ) + khóa CHỈ-theo-cha cho bảng mở rộng 1-1 (Ui_Field_Lookup). Build Infrastructure 0/0.
+      `db/050` đã cấp cờ 12 bảng; **`db/062`** cấp cờ cho Ui_Field_Lookup + Ui_View_Filter — ⏳ CẦN chạy trên Config DB.
+      ⏳ CÒN: E2E preview/apply xác minh số dòng.
+      **Lưu ý:** `Val_Rule_Field` đã DROP (migration 003) → chỉ sync `Val_Rule`; `Sys_Relation` ngoài phạm vi;
+      `Ui_View.Detail_View_Id` self-FK an toàn khi NULL (rủi ro nếu master-detail tham chiếu vòng).
 - [~] **CFGSYNC-3** — Action super admin "Cập nhật cấu hình từ master": `SyncConfigCommand`+Handler (gọi
       `IConfigSyncService`, invalidate `INavigationCache`) + `AdminConfigSyncController` `POST /api/v1/admin/config-sync`
       (áp thật, `[RequirePermission(administration.config-sync, Sua)]`) + `/preview` (dry-run, `Xem`). SUPERADMIN bypass.

@@ -116,7 +116,8 @@ public sealed class ConfigSyncService : IConfigSyncService
         EnsureSyncFlags(d.TableName, masterCols);
         EnsureSyncFlags(d.TableName, tenantCols);
         var writeCols = masterCols
-            .Where(c => tenantCols.Contains(c) && !c.Equals(d.IdColumn, StringComparison.OrdinalIgnoreCase))
+            .Where(c => tenantCols.Contains(c)
+                && (d.IdColumn is null || !c.Equals(d.IdColumn, StringComparison.OrdinalIgnoreCase)))
             .ToList();
 
         // (2) Đọc dòng master (đủ cột để copy) + dòng tenant (đủ cột để khớp khóa & cờ).
@@ -128,11 +129,11 @@ public sealed class ConfigSyncService : IConfigSyncService
         var keyedMasterRows = new List<(IDictionary<string, object> Row, string Key)>();
         foreach (var row in masterRows)
         {
-            var local = AsString(row[d.LocalKeyColumn]);
-            if (string.IsNullOrWhiteSpace(local)) { res.Skipped++; continue; } // thiếu mã → không khớp được
-            var key = BuildKey(d, row, states);
+            var local = BuildLocalCode(d, row);
+            if (local is null) { res.Skipped++; continue; }                    // thiếu phần khóa → không khớp được
+            var key = BuildKey(d, row, local, states);
             if (key is null) { res.Skipped++; continue; }                      // cha mồ côi → bỏ qua
-            state.MasterKeyById[GetInt(row[d.IdColumn])] = key;
+            if (d.IdColumn is not null) state.MasterKeyById[GetInt(row[d.IdColumn])] = key;
             masterKeySet.Add(key);
             keyedMasterRows.Add((row, key));
         }
@@ -140,7 +141,6 @@ public sealed class ConfigSyncService : IConfigSyncService
         // (4) Dựng map khóa nghiệp vụ phía tenant.
         foreach (var tr in tenantRows)
         {
-            if (string.IsNullOrWhiteSpace(tr.LocalCode)) continue;
             var key = BuildTenantKey(d, tr, states);
             if (key is null) continue;
             tr.Key = key;
@@ -163,8 +163,11 @@ public sealed class ConfigSyncService : IConfigSyncService
                 if (!dryRun)
                 {
                     var newId = await InsertRowAsync(d, tenant, tx, writeCols, row, states, ct);
-                    state.TenantIdByKey[key] = newId;                          // bảng con dùng được ngay
-                    state.TenantKeyById[newId] = key;
+                    if (d.IdColumn is not null)                                 // bảng con dùng được ngay
+                    {
+                        state.TenantIdByKey[key] = newId;
+                        state.TenantKeyById[newId] = key;
+                    }
                 }
                 res.Inserted++;
             }
@@ -190,32 +193,46 @@ public sealed class ConfigSyncService : IConfigSyncService
 
     // ── Khóa nghiệp vụ ───────────────────────────────────────────────────────
 
+    /// <summary>Mã con ghép từ các cột khóa (KeySeparator). Null nếu thiếu phần nào.
+    /// Rỗng (không cột khóa = bảng mở rộng 1-1 theo cha) → trả "" (định danh hoàn toàn qua cha).</summary>
+    private static string? BuildLocalCode(ConfigTableDescriptor d, IDictionary<string, object> row)
+    {
+        if (d.KeyColumns.Count == 0) return string.Empty;
+        var parts = new List<string>(d.KeyColumns.Count);
+        foreach (var col in d.KeyColumns)
+        {
+            var v = AsString(row.TryGetValue(col, out var raw) ? raw : null);
+            if (string.IsNullOrWhiteSpace(v)) return null;
+            parts.Add(v);
+        }
+        return string.Join(KeySeparator, parts);
+    }
+
     /// <summary>Khóa nghiệp vụ dòng master = [khóa cha đã re-link] + mã con. Null nếu cha mồ côi.</summary>
     private static string? BuildKey(
-        ConfigTableDescriptor d, IDictionary<string, object> row,
+        ConfigTableDescriptor d, IDictionary<string, object> row, string local,
         Dictionary<string, TableSyncState> states)
     {
-        var local = AsString(row[d.LocalKeyColumn])!;
         if (d.ContextParent is null) return local;
 
         var fk = row[d.ContextParent.FkColumn];
         if (fk is null or DBNull) return null;
         var parent = states[d.ContextParent.ParentTable];
-        return parent.MasterKeyById.TryGetValue(GetInt(fk), out var parentKey)
-            ? parentKey + KeySeparator + local
-            : null;
+        if (!parent.MasterKeyById.TryGetValue(GetInt(fk), out var parentKey)) return null;
+        return local.Length == 0 ? parentKey : parentKey + KeySeparator + local; // local rỗng = khóa theo cha
     }
 
-    /// <summary>Khóa nghiệp vụ dòng tenant (dùng map tenant của cha).</summary>
+    /// <summary>Khóa nghiệp vụ dòng tenant (dùng map tenant của cha). Null nếu không dựng được khóa.</summary>
     private static string? BuildTenantKey(
         ConfigTableDescriptor d, TenantRow tr, Dictionary<string, TableSyncState> states)
     {
+        var parentOnly = d.KeyColumns.Count == 0;
+        if (!parentOnly && string.IsNullOrWhiteSpace(tr.LocalCode)) return null; // có cột khóa nhưng thiếu mã
         if (d.ContextParent is null) return tr.LocalCode;
         if (tr.ContextFk is null) return null;
         var parent = states[d.ContextParent.ParentTable];
-        return parent.TenantKeyById.TryGetValue(tr.ContextFk.Value, out var parentKey)
-            ? parentKey + KeySeparator + tr.LocalCode
-            : null;
+        if (!parent.TenantKeyById.TryGetValue(tr.ContextFk.Value, out var parentKey)) return null;
+        return parentOnly ? parentKey : parentKey + KeySeparator + tr.LocalCode;
     }
 
     // ── INSERT / UPDATE / Tombstone ────────────────────────────────────────────
@@ -235,6 +252,15 @@ public sealed class ConfigSyncService : IConfigSyncService
             p.Add($"@p{i}", ResolveWriteValue(d, col, row, states, isInsert: true));
             i++;
         }
+        // Bảng không có Id identity (vd Sys_Resource): INSERT thuần, không OUTPUT, trả 0 (không ai re-link tới).
+        if (d.IdColumn is null)
+        {
+            var sqlNoId = $"INSERT INTO dbo.[{d.TableName}] ({string.Join(", ", colList)}) " +
+                          $"VALUES ({string.Join(", ", valList)});";
+            await tenant.ExecuteAsync(new CommandDefinition(sqlNoId, p, tx, cancellationToken: ct));
+            return 0;
+        }
+
         var sql = $"INSERT INTO dbo.[{d.TableName}] ({string.Join(", ", colList)}) " +
                   $"OUTPUT INSERTED.[{d.IdColumn}] VALUES ({string.Join(", ", valList)});";
         return await tenant.ExecuteScalarAsync<int>(new CommandDefinition(sql, p, tx, cancellationToken: ct));
@@ -246,17 +272,41 @@ public sealed class ConfigSyncService : IConfigSyncService
     {
         var p = new DynamicParameters();
         var setList = new List<string>();
+        // Bảng không-Id: WHERE theo khóa nghiệp vụ → KHÔNG SET lại chính các cột khóa (giữ làm điều kiện).
+        var keyCols = d.IdColumn is null ? d.KeyColumns : null;
         var i = 0;
         foreach (var col in writeCols)
         {
             // Giữ nguyên Is_Customized của tenant (đã lọc dòng customized ở trên — đây là phòng hờ).
             if (col.Equals("Is_Customized", StringComparison.OrdinalIgnoreCase)) continue;
+            if (keyCols is not null
+                && keyCols.Any(k => k.Equals(col, StringComparison.OrdinalIgnoreCase))) continue;
             setList.Add($"[{col}] = @p{i}");
             p.Add($"@p{i}", ResolveWriteValue(d, col, row, states, isInsert: false));
             i++;
         }
-        p.Add("@id", tenantId);
-        var sql = $"UPDATE dbo.[{d.TableName}] SET {string.Join(", ", setList)} WHERE [{d.IdColumn}] = @id;";
+        if (setList.Count == 0) return; // không có cột nào để cập nhật (toàn cột khóa) → bỏ qua
+
+        string where;
+        if (d.IdColumn is not null)
+        {
+            p.Add("@id", tenantId);
+            where = $"[{d.IdColumn}] = @id";
+        }
+        else
+        {
+            // Khóa nghiệp vụ = giá trị các cột khóa của chính dòng master (đã khớp với tenant).
+            var conds = new List<string>();
+            var k = 0;
+            foreach (var col in d.KeyColumns)
+            {
+                p.Add($"@k{k}", Normalize(row.TryGetValue(col, out var v) ? v : null));
+                conds.Add($"[{col}] = @k{k}");
+                k++;
+            }
+            where = string.Join(" AND ", conds);
+        }
+        var sql = $"UPDATE dbo.[{d.TableName}] SET {string.Join(", ", setList)} WHERE {where};";
         await tenant.ExecuteAsync(new CommandDefinition(sql, p, tx, cancellationToken: ct));
     }
 
@@ -336,11 +386,13 @@ public sealed class ConfigSyncService : IConfigSyncService
     private static async Task<List<TenantRow>> ReadTenantRowsAsync(
         IDbConnection conn, ConfigTableDescriptor d, IDbTransaction? tx, CancellationToken ct)
     {
-        var cols = new List<string> { d.IdColumn, d.LocalKeyColumn, "Is_System", "Is_Customized" };
+        var cols = new List<string> { "Is_System", "Is_Customized" };
+        if (d.IdColumn is not null) cols.Add(d.IdColumn);
+        cols.AddRange(d.KeyColumns);
         if (d.ContextParent is not null) cols.Add(d.ContextParent.FkColumn);
         if (d.ActiveColumn is not null) cols.Add(d.ActiveColumn);
 
-        var select = string.Join(", ", cols.Distinct().Select(c => $"[{c}]"));
+        var select = string.Join(", ", cols.Distinct(StringComparer.OrdinalIgnoreCase).Select(c => $"[{c}]"));
         var sql = $"SELECT {select} FROM dbo.[{d.TableName}];";
         var rows = await conn.QueryAsync(new CommandDefinition(sql, transaction: tx, cancellationToken: ct));
 
@@ -349,8 +401,8 @@ public sealed class ConfigSyncService : IConfigSyncService
         {
             list.Add(new TenantRow
             {
-                Id = GetInt(r[d.IdColumn]),
-                LocalCode = AsString(r[d.LocalKeyColumn]) ?? "",
+                Id = d.IdColumn is not null ? GetInt(r[d.IdColumn]) : 0,
+                LocalCode = BuildLocalCode(d, r) ?? "",
                 System = ToBool(r["Is_System"]),
                 Customized = ToBool(r["Is_Customized"]),
                 Active = d.ActiveColumn is null || ToBool(r[d.ActiveColumn]),
