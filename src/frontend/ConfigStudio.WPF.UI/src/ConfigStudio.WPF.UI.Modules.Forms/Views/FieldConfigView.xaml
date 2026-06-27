@@ -512,6 +512,17 @@
                             <StackPanel>
                                 <TextBlock Text="Thông Tin Cơ Bản" Style="{StaticResource SectionTitleStyle}" />
 
+                                <!-- 2 cột: trái = cấu hình (60%) · phải = diễn giải editor (40%) -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="2*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- ── Cột trái: cấu hình ── -->
+                                    <StackPanel Grid.Column="0">
+
                                 <!-- Section -->
                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Section" Style="{StaticResource FieldLabelStyle}" />
@@ -583,8 +594,40 @@
                                                Style="{StaticResource HelpTextStyle}" />
                                 </StackPanel>
 
-                                <!-- Guide Card — hiển thị khi chọn EditorType -->
-                                <Border Visibility="{Binding HasEditorTypeGuide, Converter={StaticResource BoolToVis}}"
+                                <!-- Order No -->
+                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                    <TextBlock Text="Thứ tự hiển thị" Style="{StaticResource FieldLabelStyle}" />
+                                    <dxe:TextEdit EditValue="{Binding OrderNo, UpdateSourceTrigger=PropertyChanged}"
+                                                  Width="100" HorizontalAlignment="Left" />
+                                    <TextBlock Text="Thứ tự sắp xếp field trong section (Order_No)."
+                                               Style="{StaticResource HelpTextStyle}" />
+                                </StackPanel>
+
+                                <!-- Col Span -->
+                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                    <TextBlock Text="Độ rộng (Col Span)" Style="{StaticResource FieldLabelStyle}" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton Content="1/4"  GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=1}"
+                                                     Margin="0,0,16,0" />
+                                        <RadioButton Content="1/2"  GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=2}"
+                                                     Margin="0,0,16,0" />
+                                        <RadioButton Content="3/4"  GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=3}"
+                                                     Margin="0,0,16,0" />
+                                        <RadioButton Content="Full" GroupName="ColSpan"
+                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=4}" />
+                                    </StackPanel>
+                                    <TextBlock Text="Độ rộng field trong grid 4-column (1=1/4, 2=half, 3=3/4, 4=full)."
+                                               Style="{StaticResource HelpTextStyle}" />
+                                </StackPanel>
+
+                                    </StackPanel>
+
+                                <!-- ── Cột phải: diễn giải editor (khoang đỏ) ── -->
+                                <Border Grid.Column="2" VerticalAlignment="Top"
+                                        Visibility="{Binding HasEditorTypeGuide, Converter={StaticResource BoolToVis}}"
                                         Background="{DynamicResource AppInfoSoftBrush}"
                                         BorderBrush="{DynamicResource AppInfoBorderBrush}"
                                         BorderThickness="1"
@@ -688,35 +731,7 @@
                                         </Border>
                                     </StackPanel>
                                 </Border>
-
-                                <!-- Order No -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                    <TextBlock Text="Thứ tự hiển thị" Style="{StaticResource FieldLabelStyle}" />
-                                    <dxe:TextEdit EditValue="{Binding OrderNo, UpdateSourceTrigger=PropertyChanged}"
-                                                  Width="100" HorizontalAlignment="Left" />
-                                    <TextBlock Text="Thứ tự sắp xếp field trong section (Order_No)."
-                                               Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
-
-                                <!-- Col Span -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                    <TextBlock Text="Độ rộng (Col Span)" Style="{StaticResource FieldLabelStyle}" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton Content="1/4"  GroupName="ColSpan"
-                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=1}"
-                                                     Margin="0,0,16,0" />
-                                        <RadioButton Content="1/2"  GroupName="ColSpan"
-                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=2}"
-                                                     Margin="0,0,16,0" />
-                                        <RadioButton Content="3/4"  GroupName="ColSpan"
-                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=3}"
-                                                     Margin="0,0,16,0" />
-                                        <RadioButton Content="Full" GroupName="ColSpan"
-                                                     IsChecked="{Binding ColSpan, Converter={StaticResource ColSpanConverter}, ConverterParameter=4}" />
-                                    </StackPanel>
-                                    <TextBlock Text="Độ rộng field trong grid 4-column (1=1/4, 2=half, 3=3/4, 4=full)."
-                                               Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -880,8 +895,16 @@
                                     </Border>
                                 </Grid>
 
+                                <!-- Cụm validation i18n: 2 cột (trái = để trống, phải = trùng) -->
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
                                 <!-- ── Required Error Key (chỉ hiện khi IsRequired = true) ── -->
-                                <Border Margin="0,12,0,0" Padding="12,10"
+                                <Border Grid.Column="0" VerticalAlignment="Top" Margin="0" Padding="12,10"
                                         Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="6"
                                         BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1"
                                         Visibility="{Binding IsRequiredExpanded, Converter={StaticResource BoolToVis}}">
@@ -909,7 +932,7 @@
                                 </Border>
 
                                 <!-- ── Unique Error Key (chỉ hiện khi IsUnique = true) ── -->
-                                <Border Margin="0,12,0,0" Padding="12,10"
+                                <Border Grid.Column="2" VerticalAlignment="Top" Margin="0" Padding="12,10"
                                         Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="6"
                                         BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1"
                                         Visibility="{Binding IsUniqueExpanded, Converter={StaticResource BoolToVis}}">
@@ -918,31 +941,26 @@
                                                    Foreground="{DynamicResource AppInfoBrush}">
                                             <Run Text="🔑" /><Run Text=" Thông báo khi trùng (i18n)" />
                                         </TextBlock>
-                                        <!-- Input full-width (key tự sinh, readonly) -->
-                                        <dxe:TextEdit EditValue="{Binding UniqueErrorKey, Mode=OneWay}"
-                                                      IsReadOnly="True" Margin="0,0,0,4" />
-                                        <!-- Buttons dưới (trái) -->
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,0,0,6">
-                                            <Button Command="{Binding OpenI18nKeyCommand}" CommandParameter="unique"
+                                        <!-- Nhập THẲNG thông báo trùng (vi); key tự sinh ngầm -->
+                                        <dxe:TextEdit EditValue="{Binding UniqueErrorKeyPreview, UpdateSourceTrigger=LostFocus}"
+                                                      NullText="vd: Mã đã tồn tại" Margin="0,0,0,4" />
+                                        <DockPanel Margin="0,0,0,2">
+                                            <Button DockPanel.Dock="Right" Command="{Binding OpenI18nKeyCommand}" CommandParameter="unique"
                                                     Style="{StaticResource SmallSecondaryButtonStyle}"
-                                                    ToolTip="Nhập bản dịch thông báo trùng cho mọi ngôn ngữ">
+                                                    ToolTip="Nhập bản dịch các ngôn ngữ khác (EN, JA...)">
                                                 <TextBlock Text="🌐 Dịch" FontSize="11" />
                                             </Button>
-                                        </StackPanel>
-                                        <!-- Preview VI -->
-                                        <Border Background="{DynamicResource AppInfoSoftBrush}" CornerRadius="4" Padding="8,5"
-                                                Visibility="{Binding HasUniqueErrorKeyPreview, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock FontSize="11" Foreground="{DynamicResource AppInfoBrush}">
-                                                <Run Text="→ " />
-                                                <Run Text="{Binding UniqueErrorKeyPreview, Mode=OneWay}" FontWeight="SemiBold" />
-                                            </TextBlock>
-                                        </Border>
-                                        <TextBlock Margin="0,6,0,0" FontSize="10" Foreground="{DynamicResource AppInfoBrush}"
-                                                   FontFamily="Cascadia Code, Consolas">
-                                            <Run Text="Pattern: {tableCode}.val.{fieldCode}.unique — tự tạo khi lưu field" />
-                                        </TextBlock>
+                                            <TextBlock Text="{Binding UniqueErrorKey}" VerticalAlignment="Center"
+                                                       FontSize="10" Foreground="{DynamicResource AppInfoBrush}"
+                                                       FontFamily="Cascadia Code, Consolas" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding UniqueErrorKey}" />
+                                        </DockPanel>
+                                        <TextBlock Margin="0,2,0,0" FontSize="10" Foreground="{DynamicResource AppInfoBrush}"
+                                                   FontFamily="Cascadia Code, Consolas" TextWrapping="Wrap"
+                                                   Text="Pattern: {tableCode}.val.{fieldCode}.unique — tự tạo khi lưu field" />
                                     </StackPanel>
                                 </Border>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -962,8 +980,18 @@
                                     </Button>
                                 </DockPanel>
 
+                                <!-- 3 cột: Nhãn · Gợi ý nhập · Mô tả hover -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
                                 <!-- Nhãn (Label) — nhập tiếng Việt; key i18n tự sinh ngầm -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                <StackPanel Grid.Column="0" VerticalAlignment="Top" Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Nhãn hiển thị (tiếng Việt)" Style="{StaticResource FieldLabelStyle}" />
                                     <dxe:TextEdit EditValue="{Binding LabelPreview, UpdateSourceTrigger=LostFocus}"
                                                   NullText="vd: Họ và tên" Margin="0,0,0,4" />
@@ -983,7 +1011,7 @@
                                 </StackPanel>
 
                                 <!-- Gợi ý nhập (Placeholder) — nhập tiếng Việt; key tự sinh -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                <StackPanel Grid.Column="2" VerticalAlignment="Top" Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Gợi ý nhập (tiếng Việt)" Style="{StaticResource FieldLabelStyle}" />
                                     <dxe:TextEdit EditValue="{Binding PlaceholderPreview, UpdateSourceTrigger=LostFocus}"
                                                   NullText="vd: Nhập họ và tên đầy đủ" Margin="0,0,0,4" />
@@ -1001,7 +1029,7 @@
                                 </StackPanel>
 
                                 <!-- Mô tả (Tooltip) — nhập tiếng Việt; key tự sinh -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                <StackPanel Grid.Column="4" VerticalAlignment="Top" Style="{StaticResource FieldGroupStyle}">
                                     <TextBlock Text="Mô tả khi hover (tiếng Việt)" Style="{StaticResource FieldLabelStyle}" />
                                     <dxe:TextEdit EditValue="{Binding TooltipPreview, UpdateSourceTrigger=LostFocus}"
                                                   NullText="vd: Họ tên đầy đủ theo CMND/CCCD" Margin="0,0,0,4" />
@@ -1017,6 +1045,7 @@
                                                    ToolTip="{Binding TooltipKey}" />
                                     </DockPanel>
                                 </StackPanel>
+                                </Grid>
                             </StackPanel>
                         </Border>
 
@@ -1094,10 +1123,10 @@
                                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,12" />
                                 <TextBlock Text="Lookup Code" FontSize="11"
                                            Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
-                                <dxe:ComboBoxEdit ItemsSource="{Binding AvailableLookupCodes}"
-                                                  EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsTextEditable="True"
-                                                  Height="32" Margin="0,0,0,4" />
+                                <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                                ItemsSource="{Binding AvailableLookupCodes}"
+                                                EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
+                                                Margin="0,0,0,4" />
                                 <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12">
                                     <Run Text="Mã danh mục trong Sys_Lookup. VD: " />
                                     <Run Text="GENDER" FontFamily="Consolas" Foreground="{StaticResource AccentDarkBrush}" />

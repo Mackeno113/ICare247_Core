@@ -1,9 +1,26 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-03-29
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-06-28
 > Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
 
 ---
+
+## ✅ Done (2026-06-28) — LookUpEdit chuẩn hóa + luồng Sys_Table↔Form↔Field + i18n key canonical + layout cột
+
+- **LOOKUPEDIT-UNIFY** — control chọn dữ liệu **load từ DB** = `dxg:LookUpEdit` (combo enum tĩnh giữ `ComboBoxEdit`);
+  rule §11 (`.claude-rules/wpf-configstudio.md`). Style 1-nơi ở `Themes/Controls.xaml`. List **scalar (`List<string>`)**
+  dùng `ScalarLookUpEditStyle` + popup `LookUpScalarPopup` (`GridColumn.Binding="{Binding}"`) vì `AutoPopulateColumns`
+  không sinh cột cho kiểu nguyên thủy (verified reflection DevExpress 25.2). Đổi **10** combo nguồn DB → LookUpEdit.
+- **SYSTABLE→FORM** — nút "Tạo Form từ bảng này" (SysTableManager) → FormEditor `formId=0`+`businessTableId` (chọn sẵn
+  Business Table + auto Form Code/Tên). **Ẩn nút nếu bảng đã có Ui_Form** (`FormExistsForTableAsync`:
+  `Form_Code=Table_Code OR Table_Id`). Panel editor **2 cột** + **GridSplitter** kéo trái–phải + nút `WrapPanel`.
+- **FORMMANAGER→FIELDCONFIG** — double-click form ở danh sách → mở thẳng **Cấu hình Field** (`OpenFieldConfigCommand`;
+  giữ icon ✎/⚙ → Form Editor). FieldConfig tự suy TableCode + tự chọn field đầu.
+- **I18N-KEY-CANONICAL** — chuẩn hóa key field về `{table}.field.{code}.label/.placeholder/.tooltip` (fix field cũ
+  legacy); lưu label → tự tạo placeholder/tooltip CÙNG text (user nhập khác thì giữ); khối "trùng" editable + đồng nhất
+  cấu trúc với "để trống". Layout FieldConfig: "Thông Tin Cơ Bản" 2 cột (cấu hình 60%/diễn giải 40%); validation i18n
+  2 cột; Display i18n 3 cột.
+- **FIX** — CS8601 `FormEditorViewModel.cs:1481` → coalesce `?? string.Empty`. Build `ConfigStudio.WPF.UI.slnx` 0/0.
 
 ## Trạng thái màn hình Field Config (phân tích session 2026-03-26)
 

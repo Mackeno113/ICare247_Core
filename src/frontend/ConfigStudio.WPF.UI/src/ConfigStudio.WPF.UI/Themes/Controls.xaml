@@ -350,6 +350,37 @@
         <Setter Property="NullTextForeground" Value="{DynamicResource AppTextSubtleBrush}" />
     </Style>
 
+    <!-- Popup cho LookUpEdit nguồn list SCALAR (List<string>): AutoPopulateColumns KHÔNG sinh
+         được cột cho kiểu nguyên thủy (chuỗi không có business property) → khai báo 1 cột
+         Binding="{Binding}" trỏ thẳng vào item (giá trị chuỗi của từng hàng). -->
+    <ControlTemplate x:Key="LookUpScalarPopup">
+        <dxg:GridControl x:Name="PART_GridControl">
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn Header="Giá trị" Binding="{Binding}" />
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.View>
+                <dxg:TableView Style="{x:Null}" ShowAutoFilterRow="True"
+                               AutoWidth="True" ShowGroupPanel="False"
+                               ShowIndicator="False" NavigationStyle="Row" />
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+    </ControlTemplate>
+
+    <!-- LookUpEdit cho danh sách SCALAR (chuỗi): cột bảng, mã lookup, form code… Dùng qua
+         Style="{StaticResource ScalarLookUpEditStyle}" — hành vi/visual vẫn tập trung 1 nơi,
+         chỉ khác: tắt AutoPopulateColumns + dùng popup 1 cột scalar ở trên. -->
+    <Style x:Key="ScalarLookUpEditStyle" TargetType="{x:Type dxg:LookUpEdit}" BasedOn="{StaticResource AppEditBaseStyle}">
+        <Setter Property="Height" Value="{DynamicResource AppInputHeight}" />
+        <Setter Property="IsTextEditable" Value="True" />
+        <Setter Property="ImmediatePopup" Value="True" />
+        <Setter Property="IncrementalFiltering" Value="True" />
+        <Setter Property="FilterCondition" Value="Contains" />
+        <Setter Property="IsCaseSensitiveFilter" Value="False" />
+        <Setter Property="AutoPopulateColumns" Value="False" />
+        <Setter Property="PopupContentTemplate" Value="{StaticResource LookUpScalarPopup}" />
+        <Setter Property="NullTextForeground" Value="{DynamicResource AppTextSubtleBrush}" />
+    </Style>
+
     <!-- CheckEdit / ToggleSwitchEdit — đồng bộ chữ -->
     <Style TargetType="{x:Type dxe:CheckEdit}">
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />

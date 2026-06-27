@@ -680,6 +680,68 @@ public sealed class FormDataService : IFormDataService
     }
 
     /// <summary>
+    /// Kiểm tra đã có Ui_Form (active) gắn bảng này chưa — khớp Form_Code = Table_Code,
+    /// và nếu Ui_Form có cột Table_Id thì OR thêm Table_Id. Schema-defensive như ExistsFormCodeAsync.
+    /// Sự kiện theo sau: ViewModel ẩn/hiện nút "Tạo Form từ bảng này" theo kết quả.
+    /// </summary>
+    public async Task<bool> FormExistsForTableAsync(
+        int tableId,
+        string tableCode,
+        int tenantId,
+        CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || string.IsNullOrWhiteSpace(tableCode))
+            return false;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+
+        var formCols = await GetTableColumnsAsync(conn, "dbo", "Ui_Form", ct);
+        if (formCols.Count == 0 || !formCols.Contains("Form_Code"))
+            return false;
+
+        var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
+        var hasTableId = formCols.Contains("Table_Id");
+        var useTenantFromForm = formCols.Contains("Tenant_Id");
+        var useTenantFromSysTable = !useTenantFromForm
+            && hasTableId
+            && sysTableCols.Contains("Table_Id")
+            && sysTableCols.Contains("Tenant_Id");
+
+        if (!useTenantFromForm && !useTenantFromSysTable)
+            return false;
+
+        // Khớp bảng: Form_Code = Table_Code; nếu Ui_Form có Table_Id thì OR thêm Table_Id.
+        var matchParts = new List<string> { "f.Form_Code = @TableCode" };
+        if (hasTableId) matchParts.Add("f.Table_Id = @TableId");
+
+        var whereParts = new List<string>
+        {
+            "(" + string.Join(" OR ", matchParts) + ")",
+            useTenantFromSysTable ? "st.Tenant_Id = @TenantId" : "f.Tenant_Id = @TenantId",
+        };
+        if (formCols.Contains("Is_Active"))
+            whereParts.Add("f.Is_Active = 1");
+        if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
+            whereParts.Add("st.Is_Active = 1");
+
+        var fromClause = useTenantFromSysTable
+            ? "dbo.Ui_Form f INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
+            : "dbo.Ui_Form f";
+
+        var sql = "SELECT TOP (1) 1\n"
+                + "FROM   " + fromClause + "\n"
+                + "WHERE  " + string.Join("\n  AND  ", whereParts);
+
+        var exists = await conn.ExecuteScalarAsync<int?>(
+            new CommandDefinition(
+                sql,
+                new { TenantId = tenantId, TableCode = tableCode, TableId = tableId },
+                cancellationToken: ct));
+
+        return exists.HasValue;
+    }
+
+    /// <summary>
     /// Resolve Table_Id đầu tiên của tenant khi schema đặt tenant ở Sys_Table.
     /// </summary>
     private static async Task<int?> ResolveTableIdForTenantAsync(

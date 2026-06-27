@@ -162,11 +162,12 @@
                                       Margin="0,0,10,0" />
 
                     <!-- Filter Table -->
-                    <dxe:ComboBoxEdit Width="160"
-                                      NullText="Business Table"
-                                      ItemsSource="{Binding TableOptions}"
-                                      EditValue="{Binding TableFilter}"
-                                      Margin="0,0,10,0" />
+                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                    Width="160"
+                                    NullText="Business Table"
+                                    ItemsSource="{Binding TableOptions}"
+                                    EditValue="{Binding TableFilter}"
+                                    Margin="0,0,10,0" />
 
                     <!-- Show inactive toggle -->
                     <dxe:CheckEdit Content="Hiện form đã ẩn"

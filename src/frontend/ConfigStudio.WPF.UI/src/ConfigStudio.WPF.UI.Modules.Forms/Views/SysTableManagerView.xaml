@@ -101,10 +101,19 @@
 
         <Grid Grid.Row="1" Margin="16,8,16,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="1.2*" />
+                <ColumnDefinition Width="1.2*" MinWidth="320" />
                 <ColumnDefinition Width="12" />
-                <ColumnDefinition Width="0.9*" />
+                <ColumnDefinition Width="0.9*" MinWidth="420" />
             </Grid.ColumnDefinitions>
+
+            <!-- Thanh kéo trái–phải: chỉnh độ rộng giữa lưới danh sách và panel editor. -->
+            <GridSplitter Grid.Column="1"
+                          Width="12"
+                          HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Background="Transparent" ShowsPreview="True"
+                          Cursor="SizeWE"
+                          ToolTip="Kéo để chỉnh độ rộng giữa lưới và panel nhập liệu" />
 
             <Border Grid.Column="0"
                     BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
@@ -138,11 +147,6 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -164,111 +168,107 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <StackPanel Grid.Row="1" Margin="0,2,0,12">
-                        <TextBlock FontSize="12"
-                                   Opacity="0.6"
-                                   Text="{Binding EditTableId, StringFormat='Đang chỉnh sửa Table_Id={0}', TargetNullValue='Nhập thông tin và bấm Tạo mới để lưu.'}" />
+                    <TextBlock Grid.Row="1"
+                               Margin="0,2,0,12"
+                               FontSize="12"
+                               Opacity="0.6"
+                               Text="{Binding EditTableId, StringFormat='Đang chỉnh sửa Table_Id={0}', TargetNullValue='Nhập thông tin và bấm Tạo mới để lưu.'}" />
 
-                        <!-- Chọn nhanh bảng/view thật từ Target DB → tự điền Table_Code + Schema_Name. -->
-                        <TextBlock Text="Chọn bảng / view có sẵn (Target DB)"
-                                   FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,12,0,2" />
-                        <TextBlock Text="Chọn 1 bảng/view vật lý đang có trong Target DB — hệ thống tự điền Table_Code và Schema_Name. Để trống nếu muốn khai báo thủ công."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
-                        <dxe:ComboBoxEdit ItemsSource="{Binding DbObjects}"
-                                          EditValue="{Binding SelectedDbObject, UpdateSourceTrigger=PropertyChanged}"
-                                          IsTextEditable="True"
-                                          ImmediatePopup="True"
-                                          IncrementalFiltering="True"
-                                          FilterCondition="Contains"
-                                          NullText="— Chọn để tự điền Code, hoặc gõ tay bên dưới —"
-                                          Height="34" />
-                    </StackPanel>
+                    <!-- Khu vực field chia 2 cột: trái = nguồn + mã/tên; phải = schema + cờ + mô tả. -->
+                    <Grid Grid.Row="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="20" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Row="2">
-                        <TextBlock Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
-                        <TextBlock Text="Mã định danh duy nhất của bảng metadata — dùng trong cấu hình và các engine. Nên viết HOA, không dấu, không khoảng trắng (VD: UI_CUSTOMER)."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
-                    </StackPanel>
-                    <dxe:TextEdit Grid.Row="3"
-                                  EditValue="{Binding EditTableCode, UpdateSourceTrigger=PropertyChanged}"
-                                  NullText="VD: UI_CUSTOMER, UI_INVOICE"
-                                  Height="34"
-                                  Margin="0,0,0,10" />
+                        <!-- ── Cột trái ── -->
+                        <StackPanel Grid.Column="0">
+                            <!-- Chọn nhanh bảng/view thật từ Target DB → tự điền Table_Code + Schema_Name. -->
+                            <TextBlock Text="Chọn bảng / view có sẵn (Target DB)"
+                                       FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                            <TextBlock Text="Chọn 1 bảng/view vật lý đang có trong Target DB — hệ thống tự điền Table_Code và Schema_Name. Để trống nếu muốn khai báo thủ công."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                            ItemsSource="{Binding DbObjects}"
+                                            EditValue="{Binding SelectedDbObject, UpdateSourceTrigger=PropertyChanged}"
+                                            NullText="— Chọn để tự điền Code, hoặc gõ tay bên dưới —" />
 
-                    <StackPanel Grid.Row="4">
-                        <TextBlock Text="Table_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
-                        <TextBlock Text="Tên hiển thị thân thiện cho người dùng — có thể là tiếng Việt có dấu (VD: Danh mục khách hàng)."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
-                    </StackPanel>
-                    <dxe:TextEdit Grid.Row="5"
-                                  EditValue="{Binding EditTableName, UpdateSourceTrigger=PropertyChanged}"
-                                  NullText="VD: Danh mục khách hàng"
-                                  Height="34"
-                                  Margin="0,0,0,10" />
+                            <TextBlock Text="Table_Code *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,12,0,2" />
+                            <TextBlock Text="Mã định danh duy nhất của bảng metadata — dùng trong cấu hình và các engine. Nên viết HOA, không dấu, không khoảng trắng (VD: UI_CUSTOMER)."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <dxe:TextEdit EditValue="{Binding EditTableCode, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: UI_CUSTOMER, UI_INVOICE"
+                                          Height="34"
+                                          Margin="0,0,0,10" />
 
-                    <StackPanel Grid.Row="6" Margin="0,0,0,10">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="10" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Table_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                            <TextBlock Text="Tên hiển thị thân thiện cho người dùng — có thể là tiếng Việt có dấu (VD: Danh mục khách hàng)."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <dxe:TextEdit EditValue="{Binding EditTableName, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: Danh mục khách hàng"
+                                          Height="34"
+                                          Margin="0,0,0,10" />
+                        </StackPanel>
 
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Schema_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
-                                <TextBlock Text="Schema chứa bảng/view vật lý trong Target DB (mặc định dbo)."
-                                           FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
-                                <dxe:TextEdit EditValue="{Binding EditSchemaName, UpdateSourceTrigger=PropertyChanged}"
-                                              Height="34"
-                                              NullText="dbo" />
+                        <!-- ── Cột phải ── -->
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Schema_Name *" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                            <TextBlock Text="Schema chứa bảng/view vật lý trong Target DB (mặc định dbo)."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <dxe:TextEdit EditValue="{Binding EditSchemaName, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="34"
+                                          NullText="dbo"
+                                          Margin="0,0,0,10" />
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <dxe:CheckEdit Content="Is_Tenant"
+                                               IsChecked="{Binding EditIsTenant}"
+                                               ToolTip="Bật nếu bảng chứa dữ liệu riêng theo từng tenant (mỗi tenant một bộ dữ liệu); tắt nếu là bảng dùng chung."
+                                               Margin="0,0,16,0" />
+                                <dxe:CheckEdit Content="Is_Active"
+                                               IsChecked="{Binding EditIsActive}"
+                                               ToolTip="Bật = bản ghi đang hiệu lực và xuất hiện trong cấu hình; tắt = ẩn/vô hiệu khỏi hệ thống." />
                             </StackPanel>
+                            <TextBlock FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                       Text="Is_Tenant: bảng có dữ liệu riêng theo từng tenant. • Is_Active: bản ghi đang hiệu lực (tắt để ẩn/vô hiệu)." />
 
-                            <dxe:CheckEdit Grid.Column="2"
-                                           Content="Is_Tenant"
-                                           IsChecked="{Binding EditIsTenant}"
-                                           ToolTip="Bật nếu bảng chứa dữ liệu riêng theo từng tenant (mỗi tenant một bộ dữ liệu); tắt nếu là bảng dùng chung."
-                                           VerticalAlignment="Bottom"
-                                           Margin="0,0,0,6" />
+                            <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
+                            <TextBlock Text="Ghi chú nội bộ mô tả mục đích/ý nghĩa của bảng (không bắt buộc)."
+                                       FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
+                            <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     MinHeight="120"
+                                     Padding="8"
+                                     BorderBrush="{DynamicResource AppBorderBrush}"
+                                     BorderThickness="1" />
+                        </StackPanel>
+                    </Grid>
 
-                            <dxe:CheckEdit Grid.Column="4"
-                                           Content="Is_Active"
-                                           IsChecked="{Binding EditIsActive}"
-                                           ToolTip="Bật = bản ghi đang hiệu lực và xuất hiện trong cấu hình; tắt = ẩn/vô hiệu khỏi hệ thống."
-                                           VerticalAlignment="Bottom"
-                                           Margin="0,0,0,6" />
-                        </Grid>
-
-                        <TextBlock FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,6,0,0"
-                                   Text="Is_Tenant: bảng có dữ liệu riêng theo từng tenant. • Is_Active: bản ghi đang hiệu lực (tắt để ẩn/vô hiệu)." />
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="7">
-                        <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
-                        <TextBlock Text="Ghi chú nội bộ mô tả mục đích/ý nghĩa của bảng (không bắt buộc)."
-                                   FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,6" />
-                        <TextBox Text="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
-                                 AcceptsReturn="True"
-                                 TextWrapping="Wrap"
-                                 VerticalScrollBarVisibility="Auto"
-                                 MinHeight="120"
-                                 Padding="8"
-                                 BorderBrush="{DynamicResource AppBorderBrush}"
-                                 BorderThickness="1" />
-                    </StackPanel>
-
-                    <StackPanel Grid.Row="8" Orientation="Horizontal" Margin="0,12,0,0">
-                        <dx:SimpleButton Command="{Binding SaveCommand}" Margin="0,0,8,0">
+                    <WrapPanel Grid.Row="3" Margin="0,12,0,0">
+                        <dx:SimpleButton Command="{Binding SaveCommand}" Margin="0,0,8,8">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="💾" VerticalAlignment="Center" />
                                 <TextBlock Text="{Binding SaveButtonText}" Margin="6,0,0,0" />
                             </StackPanel>
                         </dx:SimpleButton>
 
-                        <dx:SimpleButton Command="{Binding NewCommand}" Content="Làm mới form nhập" Margin="0,0,8,0" />
+                        <dx:SimpleButton Command="{Binding NewCommand}" Content="Làm mới form nhập" Margin="0,0,8,8" />
+
+                        <dx:SimpleButton Command="{Binding CreateFormFromTableCommand}"
+                                         Margin="0,0,8,8"
+                                         Visibility="{Binding ShowCreateFormButton, Converter={StaticResource BoolToVis}}"
+                                         ToolTip="Mở màn hình Tạo Form mới với Business Table = bảng đang chọn — tự điền sẵn Form Code và Tên Form. Nút ẩn nếu bảng đã có form.">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📝" VerticalAlignment="Center" />
+                                <TextBlock Text="Tạo Form từ bảng này" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </dx:SimpleButton>
 
                         <dx:SimpleButton Command="{Binding GenerateHookStoreCommand}"
+                                         Margin="0,0,8,8"
                                          ToolTip="Tạo store skeleton (spc_Grid_/sp_AfterSave_Grid_) cho bảng đang chọn TRỰC TIẾP trên Target DB — hỏi xác nhận, chỉ tạo nếu chưa có (không đè proc đã sửa).">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="⚙" VerticalAlignment="Center" />
@@ -277,16 +277,16 @@
                         </dx:SimpleButton>
 
                         <dx:SimpleButton Command="{Binding CheckAuditColumnsCommand}"
-                                         Margin="8,0,0,0"
+                                         Margin="0,0,8,8"
                                          ToolTip="Đối chiếu khối cột auto chuẩn (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver) của bảng đang chọn với Target DB. Thiếu → hỏi xác nhận rồi ALTER trực tiếp lên Target DB (idempotent).">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="🧩" VerticalAlignment="Center" />
                                 <TextBlock Text="Kiểm tra cột chuẩn" Margin="6,0,0,0" />
                             </StackPanel>
                         </dx:SimpleButton>
-                    </StackPanel>
+                    </WrapPanel>
 
-                    <Border Grid.Row="9"
+                    <Border Grid.Row="4"
                             Margin="0,12,0,0"
                             Padding="10,8"
                             CornerRadius="6"

@@ -59,6 +59,17 @@ public interface IFormDataService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Kiểm tra đã có <c>Ui_Form</c> (active) gắn với bảng này trong tenant chưa —
+    /// khớp theo <c>Table_Id</c> HOẶC <c>Form_Code</c> = <paramref name="tableCode"/>.
+    /// Dùng để ẩn nút "Tạo Form từ bảng này" khi form đã tồn tại.
+    /// </summary>
+    Task<bool> FormExistsForTableAsync(
+        int tableId,
+        string tableCode,
+        int tenantId,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Tạo mới cấu hình bảng trong Sys_Table. Trả về Table_Id vừa tạo.
     /// </summary>
     Task<int> CreateSysTableAsync(

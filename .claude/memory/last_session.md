@@ -1,5 +1,56 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-28 (session 68 — WPF ConfigStudio: LookUpEdit chuẩn hóa + luồng Sys_Table↔Form↔Field + i18n key canonical + layout cột)
+
+## Session 68 (2026-06-28) — đã làm (ĐÃ CODE; build `ConfigStudio.WPF.UI.slnx` 0/0)
+
+> Chuỗi yêu cầu UX/refactor WPF ConfigStudio (kèm screenshot). Mỗi quyết định LOGIC đều HỎI trước khi làm [[feedback-always-ask-first]].
+
+### LOOKUPEDIT-UNIFY — control chọn dữ liệu từ DB = LookUpEdit (1 nơi cấu hình)
+- Rule mới `.claude-rules/wpf-configstudio.md` §11: mọi control `ItemsSource` **load từ DB** → `dxg:LookUpEdit`
+  (combo enum/option tĩnh giữ `ComboBoxEdit`). Style implicit ở `Themes/Controls.xaml` (sửa 1 nơi).
+- **Verified DevExpress 25.2 bằng reflection (.NET 9 console)**: `GridColumn.Binding` (BindingBase) tồn tại;
+  `AutoPopulateColumns` **KHÔNG** sinh cột cho `List<string>` (scalar) → popup rỗng. ⇒ thêm style keyed
+  `ScalarLookUpEditStyle` + popup `LookUpScalarPopup` (1 cột `Binding="{Binding}"`) cho list chuỗi.
+- Đổi **10** `ComboBoxEdit` nguồn DB → `LookUpEdit` (+ áp ScalarLookUpEditStyle): RelationManager (MasterColumns×3,
+  DetailColumns), ValidationRuleEditor (AvailableCompareFields), FormManager (TableOptions), SysTableManager (DbObjects),
+  FieldConfig (AvailableLookupCodes), ComboBoxPropsPanel (AvailableLookupCodes), LookupBoxPropsPanel (AvailableFormCodes).
+  Thêm namespace `dxg` cho 2 panel ControlProps.
+
+### SYSTABLE→FORM — nút "Tạo Form từ bảng này" + ẩn nếu đã có form
+- SysTableManager: inject `IRegionManager` + `CreateFormFromTableCommand` → navigate FormEditor `formId=0` +
+  `businessTableId`. FormEditor `OnNavigatedTo` đọc `businessTableId` → `InitNewFormTableAsync` chọn sẵn Business Table
+  (kéo theo AutoFillFromTable điền Form Code + Tên Form).
+- **Ẩn nút khi form đã tồn tại**: `IFormDataService.FormExistsForTableAsync(tableId, tableCode, tenantId)` (Dapper:
+  `Form_Code=@TableCode OR Table_Id=@TableId`, schema-defensive); VM `SelectedTableHasForm`/`ShowCreateFormButton`
+  (ẩn lúc đang check → tránh mời tạo trùng; guard race khi đổi dòng nhanh).
+- Layout SysTableManager: panel editor **2 cột** (chọn nguồn/mã·tên trái — schema/cờ/desc phải) + **GridSplitter** kéo
+  trái–phải giữa lưới và panel (MinWidth chống co sập); hàng nút → `WrapPanel` (không bị cắt).
+
+### FORMMANAGER→FIELDCONFIG — double-click mở thẳng Cấu hình Field
+- FormManager: thêm `OpenFieldConfigCommand`; code-behind `OnRowDoubleClick` gọi nó (giữ icon ✎/⚙/context-menu → Form Editor).
+- FieldConfig: mở từ danh sách form (`fieldId=0`) → **tự suy TableCode** từ Sys_Table theo tableId, **tự chọn field đầu**
+  (điều hướng lại; bỏ qua breadcrumb tạm "Field #0").
+
+### I18N-KEY-CANONICAL — key field đúng cú pháp + auto bản dịch + cấu trúc đồng nhất
+- Chuẩn hóa key về `{table}.field.{code}.label/.placeholder/.tooltip` (spec 10 §1b) khi mở field — kể cả field cũ lưu
+  legacy (thiếu `.label`) / placeholder-tooltip rỗng; gán THẲNG backing field nên không kích hoạt resolve (giữ text).
+- **Auto-propagate**: lưu label → placeholder/tooltip rỗng tự lấy CÙNG text label (user nhập khác thì giữ).
+- Khối "Thông báo khi trùng" đồng nhất cấu trúc với "để trống": input = giá trị editable (UniqueErrorKeyPreview) +
+  hàng [key·Dịch]; setter đánh dấu dirty; lưu upsert giá trị user.
+- **Layout FieldConfig tab Cơ bản**: "Thông Tin Cơ Bản" 2 cột (cấu hình 60% trái · diễn giải Editor 40% phải);
+  cụm validation i18n **2 cột** (để trống · trùng); cụm Display i18n **3 cột** (Nhãn · Gợi ý · Mô tả hover).
+
+### Fix cảnh báo
+- CS8601 `FormEditorViewModel.cs:1481` (gán `node.DisplayName` từ ternary `IsNullOrWhiteSpace`) → coalesce `?? string.Empty`.
+
+### ⏳ Còn lại / verify
+- **Verify thực tế** (đóng app + rebuild): popup LookUpEdit scalar hiện cột giá trị; nút Tạo Form ẩn/hiện đúng;
+  double-click form → Field config chọn field đầu; key canonical + auto placeholder/tooltip; các layout cột.
+- Backlog cũ (Phase sau): bỏ full-reload sau save field; inline field config; dropdown FK từ schema.
+
+---
+
 > Cập nhật: 2026-06-27 (session 67 — Tối ưu luồng cấu hình WPF · Phase 2: auto-save toàn cục + fix combo SysTable)
 
 ## Session 67 (2026-06-27) — đã làm (ĐÃ CODE; build WPF Forms module 0/0)

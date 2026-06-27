@@ -1088,7 +1088,12 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             _ = LoadPermissionsAsync();
             ActiveTabIndex     = 0; // Mở tab "Thông tin Form"
             IsDirty            = false;
-            _ = LoadTableLookupSafeAsync();
+
+            // Có thể đến từ Sys_Table (nút "Tạo Form từ bảng này") → chọn sẵn Business Table.
+            var prefillTableId = navigationContext.Parameters.ContainsKey("businessTableId")
+                ? navigationContext.Parameters.GetValue<int>("businessTableId")
+                : 0;
+            _ = InitNewFormTableAsync(prefillTableId);
         }
         else
         {
@@ -1107,6 +1112,20 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
             _ = LoadFromDatabaseAsync();
         }
+    }
+
+    /// <summary>
+    /// Nạp danh sách Business Table cho form mới; nếu đến từ Sys_Table (businessTableId &gt; 0)
+    /// thì chọn sẵn bảng đó SAU KHI lookup đã nạp. Sự kiện theo sau: setter SelectedTable kích hoạt
+    /// AutoFillFromTable → tự điền Form Code (= Table_Code) và Tên Form (= Table_Name).
+    /// </summary>
+    private async Task InitNewFormTableAsync(int businessTableId)
+    {
+        await LoadTableLookupSafeAsync();
+        if (businessTableId <= 0) return;
+
+        var match = TableLookupItems.FirstOrDefault(t => t.TableId == businessTableId);
+        if (match is not null) SelectedTable = match;
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => false;
@@ -1478,7 +1497,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         node.Id       = savedId;
         node.TitleKey = newTitleKey;
         if (ReferenceEquals(node, SelectedNode)) _originalTitleKey = newTitleKey;
-        node.DisplayName = string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi;
+        // Tên hiển thị: ưu tiên bản dịch tiếng Việt (ResourceVi), rỗng thì fallback về Code.
+        node.DisplayName = (string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi) ?? string.Empty;
         return true;
     }
 

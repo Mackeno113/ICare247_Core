@@ -148,6 +148,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
     public DelegateCommand DuplicateFormCommand { get; }
     public DelegateCommand RefreshCommand { get; }
     public DelegateCommand<FormSummaryDto> OpenFormCommand { get; }
+    public DelegateCommand<FormSummaryDto> OpenFieldConfigCommand { get; }
     public DelegateCommand<FormSummaryDto> ViewDetailCommand { get; }
     public DelegateCommand<FormSummaryDto> PreviewFormCommand { get; }
     public DelegateCommand<FormSummaryDto> DeactivateFormCommand { get; }
@@ -177,6 +178,7 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
         DuplicateFormCommand = new DelegateCommand(ExecuteDuplicateForm, () => SelectedForm is not null);
         RefreshCommand       = new DelegateCommand(async () => await LoadDataSafeAsync());
         OpenFormCommand      = new DelegateCommand<FormSummaryDto>(ExecuteOpenForm);
+        OpenFieldConfigCommand = new DelegateCommand<FormSummaryDto>(ExecuteOpenFieldConfig);
         ViewDetailCommand    = new DelegateCommand<FormSummaryDto>(ExecuteViewDetail);
         PreviewFormCommand   = new DelegateCommand<FormSummaryDto>(ExecutePreviewForm);
         DeactivateFormCommand = new DelegateCommand<FormSummaryDto>(ExecuteDeactivate);
@@ -353,6 +355,25 @@ public sealed class FormManagerViewModel : ViewModelBase, INavigationAware, IReg
     {
         if (form is null) return;
         NavigateToEditor(form.FormId);
+    }
+
+    /// <summary>
+    /// Double-click form → mở thẳng màn hình Cấu hình Field của form (thay vì Form Editor).
+    /// Truyền fieldId=0 → FieldConfig tự suy Table_Code và chọn field đầu tiên.
+    /// Sự kiện theo sau: điều hướng sang FieldConfigView.
+    /// </summary>
+    private void ExecuteOpenFieldConfig(FormSummaryDto? form)
+    {
+        if (form is null) return;
+        var p = new NavigationParameters
+        {
+            { "formId",   form.FormId   },
+            { "formCode", form.FormCode },
+            { "formName", form.FormName },
+            { "fieldId",  0 },
+            { "mode",     "edit" }
+        };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, p);
     }
 
     /// <summary>

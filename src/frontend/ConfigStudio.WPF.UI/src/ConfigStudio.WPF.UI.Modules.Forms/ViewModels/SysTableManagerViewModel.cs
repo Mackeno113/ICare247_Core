@@ -75,10 +75,32 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 
                 RaisePropertyChanged(nameof(IsEditMode));
                 RaisePropertyChanged(nameof(SaveButtonText));
+                RaisePropertyChanged(nameof(ShowCreateFormButton));
                 SaveCommand.RaiseCanExecuteChanged();
+                CreateFormFromTableCommand.RaiseCanExecuteChanged();
+                _ = RefreshSelectedTableHasFormAsync();
             }
         }
     }
+
+    private bool _selectedTableHasForm;
+    /// <summary>True khi bảng đang chọn ĐÃ có Ui_Form (theo Table_Id hoặc Form_Code=Table_Code) → ẩn nút tạo form.</summary>
+    public bool SelectedTableHasForm
+    {
+        get => _selectedTableHasForm;
+        private set
+        {
+            if (SetProperty(ref _selectedTableHasForm, value))
+            {
+                RaisePropertyChanged(nameof(ShowCreateFormButton));
+                CreateFormFromTableCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Hiện nút "Tạo Form từ bảng này": có region, đã chọn bảng đã lưu, và bảng CHƯA có form.</summary>
+    public bool ShowCreateFormButton =>
+        _regionManager is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
 
     private string _searchText = "";
     public string SearchText
@@ -241,8 +263,11 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public DelegateCommand GenerateHookStoreCommand { get; }
     /// <summary>Đối chiếu cột auto chuẩn (§0.1) của bảng đang chọn với Target DB → sinh .sql ALTER nếu thiếu.</summary>
     public DelegateCommand CheckAuditColumnsCommand { get; }
+    /// <summary>Mở màn hình Tạo Form mới với Business Table = bảng đang chọn (điền sẵn Form Code + Tên Form).</summary>
+    public DelegateCommand CreateFormFromTableCommand { get; }
 
     private readonly INavigationHistoryService? _history;
+    private readonly IRegionManager? _regionManager;
 
     public SysTableManagerViewModel(
         IFormDataService? formDataService = null,
@@ -250,7 +275,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         INavigationHistoryService? history = null,
         ISchemaInspectorService? schemaInspector = null,
         ISchemaMaintenanceService? schemaMaintenance = null,
-        IAppLogger? logger = null)
+        IAppLogger? logger = null,
+        IRegionManager? regionManager = null)
     {
         _formDataService = formDataService;
         _appConfig = appConfig;
@@ -258,6 +284,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         _schemaInspector = schemaInspector;
         _schemaMaintenance = schemaMaintenance;
         _logger = logger;
+        _regionManager = regionManager;
 
         TablesView = CollectionViewSource.GetDefaultView(Tables);
         TablesView.Filter = ApplyFilter;
@@ -267,6 +294,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         SaveCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), CanSave);
         GenerateHookStoreCommand = new DelegateCommand(async () => await ExecuteGenerateHookStoreAsync(), CanGenerateHookStore);
         CheckAuditColumnsCommand = new DelegateCommand(async () => await ExecuteCheckAuditColumnsAsync(), CanCheckAuditColumns);
+        CreateFormFromTableCommand = new DelegateCommand(ExecuteCreateFormFromTable, CanCreateFormFromTable);
 
         ResetEditorForNew();
     }
@@ -294,6 +322,58 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
             && !string.IsNullOrWhiteSpace(EditTableCode)
             && !string.IsNullOrWhiteSpace(EditTableName)
             && !string.IsNullOrWhiteSpace(EditSchemaName);
+    }
+
+    /// <summary>Chỉ tạo form khi đã chọn 1 bảng ĐÃ LƯU (có Table_Id), có region, và bảng CHƯA có form.</summary>
+    private bool CanCreateFormFromTable() =>
+        _regionManager is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
+
+    /// <summary>
+    /// Kiểm tra bảng đang chọn đã có Ui_Form chưa (Table_Id hoặc Form_Code=Table_Code) → cập nhật cờ ẩn nút.
+    /// Ẩn nút trong lúc kiểm tra để không bao giờ mời tạo trùng. Sự kiện theo sau: nút ẩn/hiện theo kết quả.
+    /// </summary>
+    private async Task RefreshSelectedTableHasFormAsync()
+    {
+        // Mặc định ẩn nút trong lúc chờ kết quả (tránh nhấp tạo trùng trước khi check xong).
+        SelectedTableHasForm = true;
+
+        if (_formDataService is null || SelectedTable is not { TableId: > 0 } table)
+        {
+            SelectedTableHasForm = false;
+            return;
+        }
+
+        try
+        {
+            var exists = await _formDataService.FormExistsForTableAsync(table.TableId, table.TableCode, TenantId);
+            // Bỏ qua nếu user đã đổi sang bảng khác trong lúc chờ (tránh ghi đè cờ sai).
+            if (SelectedTable?.TableId == table.TableId)
+                SelectedTableHasForm = exists;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.CheckFormExists");
+            // Lỗi check → vẫn cho phép tạo (không chặn nhầm người dùng).
+            if (SelectedTable?.TableId == table.TableId)
+                SelectedTableHasForm = false;
+        }
+    }
+
+    /// <summary>
+    /// Mở màn hình Tạo Form mới (FormEditor, formId=0) với Business Table = bảng đang chọn.
+    /// Sự kiện theo sau: FormEditor nạp danh sách bảng rồi chọn sẵn theo businessTableId,
+    /// kéo theo tự điền Form Code (= Table_Code) và Tên Form (= Table_Name).
+    /// </summary>
+    private void ExecuteCreateFormFromTable()
+    {
+        if (_regionManager is null || SelectedTable is not { TableId: > 0 } table) return;
+
+        var p = new NavigationParameters
+        {
+            { "formId", 0 },
+            { "businessTableId", table.TableId },
+        };
+        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
     }
 
     /// <summary>

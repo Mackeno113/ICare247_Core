@@ -137,9 +137,10 @@
                                             NullText="Chọn bảng cha..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Master_Key_Column (cột khóa bảng cha)" Style="{StaticResource EditorLabel}" />
-                            <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
-                                              EditValue="{Binding EditMasterKeyColumn, UpdateSourceTrigger=PropertyChanged}"
-                                              NullText="Id" Margin="0,0,0,10" />
+                            <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                            ItemsSource="{Binding MasterColumns}"
+                                            EditValue="{Binding EditMasterKeyColumn, UpdateSourceTrigger=PropertyChanged}"
+                                            NullText="Id" Margin="0,0,0,10" />
 
                             <TextBlock Text="Bảng con (Detail) * — phía 'N'" Style="{StaticResource EditorLabel}" />
                             <dxg:LookUpEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
@@ -147,9 +148,10 @@
                                             NullText="Chọn bảng con..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Detail_FK_Column * — cột FK ở bảng con trỏ về cha" Style="{StaticResource EditorLabel}" />
-                            <dxe:ComboBoxEdit ItemsSource="{Binding DetailColumns}"
-                                              EditValue="{Binding EditDetailFkColumn, UpdateSourceTrigger=PropertyChanged}"
-                                              NullText="VD: NoiSinh_TinhThanhPhoID" Margin="0,0,0,10" />
+                            <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                            ItemsSource="{Binding DetailColumns}"
+                                            EditValue="{Binding EditDetailFkColumn, UpdateSourceTrigger=PropertyChanged}"
+                                            NullText="VD: NoiSinh_TinhThanhPhoID" Margin="0,0,0,10" />
 
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
@@ -177,15 +179,17 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Display_Column (cột cha hiển thị)" Style="{StaticResource EditorLabel}" />
-                                    <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
-                                                      EditValue="{Binding EditDisplayColumn, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="VD: Ten" />
+                                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                                    ItemsSource="{Binding MasterColumns}"
+                                                    EditValue="{Binding EditDisplayColumn, UpdateSourceTrigger=PropertyChanged}"
+                                                    NullText="VD: Ten" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Value_Column (cột cha giá trị)" Style="{StaticResource EditorLabel}" />
-                                    <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
-                                                      EditValue="{Binding EditValueColumn, UpdateSourceTrigger=PropertyChanged}"
-                                                      NullText="VD: Id" />
+                                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                                    ItemsSource="{Binding MasterColumns}"
+                                                    EditValue="{Binding EditValueColumn, UpdateSourceTrigger=PropertyChanged}"
+                                                    NullText="VD: Id" />
                                 </StackPanel>
                             </Grid>
 

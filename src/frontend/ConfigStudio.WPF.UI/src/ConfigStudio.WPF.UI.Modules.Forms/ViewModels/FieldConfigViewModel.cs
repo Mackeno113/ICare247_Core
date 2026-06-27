@@ -1093,7 +1093,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public string UniqueErrorKeyPreview
     {
         get => _uniqueErrorKeyPreview;
-        set { if (SetProperty(ref _uniqueErrorKeyPreview, value)) RaisePropertyChanged(nameof(HasUniqueErrorKeyPreview)); }
+        set
+        {
+            if (SetProperty(ref _uniqueErrorKeyPreview, value))
+            {
+                if (!_suppressValueDirty) IsDirty = true;
+                RaisePropertyChanged(nameof(HasUniqueErrorKeyPreview));
+            }
+        }
     }
 
     public bool HasUniqueErrorKeyPreview => !string.IsNullOrWhiteSpace(_uniqueErrorKeyPreview);
@@ -1229,19 +1236,35 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         FormCode  = navigationContext.Parameters.GetValue<string>("formCode")  ?? "";
         FormName  = navigationContext.Parameters.GetValue<string>("formName")  ?? "";
 
-        // Dang ky breadcrumb — hierarchical (child cua FormEditor).
-        var fieldCode = navigationContext.Parameters.GetValue<string>("fieldCode") ?? "";
-        _history?.RegisterNavigation(
-            new NavigationCrumb
-            {
-                ViewName = ViewNames.FieldConfig,
-                Title = string.IsNullOrEmpty(fieldCode) ? $"Field #{FieldId}" : $"Field: {fieldCode}",
-                Icon = "⚙",
-                Parameters = navigationContext.Parameters,
-            },
-            isHierarchical: true);
+        // Mở từ danh sách form (fieldId=0, không phải tạo mới) → sẽ tự chọn field đầu sau khi load.
+        // Bỏ qua breadcrumb tạm "Field #0"; lần điều hướng lại tới field thật mới ghi crumb.
+        var autoPickFirstField = FieldId <= 0 && _mode != "new";
+
+        if (!autoPickFirstField)
+        {
+            // Dang ky breadcrumb — hierarchical (child cua FormEditor).
+            var fieldCode = navigationContext.Parameters.GetValue<string>("fieldCode") ?? "";
+            _history?.RegisterNavigation(
+                new NavigationCrumb
+                {
+                    ViewName = ViewNames.FieldConfig,
+                    Title = string.IsNullOrEmpty(fieldCode) ? $"Field #{FieldId}" : $"Field: {fieldCode}",
+                    Icon = "⚙",
+                    Parameters = navigationContext.Parameters,
+                },
+                isHierarchical: true);
+        }
 
         await LoadDataAsync();
+
+        // Tự chọn field đầu tiên khi mở từ danh sách form → điều hướng lại tới field đó
+        // (TableCode đã được suy trong LoadDataAsync nên params truyền đi đầy đủ).
+        if (autoPickFirstField)
+        {
+            var firstField = FieldNavigatorGroups.SelectMany(g => g.Fields).FirstOrDefault();
+            if (firstField is not null)
+                ExecuteNavigateToField(firstField);
+        }
     }
 
     // Tái sử dụng VM instance khi navigate giữa các field → giữ FieldNavigatorGroups, tránh reload list.
@@ -1316,6 +1339,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
             // ── 1. Columns (cần cho ComboBox chọn column) ─────────────────
             var tableId = await _fieldService!.GetTableIdByFormAsync(FormId, tenantId, ct);
+
+            // Mở từ danh sách form không truyền tableCode → suy từ Sys_Table theo tableId
+            // để các key i18n (label/placeholder/tooltip) sinh đúng tiền tố khi sửa cột/FieldCode.
+            if (string.IsNullOrEmpty(TableCode) && tableId > 0 && _formService is not null)
+            {
+                var tables = await _formService.GetTablesByTenantAsync(tenantId, ct);
+                TableCode = tables.FirstOrDefault(t => t.TableId == tableId)?.TableCode ?? "";
+            }
+
             if (tableId > 0)
             {
                 var columns = await _fieldService.GetColumnsByTableAsync(tableId, ct);
@@ -1634,6 +1666,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // FkPopupColumns + ComboBox props đã restore từ DB.
         RebuildControlPropsJson();
 
+        // Chuẩn hóa 3 key hiển thị về canonical (.label/.placeholder/.tooltip) — fix field cũ lưu
+        // key legacy / thiếu placeholder-tooltip; giá trị vi đã nạp từ key cũ được giữ nguyên.
+        NormalizeFieldKeysToCanonical();
+
         IsLoading = false;
         IsDirty   = false;
     }
@@ -1679,15 +1715,60 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_isLoading) return;
 
+        var label = BuildFieldKey("label");
+        if (string.IsNullOrEmpty(label)) return;
+
+        LabelKey       = label;
+        PlaceholderKey = BuildFieldKey("placeholder");
+        TooltipKey     = BuildFieldKey("tooltip");
+        if (IsRequired)
+        {
+            var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
+            RequiredErrorKey  = $"{TableCode.ToLowerInvariant()}.val.{effectiveCode}.required";
+        }
+    }
+
+    /// <summary>
+    /// Build key hiển thị field theo chuẩn spec 10 §1b: <c>{tableCode}.field.{code}.{qualifier}</c>
+    /// (qualifier = label / placeholder / tooltip). Trả rỗng nếu thiếu TableCode hoặc cột hiệu lực.
+    /// </summary>
+    private string BuildFieldKey(string qualifier)
+    {
         var tableCode     = TableCode.ToLowerInvariant();
         var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
-        if (string.IsNullOrEmpty(tableCode) || string.IsNullOrEmpty(effectiveCode)) return;
+        return string.IsNullOrEmpty(tableCode) || string.IsNullOrEmpty(effectiveCode)
+            ? ""
+            : $"{tableCode}.field.{effectiveCode}.{qualifier}";
+    }
 
-        LabelKey       = $"{tableCode}.field.{effectiveCode}.label";
-        PlaceholderKey = $"{tableCode}.field.{effectiveCode}.placeholder";
-        TooltipKey     = $"{tableCode}.field.{effectiveCode}.tooltip";
-        if (IsRequired)
-            RequiredErrorKey = $"{tableCode}.val.{effectiveCode}.required";
+    /// <summary>
+    /// Chuẩn hóa 3 key hiển thị về đúng cú pháp spec 10 cho field ĐANG SỬA — kể cả field cũ lưu key
+    /// legacy (thiếu <c>.label</c>) hoặc placeholder/tooltip rỗng. Gán THẲNG backing field để KHÔNG
+    /// kích hoạt resolve (giữ nguyên giá trị vi vừa nạp từ key cũ qua guard <c>current</c>).
+    /// Sự kiện theo sau: key canonical hiển thị ngay + được ghi khi Lưu field (key cũ thành orphan, vô hại).
+    /// </summary>
+    private void NormalizeFieldKeysToCanonical()
+    {
+        var label = BuildFieldKey("label");
+        if (string.IsNullOrEmpty(label)) return; // thiếu table/code → giữ nguyên
+
+        if (_labelKey != label)
+        {
+            _labelKey = label;
+            RaisePropertyChanged(nameof(LabelKey));
+        }
+        var placeholder = BuildFieldKey("placeholder");
+        if (_placeholderKey != placeholder)
+        {
+            _placeholderKey = placeholder;
+            RaisePropertyChanged(nameof(PlaceholderKey));
+        }
+        var tooltip = BuildFieldKey("tooltip");
+        if (_tooltipKey != tooltip)
+        {
+            _tooltipKey = tooltip;
+            RaisePropertyChanged(nameof(TooltipKey));
+        }
     }
 
     // ── Required error key generator ─────────────────────────
@@ -2622,11 +2703,31 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (!string.IsNullOrWhiteSpace(LabelKey))
             await UpsertOrInitViAsync(LabelKey, LabelPreview, ColumnCode, ct);
 
+        // Placeholder/Tooltip thường CÙNG text với label: user bỏ trống → mặc định lấy text của label
+        // (tạo luôn bản dịch); user nhập KHÁC → tôn trọng giá trị user. Sau khi ghi, phản ánh lại ô nhập.
+        var labelText = (LabelPreview ?? "").Trim();
+
         if (!string.IsNullOrWhiteSpace(PlaceholderKey))
-            await UpsertOrInitViAsync(PlaceholderKey, PlaceholderPreview, "", ct);
+        {
+            var text = string.IsNullOrWhiteSpace(PlaceholderPreview) ? labelText : PlaceholderPreview.Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                await _i18nService.SaveResourceAsync(PlaceholderKey, "vi", text, ct);
+                if (string.IsNullOrWhiteSpace(PlaceholderPreview))
+                    SetResolvedValue(v => PlaceholderPreview = v, text);
+            }
+        }
 
         if (!string.IsNullOrWhiteSpace(TooltipKey))
-            await UpsertOrInitViAsync(TooltipKey, TooltipPreview, "", ct);
+        {
+            var text = string.IsNullOrWhiteSpace(TooltipPreview) ? labelText : TooltipPreview.Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                await _i18nService.SaveResourceAsync(TooltipKey, "vi", text, ct);
+                if (string.IsNullOrWhiteSpace(TooltipPreview))
+                    SetResolvedValue(v => TooltipPreview = v, text);
+            }
+        }
 
         if (IsRequired && !string.IsNullOrWhiteSpace(RequiredErrorKey))
             await UpsertOrInitViAsync(RequiredErrorKey, RequiredErrorKeyPreview,
@@ -2647,7 +2748,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             {
                 var uniqueKey = $"{tableCode}.val.{columnCode}.unique";
                 var label     = string.IsNullOrWhiteSpace(LabelPreview) ? ColumnCode : LabelPreview;
-                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "vi", $"{label} đã tồn tại", ct);
+                // vi: user gõ thẳng → upsert (ghi đè); bỏ trống → init mặc định "{label} đã tồn tại".
+                await UpsertOrInitViAsync(uniqueKey, UniqueErrorKeyPreview, $"{label} đã tồn tại", ct);
+                // en: chỉ init mặc định nếu chưa có (nhập bản dịch khác qua nút Dịch).
                 await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", $"{label} already exists", ct);
             }
         }
