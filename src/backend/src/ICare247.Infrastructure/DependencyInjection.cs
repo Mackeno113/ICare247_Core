@@ -110,6 +110,8 @@ public static class DependencyInjection
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<INavigationRepository, NavigationRepository>();
+        services.AddScoped<IMeCompanyRepository, MeCompanyRepository>();
+        services.AddScoped<IFileAttachmentRepository, FileAttachmentRepository>();
         services.AddScoped<IPermissionAdminRepository, PermissionAdminRepository>();
         services.AddScoped<IMenuAdminRepository, MenuAdminRepository>();
         services.AddScoped<IPermissionService, Services.PermissionService>();

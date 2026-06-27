@@ -278,8 +278,7 @@
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Kiểu dữ liệu" FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}" Margin="0,0,0,3" />
                                 <dxe:ComboBoxEdit ItemsSource="{Binding LiteralNetTypeOptions}"
-                                                 EditValue="{Binding LiteralNetType}"
-
+                                                 EditValue="{Binding LiteralNetType, UpdateSourceTrigger=PropertyChanged}"
                                                  Height="32" />
                             </StackPanel>
 

@@ -132,24 +132,24 @@
                                           NullText="VD: NhanVien_NoiSinh_TinhThanhPho" Margin="0,0,0,10" />
 
                             <TextBlock Text="Bảng cha (Master) * — phía '1'" Style="{StaticResource EditorLabel}" />
-                            <dxe:ComboBoxEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
-                                              SelectedItem="{Binding EditMasterTable}"
- NullText="Chọn bảng cha..." Margin="0,0,0,10" />
+                            <dxg:LookUpEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
+                                            SelectedItem="{Binding EditMasterTable}"
+                                            NullText="Chọn bảng cha..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Master_Key_Column (cột khóa bảng cha)" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
                                               EditValue="{Binding EditMasterKeyColumn, UpdateSourceTrigger=PropertyChanged}"
-                                              IsTextEditable="True" NullText="Id" Margin="0,0,0,10" />
+                                              NullText="Id" Margin="0,0,0,10" />
 
                             <TextBlock Text="Bảng con (Detail) * — phía 'N'" Style="{StaticResource EditorLabel}" />
-                            <dxe:ComboBoxEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
-                                              SelectedItem="{Binding EditDetailTable}"
- NullText="Chọn bảng con..." Margin="0,0,0,10" />
+                            <dxg:LookUpEdit ItemsSource="{Binding Tables}" DisplayMember="DisplayText"
+                                            SelectedItem="{Binding EditDetailTable}"
+                                            NullText="Chọn bảng con..." Margin="0,0,0,10" />
 
                             <TextBlock Text="Detail_FK_Column * — cột FK ở bảng con trỏ về cha" Style="{StaticResource EditorLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding DetailColumns}"
                                               EditValue="{Binding EditDetailFkColumn, UpdateSourceTrigger=PropertyChanged}"
-                                              IsTextEditable="True" NullText="VD: NoiSinh_TinhThanhPhoID" Margin="0,0,0,10" />
+                                              NullText="VD: NoiSinh_TinhThanhPhoID" Margin="0,0,0,10" />
 
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
@@ -160,12 +160,12 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Relation_Type" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding RelationTypeOptions}"
-                                                      EditValue="{Binding EditRelationType}" />
+                                                      EditValue="{Binding EditRelationType, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="On_Delete (xóa master)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding OnDeleteOptions}"
-                                                      EditValue="{Binding EditOnDelete}" />
+                                                      EditValue="{Binding EditOnDelete, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
                             </Grid>
 
@@ -179,13 +179,13 @@
                                     <TextBlock Text="Display_Column (cột cha hiển thị)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
                                                       EditValue="{Binding EditDisplayColumn, UpdateSourceTrigger=PropertyChanged}"
-                                                      IsTextEditable="True" NullText="VD: Ten" />
+                                                      NullText="VD: Ten" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Value_Column (cột cha giá trị)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding MasterColumns}"
                                                       EditValue="{Binding EditValueColumn, UpdateSourceTrigger=PropertyChanged}"
-                                                      IsTextEditable="True" NullText="VD: Id" />
+                                                      NullText="VD: Id" />
                                 </StackPanel>
                             </Grid>
 

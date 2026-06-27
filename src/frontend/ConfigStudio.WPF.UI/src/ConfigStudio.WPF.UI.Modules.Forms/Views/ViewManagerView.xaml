@@ -240,8 +240,8 @@
                                     <!-- 1. View_Type — chọn trước vì quyết định tiền tố View_Code -->
                                     <TextBlock Text="① View_Type * (quyết định tiền tố View_Code)" Style="{StaticResource EditorLabel}" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding ViewTypeOptions}"
-                                                      EditValue="{Binding EditViewType}"
- Margin="0,0,0,10" />
+                                                      EditValue="{Binding EditViewType, UpdateSourceTrigger=PropertyChanged}"
+                                                      Margin="0,0,0,10" />
 
                                     <!-- 2. View_Code = {View_Type}_ + phần user nhập -->
                                     <TextBlock Text="② View_Code * (tự ghép: {View_Type}_ + phần bạn nhập)" Style="{StaticResource EditorLabel}" />
@@ -259,11 +259,10 @@
 
                                     <!-- 3. Bảng nguồn -->
                                     <TextBlock Text="③ Bảng nguồn (Table) *" Style="{StaticResource EditorLabel}" />
-                                    <dxe:ComboBoxEdit ItemsSource="{Binding Tables}"
-                                                      DisplayMember="DisplayText"
-                                                      SelectedItem="{Binding EditTable}"
-
-                                                      NullText="Chọn bảng..." Margin="0,0,0,10" />
+                                    <dxg:LookUpEdit ItemsSource="{Binding Tables}"
+                                                    DisplayMember="DisplayText"
+                                                    SelectedItem="{Binding EditTable}"
+                                                    NullText="Chọn bảng..." Margin="0,0,0,10" />
 
                                     <!-- 4. Nguồn nâng cao (khi ≠ Table) -->
                                     <Grid Margin="0,0,0,10">
@@ -275,7 +274,7 @@
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Source_Type" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="120" ItemsSource="{Binding SourceTypeOptions}"
-                                                              EditValue="{Binding EditSourceType}" />
+                                                              EditValue="{Binding EditSourceType, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Source_Object (view/SP/SQL/endpoint khi ≠ Table)" Style="{StaticResource EditorLabel}" />
@@ -294,9 +293,9 @@
                                     </DockPanel>
 
                                     <TextBlock Text="Form Thêm/Sửa (Edit_Form — null = chỉ đọc)" Style="{StaticResource EditorLabel}" />
-                                    <dxe:ComboBoxEdit ItemsSource="{Binding Forms}" DisplayMember="FormCode"
-                                                      SelectedItem="{Binding EditEditForm}"
-                                                      NullText="Không gắn form sửa" Margin="0,0,0,10" />
+                                    <dxg:LookUpEdit ItemsSource="{Binding Forms}" DisplayMember="FormCode"
+                                                    SelectedItem="{Binding EditEditForm}"
+                                                    NullText="Không gắn form sửa" Margin="0,0,0,10" />
 
                                     <TextBlock Text="Key_Field — cột khóa chính (cho Sửa/Xóa theo dòng + TreeList)" Style="{StaticResource EditorLabel}" />
                                     <dxe:TextEdit EditValue="{Binding EditKeyField, UpdateSourceTrigger=PropertyChanged}"
@@ -326,14 +325,14 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Page_Size" Style="{StaticResource EditorLabel}" />
-                                            <dxe:SpinEdit Width="120" EditValue="{Binding EditPageSize}"
+                                            <dxe:SpinEdit Width="120" EditValue="{Binding EditPageSize, UpdateSourceTrigger=PropertyChanged}"
                                                           MinValue="1" MaxValue="1000" MaskUseAsDisplayFormat="True" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Selection_Mode" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="160" HorizontalAlignment="Left"
                                                               ItemsSource="{Binding SelectionModeOptions}"
-                                                              EditValue="{Binding EditSelectionMode}" />
+                                                              EditValue="{Binding EditSelectionMode, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                     </Grid>
 
@@ -400,7 +399,7 @@
                                                   NullText="VD: ParentId" Margin="0,0,0,10" />
                                     <TextBlock Text="Expand_Level — mở sẵn tới cấp" Style="{StaticResource EditorLabel}" />
                                     <dxe:SpinEdit Width="120" HorizontalAlignment="Left"
-                                                  EditValue="{Binding EditExpandLevel}" MinValue="0" MaxValue="20" />
+                                                  EditValue="{Binding EditExpandLevel, UpdateSourceTrigger=PropertyChanged}" MinValue="0" MaxValue="20" />
                                 </StackPanel>
                             </ScrollViewer>
                         </dx:DXTabItem>
@@ -591,7 +590,7 @@
                                             <TextBlock Text="Vị trí panel" Style="{StaticResource EditorLabel}" />
                                             <dxe:ComboBoxEdit Width="120" HorizontalAlignment="Left"
                                                               ItemsSource="{Binding FilterPanelPositionOptions}"
-                                                              EditValue="{Binding EditFilterPanelPosition}" />
+                                                              EditValue="{Binding EditFilterPanelPosition, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
                                             <TextBlock Text="Nhãn nút Tìm / Đặt lại (i18n — null = nút mặc định)" Style="{StaticResource EditorLabel}" />

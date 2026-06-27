@@ -178,8 +178,8 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Chế độ tìm kiếm" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding SearchModeOptions}"
-                                          EditValue="{Binding CbSearchMode}"
- Height="32" />
+                                          EditValue="{Binding CbSearchMode, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" />
                         <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,4,0,0"
                                    Text="None = tắt  |  AutoFilter = lọc  |  AutoSearch = tìm" />
                     </StackPanel>
@@ -188,8 +188,8 @@
                                 Visibility="{Binding ShowSearchFilterCondition, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="Điều kiện so khớp" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding SearchFilterConditionOptions}"
-                                          EditValue="{Binding CbSearchFilterCondition}"
- Height="32" />
+                                          EditValue="{Binding CbSearchFilterCondition, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" />
                         <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,4,0,0"
                                    Text="Contains | StartsWith | Equals" />
                     </StackPanel>
@@ -233,16 +233,16 @@
                         <TextBlock Text="Chiều rộng dropdown" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding DropDownWidthModeOptions}"
-                                          EditValue="{Binding CbDropDownWidthMode}"
- Height="32" />
+                                          EditValue="{Binding CbDropDownWidthMode, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" />
                     </StackPanel>
 
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Nút xóa (Clear)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding ClearButtonModeOptions}"
-                                          EditValue="{Binding CbClearButton}"
- Height="32" />
+                                          EditValue="{Binding CbClearButton, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" />
                     </StackPanel>
                 </Grid>
 

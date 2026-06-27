@@ -9,6 +9,7 @@ using ICare247_UI.Models;
 using ICare247_UI.Services;
 using ICare247.UI.Shared;
 using ICare247.UI.Shared.Services.Auth;
+using ICare247.UI.Shared.State;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -41,17 +42,24 @@ builder.Services.AddScoped(sp =>
         sp.GetRequiredService<JwtAuthenticationStateProvider>());
 });
 
-// HttpClient chính: gắn RefreshTokenHandler (tự đính Bearer từ TokenStore + 401→refresh→retry).
+// HttpClient chính: chuỗi handler ActiveScopeHandler → RefreshTokenHandler → HttpClientHandler.
+//   • RefreshTokenHandler: tự đính Bearer từ TokenStore + 401→refresh→retry.
+//   • ActiveScopeHandler (NGOÀI CÙNG): đính X-Active-CongTy từ AppState; đặt ngoài để header có sẵn cả
+//     khi RefreshTokenHandler clone request retry sau refresh.
 builder.Services.AddScoped(sp =>
 {
     var settings = sp.GetRequiredService<ApiSettings>();
-    var handler = new RefreshTokenHandler(
+    var refreshHandler = new RefreshTokenHandler(
         sp.GetRequiredService<TokenStore>(),
         sp.GetRequiredService<TokenRefresher>())
     {
         InnerHandler = new HttpClientHandler()
     };
-    var client = new HttpClient(handler)
+    var activeScopeHandler = new ActiveScopeHandler(sp.GetRequiredService<AppState>())
+    {
+        InnerHandler = refreshHandler
+    };
+    var client = new HttpClient(activeScopeHandler)
     {
         BaseAddress = new Uri(settings.BaseUrl)
     };
@@ -75,6 +83,7 @@ builder.Services.AddScoped<ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<MasterDataApiService>();
 builder.Services.AddScoped<ViewApiService>();
 builder.Services.AddScoped<NavigationApiService>();
+builder.Services.AddScoped<MeCompanyApiService>();
 builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<MenuAdminApiService>();

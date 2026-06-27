@@ -223,6 +223,24 @@
     border-color: var(--color-border-strong);
 }
 
+/* Company switcher — component con (CompanySwitcher) → style qua ::deep (xem NAV-CSS-DEEP). */
+.app-company ::deep .app-company__select {
+    height: 32px;
+    max-width: 220px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    padding: 0 var(--space-2);
+    cursor: pointer;
+}
+
+.app-company ::deep .app-company__select:hover {
+    border-color: var(--color-border-strong);
+}
+
 .app-content {
     flex: 1 1 auto;
     padding: var(--content-padding);

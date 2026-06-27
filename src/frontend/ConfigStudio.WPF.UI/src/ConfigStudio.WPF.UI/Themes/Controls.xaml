@@ -320,6 +320,36 @@
         <Setter Property="IsCaseSensitiveFilter" Value="False" />
     </Style>
 
+    <!-- Popup lưới DÙNG CHUNG cho mọi LookUpEdit: tự sinh đủ cột (AutoPopulateColumns) + hàng
+         auto-filter (mỗi cột 1 ô lọc → người dùng lọc theo cột tùy ý). Style="{x:Null}" để KHÔNG
+         dính style implicit TableView (tránh GridLayoutBehavior lưu layout cho lưới popup). -->
+    <ControlTemplate x:Key="LookUpGridPopup">
+        <dxg:GridControl x:Name="PART_GridControl">
+            <dxg:GridControl.View>
+                <dxg:TableView Style="{x:Null}" ShowAutoFilterRow="True"
+                               AutoWidth="True" ShowGroupPanel="False"
+                               ShowIndicator="False" NavigationStyle="Row" />
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+    </ControlTemplate>
+
+    <!-- LookUpEdit: lookup có lưới (DevExpress WPF — tương đương GridLookUpEdit bên WinForms).
+         Dùng cho danh sách OBJECT. Toàn bộ popup (lưới nhiều cột + lọc theo cột) lấy từ template
+         dùng chung ở trên → view chỉ cần ItemsSource/DisplayMember/EditValue, không khai báo cột. -->
+    <Style TargetType="{x:Type dxg:LookUpEdit}" BasedOn="{StaticResource AppEditBaseStyle}">
+        <Setter Property="Height" Value="{DynamicResource AppInputHeight}" />
+        <Setter Property="IsTextEditable" Value="True" />
+        <Setter Property="ImmediatePopup" Value="True" />
+        <!-- Gõ ở ô editor để lọc nhanh theo DisplayMember (Contains, không phân biệt hoa/dấu).
+             Hàng auto-filter trong lưới cho phép lọc chi tiết theo từng cột. -->
+        <Setter Property="IncrementalFiltering" Value="True" />
+        <Setter Property="FilterCondition" Value="Contains" />
+        <Setter Property="IsCaseSensitiveFilter" Value="False" />
+        <Setter Property="AutoPopulateColumns" Value="True" />
+        <Setter Property="PopupContentTemplate" Value="{StaticResource LookUpGridPopup}" />
+        <Setter Property="NullTextForeground" Value="{DynamicResource AppTextSubtleBrush}" />
+    </Style>
+
     <!-- CheckEdit / ToggleSwitchEdit — đồng bộ chữ -->
     <Style TargetType="{x:Type dxe:CheckEdit}">
         <Setter Property="FontFamily" Value="{DynamicResource AppFontFamily}" />

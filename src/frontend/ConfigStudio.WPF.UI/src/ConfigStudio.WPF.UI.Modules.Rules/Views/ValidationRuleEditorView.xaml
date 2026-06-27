@@ -261,7 +261,7 @@
                         <StackPanel Style="{StaticResource FieldGroup}">
                             <TextBlock Text="Loại Rule" Style="{StaticResource FieldLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding RuleTypeOptions}"
-                                              EditValue="{Binding EditRuleType}" />
+                                              EditValue="{Binding EditRuleType, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding EditRuleTypeDescription}"
                                        Style="{StaticResource HelpText}"
                                        Foreground="{DynamicResource AppAccentBrush}" />
@@ -282,7 +282,7 @@
                         <StackPanel Style="{StaticResource FieldGroup}">
                             <TextBlock Text="Mức độ nghiêm trọng" Style="{StaticResource FieldLabel}" />
                             <dxe:ComboBoxEdit ItemsSource="{Binding SeverityOptions}"
-                                              EditValue="{Binding EditSeverity}" />
+                                              EditValue="{Binding EditSeverity, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Text="{Binding EditSeverityDescription}"
                                        Style="{StaticResource HelpText}" />
                         </StackPanel>
@@ -406,7 +406,7 @@
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="Toán tử" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,2" />
                                     <dxe:ComboBoxEdit ItemsSource="{Binding CompareOpOptions}"
-                                                      EditValue="{Binding EditCompareOp}" />
+                                                      EditValue="{Binding EditCompareOp, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
                             </Grid>
                             <TextBlock Style="{StaticResource HelpText}"

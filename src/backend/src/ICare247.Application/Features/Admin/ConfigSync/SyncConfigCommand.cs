@@ -14,24 +14,27 @@ namespace ICare247.Application.Features.Admin.ConfigSync;
 /// <param name="TriggeredBy">Người kích hoạt (username super admin) — ghi vào log sync.</param>
 public sealed record SyncConfigCommand(bool DryRun, string? TriggeredBy) : IRequest<ConfigSyncResult>;
 
-/// <summary>Thực thi đồng bộ; áp thật thì xóa cache menu tenant để lần điều hướng kế nạp lại.</summary>
+/// <summary>Thực thi đồng bộ; áp thật thì vô hiệu toàn bộ cache config + menu tenant để nạp lại cấu hình mới.</summary>
 public sealed class SyncConfigCommandHandler : IRequestHandler<SyncConfigCommand, ConfigSyncResult>
 {
     private readonly IConfigSyncService _sync;
     private readonly INavigationCache _navCache;
+    private readonly ICacheVersion _cacheVersion;
     private readonly ITenantContext _tenant;
 
     public SyncConfigCommandHandler(
-        IConfigSyncService sync, INavigationCache navCache, ITenantContext tenant)
+        IConfigSyncService sync, INavigationCache navCache, ICacheVersion cacheVersion, ITenantContext tenant)
     {
         _sync = sync;
         _navCache = navCache;
+        _cacheVersion = cacheVersion;
         _tenant = tenant;
     }
 
     /// <summary>
     /// Chạy <see cref="IConfigSyncService.SyncAsync"/>. Sự kiện theo sau: nếu áp thật thành công →
-    /// invalidate menu tenant. (Invalidate ConfigCache theo version-stamp toàn tenant = CC-4, làm sau.)
+    /// CC-4 bump version-stamp (vô hiệu TOÀN BỘ cache config dùng chung: form/view/lookup/resource) +
+    /// invalidate menu tenant. Tenant thấy cấu hình mới ngay, không cần restart API.
     /// </summary>
     public async Task<ConfigSyncResult> Handle(SyncConfigCommand r, CancellationToken ct)
     {
@@ -39,7 +42,10 @@ public sealed class SyncConfigCommandHandler : IRequestHandler<SyncConfigCommand
             new ConfigSyncOptions { DryRun = r.DryRun, TriggeredBy = r.TriggeredBy }, ct);
 
         if (!r.DryRun && result.Status == "Success")
+        {
+            _cacheVersion.Bump(_tenant.TenantId);   // CC-4 — vô hiệu cache config dùng chung của tenant
             _navCache.InvalidateTenant(_tenant.TenantId);
+        }
 
         return result;
     }

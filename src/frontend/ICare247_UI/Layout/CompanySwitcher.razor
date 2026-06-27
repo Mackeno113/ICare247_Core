@@ -1,0 +1,65 @@
+@inherits LocalizedComponentBase
+@using ICare247.UI.Shared.State
+@using ICare247_UI.Services
+@inject AppState AppState
+@inject MeCompanyApiService Api
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+
+@*
+    CompanySwitcher — chọn công ty đang làm việc (VFILTER-ACTIVE, ADR-030).
+    Giá trị → AppState.ActiveCompanyId → header X-Active-CongTy (ActiveScopeHandler) → token @CongTyID_Active.
+    "Tất cả công ty" (rỗng) = không thu hẹp (server dùng default 0). Đổi công ty → tải lại trang để lưới/bộ lọc áp công ty mới.
+    Danh sách công ty đổ từ /me/companies; ranh giới bảo mật thật do @NguoiDungID enforce phía server.
+*@
+
+<select class="app-company__select" @onchange="OnChange"
+        aria-label="@Loc.L("common.company.choose", "Chọn công ty")">
+    <option value="" selected="@(AppState.ActiveCompanyId is null)">@Loc.L("common.company.all", "Tất cả công ty")</option>
+    @foreach (var c in AppState.Companies)
+    {
+        <option value="@c.Id" selected="@(AppState.ActiveCompanyId == c.Id)">@c.Name</option>
+    }
+</select>
+
+@code {
+    private const string StoreKey = "ic247.activeCongTy";
+
+    /// <summary>
+    /// Nạp danh sách công ty (/me/companies) vào AppState. Nếu chưa chọn công ty nào (id null) mà
+    /// localStorage trống + có công ty mặc định (LaMacDinh) → chọn sẵn. Sự kiện theo sau: render switcher.
+    /// </summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var companies = await Api.GetMyCompaniesAsync();
+        AppState.SetCompanies(companies);
+
+        // MainLayout đã nạp sớm id đã lưu vào AppState. Chỉ tự chọn mặc định khi thực sự chưa có lựa chọn.
+        if (AppState.ActiveCompanyId is null)
+        {
+            var saved = await JS.InvokeAsync<string?>("localStorage.getItem", StoreKey);
+            if (string.IsNullOrEmpty(saved))
+            {
+                var def = companies.FirstOrDefault(c => c.IsDefault);
+                if (def is not null)
+                {
+                    AppState.SetActiveCompany(def.Id);
+                    await JS.InvokeVoidAsync("localStorage.setItem", StoreKey, def.Id.ToString());
+                }
+            }
+        }
+    }
+
+    /// <summary>Đổi công ty: lưu localStorage + AppState, rồi tải lại trang để mọi lưới/bộ lọc áp công ty mới.</summary>
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        long? id = long.TryParse(e.Value?.ToString(), out var v) ? v : null;
+        if (id == AppState.ActiveCompanyId) return;
+
+        if (id is null) await JS.InvokeVoidAsync("localStorage.removeItem", StoreKey);
+        else            await JS.InvokeVoidAsync("localStorage.setItem", StoreKey, id.Value.ToString());
+
+        AppState.SetActiveCompany(id);
+        Nav.NavigateTo(Nav.Uri, forceLoad: true); // chuyển công ty hiếm → reload cho chắc chắn áp @CongTyID_Active mới
+    }
+}

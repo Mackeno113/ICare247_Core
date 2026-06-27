@@ -617,7 +617,7 @@
                                                     <TextBlock Text="Platform *"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:ComboBoxEdit ItemsSource="{Binding PlatformOptions}"
-                                                                      EditValue="{Binding Platform}"
+                                                                      EditValue="{Binding Platform, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                       ToolTip="Nền tảng mà form này sẽ hiển thị: web, mobile hoặc wpf." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Nền tảng đích để render form. Mỗi platform có bộ control riêng (VD: web dùng HTML, mobile dùng native component)." />
@@ -630,11 +630,11 @@
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Business Table *"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:ComboBoxEdit ItemsSource="{Binding TableLookupItems}"
-                                                                      EditValue="{Binding SelectedTable, Mode=TwoWay}"
-                                                                      DisplayMember="DisplayText"
-                                                                      NullText="Chọn bảng dữ liệu..."
-                                                                      ToolTip="Bảng dữ liệu chính (Sys_Table) mà form này sẽ đọc/ghi dữ liệu. Xác định tenant và cấu trúc cột." />
+                                                    <dxg:LookUpEdit ItemsSource="{Binding TableLookupItems}"
+                                                                    SelectedItem="{Binding SelectedTable}"
+                                                                    DisplayMember="DisplayText"
+                                                                    NullText="Chọn bảng dữ liệu..."
+                                                                    ToolTip="Bảng dữ liệu chính (Sys_Table) mà form này sẽ đọc/ghi dữ liệu. Xác định tenant và cấu trúc cột." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Bảng nguồn dữ liệu từ Sys_Table. Form sẽ đọc/ghi vào bảng này. Đồng thời xác định tenant (phân quyền dữ liệu theo đơn vị)." />
                                                 </StackPanel>
@@ -644,7 +644,7 @@
                                                     <TextBlock Text="Chế độ mở form"
                                                                Style="{StaticResource FieldLabelStyle}" />
                                                     <dxe:ComboBoxEdit ItemsSource="{Binding DisplayModeOptions}"
-                                                                      EditValue="{Binding DisplayMode}"
+                                                                      EditValue="{Binding DisplayMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                       ToolTip="Popup: mở dialog inline trên trang danh sách. Tab: mở sang tab riêng." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Popup = dialog trực tiếp trên lưới danh mục. Tab = điều hướng sang trang riêng (phù hợp form nhiều section)." />
@@ -723,8 +723,7 @@
                                                 <TextBlock Text="Số cột"
                                                            Style="{StaticResource FieldLabelStyle}" />
                                                 <dxe:ComboBoxEdit ItemsSource="{Binding FormColumnsOptions}"
-                                                                  EditValue="{Binding FormColumns}"
-
+                                                                  EditValue="{Binding FormColumns, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                                   NullText="Mặc định (4)"
                                                                   ToolTip="Số cột lưới nền. Chọn 1 = mỗi field 1 dòng." />
                                                 <TextBlock Style="{StaticResource HelpTextStyle}"
@@ -919,13 +918,12 @@
                                                 <StackPanel Style="{StaticResource FieldGroupStyle}">
                                                     <TextBlock Text="Thuộc Tab"
                                                                Style="{StaticResource FieldLabelStyle}" />
-                                                    <dxe:ComboBoxEdit ItemsSource="{Binding Tabs}"
-                                                                      EditValue="{Binding SelectedNode.TabId, Mode=TwoWay}"
-                                                                      ValueMember="TabId"
-                                                                      DisplayMember="DisplayLabel"
-
-                                                                      NullText="(Không thuộc tab nào — form phẳng)"
-                                                                      ToolTip="Gán section vào một tab. Để trống = section không thuộc tab nào (render phẳng). Cần nhấn Lưu Section để áp dụng." />
+                                                    <dxg:LookUpEdit ItemsSource="{Binding Tabs}"
+                                                                    EditValue="{Binding SelectedNode.TabId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                                    ValueMember="TabId"
+                                                                    DisplayMember="DisplayLabel"
+                                                                    NullText="(Không thuộc tab nào — form phẳng)"
+                                                                    ToolTip="Gán section vào một tab. Để trống = section không thuộc tab nào (render phẳng). Cần nhấn Lưu Section để áp dụng." />
                                                     <TextBlock Style="{StaticResource HelpTextStyle}"
                                                                Text="Tạo/sửa tab tại tab '📑 Tabs'. Đổi xong nhớ nhấn Lưu Section bên dưới." />
                                                 </StackPanel>

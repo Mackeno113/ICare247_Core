@@ -37,6 +37,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private readonly IDialogService? _dialogService;
     private readonly II18nDataService? _i18nService;
     private readonly IFieldDataService? _fieldDataService;
+    private readonly IRelationDataService? _relationDataService;
     private readonly INavigationHistoryService? _history;
     private readonly IAppLogger? _logger;
 
@@ -369,12 +370,29 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             if (SetProperty(ref _selectedTable, value))
             {
                 IsDirty = true;
+                AutoFillFromTable(value);
                 RaisePropertyChanged(nameof(CanCreateNewForm));
                 RaisePropertyChanged(nameof(SectionTitleKeyPreview));
                 RaisePropertyChanged(nameof(TabTitleKeyPreview));
                 RaisePropertyChanged(nameof(FormTitleKeyPreview));
             }
         }
+    }
+
+    /// <summary>
+    /// Tối ưu thao tác: chọn Business Table → tự điền Form Code (= Table_Code) + Tên Form (= Table_Name)
+    /// từ Sys_Table, bớt phải gõ lại thông tin đã có. CHỈ khi đang TẠO MỚI và ô còn TRỐNG — không bao giờ
+    /// đè giá trị người dùng đã nhập. Sự kiện theo sau: setter FormCode tự uppercase + kiểm trùng mã.
+    /// </summary>
+    private void AutoFillFromTable(TableLookupRecord? table)
+    {
+        if (table is null || !IsNewForm) return;
+
+        if (string.IsNullOrWhiteSpace(FormCode) && !string.IsNullOrWhiteSpace(table.TableCode))
+            FormCode = table.TableCode; // setter tự .ToUpperInvariant() + validate realtime
+
+        if (string.IsNullOrWhiteSpace(FormName))
+            FormName = !string.IsNullOrWhiteSpace(table.TableName) ? table.TableName : table.TableCode;
     }
 
     private string _layoutEngine = "Grid";
@@ -894,7 +912,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         II18nDataService? i18nService = null,
         IFieldDataService? fieldDataService = null,
         INavigationHistoryService? history = null,
-        IAppLogger? logger = null)
+        IAppLogger? logger = null,
+        IRelationDataService? relationDataService = null)
     {
         _regionManager    = regionManager;
         _formDataService  = formDataService;
@@ -904,6 +923,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _dialogService    = dialogService;
         _i18nService      = i18nService;
         _fieldDataService = fieldDataService;
+        _relationDataService = relationDataService;
         _history          = history;
         _logger           = logger;
 
@@ -1890,6 +1910,22 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 targetSection.Id = sectionId;
             }
 
+            // ── 1b. Nạp Sys_Relation cho bảng này — NGUỒN QUAN HỆ CHÍNH (no-code, do user cấu hình) ──
+            //   Map theo cột FK con (Detail_FK_Column) → relation. FK vật lý DB chỉ là FALLBACK.
+            var relsByFkColumn = new Dictionary<string, RelationRecord>(StringComparer.OrdinalIgnoreCase);
+            if (_relationDataService is not null && tableId > 0)
+            {
+                try
+                {
+                    var rels = await _relationDataService.GetRelationsAsync(
+                        _appConfig.TenantId, includeInactive: false, cts.Token);
+                    foreach (var r in rels)
+                        if (r.DetailTableId == tableId && !string.IsNullOrWhiteSpace(r.DetailFkColumn))
+                            relsByFkColumn[r.DetailFkColumn!] = r;
+                }
+                catch { /* không nạp được Sys_Relation → dùng FK vật lý làm fallback */ }
+            }
+
             // ── 2. INSERT từng field ─────────────────────────────
             foreach (var node in nodes)
             {
@@ -1906,22 +1942,41 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                     continue;
                 }
 
+                // FK → LookupBox dynamic + tự dựng Ui_Field_Lookup. NGUỒN QUAN HỆ DUY NHẤT = Sys_Relation
+                // (Display/Value/cột FK tường minh, do user cấu hình ở RelationManager). KHÔNG dùng FK vật lý DB.
+                FieldLookupConfigRecord? lookupConfig = null;
+                if (relsByFkColumn.TryGetValue(node.Code, out var rel))
+                {
+                    lookupConfig = new FieldLookupConfigRecord
+                    {
+                        QueryMode     = "table",
+                        SourceName    = rel.MasterTableCode,
+                        ValueColumn   = FirstNonEmpty(rel.ValueColumn, rel.MasterKeyColumn, "Id"),
+                        DisplayColumn = FirstNonEmpty(rel.DisplayColumn, "Ten"),
+                        SearchEnabled = true,
+                    };
+                }
+
+                var isFk = lookupConfig is not null;
+                if (isFk) node.EditorType = "LookupBox"; // cập nhật tree (Sys_Relation có thể bắt FK mà kiểu int không tự ra LookupBox)
+
                 var record = new FieldConfigRecord
                 {
-                    FieldId    = 0,
-                    FormId     = FormId,
-                    SectionId  = targetSection.Id > 0 ? targetSection.Id : null,
-                    ColumnId   = columnId,
-                    ColumnCode = node.Code,
-                    EditorType = node.EditorType,
-                    LabelKey   = node.TitleKey,
-                    IsVisible  = true,
-                    IsReadOnly = false,
-                    OrderNo    = node.SortOrder,
+                    FieldId      = 0,
+                    FormId       = FormId,
+                    SectionId    = targetSection.Id > 0 ? targetSection.Id : null,
+                    ColumnId     = columnId,
+                    ColumnCode   = node.Code,
+                    EditorType   = node.EditorType,
+                    LabelKey     = node.TitleKey,
+                    IsVisible    = true,
+                    IsReadOnly   = false,
+                    OrderNo      = node.SortOrder,
+                    LookupSource = isFk ? "dynamic" : null, // dynamic → Lookup_Code NULL (khớp CHK_Ui_Field_LookupConsistency)
                 };
 
                 var fieldId = await _fieldDataService.SaveFieldAsync(
-                    record, _appConfig.TenantId, ct: cts.Token);
+                    record, _appConfig.TenantId, lookupConfig, ct: cts.Token);
 
                 // Cập nhật node với Id thật — xóa marker temp-id âm
                 node.Id = fieldId;
@@ -1946,6 +2001,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             ErrorMessage = $"Lưu fields tự động thất bại: {ex.Message}";
         }
     }
+
+    /// <summary>Trả giá trị không rỗng đầu tiên (dùng cho Value/Display column lookup, fallback theo thứ tự).</summary>
+    private static string FirstNonEmpty(params string?[] values)
+        => values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "";
 
     /// <summary>
     /// Tách PascalCase thành các từ có khoảng cách: "MaNhanVien" → "Ma Nhan Vien".

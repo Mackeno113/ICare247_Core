@@ -18,7 +18,12 @@ giữ bản tenant khi xung đột · trigger provisioning+nút thủ công supe
    **Migration mới `db/062`** (cấp 4 cờ sync cho Ui_Field_Lookup + Ui_View_Filter — db/050 bỏ sót) — ⏳ CẦN chạy trên Config DB.
    Build Infrastructure 0/0. ⏳ CÒN: E2E preview/apply xác minh số dòng; rà self-FK `Ui_View.Detail_View_Id` (master-detail).
    Ngoài phạm vi: `Sys_Relation` (chưa engine-hóa master-detail); `Val_Rule_Field` (đã DROP ở migration 003).
-3. Hook **provisioning full-sync** khi tạo tenant mới · invalidate **ConfigCache** version-stamp (CC-4) ·
+3. ✅ **CC-4 (2026-06-25)** — `SyncConfigCommandHandler` bump `ICacheVersion` sau khi apply thành công → vô hiệu
+   TOÀN BỘ cache config dùng chung (form/view/lookup/resource) của tenant → thấy cấu hình mới NGAY, không cần restart.
+   Build Application 0/0.
+   ⏸️ **Hook provisioning full-sync — BỊ CHẶN** (không có luồng tạo tenant để gắn): catalog chưa dựng (chạy fallback
+   1-tenant, `TenantConnectionResolver`), chưa có endpoint/command tạo tenant. `SyncConfigCommand(DryRun=false)` ĐÃ là
+   full-sync sẵn → khi dựng subsystem provisioning chỉ cần gọi nó cho tenant mới. Hoãn tới khi có catalog + tenant-create.
    ✅ **db/057 (2026-06-21)** seed node `administration.config-sync` vào `HT_ChucNang` + grant SUPERADMIN
    → màn hiện trên menu Quản trị (verify `/me/navigation` trả node sau khi flush cache).
 
@@ -179,9 +184,15 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 
 **⏳ Runtime còn lại:**
 - [ ] **CTXPARAM-3** — ConfigStudio WPF màn "Tham số ngữ cảnh" (CRUD `Sys_Context_Param`); hiện seed SQL đủ chạy.
-- [ ] **VFILTER-ACTIVE** — Company-switcher UI + gửi header `X-Active-CongTy` (DelegatingHandler). Chưa có switcher →
-      `@CongTyID_Active` mặc định 0 = mọi công ty được phân quyền (scope-by-user `@NguoiDungID` vẫn áp).
-- [ ] **VFILTER-OPEN** — Chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` đang MẪU `HT_NguoiDung_CongTy`).
+- [x] **VFILTER-ACTIVE (2026-06-25)** — Company-switcher full-stack. BE: `GET /api/v1/me/companies`
+      (`GetMyCompaniesQuery`/Handler + `IMeCompanyRepository`/`MeCompanyRepository` — JOIN HT_NguoiDung_CongTy×TC_CongTy
+      theo @NguoiDungID, fallback mọi công ty active nếu bảng trống/chưa có, LaMacDinh lên đầu). FE: `AppState` refactor
+      (`ActiveCompanyId` long + `Companies` + `CompanyOption`), `ActiveScopeHandler` (DelegatingHandler NGOÀI CÙNG đính
+      `X-Active-CongTy`), `MeCompanyApiService`, `CompanySwitcher.razor` (topbar, localStorage `ic247.activeCongTy`,
+      đổi → reload trang), MainLayout nạp sớm id + Program.cs wiring. Build BE 0/0 · FE 0/0.
+      Chọn "Tất cả công ty" (null) → bỏ header → server default `@CongTyID_Active`=0. ⏳ E2E: cần TC_CongTy có dữ liệu + login.
+- [ ] **VFILTER-OPEN** — Chốt bảng phân công user↔công ty thật. ✅ Đã xác minh `HT_NguoiDung_CongTy` là bảng THẬT
+      (db/037: NguoiDung_Id/CongTy_Id/LaMacDinh/IsDeleted) — khớp Validate_Sql `CongTyID_Active`. Còn: seed dữ liệu phân công.
 
 ## 📋 Roadmap — Engine-hóa màn nghiệp vụ + Đồng bộ config (ADR-024/025)
 
@@ -210,8 +221,9 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [~] **CFGSYNC-3** — Action super admin "Cập nhật cấu hình từ master": `SyncConfigCommand`+Handler (gọi
       `IConfigSyncService`, invalidate `INavigationCache`) + `AdminConfigSyncController` `POST /api/v1/admin/config-sync`
       (áp thật, `[RequirePermission(administration.config-sync, Sua)]`) + `/preview` (dry-run, `Xem`). SUPERADMIN bypass.
-      Build BE 0/0. CÒN: hook **provisioning full-sync** (khi tạo tenant mới) · invalidate **ConfigCache** version-stamp
-      (chờ CC-4) · ✅ seed node `administration.config-sync` (db/057, 2026-06-21) — hiện trên menu + cấp quyền role khác.
+      Build BE 0/0. ✅ **CC-4 (2026-06-25)**: handler bump `ICacheVersion` sau apply → vô hiệu cache config tenant ngay.
+      ⏸️ **provisioning full-sync BỊ CHẶN** (chưa có luồng tạo tenant — catalog fallback; `SyncConfigCommand` đã là full-sync,
+      chỉ cần gọi khi dựng tenant-create sau). · ✅ seed node `administration.config-sync` (db/057, 2026-06-21).
 
 ### F2 — Engine-hóa màn Công ty (sau F1)
 - [x] **ORG-CFG-1** — `SchemaInspectorService.GetTableNamesAsync`: `TABLE_TYPE IN ('BASE TABLE','VIEW')` → liệt kê cả
@@ -220,7 +232,9 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       tỉnh/ngân hàng/cha (FK id + tên), lọc IsDeleted=0, expose Id+CongTy_Cha_Id cho TreeList. ✅ **ĐÃ CHẠY 2026-06-21** (Data DB).
 - [ ] **ORG-CFG-3** — ⏳ **THAO TÁC TAY trong ConfigStudio** (no-code, không SQL seed): đăng ký `vw_TC_CongTy`+`TC_CongTy`
       → `Ui_Form` Popup (TC_CongTy, lookup CapCongTy/PhuongXa/NganHang/Cha, i18n) + `Ui_View` TreeList **View_Code=`Tree_TC_CongTy`**
-      (Key=Id, Parent=CongTy_Cha_Id, Edit_Form=form trên) → chạy config-sync. Hướng dẫn ở AI_HANDOFF. Tham chiếu blueprint Công ty.
+      (Key=Id, Parent=CongTy_Cha_Id, Edit_Form=form trên) → chạy config-sync.
+      📖 **Hướng dẫn đầy đủ từng bước (2026-06-25): [docs/guide/cau-hinh-man-cong-ty.md](docs/guide/cau-hinh-man-cong-ty.md)**
+      (khảo sát xác nhận: runtime TreeList ĐÃ đủ; chỉ thiếu DỮ LIỆU cấu hình — không có seed nào đăng ký màn này).
 - [x] **ORG-CFG-4** — Routing placeholder→engine: `NavScreen.Route` (tuỳ chọn) + màn Công ty `Route="/view/Tree_TC_CongTy"`;
       NavMenu fallback dùng Route; `ScreenView` redirect khi màn có Route. Server-driven path dùng `HT_ChucNang.DuongDan` (data).
       Build FE 0/0.
@@ -233,6 +247,35 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [ ] **CAT-CFG-2 (cấu hình tay)** — ConfigStudio: mỗi danh mục → Sys_Table (base/vw) + `Ui_Form` Popup + `Ui_View`
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
+
+## 📋 Module upload file (TT_) — logo công ty + đính kèm (2026-06-26)
+
+> **Phương án lưu trữ = A (bytes trong DB)** — chốt qua phân tích DB-blob vs đường-dẫn vs object-storage:
+> logo nhỏ/ít → nhất quán giao dịch, portable đa máy, cô lập tenant, bảo mật qua endpoint. Cột `Storage_Kind`
+> + `Storage_Key` để VỀ SAU cắm FileSystem (đường dẫn **tương đối**) / Object storage cho file lớn.
+> TUYỆT ĐỐI tránh đường dẫn tuyệt đối (vỡ khi đổi máy + path traversal).
+
+- [x] **FILE-DB (db/063)** — `TT_TepDinhKem` (Data DB, đúng chuẩn audit/IsDeleted) + FK `TC_CongTy.Logo_Id`→TT_TepDinhKem.
+      ⏳ CẦN chạy trên Data DB tenant.
+- [x] **FILE-BE** — `FilesController`: `POST /api/v1/files` (multipart, [Authorize], validate MIME allowlist png/jpeg/webp
+      + **magic-byte** + size ≤2MB, sha256→Checksum) + `GET /api/v1/files/{id}` (stream inline + ETag/Cache-Control, 304).
+      CQRS `UploadFileCommand`/`GetFileQuery` + `IFileAttachmentRepository`/`FileAttachmentRepository` (VARBINARY bind
+      DbType.Binary size=-1) + DI. Build BE 0/0.
+- [ ] **FILE-FE** — (đợt sau, user chốt "DB+BE trước") Editor_Type **`ImageUpload`** → `ImageUploadRenderer.razor`
+      (InputFile → POST /files → set field = Id; preview qua HttpClient+objectURL vì serve cần Bearer) + đăng ký
+      `Ui_Control_Map` + normalizer `Editor_Type→FieldType`. Wire `Logo_Id` vào form Công ty.
+- [ ] **FILE-SEC** — cân nhắc cho phép/sanitize SVG (hiện CẤM SVG vì nhúng script). Dọn file mồ côi (Logo_Id thay đổi).
+
+## 📋 Màn Công ty — sửa theo schema thật (2026-06-26)
+
+> Schema đã đổi (user cung cấp DDL): `TC_CongTy` bỏ `NganHang_Id`, thêm `ChiNhanhNganHang_Id`/`Logo_Id`/`NgayThanhLap`;
+> `vw_TC_CongTy` JOIN `DM_ChiNhanhNganHang→DM_NganHang`, expose `TinhThanhPho_Id`/`TenTinhThanhPho`.
+
+- [ ] **CONGTY-GUIDE-FIX** — sửa [cau-hinh-man-cong-ty.md](docs/guide/cau-hinh-man-cong-ty.md): Công ty cha = **TreePicker**
+      (`treelookup`); **Tỉnh ảo→Phường/Xã** cascade (`Reload_Trigger_Field`/`Parent_Column`=TinhThanhPho_Id);
+      **Ngân hàng ảo→ChiNhanhNganHang** cascade; Logo = editor ImageUpload; thêm NgayThanhLap.
+- [ ] **CHINHANH-FIX** — (khuyến nghị) chuẩn hóa `DM_ChiNhanhNganHang`: `Id BIGINT IDENTITY PK`, FK `NganHang_Id→DM_NganHang`,
+      thêm audit + IsDeleted (mọi bảng nghiệp vụ phải có — ADR-022). ⚠️ Đổi Id→IDENTITY cần rebuild bảng nếu đã có dữ liệu.
 
 ## ✅ Done (session 61b — 2026-06-23: Ẩn Lookup_Sql khỏi /info + Observability correlationId/"Mã lỗi")
 

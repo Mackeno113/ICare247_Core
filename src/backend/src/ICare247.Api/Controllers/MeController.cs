@@ -4,6 +4,7 @@
 // Purpose : Endpoint ngữ cảnh người dùng hiện tại. GET /api/v1/me/navigation trả cây menu
 //           đã lọc theo quyền (kèm cờ thao tác). userId suy từ claim JWT (sub), KHÔNG nhận từ client.
 
+using ICare247.Application.Features.Navigation.Queries.GetMyCompanies;
 using ICare247.Application.Features.Navigation.Queries.GetMyNavigation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -31,6 +32,18 @@ public sealed class MeController : ControllerBase
         if (userId is null) return Unauthorized();
 
         var result = await _mediator.Send(new GetMyNavigationQuery(userId.Value), ct);
+        return Ok(result);
+    }
+
+    /// <summary>Công ty user được phép chọn ở company-switcher (header X-Active-CongTy). Sự kiện theo sau: FE đổ switcher.</summary>
+    /// <remarks>GET /api/v1/me/companies</remarks>
+    [HttpGet("companies")]
+    public async Task<IActionResult> GetCompanies(CancellationToken ct = default)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var result = await _mediator.Send(new GetMyCompaniesQuery(userId.Value), ct);
         return Ok(result);
     }
 

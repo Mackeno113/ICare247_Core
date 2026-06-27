@@ -43,9 +43,8 @@ else if (_authed)
                 </button>
                 <button type="button" class="app-navtoggle" @onclick="ToggleNav" aria-label="@Loc.L("common.app.openmenu", "Mở menu")">☰</button>
                 <div class="app-company">
-                    @* TODO(phase-org): thay bằng DxComboBox chọn công ty từ AppState/API *@
                     <span class="app-company__label">@Loc.L("common.app.company", "Công ty"):</span>
-                    <span class="app-company__value">@Loc.L("common.app.nocompany", "— chưa chọn —")</span>
+                    <CompanySwitcher />
                 </div>
                 <div class="app-topbar__spacer"></div>
                 <div class="app-lang">
@@ -74,6 +73,9 @@ else if (_authed)
     private const string RailKey = "ic247.nav.rail";
     private bool _rail;
 
+    // Khóa localStorage lưu công ty đang chọn (VFILTER-ACTIVE) — đồng bộ với CompanySwitcher.
+    private const string ActiveCompanyKey = "ic247.activeCongTy";
+
     // Trạng thái xác thực.
     private bool _authChecked;
     private bool _authed;
@@ -98,6 +100,13 @@ else if (_authed)
         await Loc.InitializeAsync();
         _rail = await JS.InvokeAsync<string?>("localStorage.getItem", RailKey) == "1";
         await Auth.InitializeAsync();      // nạp token + gắn header Bearer
+
+        // VFILTER-ACTIVE: nạp SỚM công ty đang chọn (localStorage) vào AppState — TRƯỚC khi body render —
+        // để request của trang đầu tiên đã mang đúng header X-Active-CongTy. Tên công ty điền sau khi switcher nạp list.
+        var savedCongTy = await JS.InvokeAsync<string?>("localStorage.getItem", ActiveCompanyKey);
+        if (long.TryParse(savedCongTy, out var congTyId))
+            AppState.SetActiveCompany(congTyId);
+
         await CheckAuthAsync();
     }
 
