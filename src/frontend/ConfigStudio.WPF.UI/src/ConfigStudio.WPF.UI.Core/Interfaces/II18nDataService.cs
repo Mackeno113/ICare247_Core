@@ -17,6 +17,12 @@ public interface II18nDataService
     Task<IReadOnlyList<LanguageRecord>> GetLanguagesAsync(CancellationToken ct = default);
     Task<string?> ResolveKeyAsync(string resourceKey, string langCode, CancellationToken ct = default);
 
+    /// <summary>
+    /// Buộc nạp lại cache i18n từ DB ở lần resolve kế tiếp.
+    /// Gọi sau khi sửa hàng loạt resource (vd: I18nManager) để các màn khác thấy giá trị mới.
+    /// </summary>
+    Task RefreshAsync(CancellationToken ct = default);
+
     /// <summary>Upsert — ghi đè nếu key đã tồn tại.</summary>
     Task SaveResourceAsync(string resourceKey, string langCode, string value, CancellationToken ct = default);
 

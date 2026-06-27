@@ -63,7 +63,9 @@ public partial class App : PrismApplication
         containerRegistry.Register<IRuleDataService, RuleDataService>();
         containerRegistry.Register<IEventDataService, EventDataService>();
         containerRegistry.Register<IGrammarDataService, GrammarDataService>();
-        containerRegistry.Register<II18nDataService, I18nDataService>();
+        // Singleton — giữ cache i18n (toàn bộ Sys_Resource) sống xuyên suốt phiên,
+        // tránh N+1 query khi mở form (mỗi section/field resolve 1 round-trip).
+        containerRegistry.RegisterSingleton<II18nDataService, I18nDataService>();
         containerRegistry.Register<ISysLookupDataService, SysLookupDataService>();
         containerRegistry.Register<IViewDataService, ViewDataService>();
         containerRegistry.Register<IRelationDataService, RelationDataService>();

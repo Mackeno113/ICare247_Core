@@ -83,7 +83,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public string FieldCode
     {
         get => _fieldCode;
-        set { if (SetProperty(ref _fieldCode, value)) IsDirty = true; }
+        set
+        {
+            if (SetProperty(ref _fieldCode, value))
+            {
+                IsDirty = true;
+                AutoDeriveI18nKeys();   // virtual field: FieldCode là cột hiệu lực để sinh key
+            }
+        }
     }
 
     private string _sectionName = "";
@@ -114,6 +121,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 RaisePropertyChanged(nameof(DataTypeDisplay));
                 RaisePropertyChanged(nameof(HasDataType));
                 IsDirty = true;
+                AutoDeriveI18nKeys();   // chọn cột → tự sinh key i18n + nạp bản dịch hiện có
             }
         }
     }
@@ -874,7 +882,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _labelKey, value))
             {
-                _ = ResolveI18nPreviewAsync(value, v => LabelPreview = v);
+                _ = ResolveI18nPreviewAsync(value, v => LabelPreview = v, () => LabelPreview);
                 IsDirty = true;
             }
         }
@@ -888,7 +896,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _placeholderKey, value))
             {
-                _ = ResolveI18nPreviewAsync(value, v => PlaceholderPreview = v);
+                _ = ResolveI18nPreviewAsync(value, v => PlaceholderPreview = v, () => PlaceholderPreview);
                 IsDirty = true;
             }
         }
@@ -902,20 +910,39 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _tooltipKey, value))
             {
-                _ = ResolveI18nPreviewAsync(value, v => TooltipPreview = v);
+                _ = ResolveI18nPreviewAsync(value, v => TooltipPreview = v, () => TooltipPreview);
                 IsDirty = true;
             }
         }
     }
 
+    // Khi true: đang gán giá trị từ DB (resolve), KHÔNG đánh dấu dirty.
+    // User gõ tay → cờ false → IsDirty = true (để bật nút Lưu).
+    private bool _suppressValueDirty;
+
     private string _labelPreview = "";
-    public string LabelPreview { get => _labelPreview; set => SetProperty(ref _labelPreview, value); }
+    /// <summary>Giá trị nhãn (vi) — user nhập THẲNG; key tự sinh ngầm. Lưu vào Sys_Resource khi Lưu field.</summary>
+    public string LabelPreview
+    {
+        get => _labelPreview;
+        set { if (SetProperty(ref _labelPreview, value) && !_suppressValueDirty) IsDirty = true; }
+    }
 
     private string _placeholderPreview = "";
-    public string PlaceholderPreview { get => _placeholderPreview; set => SetProperty(ref _placeholderPreview, value); }
+    /// <summary>Giá trị placeholder (vi) — user nhập thẳng; key tự sinh ngầm.</summary>
+    public string PlaceholderPreview
+    {
+        get => _placeholderPreview;
+        set { if (SetProperty(ref _placeholderPreview, value) && !_suppressValueDirty) IsDirty = true; }
+    }
 
     private string _tooltipPreview = "";
-    public string TooltipPreview { get => _tooltipPreview; set => SetProperty(ref _tooltipPreview, value); }
+    /// <summary>Giá trị tooltip (vi) — user nhập thẳng; key tự sinh ngầm.</summary>
+    public string TooltipPreview
+    {
+        get => _tooltipPreview;
+        set { if (SetProperty(ref _tooltipPreview, value) && !_suppressValueDirty) IsDirty = true; }
+    }
 
     // ── Behavior ─────────────────────────────────────────────
     private bool _isVisible = true;
@@ -960,20 +987,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             if (SetProperty(ref _requiredErrorKey, value))
             {
-                _ = ResolveI18nPreviewAsync(value, v => RequiredErrorKeyPreview = v);
+                _ = ResolveI18nPreviewAsync(value, v => RequiredErrorKeyPreview = v, () => RequiredErrorKeyPreview);
                 IsDirty = true;
             }
         }
     }
 
     private string _requiredErrorKeyPreview = "";
+    /// <summary>Giá trị thông báo lỗi bắt buộc (vi) — user nhập thẳng; key tự sinh ngầm.</summary>
     public string RequiredErrorKeyPreview
     {
         get => _requiredErrorKeyPreview;
         set
         {
             if (SetProperty(ref _requiredErrorKeyPreview, value))
+            {
                 RaisePropertyChanged(nameof(HasRequiredErrorKeyPreview));
+                if (!_suppressValueDirty) IsDirty = true;
+            }
         }
     }
 
@@ -1018,6 +1049,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsDirty = true;
                 RaisePropertyChanged(nameof(IsColumnListEmpty));
                 RaisePropertyChanged(nameof(CanTypeColumnCode));
+                AutoDeriveI18nKeys();   // đổi virtual → cột hiệu lực đổi (ColumnCode↔FieldCode)
             }
         }
     }
@@ -1116,10 +1148,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand AddEventCommand { get; }
     public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
     public DelegateCommand<EventSummaryDto> DeleteEventCommand { get; }
-    public DelegateCommand GenerateLabelKeyCommand { get; }
-    public DelegateCommand GeneratePlaceholderKeyCommand { get; }
-    public DelegateCommand GenerateTooltipKeyCommand { get; }
-    public DelegateCommand GenerateRequiredErrorKeyCommand { get; }
     public DelegateCommand<string> OpenI18nKeyCommand { get; }
     public DelegateCommand<FieldNavItem> NavigateToFieldCommand { get; }
     public DelegateCommand RefreshNavigatorCommand { get; }
@@ -1164,10 +1192,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
         OpenEventCommand   = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
         DeleteEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteDeleteEvent);
-        GenerateLabelKeyCommand        = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("label",       k => LabelKey           = k));
-        GeneratePlaceholderKeyCommand  = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("placeholder", k => PlaceholderKey     = k));
-        GenerateTooltipKeyCommand      = new DelegateCommand(async () => await ExecuteGenerateKeyAsync("tooltip",     k => TooltipKey         = k));
-        GenerateRequiredErrorKeyCommand = new DelegateCommand(async () => await ExecuteGenerateRequiredErrorKeyAsync());
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
         NavigateToFieldCommand         = new DelegateCommand<FieldNavItem>(ExecuteNavigateToField);
         RefreshNavigatorCommand        = new DelegateCommand(async () => await LoadFieldNavigatorAsync(_cts.Token));
@@ -1617,60 +1641,53 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     // ── i18n preview resolver ────────────────────────────────
 
     /// <summary>
-    /// Resolve i18n key thành text preview. Dùng DB nếu có, fallback mock.
+    /// Resolve i18n key → giá trị (vi) nạp vào ô NHẬP. Fallback rỗng (không phải key)
+    /// để user gõ thẳng bản dịch. Gán qua cờ suppress để không đánh dấu dirty oan.
     /// </summary>
-    private async Task ResolveI18nPreviewAsync(string key, Action<string> setter)
+    private async Task ResolveI18nPreviewAsync(string key, Action<string> setter, Func<string>? current = null)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
-            setter("");
-            return;
+            return; // không có key → giữ nguyên text user đang gõ
         }
 
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
         {
             var value = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
-            setter(value ?? key);
-        }
-        else
-        {
-            // Chưa cấu hình DB → hiển thị key nguyên để user biết cần resolve
-            setter(key);
+            // Chưa có bản dịch trong DB nhưng user đã gõ text → giữ text, đừng xóa trắng.
+            if (string.IsNullOrEmpty(value) && current is not null && !string.IsNullOrWhiteSpace(current()))
+                return;
+            SetResolvedValue(setter, value ?? "");
         }
     }
 
-    // ── i18n key generator ────────────────────────────────────
+    /// <summary>Gán giá trị resolve vào ô nhập mà KHÔNG kích hoạt dirty (chỉ user gõ mới dirty).</summary>
+    private void SetResolvedValue(Action<string> setter, string value)
+    {
+        _suppressValueDirty = true;
+        try { setter(value); }
+        finally { _suppressValueDirty = false; }
+    }
 
     /// <summary>
-    /// Auto-generate key theo cú pháp {formCode}.field.{columnCode}.{qualifier}.
-    /// Cảnh báo nếu key đã tồn tại, cho user xác nhận dùng tiếp hay hủy.
+    /// Tự suy 3 key hiển thị (label/placeholder/tooltip) + required theo cú pháp chuẩn từ
+    /// TableCode + cột hiệu lực. Thay cho nút "Tạo key" — sinh ngầm khi chọn cột / đổi FieldCode.
+    /// KHÔNG chạy lúc đang load (giữ nguyên key gốc từ DB, kể cả key legacy không theo pattern).
+    /// Sự kiện theo sau: setter mỗi *Key tự resolve giá trị VI vào ô nhập tương ứng.
     /// </summary>
-    private async Task ExecuteGenerateKeyAsync(string qualifier, Action<string> setter)
+    private void AutoDeriveI18nKeys()
     {
-        var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
+        if (_isLoading) return;
+
         var tableCode     = TableCode.ToLowerInvariant();
-        if (string.IsNullOrEmpty(effectiveCode) || string.IsNullOrEmpty(tableCode)) return;
+        var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
+        if (string.IsNullOrEmpty(tableCode) || string.IsNullOrEmpty(effectiveCode)) return;
 
-        var key = $"{tableCode}.field.{effectiveCode}.{qualifier}";
-
-        // Kiểm tra key đã tồn tại trong DB chưa
-        if (_i18nService is not null && _appConfig is { IsConfigured: true })
-        {
-            var existing = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
-            if (existing is not null)
-            {
-                var choice = System.Windows.MessageBox.Show(
-                    $"Key \"{key}\" đã tồn tại trong Sys_Resource.\n" +
-                    $"Giá trị hiện tại (VI): \"{existing}\"\n\n" +
-                    "Vẫn dùng key này?",
-                    "Key đã tồn tại",
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Warning);
-                if (choice == System.Windows.MessageBoxResult.No) return;
-            }
-        }
-
-        setter(key);
+        LabelKey       = $"{tableCode}.field.{effectiveCode}.label";
+        PlaceholderKey = $"{tableCode}.field.{effectiveCode}.placeholder";
+        TooltipKey     = $"{tableCode}.field.{effectiveCode}.tooltip";
+        if (IsRequired)
+            RequiredErrorKey = $"{tableCode}.val.{effectiveCode}.required";
     }
 
     // ── Required error key generator ─────────────────────────
@@ -1689,37 +1706,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _requiredErrorKey = key;
         RaisePropertyChanged(nameof(RequiredErrorKey));
         _ = ResolveI18nPreviewAsync(key, v => RequiredErrorKeyPreview = v);
-    }
-
-    /// <summary>
-    /// Tạo key Required_Error_Key với cảnh báo nếu key đã tồn tại.
-    /// Pattern: {tableCode}.val.{columnCode}.required
-    /// </summary>
-    private async Task ExecuteGenerateRequiredErrorKeyAsync()
-    {
-        var columnCode = ColumnCode.ToLowerInvariant();
-        var tableCode  = TableCode.ToLowerInvariant();
-        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
-
-        var key = $"{tableCode}.val.{columnCode}.required";
-
-        if (_i18nService is not null && _appConfig is { IsConfigured: true })
-        {
-            var existing = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
-            if (existing is not null)
-            {
-                var choice = System.Windows.MessageBox.Show(
-                    $"Key \"{key}\" đã tồn tại trong Sys_Resource.\n" +
-                    $"Giá trị hiện tại (VI): \"{existing}\"\n\n" +
-                    "Vẫn dùng key này?",
-                    "Key đã tồn tại",
-                    System.Windows.MessageBoxButton.YesNo,
-                    System.Windows.MessageBoxImage.Warning);
-                if (choice == System.Windows.MessageBoxResult.No) return;
-            }
-        }
-
-        RequiredErrorKey = key;
     }
 
     // ── Field Navigator loader ────────────────────────────────
@@ -2623,42 +2609,33 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public bool HasSaveError => !string.IsNullOrEmpty(_saveError);
 
     /// <summary>
-    /// Sau khi lưu field: tạo các i18n key vào Sys_Resource nếu chưa có.
-    /// Nguyên tắc: chỉ INSERT khi key+lang chưa tồn tại — không ghi đè bản dịch đã có.
-    /// Default value = ColumnCode cho LabelKey, rỗng cho các key còn lại.
+    /// Sau khi lưu field: ghi bản dịch (vi) cho các key hiển thị.
+    /// Label/Placeholder/Tooltip/Required: user nhập thẳng → upsert (ghi đè); rỗng → init default nếu thiếu.
+    /// captionKey popup + unique: chỉ init default khi chưa có (không ghi đè bản dịch đã sửa).
     /// </summary>
     private async Task RegisterI18nKeysAsync(CancellationToken ct)
     {
         if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
 
-        // Tập hợp các key cần đăng ký: (key, defaultValue)
-        var keys = new List<(string Key, string Default)>();
-
+        // Label/Placeholder/Tooltip/Required: user nhập THẲNG giá trị vi ở ô tương ứng.
+        // Có giá trị → upsert (ghi đè) bản dịch; rỗng → chỉ init default nếu chưa có.
         if (!string.IsNullOrWhiteSpace(LabelKey))
-            keys.Add((LabelKey, ColumnCode));
+            await UpsertOrInitViAsync(LabelKey, LabelPreview, ColumnCode, ct);
 
         if (!string.IsNullOrWhiteSpace(PlaceholderKey))
-            keys.Add((PlaceholderKey, ""));
+            await UpsertOrInitViAsync(PlaceholderKey, PlaceholderPreview, "", ct);
 
         if (!string.IsNullOrWhiteSpace(TooltipKey))
-            keys.Add((TooltipKey, ""));
+            await UpsertOrInitViAsync(TooltipKey, TooltipPreview, "", ct);
 
-        if (!string.IsNullOrWhiteSpace(RequiredErrorKey))
-            keys.Add((RequiredErrorKey, $"Trường {ColumnCode} là bắt buộc"));
+        if (IsRequired && !string.IsNullOrWhiteSpace(RequiredErrorKey))
+            await UpsertOrInitViAsync(RequiredErrorKey, RequiredErrorKeyPreview,
+                                      $"Trường {ColumnCode} là bắt buộc", ct);
 
-        // Đăng ký captionKey của từng cột popup LookupBox
-        // Default vi = FieldName split PascalCase; default en = FieldName (raw)
+        // Đăng ký captionKey của từng cột popup LookupBox (chỉ init default, không có ô nhập riêng).
         foreach (var col in FkPopupColumns)
-        {
             if (!string.IsNullOrWhiteSpace(col.CaptionKey))
-            {
-                // VD: "phongban.col.ma_phong_ban" → default vi = "Mã phòng ban" (để trống, user tự nhập)
-                keys.Add((col.CaptionKey, col.FieldName));
-            }
-        }
-
-        foreach (var (key, defaultValue) in keys)
-            await _i18nService.InitResourceIfMissingAsync(key, "vi", defaultValue, ct);
+                await _i18nService.InitResourceIfMissingAsync(col.CaptionKey, "vi", col.FieldName, ct);
 
         // ── Unique: auto-tạo key chống trùng (vi + en) khi bật cờ Duy nhất ──
         // Key khớp backend emit: {tableCode}.val.{columnCode}.unique (xem SaveMasterDataCommandHandler).
@@ -2674,6 +2651,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", $"{label} already exists", ct);
             }
         }
+    }
+
+    /// <summary>
+    /// Ghi bản dịch (vi) cho 1 key: có giá trị user nhập → upsert (ghi đè); rỗng → init default nếu chưa có.
+    /// </summary>
+    private async Task UpsertOrInitViAsync(string key, string? value, string fallbackDefault, CancellationToken ct)
+    {
+        if (_i18nService is null) return;
+        if (!string.IsNullOrWhiteSpace(value))
+            await _i18nService.SaveResourceAsync(key, "vi", value.Trim(), ct);
+        else
+            await _i18nService.InitResourceIfMissingAsync(key, "vi", fallbackDefault, ct);
     }
 
     private void ExecuteCancel()
