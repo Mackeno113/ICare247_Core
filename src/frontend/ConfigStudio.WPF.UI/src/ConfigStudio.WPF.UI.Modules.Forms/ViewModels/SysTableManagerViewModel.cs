@@ -709,6 +709,11 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         EditIsTenant = table.IsTenant;
         EditIsActive = table.IsActive;
         EditDescription = table.Description;
+
+        // Đồng bộ combo "Chọn bảng/view" để hiển thị đúng bảng đang sửa (dạng "schema.code").
+        // Set THẲNG backing field — không qua setter — để KHÔNG kích hoạt lại auto-fill Schema/Code.
+        _selectedDbObject = $"{EditSchemaName}.{table.TableCode}";
+        RaisePropertyChanged(nameof(SelectedDbObject));
     }
 
     private void ResetEditorForNew()

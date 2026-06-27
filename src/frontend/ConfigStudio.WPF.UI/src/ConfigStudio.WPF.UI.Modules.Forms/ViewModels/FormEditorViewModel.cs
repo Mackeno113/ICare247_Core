@@ -58,6 +58,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     private AutoSaveService? _autoSave;
     private readonly UndoRedoService<string> _undoRedo = new();
 
+    // Phase 2 — Auto-save toàn cục: các section/tab có thay đổi chờ flush qua _autoSave.
+    private readonly HashSet<FormTreeNode> _dirtySections = new();
+    private readonly HashSet<FormTabItem> _dirtyTabs = new();
+
     // D1 — Quick Property Bar: cache FieldConfigRecord per field + dedicated auto-save
     private readonly Dictionary<int, FieldConfigRecord> _fieldRecordCache = new();
     private AutoSaveService? _fieldQuickSave;
@@ -71,7 +75,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public AutoSaveStatus AutoSaveStatus
     {
         get => _autoSaveStatus;
-        private set => SetProperty(ref _autoSaveStatus, value);
+        private set
+        {
+            if (SetProperty(ref _autoSaveStatus, value))
+                RaisePropertyChanged(nameof(SaveStatusText));
+        }
     }
 
     private DateTime? _lastSavedAt;
@@ -79,8 +87,25 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DateTime? LastSavedAt
     {
         get => _lastSavedAt;
-        private set => SetProperty(ref _lastSavedAt, value);
+        private set
+        {
+            if (SetProperty(ref _lastSavedAt, value))
+                RaisePropertyChanged(nameof(SaveStatusText));
+        }
     }
+
+    /// <summary>
+    /// Dải chỉ báo trạng thái auto-save DUY NHẤT trên header (thay 5 nút Lưu cũ).
+    /// Phản ánh tiến trình structure-save (metadata + section + tab + permission).
+    /// </summary>
+    public string SaveStatusText => AutoSaveStatus switch
+    {
+        AutoSaveStatus.Pending => "Sẽ tự lưu…",
+        AutoSaveStatus.Saving  => "Đang lưu…",
+        AutoSaveStatus.Saved   => LastSavedAt is { } t ? $"Đã lưu lúc {t:HH:mm}" : "Đã lưu",
+        AutoSaveStatus.Error   => "Lỗi lưu — thử lại",
+        _ => "Tự động lưu"
+    };
 
     private string? _autoSaveError;
     /// <summary>Lỗi auto-save gần nhất (null nếu thành công).</summary>
@@ -225,10 +250,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     public bool HasSectionCodeError => !string.IsNullOrEmpty(_sectionCodeError);
 
-    private bool _isSavingSection;
-    /// <summary>True khi đang gọi UpsertSectionAsync — khoá nút Lưu tránh double-click.</summary>
-    public bool IsSavingSection { get => _isSavingSection; private set => SetProperty(ref _isSavingSection, value); }
-
     /// <summary>
     /// Title_Key tự động ghép realtime: {table_code}.section.{section_code}.title (chữ thường).
     /// Cập nhật mỗi khi SelectedTable.TableCode hoặc SelectedNode.Code thay đổi.
@@ -262,9 +283,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
                 RaisePropertyChanged(nameof(IsTabSelected));
                 RaisePropertyChanged(nameof(TabTitleKeyPreview));
-                SaveTabCommand.RaiseCanExecuteChanged();
                 DeleteTabCommand.RaiseCanExecuteChanged();
-                CancelTabCommand.RaiseCanExecuteChanged();
 
                 if (_selectedTab is not null)
                 {
@@ -283,10 +302,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     /// <summary>True khi có 1 tab đang chọn → hiện editor.</summary>
     public bool IsTabSelected => SelectedTab is not null;
-
-    private bool _isSavingTab;
-    /// <summary>True khi đang gọi UpsertTabAsync — khoá nút Lưu tránh double-click.</summary>
-    public bool IsSavingTab { get => _isSavingTab; private set => SetProperty(ref _isSavingTab, value); }
 
     private string _tabCodeError = "";
     /// <summary>Thông báo lỗi định dạng Tab Code ([a-z0-9_]). Rỗng = hợp lệ.</summary>
@@ -719,15 +734,16 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             }
             RaisePropertyChanged(nameof(SectionTitleKeyPreview));
             ValidateSectionCode();
-            SaveSectionCommand.RaiseCanExecuteChanged();
         }
 
         // Push undo state trước khi đánh dấu dirty
         PushUndoState($"Sửa {e.PropertyName}");
-        IsDirty = true;
 
-        // Notify auto-save + linting
-        _autoSave?.NotifyDirty();
+        // Phase 2: thay đổi thuộc tính của 1 Section → đánh dấu SECTION dirty (auto-save riêng),
+        // KHÔNG set form IsDirty (tránh save metadata thừa). Field props đã xử lý ở nhánh trên.
+        if (sender is FormTreeNode { NodeType: FormNodeType.Section } dirtySection)
+            MarkSectionDirty(dirtySection);
+
         _linting?.NotifyChanged();
     }
 
@@ -797,7 +813,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public int ActiveTabIndex { get => _activeTabIndex; set => SetProperty(ref _activeTabIndex, value); }
 
     private bool _isDirty;
-    public bool IsDirty { get => _isDirty; set => SetProperty(ref _isDirty, value); }
+    /// <summary>
+    /// Form metadata có thay đổi chưa lưu. Phase 2: set true (ngoài lúc load) → tự lên lịch auto-save.
+    /// Section/Tab dùng dirty-set riêng (<see cref="MarkSectionDirty"/>/<see cref="MarkTabDirty"/>), KHÔNG set cờ này.
+    /// </summary>
+    public bool IsDirty
+    {
+        get => _isDirty;
+        set
+        {
+            if (SetProperty(ref _isDirty, value) && value && !IsLoading)
+                _autoSave?.NotifyDirty();
+        }
+    }
 
     private bool _isLoading;
     public bool IsLoading
@@ -861,6 +889,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand ClearBulkSelectionCommand { get; }
 
     // Form actions
+    /// <summary>Lưu ngay mọi thay đổi đang chờ (Ctrl+S). Auto-save vẫn chạy nền — đây chỉ là lưới an toàn.</summary>
     public DelegateCommand SaveFormCommand { get; }
     public DelegateCommand PublishCommand { get; }
     public DelegateCommand ViewDependenciesCommand { get; }
@@ -887,15 +916,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     // Schema sync
     public DelegateCommand SyncSchemaCommand { get; }
 
-    // Section inline save/cancel
-    public DelegateCommand SaveSectionCommand { get; }
-    public DelegateCommand CancelSectionCommand { get; }
-
-    // Tab management
+    // Tab management (Section/Tab tự lưu — không còn nút Lưu/Hủy thủ công)
     public DelegateCommand AddTabCommand { get; }
-    public DelegateCommand SaveTabCommand { get; }
     public DelegateCommand DeleteTabCommand { get; }
-    public DelegateCommand CancelTabCommand { get; }
 
     // i18n popup (Section / Tab / Form title)
     public DelegateCommand OpenSectionI18nCommand { get; }
@@ -953,9 +976,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         // D3 — Sync AllFields voi Sections.Children tu dong
         WireSectionsAutoSync();
 
-        // Form actions
-        SaveFormCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty && !IsLoading)
-            .ObservesProperty(() => IsDirty)
+        // Form actions — Ctrl+S: lưu ngay (flush debounce). Auto-save vẫn chạy nền.
+        SaveFormCommand = new DelegateCommand(async () => await ExecuteSaveNowAsync(), () => !IsLoading)
             .ObservesProperty(() => IsLoading);
         PublishCommand = new DelegateCommand(ExecutePublish);
         ViewDependenciesCommand = new DelegateCommand(ExecuteViewDependencies);
@@ -992,30 +1014,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             .ObservesProperty(() => IsNewForm)
             .ObservesProperty(() => HasSchemaSyncIssues);
 
-        // Section inline save/cancel
-        SaveSectionCommand = new DelegateCommand(
-            async () => await ExecuteSaveSectionAsync(),
-            () => !IsSavingSection && IsSectionSelected && !HasSectionCodeError)
-            .ObservesProperty(() => IsSavingSection)
-            .ObservesProperty(() => IsSectionSelected)
-            .ObservesProperty(() => HasSectionCodeError);
-        CancelSectionCommand = new DelegateCommand(ExecuteCancelSection,
-            () => IsSectionSelected)
-            .ObservesProperty(() => IsSectionSelected);
-
-        // Tab management
+        // Tab management (Section/Tab tự lưu — không còn nút Lưu/Hủy)
         AddTabCommand = new DelegateCommand(ExecuteAddTab);
-        SaveTabCommand = new DelegateCommand(
-            async () => await ExecuteSaveTabAsync(),
-            () => !IsSavingTab && IsTabSelected && !HasTabCodeError)
-            .ObservesProperty(() => IsSavingTab)
-            .ObservesProperty(() => IsTabSelected)
-            .ObservesProperty(() => HasTabCodeError);
         DeleteTabCommand = new DelegateCommand(
             async () => await ExecuteDeleteTabAsync(),
-            () => IsTabSelected)
-            .ObservesProperty(() => IsTabSelected);
-        CancelTabCommand = new DelegateCommand(ExecuteCancelTab,
             () => IsTabSelected)
             .ObservesProperty(() => IsTabSelected);
 
@@ -1435,68 +1437,49 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// Lưu Section: validate → upsert Ui_Section → upsert Sys_Resource vi/en.
     /// Nếu Section Code đổi → TitleKey thay đổi → rename Resource_Key trong DB.
     /// </summary>
-    private async Task ExecuteSaveSectionAsync()
+    /// <summary>
+    /// Phase 2: đánh dấu 1 Section cần lưu → lên lịch auto-save (debounce).
+    /// Sự kiện theo sau: <see cref="FlushStructureSaveAsync"/> gọi <see cref="TrySaveSectionAsync"/>.
+    /// </summary>
+    private void MarkSectionDirty(FormTreeNode section)
     {
-        if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
-        ValidateSectionCode();
-        if (HasSectionCodeError) return;
-        if (_detailService is null) return;
-
-        var newTitleKey = SectionTitleKeyPreview;
-        if (string.IsNullOrEmpty(newTitleKey))
-        {
-            ErrorMessage = "Không thể lưu: Table chưa được chọn hoặc Section Code trống.";
-            return;
-        }
-
-        IsSavingSection = true;
-        try
-        {
-            var req = new SectionUpsertRequest(
-                FormId:      FormId,
-                SectionId:   node.Id,
-                SectionCode: node.Code,
-                TitleKey:    newTitleKey,
-                OrderNo:     node.SortOrder,
-                IsActive:    node.IsActive,
-                OldTitleKey: _originalTitleKey,
-                TabId:       node.TabId
-            );
-
-            var savedId = await _detailService.UpsertSectionAsync(req, _loadCts.Token);
-
-            // Cập nhật node với dữ liệu đã lưu
-            node.Id       = savedId;
-            node.TitleKey = newTitleKey;
-            _originalTitleKey = newTitleKey;
-
-            // Bản dịch (vi/en/…) do popup I18nEditorDialog quản lý — xem ExecuteOpenSectionI18n.
-            // Tại đây chỉ rename Resource_Key khi Section Code đổi (UpsertSectionAsync xử lý qua OldTitleKey).
-
-            // Cập nhật DisplayName hiển thị trên TreeView
-            node.DisplayName = string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi;
-
-            RaisePropertyChanged(nameof(TotalSections));
-        }
-        catch (Exception ex)
-        {
-            _logger?.Capture(ex, "FormEditor.SaveSection");
-            ErrorMessage = $"Lưu Section thất bại: {ex.Message}";
-        }
-        finally
-        {
-            IsSavingSection = false;
-        }
+        if (section.NodeType != FormNodeType.Section) return;
+        _dirtySections.Add(section);
+        _autoSave?.NotifyDirty();
     }
 
     /// <summary>
-    /// Hủy thay đổi Section: load lại resource values từ DB, restore TitleKey preview.
+    /// Upsert 1 Section theo dữ liệu trên node (không phụ thuộc node đang chọn). Trả false nếu chưa hợp lệ
+    /// (code sai pattern / chưa chọn Table) → giữ trong dirty-set, thử lại lần flush sau.
     /// </summary>
-    private void ExecuteCancelSection()
+    private async Task<bool> TrySaveSectionAsync(FormTreeNode node, CancellationToken ct)
     {
-        if (SelectedNode is not { NodeType: FormNodeType.Section } node) return;
-        _ = LoadSectionResourcesAsync(node);
-        RaisePropertyChanged(nameof(SectionTitleKeyPreview));
+        if (_detailService is null) return false;
+
+        var code = (node.Code ?? "").Trim();
+        if (code.Length == 0 || !SectionCodeRegex.IsMatch(code)) return false;
+        if (string.IsNullOrEmpty(SelectedTable?.TableCode)) return false;
+
+        var newTitleKey = $"{SelectedTable!.TableCode.ToLowerInvariant()}.section.{code.ToLowerInvariant()}.title";
+
+        var req = new SectionUpsertRequest(
+            FormId:      FormId,
+            SectionId:   node.Id,
+            SectionCode: code,
+            TitleKey:    newTitleKey,
+            OrderNo:     node.SortOrder,
+            IsActive:    node.IsActive,
+            // OldTitleKey = key đã lưu trước đó (để rename Resource_Key khi Section Code đổi).
+            OldTitleKey: string.IsNullOrEmpty(node.TitleKey) ? newTitleKey : node.TitleKey,
+            TabId:       node.TabId);
+
+        var savedId = await _detailService.UpsertSectionAsync(req, ct);
+
+        node.Id       = savedId;
+        node.TitleKey = newTitleKey;
+        if (ReferenceEquals(node, SelectedNode)) _originalTitleKey = newTitleKey;
+        node.DisplayName = string.IsNullOrWhiteSpace(node.ResourceVi) ? node.Code : node.ResourceVi;
+        return true;
     }
 
     // ── Tab inline editing ───────────────────────────────────
@@ -1504,12 +1487,21 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>Khi user sửa Tab Code → re-validate + cập nhật preview key.</summary>
     private void OnSelectedTabPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        // Bỏ qua thuộc tính UI thuần (không cần lưu DB).
+        if (e.PropertyName is nameof(FormTabItem.DisplayLabel)
+                            or nameof(FormTabItem.ResourceVi)
+                            or nameof(FormTabItem.ResourceEn))
+            return;
+
         if (e.PropertyName == nameof(FormTabItem.TabCode))
         {
             ValidateTabCode();
             RaisePropertyChanged(nameof(TabTitleKeyPreview));
-            SaveTabCommand.RaiseCanExecuteChanged();
         }
+
+        // Phase 2: mọi thay đổi thuộc tính tab → đánh dấu tab dirty để auto-save.
+        if (sender is FormTabItem tab)
+            MarkTabDirty(tab);
     }
 
     /// <summary>
@@ -1558,64 +1550,56 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         };
         Tabs.Add(tab);
         SelectedTab = tab;
+        // Phase 2: tab mới (TabId=0) → đánh dấu dirty để auto-save INSERT.
+        MarkTabDirty(tab);
     }
 
     /// <summary>
-    /// Lưu Tab: validate → upsert Ui_Tab → upsert Sys_Resource vi/en.
-    /// Nếu Tab Code đổi → TitleKey thay đổi → rename Resource_Key trong DB.
+    /// Phase 2: đánh dấu 1 Tab cần lưu → lên lịch auto-save (debounce).
+    /// Sự kiện theo sau: <see cref="FlushStructureSaveAsync"/> gọi <see cref="TrySaveTabAsync"/>.
     /// </summary>
-    private async Task ExecuteSaveTabAsync()
+    private void MarkTabDirty(FormTabItem tab)
     {
-        if (SelectedTab is null) return;
-        ValidateTabCode();
-        if (HasTabCodeError) return;
-        if (_detailService is null) return;
+        _dirtyTabs.Add(tab);
+        _autoSave?.NotifyDirty();
+    }
 
-        var newTitleKey = TabTitleKeyPreview;
-        if (string.IsNullOrEmpty(newTitleKey))
-        {
-            ErrorMessage = "Không thể lưu Tab: Table chưa được chọn hoặc Tab Code trống.";
-            return;
-        }
+    /// <summary>
+    /// Upsert 1 Tab theo dữ liệu trên item. Trả false nếu chưa hợp lệ (code sai / chưa chọn Table)
+    /// → giữ trong dirty-set, thử lại lần flush sau.
+    /// </summary>
+    private async Task<bool> TrySaveTabAsync(FormTabItem tab, CancellationToken ct)
+    {
+        if (_detailService is null) return false;
 
-        IsSavingTab = true;
-        try
-        {
-            var req = new TabUpsertRequest(
-                FormId:      FormId,
-                TabId:       SelectedTab.TabId,
-                TabCode:     SelectedTab.TabCode,
-                TitleKey:    newTitleKey,
-                IconKey:     string.IsNullOrWhiteSpace(SelectedTab.IconKey) ? null : SelectedTab.IconKey,
-                OrderNo:     SelectedTab.OrderNo,
-                IsDefault:   SelectedTab.IsDefault,
-                OldTitleKey: _originalTabTitleKey
-            );
+        var code = (tab.TabCode ?? "").Trim();
+        if (code.Length == 0 || !SectionCodeRegex.IsMatch(code)) return false;
+        if (string.IsNullOrEmpty(SelectedTable?.TableCode)) return false;
 
-            var savedId = await _detailService.UpsertTabAsync(req, _loadCts.Token);
+        var newTitleKey = $"{SelectedTable!.TableCode.ToLowerInvariant()}.tab.{code.ToLowerInvariant()}.title";
 
-            SelectedTab.TabId    = savedId;
-            SelectedTab.TitleKey = newTitleKey;
-            _originalTabTitleKey = newTitleKey;
+        var req = new TabUpsertRequest(
+            FormId:      FormId,
+            TabId:       tab.TabId,
+            TabCode:     code,
+            TitleKey:    newTitleKey,
+            IconKey:     string.IsNullOrWhiteSpace(tab.IconKey) ? null : tab.IconKey,
+            OrderNo:     tab.OrderNo,
+            IsDefault:   tab.IsDefault,
+            OldTitleKey: string.IsNullOrEmpty(tab.TitleKey) ? newTitleKey : tab.TitleKey);
 
-            // Bản dịch (vi/en/…) do popup I18nEditorDialog quản lý — xem ExecuteOpenTabI18n.
-            // UpsertTabAsync rename Resource_Key khi Tab Code đổi (qua OldTitleKey).
+        var savedId = await _detailService.UpsertTabAsync(req, ct);
 
-            // Đồng bộ cờ default trên UI: chỉ 1 tab được default
-            if (SelectedTab.IsDefault)
-                foreach (var t in Tabs)
-                    if (!ReferenceEquals(t, SelectedTab))
-                        t.IsDefault = false;
-        }
-        catch (Exception ex)
-        {
-            _logger?.Capture(ex, "FormEditor.SaveTab");
-            ErrorMessage = $"Lưu Tab thất bại: {ex.Message}";
-        }
-        finally
-        {
-            IsSavingTab = false;
-        }
+        tab.TabId    = savedId;
+        tab.TitleKey = newTitleKey;
+        if (ReferenceEquals(tab, SelectedTab)) _originalTabTitleKey = newTitleKey;
+
+        // Đồng bộ cờ default trên UI: chỉ 1 tab được default.
+        if (tab.IsDefault)
+            foreach (var t in Tabs)
+                if (!ReferenceEquals(t, tab))
+                    t.IsDefault = false;
+        return true;
     }
 
     /// <summary>Xóa tab: gỡ section khỏi tab (Tab_Id=NULL) rồi xóa Ui_Tab.</summary>
@@ -1647,14 +1631,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         Tabs.Remove(tab);
         SelectedTab = Tabs.FirstOrDefault();
-    }
-
-    /// <summary>Hủy thay đổi tab: load lại resource values từ DB.</summary>
-    private void ExecuteCancelTab()
-    {
-        if (SelectedTab is null) return;
-        _ = LoadTabResourcesAsync(SelectedTab);
-        RaisePropertyChanged(nameof(TabTitleKeyPreview));
     }
 
     // ── i18n popup (dùng chung I18nEditorDialog) ─────────────
@@ -2034,8 +2010,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         Sections.Add(section);
         SelectedNode = section;
         PushUndoState("Thêm section");
-        IsDirty = true;
-        _autoSave?.NotifyDirty();
+        // Phase 2: section mới (Id=0) → đánh dấu dirty để auto-save INSERT.
+        MarkSectionDirty(section);
         _linting?.NotifyChanged();
         RaisePropertyChanged(nameof(TotalSections));
     }
@@ -2467,14 +2443,17 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     // ── Navigation commands ──────────────────────────────────
 
-    private async Task ExecuteSaveAsync()
+    /// <summary>
+    /// Phase 2 — Flush structure-save DUY NHẤT (callback của _autoSave): metadata + permissions
+    /// (khi form dirty) + mọi section/tab dirty. Tạo form mới = explicit nên bỏ qua.
+    /// Lỗi version-conflict / DB → throw để AutoSaveService chuyển trạng thái Error.
+    /// </summary>
+    private async Task FlushStructureSaveAsync(CancellationToken ct)
     {
-        if (_formDataService is null || _appConfig is not { IsConfigured: true })
-            return;
+        if (_appConfig is not { IsConfigured: true } || IsNewForm) return;
 
-        IsLoading    = true;
-        ErrorMessage = "";
-        try
+        // ── 1. Metadata + permissions (chỉ khi form dirty) ──
+        if (IsDirty && _formDataService is not null)
         {
             var success = await _formDataService.UpdateFormMetadataAsync(
                 formId:         FormId,
@@ -2490,38 +2469,49 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 maxWidth:       MaxWidth,
                 formColumns:    FormColumns,
                 titleKey:       string.IsNullOrWhiteSpace(FormTitleKey) ? null : FormTitleKey,
-                ct:             _loadCts.Token);
+                ct:             ct);
 
-            if (success)
-            {
-                Version++;
-                IsDirty = false;
-                _undoRedo.Clear();
+            if (!success)
+                throw new InvalidOperationException(
+                    "Form đã được sửa bởi tiến trình khác (version conflict). Tải lại để đồng bộ.");
 
-                // Lưu phân quyền form (Sys_Permission) — Can_Write = quyền thêm mới/sửa
-                if (_detailService is not null && FormId > 0)
-                {
-                    var perms = Permissions
-                        .Select(p => new FormPermissionRecord(p.RoleId, p.CanRead, p.CanWrite, p.CanSubmit))
-                        .ToList();
-                    await _detailService.SaveFormPermissionsAsync(FormId, perms, _loadCts.Token);
-                }
-            }
-            else
+            Version++;
+            IsDirty = false;
+            _undoRedo.Clear();
+
+            if (_detailService is not null && FormId > 0)
             {
-                ErrorMessage = "Lưu thất bại: form đã được sửa bởi tiến trình khác (version conflict). Tải lại để đồng bộ.";
+                var perms = Permissions
+                    .Select(p => new FormPermissionRecord(p.RoleId, p.CanRead, p.CanWrite, p.CanSubmit))
+                    .ToList();
+                await _detailService.SaveFormPermissionsAsync(FormId, perms, ct);
             }
         }
-        catch (OperationCanceledException) { /* navigate away — bỏ qua */ }
-        catch (Exception ex)
+
+        // ── 2. Section dirty ──
+        foreach (var node in _dirtySections.ToList())
         {
-            _logger?.Capture(ex, "FormEditor.SaveForm");
-            ErrorMessage = $"Lỗi khi lưu form: {ex.Message}";
+            if (await TrySaveSectionAsync(node, ct))
+                _dirtySections.Remove(node);
         }
-        finally
+
+        // ── 3. Tab dirty ──
+        foreach (var tab in _dirtyTabs.ToList())
         {
-            IsLoading = false;
+            if (await TrySaveTabAsync(tab, ct))
+                _dirtyTabs.Remove(tab);
         }
+
+        RaisePropertyChanged(nameof(TotalSections));
+    }
+
+    /// <summary>
+    /// Lưu NGAY mọi thay đổi đang chờ (Ctrl+S hoặc trước khi rời màn) — bỏ qua debounce.
+    /// </summary>
+    private async Task ExecuteSaveNowAsync()
+    {
+        if (_fieldQuickSave is not null) await _fieldQuickSave.SaveNowAsync();
+        if (_autoSave is not null) await _autoSave.SaveNowAsync();
     }
 
     private void ExecutePublish()
@@ -2538,23 +2528,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteBackToList()
     {
-        // WPF-05: Nếu có thay đổi chưa lưu, hỏi user trước khi thoát
-        if (IsDirty)
-        {
-            var answer = System.Windows.MessageBox.Show(
-                "Form có thay đổi chưa lưu.\nBạn có muốn lưu trước khi quay lại không?",
-                "Thay đổi chưa lưu",
-                System.Windows.MessageBoxButton.YesNoCancel,
-                System.Windows.MessageBoxImage.Question);
-
-            if (answer == System.Windows.MessageBoxResult.Cancel) return;
-
-            if (answer == System.Windows.MessageBoxResult.Yes)
-            {
-                // Fire-and-forget: ExecuteSaveAsync tự xử lý lỗi nội bộ
-                _ = ExecuteSaveAsync();
-            }
-        }
+        // Phase 2: auto-save lo phần lưu → chỉ flush mọi thay đổi đang chờ trước khi rời (không hỏi).
+        _ = ExecuteSaveNowAsync();
 
         _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormManager);
     }
@@ -2681,34 +2656,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>Khởi tạo Auto-save + Linting services khi navigate vào editor.</summary>
     private void InitP0Services()
     {
-        // Auto-save: debounce 3 giây — gọi UpdateFormMetadataAsync nếu đã cấu hình DB
-        _autoSave = new AutoSaveService(async ct =>
-        {
-            if (_formDataService is null || _appConfig is not { IsConfigured: true } || !IsDirty)
-                return;
-
-            var success = await _formDataService.UpdateFormMetadataAsync(
-                formId:         FormId,
-                formCode:       FormCode,
-                formName:       FormName,
-                platform:       Platform,
-                layoutEngine:   LayoutEngine,
-                displayMode:    DisplayMode,
-                description:    string.IsNullOrWhiteSpace(Description) ? null : Description,
-                isActive:       IsFormActive,
-                tableId:        SelectedTable?.TableId,
-                currentVersion: Version,
-                maxWidth:       MaxWidth,
-                formColumns:    FormColumns,
-                titleKey:       string.IsNullOrWhiteSpace(FormTitleKey) ? null : FormTitleKey,
-                ct:             ct);
-
-            if (success)
-            {
-                Version++;
-                IsDirty = false;
-            }
-        });
+        // Phase 2 — Auto-save STRUCTURE (debounce 3 giây): metadata + permissions + section + tab.
+        // Một cơ chế lưu duy nhất; KHÔNG còn nút Lưu thủ công (xem FlushStructureSaveAsync).
+        _autoSave = new AutoSaveService(FlushStructureSaveAsync);
         var autoSaveRef = _autoSave;
         _autoSave.StatusChanged += (_, _) =>
         {
@@ -2741,6 +2691,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         _fieldQuickSave = null;
         _pendingQuickSaveField = null;
         _fieldRecordCache.Clear();
+        _dirtySections.Clear();
+        _dirtyTabs.Clear();
         _linting?.Dispose();
         _linting = null;
     }

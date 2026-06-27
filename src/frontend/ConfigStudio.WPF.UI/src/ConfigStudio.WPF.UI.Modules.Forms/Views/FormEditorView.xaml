@@ -260,17 +260,19 @@
                         </StackPanel>
                     </dx:SimpleButton>
 
-                    <!-- Nút Lưu — chế độ sửa (UPDATE): nhãn đồng nhất "Lưu" -->
-                    <dx:SimpleButton Command="{Binding SaveFormCommand}" Margin="0,0,8,0"
-                                     Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}"
-                                     ToolTip="Lưu các thay đổi của form."
-                                     Height="34" Padding="16,0">
-                        <StackPanel Orientation="Horizontal">
+                    <!-- Chế độ sửa (UPDATE): KHÔNG nút Lưu — auto-save toàn cục. Dải chỉ báo trạng thái. -->
+                    <Border Margin="0,0,8,0" Padding="12,0" Height="34" CornerRadius="6"
+                            VerticalAlignment="Center"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                            Visibility="{Binding IsNewForm, Converter={StaticResource InvBoolToVis}}"
+                            ToolTip="Mọi thay đổi tự lưu. Nhấn Ctrl+S để lưu ngay.">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="💾" VerticalAlignment="Center" FontSize="13" />
-                            <TextBlock Text="Lưu" Margin="6,0,0,0"
-                                       FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding SaveStatusText}" Margin="6,0,0,0"
+                                       VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{DynamicResource AppTextSecondaryBrush}" />
                         </StackPanel>
-                    </dx:SimpleButton>
+                    </Border>
 
                     <dx:SimpleButton Command="{Binding ViewDependenciesCommand}"
                                      Margin="0,0,6,0" ToolTip="Xem biểu đồ phụ thuộc"
@@ -964,24 +966,9 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Nút Lưu / Hủy -->
-                                        <Grid Margin="0,4,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <dx:SimpleButton Grid.Column="0"
-                                                             Command="{Binding SaveSectionCommand}"
-                                                             Content="Lưu Section"
-                                                             Height="34"
-                                                             ToolTip="Lưu Section Code + Tên hiển thị vào DB trong 1 lần." />
-                                            <dx:SimpleButton Grid.Column="2"
-                                                             Command="{Binding CancelSectionCommand}"
-                                                             Content="Hủy"
-                                                             Height="34" Padding="16,0"
-                                                             ToolTip="Tải lại giá trị từ DB, hủy bỏ thay đổi chưa lưu." />
-                                        </Grid>
+                                        <!-- Auto-save: section tự lưu khi thay đổi hợp lệ -->
+                                        <TextBlock Margin="0,6,0,0" Style="{StaticResource HelpTextStyle}"
+                                                   Text="✓ Tự động lưu khi bạn sửa (Section Code hợp lệ). Không cần bấm Lưu." />
 
                                     </StackPanel>
 
@@ -1641,27 +1628,19 @@
                                             </StackPanel>
                                         </Border>
 
-                                        <!-- Lưu / Hủy / Xóa -->
+                                        <!-- Xóa Tab (Tab tự lưu khi thay đổi hợp lệ) -->
                                         <Grid Margin="0,4,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="12" />
-                                                <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <dx:SimpleButton Grid.Column="0"
                                                              Command="{Binding DeleteTabCommand}"
                                                              Content="Xóa Tab" Height="34" Padding="14,0"
                                                              ToolTip="Xóa tab — section thuộc tab sẽ gỡ về dạng phẳng." />
-                                            <dx:SimpleButton Grid.Column="2"
-                                                             Command="{Binding SaveTabCommand}"
-                                                             Content="Lưu Tab" Height="34"
-                                                             ToolTip="Lưu Tab Code + Icon + Tên hiển thị vào DB." />
-                                            <dx:SimpleButton Grid.Column="4"
-                                                             Command="{Binding CancelTabCommand}"
-                                                             Content="Hủy" Height="34" Padding="16,0"
-                                                             ToolTip="Tải lại giá trị từ DB, hủy thay đổi chưa lưu." />
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0"
+                                                       Style="{StaticResource HelpTextStyle}"
+                                                       Text="✓ Tự động lưu khi sửa (Tab Code hợp lệ)." />
                                         </Grid>
 
                                     </StackPanel>

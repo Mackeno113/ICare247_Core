@@ -47,6 +47,33 @@
   từng làm fallback nhưng user yêu cầu bỏ. Auto-generate vẫn suy sẵn: EditorType theo kiểu + IsRequired theo NOT NULL.
   Backlog: auto label tiếng Việt, auto Unique, cascade (Reload_Trigger_Field) tự động — tất cả HỎI trước khi làm.
 
+## ✅ Done (2026-06-27) — Tối ưu luồng cấu hình WPF · Phase 2 (auto-save toàn cục) + fix combo SysTable
+
+> Nối tiếp Phase 1. Mục tiêu đã chốt: **auto-save hoàn toàn** ở FormEditor (gộp 5 cơ chế lưu → 1).
+> FieldConfig giữ explicit Save (user chốt). Build Forms module 0/0 (host fail chỉ do file-lock app đang chạy).
+
+- **AUTOSAVE-UNIFY (Phase 2)** — FormEditor gộp về **một** `_autoSave` (structure-save, debounce 3s) qua
+  `FlushStructureSaveAsync`: metadata + permissions (khi form dirty) + **mọi section/tab dirty**. Tạo form mới = explicit (bỏ qua).
+  - **Đóng lỗ hổng metadata:** `IsDirty` setter giờ tự `NotifyDirty()` (trước: metadata field chỉ set cờ → phải bấm Lưu).
+  - **Section/Tab auto-save:** `MarkSectionDirty`/`MarkTabDirty` (HashSet dirty) → `TrySaveSectionAsync`/`TrySaveTabAsync`
+    (gate regex code hợp lệ; node-based, không phụ thuộc selection). Add Section/Tab → tự INSERT.
+  - **Bỏ nút:** Lưu Form / Lưu Section / Hủy Section / Lưu Tab / Hủy Tab + 4 command + 2 method + 2 prop `IsSaving*`.
+  - **Dải trạng thái DUY NHẤT:** header (edit) chip `SaveStatusText` ("Sẽ tự lưu…/Đang lưu…/Đã lưu HH:mm/Lỗi");
+    panel section/tab hint "✓ Tự động lưu". **Ctrl+S** = `ExecuteSaveNowAsync` (flush field-quick + structure, bỏ debounce).
+  - **BackToList:** bỏ hộp thoại "chưa lưu" → flush SaveNow rồi điều hướng.
+  - Giữ: QPB field quick-save (800ms) riêng; tạo form mới explicit.
+- **FIX-SYSTABLE-COMBO** — `SysTableManagerView`: chọn dòng lưới → combo "Chọn bảng/view" không hiện bảng đang sửa.
+  Gốc: `ApplySelectedTable` đổ các ô Edit* nhưng KHÔNG set `SelectedDbObject`. Sửa: gán thẳng backing field
+  `_selectedDbObject = "{schema}.{TableCode}"` + RaisePropertyChanged (không qua setter → không kích hoạt lại auto-fill).
+- **Files:** `Modules.Forms/ViewModels/FormEditorViewModel.cs` · `Modules.Forms/Views/FormEditorView.xaml` ·
+  `Modules.Forms/ViewModels/SysTableManagerViewModel.cs`.
+- **⏳ Verify thực tế (đóng app rồi rebuild host):** sửa metadata/section/tab → ~3s thấy "Đã lưu"; Add Section/Tab tự lưu;
+  đổi quyền tự lưu; Ctrl+S lưu ngay; version-conflict → "Lỗi lưu". SysTable: chọn dòng → combo đổi theo.
+- **⏳ Phase sau:** bỏ full-reload sau save field (patch node); inline field config (bỏ Open/Back); dropdown FK từ schema;
+  debounce RebuildControlPropsJson.
+
+---
+
 ## ✅ Done (2026-06-27) — Tối ưu luồng cấu hình WPF · Phase 1 (cache i18n + bỏ nút Generate)
 
 > Mục tiêu user: **hạn chế thao tác nhấn nút** ở luồng cấu hình form/field. Phân tích điểm nghẽn → chốt

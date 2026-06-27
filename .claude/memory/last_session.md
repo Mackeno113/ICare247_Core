@@ -1,5 +1,40 @@
 # Last Session Summary
 
+> Cập nhật: 2026-06-27 (session 67 — Tối ưu luồng cấu hình WPF · Phase 2: auto-save toàn cục + fix combo SysTable)
+
+## Session 67 (2026-06-27) — đã làm (ĐÃ CODE; build WPF Forms module 0/0)
+
+> Nối tiếp session 66 (Phase 1). User: "phase 2" → làm **auto-save toàn cục** (mô hình đã chốt). Sau đó user
+> báo bug màn `SysTableManagerView` (kèm screenshot) → fix combo. FieldConfig giữ explicit Save (user chốt qua hỏi-đáp).
+
+### Phase 2 — Auto-save toàn cục FormEditor (AUTOSAVE-UNIFY)
+- Phát hiện: FormEditor **đã** auto-save metadata (3s) + field QPB (800ms); còn thủ công = nút Lưu Form/Section/Tab +
+  FieldConfig.SaveField. **Lỗ hổng:** metadata field setter chỉ set `IsDirty` mà KHÔNG `NotifyDirty` → phải bấm Lưu.
+- Gộp về **một** `_autoSave` (structure-save) qua `FlushStructureSaveAsync`: metadata + permissions (khi form dirty) +
+  mọi section/tab dirty. `IsDirty` setter tự `NotifyDirty()` (đóng lỗ hổng). Section/Tab: `MarkSectionDirty`/`MarkTabDirty`
+  (HashSet) → `TrySaveSectionAsync`/`TrySaveTabAsync` gate regex code, node-based. Add Section/Tab tự INSERT.
+- Bỏ nút Lưu Form/Section/Tab + Hủy Section/Tab (+4 command +2 method +2 prop IsSaving*). Header chip `SaveStatusText`
+  ("Sẽ tự lưu…/Đang lưu…/Đã lưu HH:mm/Lỗi"); Ctrl+S = `ExecuteSaveNowAsync` (flush, bỏ debounce). BackToList: bỏ hỏi, flush.
+- Tạo form mới = explicit (FlushStructureSaveAsync return nếu IsNewForm). QPB field quick-save giữ riêng.
+
+### Fix combo SysTableManager (FIX-SYSTABLE-COMBO)
+- Bug (user xác nhận): chọn dòng lưới → combo "Chọn bảng/view" không hiện bảng đang sửa.
+- Gốc: `ApplySelectedTable` đổ ô Edit* nhưng KHÔNG set `SelectedDbObject`. Sửa: gán thẳng backing field
+  `_selectedDbObject = "{schema}.{TableCode}"` + RaisePropertyChanged (cố ý KHÔNG qua setter → tránh kích hoạt lại auto-fill).
+
+### Quyết định
+- **Auto-save toàn cục = 1 service structure-save + dirty-set section/tab**; KHÔNG nút Lưu thủ công (chỉ Ctrl+S lưới an toàn).
+  Validity-gate (regex code) ở Try*Async; invalid → giữ trong dirty-set, không xoá. Update node off-thread an toàn (scalar binding WPF tự marshal).
+- **FieldConfig giữ explicit Save** (validation nặng + luồng tạo field navigate-back) — chưa auto-save ở Phase 2.
+
+### ⏳ Còn lại / tiếp theo
+- **Verify thực tế** (đóng app + rebuild host): metadata/section/tab tự lưu ~3s; Add Section/Tab; đổi quyền; Ctrl+S;
+  version-conflict→"Lỗi lưu"; SysTable chọn dòng→combo đổi theo.
+- **Phase sau:** bỏ full-reload sau save field (patch node); inline field config (bỏ Open/Back FieldConfig); dropdown FK từ schema;
+  debounce RebuildControlPropsJson.
+
+---
+
 > Cập nhật: 2026-06-27 (session 66 — Tối ưu luồng cấu hình WPF · Phase 1: cache i18n + bỏ nút Generate)
 
 ## Session 66 (2026-06-27) — đã làm (ĐÃ CODE; build WPF `ConfigStudio.WPF.UI` 0/0)
