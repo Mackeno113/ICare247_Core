@@ -1,5 +1,14 @@
 # ICare247 Core — Task Tracking
 
+## ✅ Hạ tầng AI Templates (session 69 — 2026-06-28, đã push master)
+- [x] Rà soát skill/rule/agent/command hiện có + đối chiếu aitmpl.com → báo cáo mâu thuẫn.
+- [x] Vá domain drift (design-agent/product-analyst) + ownership path (BRAIN/AGENTS) + đổi 3 spec trùng số (09/10/11→22/23/24). Commit `735abbc`.
+- [x] Governance: BRAIN §11 + `docs/ai/TEMPLATE_INTAKE.md` + `docs/ai/AI_TEMPLATE_INTEGRATION_PLAN.md`. Commit `af5bda1`.
+- [x] 12 agent (5 nhập aitmpl đã customize + 7 engine tự viết). Commit `05dc695`.
+- [x] 14 slash command nối agent. Commit `9847237`.
+- [ ] (Sau) Nhập agent Solution Architect / Database Architect / Technical Writer → nối 3 command inline.
+- [ ] (Sau) Chạy thử agent review trên diff thật để hiệu chỉnh.
+
 ## 🔴 Đang làm (In Progress)
 
 **F1 — Đồng bộ config master→tenant: CFGSYNC-0→3 ĐÃ CODE XONG (session 53, build BE 0/0). `db/050` ✅ ĐÃ CHẠY 2026-06-21. ⏳ CÒN: E2E.**

@@ -1,6 +1,33 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-28 (session 68 — WPF ConfigStudio: LookUpEdit chuẩn hóa + luồng Sys_Table↔Form↔Field + i18n key canonical + layout cột)
+> Cập nhật: 2026-06-28 (session 69 — Hạ tầng AI Templates: governance aitmpl + 12 agent + 14 command)
+
+## Session 69 (2026-06-28) — Tích hợp AI Templates (aitmpl.com) có kiểm soát
+
+> Rà soát toàn bộ skill/rule/agent/command hiện có → dựng hàng rào → nhập chọn lọc. 4 commit đã push master.
+
+### Vá nội bộ + cleanup (commit `735abbc`)
+- **Domain drift:** `design-agent` + `product-analyst` bỏ "y tế/healthcare" → chốt SaaS đa ngành + theme Fluent Light (trỏ skill [[design-hrm-layout-principles]]).
+- **Ownership path** BRAIN/AGENTS khớp cây thật: `src/backend/src/ICare247.*`, `src/frontend/ConfigStudio.WPF.UI`, `ICare247_UI`+`ICare247.UI.Shared`.
+- **Đổi 3 spec trùng số** (đều tồn tại, không lỗi pointer): `09_ERP_DIRECTION→22`, `10_VALIDATION_RULE_GUIDE→23`, `11_BLAZOR_CONTROL_RENDERER_SPEC→24` (git rename giữ history) + cập nhật mọi tham chiếu. Hết trùng số (09/10/11 còn 1 file/số).
+
+### Governance (commit `af5bda1`)
+- **BRAIN.md §11 AI Template Governance:** không copy nguyên bản · không sinh SSOT thứ 2 (cấm template tạo/đè CLAUDE/AGENTS/BRAIN) · thứ tự ưu tiên xung đột (kiến trúc→DB→perf/sec→style→template) · bảng template cấm dùng nguyên bản.
+- `docs/ai/TEMPLATE_INTAKE.md` — checklist lọc bắt buộc (cổng A cứng: EF/SQL/layer/async/cache/comment/SSOT/git/UI/DBMS + cổng B convention + cổng C trùng + log nhập).
+- `docs/ai/AI_TEMPLATE_INTEGRATION_PLAN.md` — kế hoạch tích hợp (phân mức template, bộ agent, command, 5 phase, 10 prompt mẫu, ma trận rủi ro).
+
+### 12 agent (commit `05dc695`)
+- **Nhập aitmpl + customize:** `security-reviewer` (cắt cloud/K8s→app-level, read-only), `performance-reviewer` (bỏ load-test→N+1/cache, read-only), `backend-dapper-expert` (**EF Core→Dapper**, .NET10→9), `sql-server-optimizer` (đa DBMS→MS SQL only, read-only), `test-generator` (xUnit + src/backend/tests).
+- **Tự viết engine** (neo code thật `IMetadataEngine`/`IValidationEngine`/`IEventEngine`/`CacheKeys`/`CorrelationMiddleware`…): `metadata-engine`, `form-engine`, `validation-engine`, `event-engine`, `rbac`, `cache-redis`, `observability`.
+
+### 14 slash command (commit `9847237`)
+- 11 nối agent: `/optimize-sql`, `/review-security`, `/review-performance`, `/generate-crud`, `/generate-api`, `/generate-tests`, `/generate-devexpress-form`, `/analyze-metadata`, `/build-dependency-graph`, `/generate-validation-rule`, `/generate-event-action`.
+- 3 inline (chưa có agent chuyên trách): `/review-architecture`, `/review-db-schema`, `/generate-docs`.
+
+### Còn lại / gợi ý tiếp
+- Có thể nhập sau: Solution Architect (`backend-architect`), Database Architect, Technical Writer → khi đó nối 3 command inline.
+- Chưa dùng thử agent nào trên code thật — lần tới chạy thử `/review-security` hoặc `/review-performance` trên 1 diff.
+- 3 file i18n (`catalog.json`×2 + `i18n-report.md`) còn dirty từ trước, CHƯA commit (ngoài phạm vi session này).
 
 ## Session 68 (2026-06-28) — đã làm (ĐÃ CODE; build `ConfigStudio.WPF.UI.slnx` 0/0)
 
