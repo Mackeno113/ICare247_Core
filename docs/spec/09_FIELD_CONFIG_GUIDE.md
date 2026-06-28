@@ -259,6 +259,8 @@ Không cần cấu hình thêm. Mapping trực tiếp vào cột `bit`:
 
 ### 3.7 LookupBox — FK tham chiếu bảng nghiệp vụ
 
+> 📖 **Tham chiếu đầy đủ TỪNG Ô** của panel LookupBox (EditBox mode, Popup grid, reload, đổi bảng nguồn, diễn giải…) → [../huong-dan-wpf/cau-hinh-lookupbox.md](../huong-dan-wpf/cau-hinh-lookupbox.md). Phần dưới chỉ tóm tắt 3 chế độ truy vấn.
+
 LookupBox có 3 chế độ truy vấn:
 
 #### Chế độ: Bảng / View (khuyến nghị)

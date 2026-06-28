@@ -164,7 +164,7 @@ flowchart LR
 - **Frontend:** `Pages/View/ViewPage.razor`, `Components/View/{DataView,FilterPanel}.razor`, `Services/ViewApiService.cs`
 - **Backend:** `Api/Controllers/ViewController.cs`, `Application/Features/Views/Queries/**`, `Infrastructure/Repositories/ViewRepository*.cs`
 - **Spec:** [`../../spec/04_ENGINE_SPEC.md`](../../spec/04_ENGINE_SPEC.md), [`../../spec/07_API_CONTRACT.md`](../../spec/07_API_CONTRACT.md)
-- **Cấu hình no-code:** [`../../guide/cau-hinh-man-quan-ly-view.md`](../../guide/cau-hinh-man-quan-ly-view.md)
+- **Cấu hình no-code:** [`../../huong-dan-wpf/cau-hinh-man-quan-ly-view.md`](../../huong-dan-wpf/cau-hinh-man-quan-ly-view.md)
 - **Debug:** [`../../backend-debug/`](../../backend-debug/) (trang *views*)
 
 ---

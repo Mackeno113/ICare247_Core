@@ -76,7 +76,7 @@ flowchart LR
 ## 7. Con trỏ code & liên quan
 - Frontend: `path`
 - Backend: `path`
-- Spec/Guide: `../../spec/...`, `../../guide/...`
+- Spec/Guide: `../../spec/...`, `../../huong-dan-wpf/...`
 
 ---
 *Cập nhật: {ngày} — {người/đổi gì}.*

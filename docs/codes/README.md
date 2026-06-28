@@ -32,7 +32,7 @@ flowchart LR
   ONB["onboarding/ (LUỒNG — bạn đang ở đây)"]
   SPEC["spec/ (schema, API contract, engine)"]
   DBG["backend-debug/ (breakpoint theo tính năng)"]
-  GUIDE["guide/ (hướng dẫn cấu hình no-code)"]
+  GUIDE["huong-dan-wpf/ (hướng dẫn cấu hình WPF)"]
   ONB -->|tra cứu schema/API| SPEC
   ONB -->|debug sâu| DBG
   ONB -->|cấu hình màn| GUIDE

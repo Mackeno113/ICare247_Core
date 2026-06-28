@@ -966,11 +966,11 @@ Các nguồn chính đã được dùng trong phân tích:
 - `docs/spec/*`
 - `docs/backend-debug/*`
 - `docs/design-system/*`
-- `docs/guide/*`
+- `docs/huong-dan-wpf/*`
 - `docs/COMMANDS_GUIDE.md`
 - `docs/AI_WORKFLOW_GUIDE.md`
 - `docs/HUONG_DAN_I18N.md`
-- `docs/ConfigStudio_User_Guide.md`
+- `docs/huong-dan-wpf/ConfigStudio_User_Guide.md`
 - `db/*.sql`
 - `src/backend/ICare247.slnx`
 - `src/frontend/ICare247_UI.slnx`
