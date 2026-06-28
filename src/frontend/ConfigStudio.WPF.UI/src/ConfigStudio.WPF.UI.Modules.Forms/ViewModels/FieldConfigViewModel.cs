@@ -925,7 +925,31 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public string LabelPreview
     {
         get => _labelPreview;
-        set { if (SetProperty(ref _labelPreview, value) && !_suppressValueDirty) IsDirty = true; }
+        set
+        {
+            if (SetProperty(ref _labelPreview, value) && !_suppressValueDirty)
+            {
+                IsDirty = true;
+                ApplyLabelDefaultToEmptyDisplays();   // blur ô Nhãn → điền Gợi ý/Mô tả nếu đang trống
+            }
+        }
+    }
+
+    /// <summary>
+    /// Khi user nhập xong Nhãn rồi rời ô (binding LostFocus): nếu Gợi ý nhập / Mô tả đang TRỐNG thì
+    /// lấy mặc định = text Nhãn. Ô nào user đã tự nhập riêng (không trống) thì tôn trọng, không đè.
+    /// Chỉ chạy do user thao tác (gọi từ setter khi suppress=false) → không kích hoạt lúc load/resolve.
+    /// Sự kiện theo sau: ô được điền sẽ dirty → ghi Sys_Resource khi Lưu field.
+    /// </summary>
+    private void ApplyLabelDefaultToEmptyDisplays()
+    {
+        var label = (_labelPreview ?? "").Trim();
+        if (label.Length == 0) return;
+
+        if (string.IsNullOrWhiteSpace(PlaceholderPreview))
+            PlaceholderPreview = label;
+        if (string.IsNullOrWhiteSpace(TooltipPreview))
+            TooltipPreview = label;
     }
 
     private string _placeholderPreview = "";
@@ -1667,7 +1691,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         RebuildControlPropsJson();
 
         // Chuẩn hóa 3 key hiển thị về canonical (.label/.placeholder/.tooltip) — fix field cũ lưu
-        // key legacy / thiếu placeholder-tooltip; giá trị vi đã nạp từ key cũ được giữ nguyên.
+        // key legacy / thiếu placeholder-tooltip; resolve LẠI giá trị vi từ key canonical (xem hàm).
         NormalizeFieldKeysToCanonical();
 
         IsLoading = false;
@@ -1687,11 +1711,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             return; // không có key → giữ nguyên text user đang gõ
         }
 
+        // Chốt ngữ cảnh NGAY (đồng bộ, trước await — resolve chạy fire-and-forget nên _isLoading
+        // có thể đã đảo lúc await xong): chỉ giữ text đang có khi user TỰ GÕ rồi mới sinh key
+        // (AutoDeriveI18nKeys chạy lúc !_isLoading). Khi đang LOAD field, text trong ô là của
+        // field TRƯỚC (chưa reset) → KHÔNG giữ, để resolve ghi đè (rỗng ⇒ xóa trắng đúng).
+        var preserveTypedText = !_isLoading;
+
         if (_i18nService is not null && _appConfig is { IsConfigured: true })
         {
             var value = await _i18nService.ResolveKeyAsync(key, "vi", _cts.Token);
-            // Chưa có bản dịch trong DB nhưng user đã gõ text → giữ text, đừng xóa trắng.
-            if (string.IsNullOrEmpty(value) && current is not null && !string.IsNullOrWhiteSpace(current()))
+            // Chưa có bản dịch trong DB nhưng user đã gõ text (interactive) → giữ text, đừng xóa trắng.
+            if (string.IsNullOrEmpty(value) && preserveTypedText && current is not null && !string.IsNullOrWhiteSpace(current()))
                 return;
             SetResolvedValue(setter, value ?? "");
         }
@@ -1743,8 +1773,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>
     /// Chuẩn hóa 3 key hiển thị về đúng cú pháp spec 10 cho field ĐANG SỬA — kể cả field cũ lưu key
-    /// legacy (thiếu <c>.label</c>) hoặc placeholder/tooltip rỗng. Gán THẲNG backing field để KHÔNG
-    /// kích hoạt resolve (giữ nguyên giá trị vi vừa nạp từ key cũ qua guard <c>current</c>).
+    /// legacy (thiếu <c>.label</c>) hoặc placeholder/tooltip rỗng/NULL. Gán backing field để hiển thị
+    /// key canonical, đồng thời RESOLVE LẠI giá trị vi TỪ KEY CANONICAL — vì canonical mới là nguồn sự
+    /// thật khi Lưu (RegisterI18nKeysAsync ghi theo canonical). Nếu chỉ giữ giá trị resolve từ key
+    /// legacy/NULL thì ô sẽ dính giá trị field TRƯỚC (key rỗng ⇒ resolve bị skip, không xóa ô).
+    /// Resolve chạy lúc _isLoading=true ⇒ canonical rỗng sẽ xóa trắng ô (không giữ giá trị cũ).
     /// Sự kiện theo sau: key canonical hiển thị ngay + được ghi khi Lưu field (key cũ thành orphan, vô hại).
     /// </summary>
     private void NormalizeFieldKeysToCanonical()
@@ -1756,18 +1789,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             _labelKey = label;
             RaisePropertyChanged(nameof(LabelKey));
+            _ = ResolveI18nPreviewAsync(label, v => LabelPreview = v, () => LabelPreview);
         }
         var placeholder = BuildFieldKey("placeholder");
         if (_placeholderKey != placeholder)
         {
             _placeholderKey = placeholder;
             RaisePropertyChanged(nameof(PlaceholderKey));
+            _ = ResolveI18nPreviewAsync(placeholder, v => PlaceholderPreview = v, () => PlaceholderPreview);
         }
         var tooltip = BuildFieldKey("tooltip");
         if (_tooltipKey != tooltip)
         {
             _tooltipKey = tooltip;
             RaisePropertyChanged(nameof(TooltipKey));
+            _ = ResolveI18nPreviewAsync(tooltip, v => TooltipPreview = v, () => TooltipPreview);
         }
     }
 
