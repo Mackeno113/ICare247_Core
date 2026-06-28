@@ -18,7 +18,15 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
     </UserControl.Resources>
 
-    <StackPanel>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="12" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ══════ CỘT TRÁI: Nguồn dữ liệu FK · EditBox hiển thị ══════ -->
+        <StackPanel Grid.Column="0">
 
         <!-- ══════════════════════════════════════════════════════
              SECTION 1 — Nguồn dữ liệu FK
@@ -237,6 +245,11 @@
                 </StackPanel>
             </StackPanel>
         </Border>
+
+        </StackPanel>
+
+        <!-- ══════ CỘT PHẢI: Popup grid · Thêm mới · Diễn giải ══════ -->
+        <StackPanel Grid.Column="2">
 
         <!-- ══════════════════════════════════════════════════════
              SECTION 3 — Popup grid
@@ -467,5 +480,6 @@
             </StackPanel>
         </Border>
 
-    </StackPanel>
+        </StackPanel>
+    </Grid>
 </UserControl>

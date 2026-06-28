@@ -673,50 +673,7 @@
                                                        Foreground="{DynamicResource AppInfoBrush}" />
                                         </StackPanel>
 
-                                        <!-- Bảng key properties -->
-                                        <ItemsControl ItemsSource="{Binding EditorTypeGuide.Props}"
-                                                      Visibility="{Binding EditorTypeGuide.HasProps, Converter={StaticResource BoolToVis}}">
-                                            <ItemsControl.Template>
-                                                <ControlTemplate TargetType="ItemsControl">
-                                                    <Border BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="1" CornerRadius="4">
-                                                        <StackPanel>
-                                                            <!-- Tiêu đề bảng -->
-                                                            <Border Background="{DynamicResource AppInfoBorderBrush}" CornerRadius="3,3,0,0" Padding="8,4">
-                                                                <DockPanel>
-                                                                    <TextBlock Text="Property"
-                                                                               FontSize="11" FontWeight="Bold"
-                                                                               Foreground="{DynamicResource AppInfoBrush}"
-                                                                               Width="140"
-                                                                               DockPanel.Dock="Left" />
-                                                                    <TextBlock Text="Ý nghĩa"
-                                                                               FontSize="11" FontWeight="Bold"
-                                                                               Foreground="{DynamicResource AppInfoBrush}" />
-                                                                </DockPanel>
-                                                            </Border>
-                                                            <ItemsPresenter />
-                                                        </StackPanel>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </ItemsControl.Template>
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate DataType="{x:Type models:PropHintRow}">
-                                                    <Border BorderBrush="{DynamicResource AppInfoSoftBrush}" BorderThickness="0,0,0,1" Padding="8,5">
-                                                        <DockPanel>
-                                                            <TextBlock Text="{Binding Name}"
-                                                                       FontSize="12"
-                                                                       FontFamily="Cascadia Code, Consolas"
-                                                                       Foreground="{DynamicResource AppInfoBrush}"
-                                                                       Width="140"
-                                                                       DockPanel.Dock="Left" />
-                                                            <TextBlock Text="{Binding Hint}"
-                                                                       FontSize="12"
-                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}"
-                                                                       TextWrapping="Wrap" />
-                                                        </DockPanel>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
+                                        <!-- Bảng Props đã chuyển sang tab Control Props (đặt cạnh các ô cấu hình) -->
 
                                         <!-- Footer hint: validation → tab Rules -->
                                         <Border Background="{DynamicResource AppWarningSoftBrush}" BorderBrush="{DynamicResource AppWarningLightBrush}"
@@ -1062,7 +1019,44 @@
                     </StackPanel>
                 </TabItem.Header>
 
-                <Grid>
+                <DockPanel>
+
+                    <!-- ── Hướng dẫn GHIM đầu tab (không cuộn) — 2 cột cho gọn chiều dọc ── -->
+                    <Border DockPanel.Dock="Top"
+                            Visibility="{Binding EditorTypeGuide.HasProps, Converter={StaticResource BoolToVis}}"
+                            Background="{DynamicResource AppInfoSoftBrush}"
+                            BorderBrush="{DynamicResource AppInfoBorderBrush}"
+                            BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,12,0,8">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <TextBlock Text="{Binding EditorTypeGuide.Icon}" FontSize="15"
+                                           VerticalAlignment="Center" Margin="0,0,8,0" DockPanel.Dock="Left" />
+                                <TextBlock Text="{Binding EditorTypeGuide.Title}" FontSize="13" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppInfoBrush}" VerticalAlignment="Center" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding EditorTypeGuide.Props}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="2" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type models:PropHintRow}">
+                                        <DockPanel Margin="0,2,16,2">
+                                            <TextBlock Text="{Binding Name}" FontSize="11"
+                                                       FontFamily="Cascadia Code, Consolas"
+                                                       Foreground="{DynamicResource AppInfoBrush}"
+                                                       Width="120" DockPanel.Dock="Left" VerticalAlignment="Top" />
+                                            <TextBlock Text="{Binding Hint}" FontSize="11"
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}" TextWrapping="Wrap" />
+                                        </DockPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="10" />
@@ -1114,6 +1108,8 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Border>
+
+                        <!-- Bảng Props hướng dẫn đã GHIM ở đầu tab (ngoài vùng cuộn) — xem DockPanel.Dock="Top" phía trên -->
 
                         <!-- ── Lookup Config — chỉ RadioGroup (Sys_Lookup đơn giản) ─── -->
                         <Border Style="{StaticResource SectionCardStyle}"
@@ -1761,7 +1757,8 @@
                         </DockPanel>
                     </Border>
 
-                </Grid>
+                    </Grid>
+                </DockPanel>
             </TabItem>
 
             <!-- ═══ TAB 3: Validation Rules ════════════════════════ -->
