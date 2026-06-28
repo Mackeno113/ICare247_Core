@@ -2,7 +2,7 @@
 
 > Lộ trình biến nền tảng ICare247 (form engine) thành **ERP nội bộ** vận hành được.
 > Tech stack chốt: **.NET 9 + Blazor WASM + API + Dapper + Redis** (xem ADR-011).
-> Mô hình: **Engine + Code tay** (xem `docs/spec/09_ERP_DIRECTION.md`).
+> Mô hình: **Engine + Code tay** (xem `docs/spec/22_ERP_DIRECTION.md`).
 > Cập nhật lần cuối: 2026-06-09
 
 ---

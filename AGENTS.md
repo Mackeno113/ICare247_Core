@@ -38,16 +38,16 @@
 ## Ownership Codex (xem đầy đủ trong BRAIN.md § Ownership)
 
 Codex **chịu trách nhiệm chính** (không cần hỏi Claude Code):
-- `src/ConfigStudio.WPF/` — toàn bộ WPF desktop tool
-- `tests/` — unit + integration tests
+- `src/frontend/ConfigStudio.WPF.UI/` — toàn bộ WPF desktop tool
+- `src/backend/tests/` — unit + integration tests
 - `db/` — schema, seed, migrations
 
 Codex **KHÔNG tự ý sửa** (phải có handoff từ Claude Code):
-- `src/ICare247.Api/`
-- `src/ICare247.Application/`
-- `src/ICare247.Domain/`
-- `src/ICare247.Infrastructure/`
-- `src/ICare247.Blazor.WASM/`
+- `src/backend/src/ICare247.Api/`
+- `src/backend/src/ICare247.Application/`
+- `src/backend/src/ICare247.Domain/`
+- `src/backend/src/ICare247.Infrastructure/`
+- `src/frontend/ICare247_UI/` + `src/frontend/ICare247.UI.Shared/` (Blazor WASM)
 
 ---
 

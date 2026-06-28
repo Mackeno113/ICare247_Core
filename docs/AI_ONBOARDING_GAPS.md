@@ -49,7 +49,7 @@ Nguồn chính:
 - `README.md`
 - `BRAIN.md`
 - `docs/spec/00_PROJECT_OVERVIEW.md`
-- `docs/spec/09_ERP_DIRECTION.md`
+- `docs/spec/22_ERP_DIRECTION.md`
 
 Theo định hướng ERP mới, lõi engine vẫn giữ metadata-driven, nhưng sản phẩm hướng tới ERP nội bộ nông nghiệp /
 thương mại. Các danh mục và form đơn giản dùng engine; nghiệp vụ phức tạp có thể viết tay bằng Blazor + CQRS.
@@ -668,7 +668,7 @@ Tài liệu cần bổ sung:
 
 #### 15. Design system có mâu thuẫn tài liệu
 
-`docs/design-system/README.md` còn mô tả brand colorful/playful, trong khi `docs/spec/09_ERP_DIRECTION.md`
+`docs/design-system/README.md` còn mô tả brand colorful/playful, trong khi `docs/spec/22_ERP_DIRECTION.md`
 chốt hướng ERP trung tính / Fluent Light.
 
 Rủi ro: người mới build UI sai phong cách.

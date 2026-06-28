@@ -35,12 +35,12 @@ Ngôn ngữ: **Tiếng Việt**, giữ nguyên technical terms (token, palette, 
 **ICare247 Core Platform** — Enterprise metadata-driven low-code form engine, đa ngành
 - **Frontend:** Blazor WebAssembly (.NET 9)
 - **Component library:** DevExpress Blazor
-- **Domain:** Đa ngành (multi-industry) — không giới hạn healthcare
-- **Brand:** "I Care 24/7" — ấm áp, tận tâm, luôn sẵn sàng
-- **Style:** Colorful · Playful · Approachable
-- **Colors:** Coral `#FF6B6B` → Violet `#845EF7` → Teal `#00C9A7`
+- **Domain:** SaaS quản trị **đa ngành** (HRM, công lương, mua bán cà phê nhân/hồ tiêu/phân bón…) — **KHÔNG phải y tế** dù tên có "Care"
+- **Brand:** "I Care 24/7" — chuyên nghiệp, đáng tin, mật độ dữ liệu cao
+- **Style:** **Fluent Light** (DevExpress) — phẳng, precise, anti "AI-generated/landing-page". Tham chiếu Linear/Vercel/Supabase — **KHÔNG** colorful/playful
+- **Theme tokens:** **ĐÃ KHÓA.** Đổi màu = thay file accent, **KHÔNG** override `--dxbl-*`, KHÔNG tự thêm token/màu/font mới
 - **Pattern:** Metadata-driven — controls render từ config DB, không hardcode
-- **Design System:** `docs/design-system/tokens.css` + `README.md`
+- **⛔ UI admin/HRM nội bộ:** BẮT BUỘC tuân skill `.claude/skills/icare247-admin-ui/` (theme khóa, ≤3 màu, surface phẳng, 1 CTA/màn). Palette/token tự sinh ở phần Output bên dưới **CHỈ** dùng cho trang public-facing mới (nếu có), **KHÔNG** cho app nội bộ
 
 ### DevExpress components cần biết khi spec
 
@@ -61,7 +61,7 @@ Ngôn ngữ: **Tiếng Việt**, giữ nguyên technical terms (token, palette, 
 ### Bước 1 — Thu thập context
 Trước khi thiết kế, hỏi (nếu chưa rõ):
 - Business domain / mục tiêu của màn hình
-- Target users (admin nội bộ? bệnh nhân? bác sĩ?)
+- Target users (admin nội bộ? nhân viên nghiệp vụ? quản lý?)
 - Brand assets hiện có (logo, màu chủ đạo)
 - Có dark mode không?
 - Ưu tiên: tốc độ hay thẩm mỹ?
@@ -241,7 +241,7 @@ Timing: validate onChange (debounce 500ms) + onBlur (immediate)
 - **Consistency**: Luôn dùng tokens, không hardcode giá trị
 - **8px grid**: Tất cả spacing là bội số của 8px (hoặc 4px cho micro-spacing)
 - **Accessibility first**: WCAG 2.1 AA tối thiểu — contrast ≥ 4.5:1 cho text, ≥ 3:1 cho UI elements
-- **Healthcare context**: Tránh màu sắc gây lo lắng; ưu tiên xanh dương (trust), xanh lá (health)
+- **Đa ngành, mật độ cao**: Trung tính ~90% UI + 1 accent xanh; tránh màu sặc sỡ. Màu semantic (đỏ/cam/lá) CHỈ cho trạng thái nghiệp vụ — không trang trí
 
 ### Design Tokens
 - Luôn dùng **semantic tokens** (`--color-primary`) thay `--color-blue-600` trong component

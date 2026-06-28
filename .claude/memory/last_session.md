@@ -938,7 +938,7 @@ fallback vi tại chỗ gọi); key theo **nguyên tắc WPF (spec 10)** = `comm
 - **Đổi theme về sau = thay 1 file**: `accents/*.min.css` (11 màu: steel/storm/cool-blue… cho tông
   navy-ERP) hoặc `modes/dark.min.css`. KHÔNG override `--dxbl-*` thủ công nữa.
 - Build RuntimeCheck **0 error**. Verify chạy thật OK (user xác nhận).
-- **Docs:** cập nhật `docs/spec/09_ERP_DIRECTION.md` ADR-012 (theme Fluent + accent xanh, BE-004 đóng).
+- **Docs:** cập nhật `docs/spec/22_ERP_DIRECTION.md` ADR-012 (theme Fluent + accent xanh, BE-004 đóng).
 
 ### Tồn đọng / lưu ý
 - ADR-012 giờ accent **xanh Fluent** (không phải navy như ghi ban đầu). Nếu muốn tông navy-ERP →

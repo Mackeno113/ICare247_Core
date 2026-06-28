@@ -1,4 +1,4 @@
-# Spec 11 — Blazor Control Renderer
+# Spec 24 — Blazor Control Renderer
 
 > Phiên bản: 1.0 | Cập nhật: 2026-03-29
 

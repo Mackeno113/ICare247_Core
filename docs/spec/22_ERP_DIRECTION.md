@@ -1,4 +1,4 @@
-# 09 — ERP Direction & Decision Update
+# 22 — ERP Direction & Decision Update
 
 > **Mục đích:** Ghi lại định hướng chuyển ICare247 Core Platform thành nền tảng vận hành
 > **ERP nội bộ** (nông nghiệp / thương mại), và các quyết định kiến trúc đi kèm.
@@ -81,7 +81,7 @@ cache hybrid, JWT/multi-tenant, logging.
 | `docs/spec/00_PROJECT_OVERVIEW.md` | Thêm mục tiêu ERP + mô hình engine/code tay | 🔴 Chưa làm |
 | `README.md` | Thêm dòng mô tả: nền tảng dùng để dựng ERP nội bộ | 🔴 Chưa làm |
 | `ROADMAP.md` | Lộ trình tổng thể | ✅ Done (2026-06-09) |
-| `docs/spec/09_ERP_DIRECTION.md` | Chính là file này | ✅ Done |
+| `docs/spec/22_ERP_DIRECTION.md` | Chính là file này | ✅ Done |
 
 > **Lưu ý:** Không sửa schema DB. Các bảng metadata (`Sys_*`, `Ui_*`, `Val_*`, `Evt_*`)
 > giữ nguyên — ERP chỉ *thêm dữ liệu* metadata, không đổi cấu trúc.
