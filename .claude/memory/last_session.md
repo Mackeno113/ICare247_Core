@@ -1,6 +1,30 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-28 (session 69 — Hạ tầng AI Templates: governance aitmpl + 12 agent + 14 command)
+> Cập nhật: 2026-06-28 (session 70 — ConfigStudio: fix i18n preview field + bố cục Control Props + docs LookupBox/WPF)
+
+## Session 70 (2026-06-28) — Fix i18n preview field + bố cục lại Control Props + docs (ĐÃ CODE + push; build Forms 0/0)
+
+> Chuỗi yêu cầu UX/bugfix WPF ConfigStudio (kèm screenshot). Mỗi quyết định LOGIC đều HỎI trước [[feedback-always-ask-first]]. 3 commit đã push master (`0d29dc9`, `bf19b1b`, `f9c2c6c`).
+
+### I18N-PREVIEW-FIX — ô Display dính giá trị field TRƯỚC (commit `f9c2c6c`)
+- Triệu chứng (user): mở field `TenVietTat`/`Ma`, ô Gợi ý/Mô tả hiện "Tên ngân hàng" (của field `Ten`). **VERIFY DB trực tiếp** (`Sys_Resource` + `Ui_Field` qua sqlclient): DB ĐÚNG ("Tên viết tắt"), lỗi ở UI → [[feedback-fix-root-logic-not-cache]] [[feedback-verify-live-db-schema]].
+- Gốc 2 tầng: (1) `Ui_Field` field cũ lưu key **legacy/NULL** (Label_Key thiếu `.label`, Placeholder/Tooltip NULL); (2) load gán key rỗng → `ResolveI18nPreviewAsync` return sớm KHÔNG xóa ô → giữ giá trị field trước; `NormalizeFieldKeysToCanonical` đổi key hiển thị sang canonical nhưng KHÔNG resolve lại → key hiển thị ≠ giá trị resolve.
+- Sửa LOGIC tại nguồn (KHÔNG vá cache/case): `NormalizeFieldKeysToCanonical` **resolve LẠI** preview từ key canonical; `ResolveI18nPreviewAsync` chốt `preserveTypedText=!_isLoading` trước `await` → lúc load, resolve rỗng **xóa trắng ô** (chỉ giữ text khi user gõ interactive).
+- **On-blur default**: `LabelPreview` setter (bind `LostFocus`) → rời ô Nhãn tự điền Gợi ý/Mô tả nếu đang trống (user chốt "điền on-blur, chỉ khi trống").
+
+### CTRLPROPS-LAYOUT — bố cục lại tab Control Props (commit `bf19b1b`)
+- Tách bảng Props (giải thích thuộc tính) từ tab Cơ bản → tab Control Props (cạnh ô cấu hình).
+- **Ghim hướng dẫn** đầu tab (`DockPanel.Dock=Top`, ngoài vùng cuộn), trình bày **2 cột** (UniformGrid) cho gọn chiều dọc.
+- `LookupBoxPropsPanel`: chia 5 section thành **2 cột** (trái: Nguồn dữ liệu FK + EditBox · phải: Popup + Thêm mới + Diễn giải) → giảm ~½ chiều cao. Theo skill `icare247-admin-ui`.
+
+### DOCS-WPF (commit `0d29dc9`)
+- Thêm `docs/huong-dan-wpf/cau-hinh-lookupbox.md` — tham chiếu đầy đủ TỪNG Ô panel LookupBox/TreeLookupBox.
+- **Gom guide WPF** → `docs/huong-dan-wpf/` (git mv 7 guide từ docs/guide + ConfigStudio_User_Guide.md) + README index; sửa 6 link chéo (spec/09, codes/*, AI_ONBOARDING_GAPS). Giữ `docs/spec/*_GUIDE.md` tại spec (đánh số).
+
+### ⏳ Còn lại / verify
+- **Verify thực tế** (rebuild + chạy app): bấm qua lại field → ô Display đúng/trống (không dính field trước); on-blur điền label; tab Control Props ghim hướng dẫn + 2 cột gọn 1 khung nhìn.
+- 3 file i18n (`catalog.json`×2 + `i18n-report.md`) vẫn dirty từ trước — CHƯA commit (ngoài phạm vi).
+- (tùy) áp 2 cột cho `ComboBoxPropsPanel`; responsive gộp cột khi màn hẹp.
 
 ## Session 69 (2026-06-28) — Tích hợp AI Templates (aitmpl.com) có kiểm soát
 

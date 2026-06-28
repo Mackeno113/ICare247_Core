@@ -1,5 +1,13 @@
 # ICare247 Core — Task Tracking
 
+## ✅ ConfigStudio: fix i18n preview field + bố cục Control Props + docs WPF (session 70 — 2026-06-28, đã push master)
+- [x] **Fix i18n preview** ô Display dính giá trị field TRƯỚC: resolve LẠI từ key canonical (`NormalizeFieldKeysToCanonical`) + `preserveTypedText=!_isLoading` (`ResolveI18nPreviewAsync`) → load rỗng thì xóa trắng. VERIFY DB thật trước (DB đúng, lỗi UI). Commit `f9c2c6c`.
+- [x] **On-blur default**: rời ô Nhãn → tự điền Gợi ý/Mô tả nếu trống. Commit `f9c2c6c`.
+- [x] **Bố cục Control Props**: ghim hướng dẫn đầu tab (2 cột, ngoài vùng cuộn) + `LookupBoxPropsPanel` chia 2 cột (giảm ~½ chiều cao). Commit `bf19b1b`.
+- [x] **Docs**: thêm `docs/huong-dan-wpf/cau-hinh-lookupbox.md` + gom guide WPF vào `docs/huong-dan-wpf/` (git mv + README index + sửa 6 link). Commit `0d29dc9`.
+- [ ] (Verify) Rebuild + chạy app: ô Display đúng/trống khi bấm qua field; on-blur; Control Props gọn 1 khung nhìn.
+- [ ] (Tùy) áp 2 cột cho `ComboBoxPropsPanel`; responsive gộp cột khi màn hẹp.
+
 ## ✅ Hạ tầng AI Templates (session 69 — 2026-06-28, đã push master)
 - [x] Rà soát skill/rule/agent/command hiện có + đối chiếu aitmpl.com → báo cáo mâu thuẫn.
 - [x] Vá domain drift (design-agent/product-analyst) + ownership path (BRAIN/AGENTS) + đổi 3 spec trùng số (09/10/11→22/23/24). Commit `735abbc`.
