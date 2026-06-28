@@ -222,6 +222,7 @@ Task hoàn thành khi:
 ## 11. AI Template Governance — nhập template ngoài (aitmpl.com / Claude Code Templates)
 
 > Quy tắc bắt buộc khi tích hợp bất kỳ skill/agent/command từ thư viện ngoài.
+> **📍 Mục lục toàn bộ hạ tầng AI (agent/command/governance): [`docs/ai/README.md`](docs/ai/README.md) — cửa vào duy nhất.**
 > Chi tiết quy trình lọc: `docs/ai/TEMPLATE_INTAKE.md`. Kế hoạch tổng: `docs/ai/AI_TEMPLATE_INTEGRATION_PLAN.md`.
 
 ### 11.1 Nguyên tắc tối thượng

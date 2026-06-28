@@ -20,6 +20,9 @@
 
 > **[BRAIN.md](BRAIN.md)** — Single source of truth: project identity, tech stack,
 > hard constraints, architecture, ownership map. Đọc trước khi làm bất cứ thứ gì.
+>
+> **[docs/ai/README.md](docs/ai/README.md)** — Mục lục hạ tầng AI: 14 agent + 20 command +
+> governance template. Cửa vào duy nhất khi cần tra "có tooling gì để dùng".
 
 ---
 
