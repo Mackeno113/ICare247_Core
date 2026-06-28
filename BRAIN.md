@@ -65,11 +65,11 @@ Api           ← import Application only (KHÔNG import Infrastructure trực t
 
 | Vùng | Owner | Ghi chú |
 |---|---|---|
-| `src/backend/` (.NET 9 toàn bộ) | **Claude Code** | Domain, Application, Infrastructure, Api |
-| `src/blazor/` (Blazor WASM) | **Claude Code** | FormRunner, Renderers, Services |
-| `src/frontend/ConfigStudio.WPF/` | **Codex** | MVVM, Views, Modules, Prism |
+| `src/backend/src/` (.NET 9: Api, Application, Domain, Infrastructure, DbMigrator) | **Claude Code** | Clean Architecture 4 lớp |
+| `src/frontend/ICare247_UI/` + `ICare247.UI.Shared/` (Blazor WASM) | **Claude Code** | FormRunner, Renderers, Services |
+| `src/frontend/ConfigStudio.WPF.UI/` | **Codex** | MVVM, Views, Modules, Prism |
 | `db/` (SQL migrations) | **Codex** | Tạo file migration SQL |
-| `tests/` (unit + integration) | **Codex** | xUnit, test coverage |
+| `src/backend/tests/` (unit + integration) | **Codex** | xUnit, test coverage |
 | `docs/spec/` | **Claude Code** | Maintain + update khi thay đổi |
 | `.claude/memory/` | **Claude Code** | Update sau mỗi session, commit master |
 | `.codex/memory/` | **Codex** | Update sau mỗi session, commit master |
@@ -165,7 +165,7 @@ var key = $"form_{formCode}";
 | `docs/spec/06_SOLUTION_STRUCTURE.md` | Folder structure, naming |
 | `docs/spec/07_API_CONTRACT.md` | API endpoint, DTO |
 | `docs/spec/08_CONVENTIONS.md` | Cache key, Dapper query |
-| `docs/spec/11_BLAZOR_CONTROL_RENDERER_SPEC.md` | Blazor renderers |
+| `docs/spec/24_BLAZOR_CONTROL_RENDERER_SPEC.md` | Blazor renderers |
 
 ---
 
@@ -216,3 +216,31 @@ Task hoàn thành khi:
 3. Không vi phạm Hard Constraints (mục 3)
 4. `AI_HANDOFF.md` cập nhật nếu bàn giao cho agent kia
 5. Memory file cập nhật
+
+---
+
+## 11. AI Template Governance — nhập template ngoài (aitmpl.com / Claude Code Templates)
+
+> Quy tắc bắt buộc khi tích hợp bất kỳ skill/agent/command từ thư viện ngoài.
+> Chi tiết quy trình lọc: `docs/ai/TEMPLATE_INTAKE.md`. Kế hoạch tổng: `docs/ai/AI_TEMPLATE_INTEGRATION_PLAN.md`.
+
+### 11.1 Nguyên tắc tối thượng
+1. **KHÔNG copy nguyên bản.** Mọi template phải qua checklist `TEMPLATE_INTAKE.md` trước khi vào repo.
+2. **KHÔNG sinh SSOT thứ 2.** Template tuyệt đối không được tạo/ghi đè `BRAIN.md`, `CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`. Nội dung hữu ích → nhập dưới dạng pointer vào rule hiện có.
+3. **Thứ tự ưu tiên khi xung đột:** (1) kiến trúc ICare247 → (2) DB/schema → (3) performance & security → (4) code style project → (5) template ngoài. Không đổi kiến trúc chỉ vì template đề xuất khác.
+
+### 11.2 Template CẤM dùng nguyên bản (phải customize hoặc loại)
+| Template (aitmpl) | Lý do | Xử lý |
+|---|---|---|
+| Backend/ORM generator sinh **EF Core/DbContext/LINQ** | Vi phạm Hard Constraint #1 | Ép Dapper + `IDbConnectionFactory`, hoặc loại |
+| SQL template (Postgres/MySQL, `SELECT *`, string-build) | Vi phạm #2,#3,#9; sai DBMS | Ép MS SQL + parameterized + Tenant_Id |
+| UI generator (`ui-ux-designer`, Tailwind, card+shadow, dashboard) | Phá theme Fluent Light đã KHÓA | **Loại** — dùng skill `icare247-admin-ui` |
+| Commit/PR automation, auto-commit hooks | Vi phạm #10 | Loại phần tự commit/push |
+| Comment/doc generator tiếng Anh | Comment phải tiếng Việt + post-event | Ép convention `comment-rules.md` |
+
+### 11.3 Quy trình nhập (bắt buộc theo)
+1. Đối chiếu từng file template với `docs/ai/TEMPLATE_INTAKE.md` (checklist).
+2. Nếu có mâu thuẫn → **đề xuất cách điều chỉnh trước**, KHÔNG tự ghi đè rule hiện tại.
+3. Việt hóa + ép convention ICare247 (Dapper, Tenant_Id, naming, comment).
+4. Lưu vào `.claude/agents|commands|skills/` với header ghi rõ "nguồn aitmpl, đã customize ngày…".
+5. Cập nhật danh sách agent/template được phép tại `docs/ai/AI_TEMPLATE_INTEGRATION_PLAN.md`.
