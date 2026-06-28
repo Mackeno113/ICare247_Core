@@ -145,3 +145,16 @@ Khi `dotnet build` báo lỗi **chỉ do file-lock** (MSB3021/MSB3027 — DLL tr
 **Why:** App (Api/Blazor) thường đang chạy lúc dev; lock DLL là bình thường, không phản ánh lỗi code.
 
 **How to apply:** Toàn lỗi là MSB3021/MSB3027 → báo "build ok (chỉ kẹt copy do app đang chạy)" và đi tiếp. Cần chắc không có lỗi C# thật → build 1 project KHÁC không khóa bin (vd Infrastructure/Application).
+
+## [Debug] So DB ↔ API ↔ UI TRƯỚC khi đọc code — ground truth trước, lý thuyết sau
+
+Khi 1 cờ/giá trị hiển thị sai (vd `LockOnEdit` web vẫn cho sửa dù cấu hình bật), **đừng đọc code đoán bug**. Lấy SỰ THẬT 3 tầng đặt cạnh nhau: **giá trị trong DB** → **JSON API trả về** (DevTools → Network, hoặc nhờ user copy) → **trạng thái UI**. Tầng nào lệch → khoanh đúng tầng đó, CHỈ KHI ĐÓ mới đọc code tầng đó.
+
+**Why:** Lần fix `LockOnEdit` (form `DM_CHINHANHNGANHANG`, field LookupBox) chậm vì 3 sai lầm quy trình: (1) đọc ~10 file frontend săn bug trong khi web vốn ĐÚNG; (2) đọc nhầm output DB (`Field_Code=[]` tưởng `''` nhưng là `NULL`) rồi dựng cả giả thuyết COALESCE sai, suýt sửa nhầm; (3) tự vật lộn sqlcmd/sandbox + mint JWT gọi API thay vì hỏi user. Khi user ép "lấy JSON thật" + "ko tự check" → so DB(`true`) vs API(`false`) ra ngay lỗi backend trong 1 bước (FormRepository copy tay `FieldMetadata` cho field dynamic làm rớt `LockOnEdit`).
+
+**How to apply:**
+- Bug "giá trị hiển thị sai": hỏi/lấy **response API thật** + **giá trị DB thật** NGAY, trước khi đọc code.
+- DB(đúng) + API(sai) → lỗi backend đọc/map; UI khác API → lỗi frontend. Bisect rồi mới đọc code.
+- Phân biệt rõ `NULL` vs `''` vs `0` khi đọc output — đừng mặc định.
+- Cần connection string / 1 dòng query / 1 response Network → **hỏi user**, đừng đốt lượt tự mở khóa môi trường.
+- Gotcha kèm theo: copy tay object init (`new FieldMetadata { ... }`) dễ rớt property mới thêm → copy ĐỦ field hoặc cân nhắc `record` + `with`.

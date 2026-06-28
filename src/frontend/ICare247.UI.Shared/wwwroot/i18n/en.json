@@ -3,5 +3,6 @@
   "auth.error.invalidcredentials": "",
   "auth.error.loginfailed": "",
   "auth.error.noserver": "",
-  "common.lang.choose": ""
+  "common.lang.choose": "",
+  "error.metadata.noPrimaryKey": ""
 }

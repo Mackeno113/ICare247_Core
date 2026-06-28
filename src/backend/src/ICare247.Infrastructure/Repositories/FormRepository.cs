@@ -238,6 +238,7 @@ public sealed class FormRepository : IFormRepository
                     Label = f.Label, ControlPropsJson = f.ControlPropsJson,
                     DefaultValueJson = f.DefaultValueJson, IsVisible = f.IsVisible,
                     IsReadOnly = f.IsReadOnly, IsRequired = f.IsRequired,
+                    LockOnEdit = f.LockOnEdit,   // ADR-017: KHÔNG bỏ sót — field lookup động mất cờ khóa-khi-sửa nếu thiếu dòng này
                     IsVirtual = f.IsVirtual, IsUnique = f.IsUnique,
                     SortOrder = f.SortOrder, ColSpan = f.ColSpan,
                     LookupSource = f.LookupSource, LookupCode = f.LookupCode,

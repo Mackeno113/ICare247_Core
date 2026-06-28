@@ -5,6 +5,7 @@
 
 using System.Text.Json;
 using FluentValidation;
+using ICare247.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ICare247.Api.Middleware;
@@ -73,6 +74,27 @@ public sealed class ExceptionHandlingMiddleware
                 Status = StatusCodes.Status403Forbidden,
                 Detail = ex.Message,
                 Extensions = { ["correlationId"] = GetCorrelationId(context) }
+            });
+        }
+        catch (MetadataConfigurationException ex)
+        {
+            // Cấu hình metadata chưa hợp lệ (vd bảng chưa có PK) → 500 + Code ổn định để client
+            // hiển thị thông báo i18n rõ ràng (client map theo `code`, không hiện số status).
+            // KHÔNG dùng 422: SaveMasterData coi 422 là body kết quả lưu → sẽ nuốt mất thông báo.
+            _logger.LogError(ex, "Cấu hình metadata chưa hợp lệ — Path={Path}, Form={Form}, Code={Code}",
+                context.Request.Path, ex.FormCode, ex.Code);
+            await WriteProblemDetailsAsync(context, new ProblemDetails
+            {
+                Type = "https://icare247.vn/errors/metadata-config",
+                Title = "Cấu hình metadata chưa hợp lệ",
+                Status = StatusCodes.Status500InternalServerError,
+                Detail = ex.Message,
+                Extensions =
+                {
+                    ["code"]          = ex.Code,
+                    ["formCode"]      = ex.FormCode,
+                    ["correlationId"] = GetCorrelationId(context)
+                }
             });
         }
         catch (Exception ex)

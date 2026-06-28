@@ -1,6 +1,24 @@
 # Last Session Summary
 
-> Cập nhật: 2026-06-28 (session 70 — ConfigStudio: fix i18n preview field + bố cục Control Props + docs LookupBox/WPF)
+> Cập nhật: 2026-06-28 (session 71 — MasterData: lỗi rõ ràng+i18n khi thiếu PK + fix LockOnEdit field lookup động)
+
+## Session 71 (2026-06-28) — MasterData metadata error i18n + fix LockOnEdit (build BE+FE 0/0; CHƯA commit/push)
+
+> Chuỗi bugfix form `DM_CHINHANHNGANHANG` (kèm screenshot). Mỗi quyết định HỎI trước [[feedback-always-ask-first]]. KHÔNG sửa DB theo yêu cầu user.
+
+### NOPK-I18N — lỗi "chưa có khóa chính" rõ ràng + i18n (thay 500 chung) — ADR-032
+- Triệu chứng: POST master-data → 500 `SafeCol("") "PK '' chứa ký tự không hợp lệ"`. VERIFY DB live: bảng `DM_ChiNhanhNganHang` **không có PRIMARY KEY** + `Sys_Column` không cờ `Is_PK` → `GetFormInfoAsync` ra `PkColumn=""`. Giá trị `ACB_PGD-BD` vô can.
+- Pattern lỗi-có-mã→i18n: `MetadataConfigurationException(Code)` (Domain) → middleware map **500** + `code`/`formCode`/`correlationId` (KHÔNG 422 — `SaveAsync` coi 422 là body). FE `ApiProblemException` bóc code → `ApiErrorLocalizer.Describe(Loc,ex)` → `Loc.L(key,fallback_vi)`. 3 chỗ catch (List/Form load+save). Chi tiết [[architecture_decisions]] ADR-032.
+
+### LOCKONEDIT-FIX — field lookup động mất cờ khóa-khi-sửa
+- Triệu chứng (user): `NganHang_Id` bật "Khóa khi sửa" nhưng web Sửa vẫn đổi được. **Ground truth DB↔API↔UI**: DB `Lock_On_Edit=true`, **API trả `lockOnEdit=false`** (field TextBox `Ma` đúng `true`) → lỗi BACKEND.
+- Gốc: `FormRepository.GetByCodeAsync` tạo lại `new FieldMetadata{…}` khi gắn `LookupConfig` cho field **dynamic** nhưng **quên copy `LockOnEdit`** → về default `false`. Fix +1 dòng `LockOnEdit = f.LockOnEdit` ([FormRepository.cs:236](src/backend/src/ICare247.Infrastructure/Repositories/FormRepository.cs:236)).
+- Bài học (chậm vì đoán trước): lưu feedback [[coding_style_feedback]] `[Debug] So DB↔API↔UI TRƯỚC khi đọc code`. Suýt sửa nhầm `COALESCE Field_Code` do đọc nhầm `[]` là `''` (thực ra NULL — API chứng minh OK).
+
+### ⏳ Còn lại / verify
+- Restart API + hard-reload WASM để áp: form thiếu PK hiện thông báo rõ; ô Ngân hàng khóa khi Sửa.
+- Theo dõi: ô Ngân hàng còn trống "-- Chọn --" khi Sửa (độc lập cờ khóa) — kiểm nạp giá trị nếu vẫn lỗi.
+- ⛔ DB chưa sửa: `DM_ChiNhanhNganHang` vẫn cần PK để form dùng được.
 
 ## Session 70 (2026-06-28) — Fix i18n preview field + bố cục lại Control Props + docs (ĐÃ CODE + push; build Forms 0/0)
 

@@ -1,8 +1,8 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-06-25 23:23_
+_Sinh tự động: 2026-06-28 15:31_
 
-## 1. Chuỗi tiếng Việt hardcode (23) — cần bọc L()
+## 1. Chuỗi tiếng Việt hardcode (25) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:66` — "— Chọn —"
@@ -25,7 +25,9 @@ _Sinh tự động: 2026-06-25 23:23_
 - `src/frontend/ICare247_UI/Services/ViewApiService.cs:226` — "Không tìm thấy màn hình{0} hoặc màn đã bị ẩn."
 - `src/frontend/ICare247_UI/Services/ViewApiService.cs:228` — "Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối rồi thử lại."
 - `src/frontend/ICare247_UI/Services/ViewApiService.cs:230` — "Máy chủ đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
-- `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorHelper.cs:54` — "{message} (Mã lỗi: {code})"
+- `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorHelper.cs:73` — "{message} (Mã lỗi: {code})"
+- `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorLocalizer.cs:31` — "Bảng dữ liệu của danh mục này chưa có khóa chính (PRIMARY KEY) nên không thể ..."
+- `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorLocalizer.cs:32` — "hay lưu. Vui lòng liên hệ quản trị để bổ sung khóa chính cho bảng."
 - `src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs:67` — "Tiếng Việt"
 
 ## 2. L() key dựng động (18) — chỉ runtime (phương án A) lấy được

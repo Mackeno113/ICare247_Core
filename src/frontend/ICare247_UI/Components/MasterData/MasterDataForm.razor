@@ -165,7 +165,7 @@ else
                 }
             }
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = ApiErrorLocalizer.Describe(Loc, ex); }
         finally { _loading = false; }
     }
 
@@ -216,7 +216,7 @@ else
                 ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", fieldErrorCount)
                 : (_formMessages.Count == 0 ? Loc.L("common.msg.saveFailed", "Lưu thất bại.") : null);
         }
-        catch (Exception ex) { _formError = ex.Message; }
+        catch (Exception ex) { _formError = ApiErrorLocalizer.Describe(Loc, ex); }
         finally { _saving = false; }
     }
 

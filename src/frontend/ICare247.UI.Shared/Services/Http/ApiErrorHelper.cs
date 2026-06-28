@@ -41,6 +41,25 @@ public static class ApiErrorHelper
     }
 
     /// <summary>
+    /// Bóc <c>code</c> (mã lỗi ổn định backend đặt qua <c>[JsonExtensionData]</c> → ở ROOT) từ body lỗi.
+    /// Trả null nếu không có. Sự kiện theo sau: caller map code → thông báo i18n.
+    /// </summary>
+    public static string? ExtractCode(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
+            if (doc.RootElement.TryGetProperty("code", out var c)
+                && c.ValueKind == JsonValueKind.String)
+                return c.GetString();
+        }
+        catch { /* body không phải JSON hợp lệ → coi như không có code */ }
+        return null;
+    }
+
+    /// <summary>
     /// Nối hậu tố "(Mã lỗi: …)" vào <paramref name="message"/> nếu <paramref name="correlationId"/>
     /// có giá trị; ngược lại trả nguyên message. Mã rút gọn <see cref="ShortLength"/> ký tự đầu —
     /// vẫn grep được vì log server giữ mã đầy đủ.

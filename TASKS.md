@@ -1,5 +1,13 @@
 # ICare247 Core — Task Tracking
 
+## ✅ MasterData: lỗi rõ ràng + i18n khi bảng thiếu PK + fix LockOnEdit field lookup động (session 71 — 2026-06-28, build BE+FE 0/0, CHƯA commit)
+- [x] **Lỗi "chưa có khóa chính" rõ ràng + i18n** (thay 500 chung): backend `MetadataConfigurationException(Code="metadata.no_primary_key")` ném ở `MasterDataRepository.GetFormInfoAsync` (chokepoint mọi CRUD) khi cả `Sys_Column.Is_PK` lẫn PK vật lý đều rỗng → middleware map **500** kèm `code`/`formCode`/`correlationId` (KHÔNG 422 vì `SaveAsync` coi 422 là body kết quả). Frontend `ApiProblemException` bóc `code` → `ApiErrorLocalizer.Describe(Loc, ex)` → `Loc.L("error.metadata.noPrimaryKey", …)`. Áp 3 chỗ catch (List/Form load+save). **ADR-032**.
+- [x] **Fix LockOnEdit rớt cho field lookup ĐỘNG**: `FormRepository.GetByCodeAsync` tạo lại `new FieldMetadata{…}` khi gắn `LookupConfig` nhưng **quên copy `LockOnEdit`** → field LookupBox luôn về `false` (field TextBox không bị). Thêm `LockOnEdit = f.LockOnEdit` ([FormRepository.cs:236](src/backend/src/ICare247.Infrastructure/Repositories/FormRepository.cs:236)). VERIFY: DB `true` vs API `false` → khoanh đúng backend.
+- [x] **Memory**: ADR-032 (lỗi-có-mã→i18n) + feedback `[Debug] So DB↔API↔UI trước khi đọc code`.
+- [ ] (Verify) Restart API + hard-reload WASM: form thiếu PK hiện thông báo rõ; ô Ngân hàng khóa khi Sửa.
+- [ ] (Theo dõi) Ô Ngân hàng còn trống "-- Chọn --" khi Sửa — độc lập, kiểm nạp giá trị nếu vẫn lỗi sau restart.
+- ⛔ KHÔNG sửa DB (user chốt): bảng `DM_ChiNhanhNganHang` vẫn cần thêm PK để dùng được — chỉ làm rõ lỗi.
+
 ## ✅ ConfigStudio: fix i18n preview field + bố cục Control Props + docs WPF (session 70 — 2026-06-28, đã push master)
 - [x] **Fix i18n preview** ô Display dính giá trị field TRƯỚC: resolve LẠI từ key canonical (`NormalizeFieldKeysToCanonical`) + `preserveTypedText=!_isLoading` (`ResolveI18nPreviewAsync`) → load rỗng thì xóa trắng. VERIFY DB thật trước (DB đúng, lỗi UI). Commit `f9c2c6c`.
 - [x] **On-blur default**: rời ô Nhãn → tự điền Gợi ý/Mô tả nếu trống. Commit `f9c2c6c`.

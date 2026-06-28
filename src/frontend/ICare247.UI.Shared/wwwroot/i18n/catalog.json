@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-25 23:23:55",
+  "generatedAt": "2026-06-28 15:31:24",
   "source": "ICare247.UI.Shared",
-  "count": 5,
+  "count": 6,
   "entries": [
     {
       "key": "auth.error.badresponse",
@@ -55,6 +55,17 @@
         {
           "file": "src/frontend/ICare247.UI.Shared/Components/LanguageSwitcher.razor",
           "line": 9
+        }
+      ]
+    },
+    {
+      "key": "error.metadata.noPrimaryKey",
+      "vi": "",
+      "source": "ICare247.UI.Shared",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorLocalizer.cs",
+          "line": 29
         }
       ]
     }

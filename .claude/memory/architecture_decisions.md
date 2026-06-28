@@ -461,3 +461,19 @@
 - **Verify:** API DevExpress v25.2 qua reflection (CornerRadius/Background/BorderBrush là DP thật). XML well-formed; token đủ.
 - **Status:** ⏳ build PENDING (app đang chạy lúc làm). Rủi ro: editor mất template nếu DevExpress theme phản ứng → fix = `BasedOn` style mặc định DX.
 - **Liên quan:** Phase 5 trong `docs/ICare247 Config Studio/TASKS_WPF.md`; ADR-003/004 (Prism/DevExpress).
+
+## ADR-032: Lỗi backend có MÃ ổn định → frontend localize i18n (`ApiProblemException` + `ApiErrorLocalizer`) (2026-06-28)
+- **Context:** Lỗi cấu hình/nghiệp vụ rơi vào `catch (Exception)` chung của `ExceptionHandlingMiddleware` → client chỉ thấy
+  "Đã xảy ra lỗi không mong đợi" (500). VD: bảng master chưa có PK → `SafeCol("")` văng "ký tự không hợp lệ" mơ hồ.
+- **Decision — lỗi-có-mã, localize ở client:**
+  1. **Backend ném exception domain mang `Code` ổn định** (vd `MetadataConfigurationException.NoPrimaryKey = "metadata.no_primary_key"`,
+     đặt ở `ICare247.Domain/Exceptions/`). Middleware bắt RIÊNG kiểu này → ProblemDetails kèm `Extensions["code"]`/`["formCode"]`/`["correlationId"]`.
+  2. **Status:** dùng **500** cho loại config-error, **KHÔNG 422** — `MasterDataApiService.SaveAsync` coi 422 là body kết quả lưu (`MasterDataSaveResultDto`) → sẽ nuốt mất thông báo.
+  3. **Frontend:** `ApiProblemException` (Shared/Services/Http) bóc sẵn `StatusCode/Code/Detail/CorrelationId`, là con của `Exception` → tương thích mọi `catch (Exception)` cũ.
+     `*ApiService.EnsureOkAsync` ném nó (parse `detail`+`code`+`correlationId` qua `ApiErrorHelper.ExtractCode/ExtractCorrelationId`).
+  4. **Localize:** `ApiErrorLocalizer.Describe(LocalizationService loc, Exception ex)` map `code` → `loc.L("error.metadata.noPrimaryKey", "<fallback vi>")` (fallback vi nằm tại chỗ gọi đúng kiểu i18n shell);
+     code lạ → `pe.Detail`; nối "(Mã lỗi: …)" qua `WithErrorCode`. Page chỉ cần `_error = ApiErrorLocalizer.Describe(Loc, ex)`.
+- **Tái dùng:** thêm 1 mã lỗi mới = (a) thêm hằng `Code` ở exception domain + nhánh middleware (hoặc tái dùng `MetadataConfigurationException`),
+  (b) thêm nhánh `switch` trong `ApiErrorLocalizer` với key i18n. KHÔNG cần sửa từng call-site catch.
+- **Liên quan:** ADR-014 (resolve i18n server-side cho validation), memory "Error correlation & observability" (correlationId/log), `project-frontend-i18n-shell` (L(key,fallback)).
+- **Status:** ✅ code xong (MasterData path: list/form/save). ⏳ build PENDING (app đang chạy) → cần restart API + hard-reload WASM để áp dụng. Áp cho form `DM_CHINHANHNGANHANG` (bảng thiếu PK — chưa sửa DB theo yêu cầu user).

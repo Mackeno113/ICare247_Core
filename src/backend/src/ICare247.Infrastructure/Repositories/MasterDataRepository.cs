@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
+using ICare247.Domain.Exceptions;
 
 namespace ICare247.Infrastructure.Repositories;
 
@@ -78,7 +79,15 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
             using var data = _dataDb.CreateConnection();
             pkColumn = await GetPhysicalPkAsync(data, head.SchemaName, head.TableName, ct);
         }
-        pkColumn ??= "";
+
+        // Không có PK ở cả metadata (Sys_Column.Is_PK) lẫn vật lý (INFORMATION_SCHEMA) → form
+        // không thể CRUD (mọi thao tác cần khóa định danh dòng). Ném lỗi cấu hình CÓ MÃ thay vì để
+        // SafeCol("") văng "ký tự không hợp lệ" mơ hồ → client hiển thị thông báo i18n rõ ràng.
+        if (string.IsNullOrWhiteSpace(pkColumn))
+            throw new MetadataConfigurationException(
+                MetadataConfigurationException.NoPrimaryKey, formCode,
+                $"Bảng dữ liệu '{head.SchemaName}.{head.TableName}' của form '{formCode}' " +
+                "chưa có khóa chính (PRIMARY KEY).");
 
         // Danh sách field của form (join Sys_Column lấy tên cột DB + net type).
         // Label: resolve Label_Key qua Sys_Resource (vi) → COALESCE về key nếu chưa có bản dịch.

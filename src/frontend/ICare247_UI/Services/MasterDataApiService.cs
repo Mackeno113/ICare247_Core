@@ -144,9 +144,16 @@ public sealed class MasterDataApiService
     private async Task EnsureOkAsync(HttpResponseMessage resp, string ctx)
     {
         if (resp.IsSuccessStatusCode) return;
-        var detail = await SafeBodyAsync(resp);
-        _logger.LogError("MasterData {Ctx} lỗi {Status} | {Detail}", ctx, (int)resp.StatusCode, detail);
-        throw new HttpRequestException($"[{(int)resp.StatusCode}] {detail}");
+
+        // Bóc detail + code (mã lỗi ổn định) + correlationId từ body ProblemDetails → ApiProblemException.
+        // Code cho phép call-site map sang thông báo i18n (ApiErrorLocalizer); không có code thì hiển thị detail.
+        var body   = await ReadBodyAsync(resp);
+        var detail = ExtractDetail(body, resp.StatusCode);
+        var code   = ApiErrorHelper.ExtractCode(body);
+        var corr   = ApiErrorHelper.ExtractCorrelationId(body);
+        _logger.LogError("MasterData {Ctx} lỗi {Status} | code={Code} | {Detail}",
+            ctx, (int)resp.StatusCode, code, detail);
+        throw new ApiProblemException((int)resp.StatusCode, detail, code, corr);
     }
 
     private static async Task<List<ReferenceUsageDto>> ReadBlockedByAsync(HttpResponseMessage resp)
@@ -162,20 +169,26 @@ public sealed class MasterDataApiService
         return [];
     }
 
-    private static async Task<string> SafeBodyAsync(HttpResponseMessage resp)
+    /// <summary>Đọc body response (chuỗi thô) an toàn; null nếu lỗi đọc.</summary>
+    private static async Task<string?> ReadBodyAsync(HttpResponseMessage resp)
     {
+        try { return await resp.Content.ReadAsStringAsync(); }
+        catch { return null; }
+    }
+
+    /// <summary>
+    /// Trích <c>detail</c> (ProblemDetails) từ body; rỗng/không-JSON → cắt gọn body thô; cùng đường → "HTTP {status}".
+    /// </summary>
+    private static string ExtractDetail(string? body, HttpStatusCode status)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return $"HTTP {(int)status}";
         try
         {
-            var body = await resp.Content.ReadAsStringAsync();
-            if (string.IsNullOrWhiteSpace(body)) return $"HTTP {(int)resp.StatusCode}";
             using var doc = JsonDocument.Parse(body);
             var detail = doc.RootElement.TryGetProperty("detail", out var d) ? d.GetString() : null;
-            var corr   = doc.RootElement.TryGetProperty("correlationId", out var c) ? c.GetString() : null;
-            var msg = detail ?? (body.Length > 300 ? body[..300] : body);
-            // Nối "Mã lỗi" → người dùng đọc được mã định danh để báo, dev grep log theo mã đó.
-            return ApiErrorHelper.WithErrorCode(msg, corr);
+            return detail ?? (body.Length > 300 ? body[..300] : body);
         }
-        catch { return $"HTTP {(int)resp.StatusCode}"; }
+        catch { return body.Length > 300 ? body[..300] : body; }
     }
 }
 
