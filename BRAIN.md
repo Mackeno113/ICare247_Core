@@ -167,6 +167,19 @@ var key = $"form_{formCode}";
 | `docs/spec/08_CONVENTIONS.md` | Cache key, Dapper query |
 | `docs/spec/24_BLAZOR_CONTROL_RENDERER_SPEC.md` | Blazor renderers |
 
+### ⛔ Files KHÔNG tự đọc (nạp tốn context — chỉ mở khi user yêu cầu / thật sự cần)
+> Tra schema/nội dung qua **spec canonical**, đừng nạp file thô lớn để "hiểu".
+
+| Vùng | Đừng mở để tìm hiểu | Dùng thay | 
+|---|---|---|
+| Schema Config DB | `db/000_create_schema.sql`, `db/031_*`, seed `db/044_*`/`db/045_*` | `docs/spec/02_DATABASE_SCHEMA.md` |
+| Schema Data DB | `db/037_create_data_db_foundation.sql` | `docs/spec/11_DATA_DB_SCHEMA.md` |
+| Tham khảo cà phê (≈90KB) | `db/015_create_cf_data_schema.sql` | Không dùng cho schema hiện hành (chỉ tham khảo module `TM_` sau) |
+| DevExpress props (≈90KB) | `docs/reference/DEVEXPRESS_*_PROPERTIES.md` | `grep` đúng property cần, không đọc cả file |
+| Lịch sử/lưu trữ | `.claude/memory/session_history.md`, `TASKS_ARCHIVE.md`, `docs/human/archive/*` | Chỉ mở khi cần tra 1 mục lịch sử cụ thể |
+
+> Migration mới vẫn viết ở `db/*.sql` (owner Codex) — quy tắc trên chỉ về **ĐỌC để hiểu**, không cấm tạo/sửa migration.
+
 ---
 
 ## 8. Session Protocol (áp dụng cho cả 2 agents)

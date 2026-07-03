@@ -234,21 +234,73 @@ Tầng 5 (audit/secret/dependency/DB least-privilege)  ──►  vận hành, l
 
 ## 9. Bảng theo dõi tiến độ
 
+> Cập nhật 2026-06-25 (E2E Tầng 1 xác minh). Chi tiết thi công từng hạng mục ở **§9.1** (chuyển
+> từ TASKS.md session 72 để gom về nguồn canonical). TASKS.md chỉ giữ các mục **còn mở**.
+
 | Tầng | Hạng mục | Trạng thái |
 |---|---|---|
-| 1 | FallbackPolicy + AllowAnonymous allowlist | ☐ Chưa |
-| 1 | Tenant ràng buộc vào JWT + middleware so khớp | ☐ Chưa |
-| 1 | Phân quyền theo chức năng (ADR-023) | ☐ Chưa |
-| 1 | Chống IDOR (WHERE tenant) | ☐ Chưa |
-| 2 | Refresh token → cookie HttpOnly | ☐ Chưa |
-| 2 | Access token RAM + silent refresh + 401 handler | ☐ Chưa |
-| 2 | Revoke-all-sessions | ☐ Chưa |
-| 2 | MFA/2FA (tùy chọn) | ☐ Chưa |
-| 3 | Security headers + CSP | ☐ Chưa |
-| 3 | HSTS | ☐ Chưa |
-| 3 | Rate limiting toàn cục | ☐ Chưa |
-| 4 | Phủ validator command/query | ☐ Chưa |
-| 4 | Rà SQL động Sp/Sql + MarkupString | ☐ Chưa |
-| 5 | Audit/secret/dependency/DB least-privilege | ☐ Chưa |
+| 1 | FallbackPolicy + AllowAnonymous allowlist (SEC1-1/1-2) | ✅ Xong |
+| 1 | Tenant ràng buộc vào JWT + middleware so khớp (SEC1-3) | ✅ Xong |
+| 1 | Phân quyền theo chức năng (ADR-023) (SEC1-4) | ✅ Xong (còn TODO tinh chỉnh Lookup-insert) |
+| 1 | Chống IDOR (WHERE tenant) (SEC1-5) | 🟡 Một phần (DB-per-tenant + SEC1-3; row-ownership cần rà) |
+| 2 | Refresh token → cookie HttpOnly (SEC2-1) | ✅ Xong (E2E chờ) |
+| 2 | Access token RAM + silent refresh + 401 handler (SEC2-2) | ✅ Xong (E2E chờ) |
+| 2 | Revoke-all-sessions (SEC2-3) | ✅ Xong |
+| 2 | MFA/2FA (tùy chọn) (SEC2-4) | ☐ Chưa (tùy chọn) |
+| 3 | Security headers + CSP (SEC3-1) | ✅ Xong (E2E chờ) |
+| 3 | HSTS (SEC3-2) | ✅ Xong |
+| 3 | Rate limiting toàn cục (SEC3-3) | ✅ Xong (E2E chờ); ⏳ prod: UseForwardedHeaders |
+| 3 | CSP chống XSS ở host WASM (SEC3-4) | ☐ Chưa (chờ hosting prod) |
+| 4 | Phủ validator command/query (SEC4-1) | 🟡 Một phần (6/39; đường ghi trọng yếu đã an toàn) |
+| 4 | Rà SQL động Sp/Sql + MarkupString + sanitize HTML (SEC4-2/4-3) | ✅ Xong (đã rà + vá) |
+| 5 | Log không lộ secret (SEC5-1) | ✅ Xong |
+| 5 | Dependency vá + secret/git + prod stacktrace (SEC5-2) | ✅ Xong |
+| 5 | DB least-privilege (SEC5-2) | ☐ Chưa (deployment, không code-fixable) |
 
-> Cập nhật cột trạng thái khi xử lý từng hạng mục (☐ Chưa → 🔴 Đang làm → ✅ Xong).
+> Trạng thái: ☐ Chưa · 🔴 Đang làm · 🟡 Một phần · ✅ Xong.
+
+### 9.1 Chi tiết thi công (chuyển từ TASKS.md — session 2026-06-24/25)
+
+**TẦNG 1 — Access Control (E2E xác minh 2026-06-25):**
+- **SEC1-1** — `FallbackPolicy = RequireAuthenticatedUser()` (deny-by-default) — `Program.cs` (AddAuthorization). Build BE 0/0.
+- **SEC1-2** — `[AllowAnonymous]` cho endpoint công khai hợp lệ: `LanguageController` (class), `ResourceController.Get`+`GetOverlay`, `/health`, OpenAPI/Scalar (dev). Auth đã có sẵn `[AllowAnonymous]`.
+- **SEC1-3** — `TenantClaimGuardMiddleware` (mới) so khớp claim `tenant` (JWT, đã có sẵn ở `JwtTokenService:52`) vs `TenantContext` → lệch = 403. Đặt sau `UseAuthentication`.
+- **SEC1-4** — Phân quyền theo chức năng. Quyết định: `Ma` (`HT_ChucNang`) do code TỰ SINH (`form.X`/`view.X`/`group.X`); quyền theo đối tượng dùng cột `LoaiDoiTuong`+`DoiTuong` (KHÔNG dùng `Ma`) → không seed funcCode tay.
+  - Màn dữ liệu (MasterData/View-data/Runtime/Form-GetByCode): GIỮ `[RequirePermissionForTarget]` (enforce-if-mapped — chỉ chặn khi admin đã map menu cho form/view đó).
+  - Form-config (`FormController` GetList/audit/create/update/deactivate/restore/clone/invalidate-cache) + `ViewController` GetList/invalidate-cache → gắn `[Authorize(Roles="SUPERADMIN")]` (việc builder). Build BE 0/0.
+  - Lookup đọc (GET/query/invalidate) + insert → mức "chỉ cần đăng nhập" (qua fallback).
+  - ⏳ **TODO tinh chỉnh Lookup-insert** (rủi ro thấp — xem comment `TODO(SEC1-4)` tại `LookupController.Insert`): resolve `Source_Name`→form→`HasPermissionForTargetAsync("Form",formCode,Them)`. Chốt: form nào khi bảng có 0/nhiều form; ngữ nghĩa quyền.
+- **Kiểm thử Tầng 1 (E2E)** — verify qua curl/Postman 2026-06-25: vô danh `/me`→401, i18n trước login→200, token đúng→200, gate SUPERADMIN/tenant OK. User xác nhận "mọi thứ ổn".
+
+**TẦNG 2 — Token & Session (build BE+FE 0/0):**
+- **SEC2-1 (Step 1)** — Refresh token → cookie `HttpOnly/Secure/SameSite=Lax/Path=/api/v1/auth` (Domain config-driven, mặc định host-only). BE: `AuthController` set/đọc/xóa cookie; login bỏ `refreshToken` khỏi JSON; refresh/logout đọc TỪ COOKIE; `AuthResult.RefreshExpiresAtUtc` (hạn cookie). FE: `AuthService` gửi `credentials:Include`; `TokenStore` chỉ giữ access + dọn key `ic247.refreshToken` cũ. Class `[AllowAnonymous]` → chuyển xuống từng method.
+- **SEC2-3** — `logout-all` endpoint (yêu cầu auth) + `LogoutAllCommand/Handler` dùng `RevokeAllForUserAsync`. KHÔNG hook auto-lockout (tránh DoS force-logout). Wire vào reset-password để TODO khi reset hết stub.
+- **SEC2-2 (Step 2)** — Access token RAM-only (`TokenStore` bỏ localStorage + dọn key cũ). `TokenRefresher` (client bare riêng, single-flight + dedup) gọi /refresh bằng cookie. `RefreshTokenHandler` (DelegatingHandler) tự đính Bearer từ TokenStore + 401 (trừ /auth/*) → refresh → retry 1 lần (clone request). `AuthService.InitializeAsync` → silent refresh; bỏ `ApplyAuthHeader`. Host `Program.cs` wiring 2 client. Gate boot tận dụng `MainLayout._authChecked`.
+
+**TẦNG 3 — Hardening HTTP/Transport:**
+- **SEC3-1** — `SecurityHeadersMiddleware` (mới): `X-Content-Type-Options:nosniff`, `X-Frame-Options:DENY`, `Referrer-Policy:no-referrer`, `Permissions-Policy`, CSP `default-src 'none'; frame-ancestors 'none'` (bỏ qua CSP cho /scalar,/openapi dev). Đặt sau ExceptionHandling.
+- **SEC3-2** — `UseHsts()` khi `!IsDevelopment`.
+- **SEC3-3** — `AddRateLimiter`: global per-IP 200/10s (bỏ qua /health) + policy `auth` 10/phút cho `/auth/*` (`[EnableRateLimiting("auth")]` trên AuthController); 429 ProblemDetails + Retry-After. ⏳ TODO(prod): `UseForwardedHeaders` để partition theo IP thật sau reverse proxy.
+
+**TẦNG 4 — Đầu vào & Dữ liệu (đã rà + vá):**
+- **SEC4-2 (SQL động)** — Rà xong: table mode (identifier allowlist + param), custom_sql/FilterSql/OrderBy (config builder-authored, trusted + blocklist DDL/DML + value param), Sp/Sql (`ValidateSpName` + param chỉ từ whitelist `view.Filters` + context param bind server-side). **AN TOÀN — không cần vá.**
+- **SEC4-2 (XSS/MarkupString)** — Rà mọi `MarkupString`: `HighlightLabel` đã HtmlEncode; i18n template (controlled). **VÁ: `DataView` cột link/image** — thêm `IsSafeUrl` chặn `javascript:`/`data:`/`vbscript:`.
+- **SEC4-3** — `DataView` renderMode `"html"`: thêm **HtmlSanitizer (Ganss.Xss) 8.2.871** (9.x chỉ target net8, WASM từ chối) → sanitize trước khi render `(MarkupString)`. (Minor backlog: `MenuBuilderPage` MarkupString tên node admin — admin-only.)
+
+**CPM — Central Package Management (2026-06-25):**
+- `Directory.Packages.props` (root): 48 `PackageVersion`; 18 project bỏ `Version=` khỏi `PackageReference`. `CentralPackageFloatingVersionsEnabled` giữ floating. Hợp nhất xung đột: `Microsoft.Data.SqlClient`→6.1.4, `Serilog.Sinks.File`→7.0.0. Restore+build 18/18 sạch.
+- **Lỗ hổng phát lộ qua CPM**: HtmlSanitizer float 9.0.873 (GHSA-j92c-7v7g-gj3f) → pin **9.0.892** (bản vá + còn netstandard2.0 cho WASM).
+
+**TẦNG 5 — Vận hành & Giám sát (đã rà + vá):**
+- **SEC5-1** — Log KHÔNG lộ secret: rà toàn bộ `Log*` — không chèn password/token/secret value (chỉ userId/username/path/correlationId). ✓
+- **SEC5-2 (dependency)** — `dotnet list package --vulnerable`: vá HtmlSanitizer (9.0.892), **OpenTelemetry.Api→1.15.3** (GHSA-g94r-2vxg-569j), **System.Security.Cryptography.Xml→8.0.3** (High GHSA-37gx-xxp4-5rgx) qua transitive pinning. Re-scan: **0 vulnerable**.
+- **SEC5-2 (secret/git)** — `.gitignore` loại `*.local.json`/`secrets.json`/`appsettings.Production.json`; appsettings.json committed = placeholder. ✓
+- **SEC5-2 (prod stack trace)** — `ExceptionHandlingMiddleware`: 500 trả message generic + correlationId; stack trace chỉ vào log server. ✓
+
+### 9.2 Còn mở (theo dõi ở TASKS.md)
+- **SEC1-5** — Row-ownership trong cùng tenant (rà thêm).
+- **SEC2-4** — MFA/2FA cho admin (tùy chọn).
+- **SEC2/3 E2E** — Kiểm thử Tầng 2 Step 1 + Tầng 3 (cookie HttpOnly, 429 rate limit).
+- **SEC3-4** — CSP host WASM (chờ hosting prod).
+- **SEC4-1** — Bổ sung validator cho các command còn lại (robustness).
+- **SEC5-2 (DB least-privilege)** — deployment: account app KHÔNG `db_owner`/`sysadmin`; tách account migration khỏi runtime.

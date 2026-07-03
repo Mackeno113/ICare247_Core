@@ -968,7 +968,7 @@ Các nguồn chính đã được dùng trong phân tích:
 - `docs/design-system/*`
 - `docs/huong-dan-wpf/*`
 - `docs/COMMANDS_GUIDE.md`
-- `docs/AI_WORKFLOW_GUIDE.md`
+- `docs/human/AI_WORKFLOW_GUIDE.md`
 - `docs/HUONG_DAN_I18N.md`
 - `docs/huong-dan-wpf/ConfigStudio_User_Guide.md`
 - `db/*.sql`
