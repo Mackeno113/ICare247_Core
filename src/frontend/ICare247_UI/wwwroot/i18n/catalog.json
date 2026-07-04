@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-06-28 15:31:24",
+  "generatedAt": "2026-07-04 17:12:16",
   "source": "ICare247_UI",
-  "count": 319,
+  "count": 320,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -278,7 +278,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 68
+          "line": 83
         }
       ]
     },
@@ -289,7 +289,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 64
+          "line": 79
         }
       ]
     },
@@ -300,7 +300,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 70
+          "line": 85
         }
       ]
     },
@@ -311,7 +311,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 63
+          "line": 78
         }
       ]
     },
@@ -322,7 +322,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 66
+          "line": 81
         }
       ]
     },
@@ -421,7 +421,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 122
+          "line": 137
         }
       ]
     },
@@ -432,7 +432,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 120
+          "line": 135
         }
       ]
     },
@@ -443,7 +443,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
-          "line": 121
+          "line": 136
         }
       ]
     },
@@ -470,6 +470,17 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
           "line": 16
+        }
+      ]
+    },
+    {
+      "key": "admin.cfgsync.warnHead",
+      "vi": "⚠ Cảnh báo cấu hình ({0}) — nên sửa trước khi áp dụng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
+          "line": 64
         }
       ]
     },

@@ -23,6 +23,9 @@ public sealed class ConfigSyncResultVm
     public string? ErrorMessage { get; set; }
     public List<ConfigSyncTableVm> Tables { get; set; } = new();
 
+    /// <summary>Cảnh báo cấu hình (advisory) — vd cascade sai. Khớp ConfigSyncResult.Warnings backend.</summary>
+    public List<string> Warnings { get; set; } = new();
+
     public int TotalInserted => Tables.Sum(t => t.Inserted);
     public int TotalUpdated => Tables.Sum(t => t.Updated);
     public int TotalDeactivated => Tables.Sum(t => t.Deactivated);

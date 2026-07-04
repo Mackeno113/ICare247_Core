@@ -78,6 +78,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public ObservableCollection<ViewActionRecord> EditActions { get; } = [];
     public ObservableCollection<ViewFilterRecord> EditFilters { get; } = [];
 
+    /// <summary>
+    /// Field FK của form sửa hiện chọn — nguồn cho dropdown "FK lookup" ở tab Cột (auto-JOIN hiện TÊN cha).
+    /// Nạp lại khi đổi View / đổi Edit_Form.
+    /// </summary>
+    public ObservableCollection<FkLookupFieldOption> FkLookupFields { get; } = [];
+
     private ViewRecord? _selectedView;
     public ViewRecord? SelectedView
     {
@@ -241,7 +247,15 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public string EditTitleKey { get => _editTitleKey; set => SetProperty(ref _editTitleKey, value); }
 
     private FormRecord? _editEditForm;
-    public FormRecord? EditEditForm { get => _editEditForm; set => SetProperty(ref _editEditForm, value); }
+    public FormRecord? EditEditForm
+    {
+        get => _editEditForm;
+        set
+        {
+            if (SetProperty(ref _editEditForm, value) && !_suppressRekey)
+                _ = LoadFkLookupFieldsAsync(value?.FormId);   // đổi form sửa → nạp lại field FK cho dropdown
+        }
+    }
 
     private int _editPageSize = 20;
     public int EditPageSize { get => _editPageSize; set => SetProperty(ref _editPageSize, value); }
@@ -549,6 +563,26 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         foreach (var f in forms) Forms.Add(f);
     }
 
+    /// <summary>
+    /// Nạp danh sách field FK của form sửa (cho dropdown "FK lookup" tab Cột). Rỗng form → clear.
+    /// Bắt mọi lỗi để không vỡ luồng nạp View.
+    /// </summary>
+    /// <param name="formId">Edit_Form_Id của View (null = không có form sửa).</param>
+    private async Task LoadFkLookupFieldsAsync(int? formId)
+    {
+        FkLookupFields.Clear();
+        if (formId is null || _viewData is null) return;
+        try
+        {
+            var opts = await _viewData.GetFormLookupFieldsAsync(formId.Value);
+            foreach (var o in opts) FkLookupFields.Add(o);
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "ViewManager.LoadFkLookupFields");
+        }
+    }
+
     /// <summary>Wrapper an toàn nạp chi tiết một View vào editor.</summary>
     /// <param name="view">View được chọn (null = bỏ qua).</param>
     private async Task LoadDetailSafeAsync(ViewRecord? view)
@@ -564,6 +598,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
                 return;
             }
             ApplyDetail(detail);
+            // ApplyDetail set EditEditForm dưới _suppressRekey → nạp field FK tường minh theo form sửa.
+            await LoadFkLookupFieldsAsync(detail.Header.EditFormId);
             SaveStatusMessage = "";
             IsSaveStatusError = false;
         }
@@ -723,6 +759,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditColumns.Clear();
         EditActions.Clear();
         EditFilters.Clear();
+        FkLookupFields.Clear();
         RaiseEditorState();
         }
         finally { _suppressRekey = false; }

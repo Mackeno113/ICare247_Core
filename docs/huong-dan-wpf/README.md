@@ -13,7 +13,8 @@
 
 ## Cấu hình field / control
 - [cau-hinh-lookupbox.md](cau-hinh-lookupbox.md) — Tham chiếu đầy đủ **từng ô** của panel LookupBox/TreeLookupBox.
-- [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md) — Dựng lưới dữ liệu tham chiếu (khóa ngoại) đầu-cuối.
+- [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md) — Dựng lưới dữ liệu tham chiếu (khóa ngoại): **Cách A** FK auto-JOIN (no-code, không cần view) + **Cách B** SQL View tay (escape hatch).
+- [cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md) — **Hướng dẫn sử dụng field ảo + cascade** (chọn cha để lọc con, chỉ lưu con) — quy tắc vàng + bảng lỗi thường gặp để **chống cấu hình sai**.
 - [cau-hinh-bo-loc-lien-ket.md](cau-hinh-bo-loc-lien-ket.md) — Bộ lọc liên kết (cascade) + lọc theo tài khoản + đổ giá trị Thêm mới.
 
 ## Tham chiếu liên quan (vẫn ở `docs/spec/` — giữ đánh số spec)

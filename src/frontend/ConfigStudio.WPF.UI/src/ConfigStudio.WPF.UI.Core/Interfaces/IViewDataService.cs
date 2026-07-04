@@ -54,4 +54,13 @@ public interface IViewDataService
     /// <param name="ct">Token hủy.</param>
     /// <remarks>Side-effect: View biến mất khỏi lưới khi không bật "hiện inactive".</remarks>
     Task DeactivateViewAsync(int viewId, int tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy danh sách field khóa ngoại (LookupBox/ComboBox dynamic) của một form sửa — cho dropdown
+    /// "FK lookup" ở tab Cột (cấu hình auto-JOIN cột lưới hiện TÊN cha). Mỗi field kèm bảng cha + cột tên.
+    /// </summary>
+    /// <param name="formId">Form_Id của form Thêm/Sửa (Ui_View.Edit_Form_Id).</param>
+    /// <param name="ct">Token hủy.</param>
+    /// <returns>Danh sách <see cref="FkLookupFieldOption"/>; rỗng nếu form không có field FK.</returns>
+    Task<IReadOnlyList<FkLookupFieldOption>> GetFormLookupFieldsAsync(int formId, CancellationToken ct = default);
 }

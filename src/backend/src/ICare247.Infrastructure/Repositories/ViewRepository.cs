@@ -4,6 +4,7 @@
 // Purpose : Dapper implementation của IViewRepository — đọc Ui_View + cột + action (Config DB),
 //           resolve text i18n (Title/Caption/Label/...) theo langCode.
 
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
@@ -318,16 +319,51 @@ public sealed partial class ViewRepository : IViewRepository
         if (dataCols.Count == 0)
             return new ViewDataResult();
 
+        // ── Auto-JOIN khóa ngoại (spec 25 §5a): cột khai Props_Json.fkLookup → JOIN bảng đích,
+        //    đổi biểu thức SELECT của cột thành TÊN (in-place) ⇒ lọc/sort/xuất theo tên chạy tự nhiên. ──
+        var fkJoins = await ResolveFkJoinsAsync(view, ct);
+
         var keyValid = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField);
 
         // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET cần ORDER BY).
         var orderCol = keyValid ? view.KeyField! : dataCols[0];
 
-        // SELECT: cột Data + thêm Key_Field (PK) nếu chưa có → client có khóa để Sửa/Xóa theo dòng.
-        var selectFields = new List<string>(dataCols);
-        if (keyValid && !selectFields.Contains(view.KeyField!, StringComparer.OrdinalIgnoreCase))
-            selectFields.Insert(0, view.KeyField!);
-        var selectCols = string.Join(", ", selectFields.Select(Bracket));
+        // SELECT từng cột: cột FK → "[_fkN].[Display] AS [Field]"; cột thường → "b.[Field] AS [Field]".
+        // Mỗi cột kèm biểu thức tương ứng để dựng điều kiện search (LIKE) đúng nguồn (tên FK, không phải id thô).
+        var selectExprs = new List<string>();
+        var searchExprs = new List<string>();
+        var joinSql = new List<string>();
+        var emitted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var fkAlias = 0;
+
+        // Key_Field (PK) luôn có trong SELECT → client có khóa để Sửa/Xóa theo dòng.
+        if (keyValid)
+        {
+            selectExprs.Add($"b.{Bracket(view.KeyField!)} AS {Bracket(view.KeyField!)}");
+            emitted.Add(view.KeyField!);
+        }
+
+        foreach (var col in dataCols)
+        {
+            if (!emitted.Add(col)) continue;   // bỏ trùng (vd cột Data trùng Key_Field)
+            if (fkJoins.TryGetValue(col, out var fk))
+            {
+                var a = $"_fk{fkAlias++}";
+                // JOIN theo cột FK GỐC (fk.BaseColumn) — không phải tên cột hiển thị (có thể là cột tên riêng).
+                joinSql.Add($" LEFT JOIN {fk.TargetObject} AS {Bracket(a)} " +
+                            $"ON {Bracket(a)}.{Bracket(fk.ValueColumn)} = b.{Bracket(fk.BaseColumn)}");
+                var disp = $"{Bracket(a)}.{Bracket(fk.DisplayColumn)}";
+                selectExprs.Add($"{disp} AS {Bracket(col)}");
+                searchExprs.Add(disp);
+            }
+            else
+            {
+                selectExprs.Add($"b.{Bracket(col)} AS {Bracket(col)}");
+                searchExprs.Add($"b.{Bracket(col)}");
+            }
+        }
+
+        var fromSql = $"{table} AS b{string.Concat(joinSql)}";
 
         var dp = new DynamicParameters();
         var whereSql = "";
@@ -335,17 +371,18 @@ public sealed partial class ViewRepository : IViewRepository
         {
             // CAST sang NVARCHAR để LIKE hoạt động trên mọi kiểu cột (không cần biết NetType).
             whereSql = " WHERE (" + string.Join(" OR ",
-                dataCols.Select(c => $"CAST({Bracket(c)} AS NVARCHAR(4000)) LIKE @Search")) + ")";
+                searchExprs.Select(e => $"CAST({e} AS NVARCHAR(4000)) LIKE @Search")) + ")";
             dp.Add("Search", $"%{search.Trim()}%");
         }
 
         dp.Add("Skip", Math.Max(0, (page - 1) * pageSize));
         dp.Add("Take", pageSize < 1 ? 50 : pageSize);
 
+        // ORDER BY tham chiếu alias đầu ra (cột FK đã alias về tên cột) → sắp theo tên hiển thị.
         var listSql =
-            $"SELECT {selectCols} FROM {table}{whereSql} " +
+            $"SELECT {string.Join(", ", selectExprs)} FROM {fromSql}{whereSql} " +
             $"ORDER BY {Bracket(orderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-        var countSql = $"SELECT COUNT(*) FROM {table}{whereSql}";
+        var countSql = $"SELECT COUNT(*) FROM {fromSql}{whereSql}";
 
         using var data = _dataDb.CreateConnection();
         var rows = await data.QueryAsync(new CommandDefinition(listSql, dp, cancellationToken: ct));
@@ -358,6 +395,122 @@ public sealed partial class ViewRepository : IViewRepository
                         .ToList(),
             TotalCount = total
         };
+    }
+
+    /// <summary>
+    /// Resolve định nghĩa auto-JOIN khóa ngoại cho các cột của View (spec 25 §5a). Đọc thẳng Config DB:
+    /// (1) cột nào khai <c>Props_Json.fkLookup.fieldId</c>; (2) lấy bảng đích/Value/Display từ <c>Ui_Field_Lookup</c>.
+    /// CHỈ nhận <c>Query_Mode='table'</c> + cột Value/Display đơn (identifier) — đủ JOIN an toàn; còn lại bỏ qua
+    /// (dùng escape-hatch SQL View §5b). Trả map FieldName → mô tả JOIN; rỗng nếu View không có cột FK.
+    /// </summary>
+    private async Task<Dictionary<string, FkJoinInfo>> ResolveFkJoinsAsync(ViewMetadata view, CancellationToken ct)
+    {
+        var empty = new Dictionary<string, FkJoinInfo>(StringComparer.OrdinalIgnoreCase);
+
+        // (1) Cột FK của View (Props_Json chứa fkLookup) — lọc sơ bộ bằng LIKE để tránh đọc thừa.
+        const string colSql = """
+            SELECT Field_Name AS FieldName, Props_Json AS PropsJson
+            FROM   dbo.Ui_View_Column
+            WHERE  View_Id = @ViewId AND Is_Active = 1
+              AND  Props_Json IS NOT NULL AND Props_Json LIKE '%fkLookup%'
+            """;
+        using var cfg = _db.CreateConnection();
+        var colRows = (await cfg.QueryAsync<ColPropsRow>(
+            new CommandDefinition(colSql, new { view.ViewId }, cancellationToken: ct))).AsList();
+        if (colRows.Count == 0)
+            return empty;
+
+        var fieldToFieldId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var r in colRows)
+        {
+            if (string.IsNullOrWhiteSpace(r.FieldName) || !SafeIdentifierRegex().IsMatch(r.FieldName)) continue;
+            if (ParseFkLookupFieldId(r.PropsJson) is int id && id > 0)
+                fieldToFieldId[r.FieldName] = id;
+        }
+        if (fieldToFieldId.Count == 0)
+            return empty;
+
+        // (2) Định nghĩa FK từ Ui_Field_Lookup theo Field_Id (config admin-trust — vẫn validate identifier).
+        //     BaseColumn = cột FK GỐC trên bảng (suy từ Field.Column_Id → Sys_Column) — JOIN theo cột này,
+        //     nhờ vậy fkLookup đặt ở cột tên RIÊNG (vd TenNganHang) vẫn JOIN đúng b.[NganHang_Id].
+        const string cfgSql = """
+            SELECT fl.Field_Id       AS FieldId,
+                   fl.Query_Mode     AS QueryMode,
+                   fl.Source_Name    AS SourceName,
+                   fl.Value_Column   AS ValueColumn,
+                   fl.Display_Column AS DisplayColumn,
+                   sc.Column_Code    AS BaseColumn
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field        fi ON fi.Field_Id  = fl.Field_Id
+            LEFT JOIN dbo.Sys_Column   sc ON sc.Column_Id = fi.Column_Id
+            WHERE  fl.Field_Id IN @Ids
+            """;
+        var byId = (await cfg.QueryAsync<FkCfgRow>(new CommandDefinition(
+                cfgSql, new { Ids = fieldToFieldId.Values.Distinct().ToArray() }, cancellationToken: ct)))
+            .ToDictionary(x => x.FieldId);
+
+        var result = new Dictionary<string, FkJoinInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (field, fieldId) in fieldToFieldId)
+        {
+            if (!byId.TryGetValue(fieldId, out var c)) continue;
+            // Auto-JOIN chỉ hỗ trợ nguồn bảng/view + cột Value/Display đơn. tvf/custom_sql hoặc expression → escape-hatch.
+            if (!string.Equals(c.QueryMode ?? "table", "table", StringComparison.OrdinalIgnoreCase)) continue;
+            if (string.IsNullOrWhiteSpace(c.SourceName)
+                || string.IsNullOrWhiteSpace(c.ValueColumn) || string.IsNullOrWhiteSpace(c.DisplayColumn)) continue;
+            if (!SafeIdentifierRegex().IsMatch(c.ValueColumn) || !SafeIdentifierRegex().IsMatch(c.DisplayColumn)) continue;
+            // Cột FK gốc để JOIN: ưu tiên Column_Code của field (cột tên riêng); fallback = chính tên cột View
+            // (khi cột FK chính nó mang fkLookup — hiển thị in-place).
+            var baseCol = !string.IsNullOrWhiteSpace(c.BaseColumn) && SafeIdentifierRegex().IsMatch(c.BaseColumn!)
+                ? c.BaseColumn!
+                : field;
+            string targetObj;
+            try { targetObj = ParseQualifiedName(c.SourceName, view.ViewCode); }
+            catch { continue; }   // tên nguồn không hợp lệ → bỏ JOIN (an toàn), hiện id thô
+            result[field] = new FkJoinInfo(targetObj, c.ValueColumn, c.DisplayColumn, baseCol);
+        }
+        return result;
+    }
+
+    /// <summary>Bóc <c>fkLookup.fieldId</c> từ Props_Json của cột (null nếu không có/không hợp lệ).</summary>
+    private static int? ParseFkLookupFieldId(string? propsJson)
+    {
+        if (string.IsNullOrWhiteSpace(propsJson)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(propsJson);
+            if (doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("fkLookup", out var fk)
+                && fk.ValueKind == JsonValueKind.Object
+                && fk.TryGetProperty("fieldId", out var fid)
+                && fid.TryGetInt32(out var id))
+                return id;
+        }
+        catch (JsonException) { /* Props_Json sai cú pháp → bỏ qua, không auto-JOIN */ }
+        return null;
+    }
+
+    /// <summary>
+    /// Mô tả JOIN khóa ngoại đã resolve. <paramref name="BaseColumn"/> = cột FK gốc trên bảng (JOIN key);
+    /// đối tượng đích đã bọc []; Value/Display là cột đơn.
+    /// </summary>
+    private sealed record FkJoinInfo(string TargetObject, string ValueColumn, string DisplayColumn, string BaseColumn);
+
+    /// <summary>Dapper row: cấu hình FK đọc từ Ui_Field_Lookup (+ cột FK gốc từ Sys_Column).</summary>
+    private sealed class FkCfgRow
+    {
+        public int FieldId { get; init; }
+        public string? QueryMode { get; init; }
+        public string? SourceName { get; init; }
+        public string? ValueColumn { get; init; }
+        public string? DisplayColumn { get; init; }
+        public string? BaseColumn { get; init; }
+    }
+
+    /// <summary>Dapper row: Field_Name + Props_Json của cột View (để bóc fkLookup).</summary>
+    private sealed class ColPropsRow
+    {
+        public string FieldName { get; init; } = string.Empty;
+        public string? PropsJson { get; init; }
     }
 
     /// <summary>Nguồn cho phép đọc trực tiếp bằng SELECT (Table hoặc SQL View). Sp/Sql thì không.</summary>

@@ -515,7 +515,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public string FkFilterSql
     {
         get => _fkFilterSql;
-        set { if (SetProperty(ref _fkFilterSql, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
+        set
+        {
+            if (SetProperty(ref _fkFilterSql, value) && !_isRebuildingProps)
+            {
+                RebuildControlPropsJson();
+                RecomputeCascadeWarnings();
+            }
+        }
     }
 
     private string _fkOrderBy = "";
@@ -618,7 +625,85 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public string ReloadTriggerField
     {
         get => _reloadTriggerField;
-        set { if (SetProperty(ref _reloadTriggerField, value)) IsDirty = true; }
+        set { if (SetProperty(ref _reloadTriggerField, value)) { IsDirty = true; RecomputeCascadeWarnings(); } }
+    }
+
+    // ── Cảnh báo cascade (P2/P3) — chống cấu hình sai field ảo + cascade ──────
+
+    /// <summary>Regex tách tham số @Name trong Filter SQL.</summary>
+    private static readonly System.Text.RegularExpressions.Regex SqlParamRegex =
+        new(@"@(\w+)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>Token hệ thống server tự bơm — KHÔNG cần field trong form (spec 19 + WPF).</summary>
+    private static readonly HashSet<string> CascadeSystemTokens = new(StringComparer.OrdinalIgnoreCase)
+        { "TenantId", "Today", "CurrentUser", "NguoiDungID", "CongTyID_Active", "LangCode" };
+
+    /// <summary>
+    /// Cảnh báo cấu hình cascade sai (KHÔNG chặn Lưu — hiện banner + đưa vào Diễn giải):
+    /// (P2) @param không khớp Field Code field nào → danh sách con rỗng;
+    /// (P3) @param là field cha nhưng chưa đặt "Tự reload" → đổi cha không nạp lại con.
+    /// </summary>
+    public ObservableCollection<string> CascadeWarnings { get; } = [];
+
+    /// <summary>True khi có cảnh báo cascade → hiện banner cảnh báo ở panel LookupBox.</summary>
+    public bool HasCascadeWarnings => CascadeWarnings.Count > 0;
+
+    /// <summary>Tập FieldCode hiệu lực của các field KHÁC trong form (lấy từ navigator).</summary>
+    private List<string> GetSiblingFieldCodes() =>
+        FieldNavigatorGroups
+            .SelectMany(g => g.Fields)
+            .Where(f => f.FieldId != FieldId)
+            .Select(f => string.IsNullOrWhiteSpace(f.FieldCode) ? f.ColumnCode : f.FieldCode)
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    /// <summary>
+    /// Tính lại cảnh báo cascade từ Filter SQL + reload trigger + field trong form.
+    /// Gọi khi đổi Filter SQL / ReloadTrigger / reloadOnChange / sau khi nạp navigator.
+    /// </summary>
+    private void RecomputeCascadeWarnings()
+    {
+        CascadeWarnings.Clear();
+
+        // Chỉ soát cascade cho lookup động chế độ Bảng/View có Filter SQL.
+        if (IsFkLookupEditor && _queryMode == "table" && !string.IsNullOrWhiteSpace(FkFilterSql))
+        {
+            var siblings = GetSiblingFieldCodes();
+            // Navigator chưa nạp field nào → không đủ dữ liệu để soát (tránh cảnh báo sai).
+            if (siblings.Count > 0)
+            {
+                var prms = SqlParamRegex.Matches(FkFilterSql)
+                    .Select(m => m.Groups[1].Value)
+                    .Distinct(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var p in prms)
+                {
+                    if (CascadeSystemTokens.Contains(p)) continue;   // token hệ thống
+
+                    var isField = siblings.Any(c => string.Equals(c, p, StringComparison.OrdinalIgnoreCase));
+                    if (!isField)
+                    {
+                        // P2 — @param không khớp field cha nào → con rỗng.
+                        CascadeWarnings.Add(
+                            $"⚠ @{p}: không field nào trong form có Field Code = \"{p}\" → danh sách con sẽ RỖNG. " +
+                            $"Sửa: đặt Field Code field cha = \"{p}\", hoặc sửa lại tên @param.");
+                    }
+                    else
+                    {
+                        // P3 — là field cha nhưng chưa đặt reload trigger.
+                        var hasReload = string.Equals(_reloadTriggerField, p, StringComparison.OrdinalIgnoreCase)
+                                        || ReloadOnChangeFields.Any(f => string.Equals(f, p, StringComparison.OrdinalIgnoreCase));
+                        if (!hasReload)
+                            CascadeWarnings.Add(
+                                $"⚠ @{p} là field cha nhưng chưa đặt \"Tự reload khi field thay đổi\" = \"{p}\" → " +
+                                $"đổi cha sẽ KHÔNG nạp lại danh sách con.");
+                    }
+                }
+            }
+        }
+
+        RaisePropertyChanged(nameof(HasCascadeWarnings));
     }
 
     /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
@@ -1873,6 +1958,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     FieldNavigatorGroups.Add(group);
             }
             _navigatorLoadedFormId = FormId;
+            RecomputeCascadeWarnings();   // đã có field list → soát cascade (P2/P3)
         }
         catch (OperationCanceledException) { /* bỏ qua */ }
         catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.LoadFieldNavigator"); }
@@ -2350,6 +2436,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         ReloadOnChangeFields.Add(code);
         ReloadOnChangeInput = "";
         RebuildControlPropsJson();
+        RecomputeCascadeWarnings();
     }
 
     /// <summary>Xóa 1 FieldCode khỏi danh sách reloadOnChange.</summary>
@@ -2357,6 +2444,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         ReloadOnChangeFields.Remove(fieldCode);
         RebuildControlPropsJson();
+        RecomputeCascadeWarnings();
     }
 
     /// <summary>Thêm 1 điều kiện đổi bảng nguồn mới (rỗng) vào DataSourceConditions.</summary>
@@ -2383,12 +2471,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (!IsFkLookupEditor) { ConfigExplanation = ""; return; }
 
+        RecomputeCascadeWarnings();   // đảm bảo cảnh báo cascade khớp cấu hình mới nhất
+
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("📋 DIỄN GIẢI CẤU HÌNH LOOKUP");
         sb.AppendLine(new string('─', 50));
         sb.AppendLine();
 
         // ── Thông tin chung ──
+        if (IsVirtual)
+            sb.AppendLine("🔮  Field ảo: KHÔNG lưu DB (chỉ để lọc/tham chiếu cascade).");
         sb.AppendLine($"⚙  Chế độ truy vấn: {_queryMode switch { "table" => "Bảng / View", "function" => "Table-Valued Function (TVF)", "sql" => "SQL tùy chỉnh", _ => _queryMode }}");
         if (!string.IsNullOrWhiteSpace(FkValueField))
             sb.AppendLine($"    Lưu vào DB: cột \"{FkValueField}\" (FK int)");
@@ -2497,6 +2589,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         sb.AppendLine(FkSearchEnabled
             ? "🔎  Cho phép tìm kiếm trong danh sách."
             : "⛔  Không cho phép tìm kiếm.");
+
+        // ── Cảnh báo cascade (P2/P3) — @param sai hoặc thiếu reload ──
+        if (HasCascadeWarnings)
+        {
+            sb.AppendLine();
+            sb.AppendLine("🛑  CẢNH BÁO CASCADE — sửa trước khi lưu:");
+            foreach (var w in CascadeWarnings)
+                sb.AppendLine($"    {w}");
+        }
 
         ConfigExplanation = sb.ToString();
     }
@@ -2608,7 +2709,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 FieldId          = FieldId,
                 FormId           = FormId,
                 SectionId        = SectionId > 0 ? SectionId : null,
-                ColumnId         = SelectedColumn?.ColumnId ?? 0,
+                // Field ảo → ép Column_Id NULL (0) dù trước đó có chọn cột, tránh ghi cột rác.
+                ColumnId         = IsVirtual ? 0 : (SelectedColumn?.ColumnId ?? 0),
                 ColumnCode       = ColumnCode,
                 FieldCode        = IsVirtual && !string.IsNullOrWhiteSpace(FieldCode) ? FieldCode : null,
                 SectionCode      = SectionName,

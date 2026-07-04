@@ -72,6 +72,11 @@ public sealed class ConfigSyncService : IConfigSyncService
 
         try
         {
+            // Soát cấu hình cascade trên master (advisory, chỉ đọc) — KHÔNG chặn đồng bộ.
+            // Bọc try/catch riêng: lỗi soát không được phép làm hỏng luồng đồng bộ chính.
+            try { await ValidateCascadeConfigAsync(master, result, ct); }
+            catch (Exception vex) { _logger.LogWarning(vex, "Soát cấu hình cascade thất bại (bỏ qua, không ảnh hưởng đồng bộ)."); }
+
             foreach (var d in ConfigSyncTables.Order)
             {
                 ct.ThrowIfCancellationRequested();
@@ -95,6 +100,92 @@ public sealed class ConfigSyncService : IConfigSyncService
             catch (Exception logEx) { _logger.LogError(logEx, "Ghi log đồng bộ thất bại."); }
             _logger.LogError(ex, "Đồng bộ config thất bại ở bảng đang xử lý.");
             throw;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Soát cấu hình cascade (advisory) trên master → thêm vào result.Warnings. KHÔNG ghi DB, KHÔNG ném lỗi.
+    //   (V1) Field ảo (Is_Virtual=1) thiếu Field_Code.
+    //   (V2) @param trong Filter_Sql không khớp field cha nào cùng form → danh sách con rỗng.
+    //   (V3) @param là field cha nhưng thiếu/không khớp Reload_Trigger_Field → đổi cha không nạp lại con.
+    // Sự kiện theo sau: preview hiện Warnings để người cấu hình sửa trước khi áp thật.
+    // ─────────────────────────────────────────────────────────────────────────
+    private static readonly System.Text.RegularExpressions.Regex CascadeParamRegex =
+        new(@"@(\w+)", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Token hệ thống server tự bơm — KHÔNG cần field trong form (spec 19).
+    private static readonly HashSet<string> CascadeSystemTokens = new(StringComparer.OrdinalIgnoreCase)
+        { "TenantId", "Today", "CurrentUser", "NguoiDungID", "CongTyID_Active", "LangCode" };
+
+    private static async Task ValidateCascadeConfigAsync(IDbConnection master, ConfigSyncResult result, CancellationToken ct)
+    {
+        // (V1) Field ảo thiếu Field_Code.
+        const string sqlVirtualNoCode = """
+            SELECT fm.Form_Code AS FormCode, fi.Field_Id AS FieldId
+            FROM   dbo.Ui_Field fi
+            JOIN   dbo.Ui_Form  fm ON fm.Form_Id = fi.Form_Id
+            WHERE  fi.Is_Virtual = 1
+              AND (fi.Field_Code IS NULL OR LTRIM(RTRIM(fi.Field_Code)) = '')
+            """;
+        foreach (var v in await master.QueryAsync(new CommandDefinition(sqlVirtualNoCode, cancellationToken: ct)))
+            result.Warnings.Add($"[{v.FormCode}] field ảo #{v.FieldId} thiếu Field_Code → không tham chiếu được trong cascade/rules.");
+
+        // Tập Field Code hiệu lực theo form (COALESCE Field_Code, Column_Code).
+        const string sqlFieldCodes = """
+            SELECT fi.Form_Id AS FormId, COALESCE(fi.Field_Code, sc.Column_Code) AS FieldCode
+            FROM   dbo.Ui_Field fi
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            WHERE  COALESCE(fi.Field_Code, sc.Column_Code) IS NOT NULL
+            """;
+        var codesByForm = new Dictionary<int, HashSet<string>>();
+        foreach (var r in await master.QueryAsync(new CommandDefinition(sqlFieldCodes, cancellationToken: ct)))
+        {
+            int formId = (int)r.FormId;
+            if (!codesByForm.TryGetValue(formId, out var set))
+            {
+                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                codesByForm[formId] = set;
+            }
+            set.Add((string)r.FieldCode);
+        }
+
+        // Lookup có Filter_Sql → soát @param + reload.
+        const string sqlLookups = """
+            SELECT fi.Form_Id AS FormId, fm.Form_Code AS FormCode,
+                   COALESCE(fi.Field_Code, sc.Column_Code) AS FieldCode,
+                   fl.Filter_Sql AS FilterSql, fl.Reload_Trigger_Field AS ReloadTriggerField
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
+            JOIN   dbo.Ui_Form  fm ON fm.Form_Id  = fi.Form_Id
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            WHERE  fl.Filter_Sql IS NOT NULL AND LTRIM(RTRIM(fl.Filter_Sql)) <> ''
+            """;
+        foreach (var lk in await master.QueryAsync(new CommandDefinition(sqlLookups, cancellationToken: ct)))
+        {
+            int formId = (int)lk.FormId;
+            if (!codesByForm.TryGetValue(formId, out var formCodes)) continue;   // thiếu dữ liệu → bỏ qua
+
+            string formCode  = (string)lk.FormCode;
+            string? fieldCode = (string?)lk.FieldCode;
+            string filterSql = (string)lk.FilterSql;
+            string? reload   = (string?)lk.ReloadTriggerField;
+            var owner = string.IsNullOrWhiteSpace(fieldCode) ? "?" : fieldCode;
+
+            var prms = CascadeParamRegex.Matches(filterSql)
+                .Select(m => m.Groups[1].Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var p in prms)
+            {
+                if (CascadeSystemTokens.Contains(p)) continue;   // token hệ thống
+
+                if (!formCodes.Contains(p))
+                    result.Warnings.Add(   // (V2)
+                        $"[{formCode}] field \"{owner}\": @{p} trong Filter_Sql không khớp Field Code field nào cùng form → danh sách con sẽ rỗng.");
+                else if (!string.Equals(reload, p, StringComparison.OrdinalIgnoreCase))
+                    result.Warnings.Add(   // (V3)
+                        $"[{formCode}] field \"{owner}\": @{p} là field cha nhưng Reload_Trigger_Field ≠ \"{p}\" → đổi cha sẽ không nạp lại danh sách con.");
+            }
         }
     }
 

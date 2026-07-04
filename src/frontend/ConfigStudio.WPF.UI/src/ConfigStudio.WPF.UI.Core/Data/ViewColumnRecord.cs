@@ -3,6 +3,7 @@
 // Layer   : Core
 // Purpose : Model một dòng cấu hình cột Ui_View_Column — editable trong lưới con.
 
+using System.Text.Json.Nodes;
 using Prism.Mvvm;
 
 namespace ConfigStudio.WPF.UI.Core.Data;
@@ -94,7 +95,51 @@ public sealed class ViewColumnRecord : BindableBase
     public string? StyleRuleJson { get => _styleRuleJson; set => SetProperty(ref _styleRuleJson, value); }
 
     private string? _propsJson;
-    public string? PropsJson { get => _propsJson; set => SetProperty(ref _propsJson, value); }
+    public string? PropsJson
+    {
+        get => _propsJson;
+        set { if (SetProperty(ref _propsJson, value)) RaisePropertyChanged(nameof(FkLookupFieldId)); }
+    }
+
+    /// <summary>
+    /// Ô thân thiện cấu hình FK auto-JOIN: Field_Id của LookupBox FK trong form sửa.
+    /// Đọc/ghi khóa <c>fkLookup.fieldId</c> trong <see cref="PropsJson"/> (engine tự JOIN bảng cha → hiện TÊN).
+    /// Set &gt; 0 → sinh/cập nhật <c>{"fkLookup":{"fieldId":N}}</c> (giữ các khóa Props_Json khác);
+    /// trống/0 → gỡ <c>fkLookup</c>. Xem spec 25 §5a · hướng dẫn cau-hinh-luoi-tham-chieu.md (Cách A).
+    /// </summary>
+    public int? FkLookupFieldId
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_propsJson)) return null;
+            try
+            {
+                var fid = JsonNode.Parse(_propsJson!)?["fkLookup"]?["fieldId"];
+                if (fid is not null && int.TryParse(fid.ToString(), out var id)) return id;
+            }
+            catch { /* Props_Json sai cú pháp → coi như chưa cấu hình */ }
+            return null;
+        }
+        set
+        {
+            JsonObject root;
+            try { root = JsonNode.Parse(string.IsNullOrWhiteSpace(_propsJson) ? "{}" : _propsJson!) as JsonObject ?? new JsonObject(); }
+            catch { root = new JsonObject(); }
+
+            if (value is > 0)
+                root["fkLookup"] = new JsonObject { ["fieldId"] = value.Value };
+            else
+                root.Remove("fkLookup");
+
+            var json = root.Count == 0 ? null : root.ToJsonString();
+            if (!string.Equals(_propsJson, json, System.StringComparison.Ordinal))
+            {
+                _propsJson = json;
+                RaisePropertyChanged(nameof(PropsJson));
+            }
+            RaisePropertyChanged();
+        }
+    }
 
     private bool _isActive = true;
     public bool IsActive { get => _isActive; set => SetProperty(ref _isActive, value); }

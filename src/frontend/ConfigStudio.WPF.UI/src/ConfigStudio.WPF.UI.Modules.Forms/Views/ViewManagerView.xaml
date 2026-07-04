@@ -457,6 +457,19 @@
                                                 <dxe:ComboBoxEditSettings ItemsSource="{StaticResource RenderModes}" />
                                             </dxg:GridColumn.EditSettings>
                                         </dxg:GridColumn>
+                                        <!-- FK auto-JOIN: CHỌN field FK của form sửa theo tên → engine tự JOIN, cột hiện TÊN cha.
+                                             ItemsSource = VM.FkLookupFields; lưu Field_Id vào {"fkLookup":{"fieldId":N}} (Props_Json).
+                                             Trống = cột thường. (spec 25 §5a) -->
+                                        <dxg:GridColumn Header="FK lookup (cha)" FieldName="FkLookupFieldId" Width="190"
+                                                        ToolTip="Chọn field khóa ngoại của form sửa → engine JOIN bảng cha, cột hiện TÊN. Trống = cột thường.">
+                                            <dxg:GridColumn.EditSettings>
+                                                <dxe:ComboBoxEditSettings
+                                                    ItemsSource="{Binding DataContext.FkLookupFields,
+                                                                  RelativeSource={RelativeSource AncestorType={x:Type dxg:GridControl}}}"
+                                                    ValueMember="FieldId" DisplayMember="Label"
+                                                    IsTextEditable="False" AllowNullInput="True" />
+                                            </dxg:GridColumn.EditSettings>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Width" FieldName="Width" Width="70" />
                                         <dxg:GridColumn Header="MinWidth" FieldName="MinWidth" Width="70" />
                                         <dxg:GridColumn Header="Align" FieldName="TextAlign" Width="80">

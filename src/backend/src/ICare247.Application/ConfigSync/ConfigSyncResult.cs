@@ -28,6 +28,12 @@ public sealed class ConfigSyncResult
     /// <summary>Kết quả từng bảng, theo đúng thứ tự đồng bộ (spec §2).</summary>
     public List<ConfigSyncTableResult> Tables { get; } = [];
 
+    /// <summary>
+    /// Cảnh báo cấu hình (advisory, KHÔNG chặn đồng bộ) — vd cascade sai: field ảo thiếu Field_Code,
+    /// @param trong Filter_Sql không khớp field cha, thiếu Reload_Trigger_Field. Hiển thị ở preview.
+    /// </summary>
+    public List<string> Warnings { get; } = [];
+
     /// <summary>Tổng số dòng INSERT trên mọi bảng.</summary>
     public int TotalInserted => Tables.Sum(t => t.Inserted);
 

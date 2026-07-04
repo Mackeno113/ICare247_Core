@@ -12,6 +12,84 @@
 
 ---
 
+## Hai cách hiển thị TÊN khóa ngoại ở lưới (chọn 1)
+
+| | **Cách A — FK auto-JOIN** (mặc định, no-code) | **Cách B — SQL View tay** (escape hatch) |
+|---|---|---|
+| Viết SQL View | ❌ không cần | ✅ phải viết view JOIN |
+| Nguồn lưới (`Source_Type`) | `Table` (base table) | `View` |
+| Đăng ký `Sys_Table` | 1 (table) | 2 (view + table) |
+| Engine JOIN | **tự sinh** theo `Props_Json.fkLookup` của cột | JOIN nằm sẵn trong view |
+| Lọc / sắp xếp / xuất theo tên | ✅ | ✅ |
+| Khi nào dùng | hầu hết FK đơn (nguồn **table** + cột Value/Display **đơn**) | hiển thị **phức tạp**: ghép nhiều bảng, multi-hop, biểu thức `CONCAT(...)`, nguồn `custom_sql`/TVF |
+
+> Cơ sở: [docs/spec/25_FK_LOOKUP_SPEC.md](../spec/25_FK_LOOKUP_SPEC.md) §5 · ADR-033. **Ưu tiên Cách A**; chỉ rơi về Cách B khi auto-JOIN không đủ.
+
+---
+
+## Cách A — FK auto-JOIN (khuyến nghị, KHÔNG cần view)
+
+Engine tự sinh `LEFT JOIN` tới bảng cha theo **định nghĩa lookup của chính field FK trong form sửa** (`Ui_Field_Lookup`),
+rồi đổi cột FK ở lưới thành **TÊN** (in-place). Không viết view, không đăng ký 2 đối tượng, không sửa code.
+
+**Điều kiện dùng được:**
+- Form sửa đã có **LookupBox** cho cột FK ở **chế độ Bảng/View** (`Query_Mode='table'`), cột Value/Display là **cột đơn**.
+- Nếu Display là biểu thức (`CONCAT(...)`), hoặc nguồn `custom_sql`/TVF → auto-JOIN **bỏ qua** (hiện id thô) → dùng **Cách B**.
+
+**Các bước cấu hình tay** — ví dụ `DM_ChiNhanhNganHang` (FK `NganHang_Id → DM_NganHang`):
+
+1. **`Ui_View` đọc base table** — Tab Cơ bản: `Source_Type = Table`, `Source_Object` **để trống**, `Key_Field = Id`,
+   `Edit_Form = DM_CHINHANHNGANHANG`. *(Không cần đăng ký view vào `Sys_Table`.)*
+2. **Tìm `Field_Id`** của LookupBox FK trong form sửa (truy vấn bên dưới) — ví dụ `34`.
+3. **Cột FK ở lưới** = chính cột Id (`NganHang_Id`): để **hiển thị** (`Is_Visible=1`), caption "Ngân hàng",
+   và đặt **`Props_Json`** trỏ định nghĩa FK:
+
+   ```json
+   {"fkLookup":{"fieldId":34}}
+   ```
+
+   → Engine đọc `Ui_Field_Lookup` của field 34 (`Source_Name=DM_NganHang`, `Value_Column=Id`, `Display_Column=Ten`)
+   và tự JOIN. Cột `NganHang_Id` hiện **tên** ngân hàng; lọc/sort/xuất đều theo tên.
+
+   > **Đặt `fkLookup` ở đâu cũng được** (engine suy cột FK gốc từ `Field_Id` → `Sys_Column`):
+   > - **Tại chỗ (Model 2):** đặt trên **chính cột `NganHang_Id`** → cột đó hiện tên (ví dụ trên).
+   > - **Cột tên riêng (Model 1, giống `TenCha`):** thêm cột `TenNganHang` (`Column_Id=NULL`), đặt `fkLookup` trên nó,
+   >   **ẩn** `NganHang_Id`. Engine JOIN theo `NganHang_Id`, hiện tên ở cột `TenNganHang`. *(Mẫu: [db/066](../../db/066_config_grid_chinhanhnganhang_autojoin.sql).)*
+
+**Tìm `Field_Id` của LookupBox FK** (chạy trên Config DB):
+
+```sql
+SELECT fi.Field_Id, fi.Editor_Type, fl.Source_Name, fl.Value_Column, fl.Display_Column
+FROM   dbo.Ui_Field        fi
+JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
+JOIN   dbo.Ui_Field_Lookup fl ON fl.Field_Id = fi.Field_Id
+WHERE  fm.Form_Code = N'DM_CHINHANHNGANHANG';     -- form sửa của màn
+```
+
+**SQL tương đương** (tham chiếu — [db/066](../../db/066_config_grid_chinhanhnganhang_autojoin.sql)):
+
+```sql
+-- 1) Đọc base table (engine tự JOIN)
+UPDATE dbo.Ui_View SET Source_Type=N'Table', Source_Object=NULL
+WHERE  View_Code=N'Grid_DM_ChiNhanhNganHang';
+-- 2) Cột NganHang_Id hiện TÊN — trỏ định nghĩa FK qua Props_Json
+UPDATE dbo.Ui_View_Column SET Is_Visible=1, Render_Mode=N'Text',
+       Props_Json=N'{"fkLookup":{"fieldId":34}}'
+WHERE  View_Id=@ViewId AND Field_Name=N'NganHang_Id';
+```
+
+> ✅ **ConfigStudio** (tab **Cột**) có cột **"FK lookup (Field_Id)"** (cạnh cột Render): nhập `Field_Id` (vd `34`) →
+> app tự ghi `{"fkLookup":{"fieldId":34}}` vào `Props_Json` khi Lưu. Để trống = cột thường. *(Không cần gõ JSON/SQL tay.)*
+
+**Giới hạn Cách A (v1):** chỉ nguồn **table/view + cột Value/Display đơn**; phân quyền **dòng** chưa áp ở lưới
+(để pha RLS). Cần hiển thị phức tạp → **Cách B** dưới đây.
+
+---
+
+## Cách B — Lưới tham chiếu qua SQL View (escape hatch)
+
+> Phần còn lại của tài liệu (Yêu cầu trước, Bước 1–5, cascade, checklist) là quy trình **Cách B**.
+
 ## Khác biệt cốt lõi so với danh mục phẳng
 
 | | Danh mục **phẳng** (DM_QuocGia) | Lưới **tham chiếu** (DM_TinhThanhPho) |
@@ -21,7 +99,8 @@
 | Field trong form | TextBox/Number… | thêm **1 LookupBox** (FK → bảng cha) |
 | Cột lưới | cột thật | hiện **`TenCha`** (từ view), **ẩn** cột Id FK |
 
-Nguyên tắc bất biến: **lưới ĐỌC qua VIEW**, **form GHI vào BASE TABLE**. Engine không bao giờ INSERT/UPDATE vào view.
+Nguyên tắc Cách B: **lưới ĐỌC qua VIEW**, **form GHI vào BASE TABLE**. Engine không bao giờ INSERT/UPDATE vào view.
+*(Với Cách A, lưới đọc thẳng base table — form vẫn GHI base table như nhau.)*
 
 ---
 
@@ -131,6 +210,13 @@ Khi bản ghi phụ thuộc 2 cấp (Phường/Xã → Tỉnh → Quốc gia), f
 
 ## Checklist nhanh
 
+### Cách A — auto-JOIN (không view)
+- [ ] Form sửa có **LookupBox** FK chế độ Bảng/View (`Query_Mode='table'`, cột Value/Display đơn).
+- [ ] `Ui_View`: `Source_Type = Table`, `Source_Object` trống, `Key_Field = Id`, gắn `Edit_Form`.
+- [ ] Cột Id FK: `Is_Visible=1`, caption tên cha, **`Props_Json = {"fkLookup":{"fieldId":<Field_Id>}}`**.
+- [ ] Mở màn: cột FK hiện **tên**, lọc/sort/xuất theo tên chạy.
+
+### Cách B — qua SQL View (escape hatch)
 - [ ] View đọc đã tạo (LEFT JOIN cha, `IsDeleted = 0`).
 - [ ] Bảng cha cấu hình xong **trước**.
 - [ ] `Sys_Table`: đăng ký **VIEW** (lưới) **và** **TABLE** (form).

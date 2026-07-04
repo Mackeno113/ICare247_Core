@@ -281,6 +281,32 @@ public sealed class ViewDataService : IViewDataService
             throw new InvalidOperationException($"Không tìm thấy View_Id={viewId} để ẩn.");
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<FkLookupFieldOption>> GetFormLookupFieldsAsync(
+        int formId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || formId <= 0) return [];
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await EnsureSchemaAsync(conn, ct);
+
+        // Field FK = field của form có cấu hình Ui_Field_Lookup; kèm cột FK gốc (Sys_Column) + bảng/cột tên.
+        var sql =
+            "SELECT fi.Field_Id      AS FieldId,\n" +
+            "       sc.Column_Code   AS BaseColumn,\n" +
+            "       fl.Source_Name   AS SourceName,\n" +
+            "       fl.Display_Column AS DisplayColumn\n" +
+            "FROM   dbo.Ui_Field        fi\n" +
+            "JOIN   dbo.Ui_Field_Lookup fl ON fl.Field_Id  = fi.Field_Id\n" +
+            "LEFT JOIN dbo.Sys_Column   sc ON sc.Column_Id = fi.Column_Id\n" +
+            "WHERE  fi.Form_Id = @FormId\n" +
+            "ORDER BY sc.Column_Code";
+
+        var rows = await conn.QueryAsync<FkLookupFieldOption>(
+            new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
     // ── Helpers ────────────────────────────────────────────────
 
     /// <summary>

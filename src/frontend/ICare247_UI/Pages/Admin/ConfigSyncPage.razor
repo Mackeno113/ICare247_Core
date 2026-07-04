@@ -57,6 +57,21 @@ else
             </span>
         </div>
 
+        @if (_result.Warnings.Count > 0)
+        {
+            <div class="cfg-warnings">
+                <div class="cfg-warnings-head">
+                    @Loc.L("admin.cfgsync.warnHead", "⚠ Cảnh báo cấu hình ({0}) — nên sửa trước khi áp dụng", _result.Warnings.Count)
+                </div>
+                <ul class="cfg-warnings-list">
+                    @foreach (var w in _result.Warnings)
+                    {
+                        <li>@w</li>
+                    }
+                </ul>
+            </div>
+        }
+
         <DxGrid Data="_result.Tables" ShowFilterRow="false" HighlightRowOnHover="true"
                 ColumnResizeMode="GridColumnResizeMode.ColumnsContainer" CssClass="cfg-grid">
             <Columns>

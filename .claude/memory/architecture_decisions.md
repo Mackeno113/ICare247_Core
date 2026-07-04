@@ -477,3 +477,30 @@
   (b) thêm nhánh `switch` trong `ApiErrorLocalizer` với key i18n. KHÔNG cần sửa từng call-site catch.
 - **Liên quan:** ADR-014 (resolve i18n server-side cho validation), memory "Error correlation & observability" (correlationId/log), `project-frontend-i18n-shell` (L(key,fallback)).
 - **Status:** ✅ code xong (MasterData path: list/form/save). ⏳ build PENDING (app đang chạy) → cần restart API + hard-reload WASM để áp dụng. Áp cho form `DM_CHINHANHNGANHANG` (bảng thiếu PK — chưa sửa DB theo yêu cầu user).
+
+## ADR-033: Nguồn khóa ngoại (FK) dùng chung — tái dùng `Ui_Field_Lookup` cho lưới · form · import · template (2026-06-28)
+- **Context:** Cột FK ở lưới (vd `DM_ChiNhanhNganHang.NganHang_Id`) hiện ra `1` (id thô). User mở rộng yêu cầu:
+  cột lookup **lọc/sắp xếp/xuất theo tên**, nguồn FK **lọc theo người đăng nhập/điều kiện bất kỳ**, và mở sang
+  **import** (Mã→Id) + **xuất template import** (sheet chính + mỗi FK 1 sheet phụ liệt kê Mã/Tên đã lọc quyền).
+- **Quyết định (qua hỏi-đáp, user chốt 2 điểm):** ① **spec/ADR trước, code từng pha**; ② **một định nghĩa FK duy nhất**
+  = **tái dùng `Ui_Field_Lookup`** (FK của field trong Edit_Form) làm nguồn sự thật cho cả 4 mặt — KHÔNG tạo bảng FK song song.
+  - `Ui_Field_Lookup` đã đủ: `Source_Name`/`Value_Column`/`Display_Column`/**`Code_Field`** (cầu Mã↔Id, Migration 014)/
+    `Filter_Sql` (token ngữ cảnh) /`Order_By`.
+  - **Tham chiếu định nghĩa từ lưới/import/template:** resolve **ngầm** `Ui_View.Edit_Form_Id → Ui_Field (Column_Id khớp)
+    → Ui_Field_Lookup` (0 cấu hình thêm); escape hatch tường minh `Ui_View_Column.Props_Json.fkLookup.fieldId` (chỉ server).
+  - **Lọc phân quyền = tái dùng token ngữ cảnh** (ADR-030/spec 19): cùng `Filter_Sql`+`@NguoiDungID`/`@CongTyID_Active`
+    → tập hợp lệ ở form = lưới = import = sheet template (không lệch).
+  - **Mặt LƯỚI (user chọn lọc/sort/xuất theo TÊN):** đi theo **ADR-024** — đọc qua **SQL View JOIN sẵn tên**
+    (`vw_DM_ChiNhanhNganHang`, mẫu db/052), `Source_Type='View'`; client-resolve thuần (hướng B) bị loại vì DxGrid
+    sẽ lọc/sort/xuất theo id thô. Định nghĩa FK dùng chung vẫn nuôi form sửa + import + template.
+  - **Import (Pha 2)** + **Template (Pha 3)** = hạ tầng MỚI (đọc/sinh workbook) — repo chưa có; spec con tách sau khi duyệt.
+- **Phân pha:** 0 (spec/ADR — đang làm) · 1 Lưới (view JOIN + cấu hình Ui_View) · 2 Import (Mã→Id, lọc quyền) · 3 Template.
+- **Spec:** `docs/spec/25_FK_LOOKUP_SPEC.md`.
+- **Quyết định (user chốt 2026-06-28):** Q1 = làm **cả ngầm + tường minh** `Props_Json.fkLookup.fieldId` (tường minh ưu tiên);
+  Q2 = lưới v1 **chỉ JOIN tên**, phân quyền dòng để **pha RLS sau**; Q4 = khai `Key_Field=Id` cho View ChiNhanhNganHang (Pha 1).
+  Q3 (thư viện Excel ClosedXML/EPPlus/OpenXML) ⏳ mở — chốt khi tới Pha 2.
+- **Liên quan:** ADR-024 (đọc SQL View + lọc quyền), ADR-030/spec 19 (token ngữ cảnh), ADR-014 (ConfigCache),
+  ADR-015/spec 14 (Ui_View), ADR-029/spec 18 (error_key i18n cho lỗi import), Migration 014 (`Code_Field`).
+- **Status:** 📋 mô hình chốt (Q1/Q2/Q4). **Pha 1 ✅ xong** (db/064 view `vw_DM_ChiNhanhNganHang` + db/065 cấu hình
+  Ui_View Source_Type=View, cột `TenNganHang` hiện/`NganHang_Id` ẩn, Props_Json `fkLookup.fieldId=34`, i18n vi/en) —
+  ĐÃ áp live Tenant 1 (DB 100.126.222.117). Pha 2 (import) / Pha 3 (template) chưa làm; Q3 (thư viện Excel) còn mở.
