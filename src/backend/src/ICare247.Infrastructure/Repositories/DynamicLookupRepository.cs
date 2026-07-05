@@ -31,6 +31,10 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_.]*$", RegexOptions.Compiled)]
     private static partial Regex SafeIdentifierRegex();
 
+    // Tách @param trong SQL (bỏ @@global). Dùng để chẩn đoán tham số chưa bind.
+    [GeneratedRegex(@"(?<!@)@(\w+)", RegexOptions.Compiled)]
+    private static partial Regex SqlParamRegex();
+
     // Các keyword DDL/DML nguy hiểm — không cho phép trong FilterSql / OrderBy
     private static readonly string[] DangerousKeywords =
         ["DROP", "DELETE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "TRUNCATE", "ALTER", "CREATE", "MERGE", "--", ";"];
@@ -94,6 +98,27 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             // Chỉ thêm param nếu tên an toàn — ngăn override @TenantId từ client
             if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
                 dp.Add(key, UnwrapParamValue(val));
+        }
+
+        // ── Chẩn đoán: @param trong SQL chưa được bind → báo lỗi RÕ thay vì SqlException
+        //    "Must declare the scalar variable @X" khó hiểu. Thường do field cha (VD field ảo
+        //    Tỉnh/Ngân hàng) không có trên form, hoặc Field Code không trùng tên @param. ──
+        var boundNames = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
+        var missingParams = SqlParamRegex().Matches(querySql)
+            .Select(m => m.Groups[1].Value)
+            .Where(p => !boundNames.Contains(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (missingParams.Count > 0)
+        {
+            var ctxKeys = contextValues.Count > 0
+                ? string.Join(", ", contextValues.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+                : "(rỗng)";
+            throw new InvalidOperationException(
+                $"DynamicLookup FieldId={fieldId}: Filter SQL cần tham số CHƯA CÓ trên form: " +
+                $"{string.Join(", ", missingParams.Select(p => "@" + p))}. " +
+                $"Cần 1 field (thường là field ảo cha, VD Tỉnh/Ngân hàng) có Field Code trùng đúng tên đó. " +
+                $"Field trên form hiện có: [{ctxKeys}].");
         }
 
         // ── Bước 4: Execute query trên Data DB (DB nghiệp vụ — DM_PhongBan, v.v.) ──

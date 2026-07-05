@@ -110,9 +110,10 @@ else
             // Báo bề rộng modal phù hợp số cột (popup chứa form tự co/giãn cho hài hòa).
             await OnWidthResolved.InvokeAsync(ModalWidthForColumns(_formColumns));
 
-            // Build field states (mirror FormRunner). Bỏ field virtual (không map cột DB).
+            // Build field states. GIỮ field ảo (Is_Virtual): chúng là field cha cascade (VD Tỉnh/
+            // Ngân hàng) — phải render để user chọn + có trong context để bơm @param cho lookup con.
+            // Field ảo KHÔNG map cột DB nên bị loại ở bước Lưu (SaveAsync), không phải ở đây.
             _fieldStates = form.Fields
-                .Where(f => !f.IsVirtual)
                 .Select(f => new FieldState
                 {
                     FieldId      = f.FieldId,
@@ -123,6 +124,7 @@ else
                     IsReadOnly   = f.IsReadOnly,
                     IsRequired   = f.IsRequired,
                     LockOnEdit   = f.LockOnEdit,
+                    IsVirtual    = f.IsVirtual,
                     IsEditMode   = IsEditMode,
                     ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
                     LookupSource = f.LookupSource,
@@ -185,11 +187,11 @@ else
         foreach (var fs in _fieldStates) fs.Errors.Clear();
         try
         {
-            // Gửi mọi field ĐANG HIỂN THỊ (IsVisible). Field hiển thị nhưng bị khóa
-            // (read-only / LockOnEdit) vẫn gửi — không sửa được nên giá trị không đổi, vô hại,
-            // và qua được validation required. CHỈ field ẩn (IsVisible=false) mới không gửi.
+            // Gửi mọi field ĐANG HIỂN THỊ (IsVisible), TRỪ field ảo (Is_Virtual — không map cột DB,
+            // chỉ để lọc cascade). Field hiển thị nhưng bị khóa (read-only / LockOnEdit) vẫn gửi —
+            // không sửa được nên giá trị không đổi, vô hại. Field ẩn (IsVisible=false) không gửi.
             var values = _fieldStates
-                .Where(fs => fs.IsVisible)
+                .Where(fs => fs.IsVisible && !fs.IsVirtual)
                 .ToDictionary(fs => fs.FieldCode, fs => fs.Value);
 
             var result = await MasterApi.SaveAsync(FormCode, Id, values);
