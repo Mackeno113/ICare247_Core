@@ -1,7 +1,23 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-06-28
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-06
 > Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
+
+---
+
+## ✅ Done (2026-07-06) — FormEditor: chuyển bulk field sang Section/Tab khác (context-menu)
+
+- **BULK-MOVE-SECTION** — bulk-select (checkbox trong cây) trước đây CHỈ đổi được thuộc tính (thanh ⚡ `ApplyBulk`),
+  không có cách chuyển cả nhóm field sang section khác. Thêm **context-menu chuột phải trên TreeView** →
+  "Chuyển N field đã chọn sang…" → submenu section đích. Form có Tab → header `{Tab} ▸ {Section}` (chuyển sang
+  Tab = chọn section thuộc tab đó; **field không gắn Tab trực tiếp — `Tab_Id` nằm trên `Ui_Section`**, không đổi schema).
+  Tái dùng `FieldDataService.MoveFieldToSectionAsync` + `PersistSectionOrderAsync` như nhánh cross-section của
+  `ExecuteMoveAsync`. Thao tác trên field **đã tick** (không phải node phải-chuột); field đã ở đích → bỏ qua;
+  reindex + lưu Order_No cả section nguồn & đích.
+- **Files:** `Models/MoveTargetItem.cs` (mới — mang sẵn `ICommand` để bind thẳng, tránh RelativeSource xuyên Popup),
+  `ViewModels/FormEditorViewModel.cs` (`MoveTargets`/`CanMoveBulk`/`BulkMoveHeader`/`MoveBulkToSectionCommand`/
+  `RefreshMoveTargets`/`ExecuteMoveBulkToSectionAsync`), `Views/FormEditorView.xaml` (`TreeView.ContextMenu`),
+  `Views/FormEditorView.xaml.cs` (`OnTreeContextMenuOpening`). Build `ConfigStudio.WPF.UI.slnx` 0/0.
 
 ---
 

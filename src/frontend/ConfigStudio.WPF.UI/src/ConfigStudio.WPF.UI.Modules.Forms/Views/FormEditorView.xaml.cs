@@ -56,6 +56,13 @@ public partial class FormEditorView : UserControl
         }
     }
 
+    // D2b — Trước khi mở context-menu tree: dựng lại danh sách section đích (theo trạng thái Sections/Tabs hiện tại).
+    private void OnTreeContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        if (DataContext is FormEditorViewModel vm)
+            vm.RefreshMoveTargets();
+    }
+
     // D3 — Grid-edit tab: forward cell value change sang VM de hydrate cache + trigger debounced save.
     private async void OnFieldsGridCellValueChanged(object sender, CellValueChangedEventArgs e)
     {

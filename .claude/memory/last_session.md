@@ -1,7 +1,49 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-05 (session 73 — Cascade lookup + Multi-Trigger + Cache). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-06 (session 75 — Bulk-move field sang Section/Tab, ConfigStudio WPF). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 75 (2026-07-06) — FormEditor: chuyển bulk field sang Section/Tab khác
+
+**Bối cảnh:** user bulk-select nhiều field (checkbox trong cây) nhưng KHÔNG có cách chuyển cả nhóm sang "selection"
+(section/tab) khác — thanh ⚡ `ApplyBulk` chỉ đổi thuộc tính. Thao tác chuyển-section duy nhất trước đó là nút ↑↓
+nhảy-1-bậc-liền-kề, chỉ áp cho 1 field đang chọn.
+
+**Đã làm:**
+- **Context-menu chuột phải trên TreeView cấu trúc** → "Chuyển N field đã chọn sang…" → submenu section đích.
+  Form có Tab → header `{Tab} ▸ {Section}`. **Field gắn qua `Ui_Field.Section_Id`; `Tab_Id` nằm trên `Ui_Section`** →
+  "chuyển sang Tab" = chọn section thuộc tab đó, KHÔNG đổi schema.
+- Tái dùng `MoveFieldToSectionAsync` + `PersistSectionOrderAsync` (như nhánh cross-section của `ExecuteMoveAsync`);
+  reindex + lưu Order_No cả section nguồn & đích; field đã ở đích → bỏ qua; không di chuyển thật → không set dirty.
+- **Files:** `Models/MoveTargetItem.cs` (mới), `FormEditorViewModel.cs` (`MoveTargets`/`CanMoveBulk`/`BulkMoveHeader`/
+  `MoveBulkToSectionCommand`/`RefreshMoveTargets`/`ExecuteMoveBulkToSectionAsync`), `FormEditorView.xaml`
+  (`TreeView.ContextMenu`, item mang sẵn `MoveCommand` — tránh RelativeSource xuyên Popup submenu),
+  `FormEditorView.xaml.cs` (`OnTreeContextMenuOpening` → refresh danh sách đích). Build ConfigStudio 0/0.
+
+**Việc gợi ý tiếp:** 3 file i18n pre-existing + `run-all.bat` (M) vẫn chưa commit — xử hoặc bỏ. Kiểm thử trực quan
+bulk-move trên app WPF (chưa chạy). FK Pha 2/3 (import Mã→Id) còn chặn (session 74).
+
+## Session 74 (2026-07-05) — Error surface toàn cục ConfigStudio + hết nuốt lỗi nạp FK
+
+**Bối cảnh:** field LookupBox (VD `TinhThanhPho_Id`) badge "đã cấu hình" nhưng panel Control Props TRỐNG.
+Gốc: ConfigStudio build mới SELECT cột `Tree_Selectable_Level` (db/069) + `Reload_Trigger_Fields` (db/068);
+khi migration CHƯA áp → `SqlException: Invalid column name` trong `GetFieldLookupConfigAsync` → bị `catch {}`
+nuốt IM LẶNG (không log, không hiện) → panel trống. Data KHÔNG mất khi chỉ mở; NHƯNG nếu bấm Lưu lúc trống →
+ghi đè `Ui_Field_Lookup` bằng rỗng → mất thật. User đã chạy db/067/068/069 + db/062 trên Config DB.
+
+**Đã làm (commit `c7527ed`, đã push master):**
+- **Error surface toàn cục (chốt scope 1+3):** `IUserNotifier`+`UserNotifier` (singleton, marshal UI thread,
+  `NotificationSeverity`) → `ShellViewModel` banner màu-theo-mức-độ + auto-ẩn (lỗi 15s) + nút đóng; `MainWindow.xaml`
+  banner trên status bar (message + chi tiết kỹ thuật); `App.xaml.cs` DI + `DispatcherUnhandledException` cũng hiện banner.
+- **Màn Field:** 2 catch nạp FK/ComboBox → `HandleFkConfigLoadError` = log file + banner shell + banner đỏ trên màn
+  (kèm "Invalid column name" + cách khắc phục). Cờ `_fkConfigLoadFailed` → **KHÓA nút Lưu** khi nạp FK lỗi (chống save-đè rỗng).
+- Build ConfigStudio 0/0. `detect-changes`: medium, đúng phạm vi.
+
+**⚠️ Cần xác nhận (user tự làm):** restart ConfigStudio → mở lại `TinhThanhPho_Id`: hiện lại = data còn; vẫn trống +
+KHÔNG banner đỏ = đã bị save-đè trước đó → cấu hình lại 1 lần.
+
+**Việc gợi ý tiếp:** 3 file i18n pre-existing + `run-all.bat` (M) vẫn chưa commit — xử hoặc bỏ. FK Pha 2/3 (import Mã→Id)
+còn chặn: set `Ui_Field_Lookup.Code_Field='Ma'` (Field 34) + Q3 chọn thư viện Excel. F1 config sync: db/062 đã áp → còn E2E.
 
 ## Session 73 (2026-07-05) — Cascade lookup, Multi-Trigger, Cache lookup
 

@@ -190,6 +190,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     public List<byte> BulkColSpanOptions { get; } = [0, 1, 2, 3, 4]; // 0 = giu nguyen
 
+    // ── D2b — Chuyển bulk field sang Section/Tab khác (context-menu) ──
+    /// <summary>Danh sách section đích cho context-menu "Chuyển field đã chọn sang…".
+    /// Rebuild qua <see cref="RefreshMoveTargets"/> mỗi khi mở menu.</summary>
+    public ObservableCollection<MoveTargetItem> MoveTargets { get; } = [];
+
+    /// <summary>True khi có ≥1 field được tick → cho phép chuyển sang section khác.</summary>
+    public bool CanMoveBulk => BulkSelectedFields.Count >= 1;
+
+    /// <summary>Header MenuItem gốc — kèm số field đã tick; khi chưa tick thì báo hướng dẫn.</summary>
+    public string BulkMoveHeader => BulkSelectedFields.Count > 0
+        ? $"Chuyển {BulkSelectedFields.Count} field đã chọn sang…"
+        : "Chưa tick field nào để chuyển";
+
     // ── Undo/Redo state ───────────────────────────────────────
     private bool _canUndo;
     public bool CanUndoAction { get => _canUndo; private set => SetProperty(ref _canUndo, value); }
@@ -888,6 +901,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand ApplyBulkCommand { get; }
     public DelegateCommand ClearBulkSelectionCommand { get; }
 
+    /// <summary>D2b — Chuyển các field đã tick sang section đích (param = <see cref="MoveTargetItem"/>).</summary>
+    public DelegateCommand<MoveTargetItem?> MoveBulkToSectionCommand { get; }
+
     // Form actions
     /// <summary>Lưu ngay mọi thay đổi đang chờ (Ctrl+S). Auto-save vẫn chạy nền — đây chỉ là lưới an toàn.</summary>
     public DelegateCommand SaveFormCommand { get; }
@@ -964,13 +980,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                                          () => BulkSelectedFields.Count >= 2);
         ClearBulkSelectionCommand  = new DelegateCommand(ExecuteClearBulkSelection,
                                          () => BulkSelectedFields.Count > 0);
+        MoveBulkToSectionCommand   = new DelegateCommand<MoveTargetItem?>(
+                                         async t => await ExecuteMoveBulkToSectionAsync(t),
+                                         _ => BulkSelectedFields.Count >= 1);
         BulkSelectedFields.CollectionChanged += (_, _) =>
         {
             RaisePropertyChanged(nameof(IsBulkMode));
             RaisePropertyChanged(nameof(BulkCount));
             RaisePropertyChanged(nameof(IsSingleFieldEditMode));
+            RaisePropertyChanged(nameof(CanMoveBulk));
+            RaisePropertyChanged(nameof(BulkMoveHeader));
             ApplyBulkCommand.RaiseCanExecuteChanged();
             ClearBulkSelectionCommand.RaiseCanExecuteChanged();
+            MoveBulkToSectionCommand.RaiseCanExecuteChanged();
         };
 
         // D3 — Sync AllFields voi Sections.Children tu dong
@@ -2823,6 +2845,78 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
 
         // Sau khi apply → clear de tranh apply nham lan sau.
+        ExecuteClearBulkSelection();
+    }
+
+    // D2b — Dựng lại danh sách section đích cho context-menu (gọi khi mở menu).
+    // Header = "{Tab} ▸ {Section}" khi form có tab, ngược lại chỉ tên section.
+    // Sự kiện theo sau: MenuItem trong ContextMenu bind ItemsSource = MoveTargets.
+    /// <summary>Rebuild <see cref="MoveTargets"/> từ các section đang active, kèm tiền tố tab.</summary>
+    public void RefreshMoveTargets()
+    {
+        MoveTargets.Clear();
+        bool hasTabs = Tabs.Count > 0;
+
+        foreach (var section in Sections.Where(s => s.IsActive))
+        {
+            string header = section.DisplayName;
+            if (hasTabs)
+            {
+                var tab = Tabs.FirstOrDefault(t => t.TabId == section.TabId);
+                header = tab is not null
+                    ? $"{tab.DisplayLabel} ▸ {section.DisplayName}"
+                    : $"(chưa gắn tab) ▸ {section.DisplayName}";
+            }
+            MoveTargets.Add(new MoveTargetItem(header, section, MoveBulkToSectionCommand));
+        }
+    }
+
+    // D2b — Chuyển toàn bộ field đã tick sang section đích. Field không đổi cấu trúc dữ liệu
+    // ngoài Section_Id (Tab suy từ section đích vì Tab_Id nằm trên Ui_Section, không trên Ui_Field).
+    // Tái dùng MoveFieldToSectionAsync + PersistSectionOrderAsync như nhánh cross-section của ExecuteMoveAsync.
+    // Sự kiện theo sau: RebuildAllFields + clear bulk selection + set IsDirty.
+    /// <summary>Chuyển các field trong <see cref="BulkSelectedFields"/> sang section của <paramref name="target"/>.</summary>
+    private async Task ExecuteMoveBulkToSectionAsync(MoveTargetItem? target)
+    {
+        if (target?.Section is not { } targetSection) return;
+        if (BulkSelectedFields.Count == 0) return;
+
+        var fields          = BulkSelectedFields.ToList();
+        var affectedSources = new HashSet<FormTreeNode>();
+
+        foreach (var field in fields)
+        {
+            var parent = FindParentSection(field);
+            if (parent is null || ReferenceEquals(parent, targetSection))
+                continue; // field đã nằm ở section đích → bỏ qua
+
+            parent.Children.Remove(field);
+            targetSection.Children.Add(field);
+            affectedSources.Add(parent);
+
+            if (field.Id > 0 && targetSection.Id > 0)
+                await SafeDbAsync(
+                    () => _fieldDataService!.MoveFieldToSectionAsync(field.Id, targetSection.Id),
+                    $"FormEditor.MoveBulkToSection field #{field.Id} → section #{targetSection.Id}");
+        }
+
+        // Không có field nào thực sự di chuyển → khỏi persist/dirty.
+        if (affectedSources.Count == 0)
+        {
+            ExecuteClearBulkSelection();
+            return;
+        }
+
+        ReindexSortOrders();
+
+        // Ghi lại Order_No cho mọi section nguồn + section đích.
+        foreach (var src in affectedSources)
+            await PersistSectionOrderAsync(src);
+        await PersistSectionOrderAsync(targetSection);
+
+        RebuildAllFields();
+        targetSection.IsExpanded = true;
+        IsDirty = true;
         ExecuteClearBulkSelection();
     }
 

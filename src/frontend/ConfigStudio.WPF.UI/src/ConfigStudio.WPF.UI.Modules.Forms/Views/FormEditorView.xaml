@@ -428,8 +428,28 @@
                     <TreeView ItemsSource="{Binding Sections}"
                               SelectedItemChanged="OnTreeSelectedItemChanged"
                               MouseDoubleClick="OnTreeMouseDoubleClick"
+                              ContextMenuOpening="OnTreeContextMenuOpening"
                               BorderThickness="0" Padding="6,4"
                               Background="Transparent">
+                        <!-- D2b — Chuyển các field đã tick sang Section/Tab khác.
+                             ContextMenu.DataContext = VM qua PlacementTarget; mỗi item mang sẵn
+                             MoveCommand nên bind thẳng, không cần RelativeSource xuyên Popup. -->
+                        <TreeView.ContextMenu>
+                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext,
+                                                       RelativeSource={RelativeSource Self}}">
+                                <MenuItem Header="{Binding BulkMoveHeader}"
+                                          ItemsSource="{Binding MoveTargets}"
+                                          IsEnabled="{Binding CanMoveBulk}">
+                                    <MenuItem.ItemContainerStyle>
+                                        <Style TargetType="MenuItem">
+                                            <Setter Property="Header" Value="{Binding Header}" />
+                                            <Setter Property="Command" Value="{Binding MoveCommand}" />
+                                            <Setter Property="CommandParameter" Value="{Binding}" />
+                                        </Style>
+                                    </MenuItem.ItemContainerStyle>
+                                </MenuItem>
+                            </ContextMenu>
+                        </TreeView.ContextMenu>
                         <TreeView.Resources>
                             <HierarchicalDataTemplate DataType="{x:Type models:FormTreeNode}"
                                                        ItemsSource="{Binding Children}">
