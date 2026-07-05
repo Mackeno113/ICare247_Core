@@ -31,6 +31,19 @@ public sealed class FieldReorderArgs
 }
 
 /// <summary>
+/// Trạng thái cấu hình của 1 item trong Field Navigator — để nhận biết mức độ hoàn thiện.
+/// </summary>
+public enum FieldNavStatus
+{
+    /// <summary>Đã có Ui_Field + nhãn i18n (vi) → cấu hình đầy đủ.</summary>
+    Configured,
+    /// <summary>Đã có Ui_Field nhưng thiếu nhãn i18n (vi) → chưa cấu hình xong.</summary>
+    Incomplete,
+    /// <summary>Chỉ có cột trong Sys_Column, chưa tạo Ui_Field.</summary>
+    ColumnOnly
+}
+
+/// <summary>
 /// Item field trong Left Panel Field Navigator.
 /// </summary>
 public sealed class FieldNavItem : INotifyPropertyChanged
@@ -41,6 +54,36 @@ public sealed class FieldNavItem : INotifyPropertyChanged
     public string? FieldCode { get; set; }
     public string EditorType { get; set; } = "";
     public bool IsVirtual { get; set; }
+
+    /// <summary>Trạng thái cấu hình — điều khiển badge trong navigator.</summary>
+    public FieldNavStatus Status { get; set; } = FieldNavStatus.Configured;
+
+    /// <summary>Khóa trạng thái (dùng cho DataTrigger tô màu badge trong XAML).</summary>
+    public string StatusKey => Status switch
+    {
+        FieldNavStatus.ColumnOnly => "column",
+        FieldNavStatus.Incomplete => "incomplete",
+        _                          => "configured"
+    };
+
+    /// <summary>Nhãn badge ngắn hiển thị cạnh mã field.</summary>
+    public string StatusLabel => Status switch
+    {
+        FieldNavStatus.ColumnOnly => "chưa tạo field",
+        FieldNavStatus.Incomplete => "chưa cấu hình",
+        _                          => "đã cấu hình"
+    };
+
+    /// <summary>Tooltip giải thích trạng thái.</summary>
+    public string StatusTooltip => Status switch
+    {
+        FieldNavStatus.ColumnOnly => "Cột đã có trong bảng nhưng chưa tạo field. Bấm để tạo field từ cột này.",
+        FieldNavStatus.Incomplete => "Field đã tạo nhưng chưa có nhãn hiển thị (i18n). Bấm để bổ sung cấu hình.",
+        _                          => "Field đã cấu hình đầy đủ (có nhãn hiển thị)."
+    };
+
+    /// <summary>True khi chỉ là cột chưa tạo field — dùng ẩn nút ↑↓ (chưa có Order_No).</summary>
+    public bool IsColumnOnly => Status == FieldNavStatus.ColumnOnly;
 
     private bool _isCurrentField;
     /// <summary>True khi đây là field đang được chỉnh sửa hiện tại.</summary>

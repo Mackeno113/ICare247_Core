@@ -2038,6 +2038,9 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     private void ExecuteAddField()
     {
+        // Field đang chọn (nếu có) để xác định vị trí chèn — bắt TRƯỚC khi đổi SelectedNode.
+        var selectedField = SelectedNode?.NodeType == FormNodeType.Field ? SelectedNode : null;
+
         // NOTE: Thêm field vào section đang chọn, hoặc section cuối cùng
         var targetSection = SelectedNode?.NodeType == FormNodeType.Section
             ? SelectedNode
@@ -2058,6 +2061,23 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             .DefaultIfEmpty(0).Min();
         var newId = lowestTempId - 1; // -1, -2, -3, ...
 
+        // Vị trí chèn + STT: mặc định nối cuối; nếu đang chọn 1 field trong section này → chèn NGAY SAU
+        // (STT = STT dòng đang chọn + 1). Các field phía sau đẩy STT +1 (hiển thị tạm; DB đẩy khi lưu).
+        int insertIndex;
+        int newOrder;
+        if (selectedField is not null && targetSection.Children.Contains(selectedField))
+        {
+            insertIndex = targetSection.Children.IndexOf(selectedField) + 1;
+            newOrder    = selectedField.SortOrder + 1;
+        }
+        else
+        {
+            insertIndex = targetSection.Children.Count;
+            newOrder    = targetSection.Children.Count > 0
+                ? targetSection.Children.Max(f => f.SortOrder) + 1
+                : 1;
+        }
+
         var field = new FormTreeNode
         {
             Id = newId,
@@ -2066,10 +2086,14 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             DisplayName = $"Field Mới {-newId}",
             FieldType = "text",
             EditorType = "TextBox",
-            SortOrder = targetSection.Children.Count + 1
+            SortOrder = newOrder
         };
 
-        targetSection.Children.Add(field);
+        targetSection.Children.Insert(insertIndex, field);
+        // Đẩy STT các field đứng sau vị trí chèn +1 để khớp với STT sẽ ghi ở DB.
+        for (int i = insertIndex + 1; i < targetSection.Children.Count; i++)
+            targetSection.Children[i].SortOrder++;
+
         targetSection.IsExpanded = true;
         SelectedNode = field;
         RaisePropertyChanged(nameof(TotalFields));
@@ -2267,6 +2291,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             { "fieldId",    isNew ? 0 : SelectedNode.Id },
             { "formId",     FormId },
             { "sectionId",  parentSection?.Id ?? 0 },
+            // STT field mới = vị trí đã tính khi thêm (chèn sau dòng đang chọn); dùng cho mode "new".
+            { "orderNo",    SelectedNode.SortOrder },
             { "tableCode",  SelectedTable?.TableCode?.ToLowerInvariant() ?? "" },
             { "formCode",   FormCode },
             { "formName",   FormName },

@@ -20,4 +20,10 @@ public sealed class FieldDetailRecord
     /// <summary>Field ảo — không map cột DB (Is_Virtual). Column_Id = NULL.</summary>
     public bool IsVirtual { get; init; }
     public int RuleCount { get; init; }
+
+    /// <summary>
+    /// True khi field đã được cấu hình (Ui_Field.Is_Configured) — bật khi user bấm "Lưu Field".
+    /// False → field mới tạo tự động, chưa mở ra lưu lần nào.
+    /// </summary>
+    public bool IsConfigured { get; init; }
 }

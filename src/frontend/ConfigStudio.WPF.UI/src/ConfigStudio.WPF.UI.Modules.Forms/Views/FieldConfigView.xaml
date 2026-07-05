@@ -422,7 +422,7 @@
                                                                     </Style.Triggers>
                                                                 </Style>
                                                             </Border.Style>
-                                                            <StackPanel>
+                                                            <StackPanel ToolTip="{Binding StatusTooltip}">
                                                                 <TextBlock Text="{Binding EffectiveCode}"
                                                                            FontSize="12"
                                                                            FontFamily="Cascadia Code, Consolas"
@@ -435,13 +435,52 @@
                                                                                     <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
                                                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                                                 </DataTrigger>
+                                                                                <!-- Cột chưa tạo field → mã mờ đi, chữ nghiêng -->
+                                                                                <DataTrigger Binding="{Binding StatusKey}" Value="column">
+                                                                                    <Setter Property="FontStyle" Value="Italic" />
+                                                                                    <Setter Property="Opacity" Value="0.65" />
+                                                                                </DataTrigger>
                                                                             </Style.Triggers>
                                                                         </Style>
                                                                     </TextBlock.Style>
                                                                 </TextBlock>
-                                                                <TextBlock Text="{Binding EditorType}"
-                                                                           FontSize="10"
-                                                                           Foreground="{StaticResource MutedBrush}" />
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <TextBlock Text="{Binding EditorType}"
+                                                                               FontSize="10" VerticalAlignment="Center"
+                                                                               Foreground="{StaticResource MutedBrush}" />
+                                                                    <!-- Badge trạng thái cấu hình -->
+                                                                    <Border CornerRadius="3" Padding="5,0" Margin="6,1,0,0"
+                                                                            VerticalAlignment="Center">
+                                                                        <Border.Style>
+                                                                            <Style TargetType="Border">
+                                                                                <Setter Property="Background" Value="{DynamicResource AppSuccessSoftBrush}" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding StatusKey}" Value="incomplete">
+                                                                                        <Setter Property="Background" Value="{DynamicResource AppWarningSoftBrush}" />
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding StatusKey}" Value="column">
+                                                                                        <Setter Property="Background" Value="{DynamicResource AppBorderBrush}" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Border.Style>
+                                                                        <TextBlock Text="{Binding StatusLabel}" FontSize="9">
+                                                                            <TextBlock.Style>
+                                                                                <Style TargetType="TextBlock">
+                                                                                    <Setter Property="Foreground" Value="{DynamicResource AppSuccessDarkBrush}" />
+                                                                                    <Style.Triggers>
+                                                                                        <DataTrigger Binding="{Binding StatusKey}" Value="incomplete">
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource AppWarningDarkBrush}" />
+                                                                                        </DataTrigger>
+                                                                                        <DataTrigger Binding="{Binding StatusKey}" Value="column">
+                                                                                            <Setter Property="Foreground" Value="{DynamicResource AppTextMutedBrush}" />
+                                                                                        </DataTrigger>
+                                                                                    </Style.Triggers>
+                                                                                </Style>
+                                                                            </TextBlock.Style>
+                                                                        </TextBlock>
+                                                                    </Border>
+                                                                </StackPanel>
                                                             </StackPanel>
                                                         </Border>
                                                     </Button>
@@ -457,6 +496,10 @@
                                                                         RelativeSource={RelativeSource AncestorType=Grid}}"
                                                                                  Value="visible">
                                                                         <Setter Property="Visibility" Value="Visible" />
+                                                                    </DataTrigger>
+                                                                    <!-- Cột chưa tạo field: chưa có Order_No → ẩn nút ↑↓ -->
+                                                                    <DataTrigger Binding="{Binding IsColumnOnly}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed" />
                                                                     </DataTrigger>
                                                                 </Style.Triggers>
                                                             </Style>
@@ -1506,9 +1549,13 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── reloadOnChange ─────────────────────────────── -->
+                        <!-- ── reloadOnChange (ĐÃ ẨN) ──────────────────────────
+                             Runtime KHÔNG tiêu thụ danh sách này; từ khi renderer tự reload theo
+                             mọi @param trong Filter SQL, khối này hoàn toàn thừa → ẩn để tránh
+                             hiểu nhầm. Reload đa-cha giờ tự động qua Filter SQL; trường hợp đặc
+                             biệt (TVF/Full SQL, field ngoài filter) dùng ô "Tự reload" (single). -->
                         <Border Style="{StaticResource SectionCardStyle}"
-                                Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
+                                Visibility="Collapsed">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"

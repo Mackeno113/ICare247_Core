@@ -377,14 +377,18 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Reload trigger field (single) -->
-                <TextBlock Text="Tự reload khi field thay đổi" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,14,0,6" />
-                <dxe:TextEdit Text="{Binding ReloadTriggerField, UpdateSourceTrigger=PropertyChanged}"
-                              Height="32" NullText="VD: ChiNhanhId (FieldCode trong form)" />
-                <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,4,0,0"
-                           TextWrapping="Wrap"
-                           Text="Khi field này thay đổi giá trị: SelectedId bị xóa + load lại data source. Để trống = không có cascading." />
+                <!-- Reload trigger field (single) — NÂNG CAO: chỉ cần cho TVF/Full SQL hoặc field
+                     ngoài Filter SQL. Chế độ Bảng/View đã tự reload theo mọi @param trong Filter SQL. -->
+                <Expander Header="Nâng cao — Tự reload thủ công theo 1 field" IsExpanded="False"
+                          Margin="0,14,0,0" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}">
+                    <StackPanel Margin="0,8,0,0">
+                        <dxe:TextEdit Text="{Binding ReloadTriggerField, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" NullText="VD: ChiNhanhId (FieldCode trong form)" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.85" Margin="0,4,0,0"
+                                   TextWrapping="Wrap"
+                                   Text="Chỉ cần khi: nguồn là TVF / Full SQL, hoặc muốn reload theo field KHÔNG có trong Filter SQL. Với chế độ Bảng/View, lookup đã tự reload theo mọi @param trong Filter SQL — để trống là đủ." />
+                    </StackPanel>
+                </Expander>
 
                 <!-- ── ⚠ Cảnh báo cascade (P2/P3): @param sai hoặc thiếu reload → hiện khi HasCascadeWarnings ── -->
                 <ItemsControl ItemsSource="{Binding CascadeWarnings}" Margin="0,12,0,0"
@@ -476,6 +480,14 @@
                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
                                Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center"
                                Text="Kiểm tra &amp; Diễn giải cấu hình" />
+                    <!-- Nút thu gọn/mở rộng — chỉ hiện khi đã có nội dung diễn giải -->
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Margin="8,0,0,0"
+                            Command="{Binding ToggleExplanationCommand}"
+                            Content="{Binding ExplanationToggleLabel}"
+                            Visibility="{Binding HasConfigExplanation, Converter={StaticResource BoolToVis}}"
+                            Height="26" Padding="10,0" FontSize="11"
+                            Foreground="{DynamicResource AppTextMutedBrush}" Background="Transparent"
+                            BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" Cursor="Hand" />
                     <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
                             Command="{Binding ExplainConfigCommand}"
                             Height="26" Padding="10,0" FontSize="11"
@@ -490,7 +502,7 @@
                 <TextBlock FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,8"
                            Text="Bấm Diễn giải để kiểm tra toàn bộ cấu hình bằng tiếng Việt trước khi lưu." />
 
-                <Border Visibility="{Binding HasConfigExplanation, Converter={StaticResource BoolToVis}}"
+                <Border Visibility="{Binding ShowConfigExplanation, Converter={StaticResource BoolToVis}}"
                         Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6" Padding="12"
                         BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1">
                     <TextBox Text="{Binding ConfigExplanation, Mode=OneWay}"

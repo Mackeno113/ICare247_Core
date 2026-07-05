@@ -154,6 +154,7 @@ public sealed class FieldDataService : IFieldDataService
     public async Task<int> SaveFieldAsync(
         FieldConfigRecord field, int tenantId,
         FieldLookupConfigRecord? lookupConfig = null,
+        bool shiftOnInsert = false,
         CancellationToken ct = default)
     {
         if (!_config.IsConfigured) return 0;
@@ -168,6 +169,24 @@ public sealed class FieldDataService : IFieldDataService
 
             if (field.FieldId == 0)
             {
+                // Chèn giữa danh sách: đẩy STT các field phía sau (cùng section, Order_No ≥ vị trí
+                // chèn) lên +1 để nhường chỗ — giữ thứ tự liền mạch, không trùng STT. Field mới nối
+                // cuối (Order_No = max+1) thì không có dòng nào khớp → không đổi gì.
+                // Sự kiện theo sau: INSERT bên dưới ghi field mới đúng vị trí Order_No yêu cầu.
+                if (shiftOnInsert && field.SectionId is > 0)
+                {
+                    const string sqlShift = """
+                        UPDATE dbo.Ui_Field
+                        SET    Order_No = Order_No + 1
+                        WHERE  Section_Id = @SectionId AND Order_No >= @OrderNo
+                        """;
+
+                    await conn.ExecuteAsync(
+                        new CommandDefinition(sqlShift,
+                            new { field.SectionId, field.OrderNo },
+                            transaction: tx, cancellationToken: ct));
+                }
+
                 // ── INSERT Ui_Field ──────────────────────────────────────────
                 const string sqlInsert = """
                     INSERT INTO dbo.Ui_Field
@@ -307,6 +326,18 @@ public sealed class FieldDataService : IFieldDataService
             await tx.RollbackAsync(ct);
             throw;
         }
+    }
+
+    /// <inheritdoc />
+    public async Task MarkFieldConfiguredAsync(int fieldId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        await conn.ExecuteAsync(
+            new CommandDefinition(
+                "UPDATE dbo.Ui_Field SET Is_Configured = 1 WHERE Field_Id = @FieldId",
+                new { FieldId = fieldId }, cancellationToken: ct));
     }
 
     /// <inheritdoc />

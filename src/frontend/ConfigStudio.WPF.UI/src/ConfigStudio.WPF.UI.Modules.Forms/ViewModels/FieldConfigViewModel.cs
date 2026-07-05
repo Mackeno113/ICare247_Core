@@ -659,8 +659,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             .ToList();
 
     /// <summary>
-    /// Tính lại cảnh báo cascade từ Filter SQL + reload trigger + field trong form.
-    /// Gọi khi đổi Filter SQL / ReloadTrigger / reloadOnChange / sau khi nạp navigator.
+    /// Tính lại cảnh báo cascade từ Filter SQL + field trong form.
+    /// Chỉ còn P2 (@param không khớp field cha nào → danh sách con rỗng). Cảnh báo P3 cũ
+    /// ("chưa đặt Tự reload") đã BỎ: renderer chế độ Bảng/View nay tự reload theo mọi @param
+    /// trong Filter SQL nên không cần khai reload thủ công.
+    /// Gọi khi đổi Filter SQL / sau khi nạp navigator.
     /// </summary>
     private void RecomputeCascadeWarnings()
     {
@@ -689,16 +692,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             $"⚠ @{p}: không field nào trong form có Field Code = \"{p}\" → danh sách con sẽ RỖNG. " +
                             $"Sửa: đặt Field Code field cha = \"{p}\", hoặc sửa lại tên @param.");
                     }
-                    else
-                    {
-                        // P3 — là field cha nhưng chưa đặt reload trigger.
-                        var hasReload = string.Equals(_reloadTriggerField, p, StringComparison.OrdinalIgnoreCase)
-                                        || ReloadOnChangeFields.Any(f => string.Equals(f, p, StringComparison.OrdinalIgnoreCase));
-                        if (!hasReload)
-                            CascadeWarnings.Add(
-                                $"⚠ @{p} là field cha nhưng chưa đặt \"Tự reload khi field thay đổi\" = \"{p}\" → " +
-                                $"đổi cha sẽ KHÔNG nạp lại danh sách con.");
-                    }
+                    // isField = true → runtime tự reload theo @param, không cảnh báo.
                 }
             }
         }
@@ -880,12 +874,40 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         private set
         {
             if (SetProperty(ref _configExplanation, value))
+            {
                 RaisePropertyChanged(nameof(HasConfigExplanation));
+                // Sinh diễn giải mới → tự mở rộng để user thấy ngay.
+                if (!string.IsNullOrEmpty(value)) _isExplanationExpanded = true;
+                RaisePropertyChanged(nameof(IsExplanationExpanded));
+                RaisePropertyChanged(nameof(ShowConfigExplanation));
+                RaisePropertyChanged(nameof(ExplanationToggleLabel));
+            }
         }
     }
 
     /// <summary>True khi đã có nội dung diễn giải → hiện panel kết quả.</summary>
     public bool HasConfigExplanation => !string.IsNullOrEmpty(_configExplanation);
+
+    private bool _isExplanationExpanded = true;
+    /// <summary>Thu gọn/mở rộng khối "Diễn giải cấu hình". Bấm nút Diễn giải sẽ tự mở lại.</summary>
+    public bool IsExplanationExpanded
+    {
+        get => _isExplanationExpanded;
+        set
+        {
+            if (SetProperty(ref _isExplanationExpanded, value))
+            {
+                RaisePropertyChanged(nameof(ShowConfigExplanation));
+                RaisePropertyChanged(nameof(ExplanationToggleLabel));
+            }
+        }
+    }
+
+    /// <summary>True khi có diễn giải VÀ đang mở → hiện khối nội dung (thu gọn = ẩn nội dung).</summary>
+    public bool ShowConfigExplanation => HasConfigExplanation && _isExplanationExpanded;
+
+    /// <summary>Nhãn nút thu gọn/mở rộng khối diễn giải.</summary>
+    public string ExplanationToggleLabel => _isExplanationExpanded ? "Thu gọn ▲" : "Mở rộng ▼";
 
     public DelegateCommand AddFkColumnCommand { get; private set; } = null!;
     public DelegateCommand<FkColumnConfig> RemoveFkColumnCommand      { get; private set; } = null!;
@@ -901,6 +923,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand AddDataSourceConditionCommand { get; private set; } = null!;
     public DelegateCommand<DataSourceCondition> RemoveDataSourceConditionCommand { get; private set; } = null!;
     public DelegateCommand ExplainConfigCommand { get; private set; } = null!;
+    public DelegateCommand ToggleExplanationCommand { get; private set; } = null!;
     public DelegateCommand CopyJsonCommand      { get; private set; } = null!;
 
     private string _lookupCode = "";
@@ -1253,6 +1276,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private string _mode = "edit";
 
+    // STT đề xuất cho field mới (chèn sau dòng đang chọn), truyền qua nav param "orderNo".
+    private int _pendingNewOrderNo;
+
+    // Cột chọn sẵn khi tạo field từ item "cột chưa tạo field", truyền qua nav param "columnCode".
+    private string _pendingNewColumnCode = "";
+
     // ── Commands ─────────────────────────────────────────────
     public DelegateCommand SaveFieldCommand { get; }
     public DelegateCommand CancelCommand { get; }
@@ -1329,6 +1358,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         AddDataSourceConditionCommand   = new DelegateCommand(ExecuteAddDataSourceCondition);
         RemoveDataSourceConditionCommand= new DelegateCommand<DataSourceCondition>(ExecuteRemoveDataSourceCondition);
         ExplainConfigCommand            = new DelegateCommand(ExecuteExplainConfig);
+        ToggleExplanationCommand        = new DelegateCommand(() => IsExplanationExpanded = !IsExplanationExpanded);
         CopyJsonCommand                 = new DelegateCommand(() => System.Windows.Clipboard.SetText(ControlPropsJson));
     }
 
@@ -1340,6 +1370,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         FormId    = navigationContext.Parameters.GetValue<int>("formId");
         SectionId = navigationContext.Parameters.GetValue<int>("sectionId");
         FieldId   = navigationContext.Parameters.GetValue<int>("fieldId");
+        // STT đề xuất cho field mới (chèn sau dòng đang chọn) — chỉ dùng ở mode "new".
+        _pendingNewOrderNo = navigationContext.Parameters.GetValue<int>("orderNo");
+        // Cột chọn sẵn khi tạo field từ item "cột chưa tạo field" — chỉ dùng ở mode "new".
+        _pendingNewColumnCode = navigationContext.Parameters.GetValue<string>("columnCode") ?? "";
         UpdateNavigatorSelection(FieldId);
         TableCode = navigationContext.Parameters.GetValue<string>("tableCode") ?? "";
         FormCode  = navigationContext.Parameters.GetValue<string>("formCode")  ?? "";
@@ -1417,6 +1451,120 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     }
 
     /// <summary>
+    /// Xóa sạch mọi giá trị field-cụ-thể về mặc định trước khi mở form ở chế độ "thêm mới".
+    /// Cần thiết vì VM tái sử dụng cùng instance giữa các lần điều hướng (IsNavigationTarget=true):
+    /// không reset thì panel sẽ dính dữ liệu của field vừa xem (Field Code, nhãn/i18n, cờ Virtual,
+    /// Required/Unique, cấu hình FK Lookup...). Gán thẳng backing field + raise thủ công để tránh
+    /// kích hoạt side-effect (resolve i18n, dirty, RebuildControlPropsJson) của các setter.
+    /// Sự kiện theo sau: caller set OrderNo (STT chèn) rồi IsDirty=false.
+    /// </summary>
+    private void ResetFieldStateForNew()
+    {
+        _suppressValueDirty = true;
+
+        // Cột / mã / tên section
+        _selectedColumn = null;
+        _columnCode     = "";
+        _fieldCode      = "";
+        _netType        = "";
+        _sectionName    = "";
+
+        // Hiển thị (label/placeholder/tooltip) + preview i18n
+        _labelKey = ""; _placeholderKey = ""; _tooltipKey = "";
+        _labelPreview = ""; _placeholderPreview = ""; _tooltipPreview = "";
+
+        // Hành vi
+        _isVisible = true; _isReadOnly = false; _isRequired = false;
+        _requiredErrorKey = ""; _requiredErrorKeyPreview = "";
+        _lockOnEdit = false; _showInList = false; _isVirtual = false;
+        _isUnique = false; _uniqueErrorKeyPreview = "";
+
+        // Layout + control props
+        _colSpan = 1;
+        _controlPropsJson = "{}";
+        ControlProps.Clear();
+        _configExplanation = "";
+        _isExplanationExpanded = true;
+
+        // Sys_Lookup (RadioGroup / LookupComboBox)
+        _lookupCode = "";
+        LookupPreviewItems.Clear();
+
+        // ComboBox display props
+        _cbSearchMode = "AutoFilter"; _cbSearchFilterCondition = "Contains";
+        _cbAllowUserInput = false; _cbNullTextKey = "";
+        _cbDropDownWidthMode = "ContentOrEditorWidth"; _cbClearButton = "Auto";
+        _cbGroupFieldName = ""; _cbDisabledFieldName = "";
+
+        // Rules / Events liên kết — field mới chưa có
+        LinkedRules.Clear();
+        LinkedEvents.Clear();
+
+        // FK Lookup (LookupBox/TreeLookupBox/ComboBox dynamic) — tái dùng hàm clear sẵn có
+        ClearFkLookupConfig();
+        _reloadOnChangeInput = "";
+        CascadeWarnings.Clear();
+
+        // Raise toàn bộ property để UI cập nhật về trạng thái rỗng
+        RaisePropertyChanged(nameof(SelectedColumn));
+        RaisePropertyChanged(nameof(DataTypeDisplay));
+        RaisePropertyChanged(nameof(HasDataType));
+        RaisePropertyChanged(nameof(ColumnCode));
+        RaisePropertyChanged(nameof(FieldCode));
+        RaisePropertyChanged(nameof(NetType));
+        RaisePropertyChanged(nameof(SectionName));
+        RaisePropertyChanged(nameof(IsColumnListEmpty));
+        RaisePropertyChanged(nameof(CanTypeColumnCode));
+        RaisePropertyChanged(nameof(LabelKey));
+        RaisePropertyChanged(nameof(PlaceholderKey));
+        RaisePropertyChanged(nameof(TooltipKey));
+        RaisePropertyChanged(nameof(LabelPreview));
+        RaisePropertyChanged(nameof(PlaceholderPreview));
+        RaisePropertyChanged(nameof(TooltipPreview));
+        RaisePropertyChanged(nameof(IsVisible));
+        RaisePropertyChanged(nameof(IsReadOnly));
+        RaisePropertyChanged(nameof(IsRequired));
+        RaisePropertyChanged(nameof(IsRequiredExpanded));
+        RaisePropertyChanged(nameof(RequiredErrorKey));
+        RaisePropertyChanged(nameof(RequiredErrorKeyPreview));
+        RaisePropertyChanged(nameof(HasRequiredErrorKeyPreview));
+        RaisePropertyChanged(nameof(LockOnEdit));
+        RaisePropertyChanged(nameof(ShowInList));
+        RaisePropertyChanged(nameof(IsVirtual));
+        RaisePropertyChanged(nameof(IsUnique));
+        RaisePropertyChanged(nameof(IsUniqueExpanded));
+        RaisePropertyChanged(nameof(UniqueErrorKey));
+        RaisePropertyChanged(nameof(UniqueErrorKeyPreview));
+        RaisePropertyChanged(nameof(HasUniqueErrorKeyPreview));
+        RaisePropertyChanged(nameof(ColSpan));
+        RaisePropertyChanged(nameof(ControlPropsJson));
+        RaisePropertyChanged(nameof(ConfigExplanation));
+        RaisePropertyChanged(nameof(HasConfigExplanation));
+        RaisePropertyChanged(nameof(ShowConfigExplanation));
+        RaisePropertyChanged(nameof(ExplanationToggleLabel));
+        RaisePropertyChanged(nameof(LookupCode));
+        RaisePropertyChanged(nameof(HasCascadeWarnings));
+        RaisePropertyChanged(nameof(ReloadOnChangeInput));
+        RaisePropertyChanged(nameof(CbSearchMode));
+        RaisePropertyChanged(nameof(CbSearchFilterCondition));
+        RaisePropertyChanged(nameof(ShowSearchFilterCondition));
+        RaisePropertyChanged(nameof(CbAllowUserInput));
+        RaisePropertyChanged(nameof(CbNullTextKey));
+        RaisePropertyChanged(nameof(CbDropDownWidthMode));
+        RaisePropertyChanged(nameof(CbClearButton));
+        RaisePropertyChanged(nameof(CbGroupFieldName));
+        RaisePropertyChanged(nameof(CbDisabledFieldName));
+
+        // Editor type về mặc định "TextBox" — ép _selectedEditorType = "" để SetProperty luôn detect
+        // change → LoadControlPropSchema() rebuild ControlProps sạch (đang trong load, _isLoading=true
+        // nên không bật hộp thoại xác nhận đổi kiểu).
+        _selectedEditorType = "";
+        SelectedEditorType  = "TextBox";
+
+        _suppressValueDirty = false;
+    }
+
+    /// <summary>
     /// Load field detail, columns, linked rules/events từ DB.
     /// Tách riêng từng bước — lỗi ở bước phụ (rules/events) không làm mất dữ liệu chính.
     /// </summary>
@@ -1481,9 +1629,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
             if (_mode == "new")
             {
-                SectionName = "";
-                SelectedEditorType = "TextBox";
+                // VM được tái sử dụng cùng instance (IsNavigationTarget=true) → phải xóa sạch giá trị
+                // của field vừa xem, nếu không panel sẽ dính dữ liệu cũ (Field Code, i18n, Virtual, FK...).
+                ResetFieldStateForNew();
+                // STT = STT dòng đang chọn + 1 (đã tính ở FormEditor); 0 = nối cuối → giữ mặc định.
+                if (_pendingNewOrderNo > 0) OrderNo = _pendingNewOrderNo;
+                // Set IsLoading=false TRƯỚC khi chọn cột để AutoDeriveI18nKeys chạy (bị chặn khi _isLoading).
                 IsLoading = false;
+                // Tạo field từ cột chưa cấu hình → chọn sẵn cột đó (tự sinh key i18n theo cột).
+                if (!string.IsNullOrEmpty(_pendingNewColumnCode))
+                {
+                    var col = AvailableColumns.FirstOrDefault(c =>
+                        string.Equals(c.ColumnCode, _pendingNewColumnCode, StringComparison.OrdinalIgnoreCase));
+                    if (col is not null) SelectedColumn = col;
+                    else                 ColumnCode     = _pendingNewColumnCode;
+                    _pendingNewColumnCode = "";
+                }
                 IsDirty   = false;
                 return;
             }
@@ -1951,12 +2112,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             FieldCode      = f.FieldCode,
                             EditorType     = f.EditorType,
                             IsVirtual      = f.IsVirtual,
-                            IsCurrentField = f.FieldId == FieldId
+                            IsCurrentField = f.FieldId == FieldId,
+                            // Đã cấu hình = cờ Ui_Field.Is_Configured (bật khi user bấm Lưu Field).
+                            Status         = f.IsConfigured
+                                             ? FieldNavStatus.Configured
+                                             : FieldNavStatus.Incomplete
                         });
                 }
                 if (group.Fields.Count > 0)
                     FieldNavigatorGroups.Add(group);
             }
+
+            // ── Cột chưa tạo field: có trong Sys_Column nhưng chưa có Ui_Field ──
+            // Gộp vào 1 nhóm riêng ở cuối để user biết cột nào còn "chỉ mới tạo cột".
+            await AppendUnconfiguredColumnsAsync(fields, tenantId, ct);
+
             _navigatorLoadedFormId = FormId;
             RecomputeCascadeWarnings();   // đã có field list → soát cascade (P2/P3)
         }
@@ -1964,11 +2134,84 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.LoadFieldNavigator"); }
     }
 
+    /// <summary>
+    /// Thêm nhóm "Cột chưa tạo field": các cột trong <c>Sys_Column</c> (bỏ cột khóa chính) chưa được
+    /// map vào bất kỳ <c>Ui_Field</c> nào của form. Giúp user thấy cột nào "chỉ mới tạo cột" cần cấu hình.
+    /// Sự kiện theo sau: click item → mở tạo field mới với cột đó đã chọn sẵn.
+    /// </summary>
+    private async Task AppendUnconfiguredColumnsAsync(
+        IReadOnlyList<FieldDetailRecord> fields, int tenantId, CancellationToken ct)
+    {
+        if (_fieldService is null) return;
+
+        var tableId = await _fieldService.GetTableIdByFormAsync(FormId, tenantId, ct);
+        if (tableId <= 0) return;
+
+        var columns = await _fieldService.GetColumnsByTableAsync(tableId, ct);
+        if (columns.Count == 0) return;
+
+        // Cột đã được map vào field (non-virtual) → loại khỏi danh sách "chưa tạo field".
+        var mappedCodes = fields
+            .Where(f => !f.IsVirtual && !string.IsNullOrWhiteSpace(f.ColumnCode))
+            .Select(f => f.ColumnCode)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Cột hệ thống English (khóa chính + khối audit chuẩn) — không phải field nghiệp vụ → ẩn.
+        var systemCodes = new HashSet<string>(
+            Core.Services.AuditColumnTemplate.RequiredColumns, StringComparer.OrdinalIgnoreCase)
+            { "Id" };
+
+        var group = new FieldNavGroup { SectionId = 0, SectionCode = "CHƯA TẠO FIELD" };
+        foreach (var c in columns)
+        {
+            // Bỏ cột khóa chính + cột hệ thống + cột đã map — chỉ hiện cột nghiệp vụ chưa tạo field.
+            if (c.IsPk || systemCodes.Contains(c.ColumnCode) || mappedCodes.Contains(c.ColumnCode))
+                continue;
+
+            group.Fields.Add(new FieldNavItem
+            {
+                FieldId    = 0,
+                ColumnCode = c.ColumnCode,
+                EditorType = c.DataType,
+                Status     = FieldNavStatus.ColumnOnly
+            });
+        }
+
+        if (group.Fields.Count > 0)
+            FieldNavigatorGroups.Add(group);
+    }
+
     // ── Field Navigator command ───────────────────────────────
 
     private void ExecuteNavigateToField(FieldNavItem? item)
     {
-        if (item is null || item.FieldId == FieldId) return;
+        if (item is null) return;
+
+        // Cột chưa tạo field → mở chế độ "new" với cột đã chọn sẵn, nối cuối danh sách.
+        if (item.Status == FieldNavStatus.ColumnOnly)
+        {
+            var firstSectionId = FieldNavigatorGroups.FirstOrDefault(g => g.SectionId > 0)?.SectionId ?? 0;
+            var appendOrder = FieldNavigatorGroups
+                .SelectMany(g => g.Fields).Where(f => f.FieldId > 0)
+                .Select(f => f.SortOrder).DefaultIfEmpty(0).Max() + 1;
+
+            var pNew = new NavigationParameters
+            {
+                { "fieldId",    0 },
+                { "formId",     FormId },
+                { "sectionId",  firstSectionId },
+                { "orderNo",    appendOrder },
+                { "columnCode", item.ColumnCode },
+                { "tableCode",  TableCode },
+                { "formCode",   FormCode },
+                { "formName",   FormName },
+                { "mode",       "new" }
+            };
+            _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FieldConfig, pNew);
+            return;
+        }
+
+        if (item.FieldId == FieldId) return;
 
         // Tìm section chứa field này để truyền đúng sectionId → dropdown Section không bị mất khi navigate
         var sectionId = FieldNavigatorGroups
@@ -2788,10 +3031,19 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             try
             {
                 SaveError = null;
-                var savedId = await _fieldService.SaveFieldAsync(field, _appConfig.TenantId, lookupConfig, _cts.Token);
+                // mode "new" → chèn sau field đang chọn: đẩy STT các field phía sau +1 khi lưu.
+                var savedId = await _fieldService.SaveFieldAsync(
+                    field, _appConfig.TenantId, lookupConfig,
+                    shiftOnInsert: _mode == "new", ct: _cts.Token);
 
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
                 await RegisterI18nKeysAsync(_cts.Token);
+
+                // User bấm "Lưu Field" → đánh dấu ĐÃ cấu hình (badge navigator). Chỉ ở đây, không
+                // gọi từ auto-generate/bulk nên field sinh tự động vẫn ở trạng thái "chưa cấu hình".
+                if (savedId > 0)
+                    await _fieldService.MarkFieldConfiguredAsync(savedId, _cts.Token);
+
                 IsDirty = false;
 
                 // INSERT mode "new": cập nhật FieldId rồi navigate thẳng về FormEditor

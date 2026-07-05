@@ -25,9 +25,19 @@ public interface IFieldDataService
     /// Lưu field (INSERT/UPDATE Ui_Field) + lookup config (INSERT/UPDATE/DELETE Ui_Field_Lookup)
     /// trong cùng transaction. lookupConfig = null → xóa row Ui_Field_Lookup nếu tồn tại.
     /// INSERT (FieldId=0) → trả về Field_Id mới. UPDATE → trả về FieldId truyền vào.
+    /// <paramref name="shiftOnInsert"/> = true (chỉ áp cho INSERT): trước khi chèn, đẩy Order_No
+    /// của mọi field cùng section có Order_No ≥ vị trí chèn lên +1 để nhường chỗ (chèn giữa danh
+    /// sách); false = nối cuối như cũ.
     /// </summary>
     Task<int> SaveFieldAsync(FieldConfigRecord field, int tenantId,
-        FieldLookupConfigRecord? lookupConfig = null, CancellationToken ct = default);
+        FieldLookupConfigRecord? lookupConfig = null, bool shiftOnInsert = false,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Đánh dấu field ĐÃ được cấu hình (Ui_Field.Is_Configured = 1). Chỉ gọi khi user bấm
+    /// "Lưu Field" ở màn cấu hình chi tiết — KHÔNG gọi từ auto-generate/bulk/sync.
+    /// </summary>
+    Task MarkFieldConfiguredAsync(int fieldId, CancellationToken ct = default);
 
     /// <summary>
     /// Đảm bảo cột tồn tại trong Sys_Column (INSERT nếu chưa có), trả về Column_Id.

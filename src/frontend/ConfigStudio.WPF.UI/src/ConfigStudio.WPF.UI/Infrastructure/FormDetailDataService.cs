@@ -119,7 +119,8 @@ public sealed class FormDetailDataService : IFormDetailDataService
                    fi.Is_Visible                   AS IsVisible,
                    fi.Is_ReadOnly                  AS IsReadOnly,
                    fi.Is_Virtual                   AS IsVirtual,
-                   (SELECT COUNT(*) FROM dbo.Val_Rule vr WHERE vr.Field_Id = fi.Field_Id) AS RuleCount
+                   (SELECT COUNT(*) FROM dbo.Val_Rule vr WHERE vr.Field_Id = fi.Field_Id) AS RuleCount,
+                   fi.Is_Configured                AS IsConfigured
             FROM   dbo.Ui_Field fi
             LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             LEFT JOIN dbo.Ui_Section se ON se.Section_Id = fi.Section_Id

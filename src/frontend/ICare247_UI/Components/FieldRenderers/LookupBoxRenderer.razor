@@ -3,7 +3,7 @@
              Dùng cho Editor_Type = LookupBox + LookupSource = dynamic.
              Hỗ trợ 3 EditBox modes: TextOnly / CodeAndName / Custom.
              Popup hiển thị bảng dữ liệu với các cột từ PopupColumnsJson (nếu có).
-             Cascade reload khi ReloadTriggerField thay đổi. *@
+             Cascade reload khi BẤT KỲ field cha nào đổi (ReloadTriggerField + mọi @param Filter SQL). *@
 
 @using System.Text.Json.Serialization
 @inject ILookupQueryService LookupQuerySvc
@@ -105,7 +105,9 @@
     private string? _loadError;
     private string  _searchText  = "";
     private string  _inputText   = "";   // text hiển thị trong input (display value hoặc search term)
-    private object? _lastTriggerValue;
+    // Chữ ký các field cha đang theo dõi (ReloadTriggerField + mọi @param trong Filter SQL).
+    // Sentinel "\0" khác mọi chữ ký thật (kể cả "") → lần render đầu luôn load.
+    private string  _lastWatchSignature = "\0";
     private int     _highlightIndex = -1; // index dòng đang được highlight để chọn bằng Enter / phím mũi tên
     private bool    _showAddDialog;       // mở dialog "thêm mới" entity
 
@@ -213,22 +215,55 @@
     {
         if (State is null) return;
 
-        var triggerField = State.LookupConfig?.ReloadTriggerField;
-        var currentTriggerValue = !string.IsNullOrWhiteSpace(triggerField)
-            && Context.TryGetValue(triggerField, out var tv) ? tv : null;
-
-        var needsLoad = State.DynamicRows.Count == 0
-            || (triggerField is not null && !Equals(_lastTriggerValue, currentTriggerValue));
+        // Reload khi BẤT KỲ field cha nào (ReloadTriggerField hoặc @param trong Filter SQL) đổi giá trị.
+        var signature = BuildWatchSignature();
+        var changed   = _lastWatchSignature != signature;
+        var needsLoad = State.DynamicRows.Count == 0 || changed;
 
         if (needsLoad)
         {
-            _lastTriggerValue = currentTriggerValue;
-            // Clear giá trị đã chọn khi data source thay đổi (cascading)
-            if (State.DynamicRows.Count > 0)
+            // Cha đổi giá trị (không phải lần load đầu) → xoá lựa chọn cũ trước khi nạp lại (cascading).
+            var isCascadeReload = changed && State.DynamicRows.Count > 0;
+            _lastWatchSignature = signature;
+            if (isCascadeReload)
                 await ClearValue();
             await LoadDataAsync();
         }
     }
+
+    /// <summary>
+    /// Tập FieldCode field cha cần theo dõi để cascade: <c>ReloadTriggerField</c> (nếu có) hợp với
+    /// mọi <c>@param</c> trong Filter SQL trùng field trên form. Token hệ thống (@TenantId, @Today…)
+    /// server tự bơm nên KHÔNG có trong Context → tự động bị loại. Khớp tên phân biệt hoa/thường,
+    /// đúng như cách <c>DynamicLookupRepository</c> bind tham số theo FieldCode.
+    /// </summary>
+    private IEnumerable<string> GetWatchedParentFields()
+    {
+        var cfg = State?.LookupConfig;
+        if (cfg is null) yield break;
+
+        if (!string.IsNullOrWhiteSpace(cfg.ReloadTriggerField))
+            yield return cfg.ReloadTriggerField!;
+
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql))
+            foreach (System.Text.RegularExpressions.Match m in FilterParamRegex.Matches(cfg.FilterSql))
+            {
+                var name = m.Groups[1].Value;
+                if (Context.ContainsKey(name))   // chỉ field trên form; token hệ thống bị loại
+                    yield return name;
+            }
+    }
+
+    /// <summary>Chữ ký giá trị hiện tại của các field cha đang theo dõi — đổi ⇒ cần reload.</summary>
+    private string BuildWatchSignature()
+        => string.Join("|", GetWatchedParentFields()
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(f => f, StringComparer.Ordinal)
+            .Select(f => $"{f}={(Context.TryGetValue(f, out var v) ? v : null)}"));
+
+    /// <summary>Tách token <c>@param</c> trong Filter SQL.</summary>
+    private static readonly System.Text.RegularExpressions.Regex FilterParamRegex =
+        new(@"@(\w+)", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private async Task LoadDataAsync()
     {
