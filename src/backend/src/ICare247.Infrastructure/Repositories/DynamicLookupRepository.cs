@@ -7,6 +7,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
 
 namespace ICare247.Infrastructure.Repositories;
@@ -39,10 +40,54 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     private static readonly string[] DangerousKeywords =
         ["DROP", "DELETE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "TRUNCATE", "ALTER", "CREATE", "MERGE", "--", ";"];
 
-    public DynamicLookupRepository(IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb)
+    private readonly ICacheService _cache;
+    private readonly ILookupCacheVersion _lookupVer;
+
+    public DynamicLookupRepository(
+        IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb,
+        ICacheService cache, ILookupCacheVersion lookupVer)
     {
-        _configDb = configDb;
-        _dataDb   = dataDb;
+        _configDb  = configDb;
+        _dataDb    = dataDb;
+        _cache     = cache;
+        _lookupVer = lookupVer;
+    }
+
+    /// <summary>
+    /// Cache-aside cho dữ liệu lookup: hit → trả từ cache; miss → loader (chạy SQL) → ghi cache.
+    /// Cache tắt (Cache:Enabled=false) → GetAsync luôn null, SetAsync no-op → luôn đọc DB.
+    /// </summary>
+    private async Task<IReadOnlyList<IDictionary<string, object>>> CachedAsync(
+        string cacheKey,
+        Func<Task<List<Dictionary<string, object>>>> loader,
+        CancellationToken ct)
+    {
+        var hit = await _cache.GetAsync<List<Dictionary<string, object>>>(cacheKey, ct);
+        if (hit is not null)
+            return hit.Cast<IDictionary<string, object>>().ToList().AsReadOnly();
+
+        var rows = await loader();
+        await _cache.SetAsync(cacheKey, rows, ct: ct);
+        return rows.Cast<IDictionary<string, object>>().ToList().AsReadOnly();
+    }
+
+    /// <summary>
+    /// Hash các @param context có trong Filter SQL (bỏ @TenantId — đã vào key qua tenantId). Cascade cho
+    /// kết quả khác nhau theo giá trị cha → phải vào key. Field không phải @param → không ảnh hưởng key.
+    /// </summary>
+    private static string HashContext(string? filterSql, Dictionary<string, object?> ctx)
+    {
+        if (string.IsNullOrWhiteSpace(filterSql)) return "0";
+        var parts = SqlParamRegex().Matches(filterSql)
+            .Select(m => m.Groups[1].Value)
+            .Where(p => !p.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .Select(p => $"{p}={(ctx.TryGetValue(p, out var v) ? v : null)}");
+        var raw = string.Join("|", parts);
+        if (raw.Length == 0) return "0";
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(raw));
+        return Convert.ToHexString(bytes, 0, 8);
     }
 
     /// <inheritdoc />
@@ -84,54 +129,62 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             return [];
 
-        // ── Bước 2: Validate identifiers để ngăn SQL injection ────────────────
-        var querySql = BuildSafeSql(cfg, out var error);
-        if (querySql is null)
-            throw new InvalidOperationException(
-                $"DynamicLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
+        // ── Bước 2: Cache-aside theo (version bảng nguồn) + hash @param context ──
+        var cacheKey = CacheKeys.DynamicLookup(
+            fieldId, tenantId, _lookupVer.Get(tenantId, cfg.SourceName!),
+            HashContext(cfg.FilterSql, contextValues), isTree: false);
 
-        // ── Bước 3: Build Dapper params: @TenantId + ContextValues ────────────
-        var dp = new DynamicParameters();
-        dp.Add("TenantId", tenantId);
-        foreach (var (key, val) in contextValues)
+        return await CachedAsync(cacheKey, async () =>
         {
-            // Chỉ thêm param nếu tên an toàn — ngăn override @TenantId từ client
-            if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                dp.Add(key, UnwrapParamValue(val));
-        }
+            // ── Validate identifiers để ngăn SQL injection ──
+            var querySql = BuildSafeSql(cfg, out var error);
+            if (querySql is null)
+                throw new InvalidOperationException(
+                    $"DynamicLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
 
-        // ── Chẩn đoán: @param trong SQL chưa được bind → báo lỗi RÕ thay vì SqlException
-        //    "Must declare the scalar variable @X" khó hiểu. Thường do field cha (VD field ảo
-        //    Tỉnh/Ngân hàng) không có trên form, hoặc Field Code không trùng tên @param. ──
-        var boundNames = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
-        var missingParams = SqlParamRegex().Matches(querySql)
-            .Select(m => m.Groups[1].Value)
-            .Where(p => !boundNames.Contains(p))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (missingParams.Count > 0)
-        {
-            var ctxKeys = contextValues.Count > 0
-                ? string.Join(", ", contextValues.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
-                : "(rỗng)";
-            throw new InvalidOperationException(
-                $"DynamicLookup FieldId={fieldId}: Filter SQL cần tham số CHƯA CÓ trên form: " +
-                $"{string.Join(", ", missingParams.Select(p => "@" + p))}. " +
-                $"Cần 1 field (thường là field ảo cha, VD Tỉnh/Ngân hàng) có Field Code trùng đúng tên đó. " +
-                $"Field trên form hiện có: [{ctxKeys}].");
-        }
+            // ── Build Dapper params: @TenantId + ContextValues ──
+            var dp = new DynamicParameters();
+            dp.Add("TenantId", tenantId);
+            foreach (var (key, val) in contextValues)
+                if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
+                    dp.Add(key, UnwrapParamValue(val));
 
-        // ── Bước 4: Execute query trên Data DB (DB nghiệp vụ — DM_PhongBan, v.v.) ──
-        using var dataConn = _dataDb.CreateConnection();
-        var rows = await dataConn.QueryAsync(
-            new CommandDefinition(querySql, dp, cancellationToken: ct));
+            // ── Chẩn đoán: @param chưa bind → báo lỗi RÕ thay vì SqlException "Must declare @X" ──
+            var boundNames = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
+            var missingParams = SqlParamRegex().Matches(querySql)
+                .Select(m => m.Groups[1].Value)
+                .Where(p => !boundNames.Contains(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (missingParams.Count > 0)
+            {
+                var ctxKeys = contextValues.Count > 0
+                    ? string.Join(", ", contextValues.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+                    : "(rỗng)";
+                throw new InvalidOperationException(
+                    $"DynamicLookup FieldId={fieldId}: Filter SQL cần tham số CHƯA CÓ trên form: " +
+                    $"{string.Join(", ", missingParams.Select(p => "@" + p))}. " +
+                    $"Cần 1 field (thường là field ảo cha, VD Tỉnh/Ngân hàng) có Field Code trùng đúng tên đó. " +
+                    $"Field trên form hiện có: [{ctxKeys}].");
+            }
 
-        // Dapper trả ExpandoObject khi không chỉ định type — ExpandoObject implements IDictionary<string, object>
-        return rows
-            .Select(r => (IDictionary<string, object>)r)
-            .ToList()
-            .AsReadOnly();
+            // ── Execute query trên Data DB (DM_PhongBan, v.v.) → materialize (bỏ cột null cho JSON gọn) ──
+            using var dataConn = _dataDb.CreateConnection();
+            var rows = await dataConn.QueryAsync(
+                new CommandDefinition(querySql, dp, cancellationToken: ct));
+            return MaterializeRows(rows);
+        }, ct);
     }
+
+    /// <summary>Materialize DapperRow → Dictionary phẳng cho cache/JSON (bỏ cột value = null).</summary>
+    private static List<Dictionary<string, object>> MaterializeRows(IEnumerable<dynamic> rows)
+        => rows.Select(r =>
+        {
+            var d = new Dictionary<string, object>();
+            foreach (var kv in (IDictionary<string, object>)r)
+                if (kv.Value is not null) d[kv.Key] = kv.Value;
+            return d;
+        }).ToList();
 
     // ── SQL Builder ──────────────────────────────────────────────────────────
 
@@ -503,46 +556,49 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             return [];
 
-        // ParentColumn bắt buộc phải có với TreeLookupBox
-        if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
-            throw new InvalidOperationException(
-                $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
+        // Cache-aside theo (version bảng nguồn) + hash @param context
+        var cacheKey = CacheKeys.DynamicLookup(
+            fieldId, tenantId, _lookupVer.Get(tenantId, cfg.SourceName!),
+            HashContext(cfg.FilterSql, contextValues), isTree: true);
 
-        if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
-            throw new InvalidOperationException(
-                $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
-
-        // Build SQL giống QueryAsync nhưng inject thêm ParentColumn vào SELECT
-        var cfgWithParent = cfg; // đã có ParentColumn
-        var querySql = BuildSafeSqlForTree(cfgWithParent, out var error);
-        if (querySql is null)
-            throw new InvalidOperationException(
-                $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
-
-        var dp = new DynamicParameters();
-        dp.Add("TenantId", tenantId);
-        foreach (var (key, val) in contextValues)
+        return await CachedAsync(cacheKey, async () =>
         {
-            if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                dp.Add(key, UnwrapParamValue(val));
-        }
+            // ParentColumn bắt buộc phải có với TreeLookupBox
+            if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
+                throw new InvalidOperationException(
+                    $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
+            if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
+                throw new InvalidOperationException(
+                    $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
 
-        using var dataConn = _dataDb.CreateConnection();
-        var rows = await dataConn.QueryAsync(
-            new CommandDefinition(querySql, dp, cancellationToken: ct));
+            var querySql = BuildSafeSqlForTree(cfg, out var error);
+            if (querySql is null)
+                throw new InvalidOperationException(
+                    $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
 
-        // Thêm key chuẩn __parentId vào mỗi row để client không cần biết tên cột gốc
-        var parentCol = cfg.ParentColumn;
-        return rows
-            .Select(r =>
+            var dp = new DynamicParameters();
+            dp.Add("TenantId", tenantId);
+            foreach (var (key, val) in contextValues)
+                if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
+                    dp.Add(key, UnwrapParamValue(val));
+
+            using var dataConn = _dataDb.CreateConnection();
+            var rows = await dataConn.QueryAsync(
+                new CommandDefinition(querySql, dp, cancellationToken: ct));
+
+            // Thêm key __parentId (bỏ nếu null = node gốc; client coi thiếu key là gốc). Bỏ cột null cho JSON gọn.
+            var parentCol = cfg.ParentColumn!;
+            return rows.Select(r =>
             {
-                var dict = (IDictionary<string, object>)r;
-                var parentVal = dict.TryGetValue(parentCol, out var pv) ? pv : null;
-                dict["__parentId"] = parentVal!;
-                return dict;
-            })
-            .ToList()
-            .AsReadOnly();
+                var src = (IDictionary<string, object>)r;
+                var d = new Dictionary<string, object>();
+                foreach (var kv in src)
+                    if (kv.Value is not null) d[kv.Key] = kv.Value;
+                if (src.TryGetValue(parentCol, out var pv) && pv is not null)
+                    d["__parentId"] = pv;
+                return d;
+            }).ToList();
+        }, ct);
     }
 
     /// <summary>

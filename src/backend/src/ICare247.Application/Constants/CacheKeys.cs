@@ -39,6 +39,14 @@ public static class CacheKeys
     public static string CompiledAst(string expressionHash)
         => $"icare:ast:compiled:{expressionHash}";
 
+    /// <summary>
+    /// Cache key cho DỮ LIỆU lookup động (query-dynamic / query-tree). Gắn version theo bảng nguồn
+    /// (<c>tableVer</c>, bump khi lưu danh mục) + hash các @param context (cascade cho kết quả khác nhau).
+    /// Prefix: icare:lookup:{tenantId}:{kind}:{fieldId}:v{tableVer}:ctx:{ctxHash}
+    /// </summary>
+    public static string DynamicLookup(int fieldId, int tenantId, int tableVer, string ctxHash, bool isTree)
+        => $"icare:lookup:{tenantId}:{(isTree ? "tree" : "flat")}:{fieldId}:v{tableVer}:ctx:{ctxHash}";
+
     /// <summary>Cache key cho danh sách Grammar functions (global).</summary>
     public static string GramFunctions() => "icare:gram:functions";
 

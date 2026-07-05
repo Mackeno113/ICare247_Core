@@ -80,6 +80,10 @@ public static class DependencyInjection
         // Version-stamp cache theo tenant (singleton — chia sẻ mọi request). Bump = vô hiệu cache config tenant.
         services.AddSingleton<ICacheVersion, Services.CacheVersion>();
 
+        // Version-stamp cache DỮ LIỆU lookup theo (tenant, bảng nguồn). Bump khi lưu danh mục → vô hiệu
+        // cache lookup đọc bảng đó, KHÔNG đụng cache form (tách khỏi ICacheVersion).
+        services.AddSingleton<ILookupCacheVersion, Services.LookupCacheVersion>();
+
         // ── Repositories ─────────────────────────────────────────────────────
         services.AddScoped<IFormRepository, FormRepository>();
         services.AddScoped<IFieldRepository, FieldRepository>();

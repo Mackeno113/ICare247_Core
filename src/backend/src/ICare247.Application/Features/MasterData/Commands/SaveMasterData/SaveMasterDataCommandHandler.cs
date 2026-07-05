@@ -21,6 +21,7 @@ public sealed class SaveMasterDataCommandHandler
     private readonly IConfigCache          _config;
     private readonly IHookStoreCatalog     _hookCatalog;
     private readonly IAuditWriter          _audit;
+    private readonly ILookupCacheVersion   _lookupVer;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
     public SaveMasterDataCommandHandler(
@@ -29,6 +30,7 @@ public sealed class SaveMasterDataCommandHandler
         IConfigCache config,
         IHookStoreCatalog hookCatalog,
         IAuditWriter audit,
+        ILookupCacheVersion lookupVer,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
         _repo        = repo;
@@ -36,6 +38,7 @@ public sealed class SaveMasterDataCommandHandler
         _config      = config;
         _hookCatalog = hookCatalog;
         _audit       = audit;
+        _lookupVer   = lookupVer;
         _logger      = logger;
     }
 
@@ -110,6 +113,10 @@ public sealed class SaveMasterDataCommandHandler
             _logger.LogDebug("SaveMasterData '{Form}' store validation fail: {Count} lỗi.", r.FormCode, procErrors.Count);
             return new MasterDataSaveResult(Success: false, Id: null, Errors: procErrors);
         }
+
+        // Bảng nguồn (info.TableName) vừa đổi → vô hiệu cache lookup đọc bảng này (invalidation B).
+        // VD lưu 1 Xã/Phường → dropdown Xã ở form khác thấy ngay lần mở kế tiếp.
+        _lookupVer.Bump(r.TenantId, info.TableName);
 
         var action = r.Id is null ? AuditAction.DataCreate : AuditAction.DataUpdate;
         _logger.LogInformation("SaveMasterData {Op} '{Form}' → Id={Id}.",
