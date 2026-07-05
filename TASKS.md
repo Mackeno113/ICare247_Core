@@ -3,6 +3,24 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Cascade lookup + Multi-Trigger + Cache (session 73 — 2026-07-05, đã commit + push master)
+
+- [x] **Fix gốc cascade field ảo** — `MasterDataForm` bỏ lọc `!IsVirtual` → Tỉnh/Ngân hàng render + vào context (gốc lỗi 500 `Must declare @param`). `c2ffcff`
+- [x] **Reload đa-@param** — LookupBoxRenderer tự dò @param Filter SQL; ẩn reloadOnChange, single→Nâng cao, bỏ P3. `47e3b2d`+`a2d6bdf`
+- [x] **Multi-Trigger** (`Reload_Trigger_Fields`, db/068) + **TreeLookupBox Selectable_Level** (all/leaf/branch, db/069). `b9e30d5`+`3ffdc03`
+- [x] **Cache lookup động** (cache-aside, thay lazy) — version theo (tenant, bảng nguồn) + hash @param; invalidation khi SaveMasterData. `da7ff83`
+- [x] **Badge Is_Configured** (db/067) + reset field mới + STT chèn-sau + thu gọn diễn giải. `47e3b2d`
+
+### 📌 Decisions Log
+- **Cache thay lazy-load** cho lookup động (user chốt): đơn giản hơn, lợi mọi lookup; **invalidation B** (bump version bảng khi lưu danh mục, tách khỏi cache form).
+- **TreePicker (nhánh dynamic-tree) = bản đầy đủ hơn TreeLookupBox** → KHÔNG merge nhánh (base cũ, phân kỳ ~60 file); **port chọn lọc** Multi-Trigger + Selectable_Level lên master.
+- **Cascade parent field phải là field ảo VISIBLE** (không lưu DB nhưng phải render + vào context để bơm @param).
+
+### ⏳ Còn mở
+- [ ] Chạy `db/067, 068, 069` trên Config DB + rebuild/restart để deploy.
+- [ ] Lazy-load TreePicker (Load_Mode + Root_Filter) — hoãn; chỉ làm nếu cây cực lớn.
+- [ ] Xử 3 file i18n pre-existing (chưa commit); cân nhắc xóa nhánh remote `origin/claude/dynamic-tree-control-bLerc`.
+
 ## ⏸ TẠM DỪNG — FK lookup auto-JOIN hiện TÊN cha cho cột lưới (session 72 — 2026-06-29, CHƯA commit, branch `master`)
 
 **Tính năng:** cột khóa ngoại ở lưới engine-driven **tự JOIN bảng cha → hiện TÊN thay vì id**, lọc/sắp xếp/xuất theo tên. No-code (không cần SQL View tay). Spec `docs/spec/25_FK_LOOKUP_SPEC.md` + **ADR-033**.
