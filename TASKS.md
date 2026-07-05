@@ -121,6 +121,36 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [ ] **SEC3-4 (chờ hosting)** — CSP chống XSS cho APP đặt ở host phục vụ WASM (web.config/nginx), KHÔNG ở API.
 - [~] **SEC4-1** — Validator coverage 6/39; đường ghi trọng yếu đã an toàn (robustness) — bổ sung validator command còn lại khi rảnh.
 - [ ] **SEC5-2 (DB least-privilege)** — deployment (không code-fixable): account app KHÔNG `db_owner`/`sysadmin`; tách account migration khỏi runtime; runtime chỉ CRUD + EXECUTE proc cần thiết.
+## 📋 Backlog — Tối ưu code (phát hiện 2026-06-23, chưa xử lý)
+
+> Phân tích toàn bộ codebase 2026-06-23. Không phải bug nghiêm trọng — tối ưu performance + clean-up.
+> Ưu tiên: 🔴 Ngay / 🟡 Sớm / 🟠 Sau / 🟢 Cleanup.
+
+### 🔴 Ngay
+- [ ] **OPT-1** — `MasterDataRepository.GetByIdAsync` dùng `SELECT *` (vi phạm Hard Constraint #9).
+      Fix: dùng danh sách cột từ `info.Columns` (như `GetListAsync` line 166–171). File: `MasterDataRepository.cs:229`.
+- [ ] **OPT-2** — `GetAuditColumnsAsync` query `INFORMATION_SCHEMA` mỗi lần INSERT/UPDATE (thêm 1 roundtrip DB mỗi save).
+      Fix: cache `AuditColumns: HashSet<string>` vào `MasterDataFormInfo` khi `GetFormInfoAsync`, dùng lại cùng request. File: `MasterDataRepository.cs:266,311`.
+
+### 🟡 Sớm
+- [ ] **OPT-3** — `GetListAsync` (MasterDataRepository + ViewRepository) gửi 2 query riêng (list + count) thay vì 1 batch.
+      Fix: dùng `QueryMultipleAsync` gộp 2 câu SQL thành 1 roundtrip. Files: `MasterDataRepository.cs:200–207`, `ViewRepository.cs:692–695`.
+- [ ] **OPT-4** — `ViewRepository.GetByCodeAsync` thực hiện 4 roundtrip tuần tự (header → columns → actions → filters) trong 1 method 709 dòng.
+      Fix: gộp bằng `QueryMultipleAsync` → 1 roundtrip; xem xét tách thành các private method nhỏ hơn. File: `ViewRepository.cs:53–296`.
+
+### 🟠 Sau
+- [ ] **OPT-5** — Bulk delete ở `ViewPage.razor` xóa từng dòng bằng vòng lặp API riêng → không rollback khi lỗi giữa chừng.
+      Fix: thêm endpoint `/views/{code}/bulk-delete` nhận danh sách IDs, xóa trong 1 transaction server-side.
+- [ ] **OPT-6** — `CacheVersion` dùng `Dictionary<int,long>` in-memory → không sync cross-instance khi scale-out (ADR-021 đã ghi nhận).
+      Fix: chuyển sang Redis `INCR cfgver:{tenantId}` để version-stamp đồng bộ across instances. File: `CacheVersion.cs`.
+
+### 🟢 Cleanup
+- [ ] **OPT-7** — Magic string i18n key (`"sys.val.unique"`, `"sys.val.required"`) hardcode trong `SaveMasterDataCommandHandler`.
+      Fix: khai báo constants trong `CacheKeys.cs` hoặc class `I18nKeys` riêng. File: `SaveMasterDataCommandHandler.cs`.
+- [ ] **OPT-8** — `StateHasChanged()` gọi rải rác 14+ chỗ trong codebase Blazor thay vì batch ở cuối async method.
+      Fix: batch `StateHasChanged()` cuối method; tránh gọi giữa chừng từng bước async.
+
+---
 
 ## 📋 Roadmap — Save hook store per màn (validate trước + hậu xử lý) — ADR-029
 
