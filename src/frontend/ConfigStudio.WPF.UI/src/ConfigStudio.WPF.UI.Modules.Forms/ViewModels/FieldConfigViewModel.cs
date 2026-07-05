@@ -38,7 +38,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private readonly IFormDetailDataService? _formDetailService;
     private readonly INavigationHistoryService? _history;
     private readonly IAppLogger? _logger;
+    private readonly IUserNotifier? _notifier;
     private CancellationTokenSource _cts = new();
+
+    /// <summary>
+    /// True khi NẠP cấu hình FK/ComboBox từ Ui_Field_Lookup THẤT BẠI (vd cột DB thiếu → SqlException).
+    /// Khi cờ này bật, các Fk* prop đang ở giá trị mặc định RỖNG (không phải data thật) → CHẶN Lưu
+    /// để tránh ghi đè Ui_Field_Lookup bằng rỗng làm MẤT cấu hình. Reset về false mỗi lần load field.
+    /// </summary>
+    private bool _fkConfigLoadFailed;
 
     // ── Navigation params ────────────────────────────────────
     private int _fieldId;
@@ -1323,7 +1331,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         IDialogService? dialogService = null,
         IFormDetailDataService? formDetailService = null,
         INavigationHistoryService? history = null,
-        IAppLogger? logger = null)
+        IAppLogger? logger = null,
+        IUserNotifier? notifier = null)
     {
         _regionManager     = regionManager;
         _fieldService      = fieldService;
@@ -1337,6 +1346,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _formDetailService = formDetailService;
         _history           = history;
         _logger            = logger;
+        _notifier          = notifier;
 
         SaveFieldCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), () => IsDirty)
             .ObservesProperty(() => IsDirty);
@@ -1580,10 +1590,34 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// Load field detail, columns, linked rules/events từ DB.
     /// Tách riêng từng bước — lỗi ở bước phụ (rules/events) không làm mất dữ liệu chính.
     /// </summary>
+    /// <summary>
+    /// Xử lý khi NẠP cấu hình FK/ComboBox từ Ui_Field_Lookup thất bại: reset cờ rebuild,
+    /// bật cờ chặn-save, ghi log (file), báo user (banner shell) + hiện banner trên màn field.
+    /// Sự kiện theo sau: nút Lưu bị khóa (ExecuteSaveAsync chặn) để không ghi đè rỗng làm mất data.
+    /// Nguyên nhân hay gặp: DB thiếu cột mới (migration chưa chạy) → SqlException "Invalid column name".
+    /// </summary>
+    private void HandleFkConfigLoadError(Exception ex)
+    {
+        _isRebuildingProps  = false;
+        _fkConfigLoadFailed = true;
+
+        _logger?.Capture(ex, $"FieldConfig.LoadLookupConfig field #{FieldId}");
+        _notifier?.NotifyError(
+            "Không nạp được cấu hình nguồn dữ liệu (LookupBox/ComboBox). Nút Lưu đã bị KHÓA để tránh " +
+            "ghi đè làm mất cấu hình. Kiểm tra migration DB (db/068, db/069) rồi khởi động lại ConfigStudio.",
+            ex);
+
+        LoadError = "Lỗi nạp cấu hình FK Lookup: " + ex.Message +
+            "  →  Đã KHÓA nút Lưu để bảo vệ dữ liệu. Chạy migration DB còn thiếu (db/068, db/069) " +
+            "rồi mở lại field. KHÔNG bấm Lưu khi panel đang trống.";
+        RaisePropertyChanged(nameof(HasLoadError));
+    }
+
     private async Task LoadFromDatabaseAsync()
     {
         IsLoading  = true;
         LoadError  = "";
+        _fkConfigLoadFailed = false;   // reset cờ chặn-save mỗi lần load field mới
 
         var ct       = _cts.Token;
         var tenantId = _appConfig!.TenantId;
@@ -1798,7 +1832,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             if (_allowAddNew) await LoadFormCodesAsync();
                             skipFkRestore:;
                         }
-                        catch { _isRebuildingProps = false; /* bỏ qua lỗi load FK config */ }
+                        catch (Exception fkEx) { HandleFkConfigLoadError(fkEx); }
                     }
 
                     // ── Restore ComboBox dynamic source — đọc từ Ui_Field_Lookup ──
@@ -1848,7 +1882,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                 _isRebuildingProps = false;
                             }
                         }
-                        catch { _isRebuildingProps = false; }
+                        catch (Exception cbEx) { HandleFkConfigLoadError(cbEx); }
                     }
 
                     // ── Restore ComboBox / LookupComboBox display props từ ControlPropsJson ──
@@ -2906,6 +2940,20 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_fieldService is not null && _appConfig is { IsConfigured: true })
         {
+            // GUARD: nạp cấu hình FK/ComboBox thất bại → các Fk* prop đang RỖNG (mặc định),
+            // KHÔNG phải data thật. Nếu để Lưu sẽ ghi đè Ui_Field_Lookup bằng rỗng → mất cấu hình.
+            // Chặn Lưu, yêu cầu khắc phục (chạy migration DB) rồi mở lại field.
+            if (_fkConfigLoadFailed && (IsFkLookupEditor || IsComboBoxEditor))
+            {
+                SaveError = "Chưa Lưu được: cấu hình nguồn dữ liệu (FK/ComboBox) nạp lỗi nên panel đang trống. " +
+                            "Lưu lúc này sẽ XÓA cấu hình cũ. Hãy chạy migration DB còn thiếu (db/068, db/069), " +
+                            "khởi động lại ConfigStudio rồi mở lại field.";
+                _notifier?.Notify(
+                    "Đã chặn Lưu để bảo vệ cấu hình FK Lookup (panel nạp lỗi, đang trống).",
+                    NotificationSeverity.Warning);
+                return;
+            }
+
             // Virtual field: bắt buộc phải có FieldCode để tham chiếu trong rules/events
             if (IsVirtual && string.IsNullOrWhiteSpace(FieldCode))
             {

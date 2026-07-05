@@ -6,7 +6,10 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Threading;
 using ConfigStudio.WPF.UI.Core.Constants;
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Models;
@@ -22,6 +25,7 @@ public class ShellViewModel : ViewModelBase
     private readonly IRegionManager? _regionManager;
     private readonly IThemeService? _themeService;
     private readonly INavigationHistoryService? _history;
+    private readonly IUserNotifier? _notifier;
     private NavigationItem? _selectedItem;
     private bool _isSidebarCollapsed;
     private string _currentThemeDisplayName = "Light Ocean";
@@ -29,12 +33,20 @@ public class ShellViewModel : ViewModelBase
     public ShellViewModel(
         IRegionManager? regionManager = null,
         IThemeService? themeService = null,
-        INavigationHistoryService? history = null)
+        INavigationHistoryService? history = null,
+        IUserNotifier? notifier = null)
     {
         _regionManager = regionManager;
         _themeService = themeService;
         _history = history;
+        _notifier = notifier;
         if (_history is not null) _history.Changed += OnHistoryChanged;
+
+        // Banner thông báo dùng chung — subscribe để hiện lỗi/cảnh báo cho user.
+        DismissNotificationCommand = new DelegateCommand(HideNotification);
+        _notificationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(8) };
+        _notificationTimer.Tick += (_, _) => HideNotification();
+        if (_notifier is not null) _notifier.Raised += OnNotificationRaised;
 
         NavigationItems = [];
 
@@ -125,6 +137,83 @@ public class ShellViewModel : ViewModelBase
         RaisePropertyChanged(nameof(HasBreadcrumbs));
         GoBackCommand.RaiseCanExecuteChanged();
         GoForwardCommand.RaiseCanExecuteChanged();
+    }
+
+    // ── Banner thông báo dùng chung (error surface toàn cục) ──────────────
+    private readonly DispatcherTimer _notificationTimer;
+
+    private bool _isNotificationVisible;
+    /// <summary>True khi đang hiện banner thông báo — bind Visibility ở shell.</summary>
+    public bool IsNotificationVisible
+    {
+        get => _isNotificationVisible;
+        private set => SetProperty(ref _isNotificationVisible, value);
+    }
+
+    private string _notificationMessage = "";
+    /// <summary>Nội dung chính của thông báo.</summary>
+    public string NotificationMessage
+    {
+        get => _notificationMessage;
+        private set => SetProperty(ref _notificationMessage, value);
+    }
+
+    private string _notificationDetail = "";
+    /// <summary>Chi tiết kỹ thuật (message lỗi gốc) — hiện phụ, hỗ trợ debug.</summary>
+    public string NotificationDetail
+    {
+        get => _notificationDetail;
+        private set { if (SetProperty(ref _notificationDetail, value)) RaisePropertyChanged(nameof(HasNotificationDetail)); }
+    }
+
+    /// <summary>True khi có chi tiết kỹ thuật để hiện dòng phụ.</summary>
+    public bool HasNotificationDetail => !string.IsNullOrEmpty(_notificationDetail);
+
+    private Brush _notificationBrush = Brushes.SteelBlue;
+    /// <summary>Màu banner theo mức độ (đỏ/cam/xanh lá/xanh dương).</summary>
+    public Brush NotificationBrush
+    {
+        get => _notificationBrush;
+        private set => SetProperty(ref _notificationBrush, value);
+    }
+
+    private string _notificationIcon = "ℹ";
+    /// <summary>Icon theo mức độ.</summary>
+    public string NotificationIcon
+    {
+        get => _notificationIcon;
+        private set => SetProperty(ref _notificationIcon, value);
+    }
+
+    /// <summary>Đóng banner thủ công.</summary>
+    public DelegateCommand DismissNotificationCommand { get; }
+
+    /// <summary>
+    /// Xử lý thông báo mới từ IUserNotifier: nạp nội dung + màu theo mức độ, hiện banner,
+    /// khởi động lại timer auto-ẩn. Lỗi (Error) giữ lâu hơn để user kịp đọc.
+    /// </summary>
+    private void OnNotificationRaised(UserNotification n)
+    {
+        NotificationMessage = n.Message;
+        NotificationDetail  = n.Detail ?? "";
+        (NotificationBrush, NotificationIcon) = n.Severity switch
+        {
+            NotificationSeverity.Error   => ((Brush)new SolidColorBrush(Color.FromRgb(0xDC, 0x26, 0x26)), "⛔"),
+            NotificationSeverity.Warning => (new SolidColorBrush(Color.FromRgb(0xD9, 0x77, 0x06)), "⚠"),
+            NotificationSeverity.Success => (new SolidColorBrush(Color.FromRgb(0x16, 0xA3, 0x4A)), "✓"),
+            _                            => (new SolidColorBrush(Color.FromRgb(0x25, 0x63, 0xEB)), "ℹ"),
+        };
+        IsNotificationVisible = true;
+
+        _notificationTimer.Stop();
+        _notificationTimer.Interval = TimeSpan.FromSeconds(n.Severity == NotificationSeverity.Error ? 15 : 6);
+        _notificationTimer.Start();
+    }
+
+    private void HideNotification()
+    {
+        _notificationTimer.Stop();
+        IsNotificationVisible = false;
     }
 
     private void InitNavigationItems()

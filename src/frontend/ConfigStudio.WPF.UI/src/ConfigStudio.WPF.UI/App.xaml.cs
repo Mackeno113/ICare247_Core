@@ -30,6 +30,7 @@ namespace ConfigStudio.WPF.UI;
 public partial class App : PrismApplication
 {
     private IAppLogger? _logger;
+    private IUserNotifier? _notifier;
 
     public App()
     {
@@ -50,6 +51,8 @@ public partial class App : PrismApplication
     {
         // Logger singleton — tách lỗi SQL vs C# ra 2 file (xem Infrastructure\Logging)
         containerRegistry.RegisterSingleton<IAppLogger, SerilogAppLogger>();
+        // Notifier singleton — "nơi báo lỗi" cho người dùng thấy trên shell (banner).
+        containerRegistry.RegisterSingleton<IUserNotifier, UserNotifier>();
 
         containerRegistry.RegisterSingleton<IThemeService, ThemeService>();
         containerRegistry.RegisterSingleton<INavigationHistoryService, NavigationHistoryService>();
@@ -91,8 +94,9 @@ public partial class App : PrismApplication
     {
         base.OnInitialized();
 
-        // Resolve logger sớm + gắn lưới an toàn bắt lỗi chưa xử lý toàn app.
+        // Resolve logger + notifier sớm + gắn lưới an toàn bắt lỗi chưa xử lý toàn app.
         _logger = Container.Resolve<IAppLogger>();
+        _notifier = Container.Resolve<IUserNotifier>();
         WireGlobalExceptionHandlers();
         _logger.Info("ConfigStudio khởi động.");
 
@@ -112,6 +116,7 @@ public partial class App : PrismApplication
         DispatcherUnhandledException += (_, e) =>
         {
             _logger?.Capture(e.Exception, "DispatcherUnhandledException");
+            _notifier?.NotifyError("Đã xảy ra lỗi không mong muốn.", e.Exception);
             e.Handled = true; // tránh crash app — lỗi đã được ghi
         };
 

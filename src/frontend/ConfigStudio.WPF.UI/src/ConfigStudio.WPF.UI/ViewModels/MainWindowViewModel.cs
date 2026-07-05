@@ -3,6 +3,7 @@
 // Layer   : Presentation
 // Purpose : Adapter view model cho convention auto-wire cua Prism.
 
+using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Services;
 using Prism.Navigation.Regions;
 
@@ -14,7 +15,10 @@ public sealed class MainWindowViewModel : ShellViewModel
         : base(null, null)
     { }
 
-    public MainWindowViewModel(IRegionManager regionManager, IThemeService themeService)
-        : base(regionManager, themeService)
+    public MainWindowViewModel(
+        IRegionManager regionManager,
+        IThemeService themeService,
+        IUserNotifier notifier)
+        : base(regionManager, themeService, notifier: notifier)
     { }
 }

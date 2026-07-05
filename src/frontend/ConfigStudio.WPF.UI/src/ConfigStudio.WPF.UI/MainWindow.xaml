@@ -255,6 +255,47 @@
                 <TextBlock Grid.Column="6" Margin="0,0,12,0" Style="{StaticResource ShellStatusTextStyle}" Text="Ready" />
             </Grid>
 
+            <!-- ── Notification Banner (error surface toàn cục) ───────────
+                 Hiện khi IUserNotifier phát thông báo. Màu theo mức độ (NotificationBrush).
+                 Đây là "nơi báo lỗi" dùng chung — trước đây các catch nuốt lỗi im lặng. -->
+            <Border DockPanel.Dock="Bottom"
+                    Background="{Binding NotificationBrush}"
+                    Padding="14,8"
+                    Visibility="{Binding IsNotificationVisible, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding NotificationIcon}"
+                               FontSize="15" Foreground="White"
+                               VerticalAlignment="Top" Margin="0,0,10,0" />
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding NotificationMessage}"
+                                   Foreground="White" FontSize="13" FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding NotificationDetail}"
+                                   Foreground="White" FontSize="11" Opacity="0.85"
+                                   TextWrapping="Wrap" Margin="0,2,0,0"
+                                   Visibility="{Binding HasNotificationDetail, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            Command="{Binding DismissNotificationCommand}"
+                            Width="24" Height="24" Margin="10,0,0,0"
+                            Foreground="White" Background="Transparent"
+                            BorderBrush="Transparent" BorderThickness="0"
+                            VerticalAlignment="Top" Cursor="Hand" ToolTip="Đóng">
+                        <TextBlock Text="✕" FontSize="12" Foreground="White"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                </Grid>
+            </Border>
+
             <!-- ── Main Content Area ──────────────────────────────────── -->
             <Grid>
                 <Grid.ColumnDefinitions>
