@@ -85,9 +85,26 @@ public sealed class FieldLookupConfig
     /// <summary>
     /// FieldCode của field khác trong form — khi thay đổi giá trị,
     /// LookupBox clear SelectedId và reload data source (cascading lookup).
-    /// Null = không có trigger.
+    /// Null = không có trigger. Dùng <see cref="ReloadTriggerFields"/> cho nhiều trigger.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    /// <summary>
+    /// Chuỗi thô từ DB (Reload_Trigger_Fields): danh sách FieldCode phân cách dấu phẩy.
+    /// VD: "TinhId,NganHangId". Dùng <see cref="ReloadTriggerFields"/> để truy cập đã tách.
+    /// </summary>
+    public string? ReloadTriggerFieldsRaw { get; init; }
+
+    /// <summary>
+    /// Danh sách FieldCode cha kích hoạt reload (Multi-Trigger). Ưu tiên ReloadTriggerFieldsRaw;
+    /// nếu rỗng, fallback về ReloadTriggerField đơn. Runtime hợp với @param trong Filter SQL.
+    /// </summary>
+    public IReadOnlyList<string> ReloadTriggerFields =>
+        !string.IsNullOrWhiteSpace(ReloadTriggerFieldsRaw)
+            ? ReloadTriggerFieldsRaw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            : !string.IsNullOrWhiteSpace(ReloadTriggerField)
+                ? [ReloadTriggerField!]
+                : [];
 
     /// <summary>
     /// Cho phép mở dialog "thêm mới" entity ngay trên control LookupBox.

@@ -58,10 +58,16 @@ public sealed class FieldLookupConfigRecord
     public int DropDownHeight { get; init; } = 400;
 
     /// <summary>
-    /// FieldCode của field trigger cascading reload.
+    /// FieldCode của field trigger cascading reload (đơn).
     /// Null = không có cascading.
     /// </summary>
     public string? ReloadTriggerField { get; init; }
+
+    /// <summary>
+    /// Multi-Trigger: danh sách FieldCode cha phân cách dấu phẩy (Ui_Field_Lookup.Reload_Trigger_Fields).
+    /// VD: "TinhId,NganHangId". Runtime reload khi bất kỳ field nào đổi. Null = không dùng.
+    /// </summary>
+    public string? ReloadTriggerFields { get; init; }
 
     // ── TreeLookupBox — thêm từ Migration 021 ─────────────────────────────
 

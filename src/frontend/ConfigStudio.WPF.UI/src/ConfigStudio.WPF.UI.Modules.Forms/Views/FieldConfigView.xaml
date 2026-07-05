@@ -1549,23 +1549,22 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── reloadOnChange (ĐÃ ẨN) ──────────────────────────
-                             Runtime KHÔNG tiêu thụ danh sách này; từ khi renderer tự reload theo
-                             mọi @param trong Filter SQL, khối này hoàn toàn thừa → ẩn để tránh
-                             hiểu nhầm. Reload đa-cha giờ tự động qua Filter SQL; trường hợp đặc
-                             biệt (TVF/Full SQL, field ngoài filter) dùng ô "Tự reload" (single). -->
+                        <!-- ── Multi-Trigger reload (Migration 068) ──────────────────────────
+                             Danh sách field cha → runtime reload khi BẤT KỲ field nào đổi. Lưu ở cột
+                             Ui_Field_Lookup.Reload_Trigger_Fields. Bổ sung cho auto-dò @param Filter SQL:
+                             dùng cho TVF/Full SQL hoặc field cha KHÔNG có trong Filter SQL. -->
                         <Border Style="{StaticResource SectionCardStyle}"
-                                Visibility="Collapsed">
+                                Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
                                                Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
                                         <Run Text="🔄 "/>
-                                        <Run Text="Tự động reload khi field thay đổi"/>
+                                        <Run Text="Tự reload theo nhiều field cha (Multi-Trigger)"/>
                                     </TextBlock>
                                 </DockPanel>
                                 <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"
-                                           Text="Khi các field dưới đây thay đổi giá trị → lookup tự reload. Giá trị đang chọn bị xoá nếu không còn hợp lệ."/>
+                                           Text="Khi bất kỳ field dưới đây đổi giá trị → lookup tự reload (giá trị đang chọn bị xoá nếu không còn hợp lệ). Table-mode đã tự dò @param trong Filter SQL — chỉ cần khai ở đây cho TVF/Full SQL hoặc field NGOÀI Filter SQL."/>
 
                                 <!-- Tags hiện tại -->
                                 <ItemsControl ItemsSource="{Binding ReloadOnChangeFields}">

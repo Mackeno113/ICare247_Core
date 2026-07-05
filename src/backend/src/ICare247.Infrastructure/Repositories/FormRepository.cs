@@ -194,6 +194,7 @@ public sealed class FormRepository : IFormRepository
                    ISNULL(fl.DropDown_Width,  600)         AS DropDownWidth,
                    ISNULL(fl.DropDown_Height, 400)         AS DropDownHeight,
                    fl.Reload_Trigger_Field                 AS ReloadTriggerField,
+                   fl.Reload_Trigger_Fields                AS ReloadTriggerFieldsRaw,
                    ISNULL(fl.Allow_Add_New, 0)             AS AllowAddNew,
                    fl.Add_Form_Code                        AS AddFormCode
             FROM   dbo.Ui_Field_Lookup fl

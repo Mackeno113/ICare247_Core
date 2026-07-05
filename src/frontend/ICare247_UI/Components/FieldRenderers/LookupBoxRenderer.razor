@@ -242,8 +242,14 @@
         var cfg = State?.LookupConfig;
         if (cfg is null) yield break;
 
+        // Trigger đơn (tương thích cũ)
         if (!string.IsNullOrWhiteSpace(cfg.ReloadTriggerField))
             yield return cfg.ReloadTriggerField!;
+
+        // Multi-Trigger: danh sách khai tay (dùng cho TVF/Full SQL hoặc field ngoài Filter SQL)
+        foreach (var f in cfg.ReloadTriggerFields)
+            if (!string.IsNullOrWhiteSpace(f))
+                yield return f;
 
         if (!string.IsNullOrWhiteSpace(cfg.FilterSql))
             foreach (System.Text.RegularExpressions.Match m in FilterParamRegex.Matches(cfg.FilterSql))

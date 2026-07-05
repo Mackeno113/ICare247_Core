@@ -91,8 +91,10 @@ public sealed class FieldLookupConfigDto
     public string? CodeField      { get; set; }
     public int     DropDownWidth  { get; set; } = 600;
     public int     DropDownHeight { get; set; } = 400;
-    /// <summary>FieldCode của field trigger cascading reload.</summary>
+    /// <summary>FieldCode của field trigger cascading reload (đơn).</summary>
     public string? ReloadTriggerField { get; set; }
+    /// <summary>Danh sách FieldCode cha kích hoạt reload (Multi-Trigger). Renderer hợp với @param Filter SQL.</summary>
+    public List<string> ReloadTriggerFields { get; set; } = [];
     /// <summary>Số ký tự tối thiểu để kích hoạt filter. 0 = filter ngay từ ký tự đầu tiên.</summary>
     public int FilterMinLength { get; set; } = 0;
     /// <summary>Cho phép mở dialog "thêm mới" entity ngay trên LookupBox.</summary>

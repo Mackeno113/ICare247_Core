@@ -1759,6 +1759,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             _dropDownWidth      = cfg.DropDownWidth;
                             _dropDownHeight     = cfg.DropDownHeight;
                             _reloadTriggerField = cfg.ReloadTriggerField ?? "";
+                            // Multi-Trigger (Migration 068): CSV → danh sách tag ReloadOnChangeFields.
+                            ReloadOnChangeFields.Clear();
+                            if (!string.IsNullOrWhiteSpace(cfg.ReloadTriggerFields))
+                                foreach (var f in cfg.ReloadTriggerFields.Split(',',
+                                             StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                                    ReloadOnChangeFields.Add(f);
                             _parentColumn       = cfg.ParentColumn ?? "";
                             _allowAddNew        = cfg.AllowAddNew;
                             _addFormCode        = cfg.AddFormCode ?? "";
@@ -2418,8 +2424,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 dict["columns"] = FkPopupColumns.Select(c => new
                     { fieldName = c.FieldName, captionKey = c.CaptionKey, width = c.Width }).ToList();
 
-                if (ReloadOnChangeFields.Count > 0)
-                    dict["reloadOnChange"] = ReloadOnChangeFields.ToList();
+                // Multi-Trigger giờ lưu ở cột Ui_Field_Lookup.Reload_Trigger_Fields (Migration 068),
+                // KHÔNG serialize vào Control_Props_Json nữa (runtime đọc từ cột).
 
                 if (DataSourceConditions.Count > 0)
                     dict["dataSourceConditions"] = DataSourceConditions.Select(c => new
@@ -3016,6 +3022,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     DropDownHeight      = IsFkLookupEditor ? _dropDownHeight     : 400,
                     ReloadTriggerField  = !string.IsNullOrWhiteSpace(_reloadTriggerField)
                                           ? _reloadTriggerField : null,
+                    // Multi-Trigger (Migration 068): danh sách field cha → CSV. Runtime hợp với @param Filter SQL.
+                    ReloadTriggerFields = ReloadOnChangeFields.Count > 0
+                                          ? string.Join(",", ReloadOnChangeFields) : null,
                     // TreeLookupBox (Migration 021)
                     ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(_parentColumn)
                                           ? _parentColumn : null,
