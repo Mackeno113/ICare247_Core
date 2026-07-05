@@ -433,6 +433,15 @@
                                       NullText="VD: Parent_Id — tên cột chứa ID cha trong bảng nguồn" />
                         <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
                                    Text="Bắt buộc. Bảng nguồn phải có cột này để build hierarchy cha/con." />
+
+                        <!-- Cấp node được chọn (Migration 069) -->
+                        <TextBlock Text="Cấp node được chọn" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,10,0,4" />
+                        <dxe:ComboBoxEdit ItemsSource="{Binding TreeSelectableLevelOptions}"
+                                          EditValue="{Binding TreeSelectableLevel, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" IsTextEditable="False" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="all = chọn mọi node · leaf = chỉ node lá (VD chỉ Xã, không Tỉnh) · branch = chỉ node có con." />
                     </StackPanel>
                 </Border>
             </StackPanel>

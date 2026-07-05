@@ -95,6 +95,8 @@ public sealed class FieldLookupConfigDto
     public string? ReloadTriggerField { get; set; }
     /// <summary>Danh sách FieldCode cha kích hoạt reload (Multi-Trigger). Renderer hợp với @param Filter SQL.</summary>
     public List<string> ReloadTriggerFields { get; set; } = [];
+    /// <summary>TreeLookupBox: node được chọn — "all" | "leaf" | "branch". Null = "all".</summary>
+    public string? TreeSelectableLevel { get; set; }
     /// <summary>Số ký tự tối thiểu để kích hoạt filter. 0 = filter ngay từ ký tự đầu tiên.</summary>
     public int FilterMinLength { get; set; } = 0;
     /// <summary>Cho phép mở dialog "thêm mới" entity ngay trên LookupBox.</summary>

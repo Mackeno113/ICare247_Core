@@ -324,6 +324,22 @@
     private async Task SelectNode(TreeNode node)
     {
         if (State is null) return;
+
+        // Tree_Selectable_Level: giới hạn node được chọn. Node không hợp lệ → chỉ đóng/mở nhánh,
+        // không gán giá trị (VD "leaf" = chỉ chọn Xã, bấm Tỉnh chỉ expand).
+        var level = State.LookupConfig?.TreeSelectableLevel;
+        var selectable = level switch
+        {
+            "leaf"   => !node.HasChildren,
+            "branch" => node.HasChildren,
+            _        => true   // "all" / null
+        };
+        if (!selectable)
+        {
+            if (node.HasChildren) ToggleNode(node);
+            return;
+        }
+
         State.Value = node.Value;
         ClosePopup();
         await OnChange.InvokeAsync((State.FieldCode, (object?)node.Value));

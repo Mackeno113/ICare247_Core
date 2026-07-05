@@ -409,8 +409,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _dropDownWidth        = 600;
         _dropDownHeight       = 400;
         _reloadTriggerField   = "";
-        // TreeLookupBox (Migration 021)
+        // TreeLookupBox (Migration 021 + 069)
         _parentColumn         = "";
+        _treeSelectableLevel  = "all";
         // Thêm mới entity (Migration 022)
         _allowAddNew          = false;
         _addFormCode          = "";
@@ -768,6 +769,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         get => _parentColumn;
         set { if (SetProperty(ref _parentColumn, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
     }
+
+    // ── TreeLookupBox: cấp node được chọn (Migration 069) ─────────────────
+    private string _treeSelectableLevel = "all";
+    /// <summary>Giới hạn node được chọn: "all" | "leaf" | "branch". Lưu Ui_Field_Lookup.Tree_Selectable_Level.</summary>
+    public string TreeSelectableLevel
+    {
+        get => _treeSelectableLevel;
+        set { if (SetProperty(ref _treeSelectableLevel, value)) IsDirty = true; }
+    }
+    /// <summary>Các mức chọn hợp lệ cho TreeLookupBox.</summary>
+    public List<string> TreeSelectableLevelOptions { get; } = ["all", "leaf", "branch"];
 
     // ── ComboBox / LookupComboBox display props ───────────────────────
 
@@ -1766,6 +1778,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                              StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                                     ReloadOnChangeFields.Add(f);
                             _parentColumn       = cfg.ParentColumn ?? "";
+                            _treeSelectableLevel = string.IsNullOrWhiteSpace(cfg.TreeSelectableLevel) ? "all" : cfg.TreeSelectableLevel;
                             _allowAddNew        = cfg.AllowAddNew;
                             _addFormCode        = cfg.AddFormCode ?? "";
 
@@ -1773,6 +1786,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             // Raise LookupBox new props sau khi _isRebuildingProps = false
                             RaisePropertyChanged(nameof(EditBoxMode));
                             RaisePropertyChanged(nameof(ParentColumn));
+                            RaisePropertyChanged(nameof(TreeSelectableLevel));
                             RaisePropertyChanged(nameof(IsCodeAndNameMode));
                             RaisePropertyChanged(nameof(CodeField));
                             RaisePropertyChanged(nameof(DropDownWidth));
@@ -3025,9 +3039,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     // Multi-Trigger (Migration 068): danh sách field cha → CSV. Runtime hợp với @param Filter SQL.
                     ReloadTriggerFields = ReloadOnChangeFields.Count > 0
                                           ? string.Join(",", ReloadOnChangeFields) : null,
-                    // TreeLookupBox (Migration 021)
+                    // TreeLookupBox (Migration 021 + 069)
                     ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(_parentColumn)
                                           ? _parentColumn : null,
+                    TreeSelectableLevel = IsTreeLookupEditor && _treeSelectableLevel != "all"
+                                          ? _treeSelectableLevel : null,
                     // Thêm mới entity (Migration 022) — chỉ lưu khi bật + có form code
                     AllowAddNew         = IsFkLookupEditor && _allowAddNew
                                           && !string.IsNullOrWhiteSpace(_addFormCode),

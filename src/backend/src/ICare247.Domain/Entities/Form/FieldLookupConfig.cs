@@ -107,6 +107,12 @@ public sealed class FieldLookupConfig
                 : [];
 
     /// <summary>
+    /// TreeLookupBox: giới hạn node được chọn — "all" (mặc định) | "leaf" (chỉ node lá) |
+    /// "branch" (chỉ node có con). Null = "all".
+    /// </summary>
+    public string? TreeSelectableLevel { get; init; }
+
+    /// <summary>
     /// Cho phép mở dialog "thêm mới" entity ngay trên control LookupBox.
     /// Mặc định false.
     /// </summary>

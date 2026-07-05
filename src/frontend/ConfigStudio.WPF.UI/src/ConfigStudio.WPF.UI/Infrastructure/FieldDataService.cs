@@ -95,6 +95,7 @@ public sealed class FieldDataService : IFieldDataService
                    fl.Reload_Trigger_Field  AS ReloadTriggerField,
                    fl.Reload_Trigger_Fields AS ReloadTriggerFields,
                    fl.Parent_Column         AS ParentColumn,
+                   fl.Tree_Selectable_Level AS TreeSelectableLevel,
                    ISNULL(fl.Allow_Add_New, 0) AS AllowAddNew,
                    fl.Add_Form_Code         AS AddFormCode
             FROM   dbo.Ui_Field_Lookup fl
@@ -268,6 +269,7 @@ public sealed class FieldDataService : IFieldDataService
                                Reload_Trigger_Field  = @ReloadTriggerField,
                                Reload_Trigger_Fields = @ReloadTriggerFields,
                                Parent_Column         = @ParentColumn,
+                               Tree_Selectable_Level = @TreeSelectableLevel,
                                Allow_Add_New         = @AllowAddNew,
                                Add_Form_Code         = @AddFormCode,
                                Updated_At            = GETDATE()
@@ -278,12 +280,14 @@ public sealed class FieldDataService : IFieldDataService
                                 Display_Column, Filter_Sql, Order_By, Search_Enabled,
                                 Popup_Columns_Json, EditBox_Mode, Code_Field,
                                 DropDown_Width, DropDown_Height, Reload_Trigger_Field,
-                                Reload_Trigger_Fields, Parent_Column, Allow_Add_New, Add_Form_Code, Updated_At)
+                                Reload_Trigger_Fields, Parent_Column, Tree_Selectable_Level,
+                                Allow_Add_New, Add_Form_Code, Updated_At)
                         VALUES (@FieldId, @QueryMode, @SourceName, @ValueColumn,
                                 @DisplayColumn, @FilterSql, @OrderBy, @SearchEnabled,
                                 @PopupColumnsJson, @EditBoxMode, @CodeField,
                                 @DropDownWidth, @DropDownHeight, @ReloadTriggerField,
-                                @ReloadTriggerFields, @ParentColumn, @AllowAddNew, @AddFormCode, GETDATE())
+                                @ReloadTriggerFields, @ParentColumn, @TreeSelectableLevel,
+                                @AllowAddNew, @AddFormCode, GETDATE())
                     """;
 
                 await conn.ExecuteAsync(
@@ -305,6 +309,7 @@ public sealed class FieldDataService : IFieldDataService
                         lookupConfig.ReloadTriggerField,
                         lookupConfig.ReloadTriggerFields,
                         lookupConfig.ParentColumn,
+                        lookupConfig.TreeSelectableLevel,
                         lookupConfig.AllowAddNew,
                         lookupConfig.AddFormCode
                     }, transaction: tx, cancellationToken: ct));

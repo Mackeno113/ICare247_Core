@@ -77,6 +77,11 @@ public sealed class FieldLookupConfigRecord
     /// </summary>
     public string? ParentColumn { get; init; }
 
+    /// <summary>
+    /// TreeLookupBox: node được chọn — "all" | "leaf" | "branch". Null = "all" (Migration 069).
+    /// </summary>
+    public string? TreeSelectableLevel { get; init; }
+
     // ── Thêm mới entity từ LookupBox — Migration 022 ─────────────────────
 
     /// <summary>Cho phép mở dialog "thêm mới" entity ngay trên LookupBox. Mặc định false.</summary>
