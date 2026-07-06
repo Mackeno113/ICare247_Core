@@ -153,6 +153,22 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     // ── Field Navigator (Left Panel) ─────────────────────────
     public ObservableCollection<FieldNavGroup> FieldNavigatorGroups { get; } = [];
 
+    // ── Bulk multi-select (song song FormEditor) ─────────────
+    /// <summary>Các field đang được tick trong navigator (IsMultiChecked).</summary>
+    public ObservableCollection<FieldNavItem> BulkSelectedFields { get; } = [];
+
+    /// <summary>Danh sách section đích cho context-menu "Chuyển field đã chọn sang…".
+    /// Rebuild qua <see cref="RefreshMoveTargets"/> mỗi khi mở menu.</summary>
+    public ObservableCollection<FieldMoveTargetItem> MoveTargets { get; } = [];
+
+    /// <summary>True khi có ≥1 field được tick → cho phép chuyển sang section khác.</summary>
+    public bool CanMoveBulk => BulkSelectedFields.Count >= 1;
+
+    /// <summary>Header MenuItem gốc — kèm số field đã tick; khi chưa tick thì báo hướng dẫn.</summary>
+    public string BulkMoveHeader => BulkSelectedFields.Count > 0
+        ? $"Chuyển {BulkSelectedFields.Count} field đã chọn sang…"
+        : "Chưa tick field nào để chuyển";
+
     public List<string> AvailableEditorTypes { get; } =
     [
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
@@ -1318,6 +1334,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand RefreshNavigatorCommand { get; }
     public DelegateCommand<FieldNavItem> MoveFieldUpCommand { get; }
     public DelegateCommand<FieldNavItem> MoveFieldDownCommand { get; }
+    public DelegateCommand<FieldNavItem?> ToggleBulkSelectionCommand { get; }
+    public DelegateCommand<FieldMoveTargetItem?> MoveBulkToSectionCommand { get; }
 
     public FieldConfigViewModel(
         IRegionManager regionManager,
@@ -1364,6 +1382,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         RefreshNavigatorCommand        = new DelegateCommand(async () => await LoadFieldNavigatorAsync(_cts.Token));
         MoveFieldUpCommand   = new DelegateCommand<FieldNavItem>(async item => await ExecuteMoveFieldAsync(item, -1));
         MoveFieldDownCommand = new DelegateCommand<FieldNavItem>(async item => await ExecuteMoveFieldAsync(item, +1));
+        ToggleBulkSelectionCommand = new DelegateCommand<FieldNavItem?>(ExecuteToggleBulkSelection);
+        MoveBulkToSectionCommand   = new DelegateCommand<FieldMoveTargetItem?>(
+                                         async t => await ExecuteMoveBulkToSectionAsync(t),
+                                         _ => CanMoveBulk);
+        BulkSelectedFields.CollectionChanged += (_, _) =>
+        {
+            RaisePropertyChanged(nameof(CanMoveBulk));
+            RaisePropertyChanged(nameof(BulkMoveHeader));
+            MoveBulkToSectionCommand.RaiseCanExecuteChanged();
+        };
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);
@@ -2151,7 +2179,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 .ToDictionary(g => g.Key, g => g.OrderBy(f => f.OrderNo).ToList(),
                               StringComparer.OrdinalIgnoreCase);
 
+            ExecuteClearBulkSelection();   // item cũ sắp bị thay thế → tránh giữ reference stale
             FieldNavigatorGroups.Clear();
+            // Pass 1 (đồng bộ): dựng group/item với mã → list hiện ngay. Ghi TitleKey/LabelKey để
+            // pass 2 resolve tên (vi) và cập nhật qua INotifyPropertyChanged (không chặn hiển thị).
+            var sectionTitleKeys = new List<(FieldNavGroup Group, string? TitleKey)>();
             foreach (var sec in sections.OrderBy(s => s.OrderNo))
             {
                 var group = new FieldNavGroup { SectionId = sec.SectionId, SectionCode = sec.SectionCode };
@@ -2166,6 +2198,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                             FieldCode      = f.FieldCode,
                             EditorType     = f.EditorType,
                             IsVirtual      = f.IsVirtual,
+                            LabelKey       = f.LabelKey,
                             IsCurrentField = f.FieldId == FieldId,
                             // Đã cấu hình = cờ Ui_Field.Is_Configured (bật khi user bấm Lưu Field).
                             Status         = f.IsConfigured
@@ -2174,12 +2207,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         });
                 }
                 if (group.Fields.Count > 0)
+                {
                     FieldNavigatorGroups.Add(group);
+                    sectionTitleKeys.Add((group, sec.TitleKey));
+                }
             }
 
             // ── Cột chưa tạo field: có trong Sys_Column nhưng chưa có Ui_Field ──
             // Gộp vào 1 nhóm riêng ở cuối để user biết cột nào còn "chỉ mới tạo cột".
             await AppendUnconfiguredColumnsAsync(fields, tenantId, ct);
+
+            // Pass 2: resolve tên section + field ra tiếng Việt (fallback mã khi chưa có bản dịch).
+            await ResolveNavigatorNamesAsync(sectionTitleKeys, ct);
 
             _navigatorLoadedFormId = FormId;
             RecomputeCascadeWarnings();   // đã có field list → soát cascade (P2/P3)
@@ -2233,6 +2272,33 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         if (group.Fields.Count > 0)
             FieldNavigatorGroups.Add(group);
+    }
+
+    // Pass 2 của navigator: resolve tên section (TitleKey) + tên field (LabelKey) ra tiếng Việt.
+    // Chạy tuần tự (giống FormEditor) sau khi list đã hiện mã → tên "điền dần" qua INotifyPropertyChanged.
+    // Cột chưa tạo field (LabelKey rỗng) giữ nguyên mã.
+    private async Task ResolveNavigatorNamesAsync(
+        IReadOnlyList<(FieldNavGroup Group, string? TitleKey)> sectionTitleKeys, CancellationToken ct)
+    {
+        if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
+
+        foreach (var (group, titleKey) in sectionTitleKeys)
+            group.SectionName = await ResolveViAsync(titleKey, ct);
+
+        foreach (var group in FieldNavigatorGroups)
+            foreach (var item in group.Fields)
+                if (!string.IsNullOrEmpty(item.LabelKey))
+                    item.DisplayName = await ResolveViAsync(item.LabelKey, ct);
+    }
+
+    /// <summary>Resolve 1 resource key sang tiếng Việt; rỗng/không có bản dịch → chuỗi rỗng (để fallback mã).</summary>
+    private async Task<string> ResolveViAsync(string? key, CancellationToken ct)
+    {
+        if (_i18nService is null || string.IsNullOrEmpty(key) || _appConfig is not { IsConfigured: true })
+            return "";
+        try { return await _i18nService.ResolveKeyAsync(key, "vi", ct) ?? ""; }
+        catch (OperationCanceledException) { return ""; }
+        catch (Exception ex) { _logger?.Capture(ex, $"FieldConfig.ResolveVi {key}"); return ""; }
     }
 
     // ── Field Navigator command ───────────────────────────────
@@ -2327,6 +2393,126 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             try { await _fieldService.UpdateFieldOrderAsync(orderItems, _cts.Token); }
             catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.PersistFieldOrder"); }
         }
+    }
+
+    // ── Bulk multi-select + chuyển sang Section khác (context-menu) ──
+    // Song song FormEditor: tick checkbox trên field → gom vào BulkSelectedFields; right-click
+    // navigator → menu "Chuyển N field đã chọn sang…". Nhóm "CHƯA TẠO FIELD" (FieldId=0) không
+    // được tick (không thể chuyển field chưa tồn tại).
+
+    /// <summary>Toggle 1 field vào/khỏi bulk selection theo trạng thái IsMultiChecked của nó.</summary>
+    private void ExecuteToggleBulkSelection(FieldNavItem? item)
+    {
+        if (item is null || item.IsColumnOnly || item.FieldId <= 0) return;
+
+        if (item.IsMultiChecked)
+        {
+            if (!BulkSelectedFields.Contains(item))
+                BulkSelectedFields.Add(item);
+        }
+        else
+        {
+            BulkSelectedFields.Remove(item);
+        }
+    }
+
+    /// <summary>Bỏ tick toàn bộ + xóa khỏi BulkSelectedFields.</summary>
+    private void ExecuteClearBulkSelection()
+    {
+        foreach (var f in BulkSelectedFields.ToList())
+            f.IsMultiChecked = false;
+        BulkSelectedFields.Clear();
+    }
+
+    /// <summary>Rebuild <see cref="MoveTargets"/> từ các section đang có (gọi khi mở context-menu).
+    /// Header ưu tiên tên đã resolve từ navigator group; section rỗng chưa có group → fallback mã.</summary>
+    public void RefreshMoveTargets()
+    {
+        MoveTargets.Clear();
+        foreach (var s in AvailableSections.Where(s => s.Id > 0))
+        {
+            var resolved = FieldNavigatorGroups.FirstOrDefault(g => g.SectionId == s.Id)?.SectionName;
+            var header   = !string.IsNullOrWhiteSpace(resolved) ? resolved : s.Code;
+            MoveTargets.Add(new FieldMoveTargetItem(header, s.Id, s.Code, MoveBulkToSectionCommand));
+        }
+    }
+
+    // Chuyển toàn bộ field đã tick sang section đích. Persist DB TRƯỚC (MoveFieldToSectionAsync),
+    // chỉ khi thành công mới đổi vị trí trong navigator → tránh lệch state khi DB lỗi. Sau đó
+    // reindex Order_No (1,3,5...) cho các group bị ảnh hưởng và persist qua UpdateFieldOrderAsync.
+    /// <summary>Chuyển các field trong <see cref="BulkSelectedFields"/> sang section của <paramref name="target"/>.</summary>
+    private async Task ExecuteMoveBulkToSectionAsync(FieldMoveTargetItem? target)
+    {
+        if (target is null || target.SectionId <= 0) return;
+        if (BulkSelectedFields.Count == 0 || _fieldService is null) return;
+
+        var fields = BulkSelectedFields.ToList();
+
+        // Group đích có thể chưa tồn tại (navigator chỉ hiện group có field) → khởi tạo, chèn
+        // trước nhóm "CHƯA TẠO FIELD" (SectionId=0) nếu có.
+        var targetGroup = FieldNavigatorGroups.FirstOrDefault(g => g.SectionId == target.SectionId);
+        if (targetGroup is null)
+        {
+            targetGroup = new FieldNavGroup
+            {
+                SectionId   = target.SectionId,
+                SectionCode = target.SectionCode,
+                SectionName = target.Header   // Header = tên đã resolve (hoặc mã fallback)
+            };
+            var colOnlyIdx = -1;
+            for (var i = 0; i < FieldNavigatorGroups.Count; i++)
+                if (FieldNavigatorGroups[i].SectionId == 0) { colOnlyIdx = i; break; }
+            if (colOnlyIdx >= 0) FieldNavigatorGroups.Insert(colOnlyIdx, targetGroup);
+            else                 FieldNavigatorGroups.Add(targetGroup);
+        }
+
+        var affectedGroups = new HashSet<FieldNavGroup>();
+        foreach (var field in fields)
+        {
+            if (field.FieldId <= 0) continue; // cột chưa tạo field → bỏ qua
+
+            var src = FieldNavigatorGroups.FirstOrDefault(g => g.Fields.Contains(field));
+            if (src is null || ReferenceEquals(src, targetGroup)) continue; // đã ở section đích
+
+            try
+            {
+                await _fieldService.MoveFieldToSectionAsync(field.FieldId, target.SectionId, _cts.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger?.Capture(ex, $"FieldConfig.BulkMove field #{field.FieldId} → section #{target.SectionId}");
+                continue; // DB lỗi → giữ nguyên field ở section nguồn
+            }
+
+            src.Fields.Remove(field);
+            targetGroup.Fields.Add(field);
+            affectedGroups.Add(src);
+        }
+
+        if (affectedGroups.Count == 0) { ExecuteClearBulkSelection(); return; }
+        affectedGroups.Add(targetGroup);
+
+        // Reindex Order_No (1,3,5...) cho mọi group bị ảnh hưởng + persist 1 lần.
+        var orderItems = new List<(int FieldId, int OrderNo)>();
+        foreach (var g in affectedGroups)
+            for (var i = 0; i < g.Fields.Count; i++)
+            {
+                if (g.Fields[i].FieldId <= 0) continue;
+                g.Fields[i].SortOrder = 1 + i * 2;
+                orderItems.Add((g.Fields[i].FieldId, g.Fields[i].SortOrder));
+            }
+
+        if (orderItems.Count > 0)
+        {
+            try { await _fieldService.UpdateFieldOrderAsync(orderItems, _cts.Token); }
+            catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.BulkMovePersistOrder"); }
+        }
+
+        // Xóa group nguồn nếu rỗng (navigator chỉ hiện group có field).
+        foreach (var g in affectedGroups.Where(g => g.SectionId != target.SectionId && g.Fields.Count == 0).ToList())
+            FieldNavigatorGroups.Remove(g);
+
+        ExecuteClearBulkSelection();
     }
 
     // ── Control prop schema loader ───────────────────────────

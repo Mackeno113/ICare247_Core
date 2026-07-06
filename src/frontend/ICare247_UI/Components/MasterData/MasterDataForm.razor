@@ -7,6 +7,7 @@
 @inject FormApiService        FormApi
 @inject MasterDataApiService  MasterApi
 @inject LookupApiService      LookupApi
+@inject IJSRuntime            JS
 @inherits LocalizedComponentBase
 
 @if (_loading)
@@ -25,31 +26,102 @@ else
             <h3 class="md-form-title">@(IsEditMode ? Loc.L("common.action.update", "Cập nhật") : Loc.L("common.action.create", "Thêm mới")) — @_formName</h3>
         }
 
+        @* Toast lỗi: ghim sticky đầu body (dưới tiêu đề đã neo) + căn phải → luôn thấy khi cuộn. *@
         @if (_formError is not null || _formMessages.Count > 0)
         {
-            <div class="result-invalid md-form-banner">
-                @if (_formError is not null)
-                {
-                    <div>@_formError</div>
-                }
-                @if (_formMessages.Count > 0)
-                {
-                    <ul class="md-form-banner-list">
-                        @foreach (var m in _formMessages) { <li>@m</li> }
-                    </ul>
-                }
+            <div class="md-form-alert">
+                <div class="result-invalid md-form-alert-toast">
+                    <button type="button" class="md-form-alert-close"
+                            title="@Loc.L("common.action.close", "Đóng")" @onclick="DismissError">✕</button>
+                    @if (_formError is not null)
+                    {
+                        <div class="md-form-alert-title">@_formError</div>
+                    }
+                    @if (_formMessages.Count > 0)
+                    {
+                        <ul class="md-form-banner-list">
+                            @foreach (var m in _formMessages) { <li>@m</li> }
+                        </ul>
+                    }
+                </div>
             </div>
         }
 
-        <div class="fields-grid" style="--form-cols:@_formColumns">
-            @foreach (var fs in _fieldStates)
+        @{
+            // Gom field theo section (mirror FormRunner). Field không thuộc section nào → nhóm orphan.
+            // NOTE: không dùng biến tên 'section' vì @section là Razor directive.
+            var sections = _form?.Sections ?? [];
+            var sectionGroups = sections
+                .Select(sec => new
+                {
+                    Name   = sec.SectionName,
+                    Fields = _fieldStates.Where(fs => sec.Fields.Any(f => f.FieldCode == fs.FieldCode)).ToList()
+                })
+                .Where(g => g.Fields.Count > 0)
+                .ToList();
+
+            var orphanFields = _fieldStates
+                .Where(fs => !sections.Any(s => s.Fields.Any(f => f.FieldCode == fs.FieldCode)))
+                .ToList();
+
+            // Số nhóm thực có nội dung. ≤1 → render phẳng (không khung group).
+            var groupCount = sectionGroups.Count + (orphanFields.Count > 0 ? 1 : 0);
+            var useGroups  = groupCount > 1;
+        }
+
+        <div class="form-body">
+        @if (useGroups)
+        {
+            @foreach (var grp in sectionGroups)
             {
-                <FieldRenderer State="fs"
-                               OnChange="OnFieldChanged"
-                               OnBlur="OnFieldBlur"
-                               Context="BuildContext()"
-                               DebugMode="false" />
+                <div class="section-card">
+                    @if (!string.IsNullOrWhiteSpace(grp.Name))
+                    {
+                        <div class="section-title">@grp.Name</div>
+                    }
+                    <div class="fields-grid" style="--form-cols:@_formColumns">
+                        @foreach (var fs in grp.Fields)
+                        {
+                            <FieldRenderer State="fs"
+                                           OnChange="OnFieldChanged"
+                                           OnBlur="OnFieldBlur"
+                                           Context="BuildContext()"
+                                           DebugMode="false" />
+                        }
+                    </div>
+                </div>
             }
+            @if (orphanFields.Count > 0)
+            {
+                <div class="section-card">
+                    <div class="section-title">@Loc.L("masterdata.form.otherFields", "Các field khác")</div>
+                    <div class="fields-grid" style="--form-cols:@_formColumns">
+                        @foreach (var fs in orphanFields)
+                        {
+                            <FieldRenderer State="fs"
+                                           OnChange="OnFieldChanged"
+                                           OnBlur="OnFieldBlur"
+                                           Context="BuildContext()"
+                                           DebugMode="false" />
+                        }
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            @* Chỉ 1 nhóm → render field phẳng, không bọc card group *@
+            <div class="fields-grid" style="--form-cols:@_formColumns">
+                @foreach (var fs in _fieldStates)
+                {
+                    <FieldRenderer State="fs"
+                                   OnChange="OnFieldChanged"
+                                   OnBlur="OnFieldBlur"
+                                   Context="BuildContext()"
+                                   DebugMode="false" />
+                }
+            </div>
+        }
         </div>
 
         <div class="md-form-footer">
@@ -84,6 +156,8 @@ else
     private bool IsEditMode => Id is not null;
 
     private List<FieldState> _fieldStates = [];
+    /// <summary>Metadata form giữ lại để nhóm field theo section khi render (mirror FormRunner).</summary>
+    private FormMetadataDto? _form;
     private string _formName = "";
     /// <summary>Số cột lưới nền form (Ui_Form.Columns, 1..4). Đẩy vào CSS var --form-cols.</summary>
     private int _formColumns = 4;
@@ -105,6 +179,7 @@ else
         {
             var form = await FormApi.GetFormAsync(FormCode);
             if (form is null) { _error = Loc.L("masterdata.form.notfound", "Form '{0}' không tồn tại.", FormCode); return; }
+            _form = form;
             _formName = form.FormName.Length > 0 ? form.FormName : form.FormCode;
             _formColumns = Math.Clamp(form.Columns ?? 4, 1, 4);
             // Báo bề rộng modal phù hợp số cột (popup chứa form tự co/giãn cho hài hòa).
@@ -217,9 +292,22 @@ else
             _formError = fieldErrorCount > 0
                 ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", fieldErrorCount)
                 : (_formMessages.Count == 0 ? Loc.L("common.msg.saveFailed", "Lưu thất bại.") : null);
+
+            // Trỏ chuột + cuộn tới field lỗi ĐẦU TIÊN (theo thứ tự hiển thị) — icare.focusField
+            // focus phần tử id="field_{FieldCode}" mà FieldRenderer đã bọc sẵn.
+            var firstErr = _fieldStates.FirstOrDefault(f => f.Errors.Count > 0);
+            if (firstErr is not null)
+                await JS.InvokeVoidAsync("icare.focusField", firstErr.FieldCode);
         }
         catch (Exception ex) { _formError = ApiErrorLocalizer.Describe(Loc, ex); }
         finally { _saving = false; }
+    }
+
+    /// <summary>Đóng toast lỗi (giữ nguyên highlight đỏ ở từng field để user vẫn biết ô nào sai).</summary>
+    private void DismissError()
+    {
+        _formError = null;
+        _formMessages.Clear();
     }
 
     private async Task Cancel() => await OnCancelled.InvokeAsync();

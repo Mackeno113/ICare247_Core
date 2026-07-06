@@ -3,6 +3,32 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — UI/UX loạt màn: Field Navigator, form web chia section, modal ghim, TreeList (session 76 — 2026-07-06, CHƯA commit)
+
+### ConfigStudio WPF — Field Navigator (FieldConfigView)
+- [x] **Bulk multi-select + chuyển Section/Tab** (parity FormEditor): checkbox tick field + context-menu "Chuyển N field đã chọn sang…". Xử luật: cột "CHƯA TẠO FIELD" không tick; group đích rỗng tự tạo; reindex Order_No; persist DB trước rồi mới đổi UI. Model mới `FieldMoveTargetItem`.
+- [x] **Hiển thị tên** section + field (thay mã thô): resolve i18n `_i18nService.ResolveKeyAsync(key,"vi")` **2-pass** (list hiện mã ngay → tên điền dần qua INotifyPropertyChanged). Field: tên dòng chính + `EditorType · mã` dòng phụ; header section hiện tên (fallback mã).
+
+### Web (ICare247_UI) — MasterDataForm + modal
+- [x] **Chia cụm theo section** (mirror FormRunner): `.section-card` + tiêu đề + `.form-body` gap. Backend [FormRepository.cs] resolve `SectionName` từ `Ui_Section.Title_Key` (trước hardcode `''`).
+- [x] **Modal ghim header/footer**: `.dm-modal` flex-column, chỉ `.dm-body` cuộn; footer Hủy/Lưu `position:sticky bottom`; **toast lỗi** sticky-top + căn phải (nút đóng); **auto-focus** field lỗi đầu tiên (`icare.focusField`).
+
+### Web (ICare247_UI) — DataView TreeList (parity grid)
+- [x] **Sửa/Xóa theo dòng** + **double-click sửa** + **toolbar dùng chung** + CSS header. Luật xóa: 🗑️ chỉ ở node **lá / cha không còn con** (`__parentKey`).
+- [x] **#1 Cấu trúc cây**: backend [ViewRepository.cs] emit `b.[ParentField] AS [__parentKey]` (id cha THÔ) cho TreeList — auto-JOIN đã đổi cột cha thành TÊN; frontend `ParentKeyFieldName="__parentKey"`.
+- [x] **#2 Bộ lọc** (FilterRowEditorVisible + FilterMenu) · **#3 STT** (VisibleIndex) · **#4 Lưu layout** (`LayoutAuto*` + `TreeListPersistentLayout`).
+
+### 📌 Decisions Log
+- **Field Navigator selection = COPY pattern** sang FieldConfig (không refactor shared) → KHÔNG đụng FormEditor đang chạy ổn (chốt với user).
+- **Toast lỗi modal = gộp sticky-top + căn phải** (option 1+3 user chọn); tự chứa trong MasterDataForm, KHÔNG đụng DraggableModal (tránh plumbing qua 2-3 file).
+- **TreeList cây lồng** (user: "ParentField đã lưu WPF = CongTy_Cha_Id"): backend emit id cha thô dưới **alias riêng `__parentKey`** → giữ cột tên hiển thị, không đụng cấu hình View. Luật xóa cũng dùng `__parentKey` (không dùng ParentField vì đã thành tên).
+- **API DevExpress xác minh qua reflection `DevExpress.Blazor.v25.2.dll` 25.2.3** (không đoán): `DxTreeList.RowDoubleClick`/`GetDataItem`, `TreeListDataColumnCellDisplayTemplateContext.VisibleIndex`, `LayoutAutoLoading/Saving`+`TreeListPersistentLayout`, `DxTreeListDataColumn.FilterRowEditorVisible/FilterMenuButtonDisplayMode`, enum `TreeListColumnFixedPosition.Right`.
+
+### ⏳ Deploy để thấy kết quả
+- [ ] Backend đổi (`FormRepository` + `ViewRepository`) → **rebuild + restart API + Xóa cache** (tên section web + cây lồng).
+- [ ] Rebuild web (ICare247_UI) + ConfigStudio WPF.
+- [ ] Kiểm thử trực quan: Field Navigator (tick+chuyển+tên), form web (section+tiêu đề+modal ghim+toast+focus), TreeList (cây lồng+lọc+STT+lưu layout+xóa lá/cha-không-con).
+
 ## ✅ Đã xong — Cascade lookup + Multi-Trigger + Cache (session 73 — 2026-07-05, đã commit + push master)
 
 - [x] **Fix gốc cascade field ảo** — `MasterDataForm` bỏ lọc `!IsVirtual` → Tỉnh/Ngân hàng render + vào context (gốc lỗi 500 `Must declare @param`). `c2ffcff`

@@ -373,15 +373,35 @@
                     </DockPanel>
                 </Border>
                 <!-- Field list grouped by section -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              ContextMenuOpening="OnNavigatorContextMenuOpening">
+                    <!-- Bulk multi-select: tick field → right-click chuyển sang Section khác (y hệt FormEditor).
+                         ContextMenu.DataContext = VM qua PlacementTarget; mỗi item mang sẵn MoveCommand. -->
+                    <ScrollViewer.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext,
+                                                   RelativeSource={RelativeSource Self}}">
+                            <MenuItem Header="{Binding BulkMoveHeader}"
+                                      ItemsSource="{Binding MoveTargets}"
+                                      IsEnabled="{Binding CanMoveBulk}">
+                                <MenuItem.ItemContainerStyle>
+                                    <Style TargetType="MenuItem">
+                                        <Setter Property="Header" Value="{Binding Header}" />
+                                        <Setter Property="Command" Value="{Binding MoveCommand}" />
+                                        <Setter Property="CommandParameter" Value="{Binding}" />
+                                    </Style>
+                                </MenuItem.ItemContainerStyle>
+                            </MenuItem>
+                        </ContextMenu>
+                    </ScrollViewer.ContextMenu>
                     <ItemsControl ItemsSource="{Binding FieldNavigatorGroups}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
-                                    <!-- Section header -->
-                                    <Border Background="{DynamicResource AppPageBackgroundBrush}" Padding="10,5">
-                                        <TextBlock Text="{Binding SectionCode}"
-                                                   FontSize="10" FontWeight="SemiBold"
+                                    <!-- Section header — hiện tên section đã resolve (fallback mã); ToolTip giữ mã -->
+                                    <Border Background="{DynamicResource AppPageBackgroundBrush}" Padding="10,5"
+                                            ToolTip="{Binding SectionCode}">
+                                        <TextBlock Text="{Binding DisplayTitle}"
+                                                   FontSize="11" FontWeight="SemiBold"
                                                    Foreground="{StaticResource MutedBrush}"
                                                    TextTrimming="CharacterEllipsis" />
                                     </Border>
@@ -400,12 +420,31 @@
                                                         </Style>
                                                     </Grid.Style>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
 
+                                                    <!-- Bulk multi-select checkbox — ẩn với cột chưa tạo field -->
+                                                    <CheckBox Grid.Column="0" Margin="8,0,0,0"
+                                                              VerticalAlignment="Center"
+                                                              IsChecked="{Binding IsMultiChecked, Mode=TwoWay}"
+                                                              Click="OnFieldBulkChecked"
+                                                              ToolTip="Chọn để chuyển sang Section khác">
+                                                        <CheckBox.Style>
+                                                            <Style TargetType="CheckBox">
+                                                                <Setter Property="Visibility" Value="Visible" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsColumnOnly}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </CheckBox.Style>
+                                                    </CheckBox>
+
                                                     <!-- Field name + editor type -->
-                                                    <Button Grid.Column="0"
+                                                    <Button Grid.Column="1"
                                                             Command="{Binding DataContext.NavigateToFieldCommand,
                                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
@@ -423,9 +462,9 @@
                                                                 </Style>
                                                             </Border.Style>
                                                             <StackPanel ToolTip="{Binding StatusTooltip}">
-                                                                <TextBlock Text="{Binding EffectiveCode}"
+                                                                <!-- Dòng chính: tên field đã resolve (fallback mã) -->
+                                                                <TextBlock Text="{Binding Title}"
                                                                            FontSize="12"
-                                                                           FontFamily="Cascadia Code, Consolas"
                                                                            TextTrimming="CharacterEllipsis">
                                                                     <TextBlock.Style>
                                                                         <Style TargetType="TextBlock">
@@ -435,7 +474,7 @@
                                                                                     <Setter Property="Foreground" Value="{StaticResource AccentDarkBrush}" />
                                                                                     <Setter Property="FontWeight" Value="SemiBold" />
                                                                                 </DataTrigger>
-                                                                                <!-- Cột chưa tạo field → mã mờ đi, chữ nghiêng -->
+                                                                                <!-- Cột chưa tạo field → mờ đi, chữ nghiêng -->
                                                                                 <DataTrigger Binding="{Binding StatusKey}" Value="column">
                                                                                     <Setter Property="FontStyle" Value="Italic" />
                                                                                     <Setter Property="Opacity" Value="0.65" />
@@ -444,10 +483,18 @@
                                                                         </Style>
                                                                     </TextBlock.Style>
                                                                 </TextBlock>
+                                                                <!-- Dòng phụ: EditorType · mã cột (mono) + badge trạng thái -->
                                                                 <StackPanel Orientation="Horizontal">
                                                                     <TextBlock Text="{Binding EditorType}"
                                                                                FontSize="10" VerticalAlignment="Center"
                                                                                Foreground="{StaticResource MutedBrush}" />
+                                                                    <TextBlock Text=" · " FontSize="10" VerticalAlignment="Center"
+                                                                               Foreground="{StaticResource MutedBrush}" />
+                                                                    <TextBlock Text="{Binding EffectiveCode}"
+                                                                               FontSize="10" VerticalAlignment="Center"
+                                                                               FontFamily="Cascadia Code, Consolas"
+                                                                               Foreground="{StaticResource MutedBrush}"
+                                                                               TextTrimming="CharacterEllipsis" />
                                                                     <!-- Badge trạng thái cấu hình -->
                                                                     <Border CornerRadius="3" Padding="5,0" Margin="6,1,0,0"
                                                                             VerticalAlignment="Center">
@@ -486,7 +533,7 @@
                                                     </Button>
 
                                                     <!-- Nút ↑↓ — chỉ hiện khi hover -->
-                                                    <StackPanel Grid.Column="1" Orientation="Vertical"
+                                                    <StackPanel Grid.Column="2" Orientation="Vertical"
                                                                 VerticalAlignment="Center" Margin="0,0,4,0">
                                                         <StackPanel.Style>
                                                             <Style TargetType="StackPanel">

@@ -363,6 +363,16 @@ public sealed partial class ViewRepository : IViewRepository
             }
         }
 
+        // TreeList: emit id cha THÔ dưới alias riêng [__parentKey] để client dựng cây. Cột cha hiển thị
+        // có thể đã bị auto-JOIN đổi thành TÊN → không còn id khớp Key_Field; alias riêng tránh đụng độ,
+        // vẫn giữ cột tên cho người xem. Client set ParentKeyFieldName="__parentKey".
+        if (string.Equals(view.ViewType, "TreeList", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(view.ParentField)
+            && SafeIdentifierRegex().IsMatch(view.ParentField))
+        {
+            selectExprs.Add($"b.{Bracket(view.ParentField!)} AS [__parentKey]");
+        }
+
         var fromSql = $"{table} AS b{string.Concat(joinSql)}";
 
         var dp = new DynamicParameters();

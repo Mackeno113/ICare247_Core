@@ -330,7 +330,10 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
    virtualize + hiện thanh cuộn trong lưới (header cột dính trên). Lấp đầy viewport:
    trừ topbar + tiêu đề màn + footer (~220px); min-height giữ dùng được trên màn thấp. */
 .dv-dxgrid { border-radius: 10px; overflow: visible; height: calc(100vh - 220px); min-height: 320px; }
-.dv-dxgrid .dxbl-grid-header-content { font-weight: var(--fw-semibold); color: var(--gray-700); }
+/* DxTreeList tái dùng CSS .dxbl-grid-* của Grid (không có class dxbl-treelist riêng) →
+   style header giống grid để hết "thô/nhạt", đồng bộ 2 lưới. */
+.dv-dxgrid .dxbl-grid-header-content,
+.dv-treelist .dxbl-grid-header-content { font-weight: var(--fw-semibold); color: var(--gray-700); }
 /* Lưới cây metadata-driven: cùng chiều cao giới hạn → DevExpress sinh scroll nội bộ + GHIM
    hàng tiêu đề khi cuộn (bắt buộc cho mọi lưới data, kể cả tree). Không set height = header trôi. */
 .dv-treelist { border-radius: 10px; height: calc(100vh - 220px); min-height: 320px; }
@@ -360,7 +363,22 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .md-form-banner-list { margin: 6px 0 0; padding-left: 18px; }
 .md-form-banner-list li { margin: 2px 0; }
 .md-form-loading { display: flex; align-items: center; gap: 10px; color: var(--color-text-secondary); padding: 16px; }
-.md-form-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+/* Footer Hủy/Lưu: ghim đáy vùng cuộn → luôn thấy dù form dài. Nền che nội dung cuộn phía sau. */
+.md-form-footer { position: sticky; bottom: 0; z-index: 6; display: flex; justify-content: flex-end; gap: 10px;
+                  margin-top: 16px; padding: 12px 4px 4px; border-top: 1px solid var(--color-border);
+                  background: var(--color-card); }
+
+/* Toast lỗi: ghim đầu vùng cuộn (dưới tiêu đề đã neo) + căn phải, nổi trên nội dung, luôn thấy khi cuộn. */
+.md-form-alert { position: sticky; top: 0; z-index: 20; display: flex; justify-content: flex-end;
+                 pointer-events: none; margin-bottom: 4px; }
+.md-form-alert-toast { pointer-events: auto; position: relative; max-width: min(460px, 100%);
+                       padding: 10px 30px 10px 14px; border-radius: 8px;
+                       box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.md-form-alert-title { font-weight: var(--fw-semibold); }
+.md-form-alert-close { position: absolute; top: 6px; right: 8px; border: none; background: transparent;
+                       cursor: pointer; font-size: 13px; line-height: 1; color: inherit; opacity: .7;
+                       padding: 2px 4px; border-radius: 5px; }
+.md-form-alert-close:hover { opacity: 1; background: rgba(0,0,0,.08); }
 .md-legacy-tag { color: #92400e; background: var(--color-accent-soft); border-radius: var(--radius-sm); padding: 0 6px; font-size: 11px; margin-left: 4px; }
 
 /* ── Master Data — Modal (Popup mode + delete dialog) ─── */
@@ -376,8 +394,11 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 /* Cột STT trong grid danh mục — căn giữa, chữ nhạt. */
 .dv-stt { display: block; text-align: center; color: var(--color-text-muted, #64748b); }
 
-.dm-modal { position: relative; }
-.dm-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: move; user-select: none; }
+/* Ghim tiêu đề + footer: modal thành cột flex, CHỈ .dm-body cuộn (override overflow:auto của .md-modal).
+   → thanh tiêu đề (dm-header) và footer (sticky) luôn hiển thị dù form dài. */
+.dm-modal { position: relative; display: flex; flex-direction: column; overflow: hidden; }
+.dm-header { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: move; user-select: none; }
+.dm-body   { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 .dm-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dm-close { cursor: pointer; border: none; background: transparent; font-size: 16px; line-height: 1; color: var(--color-text-muted, #64748b); padding: 4px 8px; border-radius: 6px; }
 .dm-close:hover { background: var(--color-hover, rgba(15,23,42,.06)); color: var(--color-text, #0f172a); }

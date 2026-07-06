@@ -1,7 +1,23 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-06 (session 75 — Bulk-move field sang Section/Tab, ConfigStudio WPF). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-06 (session 76 — UI/UX loạt: Field Navigator, form web chia section, modal ghim, TreeList parity). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 76 (2026-07-06) — UI/UX loạt màn (WPF ConfigStudio + web Blazor + backend)
+
+**Bối cảnh:** user rà soát trực quan từng màn, yêu cầu vá lần lượt (đối chiếu ảnh chụp). Loạt cải tiến cross-cutting.
+
+**Đã làm (CHƯA commit — branch `master`):**
+- **ConfigStudio WPF — Field Navigator (`FieldConfigView`)**: (1) bulk multi-select (checkbox) + context-menu "Chuyển N field sang Section/Tab khác" — COPY pattern từ FormEditor, KHÔNG refactor shared. (2) Hiển thị TÊN section + field (resolve i18n 2-pass qua INotifyPropertyChanged, fallback mã). Files: `Models/FieldNavGroup.cs` (`FieldMoveTargetItem` mới, `IsMultiChecked`, `SectionName/DisplayTitle`, `LabelKey/DisplayName/Title`), `FieldConfigViewModel.cs`, `FieldConfigView.xaml(.cs)`.
+- **Web `MasterDataForm`**: chia cụm theo section (`.section-card`, mirror FormRunner) + `.form-body` gap; modal ghim header/footer (`.dm-modal` flex-column, `.dm-body` cuộn, footer sticky), **toast lỗi sticky-top+phải** + **auto-focus field lỗi đầu tiên** (`icare.focusField`). Backend `FormRepository.cs` resolve `SectionName` từ `Ui_Section.Title_Key` (trước hardcode `''`).
+- **Web `DataView` TreeList (parity grid)**: cột Sửa/Xóa (luật xóa CHỈ node lá/cha-không-con qua `__parentKey`) + double-click sửa + toolbar dùng chung + CSS header; **#1 cây lồng**: backend `ViewRepository.cs` emit `b.[ParentField] AS [__parentKey]` (id cha thô) cho TreeList → frontend `ParentKeyFieldName="__parentKey"`; **#2 filter** + **#3 STT** + **#4 lưu layout** (`LayoutAuto*`+`TreeListPersistentLayout`).
+- **API DevExpress xác minh bằng reflection** `DevExpress.Blazor.v25.2.dll` 25.2.3 (không đoán): RowDoubleClick, VisibleIndex, LayoutAuto*, FilterRowEditorVisible, TreeListColumnFixedPosition.Right.
+- **Memory:** `project_current_phase.md` — ghi "Phạm vi tạm thời": BỎ QUA `ICare247.Blazor.RuntimeCheck` cho đến khi user nhắc lại.
+- Build 3 solution (backend / ICare247_UI / ConfigStudio WPF): **0 error**.
+
+**⚠️ Deploy để thấy kết quả:** backend đổi (`FormRepository`+`ViewRepository`) → **rebuild + restart API + Xóa cache** (tên section web + cây lồng). Rebuild web + WPF. Kiểm thử trực quan chưa chạy.
+
+**Việc gợi ý tiếp:** commit loạt session 76 (backend+web+WPF+memory) — chờ user chốt message + push. FK auto-JOIN (session 72) vẫn TẠM DỪNG (cùng file `ViewRepository.cs`). 3 file i18n pre-existing chưa commit.
 
 ## Session 75 (2026-07-06) — FormEditor: chuyển bulk field sang Section/Tab khác
 

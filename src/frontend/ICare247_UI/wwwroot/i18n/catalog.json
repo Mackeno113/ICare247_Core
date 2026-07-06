@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-07-04 17:12:16",
+  "generatedAt": "2026-07-06 18:05:21",
   "source": "ICare247_UI",
-  "count": 320,
+  "count": 321,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -1904,7 +1904,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 56
+          "line": 128
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
@@ -1947,6 +1947,10 @@
         {
           "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
           "line": 15
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
+          "line": 35
         }
       ]
     },
@@ -1984,7 +1988,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 25
+          "line": 26
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
@@ -2019,7 +2023,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 135
+          "line": 95
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 175
         }
       ]
     },
@@ -2034,7 +2042,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 130
+          "line": 90
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 170
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -2109,7 +2121,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 58
+          "line": 130
         }
       ]
     },
@@ -2124,7 +2136,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 58
+          "line": 130
         }
       ]
     },
@@ -2157,7 +2169,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 25
+          "line": 26
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
@@ -2341,7 +2353,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 124
+          "line": 83
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 164
         }
       ]
     },
@@ -2352,7 +2368,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 92
+          "line": 60
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
+          "line": 132
         }
       ]
     },
@@ -2492,7 +2512,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 18
+          "line": 19
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
@@ -2589,7 +2609,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 217
+          "line": 294
         }
       ]
     },
@@ -3442,7 +3462,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 216
+          "line": 293
         }
       ]
     },
@@ -3457,7 +3477,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 14
+          "line": 15
         }
       ]
     },
@@ -3468,7 +3488,18 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 107
+          "line": 181
+        }
+      ]
+    },
+    {
+      "key": "masterdata.form.otherFields",
+      "vi": "Các field khác",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
+          "line": 97
         }
       ]
     },

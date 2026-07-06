@@ -131,14 +131,18 @@ public sealed class FormRepository : IFormRepository
             ORDER BY t.Order_No
             """;
 
+        // SectionName: resolve Title_Key qua Sys_Resource theo @LangCode; fallback Section_Code
+        // khi chưa có bản dịch (giống cách sqlFields resolve Label).
         const string sqlSections = """
             SELECT s.Section_Id   AS SectionId,
                    s.Form_Id      AS FormId,
                    s.Tab_Id       AS TabId,
                    s.Section_Code AS SectionCode,
-                   ''             AS SectionName,
+                   COALESCE(r.Resource_Value, s.Section_Code) AS SectionName,
                    s.Order_No     AS SortOrder
             FROM   dbo.Ui_Section s
+            LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = s.Title_Key
+                                        AND r.Lang_Code     = @LangCode
             WHERE  s.Form_Id = @FormId
               AND  s.Is_Active = 1
             ORDER BY s.Order_No
@@ -219,7 +223,8 @@ public sealed class FormRepository : IFormRepository
             new CommandDefinition(sqlTabs, formParam, cancellationToken: ct))).AsList();
 
         var sections = (await conn.QueryAsync<SectionMetadata>(
-            new CommandDefinition(sqlSections, formParam, cancellationToken: ct))).AsList();
+            new CommandDefinition(sqlSections, new { FormId = formDto.FormId, LangCode = langCode },
+                cancellationToken: ct))).AsList();
 
         var rawFields = (await conn.QueryAsync<FieldMetadata>(
             new CommandDefinition(sqlFields, new { FormId = formDto.FormId, LangCode = langCode },

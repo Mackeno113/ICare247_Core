@@ -11,21 +11,44 @@
 @inject LocalizationService Loc
 @implements IDisposable
 
+@* Toolbar (Thêm/Refresh/Export…) dùng chung cho CẢ tree lẫn grid — trước đây chỉ nhánh grid có. *@
+@if (ToolbarActions.Count > 0)
+{
+    <div class="dv-toolbar">
+        @foreach (var a in ToolbarActions)
+        {
+            var act = a;
+            <button class="btn btn-light dv-action" title="@(act.Tooltip ?? act.Label ?? act.ActionCode)"
+                    @onclick="() => ExecuteActionAsync(act)">
+                @if (!string.IsNullOrWhiteSpace(act.Icon)) { <span class="dv-action-icon">@act.Icon</span> }
+                <span>@(act.Label ?? act.ActionCode)</span>
+            </button>
+        }
+    </div>
+}
+
 @if (View.ViewType.Equals("TreeList", StringComparison.OrdinalIgnoreCase)
      && !string.IsNullOrWhiteSpace(View.KeyField) && !string.IsNullOrWhiteSpace(View.ParentField))
 {
     @* VirtualScrollingEnabled + height ở .dv-treelist → header GHIM khi cuộn cây (bắt buộc mọi lưới data). *@
-    <DxTreeList Data="_gridRows"
+    @* ParentKeyFieldName = "__parentKey" (id cha THÔ backend emit riêng cho TreeList) — cột cha hiển thị
+       đã bị auto-JOIN đổi thành TÊN nên không khớp Key_Field. LayoutAuto* → lưu/khôi phục layout per-user. *@
+    <DxTreeList @ref="_tree"
+                Data="_gridRows"
                 KeyFieldName="@View.KeyField"
-                ParentKeyFieldName="@View.ParentField"
+                ParentKeyFieldName="@ParentKeyAlias"
+                LayoutAutoLoading="OnTreeLayoutLoading"
+                LayoutAutoSaving="OnTreeLayoutSaving"
                 ShowFilterRow="View.ShowFilterRow"
+                FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Always"
                 VirtualScrollingEnabled="true"
                 CssClass="dv-treelist"
                 TextWrapEnabled="true"
                 AllowColumnReorder="true"
                 ColumnResizeMode="TreeListColumnResizeMode.ColumnsContainer"
                 HighlightRowOnHover="true"
-                FocusedRowEnabled="true">
+                FocusedRowEnabled="true"
+                RowDoubleClick="OnTreeRowDoubleClick">
         <Columns>
             @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
             {
@@ -33,13 +56,45 @@
                 <DxTreeListSelectionColumn Width="44px" FixedPosition="TreeListColumnFixedPosition.Left" />
             }
 
+            @* Cột STT — số thứ tự dòng hiển thị (VisibleIndex theo thứ tự cây). *@
+            <DxTreeListDataColumn Caption="@Loc.L("common.column.stt", "STT")" Width="56px"
+                                  AllowSort="false" FixedPosition="TreeListColumnFixedPosition.Left">
+                <CellDisplayTemplate>
+                    <span class="dv-stt">@(context.VisibleIndex + 1)</span>
+                </CellDisplayTemplate>
+            </DxTreeListDataColumn>
+
             @foreach (var col in DataColumns)
             {
                 var c = col;
                 <DxTreeListDataColumn Caption="@c.DisplayCaption" FieldName="@c.FieldName"
-                                      Width="@c.Width" AllowSort="c.AllowSort">
+                                      Width="@c.Width" AllowSort="c.AllowSort"
+                                      FilterRowEditorVisible="c.AllowFilter"
+                                      FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Always">
                     <CellDisplayTemplate>
                         @RenderCell(AsRow(context.DataItem), c)
+                    </CellDisplayTemplate>
+                </DxTreeListDataColumn>
+            }
+
+            @* Cột Thao tác — Sửa mọi node; Xóa CHỈ ở node lá / cha không còn con (tránh mồ côi con + vi phạm FK). *@
+            @if (HasRowActions)
+            {
+                <DxTreeListDataColumn Caption="@Loc.L("common.column.actions", "Thao tác")"
+                                      Width="96px" AllowSort="false"
+                                      FixedPosition="TreeListColumnFixedPosition.Right">
+                    <CellDisplayTemplate>
+                        @{ var trow = AsRow(context.DataItem); }
+                        @if (View.AllowEdit)
+                        {
+                            <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")"
+                                    @onclick="() => OnEdit.InvokeAsync(trow)">✏️</button>
+                        }
+                        @if (View.AllowDelete && IsLeafOrChildless(trow))
+                        {
+                            <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")"
+                                    @onclick="() => DeleteRowAsync(trow)">🗑️</button>
+                        }
                     </CellDisplayTemplate>
                 </DxTreeListDataColumn>
             }
@@ -48,21 +103,6 @@
 }
 else
 {
-    @if (ToolbarActions.Count > 0)
-    {
-        <div class="dv-toolbar">
-            @foreach (var a in ToolbarActions)
-            {
-                var act = a;
-                <button class="btn btn-light dv-action" title="@(act.Tooltip ?? act.Label ?? act.ActionCode)"
-                        @onclick="() => ExecuteActionAsync(act)">
-                    @if (!string.IsNullOrWhiteSpace(act.Icon)) { <span class="dv-action-icon">@act.Icon</span> }
-                    <span>@(act.Label ?? act.ActionCode)</span>
-                </button>
-            }
-        </div>
-    }
-
     <DxGrid @ref="_grid"
             Data="_gridRows"
             LayoutAutoLoading="OnLayoutLoading"
@@ -158,6 +198,15 @@ else
     [Parameter] public EventCallback<IReadOnlyList<object>> SelectedDataItemsChanged { get; set; }
 
     private IGrid? _grid;
+    private DxTreeList? _tree;
+
+    /// <summary>Alias cột id cha THÔ backend emit riêng cho TreeList (tránh auto-JOIN nuốt id).
+    /// Dùng làm ParentKeyFieldName của cây + nguồn tính <see cref="_parentKeys"/>.</summary>
+    private const string ParentKeyAlias = "__parentKey";
+
+    /// <summary>Tập khóa (KeyField) đang LÀM CHA — mọi giá trị id cha (__parentKey) xuất hiện trong dữ liệu.
+    /// Dùng để ẩn nút Xóa ở node còn con. Rebuild trong <see cref="BuildGridRows"/>.</summary>
+    private readonly HashSet<string> _parentKeys = new(StringComparer.Ordinal);
 
     // ── Lưu/khôi phục layout lưới per-user (L0 localStorage + server) ──
     private CancellationTokenSource? _saveCts;
@@ -195,6 +244,31 @@ else
     }
 
     public void Dispose() => _saveCts?.Cancel();
+
+    // ── Lưu/khôi phục layout CÂY per-user (song song grid, dùng type TreeList*) ──
+    /// <summary>TreeList khởi tạo → nạp layout đã lưu (rỗng/hỏng → giữ mặc định).</summary>
+    private async Task OnTreeLayoutLoading(TreeListPersistentLayoutEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(View.ViewCode)) return;
+        var json = await Layouts.GetAsync(View.ViewCode);
+        if (string.IsNullOrEmpty(json)) return;
+        try { e.Layout = System.Text.Json.JsonSerializer.Deserialize<TreeListPersistentLayout>(json); }
+        catch { /* JSON layout cũ/khác cấu trúc → bỏ qua, dùng mặc định */ }
+    }
+
+    /// <summary>User đổi layout cây → debounce 600ms → lưu localStorage + server.</summary>
+    private Task OnTreeLayoutSaving(TreeListPersistentLayoutEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(View.ViewCode))
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(e.Layout);
+            _saveCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _saveCts = cts;
+            _ = DebouncedSaveAsync(json, cts.Token);
+        }
+        return Task.CompletedTask;
+    }
 
     /// <summary>Nút toolbar (Scope = Toolbar | Both), sắp theo Order_No.</summary>
     private List<ViewActionDto> ToolbarActions => View.Actions
@@ -284,6 +358,24 @@ else
         var item = _grid.GetDataItem(e.VisibleIndex);
         if (item is null) return;
         await OnEdit.InvokeAsync(AsRow(item));
+    }
+
+    /// <summary>Double-click node cây → mở Sửa (mirror grid). Bỏ qua nếu View không cho sửa.</summary>
+    private async Task OnTreeRowDoubleClick(TreeListRowClickEventArgs e)
+    {
+        if (!View.AllowEdit || string.IsNullOrWhiteSpace(View.EditFormCode) || _tree is null) return;
+        var item = _tree.GetDataItem(e.VisibleIndex);
+        if (item is null) return;
+        await OnEdit.InvokeAsync(AsRow(item));
+    }
+
+    /// <summary>True khi node là lá hoặc cha không còn con → được phép Xóa (khóa không xuất hiện
+    /// làm ParentField của bất kỳ dòng nào). Node đang có con → ẩn nút Xóa (tránh mồ côi + FK).</summary>
+    private bool IsLeafOrChildless(IDictionary<string, object?> row)
+    {
+        if (string.IsNullOrWhiteSpace(View.KeyField)) return true;
+        var key = GetCell(row, View.KeyField!)?.ToString();
+        return string.IsNullOrWhiteSpace(key) || !_parentKeys.Contains(key);
     }
 
     // Mặc định Multiple → cột chọn hiển thị checkbox (chuẩn grid danh mục); chỉ "single" mới đơn chọn.
@@ -507,6 +599,16 @@ else
             rows.Add(e);
         }
         _gridRows = rows;
+
+        // Dựng lại tập khóa-cha cho luật xóa của tree — đọc id cha THÔ (__parentKey), KHÔNG dùng
+        // View.ParentField (cột đó đã bị auto-JOIN đổi thành TÊN nên không khớp Key_Field id).
+        _parentKeys.Clear();
+        foreach (IDictionary<string, object?> r in _gridRows)
+            if (r.TryGetValue(ParentKeyAlias, out var p) && p is not null)
+            {
+                var s = p.ToString();
+                if (!string.IsNullOrWhiteSpace(s)) _parentKeys.Add(s);
+            }
     }
 
     /// <summary>Ép kiểu giá trị ô theo render mode (date/datetime → DateTime; time → TimeSpan). Lỗi → giữ nguyên.</summary>
