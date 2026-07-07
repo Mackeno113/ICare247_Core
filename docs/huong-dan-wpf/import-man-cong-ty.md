@@ -16,10 +16,16 @@ Màn Công ty là **lưới CÂY** (`TreeList`) đọc **view JOIN tay** (`vw_TC
    Cột *Công ty cha* nhập bằng **Mã** của công ty đã có trong DB. Hệ **chưa** sắp xếp cây trong 1 file (topo-sort để sau).
    → Nhập **công ty gốc trước** (để trống cột Cha), rồi mới nhập công ty con ở **mẻ sau** (điền Mã cha).
 
-2. **Cột cascade KHÔNG import được ở v1: `Phường/Xã` và `Chi nhánh ngân hàng`.**
-   Hai cột này lọc theo **field cha ảo** (Tỉnh/Thành, Ngân hàng) — mà import **không có ngữ cảnh chọn cha**, nên danh sách
-   lọc rỗng ⇒ điền Mã vào 2 cột này sẽ **báo lỗi**. **Để trống** 2 cột này khi import, **cập nhật sau** bằng nhập tay
-   (hoặc chờ nâng cấp). *(Field ảo Tỉnh/Thành, Ngân hàng vốn không lưu DB nên **không** xuất hiện trong template.)*
+2. **Cột cascade (`Phường/Xã`, `Chi nhánh ngân hàng`) — mặc định KHÔNG import được.**
+   Hai cột này lọc theo **field cha ảo** (Tỉnh/Thành, Ngân hàng); import **không có ngữ cảnh chọn cha** nên danh sách rỗng ⇒
+   điền Mã sẽ **báo lỗi**. Hai lựa chọn:
+   - **`Chi nhánh ngân hàng`:** nếu **mã chi nhánh duy nhất toàn cục** → bật **`Import_Global_Code=1`** cho field
+     `ChiNhanhNganHang_Id` (tra Mã toàn bảng, bỏ lọc ngân hàng) + đặt `Code_Field=Ma` → **import được**. Xem
+     [huong-dan-import-excel.md §5.5](huong-dan-import-excel.md).
+   - **`Phường/Xã`:** mã xã thường **trùng giữa các tỉnh** ⇒ **không** bật global được (engine từ chối nếu trùng). **Để trống**
+     khi import, cập nhật sau bằng nhập tay.
+
+   *(Field ảo Tỉnh/Thành, Ngân hàng không lưu DB nên **không** xuất hiện trong template.)*
 
 > Các cột **import bình thường**: `Ma`, `Ten`, `TenVietTat`, `MaSoThue`, `DiaChi`, `DienThoai`, `Email`, `Website`,
 > `NguoiDaiDien`, `GiamDoc`, `KeToanTruong`, `SoTaiKhoan`, `TrangThai`, **`Cấp công ty` (Mã)**, **`Công ty cha` (Mã)**.
@@ -131,7 +137,8 @@ Mở màn Công ty → **⬆ Import Excel**:
 |---|---|---|
 | Cột **Cấp / Cha** báo *"chưa cấu hình Mã tham chiếu"* | Thiếu `Code_Field=Ma` | Cấu hình §1 + đồng bộ. |
 | **Công ty cha** báo *mã không tồn tại* | Cha chưa có trong DB (import cùng file) | Nhập gốc/cha ở **mẻ trước**, con ở mẻ sau. |
-| Điền **Phường/Xã / Chi nhánh** → mọi dòng lỗi *mã không tồn tại* | Cột cascade không import được ở v1 (§0.2) | **Để trống** khi import, cập nhật sau bằng nhập tay. |
+| Điền **Phường/Xã / Chi nhánh** → mọi dòng lỗi *mã không tồn tại* | Cột cascade lọc theo cha (§0.2) | Chi nhánh: bật `Import_Global_Code` nếu mã unique. Phường/Xã: để trống, nhập sau. |
+| Cột báo lỗi *Mã bị trùng nhiều bản ghi* | Bật `Import_Global_Code` nhưng Mã con **không** unique toàn cục | Tắt cờ cho field đó; nhập cột đó sau bằng tay. |
 | `TrangThai` báo sai định dạng | Nhập nhãn thay vì giá trị hệ dùng | Nhập đúng mã/giá trị `Sys_Lookup`. |
 | Trùng `Ma` khi import lại | Chưa bật upsert | Khai `Import_Key_Fields = Ma` (§2). |
 

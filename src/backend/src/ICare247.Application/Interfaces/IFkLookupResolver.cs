@@ -25,6 +25,8 @@ public interface IFkLookupResolver
 /// Định nghĩa khóa ngoại đã resolve cho MỘT cột nhập (từ <c>Ui_Field_Lookup</c> của field Edit_Form).
 /// <paramref name="CodeField"/> = cầu Mã↔Id (null nếu chưa cấu hình → không import/template được cột này).
 /// </summary>
+/// <param name="ImportGlobalCode">Import: bỏ <c>Filter_Sql</c> (lọc cha cascade) → tra Mã trên toàn bảng.
+/// Chỉ bật cho FK có Mã con DUY NHẤT toàn cục; trùng Mã ⇒ engine từ chối (import.fk.ambiguous_code).</param>
 public sealed record FkLookupDefinition(
     string FieldName,
     int FieldId,
@@ -33,7 +35,8 @@ public sealed record FkLookupDefinition(
     string DisplayColumn,
     string? CodeField,
     string? FilterSql,
-    string? OrderBy);
+    string? OrderBy,
+    bool ImportGlobalCode = false);
 
 /// <summary>Một dòng lookup {Mã, Id, Tên} đã lọc quyền.</summary>
 public sealed record FkLookupItem(string Code, object? Id, string? Display);
@@ -45,17 +48,27 @@ public sealed record FkLookupItem(string Code, object? Id, string? Display);
 public sealed class FkCodeMap
 {
     private readonly Dictionary<string, object?> _byCode;
+    private readonly HashSet<string> _ambiguous;
 
-    /// <summary>Khởi tạo từ danh sách item; dựng sẵn index Mã→Id đã chuẩn hóa. Không phát sự kiện.</summary>
+    /// <summary>Khởi tạo từ danh sách item; dựng index Mã→Id chuẩn hóa + phát hiện Mã trùng khác Id. Không phát sự kiện.</summary>
     public FkCodeMap(IReadOnlyList<FkLookupItem> items, bool hasCodeField)
     {
         Items = items;
         HasCodeField = hasCodeField;
         _byCode = new Dictionary<string, object?>(StringComparer.Ordinal);
+        _ambiguous = new HashSet<string>(StringComparer.Ordinal);
         foreach (var it in items)
         {
             if (string.IsNullOrWhiteSpace(it.Code)) continue;
-            _byCode[Normalize(it.Code)] = it.Id;   // trùng Mã → bản sau thắng (nguồn nên unique Mã)
+            var key = Normalize(it.Code);
+            if (_byCode.TryGetValue(key, out var existing))
+            {
+                // Cùng Mã nhưng khác Id ⇒ nhập nhằng (không thể chọn Id đúng cho import global).
+                if (!Equals(existing?.ToString(), it.Id?.ToString()))
+                    _ambiguous.Add(key);
+            }
+            else
+                _byCode[key] = it.Id;
         }
     }
 
@@ -64,6 +77,9 @@ public sealed class FkCodeMap
 
     /// <summary>Nguồn FK có khai <c>Code_Field</c> hay không — false ⇒ không thể resolve Mã↔Id.</summary>
     public bool HasCodeField { get; }
+
+    /// <summary>Có Mã trùng ứng nhiều Id (chỉ xảy ra khi resolve toàn cục bỏ lọc cha) ⇒ import phải từ chối.</summary>
+    public bool HasAmbiguousCode => _ambiguous.Count > 0;
 
     /// <summary>
     /// Tra Id từ Mã (đã chuẩn hóa trim + upper-invariant). Trả false nếu Mã rỗng hoặc ngoài tập đã lọc quyền

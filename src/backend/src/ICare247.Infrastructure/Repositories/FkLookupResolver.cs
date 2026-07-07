@@ -58,9 +58,11 @@ public sealed partial class FkLookupResolver : IFkLookupResolver
         var displayCol = Bracket(def.DisplayColumn);
 
         // ── WHERE Filter_Sql + bind token ngữ cảnh (server-side, lọc đúng phạm vi quyền) ──
+        //    ImportGlobalCode = bỏ Filter_Sql (lọc cha cascade) → tra Mã trên TOÀN bảng (§B). Trùng Mã sẽ
+        //    bị FkCodeMap đánh dấu HasAmbiguousCode để engine từ chối.
         var dp = new DynamicParameters();
         var whereSql = "";
-        if (!string.IsNullOrWhiteSpace(def.FilterSql))
+        if (!def.ImportGlobalCode && !string.IsNullOrWhiteSpace(def.FilterSql))
         {
             whereSql = " WHERE " + def.FilterSql;
             await BindTokensAsync(dp, def.FilterSql, ct);

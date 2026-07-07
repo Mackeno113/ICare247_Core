@@ -197,6 +197,12 @@ Lỗi dùng `error_key` + args (ADR-029), resolve i18n server-side. FK resolve *
 > Nhờ vậy import/template chạy đúng cho **cả màn đọc SQL View JOIN tay** (vd `vw_TC_CongTy` — cột là tên ghép sẵn,
 > `Column_Id=NULL`, không mang `fkLookup`): FK vẫn resolve theo cấu hình LookupBox của form. `IFkLookupResolver` chỉ còn lo
 > khâu chạy truy vấn Mã↔Id (Data DB, lọc token).
+>
+> **FK cascade khi import (Phương án B, đã code):** field con lọc theo field cha (vd `PhuongXa_Id` lọc theo Tỉnh) không
+> resolve được vì import không có ngữ cảnh chọn cha. Cờ **`Ui_Field_Lookup.Import_Global_Code=1`** (db/074) → import **bỏ
+> `Filter_Sql`** → tra Mã con trên toàn bảng; chỉ hợp FK có **Mã con duy nhất toàn cục**. Mã trùng ⇒ `FkCodeMap.HasAmbiguousCode`
+> → engine từ chối cả file (`import.fk.ambiguous_code`). Đọc cờ phòng thủ trong `IImportMetadataProvider` (không đụng SELECT
+> load form cốt lõi). Set bằng SQL (ConfigStudio chưa có ô).
 
 ### 11.3 Upsert theo KHOÁ GHÉP (đã chốt)
 - Khai **`Ui_View.Import_Key_Fields`** = CSV field-code (vd `"CongTy_Id,Ma"`). Khoá **được phép gồm cột FK**.

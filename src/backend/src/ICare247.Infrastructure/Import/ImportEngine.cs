@@ -85,6 +85,12 @@ public sealed partial class ImportEngine : IImportEngine
                 fileErrors.Add(new ImportCellError(def.FieldName, "import.fk.no_code_field", [def.FieldName]));
                 continue;
             }
+            if (map.HasAmbiguousCode)
+            {
+                // Resolve toàn cục (bỏ lọc cha) nhưng Mã con trùng ⇒ không thể chọn Id đúng → từ chối cả file.
+                fileErrors.Add(new ImportCellError(def.FieldName, "import.fk.ambiguous_code", [def.FieldName]));
+                continue;
+            }
             fkMaps[def.FieldName] = map;
         }
         if (fileErrors.Count > 0)

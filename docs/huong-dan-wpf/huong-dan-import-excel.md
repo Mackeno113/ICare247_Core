@@ -122,6 +122,23 @@ Xem [`docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md`](../spec/18_SAVE_VALIDATION_HOO
 
 ---
 
+### 5.5 Tùy chọn — Import khóa ngoại **cascade** (resolve Mã toàn cục)
+
+FK **lọc theo field cha** (cascade — vd Phường/Xã theo Tỉnh, Chi nhánh theo Ngân hàng) **mặc định không import được**:
+import không có bước "chọn cha" nên danh sách con rỗng ([xem giải thích](huong-dan-import-excel.md)). Bật cờ
+**`Ui_Field_Lookup.Import_Global_Code = 1`** để khi import **bỏ lọc cha → tra Mã con trên toàn bảng**:
+```sql
+UPDATE fl SET fl.Import_Global_Code = 1
+FROM Ui_Field_Lookup fl JOIN Ui_Field fi ON fi.Field_Id = fl.Field_Id
+JOIN Ui_Form fo ON fo.Form_Id = fi.Form_Id
+WHERE fo.Form_Code = N'<FORM>' AND fi.Field_Code = N'<FieldCode>';
+```
+- **CHỈ bật khi Mã con DUY NHẤT toàn cục** (vd mã chi nhánh). Nếu Mã con **trùng** (nhiều Id) → engine **từ chối cả file**
+  với lỗi `import.fk.ambiguous_code` (không đoán bừa). VD **Phường/Xã** thường trùng mã giữa các tỉnh ⇒ **không** hợp cờ này.
+- Vẫn cần `Code_Field = Ma` (§5.1).
+
+*(Cờ này hiện set bằng SQL trên Config DB rồi đồng bộ — ConfigStudio chưa có ô, sẽ bổ sung cùng ô Import_Key_Fields.)*
+
 ## 6. Log import
 
 Ghi ở **Data DB** của tenant:

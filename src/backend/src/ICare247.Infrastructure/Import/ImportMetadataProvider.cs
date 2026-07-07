@@ -52,6 +52,7 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
             c => c.ColumnCode, c => c.NetType, StringComparer.OrdinalIgnoreCase);
         var maskByCol = await LoadMaskingAsync(info.TableId, ct);
         var keyFields = await LoadKeyFieldsAsync(view.ViewId, ct);
+        var globalCodeFieldIds = await LoadGlobalCodeFieldIdsAsync(info.FormId, ct);
 
         // Cột nhập = field form hiển thị, không ảo, không read-only, không phải khóa chính.
         // Cột FK (LookupConfig động, Query_Mode=table) → dựng FkLookupDefinition từ chính Ui_Field_Lookup
@@ -89,7 +90,8 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
                         DisplayColumn: lc.DisplayColumn,
                         CodeField: lc.CodeField,
                         FilterSql: lc.FilterSql,
-                        OrderBy: lc.OrderBy));
+                        OrderBy: lc.OrderBy,
+                        ImportGlobalCode: globalCodeFieldIds.Contains(lc.FieldId)));
                 }
             }
         }
@@ -128,6 +130,30 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
             _logger.LogDebug(ex, "Import: bỏ qua masking — Sys_Column chưa có cột Is_Log_Masked?");
         }
         return map;
+    }
+
+    /// <summary>Đọc Field_Id các FK bật Import_Global_Code=1 (bỏ lọc cha khi import). Phòng thủ (cột mới db/074).</summary>
+    private async Task<HashSet<int>> LoadGlobalCodeFieldIdsAsync(int formId, CancellationToken ct)
+    {
+        var set = new HashSet<int>();
+        const string sql = """
+            SELECT fl.Field_Id
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
+            WHERE  fi.Form_Id = @FormId AND fl.Import_Global_Code = 1
+            """;
+        try
+        {
+            using var conn = _configDb.CreateConnection();
+            var ids = await conn.QueryAsync<int>(
+                new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct));
+            foreach (var id in ids) set.Add(id);
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogDebug(ex, "Import: bỏ qua Import_Global_Code — Ui_Field_Lookup chưa có cột (db/074)?");
+        }
+        return set;
     }
 
     /// <summary>Đọc Ui_View.Import_Key_Fields (CSV) → danh sách field-code khoá ghép. Phòng thủ.</summary>
