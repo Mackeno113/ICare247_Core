@@ -74,8 +74,9 @@ Bạn có thể **Quay lại** để chọn/sửa file khác, hoặc bấm **Xá
 
 ### 5.1 Bắt buộc — cầu Mã ↔ Id cho cột khóa ngoại
 Để import/template biết cột nào dùng Mã, mỗi khóa ngoại phải khai **cột Mã** trong định nghĩa lookup (`Ui_Field_Lookup.Code_Field`).
-- Trong ConfigStudio: cấu hình field LookupBox của **Edit_Form** → đặt cột code (vd `Ma`).
-- SQL trực tiếp (ví dụ field Ngân hàng — Field 34): `UPDATE Ui_Field_Lookup SET Code_Field = N'Ma' WHERE Field_Id = 34;` (đã có trong `db/071`).
+- **ConfigStudio (WPF):** mở field LookupBox của **Edit_Form** → tab **Control Props** → mục **"Nguồn dữ liệu FK"** →
+  ô **"Cột Mã (Code_Field) — cho Import / template"** → nhập `Ma` → **Lưu**. *(Ô này luôn hiện, không phụ thuộc chế độ EditBox.)*
+- **Hoặc SQL trực tiếp** (ví dụ field Ngân hàng — Field 34): `UPDATE Ui_Field_Lookup SET Code_Field = N'Ma' WHERE Field_Id = 34;` (đã có trong `db/071`).
 - Thiếu `Code_Field` ⇒ cột đó **không import/xuất template được** (báo lỗi cấu hình khi mở trợ lý).
 
 ### 5.2 Tùy chọn — Upsert theo KHÓA GHÉP

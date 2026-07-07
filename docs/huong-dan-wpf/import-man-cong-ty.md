@@ -31,13 +31,15 @@ Màn Công ty là **lưới CÂY** (`TreeList`) đọc **view JOIN tay** (`vw_TC
 Import đổi **Mã → Id** dựa vào cột Mã (`Code_Field`) khai trong **LookupBox của form `TC_CONGTY`**. Đảm bảo 2 field sau
 có `Code_Field = Ma`:
 
-**ConfigStudio → Forms → mở form `TC_CONGTY` → chọn field → panel Cấu hình Lookup:**
+**ConfigStudio → Forms → mở form `TC_CONGTY` → chọn field → tab Control Props → mục "Nguồn dữ liệu FK" →
+ô "Cột Mã (Code_Field) — cho Import / template":**
 
-| Field | Source_Name | Value / Display | **Code_Field** | Ghi chú |
+| Field | Source_Name | Value / Display | **Cột Mã (Code_Field)** | Ghi chú |
 |---|---|---|---|---|
 | `CapCongTy_Id` (Cấp công ty) | `TC_CapCongTy` | `Id` / `Ten` | **`Ma`** | nhập Mã cấp công ty |
 | `CongTy_Cha_Id` (Công ty cha) | `TC_CongTy` | `Id` / `Ten` | **`Ma`** | self-ref; nhập Mã công ty cha (phải đã có) |
 
+- Ô **"Cột Mã (Code_Field)"** nằm ngay dưới *Sắp xếp (ORDER BY)*, **luôn hiện** (không phụ thuộc chế độ EditBox).
 - Thiếu `Code_Field` ⇒ khi mở trợ lý import, cột đó báo *"chưa cấu hình Mã tham chiếu"*.
 - **Không cần** đặt `Code_Field` cho `PhuongXa_Id` / `ChiNhanhNganHang_Id` (không import ở v1).
 
