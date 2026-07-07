@@ -89,7 +89,11 @@ UPDATE Ui_View SET Import_Key_Fields = N'CongTy_Id,Ma' WHERE View_Code = N'...';
 - **Rỗng/không khai ⇒ chỉ thêm mới** (insert-only, an toàn nhất).
 
 ### 5.3 Tùy chọn — Làm mờ cột nhạy cảm trong log
-Bật theo **cột** (dùng lại cho mọi màn): `Sys_Column.Is_Log_Masked = 1` + `Log_Mask_Mode`:
+Bật theo **cột** (dùng lại cho mọi màn). **ConfigStudio (WPF):** mở field map cột đó → tab **Cơ bản** →
+thẻ **"🕶 Làm mờ trong log"** → bật + chọn **Kiểu** (Full/Partial/Hash) → **Lưu Field**. *(Thẻ chỉ hiện với field
+map cột thật, không hiện với field ảo. Là thuộc tính cấp cột `Sys_Column` → áp cho mọi form/view dùng cột đó.)*
+
+Hoặc **SQL**: `Sys_Column.Is_Log_Masked = 1` + `Log_Mask_Mode`:
 
 | `Log_Mask_Mode` | Kết quả trong log | Dùng khi |
 |---|---|---|

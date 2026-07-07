@@ -942,6 +942,34 @@
                                     </Border>
                                 </Grid>
 
+                                <!-- Làm mờ trong log (Sys_Column) — thuộc tính CẤP CỘT; chỉ field map cột thật -->
+                                <Border Margin="0,12,0,0" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10"
+                                        Visibility="{Binding CanConfigMasking, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <dxe:ToggleSwitchEdit IsChecked="{Binding IsLogMasked}"
+                                                                   DockPanel.Dock="Right" HorizontalAlignment="Right" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
+                                                <Run Text="🕶" /><Run Text=" Làm mờ trong log" />
+                                            </TextBlock>
+                                        </DockPanel>
+                                        <TextBlock Text="Ẩn giá trị cột này trong log import/audit (cấp cột — mọi form/view dùng cột này). KHÔNG ảnh hưởng dữ liệu thật."
+                                                   FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                                                    Visibility="{Binding IsLogMasked, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Kiểu" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                       Foreground="{DynamicResource AppTextMutedBrush}" />
+                                            <dxe:ComboBoxEdit Width="160" Height="30"
+                                                              ItemsSource="{Binding LogMaskModeOptions}"
+                                                              EditValue="{Binding LogMaskMode, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                                       Foreground="{DynamicResource AppTextSubtleBrush}"
+                                                       Text="Full=*** · Partial=****1234 · Hash=sha256" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
                                 <!-- Cụm validation i18n: 2 cột (trái = để trống, phải = trùng) -->
                                 <Grid Margin="0,12,0,0">
                                     <Grid.ColumnDefinitions>

@@ -13,6 +13,18 @@ namespace ConfigStudio.WPF.UI.Core.Interfaces;
 public interface IFieldDataService
 {
     Task<FieldConfigRecord?> GetFieldDetailAsync(int fieldId, int tenantId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đọc cờ làm mờ log của cột (Sys_Column.Is_Log_Masked/Log_Mask_Mode) theo Column_Id.
+    /// Phòng thủ: cột chưa migrate (db/071) → trả (false, null), KHÔNG ném. Column_Id ≤ 0 → (false, null).
+    /// </summary>
+    Task<(bool IsMasked, string? MaskMode)> GetColumnMaskingAsync(int columnId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ghi cờ làm mờ log vào Sys_Column theo Column_Id (thuộc tính cấp cột, dùng chung mọi form/view).
+    /// Phòng thủ: cột chưa migrate hoặc Column_Id ≤ 0 → bỏ qua, KHÔNG ném.
+    /// </summary>
+    Task SaveColumnMaskingAsync(int columnId, bool isMasked, string? maskMode, CancellationToken ct = default);
     Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(int tableId, CancellationToken ct = default);
     Task<int> GetTableIdByFormAsync(int formId, int tenantId, CancellationToken ct = default);
 
