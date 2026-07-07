@@ -20,6 +20,7 @@
 
 ## Nhập liệu hàng loạt
 - [huong-dan-import-excel.md](huong-dan-import-excel.md) — **Import dữ liệu từ Excel** theo cấu hình lưới: tải template (dropdown Mã) → preview → commit (upsert khóa ghép); cấu hình khóa ghép/làm mờ/hook; log + xử lý lỗi thường gặp.
+- [import-man-cong-ty.md](import-man-cong-ty.md) — **Cấu hình Import cho màn Công ty** (Tree_TC_CongTy): Code_Field cho FK Cấp/Cha, upsert theo Mã, giới hạn v1 (import phẳng — cha có trước; cột cascade Phường-Xã/Chi nhánh điền sau).
 
 ## Tham chiếu liên quan (vẫn ở `docs/spec/` — giữ đánh số spec)
 - [09_FIELD_CONFIG_GUIDE.md](../spec/09_FIELD_CONFIG_GUIDE.md) — Tổng quan tab Cơ bản / Control Props / Rules / Events.

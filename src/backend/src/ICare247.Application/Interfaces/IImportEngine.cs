@@ -23,7 +23,7 @@ public interface IImportEngine
         ImportPlanRequest request, Stream workbook, CancellationToken ct = default);
 }
 
-/// <summary>Bối cảnh phân tích 1 file import: View + bảng đích + cột nhập + khoá ghép upsert.</summary>
+/// <summary>Bối cảnh phân tích 1 file import: View + bảng đích + cột nhập + khoá ghép upsert + định nghĩa FK.</summary>
 public sealed record ImportPlanRequest(
     ViewMetadata View,
     string Schema,
@@ -31,7 +31,8 @@ public sealed record ImportPlanRequest(
     string PkColumn,
     string SheetName,
     IReadOnlyList<ImportFieldSpec> Fields,
-    IReadOnlyList<string> KeyFields);
+    IReadOnlyList<string> KeyFields,
+    IReadOnlyList<FkLookupDefinition> FkColumns);
 
 /// <summary>
 /// Mô tả 1 cột nhập của file import. <paramref name="NetType"/> ép kiểu validate; <paramref name="IsMasked"/>

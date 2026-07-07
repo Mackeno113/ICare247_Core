@@ -37,7 +37,8 @@ public sealed class ValidateImportFileCommandHandler
             return null;
 
         var req = new ImportPlanRequest(
-            ctx.View, ctx.Schema, ctx.TargetTable, ctx.PkColumn, ctx.SheetName, ctx.Fields, ctx.KeyFields);
+            ctx.View, ctx.Schema, ctx.TargetTable, ctx.PkColumn, ctx.SheetName,
+            ctx.Fields, ctx.KeyFields, ctx.FkColumns);
 
         using var ms = new MemoryStream(r.FileBytes, writable: false);
         var plan = await _engine.BuildPlanAsync(req, ms, ct);

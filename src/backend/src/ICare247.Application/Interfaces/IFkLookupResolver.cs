@@ -4,25 +4,15 @@
 // Purpose : Cầu nối khóa ngoại DÙNG CHUNG cho import + xuất template (spec 25 §6/§7, ADR-034).
 //           Một định nghĩa FK duy nhất = Ui_Field_Lookup → resolve Mã↔Id + danh sách {Mã,Tên} đã lọc quyền.
 
-using ICare247.Domain.Entities.View;
-
 namespace ICare247.Application.Interfaces;
 
 /// <summary>
-/// Phân giải định nghĩa khóa ngoại của các cột trong một <see cref="ViewMetadata"/> (tái dùng
-/// <c>Ui_Field_Lookup</c> làm nguồn sự thật) và dựng bảng tra <c>Mã→Id</c> đã lọc phân quyền.
+/// Dựng bảng tra <c>Mã→Id</c> đã lọc phân quyền cho một định nghĩa khóa ngoại (từ <c>Ui_Field_Lookup</c>).
 /// Dùng chung cho <b>import</b> (resolve Mã→Id) và <b>xuất template</b> (sheet phụ {Mã,Tên}). Spec 25 §11–§14.
+/// Việc dò cột FK của màn nằm ở <see cref="IImportMetadataProvider"/> (đọc từ field Edit_Form).
 /// </summary>
 public interface IFkLookupResolver
 {
-    /// <summary>
-    /// Liệt kê các cột FK của View kèm định nghĩa lookup (Source/Value/Display/Code/Filter/Order).
-    /// Ưu tiên tường minh <c>Props_Json.fkLookup.fieldId</c> (§3b), rỗng thì dò ngầm qua
-    /// <c>Edit_Form_Id + Column_Id</c> (§3a). CHỈ đọc metadata Config DB — chưa chạm Data DB.
-    /// </summary>
-    Task<IReadOnlyList<FkLookupDefinition>> GetFkColumnsAsync(
-        ViewMetadata view, CancellationToken ct = default);
-
     /// <summary>
     /// Dựng bảng tra <c>Mã→Id</c> + danh sách <c>{Mã,Tên}</c> cho một định nghĩa FK: chạy
     /// <c>SELECT Code, Value, Display FROM Source WHERE Filter_Sql</c> trên Data DB, bind token ngữ cảnh
@@ -32,7 +22,7 @@ public interface IFkLookupResolver
 }
 
 /// <summary>
-/// Định nghĩa khóa ngoại đã resolve cho MỘT cột View (từ <c>Ui_Field_Lookup</c>).
+/// Định nghĩa khóa ngoại đã resolve cho MỘT cột nhập (từ <c>Ui_Field_Lookup</c> của field Edit_Form).
 /// <paramref name="CodeField"/> = cầu Mã↔Id (null nếu chưa cấu hình → không import/template được cột này).
 /// </summary>
 public sealed record FkLookupDefinition(

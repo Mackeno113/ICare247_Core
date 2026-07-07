@@ -36,9 +36,8 @@ public sealed class ExportImportTemplateQueryHandler
         if (ctx is null)
             return null;
 
-        // Định nghĩa FK theo cột (để cột nào là FK → sinh sheet phụ + dropdown).
-        var fkDefs = (await _fk.GetFkColumnsAsync(ctx.View, ct))
-            .ToDictionary(d => d.FieldName, StringComparer.OrdinalIgnoreCase);
+        // Định nghĩa FK theo cột (từ field Edit_Form) → cột nào là FK thì sinh sheet phụ + dropdown.
+        var fkDefs = ctx.FkColumns.ToDictionary(d => d.FieldName, StringComparer.OrdinalIgnoreCase);
 
         var columns = new List<ImportTemplateColumn>(ctx.Fields.Count);
         foreach (var f in ctx.Fields)

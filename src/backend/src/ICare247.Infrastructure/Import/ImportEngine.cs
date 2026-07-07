@@ -74,8 +74,9 @@ public sealed partial class ImportEngine : IImportEngine
             return Empty(fileErrors);
 
         // ── FK: nạp bảng tra Mã→Id (lọc quyền) cho các cột FK có trong file ──
+        //    Định nghĩa FK lấy từ field Edit_Form (req.FkColumns) — đúng cho mọi màn, kể cả view JOIN tay.
         var fkMaps = new Dictionary<string, FkCodeMap>(StringComparer.OrdinalIgnoreCase);
-        foreach (var def in await _fk.GetFkColumnsAsync(req.View, ct))
+        foreach (var def in req.FkColumns)
         {
             if (!headerMap.ContainsKey(def.FieldName)) continue;
             var map = await _fk.BuildCodeMapAsync(def, ct);

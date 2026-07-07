@@ -31,4 +31,5 @@ public sealed record ImportContext(
     string PkColumn,
     string SheetName,
     IReadOnlyList<ImportFieldSpec> Fields,
-    IReadOnlyList<string> KeyFields);
+    IReadOnlyList<string> KeyFields,
+    IReadOnlyList<FkLookupDefinition> FkColumns);

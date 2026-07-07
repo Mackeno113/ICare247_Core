@@ -54,7 +54,10 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
         var keyFields = await LoadKeyFieldsAsync(view.ViewId, ct);
 
         // Cột nhập = field form hiển thị, không ảo, không read-only, không phải khóa chính.
+        // Cột FK (LookupConfig động, Query_Mode=table) → dựng FkLookupDefinition từ chính Ui_Field_Lookup
+        // của field (nguồn sự thật spec 25) — chạy đúng cho MỌI màn, kể cả màn đọc view JOIN tay.
         var fields = new List<ImportFieldSpec>();
+        var fkColumns = new List<FkLookupDefinition>();
         if (form is not null)
         {
             foreach (var f in form.Fields)
@@ -71,6 +74,23 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
                     NetType: netType,
                     IsMasked: masked,
                     MaskMode: masked ? mode : null));
+
+                if (f.LookupConfig is { } lc
+                    && string.Equals(lc.QueryMode ?? "table", "table", StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(lc.SourceName)
+                    && !string.IsNullOrWhiteSpace(lc.ValueColumn)
+                    && !string.IsNullOrWhiteSpace(lc.DisplayColumn))
+                {
+                    fkColumns.Add(new FkLookupDefinition(
+                        FieldName: f.FieldCode,
+                        FieldId: lc.FieldId,
+                        SourceName: lc.SourceName,
+                        ValueColumn: lc.ValueColumn,
+                        DisplayColumn: lc.DisplayColumn,
+                        CodeField: lc.CodeField,
+                        FilterSql: lc.FilterSql,
+                        OrderBy: lc.OrderBy));
+                }
             }
         }
 
@@ -82,7 +102,7 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
         var sheetName = string.IsNullOrWhiteSpace(view.Title) ? view.ViewCode : view.Title!;
         return new ImportContext(
             view, view.EditFormCode!, info.SchemaName, info.TableName, info.PkColumn,
-            sheetName, fields, validKeys);
+            sheetName, fields, validKeys, fkColumns);
     }
 
     /// <summary>Đọc cờ masking cột (Is_Log_Masked=1) → map Column_Code → Mask_Mode (Full nếu null). Phòng thủ.</summary>

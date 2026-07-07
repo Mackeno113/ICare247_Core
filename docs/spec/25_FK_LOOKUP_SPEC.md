@@ -192,6 +192,12 @@ Commit **chỉ nhận `importSessionId`** đã validate — không ghi file chư
 
 Lỗi dùng `error_key` + args (ADR-029), resolve i18n server-side. FK resolve **1 lần/cột** (nạp toàn bộ `{Mã→Id}` vào dictionary) → tránh N+1.
 
+> **Nguồn định nghĩa FK cho import/template (đã code, khác mặt LƯỚI):** lấy **trực tiếp từ `Ui_Field_Lookup` của field
+> Edit_Form** (`FieldMetadata.LookupConfig`) trong `IImportMetadataProvider` — KHÔNG dò qua cột `Ui_View` như mặt lưới (§3).
+> Nhờ vậy import/template chạy đúng cho **cả màn đọc SQL View JOIN tay** (vd `vw_TC_CongTy` — cột là tên ghép sẵn,
+> `Column_Id=NULL`, không mang `fkLookup`): FK vẫn resolve theo cấu hình LookupBox của form. `IFkLookupResolver` chỉ còn lo
+> khâu chạy truy vấn Mã↔Id (Data DB, lọc token).
+
 ### 11.3 Upsert theo KHOÁ GHÉP (đã chốt)
 - Khai **`Ui_View.Import_Key_Fields`** = CSV field-code (vd `"CongTy_Id,Ma"`). Khoá **được phép gồm cột FK**.
 - Rỗng ⇒ fallback **insert-only** (an toàn).
