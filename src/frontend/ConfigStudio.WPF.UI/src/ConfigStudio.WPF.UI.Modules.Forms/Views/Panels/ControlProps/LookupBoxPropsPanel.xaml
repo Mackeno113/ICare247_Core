@@ -218,6 +218,12 @@
                                   Height="32" NullText="VD: Ma" />
                     <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0"
                                Text="Cột chứa Mã (VD: Ma). Import đổi Mã→Id + xuất template dùng cột này; cũng dùng khi EditBox = 'mã + tên'." />
+
+                    <!-- Import: resolve Mã toàn cục (bỏ lọc cha cascade) -->
+                    <dxe:CheckEdit IsChecked="{Binding ImportGlobalCode}" Margin="0,10,0,0"
+                                   Content="Import: resolve Mã toàn cục (bỏ lọc cha)" FontSize="12" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
+                               Text="Cho FK lọc theo cha (cascade — vd Chi nhánh theo Ngân hàng): khi import bỏ Filter_Sql, tra Mã con trên toàn bảng. CHỈ bật khi Mã con DUY NHẤT toàn cục; trùng Mã → import từ chối cả file." />
                 </StackPanel>
             </StackPanel>
         </Border>

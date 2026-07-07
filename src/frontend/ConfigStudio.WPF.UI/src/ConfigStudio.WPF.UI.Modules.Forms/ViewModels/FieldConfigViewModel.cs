@@ -658,6 +658,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _codeField, value)) IsDirty = true; }
     }
 
+    /// <summary>
+    /// Import: bỏ Filter_Sql (lọc cha cascade) → tra Mã con trên toàn bảng (Ui_Field_Lookup.Import_Global_Code).
+    /// Chỉ bật cho FK có Mã con DUY NHẤT toàn cục (vd chi nhánh); trùng Mã → engine từ chối cả file khi import.
+    /// </summary>
+    private bool _importGlobalCode;
+    public bool ImportGlobalCode
+    {
+        get => _importGlobalCode;
+        set { if (SetProperty(ref _importGlobalCode, value)) IsDirty = true; }
+    }
+
     /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
     private int _dropDownWidth = 600;
     public int DropDownWidth
@@ -1781,6 +1792,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     RaisePropertyChanged(nameof(IsLogMasked));
                     RaisePropertyChanged(nameof(LogMaskMode));
                     RaisePropertyChanged(nameof(CanConfigMasking));
+
+                    // Import global-code (Ui_Field_Lookup) — đọc phòng thủ theo Field_Id; cột chưa migrate → false.
+                    _importGlobalCode = await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct);
+                    RaisePropertyChanged(nameof(ImportGlobalCode));
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
                     // để LoadControlPropSchema() có thể restore giá trị từ DB
                     _controlPropsJson      = field.ControlPropsJson ?? "{}";
@@ -3340,6 +3355,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 if (CanConfigMasking)
                     await _fieldService.SaveColumnMaskingAsync(
                         _selectedColumn!.ColumnId, _isLogMasked, _logMaskMode, _cts.Token);
+
+                // Import global-code (Ui_Field_Lookup) → ghi riêng theo Field_Id sau khi row lookup đã tồn tại.
+                if (IsFkLookupEditor && savedId > 0)
+                    await _fieldService.SaveFkImportGlobalAsync(savedId, _importGlobalCode, _cts.Token);
 
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
                 await RegisterI18nKeysAsync(_cts.Token);

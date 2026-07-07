@@ -122,6 +122,47 @@ public sealed class FieldDataService : IFieldDataService
     }
 
     /// <inheritdoc />
+    public async Task<bool> GetFkImportGlobalAsync(int fieldId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return false;
+        const string sql = """
+            SELECT ISNULL(Import_Global_Code, 0)
+            FROM   dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId
+            """;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            return await conn.ExecuteScalarAsync<bool>(
+                new CommandDefinition(sql, new { FieldId = fieldId }, cancellationToken: ct));
+        }
+        catch (SqlException)
+        {
+            return false;   // cột Import_Global_Code chưa migrate (db/074) → coi như tắt
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveFkImportGlobalAsync(int fieldId, bool importGlobal, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return;
+        const string sql = """
+            UPDATE dbo.Ui_Field_Lookup
+            SET    Import_Global_Code = @ImportGlobal
+            WHERE  Field_Id = @FieldId
+            """;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            await conn.ExecuteAsync(new CommandDefinition(sql,
+                new { FieldId = fieldId, ImportGlobal = importGlobal }, cancellationToken: ct));
+        }
+        catch (SqlException)
+        {
+            /* cột chưa migrate (db/074) → bỏ qua, không chặn lưu field */
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<FieldLookupConfigRecord?> GetFieldLookupConfigAsync(
         int fieldId, CancellationToken ct = default)
     {

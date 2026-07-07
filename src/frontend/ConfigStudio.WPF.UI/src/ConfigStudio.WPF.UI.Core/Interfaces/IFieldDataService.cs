@@ -25,6 +25,18 @@ public interface IFieldDataService
     /// Phòng thủ: cột chưa migrate hoặc Column_Id ≤ 0 → bỏ qua, KHÔNG ném.
     /// </summary>
     Task SaveColumnMaskingAsync(int columnId, bool isMasked, string? maskMode, CancellationToken ct = default);
+
+    /// <summary>
+    /// Đọc cờ Ui_Field_Lookup.Import_Global_Code (import: bỏ lọc cha, tra Mã toàn bảng) theo Field_Id.
+    /// Phòng thủ: cột chưa migrate (db/074) hoặc field không có lookup → false, KHÔNG ném.
+    /// </summary>
+    Task<bool> GetFkImportGlobalAsync(int fieldId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ghi cờ Import_Global_Code vào Ui_Field_Lookup theo Field_Id (gọi SAU khi lưu field — row lookup đã tồn tại).
+    /// Phòng thủ: cột chưa migrate hoặc không có row lookup → bỏ qua, KHÔNG ném.
+    /// </summary>
+    Task SaveFkImportGlobalAsync(int fieldId, bool importGlobal, CancellationToken ct = default);
     Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(int tableId, CancellationToken ct = default);
     Task<int> GetTableIdByFormAsync(int formId, int tenantId, CancellationToken ct = default);
 
