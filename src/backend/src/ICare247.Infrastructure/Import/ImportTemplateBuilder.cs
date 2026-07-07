@@ -47,12 +47,13 @@ public sealed class ImportTemplateBuilder : IImportTemplateBuilder
             // Cột FK → sheet phụ {Mã,Tên} + dropdown chọn Mã.
             if (col.Fk is { Items.Count: > 0 } fk)
             {
-                var auxName = SafeSheetName("FK_" + col.FieldName, "FK_" + colIdx, usedNames);
+                // Tên sheet phụ = caption thân thiện (i18n), không dùng mã kỹ thuật "FK_<FieldCode>".
+                var auxName = SafeSheetName(col.Caption, "DanhMuc" + colIdx, usedNames);
                 usedNames.Add(auxName);
                 var aux = wb.Worksheets.Add(auxName);
 
-                aux.Cell(1, 1).Value = "Ma";
-                aux.Cell(1, 2).Value = "Ten";
+                aux.Cell(1, 1).Value = "Mã";
+                aux.Cell(1, 2).Value = "Tên";
                 aux.Row(1).Style.Font.Bold = true;
                 for (var r = 0; r < fk.Items.Count; r++)
                 {
@@ -91,7 +92,7 @@ public sealed class ImportTemplateBuilder : IImportTemplateBuilder
     private static string SafeSheetName(string raw, string fallback, ISet<string> used)
     {
         var cleaned = new string((raw ?? string.Empty)
-            .Where(ch => ch is not ('[' or ']' or ':' or '*' or '?' or '/' or '\\'))
+            .Where(ch => ch is not ('[' or ']' or ':' or '*' or '?' or '/' or '\\' or '\''))
             .ToArray()).Trim();
         if (string.IsNullOrWhiteSpace(cleaned)) cleaned = fallback;
         if (cleaned.Length > MaxSheetNameLength) cleaned = cleaned[..MaxSheetNameLength];

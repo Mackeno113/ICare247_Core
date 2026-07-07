@@ -42,16 +42,19 @@ public sealed class ExportImportTemplateQueryHandler
         var columns = new List<ImportTemplateColumn>(ctx.Fields.Count);
         foreach (var f in ctx.Fields)
         {
+            var isFk = fkDefs.TryGetValue(f.FieldName, out var def);
             FkTemplateSource? fk = null;
-            if (fkDefs.TryGetValue(f.FieldName, out var def))
+            if (isFk)
             {
-                var map = await _fk.BuildCodeMapAsync(def, ct);
+                var map = await _fk.BuildCodeMapAsync(def!, ct);
                 if (map.HasCodeField && map.Items.Count > 0)
                     fk = new FkTemplateSource(
                         map.Items.Select(i => new FkTemplateItem(i.Code, i.Display)).ToList());
             }
+            // Cột FK: luôn gợi ý "Mã" (kể cả khi chưa dựng được danh sách — vd cascade chưa bật global),
+            // KHÔNG hiện "số nguyên" gây hiểu nhầm nhập id thô.
             columns.Add(new ImportTemplateColumn(
-                f.FieldName, f.Caption, f.Required, FriendlyType(f.NetType, fk is not null), fk));
+                f.FieldName, f.Caption, f.Required, FriendlyType(f.NetType, isFk), fk));
         }
 
         var bytes = _builder.Build(new ImportTemplateSpec(ctx.SheetName, columns));
