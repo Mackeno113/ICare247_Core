@@ -105,6 +105,15 @@ public static class DependencyInjection
         // Token ngữ cảnh (Sys_Context_Param) — registry + resolver (Claim/Header/ActiveScope). Spec 19, ADR-030.
         services.AddScoped<IContextParamRepository, ContextParamRepository>();
         services.AddScoped<IContextParamResolver, ContextParamResolver>();
+        // Cầu FK dùng chung import + xuất template (Mã↔Id lọc quyền). Spec 25 §11–§14, ADR-034.
+        services.AddScoped<IFkLookupResolver, FkLookupResolver>();
+        // Sinh workbook template import (ClosedXML) — sheet chính + sheet phụ FK + dropdown.
+        services.AddScoped<IImportTemplateBuilder, Import.ImportTemplateBuilder>();
+        // Engine đọc + validate + dựng kế hoạch upsert khoá ghép (preview NEW/UPDATE/ERROR). Spec 25 §11–§13.
+        services.AddScoped<IImportEngine, Import.ImportEngine>();
+        // Tổng hợp metadata import (cột nhập/kiểu/bắt buộc/khoá ghép/masking) + log import (Data DB) + hook.
+        services.AddScoped<IImportMetadataProvider, Import.ImportMetadataProvider>();
+        services.AddScoped<IImportLogRepository, ImportLogRepository>();
 
         // ── Config Sync (F1 — đồng bộ config master→tenant, spec 16) ─────────
         // Scoped: dùng IDbConnectionFactory tenant-aware (đích) + đọc master từ ConnectionStrings:Config.

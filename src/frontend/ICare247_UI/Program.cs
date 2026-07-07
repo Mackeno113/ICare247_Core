@@ -82,6 +82,7 @@ builder.Services.AddScoped<LookupApiService>();
 builder.Services.AddScoped<ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<MasterDataApiService>();
 builder.Services.AddScoped<ViewApiService>();
+builder.Services.AddScoped<ImportApiService>();
 builder.Services.AddScoped<NavigationApiService>();
 builder.Services.AddScoped<MeCompanyApiService>();
 builder.Services.AddScoped<PermissionState>();

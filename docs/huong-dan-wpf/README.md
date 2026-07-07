@@ -18,6 +18,9 @@
 - [cau-hinh-bo-loc-lien-ket.md](cau-hinh-bo-loc-lien-ket.md) — Bộ lọc liên kết (cascade) + lọc theo tài khoản + đổ giá trị Thêm mới.
 - [cau-hinh-attachment.md](cau-hinh-attachment.md) — Control **AttachmentBox** (upload/đính kèm tệp): 2 chế độ **đa tệp (field ảo)** / **1 tệp (map cột)**, tự chọn theo `IsVirtual`.
 
+## Nhập liệu hàng loạt
+- [huong-dan-import-excel.md](huong-dan-import-excel.md) — **Import dữ liệu từ Excel** theo cấu hình lưới: tải template (dropdown Mã) → preview → commit (upsert khóa ghép); cấu hình khóa ghép/làm mờ/hook; log + xử lý lỗi thường gặp.
+
 ## Tham chiếu liên quan (vẫn ở `docs/spec/` — giữ đánh số spec)
 - [09_FIELD_CONFIG_GUIDE.md](../spec/09_FIELD_CONFIG_GUIDE.md) — Tổng quan tab Cơ bản / Control Props / Rules / Events.
 - [12_CASCADE_LOOKUP_GUIDE.md](../spec/12_CASCADE_LOOKUP_GUIDE.md) — Cascade Tỉnh/Thành → Xã/Phường.

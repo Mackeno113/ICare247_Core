@@ -102,7 +102,8 @@ public sealed class SaveMasterDataCommandHandler
         var hook = await _hookCatalog.GetAsync(info.TableName, r.TenantId, ct);
         var saved = await _repo.SaveWithHooksAsync(
             info, r.TenantId, r.Id, r.Values, r.UserId, langCode: "vi",
-            hook.HasValidate, hook.HasAfterSave, ct);
+            hook.HasValidate, hook.HasAfterSave, ct,
+            source: r.Source, importSessionId: r.ImportSessionId);
 
         if (!saved.Success)
         {

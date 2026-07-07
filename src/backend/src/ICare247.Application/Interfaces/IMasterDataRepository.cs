@@ -85,11 +85,14 @@ public interface IMasterDataRepository
     /// <param name="langCode">Ngôn ngữ truyền cho store (<c>@LangCode</c>).</param>
     /// <param name="hasValidateProc">Có <c>spc_Grid_&lt;Table&gt;</c> không (tra qua <see cref="IHookStoreCatalog"/> — KHÔNG query lúc lưu).</param>
     /// <param name="hasAfterSaveProc">Có <c>sp_AfterSave_Grid_&lt;Table&gt;</c> không.</param>
+    /// <param name="source">Ngữ cảnh ghi cho hook after-save: "MANUAL" | "IMPORT". Truyền <c>@Source</c> chỉ khi import.</param>
+    /// <param name="importSessionId">Phiên import → hook <c>@ImportSessionId</c>; null = nhập tay (EXEC giữ contract cũ).</param>
     Task<MasterDataHookSaveResult> SaveWithHooksAsync(
         MasterDataFormInfo info, int tenantId, object? id,
         Dictionary<string, object?> values, long? userId, string langCode,
         bool hasValidateProc, bool hasAfterSaveProc,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        string source = "MANUAL", Guid? importSessionId = null);
 }
 
 /// <summary>Kết quả lưu qua hook store: thành công kèm Id, hoặc fail kèm lỗi store (CHƯA ghi/đã rollback).</summary>

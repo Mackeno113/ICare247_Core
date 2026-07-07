@@ -45,6 +45,10 @@
                 }
                 @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
                 {
+                    <button class="btn btn-secondary" @onclick="() => _showImport = true"
+                            title="@Loc.L("import.btn.tip", "Nhập dữ liệu từ file Excel theo template")">
+                        ⬆ @Loc.L("import.btn", "Import Excel")
+                    </button>
                     <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
                 }
             </div>
@@ -110,6 +114,15 @@
     </DraggableModal>
 }
 
+@* ── Trợ lý Import Excel (tải template → preview → commit) ── *@
+@if (_showImport && _view is not null)
+{
+    <DraggableModal Title="@($"{Loc.L("import.btn", "Import Excel")} — {_view.Title ?? _view.ViewCode}")"
+                    Width="760px" OnClose="() => _showImport = false">
+        <ImportWizard ViewCode="ViewCode" OnClose="() => _showImport = false" OnCommitted="OnImported" />
+    </DraggableModal>
+}
+
 @code {
     [Parameter] public string ViewCode { get; set; } = "";
 
@@ -143,6 +156,12 @@
     private IReadOnlyList<object> _selected = [];
     private bool _showBulkDelete;
     private bool _bulkBusy;
+
+    // ── Import Excel (trợ lý tải template → preview → commit) ──
+    private bool _showImport;
+
+    /// <summary>Import ghi xong ≥1 dòng → nạp lại dữ liệu lưới (không đóng modal để người dùng xem kết quả).</summary>
+    private async Task OnImported() => await ReloadDataAsync();
 
     /// <summary>Cập nhật danh sách dòng đang tick (DxGrid SelectedDataItems = ExpandoObject).</summary>
     private void OnSelectionChanged(IReadOnlyList<object> items) => _selected = items;

@@ -136,6 +136,36 @@ Pha 1 (lưới) xong. Pha 2 (import Mã->Id) / Pha 3 (template) chưa làm.
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ```
 
+## 🔴 Đang làm — Import Excel Pha 2 (FK lookup) — ADR-034 / spec 25 §11–§14 (session 78 — 2026-07-07)
+
+**Tính năng:** import dữ liệu Excel vào Data DB theo cấu hình `Ui_View` grid. Xuất template (sheet chính + mỗi FK 1 sheet phụ + ô FK là combobox chọn Mã); validate (trim, định dạng, FK Mã→Id lọc quyền, trùng khoá); **upsert khoá ghép** `Import_Key_Fields`; partial commit; 2 hook proc (mỗi dòng = `sp_AfterSave_Grid_<T>` spec 18, sau import = `sp_AfterImport_<T>` mới); log import + masking theo cột. **v1 = Grid phẳng.** Thư viện **ClosedXML** (MIT).
+
+**Chốt thiết kế:** ADR-034 + spec 25 §11–§14 (2026-07-07). Xem Decisions Log ADR-034.
+
+### ⏳ Tasks (theo thứ tự code)
+- [~] **IMPORT-0 (DB)** — ✅ viết migration (⏳ CHƯA chạy DB): `db/071` (Config DB: `Ui_View.Import_Key_Fields` + `Sys_Column.Is_Log_Masked`/`Log_Mask_Mode` + set `Ui_Field_Lookup.Code_Field='Ma'` Field 34) + `db/072` (Data DB: `Sys_Import_Log` + `Sys_Import_Log_Detail`) + `db/073` (Config DB: seed i18n `import.*` vi/en). CÒN: mở rộng `sp_AfterSave_Grid_<T>` (+`@Source`,`@ImportSessionId`) + skeleton `sp_AfterImport_<T>` → gộp vào IMPORT-6.
+- [x] **IMPORT-1** — `IFkLookupResolver` (App) + `FkLookupResolver` (Infra) — build BE 0/0. `GetFkColumnsAsync` (tường minh `Props_Json.fkLookup.fieldId` → ngầm `Edit_Form_Id+Column_Id`) + `BuildCodeMapAsync` (SELECT Code/Value/Display trên Data DB, bind token qua `IContextParamResolver`, ORDER BY whitelist). `FkCodeMap.TryResolve` chuẩn hóa trim+upper-invariant. DI đăng ký. Dùng chung template + import.
+- [x] **IMPORT-2** — `IImportTemplateBuilder` (App) + `ImportTemplateBuilder` (Infra, ClosedXML) — build 0/0. Sheet chính (tiêu đề i18n bôi đậm + `*` bắt buộc + comment kiểu/FK, ghim dòng 1) + mỗi FK 1 sheet phụ `{Ma,Ten}` + Data Validation dropdown chọn Mã (2000 dòng). Sheet-name sanitize ≤31 ký tự + unique. ClosedXML thêm vào CPM (`Directory.Packages.props` 0.104.2) + Infrastructure.csproj. DI đăng ký.
+- [x] **IMPORT-3** — `IImportEngine` (App) + `ImportEngine` (Infra, ClosedXML) — build BE 0/0. `BuildPlanAsync`: mở workbook + map tiêu đề (Caption bỏ `*` → FieldName) + FK nạp `FkCodeMap` (lọc quyền) + duyệt dòng (trim → required → kiểu `TryConvert` → FK Mã→Id → composite-key). Nạp 1 lần tập khoá hiện có (`LoadExistingKeysAsync`) → phân loại NEW/UPDATE/ERROR + trùng khoá trong file. Masking Row_Json (Full/Partial/Hash) chỉ dòng lỗi. DTO `ImportPlan/ImportRow/ImportCellError` (App). DI đăng ký. **Chưa ghi DB** (commit ở IMPORT-4).
+- [x] **IMPORT-4** — `ImportController` (3 endpoint: `GET .../import/template`, `POST .../validate`, `POST .../commit`) + 3 handler MediatR + `IImportMetadataProvider` (dựng cột nhập/kiểu/bắt buộc/khoá ghép/masking từ View+Form+Sys_Column, đọc phòng thủ cột mới) + `IImportLogRepository` (Sys_Import_Log/_Detail + hook `sp_AfterImport_<T>` opt-in) + seed i18n `db/073`. Commit ghi mỗi dòng qua `SaveMasterDataCommand` (→ `sp_AfterSave_` tự nổ, rollback-on-fail) + kiểm quyền Form.Them/Sua + partial commit + ghi log + hook sau import. Build BE 0/0. **CÒN:** contract `sp_AfterSave_` +`@Source`/`@ImportSessionId` (per-row hook hiện đã có @NguoiDungID + @Id 0/>0 = ai + thao tác) → gộp IMPORT-6.
+- [x] **IMPORT-5** — `ImportWizard.razor` + `.razor.css` (Components/View) + `ImportApiService` (3 endpoint, multipart upload, tải template qua `icare.downloadBytes` JS mới) + nút "⬆ Import Excel" trên toolbar ViewPage + modal DraggableModal + `OnImported`→reload. 3 bước: Upload (tải template + chọn file) → Preview (chip Thêm/Sửa/Lỗi + bảng dòng lỗi) → Result (trạng thái commit). DI Program.cs. Build FE 0/0. ⚠ Nếu server đang chạy lúc build → restart API/web + hard-reload.
+- [x] **IMPORT-6** — Hook mỗi-dòng nhận ngữ cảnh import + hook sau-import — build BE+WPF 0/0. (a) `SaveMasterDataCommand`/`SaveWithHooksAsync`/`RunHookProcAsync` thêm `Source`/`ImportSessionId`; **EXEC chỉ thêm `@Source`/`@ImportSessionId` khi import** (`importSessionId!=null`) ⇒ save tay giữ contract cũ, proc chưa nâng cấp KHÔNG vỡ (zero-regression). Commit truyền `Source="IMPORT"`+sessionId. (b) Proc contract v2: `db/procs/sp_AfterSave_Grid_DM_PhuongXa.sql` +2 param DEFAULT; `db/procs/sp_AfterImport_DM_PhuongXa.sql` skeleton mới. (c) Codegen `HookStoreTemplate`: after-save v2 + `BuildAfterImportProc` + `BuildProcBatches` gồm 3 proc; `SysTableManagerViewModel` kiểm/tạo cả after-import. (Bỏ IHookStoreCatalog cho after-import: OBJECT_ID 1 lần/mẻ, không đáng cache.)
+
+### ✅ TỔNG KẾT IMPORT (session 78) — build BE 0/0 · FE 0/0 · WPF Core+Forms 0/0
+Backend + frontend + WPF codegen hoàn tất. **⏳ Deploy để chạy thật:**
+- Chạy `db/071` (Config), `db/072` (Data), `db/073` (Config seed i18n) trên tenant.
+- Chạy lại `db/procs/sp_AfterSave_Grid_DM_PhuongXa.sql` (contract v2) + (tùy) `sp_AfterImport_DM_PhuongXa.sql` trên Data DB.
+- Rebuild+restart API · rebuild web (hard-reload) · rebuild ConfigStudio.
+- E2E: mở 1 View có Edit_Form → nút "⬆ Import Excel" → tải template → điền → validate → commit → kiểm `Sys_Import_Log`.
+- ⚠ Cần cấu hình `Ui_View.Import_Key_Fields` (nếu muốn upsert) + `Sys_Column.Is_Log_Masked` (nếu muốn làm mờ) qua ConfigStudio/SQL.
+
+### 📌 Decisions Log (ADR-034)
+- **ClosedXML** (MIT) — đóng Q3 ADR-033. Grid phẳng v1; TreeGrid pha sau.
+- **Upsert khoá ghép** `Ui_View.Import_Key_Fields` (CSV, gồm cả cột FK); so khớp SAU resolve FK, trim+culture-invariant, dictionary RAM.
+- **Partial commit** + dry-run bắt buộc (`importSessionId`).
+- **2 hook = hướng ④ tái dùng proc spec 18** (KHÔNG field-SQL Ui_View, KHÔNG Event Engine). Mỗi dòng tự nổ `sp_AfterSave_` (rollback-on-fail); sau import = proc mới.
+- **Log import Data DB** + **masking theo cột** `Sys_Column.Is_Log_Masked/Log_Mask_Mode` (làm mờ TRƯỚC khi ghi, cả Row_Json lẫn Error_Args).
+
 ## ✅ MasterData: lỗi rõ ràng + i18n khi bảng thiếu PK + fix LockOnEdit field lookup động (session 71 — 2026-06-28, build BE+FE 0/0, CHƯA commit)
 - [x] **Lỗi "chưa có khóa chính" rõ ràng + i18n** (thay 500 chung): backend `MetadataConfigurationException(Code="metadata.no_primary_key")` ném ở `MasterDataRepository.GetFormInfoAsync` (chokepoint mọi CRUD) khi cả `Sys_Column.Is_PK` lẫn PK vật lý đều rỗng → middleware map **500** kèm `code`/`formCode`/`correlationId` (KHÔNG 422 vì `SaveAsync` coi 422 là body kết quả). Frontend `ApiProblemException` bóc `code` → `ApiErrorLocalizer.Describe(Loc, ex)` → `Loc.L("error.metadata.noPrimaryKey", …)`. Áp 3 chỗ catch (List/Form load+save). **ADR-032**.
 - [x] **Fix LockOnEdit rớt cho field lookup ĐỘNG**: `FormRepository.GetByCodeAsync` tạo lại `new FieldMetadata{…}` khi gắn `LookupConfig` nhưng **quên copy `LockOnEdit`** → field LookupBox luôn về `false` (field TextBox không bị). Thêm `LockOnEdit = f.LockOnEdit` ([FormRepository.cs:236](src/backend/src/ICare247.Infrastructure/Repositories/FormRepository.cs:236)). VERIFY: DB `true` vs API `false` → khoanh đúng backend.

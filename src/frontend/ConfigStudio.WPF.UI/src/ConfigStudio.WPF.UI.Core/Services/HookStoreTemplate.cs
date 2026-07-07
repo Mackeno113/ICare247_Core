@@ -19,6 +19,9 @@ public static class HookStoreTemplate
     /// <summary>Tên store hậu xử lý SAU khi ghi (vd <c>sp_AfterSave_Grid_DM_PhuongXa</c>).</summary>
     public static string AfterSaveProcName(string tableCode) => $"sp_AfterSave_Grid_{tableCode}";
 
+    /// <summary>Tên hook SAU IMPORT — chạy 1 lần cuối mẻ (vd <c>sp_AfterImport_DM_PhuongXa</c>). ADR-034 §12.2.</summary>
+    public static string AfterImportProcName(string tableCode) => $"sp_AfterImport_{tableCode}";
+
     /// <summary>
     /// Skeleton <c>spc_Grid_&lt;Table&gt;</c> — validate, trả result set lỗi
     /// (error_key, args_json, field_name, severity). Rỗng = hợp lệ. Hiện pass-through.
@@ -77,20 +80,57 @@ public static class HookStoreTemplate
             -- File    : {{proc}}.sql
             -- Database: Data DB (Target DB per-tenant)
             -- Purpose : SVHOOK — HẬU XỬ LÝ sau khi ghi cho màn {{tableCode}} (engine-driven).
-            --           @Id = id thật vừa ghi. Ghi log / đẩy event / tính toán liên quan…
+            --           @Id = id thật vừa ghi (0=thêm mới, >0=cập nhật). @Source/@ImportSessionId = ngữ cảnh
+            --           import (engine chỉ truyền khi IMPORT; save tay dùng DEFAULT). ADR-034 §12.1.
             --           Trả result set lỗi (cùng contract spc_) → rollback cả bản ghi; rỗng = OK.
             -- Sinh bởi: ConfigStudio (skeleton RỖNG). IF OBJECT_ID IS NULL → KHÔNG ghi đè.
-            -- Spec    : docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md · ADR-029.
+            -- Spec    : docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md · ADR-029/034.
             -- =============================================================================
             IF OBJECT_ID('{{s}}.{{proc}}','P') IS NULL
             EXEC('
             CREATE PROCEDURE {{s}}.{{proc}}
                 @Id BIGINT, @TenantId INT, @NguoiDungID BIGINT,
-                @LangCode NVARCHAR(10), @PayloadJson NVARCHAR(MAX)
+                @LangCode NVARCHAR(10), @PayloadJson NVARCHAR(MAX),
+                @Source NVARCHAR(20) = N''MANUAL'', @ImportSessionId UNIQUEIDENTIFIER = NULL
             AS
             BEGIN
                 SET NOCOUNT ON;
-                -- Hậu xử lý ở đây. Hiện tại: không làm gì (pass-through).
+                -- Hậu xử lý ở đây (vd chỉ khi import: IF @Source = N''IMPORT'' ...). Hiện tại: pass-through.
+                RETURN;
+            END');
+            GO
+
+            """;
+    }
+
+    /// <summary>
+    /// Skeleton <c>sp_AfterImport_&lt;Table&gt;</c> — hook chạy 1 LẦN cuối mẻ import (ADR-034 §12.2).
+    /// Nhận thống kê mẻ + mảng Id đã ghi. Lỗi KHÔNG rollback dữ liệu đã ghi. Opt-in qua OBJECT_ID.
+    /// </summary>
+    public static string BuildAfterImportProc(string schema, string tableCode)
+    {
+        var s = NormalizeSchema(schema);
+        var proc = AfterImportProcName(tableCode);
+        return $$"""
+            -- =============================================================================
+            -- File    : {{proc}}.sql
+            -- Database: Data DB (Target DB per-tenant)
+            -- Purpose : HOOK SAU IMPORT cho màn {{tableCode}} — chạy 1 lần cuối mẻ (ADR-034 §12.2).
+            --           Nhận thống kê mẻ + @RecordIdsJson (mảng Id đã ghi). Lỗi KHÔNG rollback dữ liệu.
+            -- Sinh bởi: ConfigStudio (skeleton RỖNG). IF OBJECT_ID IS NULL → KHÔNG ghi đè.
+            -- Spec    : docs/spec/25_FK_LOOKUP_SPEC.md §12.2 · ADR-034.
+            -- =============================================================================
+            IF OBJECT_ID('{{s}}.{{proc}}','P') IS NULL
+            EXEC('
+            CREATE PROCEDURE {{s}}.{{proc}}
+                @ImportSessionId UNIQUEIDENTIFIER, @NguoiDungID BIGINT, @TenantId INT,
+                @InsertedCount INT, @UpdatedCount INT, @ErrorCount INT,
+                @RecordIdsJson NVARCHAR(MAX), @ImportedAt DATETIME
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                -- Tổng hợp cuối mẻ (vd tính lại cây cho các Id vừa import):
+                --   SELECT value FROM OPENJSON(@RecordIdsJson)
                 RETURN;
             END');
             GO
@@ -106,7 +146,12 @@ public static class HookStoreTemplate
     public static IReadOnlyList<string> BuildProcBatches(string schema, string tableCode)
     {
         var batches = new List<string>();
-        foreach (var script in new[] { BuildValidateProc(schema, tableCode), BuildAfterSaveProc(schema, tableCode) })
+        foreach (var script in new[]
+        {
+            BuildValidateProc(schema, tableCode),
+            BuildAfterSaveProc(schema, tableCode),
+            BuildAfterImportProc(schema, tableCode)
+        })
             batches.AddRange(SplitOnGo(script));
         return batches;
     }

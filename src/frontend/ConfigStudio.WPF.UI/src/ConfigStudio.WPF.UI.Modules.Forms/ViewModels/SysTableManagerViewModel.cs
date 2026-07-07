@@ -633,24 +633,27 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
             var conn = _appConfig.TargetConnectionString;
             var validateName = HookStoreTemplate.ValidateProcName(tableCode);
             var afterSaveName = HookStoreTemplate.AfterSaveProcName(tableCode);
+            var afterImportName = HookStoreTemplate.AfterImportProcName(tableCode);
 
             // Báo trước store nào đã có (skeleton chỉ tạo cái chưa có).
             var validateExists = await _schemaInspector.ProcedureExistsAsync(conn, schema, validateName);
             var afterSaveExists = await _schemaInspector.ProcedureExistsAsync(conn, schema, afterSaveName);
+            var afterImportExists = await _schemaInspector.ProcedureExistsAsync(conn, schema, afterImportName);
 
             var toCreate = new List<string>();
             if (!validateExists) toCreate.Add(validateName);
             if (!afterSaveExists) toCreate.Add(afterSaveName);
+            if (!afterImportExists) toCreate.Add(afterImportName);
 
             if (toCreate.Count == 0)
             {
-                SaveStatusMessage = $"Cả 2 store đã có sẵn trên Target DB ({validateName}, {afterSaveName}) — không tạo lại (không đè).";
+                SaveStatusMessage = $"Cả 3 store đã có sẵn trên Target DB ({validateName}, {afterSaveName}, {afterImportName}) — không tạo lại (không đè).";
                 IsSaveStatusError = false;
                 return;
             }
 
-            var existsNote = (validateExists || afterSaveExists)
-                ? $"\n\nĐã có sẵn (giữ nguyên): {string.Join(", ", new[] { validateExists ? validateName : null, afterSaveExists ? afterSaveName : null }.Where(n => n is not null))}."
+            var existsNote = (validateExists || afterSaveExists || afterImportExists)
+                ? $"\n\nĐã có sẵn (giữ nguyên): {string.Join(", ", new[] { validateExists ? validateName : null, afterSaveExists ? afterSaveName : null, afterImportExists ? afterImportName : null }.Where(n => n is not null))}."
                 : "";
 
             var confirm = System.Windows.MessageBox.Show(

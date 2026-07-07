@@ -1,0 +1,96 @@
+/* ImportWizard — trợ lý import Excel. Mật độ cao, không card-hóa; bám tone admin. */
+.import-wizard {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 480px;
+    max-width: 720px;
+}
+
+.iw-hint {
+    margin: 0;
+    color: var(--muted, #64748b);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.iw-file {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px dashed var(--border, #cbd5e1);
+    border-radius: 6px;
+    background: var(--surface-2, #f8fafc);
+}
+
+.iw-file__name {
+    font-size: 13px;
+    color: var(--text, #0f172a);
+    font-weight: 500;
+}
+
+/* Chip thống kê */
+.iw-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.iw-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.iw-chip--new  { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+.iw-chip--upd  { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.iw-chip--err  { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.iw-chip--skip { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+
+/* Bảng dòng lỗi */
+.iw-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    max-height: 320px;
+}
+
+.iw-table thead th {
+    text-align: left;
+    padding: 6px 10px;
+    background: var(--surface-2, #f1f5f9);
+    border-bottom: 1px solid var(--border, #e2e8f0);
+    font-weight: 600;
+}
+
+.iw-table tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border, #eef2f7);
+    vertical-align: top;
+}
+
+.iw-td-row {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted, #64748b);
+    width: 60px;
+}
+
+.iw-err { color: #b91c1c; line-height: 1.4; }
+.iw-err__field { font-weight: 600; margin-right: 4px; }
+
+.iw-filerr { margin: 6px 0 0; padding-left: 18px; }
+
+/* Băng trạng thái kết quả */
+.iw-result {
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.iw-result--committed      { background: #ecfdf5; color: #047857; }
+.iw-result--partialsuccess { background: #fffbeb; color: #b45309; }
+.iw-result--failed         { background: #fef2f2; color: #b91c1c; }

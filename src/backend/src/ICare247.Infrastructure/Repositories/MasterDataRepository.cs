@@ -339,7 +339,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         MasterDataFormInfo info, int tenantId, object? id,
         Dictionary<string, object?> values, long? userId, string langCode,
         bool hasValidateProc, bool hasAfterSaveProc,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string source = "MANUAL", Guid? importSessionId = null)
     {
         // info do caller (handler) truyền vào — KHÔNG GetFormInfoAsync lần 2 trong save path.
         var tableName = SafeCol(info.TableName, "Table");   // dùng dựng tên store, validate identifier
@@ -350,6 +351,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         // 1) Validate store (opt-in qua catalog — KHÔNG query OBJECT_ID lúc lưu).
         //    Có lỗi → KHÔNG commit → rollback khi dispose, KHÔNG ghi.
+        //    KHÔNG truyền ngữ cảnh import cho spc_ (contract validate giữ nguyên).
         if (hasValidateProc)
         {
             var errors = await RunHookProcAsync(data, tx, $"spc_Grid_{tableName}",
@@ -371,8 +373,10 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         // 3) After-save store (opt-in). Trả lỗi / RAISERROR → rollback cả bản ghi vừa ghi.
         if (hasAfterSaveProc)
         {
+            // Chỉ nhánh after-save nhận ngữ cảnh import (@Source/@ImportSessionId) — và CHỈ khi import
+            // (importSessionId != null) mới thêm vào EXEC ⇒ save tay giữ contract cũ, proc cũ không vỡ.
             var afterErrors = await RunHookProcAsync(data, tx, $"sp_AfterSave_Grid_{tableName}",
-                resultId, tenantId, userId, langCode, values, ct);
+                resultId, tenantId, userId, langCode, values, ct, source, importSessionId);
             if (afterErrors.Count > 0)
                 return new MasterDataHookSaveResult { Success = false, Id = null, Errors = afterErrors };
         }
@@ -388,7 +392,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     private static async Task<List<ProcError>> RunHookProcAsync(
         IDbConnection data, IDbTransaction tx, string procName,
         object? id, int tenantId, long? userId, string langCode,
-        Dictionary<string, object?> values, CancellationToken ct)
+        Dictionary<string, object?> values, CancellationToken ct,
+        string? source = null, Guid? importSessionId = null)
     {
         var dp = new DynamicParameters();
         dp.Add("Id", id is null ? 0L : id);          // null (Insert) → 0 theo quy ước ID=0 là thêm mới
@@ -400,6 +405,15 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var sql = $"EXEC dbo.{Bracket(procName)} " +
                   "@Id=@Id, @TenantId=@TenantId, @NguoiDungID=@NguoiDungID, " +
                   "@LangCode=@LangCode, @PayloadJson=@PayloadJson";
+
+        // Ngữ cảnh import (spec 25 §12.1): CHỈ thêm khi import → after-save proc v2 (@Source/@ImportSessionId
+        // có DEFAULT). Save tay (importSessionId=null) giữ EXEC cũ ⇒ proc chưa nâng cấp không bị "too many arguments".
+        if (importSessionId is not null)
+        {
+            dp.Add("Source", string.IsNullOrWhiteSpace(source) ? "IMPORT" : source);
+            dp.Add("ImportSessionId", importSessionId);
+            sql += ", @Source=@Source, @ImportSessionId=@ImportSessionId";
+        }
 
         var rows = await data.QueryAsync(new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
 
