@@ -119,7 +119,7 @@
 {
     <DraggableModal Title="@($"{Loc.L("import.btn", "Import Excel")} — {_view.Title ?? _view.ViewCode}")"
                     Width="760px" OnClose="() => _showImport = false">
-        <ImportWizard ViewCode="ViewCode" OnClose="() => _showImport = false" OnCommitted="OnImported" />
+        <ImportWizard ViewCode="@ViewCode" OnClose="() => _showImport = false" OnCommitted="OnImported" />
     </DraggableModal>
 }
 
