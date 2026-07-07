@@ -90,5 +90,6 @@ builder.Services.AddScoped<MenuAdminApiService>();
 builder.Services.AddScoped<ConfigSyncApiService>();
 builder.Services.AddScoped<CacheAdminApiService>();
 builder.Services.AddScoped<GridLayoutService>();
+builder.Services.AddScoped<AttachmentApiService>();
 
 await builder.Build().RunAsync();

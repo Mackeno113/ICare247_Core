@@ -106,6 +106,14 @@
                                        Context="Context" />
                 break;
 
+            case "attachment":
+                @* Attachment — upload nhiều tệp (nén ảnh client + progress), preview, tải, xóa *@
+                <AttachmentRenderer State="State"
+                                    OnChange="OnChange"
+                                    OnBlur="OnBlur"
+                                    Context="Context" />
+                break;
+
             default:
                 @* text và mọi type không nhận dạng được → DxTextBox *@
                 <TextBoxRenderer State="State"

@@ -52,6 +52,11 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
 
+    <!-- Xử lý ảnh server-side (MIT) — resize/nén + thumbnail. NativeAssets.Linux cho server Linux;
+         Windows/macOS native đã kèm trong gói SkiaSharp gốc. -->
+    <PackageVersion Include="SkiaSharp" Version="2.88.9" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.9" />
+
     <!-- Roslyn / Reflection (tooling) -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
     <PackageVersion Include="System.Reflection.MetadataLoadContext" Version="9.0.0" />

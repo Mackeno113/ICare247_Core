@@ -3,6 +3,40 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Hệ đính kèm / Upload file tổng quát (session 77 — 2026-07-07, CHƯA commit)
+
+**Tính năng:** upload file tổng quát gắn field Form Engine, 4 trục: tối ưu ảnh · UX file lớn (streaming+progress) · bảo mật (allowlist+magic-byte+chặn mã thực thi) · lưu trữ linh hoạt (di dời gốc, đa-node). Spec `docs/spec/26_FILE_UPLOAD_SPEC.md` + hướng dẫn WPF `docs/huong-dan-wpf/cau-hinh-attachment.md`.
+
+### Backend (Application/Infrastructure/Api) — build 0/0
+- [x] **P1 Nền storage**: `IFileStore` 3 provider (Db/FileSystem/Object) + `IFileStoreSelector` + `IStorageKeyBuilder` (key tương đối bất biến) + `FileSystemFileStore` (guard path-traversal + ghi-tạm→rename) + `ObjectFileStore` (stub) + `FileStorageStartupCheck` (fail-fast). Migration `db/070` (TT_TepBlob dedup + mở rộng TT_TepDinhKem) + file gộp `db/dev/create_tt_attachment_full.sql`.
+- [x] **P2 Bảo mật** `FileValidator`: allowlist đuôi + magic-byte đa định dạng + sniff mã thực thi/script/SVG-XSS + double-extension. Serve: Content-Disposition attachment + nosniff + ETag/304.
+- [x] **P3 Streaming**: controller spool multipart ra tệp tạm (DeleteOnClose) → không full RAM.
+- [x] **P4 Tối ưu ảnh** `SkiaImageOptimizer` (SkiaSharp MIT): resize/nén + thumbnail; client nén canvas.
+- [x] **P5 Dedup** `TepBlobRepository` (MERGE HOLDLOCK theo checksum + RefCount) + xóa → giảm ref → dọn vật lý.
+- [x] **Đa-tệp-khi-thêm-mới**: upload treo (Owner_Id NULL) → `POST /attachments/link` gắn sau khi Lưu (guard Owner_Id NULL + CreatedBy).
+
+### Frontend (ICare247_UI) — build 0/0
+- [x] **P6 Control `AttachmentRenderer`** — 2 chế độ TỰ CHỌN theo `IsVirtual`: field ảo → đa tệp (bảng phụ); field map cột → 1 tệp (Id vào cột, kiểu Logo_Id). Upload JS (XHR progress + nén ảnh + Bearer) + preview thumbnail (data-URL giữ auth) + tải (fetch token) + xóa. `AttachmentApiService`.
+- [x] **Tích hợp Form Engine**: dispatch `case "attachment"` + `NormalizeFieldType` ở **cả FormRunner VÀ MasterDataForm** (bug: quên MasterDataForm → ra ô text). Host bơm `__ownerTable/__ownerId` vào Context.
+- [x] **WPF ConfigStudio**: thêm `AttachmentBox` vào `AvailableEditorTypes` + guide 2 chế độ.
+- [x] **Fix UX**: cảnh báo lỗi upload dính (thêm ✕ gỡ + tự dọn khi chọn tệp mới); từ ngữ toolbar note "1 tệp" → "Tối đa 1 tệp".
+
+### 📌 Decisions Log
+- **Storage Hybrid provider-driven** (user chốt "cả hai, cấu hình được"): DB nhỏ / FileSystem-shared-mount / Object; key tương đối + BaseRoot config → di dời gốc = đổi 1 config; startup fail-fast chống ghi local sau LB.
+- **SkiaSharp (MIT)** thay ImageSharp (Split License) — ICare247 SaaS thương mại, tránh phí license.
+- **2 chế độ đính kèm auto theo IsVirtual** (user "hỗ trợ cả hai"): ảo=đa-tệp owner-based (file→record); cột=1-tệp column-based (record→file, chạy được cả khi thêm mới).
+- **ownerTable = FormCode** (không phải bảng vật lý) — frontend không có tên bảng thật; đủ nhất quán cho save/list/link.
+
+### ⏳ Deploy để thấy kết quả
+- [ ] Chạy migration (file gộp `db/dev/create_tt_attachment_full.sql`) trên Data DB tenant (sửa lỗi "Invalid object name TT_TepDinhKem" khi thiếu 063).
+- [ ] Rebuild + restart API + rebuild web (ICare247_UI) + hard reload. Rebuild ConfigStudio WPF.
+- [ ] Cấu hình `FileStorage` trong appsettings.local.json nếu dùng FileSystem/Object (mặc định Db chạy ngay).
+- [ ] Kiểm thử E2E trình duyệt (CHƯA chạy — mới verify compile).
+
+### 🔮 Hoãn / spec-only (giai đoạn sau)
+- [ ] **Job dọn tệp mồ côi** → HOÃN, gộp vào "quản lý tiến trình nền" chung có UI (spawn task `task_56b62113`). Tệp mồ côi chỉ tốn dung lượng, không sai nghiệp vụ.
+- [ ] **Quản lý thông số hệ thống** (FileStorage/DebugLog/Cache... qua web, schema-driven, hybrid file+DB) → **spec `docs/spec/27_SYSTEM_SETTINGS_SPEC.md` đã viết, CHƯA code**. Còn 5 điểm chốt §11.
+
 ## ✅ Đã xong — UI/UX loạt màn: Field Navigator, form web chia section, modal ghim, TreeList (session 76 — 2026-07-06, CHƯA commit)
 
 ### ConfigStudio WPF — Field Navigator (FieldConfigView)

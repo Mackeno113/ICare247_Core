@@ -1,7 +1,22 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-06 (session 76 — UI/UX loạt: Field Navigator, form web chia section, modal ghim, TreeList parity). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-07 (session 77 — Hệ đính kèm / Upload file tổng quát P1–P6 + spec quản lý thông số). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 77 (2026-07-07) — Hệ đính kèm / Upload file tổng quát
+
+**Bối cảnh:** user yêu cầu tính năng upload file (tối ưu ảnh + UX file lớn + bảo mật + lưu trữ linh hoạt). Hỏi–chốt nhiều vòng (storage hybrid, di dời gốc, đa-node, thư viện ảnh, dedup, 2 chế độ đính kèm).
+
+**Đã làm (CHƯA commit — branch `master`; build BE + web + WPF module = 0 error):**
+- **Backend P1–P5**: `IFileStore` 3 provider (Db/FileSystem/Object) + selector + key-builder tương đối (di dời gốc = đổi BaseRoot) + startup fail-fast; `FileValidator` (allowlist+magic-byte+chặn mã thực thi); streaming spool; `SkiaImageOptimizer` (MIT); dedup MERGE HOLDLOCK + RefCount. Migration `db/070` + file gộp `db/dev/create_tt_attachment_full.sql`. Endpoint `AttachmentsController` (upload/get/thumbnail/info/list/link/delete).
+- **Frontend P6**: `AttachmentRenderer` 2 chế độ auto theo `IsVirtual` (ảo=đa-tệp bảng phụ; cột=1-tệp Logo_Id) + JS uploader (XHR progress + nén canvas + Bearer) + `AttachmentApiService`. Đa-tệp-khi-thêm-mới = upload treo → link sau Lưu.
+- **Tích hợp**: dispatch `case "attachment"` + `NormalizeFieldType` ở CẢ `FormRunner` VÀ `MasterDataForm` (bug quên MasterDataForm); host bơm `__ownerTable/__ownerId`; WPF thêm EditorType `AttachmentBox` + guide.
+- **Docs**: `docs/spec/26_FILE_UPLOAD_SPEC.md` + `docs/huong-dan-wpf/cau-hinh-attachment.md`.
+- **Spec-only**: `docs/spec/27_SYSTEM_SETTINGS_SPEC.md` (quản lý thông số hệ thống — schema-driven, hybrid file+DB, Blazor web admin; CHƯA code, còn 5 điểm chốt §11).
+
+**⚠️ Deploy để thấy kết quả:** chạy migration (`db/dev/create_tt_attachment_full.sql`) trên Data DB tenant → rebuild+restart API + rebuild web + hard reload + rebuild WPF. Cấu hình `FileStorage` (mặc định Db chạy ngay). Kiểm thử E2E trình duyệt CHƯA chạy.
+
+**Việc gợi ý tiếp:** commit session 77 (chờ user chốt message). Code P1 tính năng quản lý thông số (spec 27) sau khi chốt §11. Job dọn tệp mồ côi hoãn (spawn task `task_56b62113`). Loạt session 72/76 (FK auto-JOIN, UI/UX) vẫn CHƯA commit — cùng nhánh `master`.
 
 ## Session 76 (2026-07-06) — UI/UX loạt màn (WPF ConfigStudio + web Blazor + backend)
 

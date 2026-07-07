@@ -173,7 +173,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     [
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox",
-        "LookupBox", "TreeLookupBox", "TextArea", "CheckBox", "ToggleSwitch"
+        "LookupBox", "TreeLookupBox", "TextArea", "CheckBox", "ToggleSwitch",
+        "AttachmentBox"
     ];
 
     private string _selectedEditorType = "TextBox";
@@ -391,6 +392,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("Filter SQL",      "Điều kiện lọc, hỗ trợ @TenantId, @FieldRef (VD: ChiNhanh_Id = @ChiNhanhId)"),
                 new("Reload OnChange", "FieldCode trigger reload cây khi thay đổi"),
                 new("(cấu hình tại tab Control Props)", "→ mục FK Lookup + ParentColumn"),
+            ]),
+
+        "AttachmentBox" => new(
+            Icon:       "📎",
+            Title:      "AttachmentBox — Đính kèm tệp (upload)",
+            WhenToUse:  "Ảnh/PDF/Office. TỰ CHỌN chế độ theo cờ IsVirtual:\n" +
+                        "• IsVirtual=BẬT  → ĐA TỆP: liên kết ở bảng phụ TT_TepDinhKem (không cần cột). Hồ sơ, ảnh sản phẩm.\n" +
+                        "• IsVirtual=TẮT (map cột int) → 1 TỆP: lưu Id tệp vào cột (kiểu Logo_Id). Logo, avatar.",
+            ColumnType: "int (khi 1-tệp) · — (khi đa tệp/IsVirtual)",
+            Props:
+            [
+                new("loai",         "Phân loại tệp tuỳ chọn (VD: HopDong, Anh). Bỏ trống = không phân loại."),
+                new("ownerTable",   "[đa tệp] Bảng chủ. Bỏ trống = tự suy từ form. (1-tệp không cần)"),
+                new("ownerIdField", "[đa tệp] Khóa record trong context để lấy Owner_Id (mặc định: Id)."),
+                new("(bảo mật)",    "Server tự kiểm allowlist + magic-byte + chặn mã thực thi; ảnh được nén + tạo thumbnail."),
             ]),
 
         _ => new(

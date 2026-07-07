@@ -6,8 +6,10 @@
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure.Audit;
 using ICare247.Infrastructure.Auth;
+using ICare247.Application.Files;
 using ICare247.Infrastructure.Caching;
 using ICare247.Infrastructure.Data;
+using ICare247.Infrastructure.Files;
 using ICare247.Infrastructure.MultiTenancy;
 using ICare247.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
@@ -116,6 +118,26 @@ public static class DependencyInjection
         services.AddScoped<INavigationRepository, NavigationRepository>();
         services.AddScoped<IMeCompanyRepository, MeCompanyRepository>();
         services.AddScoped<IFileAttachmentRepository, FileAttachmentRepository>();
+
+        // ── Hệ đính kèm — storage abstraction (Phase 1) ──────────────────────
+        // IFileStore 3 backend (Db|FileSystem|Object) đứng sau selector; chọn theo kích thước khi ghi
+        // và theo Storage_Kind khi đọc/xóa. Path lưu trong DB LUÔN tương đối → di dời gốc = đổi
+        // FileStorage:BaseRoot (dùng chung mọi node sau LB), không đụng DB. Stub Object chờ chốt SDK.
+        services.Configure<FileStorageOptions>(configuration.GetSection(FileStorageOptions.SectionName));
+        services.AddSingleton<IStorageKeyBuilder, StorageKeyBuilder>();
+        services.AddSingleton<IFileStore, DbFileStore>();
+        services.AddSingleton<IFileStore, FileSystemFileStore>();
+        services.AddSingleton<IFileStore, ObjectFileStore>();
+        services.AddSingleton<IFileStoreSelector, FileStoreSelector>();
+        // Kiểm tra tệp hợp lệ + an toàn (allowlist + magic-byte + sniff mã thực thi) — P2 bảo mật.
+        services.AddSingleton<IFileValidator, FileValidator>();
+        // Tối ưu ảnh server-side (SkiaSharp) — resize/nén + thumbnail. P4.
+        services.AddSingleton<IImageOptimizer, SkiaImageOptimizer>();
+        // Repo mô hình Blob⟂Attachment (dedup + gắn record/field). Scoped — tenant-aware.
+        services.AddScoped<ITepBlobRepository, TepBlobRepository>();
+        services.AddScoped<IAttachmentRepository, AttachmentRepository>();
+        // Probe backend cấu hình lúc khởi động: Provider != Db mà không đọc/ghi được → dừng app (fail-fast).
+        services.AddHostedService<FileStorageStartupCheck>();
         services.AddScoped<IPermissionAdminRepository, PermissionAdminRepository>();
         services.AddScoped<IMenuAdminRepository, MenuAdminRepository>();
         services.AddScoped<IPermissionService, Services.PermissionService>();

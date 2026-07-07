@@ -1,0 +1,187 @@
+/* File    : AttachmentRenderer.razor.css
+   Purpose : Style control đính kèm — mật độ cao, gọn, trung tính (không card-hóa nặng, không đụng token
+             theme). Dùng biến DevExpress nếu có; fallback màu an toàn. */
+
+.attach-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+}
+
+.attach-hint,
+.attach-empty {
+    color: var(--dxbl-text-muted, #6b7280);
+    font-style: italic;
+    padding: 4px 0;
+}
+
+.attach-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.attach-toolbar-note {
+    color: var(--dxbl-text-muted, #9ca3af);
+    font-size: 11px;
+}
+
+.attach-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--dxbl-border-color, #d1d5db);
+    border-radius: 6px;
+    background: var(--dxbl-surface, #fff);
+    color: var(--dxbl-text, #1f2937);
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.attach-btn:hover {
+    border-color: var(--dxbl-primary, #2563eb);
+    color: var(--dxbl-primary, #2563eb);
+}
+
+.attach-btn-icon {
+    font-weight: 700;
+}
+
+/* ── Đang upload ─────────────────────────────────────────────── */
+.attach-uploading {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.attach-uploading-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.attach-uploading-item.has-error .attach-name {
+    color: var(--dxbl-danger, #dc2626);
+}
+
+.attach-progress {
+    display: inline-block;
+    width: 140px;
+    height: 6px;
+    background: var(--dxbl-border-color, #e5e7eb);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.attach-progress-bar {
+    display: block;
+    height: 100%;
+    background: var(--dxbl-primary, #2563eb);
+    transition: width .15s ease;
+}
+
+.attach-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--dxbl-text-muted, #6b7280);
+    min-width: 34px;
+    text-align: right;
+}
+
+.attach-err {
+    color: var(--dxbl-danger, #dc2626);
+    font-size: 12px;
+}
+
+/* ── Danh sách tệp ───────────────────────────────────────────── */
+.attach-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.attach-item {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.attach-item:hover {
+    background: var(--dxbl-hover, #f3f4f6);
+}
+
+.attach-thumb {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--dxbl-border-color, #e5e7eb);
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--dxbl-surface, #fafafa);
+}
+
+.attach-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attach-ficon {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--dxbl-text-muted, #6b7280);
+}
+
+.attach-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.attach-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.attach-meta {
+    font-size: 11px;
+    color: var(--dxbl-text-muted, #9ca3af);
+}
+
+.attach-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.attach-link {
+    border: none;
+    background: none;
+    padding: 0;
+    cursor: pointer;
+    color: var(--dxbl-primary, #2563eb);
+    font-size: 12px;
+}
+
+.attach-link:hover {
+    text-decoration: underline;
+}
+
+.attach-del {
+    color: var(--dxbl-danger, #dc2626);
+}

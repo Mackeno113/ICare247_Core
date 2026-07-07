@@ -145,6 +145,12 @@
             _rootNodes  = [];
         }
         finally { _loading = false; }
+
+        // Có data → resolve TÊN hiển thị cho giá trị đang chọn (popup đóng) để ô khỏi hiện id thô
+        // (vd "3" thay vì tên công ty cha). OnParametersSet chạy TRƯỚC khi tree về nên không tự
+        // cập nhật được chỗ này — mirror LookupBoxRenderer.
+        if (!_popupVisible)
+            _inputText = GetSelectedDisplay();
     }
 
     // ── Build tree từ flat list ────────────────────────────────────────────────

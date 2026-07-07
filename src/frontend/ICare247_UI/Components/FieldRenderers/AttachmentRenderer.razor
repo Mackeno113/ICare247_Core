@@ -1,0 +1,433 @@
+@* File    : AttachmentRenderer.razor
+   Purpose : Control "Attachment" — 2 chế độ TỰ CHỌN theo cờ IsVirtual của field:
+             • Field ẢO (IsVirtual=true)  → ĐA TỆP, liên kết ở bảng phụ TT_TepDinhKem theo
+               (Owner_Table, Owner_Id, Field_Ma). Không dùng cột DB.
+             • Field THẬT (IsVirtual=false) → 1 TỆP, lưu Id tệp vào GIÁ TRỊ field → save vào cột
+               (kiểu Logo_Id). Không cần Owner_Id (chạy được cả khi tạo mới).
+             Chung: nén ảnh client + progress (XHR), preview thumbnail (data-URL giữ auth), tải, xóa.
+   Cấu hình (ControlPropsJson): { "ownerTable": "...", "loai": "...", "ownerIdField": "Id" } — đều tùy chọn. *@
+
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using ICare247_UI.Models
+@using ICare247_UI.Services
+@implements IAsyncDisposable
+@inject AttachmentApiService Api
+@inject IJSRuntime JS
+
+<div class="attach-field">
+    @if (PendingMode)
+    {
+        @* Đa tệp khi THÊM MỚI: upload ngay (Owner_Id treo), gắn vào record sau khi Lưu. *@
+        <div class="attach-hint">Tệp tải lên sẽ được gắn vào bản ghi sau khi bạn bấm Lưu.</div>
+    }
+
+    @if (!ReadOnly)
+        {
+            <div class="attach-toolbar">
+                <button type="button" class="attach-btn" @onclick="PickAsync">
+                    <span class="attach-btn-icon">＋</span>
+                    @(_singleFile && _current is not null ? "Thay tệp…" : "Chọn tệp…")
+                </button>
+                <span class="attach-toolbar-note">
+                    @(_singleFile ? "Tối đa 1 tệp" : "Cho phép nhiều tệp") · ảnh sẽ được nén trước khi gửi
+                </span>
+            </div>
+            <input type="file" multiple="@(!_singleFile)" style="display:none"
+                   @ref="_inputEl" @onchange="OnFilesChangedAsync" />
+        }
+
+        @if (_uploading.Count > 0)
+        {
+            <ul class="attach-uploading">
+                @foreach (var u in _uploading.Values.OrderBy(x => x.Id))
+                {
+                    <li class="attach-uploading-item @(u.Error is not null ? "has-error" : "")">
+                        <span class="attach-name" title="@u.Name">@u.Name</span>
+                        @if (u.Error is not null)
+                        {
+                            <span class="attach-err">@u.Error</span>
+                            <button type="button" class="attach-link attach-del"
+                                    title="Bỏ cảnh báo" @onclick="() => DismissUpload(u.Id)">✕</button>
+                        }
+                        else
+                        {
+                            <span class="attach-progress">
+                                <span class="attach-progress-bar" style="width:@(u.Percent)%"></span>
+                            </span>
+                            <span class="attach-pct">@u.Percent%</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (DisplayItems().Count == 0 && _uploading.Count == 0)
+        {
+            <div class="attach-empty">Chưa có tệp đính kèm.</div>
+        }
+        else
+        {
+            <ul class="attach-list">
+                @foreach (var it in DisplayItems())
+                {
+                    <li class="attach-item">
+                        <span class="attach-thumb">
+                            @if (it.HasThumbnail && _thumbs.TryGetValue(it.Id, out var url) && url is not null)
+                            {
+                                <img src="@url" alt="@it.TenFile" />
+                            }
+                            else
+                            {
+                                <span class="attach-ficon">@ExtOf(it.TenFile)</span>
+                            }
+                        </span>
+                        <span class="attach-info">
+                            <span class="attach-name" title="@it.TenFile">@it.TenFile</span>
+                            <span class="attach-meta">@FormatSize(it.KichThuoc)</span>
+                        </span>
+                        <span class="attach-actions">
+                            <button type="button" class="attach-link" @onclick="() => DownloadAsync(it)">Tải</button>
+                            @if (!ReadOnly)
+                            {
+                                <button type="button" class="attach-link attach-del"
+                                        @onclick="() => DeleteAsync(it)">Xóa</button>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public FieldState? State { get; set; }
+    [Parameter] public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter] public EventCallback<string> OnBlur { get; set; }
+    /// <summary>Context snapshot toàn form — chứa __ownerTable/__ownerId do host bơm (chế độ đa tệp).</summary>
+    [Parameter] public Dictionary<string, object?> Context { get; set; } = [];
+
+    private ElementReference _inputEl;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<AttachmentRenderer>? _selfRef;
+
+    private AttachProps _props = new();
+    private bool _singleFile;                                   // = field map cột (không ảo)
+    private AttachmentInfoDto? _current;                        // chế độ 1-tệp: tệp đang lưu
+    private readonly List<AttachmentInfoDto> _items = [];       // chế độ đa tệp
+    private readonly List<long> _pendingIds = [];               // đa tệp thêm mới: Id đã upload chờ gắn
+    private readonly Dictionary<long, string?> _thumbs = [];
+    private readonly Dictionary<int, UploadingItem> _uploading = [];
+
+    private bool ReadOnly => State?.EffectiveReadOnly ?? false;
+    private string? _ownerTable;
+    private string? OwnerTable => _ownerTable;
+    private long OwnerId { get; set; }
+    private string FieldMa => State?.FieldCode ?? "";
+    private bool HasOwner => !string.IsNullOrWhiteSpace(OwnerTable) && OwnerId > 0;
+    /// <summary>Đa tệp + bản ghi MỚI (chưa có Id) + có bảng chủ → upload treo, gắn sau khi Lưu.</summary>
+    private bool PendingMode => !_singleFile && OwnerId <= 0 && !string.IsNullOrWhiteSpace(OwnerTable);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _props = AttachProps.Parse(State?.ControlPropsJson);
+        // Chế độ: field ảo → đa tệp (bảng phụ); field map cột → 1 tệp (lưu Id vào cột).
+        _singleFile = !(State?.IsVirtual ?? false);
+
+        if (_singleFile)
+        {
+            var id = CurrentValueId();
+            if (id > 0 && _current?.Id != id) await LoadCurrentAsync(id);
+            else if (id <= 0) _current = null;
+        }
+        else
+        {
+            _ownerTable = !string.IsNullOrWhiteSpace(_props.OwnerTable)
+                ? _props.OwnerTable
+                : (Context.TryGetValue("__ownerTable", out var ot) ? ot?.ToString() : null);
+            OwnerId = ResolveOwnerId();
+            if (HasOwner && _items.Count == 0 && _uploading.Count == 0) await LoadListAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/attachment-upload.js");
+        }
+    }
+
+    /// <summary>Danh sách hiển thị: 1-tệp → _current (0/1 phần tử); đa tệp → _items.</summary>
+    private List<AttachmentInfoDto> DisplayItems()
+        => _singleFile ? (_current is null ? [] : [_current]) : _items;
+
+    // ── Nạp dữ liệu ────────────────────────────────────────────────────────────
+
+    private async Task LoadCurrentAsync(long id)
+    {
+        _current = await Api.GetInfoAsync(id);
+        if (_current is { HasThumbnail: true } && !_thumbs.ContainsKey(_current.Id))
+            _thumbs[_current.Id] = await Api.GetThumbnailDataUrlAsync(_current.Id);
+        StateHasChanged();
+    }
+
+    private async Task LoadListAsync()
+    {
+        _items.Clear();
+        _items.AddRange(await Api.ListAsync(OwnerTable!, OwnerId, FieldMa));
+        StateHasChanged();
+        foreach (var it in _items.Where(x => x.HasThumbnail && !_thumbs.ContainsKey(x.Id)))
+        {
+            _thumbs[it.Id] = await Api.GetThumbnailDataUrlAsync(it.Id);
+            StateHasChanged();
+        }
+    }
+
+    // ── Upload ─────────────────────────────────────────────────────────────────
+
+    private async Task PickAsync()
+    {
+        if (_module is not null) await _module.InvokeVoidAsync("pick", _inputEl);
+    }
+
+    private async Task OnFilesChangedAsync()
+    {
+        if (_module is null || _selfRef is null) return;
+        // Chọn tệp mới → dọn các dòng LỖI cũ (không để cảnh báo cũ dính lại).
+        ClearErroredUploads();
+        // 1-tệp: không cần Owner (Id lưu vào cột). Đa tệp: gắn Owner (ownerId null khi thêm mới → treo, gắn sau).
+        var opts = _singleFile
+            ? Api.BuildUploadOptions(_props.Loai, null, null, FieldMa, _props.MaxDimension, _props.Quality)
+            : Api.BuildUploadOptions(_props.Loai, OwnerTable, OwnerId > 0 ? OwnerId : null, FieldMa,
+                                     _props.MaxDimension, _props.Quality);
+        await _module.InvokeVoidAsync("uploadSelected", _inputEl, _selfRef, opts);
+    }
+
+    [JSInvokable]
+    public Task OnStart(int id, string name, long size)
+    {
+        _uploading[id] = new UploadingItem { Id = id, Name = name, Size = size, Percent = 0 };
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnProgress(int id, int percent)
+    {
+        if (_uploading.TryGetValue(id, out var u)) u.Percent = percent;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task OnDone(int id, string responseJson)
+    {
+        _uploading.Remove(id);
+        var added = TryParseResult(responseJson);
+        if (added is not null)
+        {
+            if (added.HasThumbnail)
+                _thumbs[added.Id] = await Api.GetThumbnailDataUrlAsync(added.Id);
+
+            if (_singleFile)
+            {
+                // 1-tệp: tệp mới THAY tệp cũ → xóa tệp cũ (best-effort), ghi Id mới vào giá trị field.
+                var old = _current;
+                _current = added;
+                await NotifySingleAsync(added.Id);
+                if (old is not null && old.Id != added.Id) _ = Api.DeleteAsync(old.Id);
+            }
+            else
+            {
+                _items.Insert(0, added);
+                if (PendingMode)
+                {
+                    // Thêm mới: giữ Id để gắn sau khi Lưu record (host đọc State.Value = danh sách Id).
+                    _pendingIds.Add(added.Id);
+                    await NotifyPendingAsync();
+                }
+                else
+                {
+                    await NotifyMultiAsync();
+                }
+            }
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnError(int id, string message)
+    {
+        if (_uploading.TryGetValue(id, out var u)) u.Error = message;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    /// <summary>Gỡ 1 dòng upload lỗi khỏi danh sách (nút ✕).</summary>
+    private void DismissUpload(int id) => _uploading.Remove(id);
+
+    /// <summary>Dọn mọi dòng upload đang ở trạng thái lỗi (gọi khi chọn tệp mới).</summary>
+    private void ClearErroredUploads()
+    {
+        foreach (var key in _uploading.Where(kv => kv.Value.Error is not null).Select(kv => kv.Key).ToList())
+            _uploading.Remove(key);
+    }
+
+    // ── Actions ────────────────────────────────────────────────────────────────
+
+    private async Task DownloadAsync(AttachmentInfoDto it)
+    {
+        if (_module is null) return;
+        await _module.InvokeVoidAsync(
+            "downloadWithToken", Api.DownloadUrl(it.Id), Api.Token, Api.TenantIdHeader, it.TenFile);
+    }
+
+    private async Task DeleteAsync(AttachmentInfoDto it)
+    {
+        if (_singleFile)
+        {
+            // 1-tệp: bỏ liên kết ở cột + xóa tệp (cột này sở hữu đúng tệp đó).
+            _ = Api.DeleteAsync(it.Id);
+            _current = null;
+            _thumbs.Remove(it.Id);
+            await NotifySingleAsync(null);
+            StateHasChanged();
+            return;
+        }
+
+        if (await Api.DeleteAsync(it.Id))
+        {
+            _items.Remove(it);
+            _thumbs.Remove(it.Id);
+            if (PendingMode)
+            {
+                _pendingIds.Remove(it.Id);
+                await NotifyPendingAsync();
+            }
+            else
+            {
+                await NotifyMultiAsync();
+            }
+            StateHasChanged();
+        }
+    }
+
+    // ── Cập nhật giá trị field ──────────────────────────────────────────────────
+
+    /// <summary>1-tệp: giá trị field = Id tệp (hoặc null) → form save vào cột.</summary>
+    private async Task NotifySingleAsync(long? attachmentId)
+    {
+        if (State is null) return;
+        State.Value = attachmentId;
+        await OnChange.InvokeAsync((State.FieldCode, attachmentId));
+    }
+
+    /// <summary>Đa tệp thêm mới: giá trị field = DANH SÁCH Id treo → host gắn vào record sau khi Lưu.</summary>
+    private async Task NotifyPendingAsync()
+    {
+        if (State is null) return;
+        var ids = new List<long>(_pendingIds);
+        State.Value = ids;
+        await OnChange.InvokeAsync((State.FieldCode, ids));
+    }
+
+    /// <summary>Đa tệp: giá trị field = số lượng đính kèm (đủ cho validate required).</summary>
+    private async Task NotifyMultiAsync()
+    {
+        if (State is null) return;
+        State.Value = _items.Count;
+        await OnChange.InvokeAsync((State.FieldCode, _items.Count));
+    }
+
+    // ── Resolve giá trị ─────────────────────────────────────────────────────────
+
+    /// <summary>Id tệp đang lưu ở giá trị field (chế độ 1-tệp). 0 nếu trống.</summary>
+    private long CurrentValueId()
+        => State?.Value is not null && TryLong(State.Value, out var id) ? id : 0;
+
+    /// <summary>Owner_Id: ưu tiên __ownerId (host bơm), rồi ownerIdField. 0 nếu bản ghi mới.</summary>
+    private long ResolveOwnerId()
+    {
+        if (Context.TryGetValue("__ownerId", out var oid) && oid is not null && TryLong(oid, out var id0))
+            return id0;
+        var key = string.IsNullOrWhiteSpace(_props.OwnerIdField) ? "Id" : _props.OwnerIdField;
+        if (Context.TryGetValue(key, out var raw) && raw is not null && TryLong(raw, out var id1))
+            return id1;
+        return 0;
+    }
+
+    private static bool TryLong(object o, out long v)
+    {
+        var s = o is JsonElement je ? je.ToString() : o.ToString();
+        return long.TryParse(s, out v);
+    }
+
+    private static AttachmentInfoDto? TryParseResult(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var r = doc.RootElement;
+            if (!r.TryGetProperty("success", out var ok) || !ok.GetBoolean()) return null;
+            return new AttachmentInfoDto
+            {
+                Id = r.GetProperty("attachmentId").GetInt64(),
+                TenFile = r.GetProperty("tenFile").GetString() ?? "",
+                ContentType = r.GetProperty("contentType").GetString() ?? "",
+                KichThuoc = r.GetProperty("kichThuoc").GetInt64(),
+                HasThumbnail = r.TryGetProperty("hasThumbnail", out var h) && h.GetBoolean(),
+                CreatedAt = DateTime.UtcNow,
+            };
+        }
+        catch { return null; }
+    }
+
+    // ── Helpers hiển thị ────────────────────────────────────────────────────────
+
+    private static string FormatSize(long bytes)
+        => bytes >= 1024 * 1024 ? $"{bytes / (1024d * 1024):0.#} MB"
+         : bytes >= 1024 ? $"{bytes / 1024d:0.#} KB"
+         : $"{bytes} B";
+
+    private static string ExtOf(string fileName)
+    {
+        var dot = fileName.LastIndexOf('.');
+        return dot >= 0 && dot < fileName.Length - 1 ? fileName[(dot + 1)..].ToUpperInvariant() : "TỆP";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { if (_module is not null) await _module.DisposeAsync(); }
+        catch { /* module có thể đã bị dispose khi circuit đóng */ }
+        _selfRef?.Dispose();
+    }
+
+    private sealed class UploadingItem
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = "";
+        public long Size { get; set; }
+        public int Percent { get; set; }
+        public string? Error { get; set; }
+    }
+
+    private sealed class AttachProps
+    {
+        [JsonPropertyName("ownerTable")] public string? OwnerTable { get; set; }
+        [JsonPropertyName("ownerIdField")] public string OwnerIdField { get; set; } = "Id";
+        [JsonPropertyName("loai")] public string? Loai { get; set; }
+        [JsonPropertyName("maxDimension")] public int MaxDimension { get; set; } = 2000;
+        [JsonPropertyName("quality")] public double Quality { get; set; } = 0.85;
+
+        public static AttachProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<AttachProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}

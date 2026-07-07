@@ -16,6 +16,7 @@
 - [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md) — Dựng lưới dữ liệu tham chiếu (khóa ngoại): **Cách A** FK auto-JOIN (no-code, không cần view) + **Cách B** SQL View tay (escape hatch).
 - [cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md) — **Hướng dẫn sử dụng field ảo + cascade** (chọn cha để lọc con, chỉ lưu con) — quy tắc vàng + bảng lỗi thường gặp để **chống cấu hình sai**.
 - [cau-hinh-bo-loc-lien-ket.md](cau-hinh-bo-loc-lien-ket.md) — Bộ lọc liên kết (cascade) + lọc theo tài khoản + đổ giá trị Thêm mới.
+- [cau-hinh-attachment.md](cau-hinh-attachment.md) — Control **AttachmentBox** (upload/đính kèm tệp): 2 chế độ **đa tệp (field ảo)** / **1 tệp (map cột)**, tự chọn theo `IsVirtual`.
 
 ## Tham chiếu liên quan (vẫn ở `docs/spec/` — giữ đánh số spec)
 - [09_FIELD_CONFIG_GUIDE.md](../spec/09_FIELD_CONFIG_GUIDE.md) — Tổng quan tab Cơ bản / Control Props / Rules / Events.

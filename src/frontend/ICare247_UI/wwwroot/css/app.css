@@ -446,6 +446,28 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
     --dxbl-text-edit-focus-border-color: var(--color-primary);
     --dxbl-text-edit-focus-shadow-color: rgba(15, 108, 189, .2);
     --dxbl-text-edit-font-size:          var(--input-font);
+
+    /* Fluent to canh DUOI cua editor bang bien underline (border-bottom-color = underline-color)
+       → tao "gach chan" khac mau 3 canh con lai. Ep underline = mau vien hop de 4 canh dong nhat
+       o moi trang thai (giong control lookup ben canh). Chi TAT thanh accent day khi focus (::after)
+       bang cach set focused-height = 0 — focus van bao hieu qua border-color + shadow o
+       .field-dx.dxbl-edit:focus-within. */
+    --dxbl-text-edit-underline-color:          var(--input-border);
+    --dxbl-text-edit-underline-hovered-color:  var(--input-border-hover);
+    --dxbl-text-edit-underline-focused-color:  var(--input-border-focus);
+    --dxbl-text-edit-underline-focused-height: 0px;
+}
+
+/* Bulletproof trang thai FOCUS: Fluent ve thanh accent day duoi editor bang pseudo ::after khi
+   focus. Bien focused-height o tren da set 0, nhung DX co the ghi de bien nay o selector rieng →
+   go han pseudo de chac chan khong con "gach chan". Vien duoi giu dong mau focus voi 3 canh con lai. */
+.field-dx.dxbl-text-edit::after,
+.field-dx .dxbl-text-edit::after {
+    display: none;
+}
+.field-dx.dxbl-edit:focus-within,
+.field-dx .dxbl-edit:focus-within {
+    border-bottom-color: var(--input-border-focus);
 }
 
 /* ── Fix link trong dòng focus/selected của lưới (Grid + TreeList) ─────────

@@ -7,6 +7,7 @@
 @inject FormApiService        FormApi
 @inject MasterDataApiService  MasterApi
 @inject LookupApiService      LookupApi
+@inject AttachmentApiService  AttachmentApi
 @inject IJSRuntime            JS
 @inherits LocalizedComponentBase
 
@@ -273,6 +274,8 @@ else
 
             if (result.Success)
             {
+                // Đa-tệp-khi-thêm-mới: gắn các tệp đã upload (treo) vào record vừa có Id.
+                await LinkPendingAttachmentsAsync(result.Id);
                 await OnSaved.InvokeAsync(result.Id);
                 return;
             }
@@ -314,8 +317,36 @@ else
 
     // ── Helpers (mirror FormRunner) ──────────────────────────────────────────
 
+    /// <summary>Gắn các đính kèm đã upload "treo" (đa-tệp-khi-thêm-mới) vào record vừa tạo.</summary>
+    private async Task LinkPendingAttachmentsAsync(object? newId)
+    {
+        if (newId is null || !long.TryParse(newId.ToString(), out var oid) || oid <= 0) return;
+
+        foreach (var fs in _fieldStates.Where(f => f.FieldType == "attachment"))
+        {
+            var ids = ExtractPendingIds(fs.Value);
+            if (ids.Count == 0) continue;
+            try { await AttachmentApi.LinkAsync(FormCode, oid, fs.FieldCode, ids); }
+            catch { /* best-effort: tệp treo có job dọn — không chặn đóng form */ }
+        }
+    }
+
+    /// <summary>Trích danh sách Id treo từ giá trị field (renderer đặt List&lt;long&gt; khi thêm mới đa tệp).</summary>
+    private static List<long> ExtractPendingIds(object? value) => value switch
+    {
+        List<long> l => l,
+        IEnumerable<long> e => e.ToList(),
+        _ => [],
+    };
+
     private Dictionary<string, object?> BuildContext()
-        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+    {
+        var ctx = _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+        // Khóa dành riêng (prefix __, không trùng field code) cho control Attachment tự suy bảng chủ + Id record.
+        ctx["__ownerTable"] = FormCode;
+        ctx["__ownerId"] = Id;
+        return ctx;
+    }
 
     private async Task LoadLookupOptionsAsync()
     {
@@ -355,6 +386,7 @@ else
                 or "radiogroup" or "lookupcombobox"              => "select",
             "lookupbox"                                          => "fklookup",
             "treelookupbox" or "treelookup"                      => "treelookup",
+            "attachmentbox" or "attachment" or "fileupload"      => "attachment",
             _                                                    => "text"
         };
 }

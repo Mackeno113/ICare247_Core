@@ -19,7 +19,9 @@ migration `db/062` (Config). Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Chi tiế
 ## Đang mở / ad-hoc gần đây (đầy đủ ở TASKS.md)
 
 - **FK lookup auto-JOIN** (session 72, CHƯA commit) — cột lưới hiện TÊN cha; cần build+restart API + commit.
-- **Save hook store** (ADR-029, SVHOOK) · **Bộ lọc cascade + context param** (ADR-030, VFILTER) · **Upload file TT_** — phần lớn đã code, còn chạy DB + E2E.
+- **Save hook store** (ADR-029, SVHOOK) · **Bộ lọc cascade + context param** (ADR-030, VFILTER).
+- **Hệ đính kèm / Upload file tổng quát** (session 77) — P1–P6 CODE XONG (storage hybrid, bảo mật, streaming, tối ưu ảnh SkiaSharp, dedup, control 2 chế độ, đa-tệp-khi-thêm-mới); còn chạy migration (`db/dev/create_tt_attachment_full.sql`) + E2E. Spec 26 + hướng dẫn WPF `cau-hinh-attachment.md`.
+- **Quản lý thông số hệ thống** — spec `docs/spec/27_SYSTEM_SETTINGS_SPEC.md` viết xong, CHƯA code (schema-driven, hybrid file+DB, Blazor web admin).
 - **Bảo mật Tầng 1→5** — SEC1→5 đã code (spec 20 §9); còn E2E Tầng 2/3, MFA, DB least-privilege.
 
 ## Định hướng nền tảng (durable — không đổi tùy tiện)
