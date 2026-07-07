@@ -663,38 +663,44 @@
                                 </StackPanel>
 
 
-                                <!-- Net Type (readonly) -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                    <TextBlock Text="Net Type" Style="{StaticResource FieldLabelStyle}" />
-                                    <TextBlock Text="{Binding NetType}" FontSize="13"
-                                               FontFamily="Cascadia Code, Consolas"
-                                               Foreground="{DynamicResource AppInfoBrush}" Background="{DynamicResource AppSurfaceMutedBrush}"
-                                               Padding="10,8" />
-                                    <TextBlock Text="Kiểu dữ liệu .NET tự động xác định từ column đã chọn."
-                                               Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
+                                <!-- Net Type (readonly) ▮ Editor Type — 2 cột cho gọn -->
+                                <Grid Margin="0,0,0,18">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Net Type" Style="{StaticResource FieldLabelStyle}" />
+                                        <TextBlock Text="{Binding NetType}" FontSize="13" MinWidth="120"
+                                                   FontFamily="Cascadia Code, Consolas"
+                                                   Foreground="{DynamicResource AppInfoBrush}" Background="{DynamicResource AppSurfaceMutedBrush}"
+                                                   Padding="10,8" />
+                                        <TextBlock Text="Tự xác định từ column." Style="{StaticResource HelpTextStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Editor Type" Style="{StaticResource FieldLabelStyle}" />
+                                        <dxe:ComboBoxEdit ItemsSource="{Binding AvailableEditorTypes}"
+                                                          EditValue="{Binding SelectedEditorType, UpdateSourceTrigger=PropertyChanged}" />
+                                        <TextBlock Text="Loại UI component. Đổi → cập nhật tab Control Props."
+                                                   Style="{StaticResource HelpTextStyle}" />
+                                    </StackPanel>
+                                </Grid>
 
-                                <!-- Editor Type -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                    <TextBlock Text="Editor Type" Style="{StaticResource FieldLabelStyle}" />
-                                    <dxe:ComboBoxEdit ItemsSource="{Binding AvailableEditorTypes}"
-                                                      EditValue="{Binding SelectedEditorType, UpdateSourceTrigger=PropertyChanged}"
-                                                      Width="280" HorizontalAlignment="Left" />
-                                    <TextBlock Text="Loại UI component hiển thị field. Thay đổi sẽ cập nhật tab Control Props."
-                                               Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
+                                <!-- Thứ tự ▮ Độ rộng (Col Span) — 2 cột cho gọn -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Thứ tự hiển thị" Style="{StaticResource FieldLabelStyle}" />
+                                        <dxe:TextEdit EditValue="{Binding OrderNo, UpdateSourceTrigger=PropertyChanged}"
+                                                      Width="100" HorizontalAlignment="Left" />
+                                    </StackPanel>
 
-                                <!-- Order No -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
-                                    <TextBlock Text="Thứ tự hiển thị" Style="{StaticResource FieldLabelStyle}" />
-                                    <dxe:TextEdit EditValue="{Binding OrderNo, UpdateSourceTrigger=PropertyChanged}"
-                                                  Width="100" HorizontalAlignment="Left" />
-                                    <TextBlock Text="Thứ tự sắp xếp field trong section (Order_No)."
-                                               Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
-
-                                <!-- Col Span -->
-                                <StackPanel Style="{StaticResource FieldGroupStyle}">
+                                    <StackPanel Grid.Column="2">
                                     <TextBlock Text="Độ rộng (Col Span)" Style="{StaticResource FieldLabelStyle}" />
                                     <StackPanel Orientation="Horizontal">
                                         <RadioButton Content="1/4"  GroupName="ColSpan"
@@ -711,7 +717,8 @@
                                     </StackPanel>
                                     <TextBlock Text="Độ rộng field trong grid 4-column (1=1/4, 2=half, 3=3/4, 4=full)."
                                                Style="{StaticResource HelpTextStyle}" />
-                                </StackPanel>
+                                    </StackPanel>
+                                </Grid>
 
                                     </StackPanel>
 
@@ -788,7 +795,7 @@
                                 <TextBlock Text="Behavior" Style="{StaticResource SectionTitleStyle}"
                                            Margin="0,0,0,14" />
 
-                                <!-- Grid 3×2: IsVisible / IsReadOnly / IsRequired / LockOnEdit (ADR-017) / IsVirtual -->
+                                <!-- 4 nhóm logic: HIỂN THỊ · NHẬP LIỆU · DỮ LIỆU · BẢO MẬT (mỗi nhóm 1 tiêu đề mờ) -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -796,17 +803,29 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" /> <!-- 0  HIỂN THỊ -->
+                                        <RowDefinition Height="Auto" /> <!-- 1  cards -->
+                                        <RowDefinition Height="14" />
+                                        <RowDefinition Height="Auto" /> <!-- 3  NHẬP LIỆU -->
+                                        <RowDefinition Height="Auto" /> <!-- 4 -->
                                         <RowDefinition Height="8" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="8" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="8" />
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" /> <!-- 6 -->
+                                        <RowDefinition Height="14" />
+                                        <RowDefinition Height="Auto" /> <!-- 8  DỮ LIỆU -->
+                                        <RowDefinition Height="Auto" /> <!-- 9 -->
+                                        <RowDefinition Height="14" />
+                                        <RowDefinition Height="Auto" /> <!-- 11 BẢO MẬT -->
+                                        <RowDefinition Height="Auto" /> <!-- 12 -->
                                     </Grid.RowDefinitions>
 
-                                    <!-- IsVisible -->
-                                    <Border Grid.Column="0" Grid.Row="0"
+                                    <!-- Tiêu đề nhóm -->
+                                    <TextBlock Grid.Row="0"  Grid.ColumnSpan="3" Text="HIỂN THỊ"  FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" Margin="2,0,0,6" />
+                                    <TextBlock Grid.Row="3"  Grid.ColumnSpan="3" Text="NHẬP LIỆU" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" Margin="2,0,0,6" />
+                                    <TextBlock Grid.Row="8"  Grid.ColumnSpan="3" Text="DỮ LIỆU"   FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" Margin="2,0,0,6" />
+                                    <TextBlock Grid.Row="11" Grid.ColumnSpan="3" Text="BẢO MẬT"   FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource AppTextMutedBrush}" Margin="2,0,0,6" />
+
+                                    <!-- HIỂN THỊ · Hiển thị -->
+                                    <Border Grid.Column="0" Grid.Row="1"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -820,8 +839,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- IsReadOnly -->
-                                    <Border Grid.Column="2" Grid.Row="0"
+                                    <!-- NHẬP LIỆU · Chỉ đọc -->
+                                    <Border Grid.Column="2" Grid.Row="4"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -837,8 +856,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- IsRequired -->
-                                    <Border Grid.Column="0" Grid.Row="2"
+                                    <!-- NHẬP LIỆU · Bắt buộc -->
+                                    <Border Grid.Column="0" Grid.Row="4"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -854,8 +873,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- LockOnEdit (ADR-017): khoa field khi form mo o che do Edit -->
-                                    <Border Grid.Column="2" Grid.Row="2"
+                                    <!-- NHẬP LIỆU · Khóa khi sửa (ADR-017) -->
+                                    <Border Grid.Column="0" Grid.Row="6"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -871,8 +890,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- ShowInList: hiển thị cột trong lưới danh sách Master Data -->
-                                    <Border Grid.Column="2" Grid.Row="4"
+                                    <!-- HIỂN THỊ · Hiện trong danh sách -->
+                                    <Border Grid.Column="2" Grid.Row="1"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -888,8 +907,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- IsVirtual: field UI-only, khong luu DB -->
-                                    <Border Grid.Column="0" Grid.Row="4"
+                                    <!-- DỮ LIỆU · Field ảo -->
+                                    <Border Grid.Column="2" Grid.Row="9"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -924,8 +943,8 @@
                                         </StackPanel>
                                     </Border>
 
-                                    <!-- IsUnique: chống trùng mã (backend check + nên kèm UNIQUE INDEX) -->
-                                    <Border Grid.Column="0" Grid.Row="6"
+                                    <!-- DỮ LIỆU · Duy nhất -->
+                                    <Border Grid.Column="0" Grid.Row="9"
                                             BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
                                         <StackPanel>
                                             <DockPanel>
@@ -940,35 +959,34 @@
                                                        FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                     </Border>
-                                </Grid>
-
-                                <!-- Làm mờ trong log (Sys_Column) — thuộc tính CẤP CỘT; chỉ field map cột thật -->
-                                <Border Margin="0,12,0,0" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10"
-                                        Visibility="{Binding CanConfigMasking, Converter={StaticResource BoolToVis}}">
-                                    <StackPanel>
-                                        <DockPanel>
-                                            <dxe:ToggleSwitchEdit IsChecked="{Binding IsLogMasked}"
-                                                                   DockPanel.Dock="Right" HorizontalAlignment="Right" />
-                                            <TextBlock FontSize="12" FontWeight="SemiBold"
-                                                       Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
-                                                <Run Text="🕶" /><Run Text=" Làm mờ trong log" />
-                                            </TextBlock>
-                                        </DockPanel>
-                                        <TextBlock Text="Ẩn giá trị cột này trong log import/audit (cấp cột — mọi form/view dùng cột này). KHÔNG ảnh hưởng dữ liệu thật."
-                                                   FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
-                                                    Visibility="{Binding IsLogMasked, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="Kiểu" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
-                                                       Foreground="{DynamicResource AppTextMutedBrush}" />
-                                            <dxe:ComboBoxEdit Width="160" Height="30"
-                                                              ItemsSource="{Binding LogMaskModeOptions}"
-                                                              EditValue="{Binding LogMaskMode, UpdateSourceTrigger=PropertyChanged}" />
-                                            <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="10"
-                                                       Foreground="{DynamicResource AppTextSubtleBrush}"
-                                                       Text="Full=*** · Partial=****1234 · Hash=sha256" />
+                                    <!-- BẢO MẬT · Làm mờ trong log (Sys_Column, cấp cột) -->
+                                    <Border Grid.Column="0" Grid.Row="12" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10"
+                                            Visibility="{Binding CanConfigMasking, Converter={StaticResource BoolToVis}}">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <dxe:ToggleSwitchEdit IsChecked="{Binding IsLogMasked}"
+                                                                       DockPanel.Dock="Right" HorizontalAlignment="Right" />
+                                                <TextBlock FontSize="12" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
+                                                    <Run Text="🕶" /><Run Text=" Làm mờ trong log" />
+                                                </TextBlock>
+                                            </DockPanel>
+                                            <TextBlock Text="Ẩn giá trị cột này trong log import/audit (cấp cột — mọi form/view dùng cột này). KHÔNG ảnh hưởng dữ liệu thật."
+                                                       FontSize="11" Foreground="{DynamicResource AppTextSubtleBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                                                        Visibility="{Binding IsLogMasked, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="Kiểu" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Foreground="{DynamicResource AppTextMutedBrush}" />
+                                                <dxe:ComboBoxEdit Width="160" Height="30"
+                                                                  ItemsSource="{Binding LogMaskModeOptions}"
+                                                                  EditValue="{Binding LogMaskMode, UpdateSourceTrigger=PropertyChanged}" />
+                                                <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="10"
+                                                           Foreground="{DynamicResource AppTextSubtleBrush}"
+                                                           Text="Full=*** · Partial=****1234 · Hash=sha256" />
+                                            </StackPanel>
                                         </StackPanel>
-                                    </StackPanel>
-                                </Border>
+                                    </Border>
+                                </Grid>
 
                                 <!-- Cụm validation i18n: 2 cột (trái = để trống, phải = trùng) -->
                                 <Grid Margin="0,12,0,0">
