@@ -1,12 +1,26 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-07-06 18:05_
+_Sinh tự động: 2026-07-08 09:05_
 
-## 1. Chuỗi tiếng Việt hardcode (25) — cần bọc L()
+## 1. Chuỗi tiếng Việt hardcode (42) — cần bọc L()
 
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:22` — "Tệp tải lên sẽ được gắn vào bản ghi sau khi bạn bấm Lưu."
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:30` — "Thay tệp…"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:30` — "Chọn tệp…"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:33` — "Tối đa 1 tệp"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:33` — "Cho phép nhiều tệp"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:51` — "Bỏ cảnh báo"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:67` — "Chưa có tệp đính kèm."
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:90` — "Tải"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:94` — "Xóa"
+- `src/frontend/ICare247_UI/Components/FieldRenderers/AttachmentRenderer.razor:395` — "TỆP"
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:66` — "— Chọn —"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:69` — "Không có dữ liệu."
+- `src/frontend/ICare247_UI/Components/View/ImportWizard.razor:22` — "Tải template mẫu, điền dữ liệu (ô khóa ngoại chọn Mã từ danh sách), rồi tải f..."
+- `src/frontend/ICare247_UI/Components/View/ImportWizard.razor:120` — "Tải template lỗi [{View}]"
+- `src/frontend/ICare247_UI/Components/View/ImportWizard.razor:161` — "Validate import lỗi [{View}]"
+- `src/frontend/ICare247_UI/Components/View/ImportWizard.razor:184` — "Commit import lỗi [{View}]"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:173` — "Tổng quan"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:190` — "Công cụ (Dev)"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:191` — "Tra cứu i18n"
@@ -16,6 +30,9 @@ _Sinh tự động: 2026-07-06 18:05_
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:62` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:79` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/FormApiService.cs:134` — "HTTP {(int)response.StatusCode} — body rỗng"
+- `src/frontend/ICare247_UI/Services/ImportApiService.cs:102` — "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
+- `src/frontend/ICare247_UI/Services/ImportApiService.cs:103` — "Bạn không có quyền thực hiện thao tác này."
+- `src/frontend/ICare247_UI/Services/ImportApiService.cs:104` — "Đã xảy ra lỗi khi xử lý tệp import."
 - `src/frontend/ICare247_UI/Services/MenuAdminApiService.cs:98` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/MenuAdminApiService.cs:133` — "Nhóm"
 - `src/frontend/ICare247_UI/Services/RuntimeApiService.cs:148` — "HTTP {(int)response.StatusCode} — body rỗng"
