@@ -4,6 +4,7 @@
 //           Cache trong-session bằng Dictionary để tránh gọi lại cùng 1 code nhiều lần.
 
 using System.Net.Http.Json;
+using ICare247.UI.DynamicForms.Models;
 using ICare247_UI.Models;
 using Microsoft.Extensions.Logging;
 

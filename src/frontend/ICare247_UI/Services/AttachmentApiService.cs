@@ -3,10 +3,13 @@
 // Purpose : Gọi API /api/v1/attachments — liệt kê/xóa qua HttpClient (đã gắn Bearer + X-Tenant-Id +
 //           X-Active-CongTy), lấy thumbnail dạng data-URL (giữ auth cho <img>), và dựng option cho JS
 //           uploader (XHR có progress cần token + URL tuyệt đối).
+//           Impl của IAttachmentApiService (contract ở RCL DynamicForms); DTO đính kèm cũng ở RCL.
 
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.DynamicForms.Abstractions;
+using ICare247.UI.DynamicForms.Models;
 using ICare247.UI.Shared.Services.Auth;
 using ICare247_UI.Models;
 using Microsoft.Extensions.Logging;
@@ -14,7 +17,7 @@ using Microsoft.Extensions.Logging;
 namespace ICare247_UI.Services;
 
 /// <summary>Wrap endpoint đính kèm tổng quát cho control AttachmentRenderer.</summary>
-public sealed class AttachmentApiService
+public sealed class AttachmentApiService : IAttachmentApiService
 {
     private readonly HttpClient _http;
     private readonly TokenStore _tokens;
@@ -134,30 +137,4 @@ public sealed class AttachmentApiService
 public sealed class LinkResultDto
 {
     public int Linked { get; set; }
-}
-
-/// <summary>Metadata 1 đính kèm (khớp AttachmentInfo backend, camelCase).</summary>
-public sealed class AttachmentInfoDto
-{
-    public long Id { get; set; }
-    public string TenFile { get; set; } = "";
-    public string ContentType { get; set; } = "";
-    public long KichThuoc { get; set; }
-    public bool HasThumbnail { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
-
-/// <summary>Option truyền sang JS uploader (XHR + nén ảnh client + progress).</summary>
-public sealed class AttachmentUploadOptions
-{
-    public string Url { get; set; } = "";
-    public string Token { get; set; } = "";
-    public string TenantId { get; set; } = "";
-    public string? Loai { get; set; }
-    public string? OwnerTable { get; set; }
-    public long? OwnerId { get; set; }
-    public string? FieldMa { get; set; }
-    public bool CompressImages { get; set; } = true;
-    public int MaxDimension { get; set; } = 2000;
-    public double Quality { get; set; } = 0.85;
 }

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using ICare247_UI;
 using ICare247_UI.Models;
 using ICare247_UI.Services;
+using ICare247.UI.DynamicForms.Abstractions;
 using ICare247.UI.Shared;
 using ICare247.UI.Shared.Services.Auth;
 using ICare247.UI.Shared.State;
@@ -92,5 +93,7 @@ builder.Services.AddScoped<ConfigSyncApiService>();
 builder.Services.AddScoped<CacheAdminApiService>();
 builder.Services.AddScoped<GridLayoutService>();
 builder.Services.AddScoped<AttachmentApiService>();
+// Renderer đính kèm (RCL) inject qua interface; host MasterDataForm vẫn dùng concrete → map về cùng instance.
+builder.Services.AddScoped<IAttachmentApiService>(sp => sp.GetRequiredService<AttachmentApiService>());
 
 await builder.Build().RunAsync();
