@@ -208,6 +208,23 @@
                                        FontSize="12" />
                     </StackPanel>
                 </Grid>
+
+                <!-- Cột Mã (Code_Field) — LUÔN HIỆN. Cầu Mã↔Id cho IMPORT + xuất template;
+                     cũng là cột code khi EditBox = 'mã + tên'. Tách khỏi chế độ hiển thị. -->
+                <StackPanel Margin="0,12,0,0">
+                    <TextBlock Text="Cột Mã (Code_Field) — cho Import / template" FontSize="11"
+                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" FontWeight="SemiBold" />
+                    <dxe:TextEdit Text="{Binding CodeField, UpdateSourceTrigger=PropertyChanged}"
+                                  Height="32" NullText="VD: Ma" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0"
+                               Text="Cột chứa Mã (VD: Ma). Import đổi Mã→Id + xuất template dùng cột này; cũng dùng khi EditBox = 'mã + tên'." />
+
+                    <!-- Import: resolve Mã toàn cục (bỏ lọc cha cascade) -->
+                    <dxe:CheckEdit IsChecked="{Binding ImportGlobalCode}" Margin="0,10,0,0"
+                                   Content="Import: resolve Mã toàn cục (bỏ lọc cha)" FontSize="12" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
+                               Text="Cho FK lọc theo cha (cascade — vd Chi nhánh theo Ngân hàng): khi import bỏ Filter_Sql, tra Mã con trên toàn bảng. CHỈ bật khi Mã con DUY NHẤT toàn cục; trùng Mã → import từ chối cả file." />
+                </StackPanel>
             </StackPanel>
         </Border>
 
@@ -234,15 +251,10 @@
                     <Run Text=" = template riêng" />
                 </TextBlock>
 
-                <!-- CodeField — chỉ hiện khi EditBoxMode = CodeAndName -->
-                <StackPanel Visibility="{Binding IsCodeAndNameMode, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Cột mã code (CodeField)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
-                               Margin="0,0,0,3" FontWeight="SemiBold" />
-                    <dxe:TextEdit Text="{Binding CodeField, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,2" NullText="VD: PhongBan_Code" />
-                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75"
-                               Text="Tên cột chứa mã code ngắn — hiển thị trước tên đầy đủ trong EditBox." />
-                </StackPanel>
+                <!-- CodeField chuyển sang section 'Nguồn dữ liệu FK' (luôn hiện) — mã+tên dùng chung cột đó. -->
+                <TextBlock Visibility="{Binding IsCodeAndNameMode, Converter={StaticResource BoolToVis}}"
+                           FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.85" TextWrapping="Wrap"
+                           Text="Chế độ 'mã + tên' dùng cột Mã (Code_Field) khai ở mục 'Nguồn dữ liệu FK' phía trên." />
             </StackPanel>
         </Border>
 

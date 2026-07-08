@@ -128,6 +128,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 NetType = value.NetType;
                 RaisePropertyChanged(nameof(DataTypeDisplay));
                 RaisePropertyChanged(nameof(HasDataType));
+                RaisePropertyChanged(nameof(CanConfigMasking));
                 IsDirty = true;
                 AutoDeriveI18nKeys();   // chọn cột → tự sinh key i18n + nạp bản dịch hiện có
             }
@@ -136,6 +137,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private string _netType = "";
     public string NetType { get => _netType; set => SetProperty(ref _netType, value); }
+
+    // ── Làm mờ trong log (thuộc tính CẤP CỘT — Sys_Column, dùng chung mọi form/view) ──
+    private bool _isLogMasked;
+    /// <summary>Bật làm mờ giá trị cột này trong log (import/audit). Ghi vào Sys_Column.Is_Log_Masked.</summary>
+    public bool IsLogMasked { get => _isLogMasked; set { if (SetProperty(ref _isLogMasked, value)) IsDirty = true; } }
+
+    private string _logMaskMode = "Full";
+    /// <summary>Kiểu làm mờ: Full (***) · Partial (giữ 4 cuối) · Hash (sha256). Sys_Column.Log_Mask_Mode.</summary>
+    public string LogMaskMode { get => _logMaskMode; set { if (SetProperty(ref _logMaskMode, value)) IsDirty = true; } }
+
+    /// <summary>Các kiểu làm mờ hợp lệ.</summary>
+    public List<string> LogMaskModeOptions { get; } = ["Full", "Partial", "Hash"];
+
+    /// <summary>Chỉ cấu hình làm mờ cho field map cột thật (không ảo, có Column_Id).</summary>
+    public bool CanConfigMasking => !IsVirtual && (_selectedColumn?.ColumnId ?? 0) > 0;
 
     // ── Form context (từ navigation params) ──────────────────
     private string _formCode = "";
@@ -640,6 +656,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         get => _codeField;
         set { if (SetProperty(ref _codeField, value)) IsDirty = true; }
+    }
+
+    /// <summary>
+    /// Import: bỏ Filter_Sql (lọc cha cascade) → tra Mã con trên toàn bảng (Ui_Field_Lookup.Import_Global_Code).
+    /// Chỉ bật cho FK có Mã con DUY NHẤT toàn cục (vd chi nhánh); trùng Mã → engine từ chối cả file khi import.
+    /// </summary>
+    private bool _importGlobalCode;
+    public bool ImportGlobalCode
+    {
+        get => _importGlobalCode;
+        set { if (SetProperty(ref _importGlobalCode, value)) IsDirty = true; }
     }
 
     /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
@@ -1233,6 +1260,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsDirty = true;
                 RaisePropertyChanged(nameof(IsColumnListEmpty));
                 RaisePropertyChanged(nameof(CanTypeColumnCode));
+                RaisePropertyChanged(nameof(CanConfigMasking));
                 AutoDeriveI18nKeys();   // đổi virtual → cột hiệu lực đổi (ColumnCode↔FieldCode)
             }
         }
@@ -1756,6 +1784,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                              string.Equals(c.ColumnCode, field.ColumnCode, StringComparison.OrdinalIgnoreCase));
                     ColumnCode         = field.ColumnCode;
                     FieldCode          = field.FieldCode ?? "";
+
+                    // Làm mờ log (Sys_Column) — đọc phòng thủ theo Column_Id; cột chưa migrate → (false, Full).
+                    var (isMasked, maskMode) = await _fieldService.GetColumnMaskingAsync(field.ColumnId, ct);
+                    _isLogMasked = isMasked;
+                    _logMaskMode = string.IsNullOrWhiteSpace(maskMode) ? "Full" : maskMode!;
+                    RaisePropertyChanged(nameof(IsLogMasked));
+                    RaisePropertyChanged(nameof(LogMaskMode));
+                    RaisePropertyChanged(nameof(CanConfigMasking));
+
+                    // Import global-code (Ui_Field_Lookup) — đọc phòng thủ theo Field_Id; cột chưa migrate → false.
+                    _importGlobalCode = await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct);
+                    RaisePropertyChanged(nameof(ImportGlobalCode));
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
                     // để LoadControlPropSchema() có thể restore giá trị từ DB
                     _controlPropsJson      = field.ControlPropsJson ?? "{}";
@@ -3310,6 +3350,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 var savedId = await _fieldService.SaveFieldAsync(
                     field, _appConfig.TenantId, lookupConfig,
                     shiftOnInsert: _mode == "new", ct: _cts.Token);
+
+                // Làm mờ log = thuộc tính cấp cột (Sys_Column) → ghi riêng theo Column_Id (chỉ field map cột thật).
+                if (CanConfigMasking)
+                    await _fieldService.SaveColumnMaskingAsync(
+                        _selectedColumn!.ColumnId, _isLogMasked, _logMaskMode, _cts.Token);
+
+                // Import global-code (Ui_Field_Lookup) → ghi riêng theo Field_Id sau khi row lookup đã tồn tại.
+                if (IsFkLookupEditor && savedId > 0)
+                    await _fieldService.SaveFkImportGlobalAsync(savedId, _importGlobalCode, _cts.Token);
 
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
                 await RegisterI18nKeysAsync(_cts.Token);

@@ -503,4 +503,51 @@
   ADR-015/spec 14 (Ui_View), ADR-029/spec 18 (error_key i18n cho lỗi import), Migration 014 (`Code_Field`).
 - **Status:** 📋 mô hình chốt (Q1/Q2/Q4). **Pha 1 ✅ xong** (db/064 view `vw_DM_ChiNhanhNganHang` + db/065 cấu hình
   Ui_View Source_Type=View, cột `TenNganHang` hiện/`NganHang_Id` ẩn, Props_Json `fkLookup.fieldId=34`, i18n vi/en) —
-  ĐÃ áp live Tenant 1 (DB 100.126.222.117). Pha 2 (import) / Pha 3 (template) chưa làm; Q3 (thư viện Excel) còn mở.
+  ĐÃ áp live Tenant 1 (DB 100.126.222.117). Pha 2 (import) chốt thiết kế ở **ADR-034**; Pha 3 (template) chưa làm.
+
+## ADR-034: Import Excel Pha 2 — ClosedXML + upsert khoá ghép + 2 hook proc (spec 18) + log/masking (2026-07-07)
+- **Context:** Chi tiết hoá Pha 2 của ADR-033 (import dữ liệu Excel vào Data DB dựa cấu hình `Ui_View` grid). User yêu cầu:
+  xuất template cột + mỗi FK 1 sheet phụ + ô FK là **combobox chọn Mã trong danh sách**; kiểm hợp lệ (định dạng, FK
+  chưa tồn tại khi nhập mã, **cắt khoảng trắng đầu/cuối**); + 2 hook SQL (mỗi dòng biết full row/ai/thao-tác; sau import
+  chạy 1 lần); + log import có làm mờ cột nhạy cảm.
+- **Quyết định (qua hỏi-đáp, user chốt từng điểm 2026-07-07):**
+  1. **Thư viện Excel = ClosedXML** (MIT — hợp SaaS thương mại; Data Validation dropdown tốt). Đóng Q3 của ADR-033.
+     EPPlus loại (Polyform Noncommercial), OpenXML SDK loại (low-level).
+  2. **Phạm vi v1 = Grid phẳng** (TreeGrid — resolve Mã cha + topo-sort + ThuTu ADR-027 — pha sau).
+  3. **Upsert theo KHOÁ GHÉP:** `Ui_View.Import_Key_Fields` (CSV field-code, **được phép gồm cột FK**). Rỗng ⇒ insert-only.
+     So khớp **sau khi resolve FK Mã→Id** (khoá FK so trên Id), chuẩn hoá **trim + culture-invariant**, dictionary trong
+     RAM (tránh N+1). Có trong DB → UPDATE; chưa có → INSERT — đều qua `SaveMasterDataCommand` (audit tự đúng).
+  4. **Partial commit:** ghi dòng hợp lệ, dòng lỗi loại **trước khi mở transaction** (không rollback lẫn nhau); trả danh
+     sách lỗi + workbook có cột "Lỗi". Preview gắn nhãn NEW/UPDATE/ERROR trước commit (dry-run bắt buộc qua `importSessionId`).
+  5. **Pipeline validate:** trim → format/kiểu (Sys_Column+Val_Rule) → required → **FK Mã→Id** (ngoài tập lọc quyền =
+     `import.fk.code_not_found`) → trùng khoá → Validation Engine. Lỗi = `error_key`+args (ADR-029), resolve i18n server-side.
+  6. **2 hook SQL = hướng ④ (tái dùng proc spec 18), KHÔNG field-SQL trên Ui_View, KHÔNG Event Engine** (engine đó sinh UI
+     delta cho form client, không tham gia transaction ghi + nuốt exception → sai ngữ nghĩa rollback):
+     - **Mỗi dòng = `sp_AfterSave_Grid_<Table>` (spec 18) ĐÃ CÓ** — import ghi qua `SaveMasterDataCommand` nên proc tự nổ
+       mỗi dòng, sẵn `@PayloadJson` (full row) + `@NguoiDungID` (ai) + `@Id` 0/>0 (thêm/sửa) + rollback-on-fail. **Mở rộng**
+       thêm `@Source` ('IMPORT'/'MANUAL') + `@ImportSessionId`.
+     - **Sau import = `sp_AfterImport_<Table>` (proc MỚI)** — 1 lần cuối `CommitImportCommand`, tham số mẻ
+       (`@ImportSessionId/@NguoiDungID/@TenantId/@InsertedCount/@UpdatedCount/@ErrorCount/@RecordIdsJson/@ImportedAt`).
+       Lỗi không rollback dữ liệu đã ghi → log + cảnh báo. Opt-in `OBJECT_ID`, codegen ConfigStudio, `IHookStoreCatalog` (spec 18 §6/§9).
+  7. **Log import (Data DB tenant, mang Correlation_Id):**
+     - `Sys_Import_Log` (cấp mẻ): ai/file/hash/mode/thống kê/status/thời lượng + audit tường minh (ADR-022).
+     - `Sys_Import_Log_Detail` **chỉ dòng lỗi** (ERROR/SKIP): Row_Number/Operation/Record_Id/Error_Key+Args/Field_Name +
+       `Row_Json` (đủ mọi cột, đã làm mờ). Dòng thành công đã có audit-log JSON-diff → không trùng.
+     - **Làm mờ (masking) bật/tắt theo CỘT:** `Sys_Column.Is_Log_Masked` + `Log_Mask_Mode` (Full/Partial/Hash). Làm mờ
+       **TRƯỚC khi ghi log** (không che lúc hiển thị), áp cả `Row_Json` lẫn `Error_Args_Json`; KHÔNG ảnh hưởng ghi dữ liệu
+       thật + hook proc (vẫn nhận giá trị thật).
+- **Điểm chạm:** Infra `IFkLookupResolver`/`IImportTemplateBuilder`/`IImportEngine` (ClosedXML); Api `ImportController` +
+  3 handler (`ExportImportTemplateQuery`/`ValidateImportFileCommand`/`CommitImportCommand`); Blazor `ImportWizard.razor`;
+  migration `Ui_View.Import_Key_Fields` + `Sys_Import_Log(_Detail)` + `Sys_Column.Is_Log_Masked/Log_Mask_Mode` + mở rộng
+  `sp_AfterSave_Grid_<T>` + skeleton `sp_AfterImport_<T>`.
+- **Thứ tự code:** `IFkLookupResolver` → Template builder → ImportEngine (validate+upsert+masking) → ImportController/handlers
+  → ImportWizard → hook proc.
+- **Spec:** `docs/spec/25_FK_LOOKUP_SPEC.md` §11–§14.
+- **Liên quan:** ADR-033 (nguồn FK dùng chung, đóng Q3), ADR-029/spec 18 (hook proc + codegen + `IHookStoreCatalog`),
+  ADR-030/spec 19 (token ngữ cảnh lọc quyền), ADR-024 (engine-driven), ADR-022 (audit tường minh/tiền tố), ADR-027 (tree
+  ordering — cho TreeGrid pha sau), ADR-014 (ConfigCache resolve i18n).
+- **Status:** ✅ **CODE XONG (session 78, 2026-07-07)** — build BE 0/0 · FE 0/0 · WPF Core+Forms 0/0. IMPORT-1→6:
+  `IFkLookupResolver` · `IImportTemplateBuilder`(ClosedXML) · `IImportEngine` · `ImportController`+3 handler +
+  `IImportMetadataProvider`/`IImportLogRepository` · `ImportWizard.razor`+`ImportApiService` · hook v2 (@Source/
+  @ImportSessionId zero-regression) + `sp_AfterImport_<T>` codegen. Migrations `db/071–073` + `db/procs/*` ⏳ CHƯA
+  chạy DB; E2E ⏳. v1 = Grid phẳng; TreeGrid + Pha 3 Template sau.

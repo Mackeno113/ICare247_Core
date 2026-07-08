@@ -1,0 +1,253 @@
+@* File   : ImportWizard.razor
+   Module : ICare247_UI — Components/View
+   Purpose: Trợ lý import Excel cho lưới engine: tải template → chọn file → preview → commit → dòng lỗi.
+            Spec 25 §11–§14, ADR-034. *@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.Extensions.Logging
+@inject ImportApiService ImportApi
+@inject ICare247.UI.Shared.Services.I18n.LocalizationService Loc
+@inject ILogger<ImportWizard> Logger
+
+<div class="import-wizard">
+    @if (_error is not null)
+    {
+        <div class="error-banner"><strong>⚠</strong> @_error</div>
+    }
+
+    @* ── Bước 1: tải template + chọn file ── *@
+    @if (_step == Step.Upload)
+    {
+        <p class="iw-hint">
+            @Loc.L("import.hint",
+                "Tải template mẫu, điền dữ liệu (ô khóa ngoại chọn Mã từ danh sách), rồi tải file lên để kiểm tra trước khi ghi.")
+        </p>
+
+        <button class="btn btn-secondary" disabled="@_busy" @onclick="DownloadTemplateAsync">
+            ⬇ @Loc.L("import.template.download", "Tải template")
+        </button>
+
+        <div class="iw-file">
+            <InputFile OnChange="OnFileSelectedAsync" accept=".xlsx" />
+            @if (_fileName is not null)
+            {
+                <span class="iw-file__name">📄 @_fileName</span>
+            }
+        </div>
+
+        <div class="md-form-footer">
+            <button class="btn btn-secondary" disabled="@_busy" @onclick="CloseAsync">
+                @Loc.L("common.action.cancel", "Hủy")
+            </button>
+            <button class="btn btn-primary" disabled="@(_busy || _fileBytes is null)" @onclick="ValidateAsync">
+                @(_busy ? Loc.L("import.checking", "Đang kiểm tra…") : Loc.L("import.check", "Kiểm tra"))
+            </button>
+        </div>
+    }
+
+    @* ── Bước 2: preview NEW/UPDATE/ERROR ── *@
+    else if (_step == Step.Preview && _preview is not null)
+    {
+        @RenderSummary(_preview.Summary)
+
+        @if (_preview.FileErrors.Count > 0)
+        {
+            <div class="error-banner">
+                <strong>@Loc.L("import.fileErrors", "Lỗi tệp:")</strong>
+                <ul class="iw-filerr">@foreach (var fe in _preview.FileErrors) { <li>@fe</li> }</ul>
+            </div>
+        }
+
+        @RenderErrorTable(_preview.Rows)
+
+        <div class="md-form-footer">
+            <button class="btn btn-secondary" disabled="@_busy" @onclick="BackToUpload">
+                ← @Loc.L("import.back", "Quay lại")
+            </button>
+            <button class="btn btn-primary"
+                    disabled="@(_busy || _preview.Summary.New + _preview.Summary.Update == 0)"
+                    @onclick="CommitAsync">
+                @(_busy
+                    ? Loc.L("import.committing", "Đang ghi…")
+                    : Loc.L("import.commit", "Xác nhận ghi ({0})", _preview.Summary.New + _preview.Summary.Update))
+            </button>
+        </div>
+    }
+
+    @* ── Bước 3: kết quả commit ── *@
+    else if (_step == Step.Result && _commit is not null)
+    {
+        <div class="iw-result iw-result--@_commit.Status.ToLowerInvariant()">
+            <strong>@StatusText(_commit.Status)</strong>
+        </div>
+        @RenderSummary(_commit.Summary)
+        @RenderErrorTable(_commit.ErrorRows)
+
+        <div class="md-form-footer">
+            <button class="btn btn-secondary" @onclick="BackToUpload">
+                @Loc.L("import.again", "Import tiếp")
+            </button>
+            <button class="btn btn-primary" @onclick="CloseAsync">
+                @Loc.L("common.action.close", "Đóng")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string ViewCode { get; set; } = "";
+    [Parameter] public string Lang { get; set; } = "vi";
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnCommitted { get; set; }
+
+    private enum Step { Upload, Preview, Result }
+
+    private const long MaxUploadBytes = 20L * 1024 * 1024;
+
+    private Step _step = Step.Upload;
+    private bool _busy;
+    private string? _error;
+    private byte[]? _fileBytes;
+    private string? _fileName;
+    private ImportPreviewDto? _preview;
+    private ImportCommitDto? _commit;
+
+    /// <summary>Tải template mẫu về máy. Sự kiện theo sau: trình duyệt lưu file .xlsx.</summary>
+    private async Task DownloadTemplateAsync()
+    {
+        _error = null;
+        _busy = true;
+        try { await ImportApi.DownloadTemplateAsync(ViewCode, Lang); }
+        catch (Exception ex) { _error = ex.Message; Logger.LogError(ex, "Tải template lỗi [{View}]", ViewCode); }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Đọc file người dùng chọn vào bộ nhớ (chưa gửi). Sự kiện theo sau: bật nút Kiểm tra.</summary>
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _error = null;
+        var file = e.File;
+        if (file is null) return;
+        try
+        {
+            using var stream = file.OpenReadStream(MaxUploadBytes);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            _fileBytes = ms.ToArray();
+            _fileName = file.Name;
+        }
+        catch (Exception ex)
+        {
+            _error = Loc.L("import.file.readError", "Không đọc được tệp: {0}", ex.Message);
+            _fileBytes = null;
+            _fileName = null;
+        }
+    }
+
+    /// <summary>Gửi file kiểm tra (dry-run). Sự kiện theo sau: hiện preview NEW/UPDATE/ERROR.</summary>
+    private async Task ValidateAsync()
+    {
+        if (_fileBytes is null) return;
+        _error = null;
+        _busy = true;
+        try
+        {
+            using var ms = new MemoryStream(_fileBytes, writable: false);
+            _preview = await ImportApi.ValidateAsync(ViewCode, ms, _fileName ?? "import.xlsx", Lang);
+            if (_preview is null)
+                _error = Loc.L("import.noTarget", "Màn này chưa có form Thêm/Sửa để import.");
+            else
+                _step = Step.Preview;
+        }
+        catch (Exception ex) { _error = ex.Message; Logger.LogError(ex, "Validate import lỗi [{View}]", ViewCode); }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Ghi thật các dòng hợp lệ. Sự kiện theo sau: hiện kết quả + báo lưới nạp lại.</summary>
+    private async Task CommitAsync()
+    {
+        if (_fileBytes is null) return;
+        _error = null;
+        _busy = true;
+        try
+        {
+            using var ms = new MemoryStream(_fileBytes, writable: false);
+            _commit = await ImportApi.CommitAsync(ViewCode, ms, _fileName ?? "import.xlsx", Lang);
+            if (_commit is null)
+                _error = Loc.L("import.noTarget", "Màn này chưa có form Thêm/Sửa để import.");
+            else
+            {
+                _step = Step.Result;
+                if (_commit.Summary.New + _commit.Summary.Update > 0)
+                    await OnCommitted.InvokeAsync();   // lưới nạp lại dữ liệu mới
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; Logger.LogError(ex, "Commit import lỗi [{View}]", ViewCode); }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Về bước chọn file (giữ file đã chọn để sửa & thử lại).</summary>
+    private void BackToUpload()
+    {
+        _error = null;
+        _preview = null;
+        _commit = null;
+        _step = Step.Upload;
+    }
+
+    private async Task CloseAsync() => await OnClose.InvokeAsync();
+
+    /// <summary>Nhãn trạng thái commit (i18n).</summary>
+    private string StatusText(string status) => status switch
+    {
+        "Committed" => "✅ " + Loc.L("import.status.committed", "Đã import thành công"),
+        "PartialSuccess" => "⚠ " + Loc.L("import.status.partial", "Import một phần (có dòng lỗi)"),
+        _ => "⛔ " + Loc.L("import.status.failed", "Import thất bại")
+    };
+
+    /// <summary>Chip thống kê mẻ.</summary>
+    private RenderFragment RenderSummary(ImportSummaryDto s) =>@<div class="iw-summary">
+        <span class="iw-chip iw-chip--new">@Loc.L("import.chip.new", "Thêm mới: {0}", s.New)</span>
+        <span class="iw-chip iw-chip--upd">@Loc.L("import.chip.update", "Cập nhật: {0}", s.Update)</span>
+        <span class="iw-chip iw-chip--err">@Loc.L("import.chip.error", "Lỗi: {0}", s.Error)</span>
+        @if (s.Skipped > 0)
+        {
+            <span class="iw-chip iw-chip--skip">@Loc.L("import.chip.skip", "Bỏ qua: {0}", s.Skipped)</span>
+        }
+    </div>;
+
+    /// <summary>Bảng dòng lỗi (chỉ Operation=Error) để người dùng sửa file.</summary>
+    private RenderFragment RenderErrorTable(List<ImportRowDto> rows)
+    {
+        var errorRows = rows.Where(r => string.Equals(r.Operation, "Error", StringComparison.OrdinalIgnoreCase)).ToList();
+        return @<text>
+        @if (errorRows.Count > 0)
+        {
+            <table class="iw-table">
+                <thead>
+                    <tr>
+                        <th>@Loc.L("import.col.row", "Dòng")</th>
+                        <th>@Loc.L("import.col.errors", "Lỗi")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in errorRows)
+                    {
+                        <tr>
+                            <td class="iw-td-row">@r.RowNumber</td>
+                            <td>
+                                @foreach (var e in r.Errors)
+                                {
+                                    <div class="iw-err">
+                                        @if (!string.IsNullOrWhiteSpace(e.Field)) { <span class="iw-err__field">@e.Field:</span> }
+                                        @e.Message
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        </text>;
+    }
+}

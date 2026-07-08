@@ -52,6 +52,10 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
 
+    <!-- Import/Export Excel (.xlsx) — ClosedXML (MIT, hợp SaaS thương mại). Template + đọc file import.
+         Spec 25 §11–§14 / ADR-034. Kéo theo DocumentFormat.OpenXml (transitive). -->
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+
     <!-- Xử lý ảnh server-side (MIT) — resize/nén + thumbnail. NativeAssets.Linux cho server Linux;
          Windows/macOS native đã kèm trong gói SkiaSharp gốc. -->
     <PackageVersion Include="SkiaSharp" Version="2.88.9" />

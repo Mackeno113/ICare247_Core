@@ -14,24 +14,28 @@
 USE [ICare247_Solution];
 GO
 
+-- Hợp đồng v2 (ADR-034 §12.1): thêm @Source + @ImportSessionId (DEFAULT) — engine chỉ truyền khi IMPORT.
+-- Save tay: engine giữ EXEC cũ (không truyền 2 tham số này) → proc dùng giá trị DEFAULT.
 CREATE OR ALTER PROCEDURE dbo.sp_AfterSave_Grid_DM_PhuongXa
-    @Id           BIGINT,
-    @TenantId     INT,
-    @NguoiDungID  BIGINT,
-    @LangCode     NVARCHAR(10),
-    @PayloadJson  NVARCHAR(MAX)
+    @Id              BIGINT,
+    @TenantId        INT,
+    @NguoiDungID     BIGINT,
+    @LangCode        NVARCHAR(10),
+    @PayloadJson     NVARCHAR(MAX),
+    @Source          NVARCHAR(20)     = N'MANUAL',   -- 'MANUAL' (nhập tay) | 'IMPORT'
+    @ImportSessionId UNIQUEIDENTIFIER = NULL          -- phiên import (NULL khi nhập tay)
 AS
 BEGIN
     SET NOCOUNT ON;
 
+    -- @Id 0 = thêm mới · >0 = cập nhật · @NguoiDungID = người thực hiện · @Source = ngữ cảnh.
+    -- Ví dụ: chỉ chạy khi import → IF @Source = N'IMPORT' BEGIN ... END
     -- Ví dụ hậu xử lý (mở khi cần):
     --   • Chuẩn hóa dữ liệu liên quan, tính cột dẫn xuất.
-    --   • Ghi nhật ký nghiệp vụ vào bảng riêng.
-    --   • Kiểm tra ràng buộc CHỈ biết sau khi ghi → nếu vi phạm, trả result set lỗi:
+    --   • Ghi nhật ký nghiệp vụ (kèm @ImportSessionId để truy mẻ import).
+    --   • Ràng buộc CHỈ biết sau khi ghi → vi phạm thì trả result set lỗi:
     --       SELECT N'sys.val.Conflict' AS error_key, NULL AS args_json,
     --              NULL AS field_name,  N'error' AS severity;   -- => rollback cả bản ghi
-    --
-    --   Lấy field từ payload nếu cần: JSON_VALUE(@PayloadJson, '$.Ma') ...
 
     RETURN;   -- pass-through: không lỗi, không hậu xử lý.
 END;
