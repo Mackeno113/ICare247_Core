@@ -47,6 +47,18 @@ public interface IViewDataService
     Task<int> SaveViewAsync(ViewUpsertRequest request, int tenantId, CancellationToken ct = default);
 
     /// <summary>
+    /// Đọc Field_Name các cột tick khóa-ghép-import (Ui_View_Column.Is_Import_Key=1) của View.
+    /// Phòng thủ: cột chưa migrate (db/075) → rỗng, KHÔNG ném. Gọi SAU khi load cột để set cờ trên record.
+    /// </summary>
+    Task<IReadOnlyList<string>> GetImportKeyFieldsAsync(int viewId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ghi cờ Is_Import_Key cho các cột theo Field_Name (bật cột trong danh sách, tắt cột còn lại) của View.
+    /// Gọi SAU <see cref="SaveViewAsync"/> (cột đã ghi lại). Phòng thủ: cột chưa migrate → bỏ qua, KHÔNG ném.
+    /// </summary>
+    Task SaveImportKeyFieldsAsync(int viewId, IReadOnlyCollection<string> keyFieldNames, CancellationToken ct = default);
+
+    /// <summary>
     /// Ẩn (soft-delete) một View — set Is_Active = 0.
     /// </summary>
     /// <param name="viewId">Khóa View_Id.</param>

@@ -62,6 +62,10 @@ public sealed class ViewColumnRecord : BindableBase
     private bool _allowSort = true;
     public bool AllowSort { get => _allowSort; set => SetProperty(ref _allowSort, value); }
 
+    private bool _isImportKey;
+    /// <summary>Cột này là 1 phần KHÓA GHÉP kiểm trùng khi import (Ui_View_Column.Is_Import_Key). Tick nhiều cột = khóa ghép.</summary>
+    public bool IsImportKey { get => _isImportKey; set => SetProperty(ref _isImportKey, value); }
+
     private string? _sortOrder;
     /// <summary>asc | desc.</summary>
     public string? SortOrder { get => _sortOrder; set => SetProperty(ref _sortOrder, value); }

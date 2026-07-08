@@ -80,13 +80,13 @@ Bạn có thể **Quay lại** để chọn/sửa file khác, hoặc bấm **Xá
 - Thiếu `Code_Field` ⇒ cột đó **không import/xuất template được** (báo lỗi cấu hình khi mở trợ lý).
 
 ### 5.2 Tùy chọn — Upsert theo KHÓA GHÉP
-Khai **`Ui_View.Import_Key_Fields`** = danh sách field-code phân tách dấu phẩy (CSV), có thể gồm **cả cột khóa ngoại**:
-```sql
-UPDATE Ui_View SET Import_Key_Fields = N'CongTy_Id,Ma' WHERE View_Code = N'...';
-```
+**ConfigStudio → Quản lý View → mở View → tab Cột → tick cột "Khóa trùng (import)"** cho các cột làm khóa
+(tick **nhiều cột = khóa ghép**, vd `Ma`; hoặc `CongTy_Id` + `Ma`) → **Lưu**.
+
 - Hệ so khớp **sau khi đã đổi Mã→Id** (khóa FK so trên Id), chuẩn hóa **trim + không phân biệt hoa/thường**.
 - Có bản ghi khớp → **UPDATE**; chưa có → **INSERT**.
-- **Rỗng/không khai ⇒ chỉ thêm mới** (insert-only, an toàn nhất).
+- **Không tick cột nào ⇒ chỉ thêm mới** (insert-only, an toàn nhất).
+- Cột khóa phải là **cột nhập được** (trùng tên field của form sửa); cột hiển thị thuần (vd tên đã JOIN) không tính.
 
 ### 5.3 Tùy chọn — Làm mờ cột nhạy cảm trong log
 Bật theo **cột** (dùng lại cho mọi màn). **ConfigStudio (WPF):** mở field map cột đó → tab **Cơ bản** →
@@ -151,13 +151,12 @@ Dòng **thành công** không ghi vào Detail (đã có audit-log JSON-diff riê
 
 ## 7. Triển khai (checklist deploy)
 
-1. Chạy migration:
-   - `db/071_import_config_key_masking.sql` (Config DB) — cột `Import_Key_Fields`, `Is_Log_Masked`/`Log_Mask_Mode`, set `Code_Field` field khóa ngoại.
-   - `db/072_create_sys_import_log.sql` (Data DB) — 2 bảng log.
-   - `db/073_seed_import_messages.sql` (Config DB) — thông báo lỗi `import.*` (vi/en).
+1. Chạy migration (Config DB trừ 072):
+   - `db/071` — masking (`Is_Log_Masked`/`Log_Mask_Mode`) + set `Code_Field`. `db/072` (Data DB) — 2 bảng log.
+   - `db/073` — thông báo lỗi `import.*` (vi/en). `db/074` — `Import_Global_Code`. `db/075` — `Ui_View_Column.Is_Import_Key` (khóa ghép).
 2. (Nếu dùng hook) chạy lại `db/procs/sp_AfterSave_Grid_<Table>.sql` (contract v2) + `db/procs/sp_AfterImport_<Table>.sql` trên Data DB.
-3. Rebuild + **restart API**; rebuild web + **hard-reload** trình duyệt; rebuild ConfigStudio (nếu dùng nút Sinh store).
-4. (Tùy chọn) cấu hình `Import_Key_Fields` (upsert) và `Is_Log_Masked` (làm mờ).
+3. Rebuild + **restart API**; rebuild web + **hard-reload** trình duyệt; rebuild ConfigStudio.
+4. Cấu hình trên ConfigStudio: `Code_Field`, tick "Khóa trùng (import)" (upsert), "Làm mờ trong log", "resolve Mã toàn cục".
 
 ---
 
@@ -169,7 +168,7 @@ Dòng **thành công** không ghi vào Detail (đã có audit-log JSON-diff riê
 | *"Màn này chưa có form Thêm/Sửa để import"* | `Ui_View.Edit_Form_Id` rỗng | Cấu hình Edit_Form cho View. |
 | Cột khóa ngoại báo *"chưa cấu hình Mã tham chiếu"* | Thiếu `Ui_Field_Lookup.Code_Field` | Khai cột Mã (§5.1). |
 | Mọi dòng khóa ngoại **lỗi mã không tồn tại** | Nhập **Tên** thay vì **Mã**, hoặc Mã ngoài phạm vi quyền | Dùng dropdown trong template (nhập Mã); kiểm quyền/`Filter_Sql`. |
-| Muốn cập nhật nhưng luôn ra **Thêm mới** | Chưa khai `Import_Key_Fields` | Khai khóa ghép (§5.2). |
+| Muốn cập nhật nhưng luôn ra **Thêm mới** | Chưa tick cột "Khóa trùng (import)" | Tick cột khóa ở tab Cột (§5.2). |
 | *"Bạn không có quyền thêm/cập nhật dữ liệu"* | Thiếu quyền Form.Thêm / Form.Sửa | Cấp quyền cho vai trò. |
 | Import xong nhưng **hook không chạy** | Proc chưa tồn tại trên Data DB | Sinh + deploy proc (§5.4). |
 | Save tay lỗi *"too many arguments"* sau khi bật import | Proc `sp_AfterSave_` chưa nâng v2 nhưng bị gọi kèm `@Source` | Không xảy ra với save tay (engine không truyền); nếu gặp khi import → regen proc v2. |

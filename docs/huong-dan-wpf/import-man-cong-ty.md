@@ -61,14 +61,12 @@ có `Code_Field = Ma`:
 
 ## 2. Tùy chọn — Upsert theo Mã (cập nhật công ty đã có)
 
-Công ty có `Ma` **unique** → nên dùng làm khóa upsert. Khai **`Ui_View.Import_Key_Fields = Ma`** cho lưới cây:
-```sql
-UPDATE Ui_View SET Import_Key_Fields = N'Ma' WHERE View_Code = N'Tree_TC_CongTy';
-```
-- Import lần sau: dòng có `Ma` đã tồn tại → **cập nhật** (không tạo trùng); chưa có → **thêm mới**.
-- Không khai ⇒ chỉ **thêm mới** (trùng `Ma` sẽ lỗi do unique index).
+Công ty có `Ma` **unique** → nên dùng làm khóa upsert.
+**ConfigStudio → Quản lý View → mở `Tree_TC_CongTy` → tab Cột → tick "Khóa trùng (import)" ở cột `Ma`** → **Lưu**.
 
-*(ConfigStudio chưa có ô riêng cho `Import_Key_Fields` → tạm cấu hình bằng SQL trên Config DB, rồi đồng bộ xuống tenant.)*
+- Import lần sau: dòng có `Ma` đã tồn tại → **cập nhật** (không tạo trùng); chưa có → **thêm mới**.
+- Không tick ⇒ chỉ **thêm mới** (trùng `Ma` sẽ lỗi do unique index).
+- Muốn khóa ghép (vd theo công ty + mã) → tick nhiều cột.
 
 ---
 
@@ -123,7 +121,7 @@ Mở màn Công ty → **⬆ Import Excel**:
 ## 7. Checklist
 
 - [ ] `CapCongTy_Id`, `CongTy_Cha_Id` có `Code_Field = Ma` (LookupBox form `TC_CONGTY`)
-- [ ] (tùy) `Ui_View.Import_Key_Fields = Ma` cho `Tree_TC_CongTy` (upsert theo Mã)
+- [ ] (tùy) tick "Khóa trùng (import)" cột `Ma` (tab Cột) cho `Tree_TC_CongTy` (upsert theo Mã)
 - [ ] (tùy) `Sys_Column.Is_Log_Masked` cho `SoTaiKhoan` / cột nhạy cảm
 - [ ] Đồng bộ cấu hình xuống tenant + restart/rebuild
 - [ ] Test: tải template → điền (bỏ trống Phường/Xã, Chi nhánh) → preview → commit → kiểm cây + `Sys_Import_Log`
@@ -140,7 +138,7 @@ Mở màn Công ty → **⬆ Import Excel**:
 | Điền **Phường/Xã / Chi nhánh** → mọi dòng lỗi *mã không tồn tại* | Cột cascade lọc theo cha (§0.2) | Chi nhánh: bật `Import_Global_Code` nếu mã unique. Phường/Xã: để trống, nhập sau. |
 | Cột báo lỗi *Mã bị trùng nhiều bản ghi* | Bật `Import_Global_Code` nhưng Mã con **không** unique toàn cục | Tắt cờ cho field đó; nhập cột đó sau bằng tay. |
 | `TrangThai` báo sai định dạng | Nhập nhãn thay vì giá trị hệ dùng | Nhập đúng mã/giá trị `Sys_Lookup`. |
-| Trùng `Ma` khi import lại | Chưa bật upsert | Khai `Import_Key_Fields = Ma` (§2). |
+| Trùng `Ma` khi import lại | Chưa bật upsert | Tick "Khóa trùng (import)" cột `Ma` (§2). |
 
 ---
 

@@ -598,6 +598,13 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
                 return;
             }
             ApplyDetail(detail);
+            // Khóa ghép import (Ui_View_Column.Is_Import_Key) — đọc phòng thủ, set cờ lên EditColumns theo Field_Name.
+            var keyFields = await _viewData.GetImportKeyFieldsAsync(view.ViewId);
+            if (keyFields.Count > 0)
+            {
+                var keySet = new HashSet<string>(keyFields, StringComparer.OrdinalIgnoreCase);
+                foreach (var c in EditColumns) c.IsImportKey = keySet.Contains(c.FieldName ?? "");
+            }
             // ApplyDetail set EditEditForm dưới _suppressRekey → nạp field FK tường minh theo form sửa.
             await LoadFkLookupFieldsAsync(detail.Header.EditFormId);
             SaveStatusMessage = "";
@@ -896,6 +903,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         try
         {
             var viewId = await _viewData.SaveViewAsync(request, _appConfig.TenantId);
+            // Khóa ghép import (per-cột) → ghi phòng thủ theo Field_Name các cột đã tick (SaveView đã ghi lại cột).
+            var importKeys = EditColumns
+                .Where(c => c.IsImportKey && !string.IsNullOrWhiteSpace(c.FieldName))
+                .Select(c => c.FieldName!.Trim())
+                .ToList();
+            await _viewData.SaveImportKeyFieldsAsync(viewId, importKeys);
             SaveStatusMessage = IsEditMode
                 ? $"Đã cập nhật View_Id={viewId}."
                 : $"Đã tạo mới View_Id={viewId}.";

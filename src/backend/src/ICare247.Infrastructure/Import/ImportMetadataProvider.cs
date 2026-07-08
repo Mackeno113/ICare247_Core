@@ -156,22 +156,24 @@ public sealed class ImportMetadataProvider : IImportMetadataProvider
         return set;
     }
 
-    /// <summary>Đọc Ui_View.Import_Key_Fields (CSV) → danh sách field-code khoá ghép. Phòng thủ.</summary>
+    /// <summary>Đọc các cột tick Ui_View_Column.Is_Import_Key=1 → field-name khoá ghép (per-cột). Phòng thủ.</summary>
     private async Task<IReadOnlyList<string>> LoadKeyFieldsAsync(int viewId, CancellationToken ct)
     {
-        const string sql = "SELECT Import_Key_Fields FROM dbo.Ui_View WHERE View_Id = @ViewId";
+        const string sql = """
+            SELECT Field_Name FROM dbo.Ui_View_Column
+            WHERE  View_Id = @ViewId AND Is_Import_Key = 1 AND Is_Active = 1
+            ORDER BY Order_No
+            """;
         try
         {
             using var conn = _configDb.CreateConnection();
-            var csv = await conn.ExecuteScalarAsync<string?>(
+            var names = await conn.QueryAsync<string?>(
                 new CommandDefinition(sql, new { ViewId = viewId }, cancellationToken: ct));
-            if (string.IsNullOrWhiteSpace(csv))
-                return [];
-            return csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!).ToList();
         }
         catch (SqlException ex)
         {
-            _logger.LogDebug(ex, "Import: bỏ qua khoá ghép — Ui_View chưa có cột Import_Key_Fields?");
+            _logger.LogDebug(ex, "Import: bỏ qua khoá ghép — Ui_View_Column chưa có cột Is_Import_Key (db/075)?");
             return [];
         }
     }

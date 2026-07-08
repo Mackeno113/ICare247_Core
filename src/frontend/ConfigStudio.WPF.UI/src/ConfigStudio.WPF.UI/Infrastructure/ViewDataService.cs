@@ -359,6 +359,57 @@ public sealed class ViewDataService : IViewDataService
         return p;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetImportKeyFieldsAsync(int viewId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || viewId <= 0) return [];
+        const string sql =
+            "SELECT Field_Name FROM dbo.Ui_View_Column " +
+            "WHERE View_Id = @ViewId AND Is_Import_Key = 1 AND Is_Active = 1 ORDER BY Order_No";
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            var names = await conn.QueryAsync<string?>(
+                new CommandDefinition(sql, new { ViewId = viewId }, cancellationToken: ct));
+            return names.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!).ToList();
+        }
+        catch (SqlException)
+        {
+            return [];   // cột Is_Import_Key chưa migrate (db/075) → coi như không có khóa ghép
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveImportKeyFieldsAsync(
+        int viewId, IReadOnlyCollection<string> keyFieldNames, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || viewId <= 0) return;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            if (keyFieldNames.Count == 0)
+            {
+                // Không tick cột nào → tắt hết.
+                await conn.ExecuteAsync(new CommandDefinition(
+                    "UPDATE dbo.Ui_View_Column SET Is_Import_Key = 0 WHERE View_Id = @ViewId",
+                    new { ViewId = viewId }, cancellationToken: ct));
+            }
+            else
+            {
+                // Bật cột trong danh sách, tắt cột còn lại (đồng bộ nguyên khối).
+                await conn.ExecuteAsync(new CommandDefinition(
+                    "UPDATE dbo.Ui_View_Column " +
+                    "SET Is_Import_Key = CASE WHEN Field_Name IN @Keys THEN 1 ELSE 0 END " +
+                    "WHERE View_Id = @ViewId",
+                    new { ViewId = viewId, Keys = keyFieldNames }, cancellationToken: ct));
+            }
+        }
+        catch (SqlException)
+        {
+            /* cột chưa migrate (db/075) → bỏ qua, không chặn lưu View */
+        }
+    }
+
     /// <summary>Ghi danh sách cột Ui_View_Column trong transaction.</summary>
     /// <param name="conn">Kết nối đang mở.</param>
     /// <param name="tx">Transaction hiện hành.</param>

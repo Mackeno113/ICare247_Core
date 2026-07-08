@@ -205,8 +205,9 @@ Lỗi dùng `error_key` + args (ADR-029), resolve i18n server-side. FK resolve *
 > load form cốt lõi). Set bằng SQL (ConfigStudio chưa có ô).
 
 ### 11.3 Upsert theo KHOÁ GHÉP (đã chốt)
-- Khai **`Ui_View.Import_Key_Fields`** = CSV field-code (vd `"CongTy_Id,Ma"`). Khoá **được phép gồm cột FK**.
-- Rỗng ⇒ fallback **insert-only** (an toàn).
+- Khoá ghép = các cột tick **`Ui_View_Column.Is_Import_Key=1`** (db/075) — checkbox mỗi cột ở tab Cột (ConfigStudio),
+  tick nhiều cột = khoá ghép; **được phép gồm cột FK**. *(Thay `Ui_View.Import_Key_Fields` CSV db/071 — cột đó bỏ, không dùng.)*
+- Không tick cột nào ⇒ fallback **insert-only** (an toàn).
 - **So khớp SAU khi resolve FK** (khoá FK so trên Id, không so Mã):
   1. Dựng composite key mỗi dòng từ **giá trị đã resolve**, chuẩn hoá **trim + culture-invariant** (để `"CN01"` = `" cn01 "`).
   2. Nạp 1 lần tập hiện có trong phạm vi quyền: `SELECT Id, {keyCols} FROM Source WHERE {FilterSql + token}` → `Dictionary<compositeKey, Id>`.

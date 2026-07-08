@@ -502,6 +502,8 @@
                                             </dxg:GridColumn.EditSettings>
                                         </dxg:GridColumn>
                                         <dxg:GridColumn Header="Export" FieldName="AllowExport" Width="60" />
+                                        <dxg:GridColumn Header="Khóa trùng (import)" FieldName="IsImportKey" Width="120"
+                                                        ToolTip="Tick các cột làm khóa kiểm trùng khi import (upsert). Tick nhiều cột = khóa ghép." />
                                         <dxg:GridColumn Header="Order" FieldName="OrderNo" Width="55" AllowEditing="False" />
                                     </dxg:GridControl.Columns>
                                 </dxg:GridControl>
