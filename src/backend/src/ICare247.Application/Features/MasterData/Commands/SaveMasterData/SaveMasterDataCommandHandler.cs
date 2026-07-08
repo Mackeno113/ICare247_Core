@@ -61,6 +61,9 @@ public sealed class SaveMasterDataCommandHandler
             resourceMap: resourceMap, formCode: r.FormCode, ct: ct);
 
         var errors = vr.Where(kv => !kv.Value.IsValid)
+                       // Import cập nhật một phần cột (PartialValidate): chỉ giữ lỗi của field CÓ trong payload —
+                       // field vắng (không đưa vào Values) không bị bắt buộc (bản ghi đã có sẵn giá trị cũ).
+                       .Where(kv => !r.PartialValidate || r.Values.ContainsKey(kv.Key))
                        .Select(kv => new MasterDataFieldError(
                            kv.Key,
                            kv.Value.Results.FirstOrDefault()?.Message ?? "Giá trị không hợp lệ."))

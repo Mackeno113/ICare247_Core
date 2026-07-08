@@ -23,7 +23,18 @@ public interface IImportEngine
         ImportPlanRequest request, Stream workbook, CancellationToken ct = default);
 }
 
-/// <summary>Bối cảnh phân tích 1 file import: View + bảng đích + cột nhập + khoá ghép upsert + định nghĩa FK.</summary>
+/// <summary>Chế độ ghi khi import (theo Mã khoá).</summary>
+public enum ImportMode
+{
+    /// <summary>Khớp Mã → cập nhật; chưa có → thêm mới (cần đủ trường bắt buộc). Mặc định.</summary>
+    Upsert,
+    /// <summary>Chỉ cập nhật dòng khớp Mã; Mã chưa có → từ chối (không thêm mới).</summary>
+    UpdateOnly,
+    /// <summary>Chỉ thêm mới; Mã đã tồn tại → từ chối (không cập nhật).</summary>
+    InsertOnly
+}
+
+/// <summary>Bối cảnh phân tích 1 file import: View + bảng đích + cột nhập + khoá ghép + FK + chế độ import.</summary>
 public sealed record ImportPlanRequest(
     ViewMetadata View,
     string Schema,
@@ -32,7 +43,8 @@ public sealed record ImportPlanRequest(
     string SheetName,
     IReadOnlyList<ImportFieldSpec> Fields,
     IReadOnlyList<string> KeyFields,
-    IReadOnlyList<FkLookupDefinition> FkColumns);
+    IReadOnlyList<FkLookupDefinition> FkColumns,
+    ImportMode Mode = ImportMode.Upsert);
 
 /// <summary>
 /// Mô tả 1 cột nhập của file import. <paramref name="NetType"/> ép kiểu validate; <paramref name="IsMasked"/>

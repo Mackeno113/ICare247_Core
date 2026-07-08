@@ -43,6 +43,21 @@ Bạn có thể **Quay lại** để chọn/sửa file khác, hoặc bấm **Xá
 
 > **Ghi từng phần (partial commit):** các dòng hợp lệ **được ghi**, dòng lỗi **bị bỏ qua** và trả về để bạn sửa rồi import lại — không phải làm lại từ đầu.
 
+### Chế độ import + cập nhật một phần cột
+Ở bước 1 chọn **Chế độ import** (cần bật khóa — §5.2):
+
+| Chế độ | Mã đã có | Mã chưa có |
+|---|---|---|
+| **Thêm mới + cập nhật (upsert)** | Cập nhật | Thêm mới (cần đủ trường bắt buộc) |
+| **Chỉ cập nhật** | Cập nhật | **Từ chối** (Mã không tồn tại) |
+| **Chỉ thêm mới** | **Từ chối** (Mã đã tồn tại) | Thêm mới |
+
+**Cập nhật một phần cột:** file **có thể bỏ bớt cột** — chỉ giữ cột **Mã** + vài cột cần sửa.
+- Chỉ ghi **cột có trong file**; cột **vắng mặt** → **giữ nguyên** (không đụng).
+- Ô **để trống** trong cột **có trong file** → **ghi đè rỗng** (cố ý xóa giá trị).
+- Trường bắt buộc **vắng cột** → chỉ chặn dòng **thêm mới**; dòng cập nhật thì bỏ qua.
+  → Dùng "Chỉ cập nhật" + file (Mã + vài cột) để **cập nhật hàng loạt** mà không cần đủ cột.
+
 ---
 
 ## 3. Quy tắc dữ liệu trong file
@@ -153,7 +168,7 @@ Dòng **thành công** không ghi vào Detail (đã có audit-log JSON-diff riê
 
 1. Chạy migration (Config DB trừ 072):
    - `db/071` — masking (`Is_Log_Masked`/`Log_Mask_Mode`) + set `Code_Field`. `db/072` (Data DB) — 2 bảng log.
-   - `db/073` — thông báo lỗi `import.*` (vi/en). `db/074` — `Import_Global_Code`. `db/075` — `Ui_View_Column.Is_Import_Key` (khóa ghép).
+   - `db/073` — thông báo lỗi `import.*` (vi/en). `db/074` — `Import_Global_Code`. `db/075` — `Ui_View_Column.Is_Import_Key` (khóa ghép). `db/076` — thông báo chế độ import.
 2. (Nếu dùng hook) chạy lại `db/procs/sp_AfterSave_Grid_<Table>.sql` (contract v2) + `db/procs/sp_AfterImport_<Table>.sql` trên Data DB.
 3. Rebuild + **restart API**; rebuild web + **hard-reload** trình duyệt; rebuild ConfigStudio.
 4. Cấu hình trên ConfigStudio: `Code_Field`, tick "Khóa trùng (import)" (upsert), "Làm mờ trong log", "resolve Mã toàn cục".
@@ -178,6 +193,7 @@ Dòng **thành công** không ghi vào Detail (đã có audit-log JSON-diff riê
 ## 9. Giới hạn v1
 
 - Chỉ **lưới phẳng** (chưa hỗ trợ TreeGrid — nhập cây theo Mã cha sẽ làm sau).
+- **Cập nhật một phần cột / chế độ import cần bật khóa** (cột "Khóa trùng (import)"); không bật khóa ⇒ chỉ thêm mới, phải đủ cột.
 - File `.xlsx` (không đọc `.xls` cũ); giới hạn 20MB.
 - Preview & commit **tải file 2 lần** (dry-run + ghi) — chấp nhận cho dữ liệu danh mục.
 - Khóa ngoại resolve theo **cột trùng tên** giữa View và Edit_Form (trường hợp FK in-place phổ biến).

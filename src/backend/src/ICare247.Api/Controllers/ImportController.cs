@@ -56,14 +56,15 @@ public sealed class ImportController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Validate(
-        string code, IFormFile? file, [FromQuery] string lang = "vi", CancellationToken ct = default)
+        string code, IFormFile? file, [FromQuery] string lang = "vi",
+        [FromQuery] string mode = "upsert", CancellationToken ct = default)
     {
         var bytes = await ReadFileAsync(file, ct);
         if (bytes is null)
             return BadRequest(new { message = "Chưa chọn tệp import." });
 
         var result = await _mediator.Send(
-            new ValidateImportFileCommand(code, GetTenantId(), lang, bytes), ct);
+            new ValidateImportFileCommand(code, GetTenantId(), lang, bytes, ParseMode(mode)), ct);
         return result is null
             ? NotFound(new { message = "View không tồn tại hoặc chưa có form Thêm/Sửa để import." })
             : Ok(result);
@@ -76,7 +77,8 @@ public sealed class ImportController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Commit(
-        string code, IFormFile? file, [FromQuery] string lang = "vi", CancellationToken ct = default)
+        string code, IFormFile? file, [FromQuery] string lang = "vi",
+        [FromQuery] string mode = "upsert", CancellationToken ct = default)
     {
         var bytes = await ReadFileAsync(file, ct);
         if (bytes is null)
@@ -84,11 +86,20 @@ public sealed class ImportController : ControllerBase
 
         var correlationId = HttpContext.TraceIdentifier;
         var result = await _mediator.Send(
-            new CommitImportCommand(code, GetTenantId(), GetUserId(), lang, bytes, file!.FileName, correlationId), ct);
+            new CommitImportCommand(code, GetTenantId(), GetUserId(), lang, bytes, file!.FileName,
+                correlationId, ParseMode(mode)), ct);
         return result is null
             ? NotFound(new { message = "View không tồn tại hoặc chưa có form Thêm/Sửa để import." })
             : Ok(result);
     }
+
+    /// <summary>Parse chế độ import từ query: "update" → UpdateOnly · "insert" → InsertOnly · còn lại → Upsert.</summary>
+    private static ImportMode ParseMode(string? mode) => (mode ?? "").Trim().ToLowerInvariant() switch
+    {
+        "update" or "updateonly" or "update_only" => ImportMode.UpdateOnly,
+        "insert" or "insertonly" or "insert_only" => ImportMode.InsertOnly,
+        _ => ImportMode.Upsert
+    };
 
     /// <summary>Đọc IFormFile → byte[] (spool bộ nhớ, đã chặn kích thước qua RequestSizeLimit). Null nếu rỗng.</summary>
     private static async Task<byte[]?> ReadFileAsync(IFormFile? file, CancellationToken ct)

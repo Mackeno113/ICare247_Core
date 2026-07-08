@@ -64,14 +64,9 @@ public sealed partial class ImportEngine : IImportEngine
         }
 
         // ── Map tiêu đề (dòng 1) → cột theo Caption/FieldName ────────────────
+        //    Cột bắt buộc VẮNG trong file KHÔNG chặn ở đây (partial update): chỉ chặn dòng THÊM MỚI (§phân loại).
         var headerMap = MapHeaders(ws, req.Fields);
-        foreach (var f in req.Fields)
-        {
-            if (f.Required && !headerMap.ContainsKey(f.FieldName))
-                fileErrors.Add(new ImportCellError(f.FieldName, "import.column.missing", [f.Caption]));
-        }
-        if (fileErrors.Count > 0)
-            return Empty(fileErrors);
+        var present = new HashSet<string>(headerMap.Keys, StringComparer.OrdinalIgnoreCase);
 
         // ── FK: nạp bảng tra Mã→Id (lọc quyền) cho các cột FK có trong file ──
         //    Định nghĩa FK lấy từ field Edit_Form (req.FkColumns) — đúng cho mọi màn, kể cả view JOIN tay.
@@ -100,6 +95,14 @@ public sealed partial class ImportEngine : IImportEngine
         var keyFields = req.KeyFields
             .Where(k => fieldByName.ContainsKey(k) || fkMaps.ContainsKey(k))
             .ToList();
+
+        // Cột KHÓA phải có trong file để so khớp (upsert/partial) — thiếu → chặn cả file.
+        foreach (var k in keyFields)
+            if (!present.Contains(k))
+                fileErrors.Add(new ImportCellError(k, "import.column.missing",
+                    [fieldByName.TryGetValue(k, out var kf) ? kf.Caption : k]));
+        if (fileErrors.Count > 0)
+            return Empty(fileErrors);
 
         // ── Duyệt từng dòng dữ liệu (từ dòng 2) ─────────────────────────────
         var parsed = new List<ParsedRow>();
@@ -138,23 +141,46 @@ public sealed partial class ImportEngine : IImportEngine
             var errorsList = new List<ImportCellError>(p.Errors);
             ImportRowOperation op;
             long? matchedId = null;
+            var keyCol = keyFields.Count > 0 ? keyFields[0] : null;
 
             if (errorsList.Count > 0)
                 op = ImportRowOperation.Error;
-            else if (keyFields.Count == 0 || p.CompositeKey is null)
-                op = ImportRowOperation.New;
-            else if (!seen.Add(p.CompositeKey))
+            else if (p.CompositeKey is not null && !seen.Add(p.CompositeKey))
             {
-                errorsList.Add(new ImportCellError(keyFields[0], "import.duplicate.key", [keyFields[0]]));
+                // Trùng khoá trong cùng file.
+                errorsList.Add(new ImportCellError(keyCol, "import.duplicate.key", [keyCol ?? ""]));
                 op = ImportRowOperation.Error;
             }
-            else if (existing.TryGetValue(p.CompositeKey, out var id))
-            {
-                op = ImportRowOperation.Update;
-                matchedId = id;
-            }
             else
-                op = ImportRowOperation.New;
+            {
+                long? eid = null;
+                if (p.CompositeKey is not null && existing.TryGetValue(p.CompositeKey, out var found))
+                    eid = found;
+
+                if (eid is not null)
+                {
+                    // Mã ĐÃ tồn tại → cập nhật (trừ chế độ Chỉ-thêm).
+                    if (req.Mode == ImportMode.InsertOnly)
+                    {
+                        errorsList.Add(new ImportCellError(keyCol, "import.key.exists", []));
+                        op = ImportRowOperation.Error;
+                    }
+                    else { op = ImportRowOperation.Update; matchedId = eid; }
+                }
+                else if (req.Mode == ImportMode.UpdateOnly)
+                {
+                    // Chỉ-cập-nhật: Mã chưa có → từ chối (không thêm mới).
+                    errorsList.Add(new ImportCellError(keyCol, "import.key.not_found", []));
+                    op = ImportRowOperation.Error;
+                }
+                else
+                {
+                    // THÊM MỚI → cột bắt buộc VẮNG trong file ⇒ lỗi (không đủ để tạo bản ghi).
+                    var missing = MissingRequiredForNew(req.Fields, present);
+                    if (missing.Count > 0) { errorsList.AddRange(missing); op = ImportRowOperation.Error; }
+                    else op = ImportRowOperation.New;
+                }
+            }
 
             switch (op)
             {
@@ -217,7 +243,10 @@ public sealed partial class ImportEngine : IImportEngine
 
         foreach (var f in fields)
         {
-            raw.TryGetValue(f.FieldName, out var text);   // đã trim; null nếu rỗng/không có cột
+            // Cột VẮNG trong file → KHÔNG đưa vào payload (giữ nguyên khi update; required-khi-thêm xử ở §phân loại).
+            if (!raw.TryGetValue(f.FieldName, out var text))
+                continue;
+            // text: đã trim; null nếu ô rỗng (cột CÓ trong file nhưng để trống → ghi đè null).
 
             // Cột FK → resolve Mã→Id.
             if (fkMaps.TryGetValue(f.FieldName, out var fkMap))
@@ -249,6 +278,17 @@ public sealed partial class ImportEngine : IImportEngine
                     [f.Caption, MaskForField(f, text)!]));
         }
         return (values, errors);
+    }
+
+    /// <summary>Cột bắt buộc VẮNG trong file (không có cột) → lỗi cho dòng THÊM MỚI. Không phát sự kiện.</summary>
+    private static List<ImportCellError> MissingRequiredForNew(
+        IReadOnlyList<ImportFieldSpec> fields, ISet<string> present)
+    {
+        var list = new List<ImportCellError>();
+        foreach (var f in fields)
+            if (f.Required && !present.Contains(f.FieldName))
+                list.Add(new ImportCellError(f.FieldName, "import.required.missing", [f.Caption]));
+        return list;
     }
 
     /// <summary>Ép chuỗi (đã trim) sang kiểu <paramref name="netType"/>; false nếu sai định dạng.</summary>

@@ -16,7 +16,8 @@ namespace ICare247.Application.Features.Import;
 /// <summary>Yêu cầu ghi thật file import (đã xem preview). Trả null nếu View/Edit_Form không tồn tại.</summary>
 public sealed record CommitImportCommand(
     string ViewCode, int TenantId, long UserId, string LangCode,
-    byte[] FileBytes, string? FileName, string? CorrelationId)
+    byte[] FileBytes, string? FileName, string? CorrelationId,
+    ImportMode Mode = ImportMode.Upsert)
     : IRequest<ImportCommitResult?>;
 
 /// <summary>
@@ -57,7 +58,7 @@ public sealed class CommitImportCommandHandler
 
         var req = new ImportPlanRequest(
             ctx.View, ctx.Schema, ctx.TargetTable, ctx.PkColumn, ctx.SheetName,
-            ctx.Fields, ctx.KeyFields, ctx.FkColumns);
+            ctx.Fields, ctx.KeyFields, ctx.FkColumns, r.Mode);
 
         using var ms = new MemoryStream(r.FileBytes, writable: false);
         var plan = await _engine.BuildPlanAsync(req, ms, ct);
@@ -108,7 +109,7 @@ public sealed class CommitImportCommandHandler
             // Source="IMPORT" + sessionId → hook sp_AfterSave_ nhận ngữ cảnh import (§12.1).
             var save = await _mediator.Send(
                 new SaveMasterDataCommand(ctx.FormCode, r.TenantId, id, values, r.UserId,
-                    Source: "IMPORT", ImportSessionId: sessionId), ct);
+                    Source: "IMPORT", ImportSessionId: sessionId, PartialValidate: true), ct);
 
             if (save.Success)
             {

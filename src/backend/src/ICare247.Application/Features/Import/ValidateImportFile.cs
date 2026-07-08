@@ -10,7 +10,8 @@ namespace ICare247.Application.Features.Import;
 
 /// <summary>Yêu cầu kiểm tra file import (không ghi). Trả null nếu View/Edit_Form không tồn tại.</summary>
 public sealed record ValidateImportFileCommand(
-    string ViewCode, int TenantId, string LangCode, byte[] FileBytes)
+    string ViewCode, int TenantId, string LangCode, byte[] FileBytes,
+    ImportMode Mode = ImportMode.Upsert)
     : IRequest<ImportPreviewResult?>;
 
 /// <summary>Chạy <see cref="IImportEngine"/> → dựng preview + resolve thông báo lỗi i18n.</summary>
@@ -38,7 +39,7 @@ public sealed class ValidateImportFileCommandHandler
 
         var req = new ImportPlanRequest(
             ctx.View, ctx.Schema, ctx.TargetTable, ctx.PkColumn, ctx.SheetName,
-            ctx.Fields, ctx.KeyFields, ctx.FkColumns);
+            ctx.Fields, ctx.KeyFields, ctx.FkColumns, r.Mode);
 
         using var ms = new MemoryStream(r.FileBytes, writable: false);
         var plan = await _engine.BuildPlanAsync(req, ms, ct);

@@ -43,22 +43,26 @@ public sealed class ImportApiService
         await _js.InvokeVoidAsync("icare.downloadBytes", ct, fileName, Convert.ToBase64String(bytes), XlsxMime);
     }
 
-    /// <summary>Kiểm tra file (dry-run) → preview NEW/UPDATE/ERROR. KHÔNG ghi DB.</summary>
+    /// <summary>Kiểm tra file (dry-run) → preview NEW/UPDATE/ERROR. KHÔNG ghi DB. <paramref name="mode"/>: upsert|update|insert.</summary>
     public async Task<ImportPreviewDto?> ValidateAsync(
-        string viewCode, Stream file, string fileName, string lang = "vi", CancellationToken ct = default)
+        string viewCode, Stream file, string fileName, string mode = "upsert",
+        string lang = "vi", CancellationToken ct = default)
     {
-        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/import/validate?lang={Uri.EscapeDataString(lang)}";
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/import/validate" +
+                  $"?lang={Uri.EscapeDataString(lang)}&mode={Uri.EscapeDataString(mode)}";
         using var resp = await PostFileAsync(url, file, fileName, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
         await EnsureOkAsync(resp, "Validate", viewCode);
         return await resp.Content.ReadFromJsonAsync<ImportPreviewDto>(JsonOpts, ct);
     }
 
-    /// <summary>Ghi thật các dòng hợp lệ (partial commit) + log + hook.</summary>
+    /// <summary>Ghi thật các dòng hợp lệ (partial commit) + log + hook. <paramref name="mode"/>: upsert|update|insert.</summary>
     public async Task<ImportCommitDto?> CommitAsync(
-        string viewCode, Stream file, string fileName, string lang = "vi", CancellationToken ct = default)
+        string viewCode, Stream file, string fileName, string mode = "upsert",
+        string lang = "vi", CancellationToken ct = default)
     {
-        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/import/commit?lang={Uri.EscapeDataString(lang)}";
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/import/commit" +
+                  $"?lang={Uri.EscapeDataString(lang)}&mode={Uri.EscapeDataString(mode)}";
         using var resp = await PostFileAsync(url, file, fileName, ct);
         if (resp.StatusCode == HttpStatusCode.NotFound) return null;
         await EnsureOkAsync(resp, "Commit", viewCode);

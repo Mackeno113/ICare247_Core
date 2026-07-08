@@ -30,6 +30,36 @@
     font-weight: 500;
 }
 
+/* Chọn chế độ import */
+.iw-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.iw-mode__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted, #64748b);
+}
+
+.iw-mode__select {
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border, #cbd5e1);
+    border-radius: 6px;
+    background: var(--surface, #fff);
+    color: var(--text, #0f172a);
+    font-size: 13px;
+    max-width: 340px;
+}
+
+.iw-mode__hint {
+    font-size: 11px;
+    color: var(--muted, #64748b);
+    line-height: 1.5;
+}
+
 /* Chip thống kê */
 .iw-summary {
     display: flex;
