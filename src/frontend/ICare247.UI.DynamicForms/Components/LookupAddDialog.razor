@@ -1,10 +1,8 @@
 @* File    : LookupAddDialog.razor
-   Purpose : Dialog "thêm mới" entity cho LookupBox. Render Ui_Form (AddFormCode) trong modal,
-             thu thập giá trị field → POST /api/v1/lookups/insert → trả (value, display) cho LookupBox.
-             Tái dùng FieldRenderer + FormApiService giống FormRunner. *@
+   Purpose : Dialog "thêm mới" entity cho LookupBox (RCL). Render add-form trong modal, thu giá trị field →
+             insert qua ILookupQueryService → trả (value, display) cho LookupBox.
+             Host dựng sẵn FieldState qua ILookupQueryService.GetAddFormAsync (RCL không chạm API metadata/DTO host). *@
 
-@inject FormApiService      FormApi
-@inject LookupApiService    LookupApi
 @inject ILookupQueryService LookupQuerySvc
 @inherits LocalizedComponentBase
 
@@ -67,7 +65,7 @@
     [Parameter] public EventCallback OnClose { get; set; }
 
     private List<FieldState> _fieldStates = [];
-    /// <summary>Tiêu đề form đã localize (FormMetadata.FormName) — hiển thị ở header dialog.</summary>
+    /// <summary>Tiêu đề form đã localize — hiển thị ở header dialog.</summary>
     private string  _formTitle = "";
     private bool    _loading = true;
     private bool    _saving;
@@ -78,57 +76,21 @@
     {
         try
         {
-            var form = await FormApi.GetFormAsync(FormCode);
-            if (form is null)
+            // Host đọc Ui_Form + dựng sẵn FieldState (kèm options static) sau interface RCL.
+            var model = await LookupQuerySvc.GetAddFormAsync(FormCode);
+            if (model is null)
             {
                 _error = Loc.L("lookupadd.notfound", "Form '{0}' không tồn tại trong tenant.", FormCode);
                 return;
             }
-
-            _formTitle = form.FormName.Length > 0 ? form.FormName : form.FormCode;
-
-            _fieldStates = form.Fields.Select(f => new FieldState
-            {
-                FieldId      = f.FieldId,
-                FieldCode    = f.FieldCode.Length > 0 ? f.FieldCode : $"field_{f.FieldId}",
-                FieldType    = NormalizeFieldType(f.FieldType, f.LookupSource),
-                Label        = f.Label.Length > 0 ? f.Label : f.FieldCode,
-                IsVisible    = f.IsVisible,
-                IsReadOnly   = f.IsReadOnly,
-                IsRequired   = f.IsRequired,
-                IsVirtual    = f.IsVirtual,
-                IsEditMode   = false,   // dialog luôn ở chế độ thêm mới
-                Value        = null,
-                ColSpan      = f.ColSpan > 0 ? f.ColSpan : (byte)1,
-                LookupSource = f.LookupSource,
-                LookupCode   = f.LookupSource == "static"  ? f.LookupCode   : null,
-                LookupConfig = f.LookupSource == "dynamic" ? f.LookupConfig : null,
-                ControlPropsJson = f.ControlPropsJson,
-            }).ToList();
-
-            await LoadStaticOptionsAsync();
+            _formTitle   = model.Title;
+            _fieldStates = model.Fields;
         }
         catch (Exception ex)
         {
             _error = ex.Message;
         }
         finally { _loading = false; }
-    }
-
-    private async Task LoadStaticOptionsAsync()
-    {
-        var codes = _fieldStates
-            .Where(fs => !string.IsNullOrWhiteSpace(fs.LookupCode))
-            .Select(fs => fs.LookupCode!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (codes.Count == 0) return;
-
-        var optionsMap = await LookupApi.GetOptionsBatchAsync(codes);
-        foreach (var fs in _fieldStates)
-            if (!string.IsNullOrWhiteSpace(fs.LookupCode)
-                && optionsMap.TryGetValue(fs.LookupCode, out var opts))
-                fs.Options = opts;
     }
 
     /// <summary>Snapshot giá trị hiện tại — cho cascading lookup giữa các field trong dialog.</summary>
@@ -197,23 +159,4 @@
     }
 
     private async Task OnCancel() => await OnClose.InvokeAsync();
-
-    /// <summary>Chuyển Editor_Type DB → type lowercase cho FieldRenderer (đồng bộ FormRunner).</summary>
-    private static string NormalizeFieldType(string dbType, string? lookupSource)
-        => dbType.ToLower() switch
-    {
-        "textbox"      or "text"                              => "text",
-        "textarea"     or "memo"                              => "textarea",
-        "numberedit"   or "number" or "numericbox"            => "number",
-        "dateedit"     or "date"   or "datepicker"            => "date",
-        "datetimeedit" or "datetime" or "datetimepicker"      => "datetime",
-        "checkbox"     or "bool"                              => "bool",
-        "toggleswitch" or "toggle"                            => "switch",
-        "combobox"     => lookupSource == "dynamic" ? "combobox" : "select",
-        "select" or "lookupedit" or "dropdown" or "multiselect"
-            or "radiogroup" or "lookupcombobox"               => "select",
-        "lookupbox"                                           => "fklookup",
-        "treelookupbox" or "treelookup"                       => "treelookup",
-        _                                                     => "text"
-    };
 }

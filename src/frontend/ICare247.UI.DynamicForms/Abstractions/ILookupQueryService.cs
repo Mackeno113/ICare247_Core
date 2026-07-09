@@ -3,6 +3,8 @@
 // Purpose : Interface gọi POST /api/v1/lookups/query-dynamic để lấy dữ liệu dynamic lookup.
 //           Ổ cắm (contract) ở RCL — impl LookupQueryService ở host, nối qua DI.
 
+using ICare247.UI.DynamicForms.Models;
+
 namespace ICare247.UI.DynamicForms.Abstractions;
 
 /// <summary>
@@ -49,6 +51,15 @@ public interface ILookupQueryService
         int fieldId,
         Dictionary<string, object?> values,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Nạp cấu hình add-form của LookupBox (tính năng "➕ Thêm mới"): host đọc Ui_Form theo
+    /// <paramref name="formCode"/> (AddFormCode) rồi dựng sẵn danh sách <see cref="FieldState"/> (kèm options
+    /// static). RCL chỉ render — không chạm API metadata/DTO host. Null nếu form không tồn tại / lỗi.
+    /// </summary>
+    /// <param name="formCode">Form_Code của add-form (AddFormCode trong cấu hình lookup).</param>
+    /// <param name="ct"></param>
+    Task<LookupAddForm?> GetAddFormAsync(string formCode, CancellationToken ct = default);
 }
 
 /// <summary>Kết quả insert lookup — value/display của bản ghi mới hoặc thông báo lỗi.</summary>
@@ -56,3 +67,6 @@ public sealed record LookupInsertResult(string? Value, string? Display, string? 
 {
     public bool Success => Error is null;
 }
+
+/// <summary>Cấu hình add-form đã dựng sẵn cho dialog "Thêm mới": tiêu đề + FieldState render trực tiếp.</summary>
+public sealed record LookupAddForm(string Title, List<FieldState> Fields);
