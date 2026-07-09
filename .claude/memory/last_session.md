@@ -1,27 +1,24 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-09 (session 80 — Doc Template GĐ4: gắn mẫu vào màn lưới). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-09 (session 80 — Doc Template GĐ4 + Import đổi sang DevExpress; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 
-## Session 80 (2026-07-09) — Doc Template GĐ4: gắn mẫu tài liệu vào màn lưới (grid-first)
+## Session 80 (2026-07-09) — Doc Template GĐ4 (gắn mẫu vào lưới) + Import đổi ClosedXML→DevExpress
 
-**Bối cảnh:** user hỏi mắt xích còn thiếu — "làm sao xác định file template gắn vào màn hình, truyền thông tin gì". Phát hiện hệ **đã có sẵn** cơ chế đúng: `Ui_View_Action` (Spec 14 §2.3) với `Export_Engine='Server'` + `Target=report template`. Chốt (user): **grid-first** (tái dùng, KHÔNG thêm bảng binding) + làm **cả guide lẫn code wiring**. Form chi tiết để pha sau.
+**2 commit trên `master`, build backend 0 error, ĐÃ push:**
 
-**Cơ chế:** gắn mẫu vào lưới = 1 dòng `Ui_View_Action` (`Type=Export|Print`, `Format=docx|pdf`, `Engine=Server`, **`Target=Doc_Template.Ma`**, `Require_Selection`). Bấm nút → gom **dòng đang chọn** (đủ cột) làm `keyParams` → `Doc_Template_Param` (`Nguon='key', Nguon_Key=<tên cột>`) ánh xạ sang @param proc. Chuỗi backend `keyParams→BuildParams→proc` đã sẵn từ GĐ1.
+**1) Doc Template GĐ4 — gắn mẫu vào màn lưới (commit `1c2dad2`).** Phát hiện `Ui_View_Action` (Spec 14) đã sẵn cơ chế (`Engine=Server`+`Target`). Grid-first, KHÔNG thêm bảng. Gắn = 1 dòng action `Type=Export|Print`, `Engine=Server`, **`Target=Doc_Template.Ma`**; bấm → dòng chọn làm `keyParams` → `Doc_Template_Param(Nguon='key')` → @proc (chuỗi backend sẵn từ GĐ1).
+- BE `GetTemplateIdByCodeAsync`+`RenderByCodeAsync`+`POST by-code/{code}/render`; Web `DocTemplateApiService`+`DataView.TryServerRenderAsync`+`ViewPage.OnServerRenderAsync`; ConfigStudio combo "Bộ mẫu (Xuất tài liệu)" tab Actions; guide `cau-hinh-xuat-tai-lieu.md`+Spec 28 §7.4.
 
-**Đã code (CHƯA build, CHƯA commit — branch `master`):**
-- **Backend**: `GetTemplateIdByCodeAsync` (repo) + `RenderByCodeAsync` (IDocTemplateRenderer + impl) + `POST /doc-templates/by-code/{code}/render`.
-- **Web**: `DocTemplateApiService` (POST→bytes→`icare.downloadBytes`) + DI Program.cs; `ServerRenderRequest`; `DataView.TryServerRenderAsync` + callback `OnServerRender`; `ViewPage.OnServerRenderAsync`.
-- **ConfigStudio WPF**: `ViewManagerViewModel` (`DocTemplateChoices` + `SelectedActionTemplate` điền Target/Engine) + combo "Bộ mẫu (Xuất tài liệu)" ở tab Actions (ViewManagerView.xaml). `IDocTemplateDataService` đã đăng ký DI sẵn (App.xaml.cs:80).
-- **Docs**: guide `docs/huong-dan-wpf/cau-hinh-xuat-tai-lieu.md` (6 bước E2E) + Spec 28 §7.4 binding + endpoint by-code.
+**2) Import: ClosedXML → DevExpress Spreadsheet (commit `c48bbc5`).** User chốt đồng nhất 1 thư viện Office, cô lập như in biểu mẫu; chấp nhận watermark trial+license (đảo điểm 1 ADR-034, có addendum). Seam `ISpreadsheetReader`+`SheetGrid` (Application) → impl DevExpress ở `Infrastructure.Documents`; `ImportEngine` KHÔNG đụng DevExpress. Gỡ hẳn ClosedXML. API verify reflection (0-based). Warning build = license trial DX1000/DX1001.
 
-**⚠️ Chưa xong:** build verify 3 solution (user dừng lệnh build — nghi app đang chạy); commit + push; E2E thật (db/077 + đăng ký proc/param bằng SQL + soạn mẫu). Pha sau: `Ui_Form_Action` cho form chi tiết, Scope='Row' theo dòng, in hàng loạt (§13-D).
+**⚠️ Còn:** E2E cả 2 (Doc: db/077 + đăng ký proc/param SQL + soạn mẫu → xuất; Import: tải template kiểm watermark+dropdown, validate/commit .xlsx). Dọn header Spec 25 (còn "ClosedXML"). Pha sau Doc: `Ui_Form_Action`, Scope='Row', in hàng loạt.
 
 ## Session 79 (2026-07-09) — Doc Template (xuất Word/PDF theo mẫu) + tách RCL control động
 
 **Bối cảnh:** user hỏi–chốt nhiều vòng về DevExpress Office File API (đã cài 25.2.4 trên máy; license per-seat/royalty-free/trial-watermark; deploy IIS) → dùng cho xuất hợp đồng Word/PDF. Song song tách RCL control động.
 
-**Đã làm (7 commit trên `master`, build 3 solution 0 error, CHƯA push):**
+**Đã làm (7 commit trên `master`, build 3 solution 0 error, ĐÃ push — xác nhận ở session 80):**
 - **Tách RCL** (`fb26e33`): `ICare247.UI.DynamicForms` (FieldRenderer + 11 renderer + FieldState/models); interface hóa lookup/attachment service; **xóa hẳn `ICare247.Blazor.RuntimeCheck`** (mồ côi).
 - **Doc Template BE GĐ1** (`0542e5d`,`79d2818`,`4609752`): spec 28 + migration `db/077` (4 bảng, CHƯA chạy); `ICare247.Infrastructure.Documents` (DevExpress DUY NHẤT backend) — engine ghép-fragment master(dọc)+detail(ngang) + PDF, proc-runner whitelist, `IDocTemplateRenderer`, API describe/render. **PoC runtime xuất PDF 2 trang OK**.
 - **Doc Template WPF GĐ3** (`4b6d3ea`,`43cc0b4`): module `Modules.DocTemplate` (RichEditControl + panel biến + chèn MERGEFIELD + hướng giấy) + `IDocTemplateDataService` (CRUD bộ mẫu/mảnh + nạp/lưu fragment); menu "Mẫu tài liệu". WPF chỉ verify compile.
@@ -29,7 +26,7 @@
 
 **⚠️ Để thấy kết quả:** chạy `db/077` + đăng ký `Doc_Proc_Registry` + soạn stored proc → E2E; mở ConfigStudio để test màn soạn WPF; mua license Universal khi prod (bỏ watermark).
 
-**Việc gợi ý tiếp:** push 7 commit (chờ user); tùy chọn UI param/registry + GĐ2 soạn Web (Blazor DxRichEdit). Các session 72/76/77/78 (FK, UI/UX, đính kèm, Import) vẫn CHƯA commit trên `master`.
+**Việc gợi ý tiếp:** tùy chọn UI param/registry + GĐ2 soạn Web (Blazor DxRichEdit). (Ghi chú cũ "các session 72/76/77/78 CHƯA commit" đã lỗi thời — working tree sạch, chỉ còn 4 file i18n pre-existing.)
 
 ## Session 77 (2026-07-07) — Hệ đính kèm / Upload file tổng quát
 
