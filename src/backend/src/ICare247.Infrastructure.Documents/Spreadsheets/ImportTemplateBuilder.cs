@@ -58,22 +58,30 @@ internal sealed class ImportTemplateBuilder : IImportTemplateBuilder
 
                 aux[0, 0].SetValue("Mã");
                 aux[0, 1].SetValue("Tên");
-                var ahf = aux["A1:B1"].BeginUpdateFormatting();
+                aux[0, 2].SetValue("Chọn (Mã — Tên)");
+                var ahf = aux["A1:C1"].BeginUpdateFormatting();
                 ahf.Font.Bold = true;
-                aux["A1:B1"].EndUpdateFormatting(ahf);
+                aux["A1:C1"].EndUpdateFormatting(ahf);
                 for (var r = 0; r < fk.Items.Count; r++)
                 {
-                    aux[r + 1, 0].SetValue(fk.Items[r].Code);
-                    aux[r + 1, 1].SetValue(fk.Items[r].Display ?? string.Empty);
+                    var code = fk.Items[r].Code;
+                    var display = fk.Items[r].Display ?? string.Empty;
+                    aux[r + 1, 0].SetValue(code);
+                    aux[r + 1, 1].SetValue(display);
+                    // Cột nối = nguồn dropdown: người nhập thấy CẢ Mã lẫn Tên; import tự cắt lấy Mã.
+                    aux[r + 1, 2].SetValue(string.IsNullOrEmpty(display)
+                        ? code : code + ImportConventions.FkCodeNameSeparator + display);
                 }
-                aux.Columns.AutoFit(0, 1);
+                aux.Columns.AutoFit(0, 2);
 
                 var lastRow = fk.Items.Count + 1;   // Excel 1-based (tiêu đề dòng 1 + N dòng)
-                var listFormula = $"='{auxName}'!$A$2:$A${lastRow}";
+                var listFormula = $"='{auxName}'!$C$2:$C${lastRow}";   // nguồn = cột nối "Mã — Tên"
                 var colLetter = ColumnLetter(colIdx);
                 var dvRange = main[$"{colLetter}2:{colLetter}{DataValidationRows + 1}"];
                 var dv = main.DataValidations.Add(dvRange, DataValidationType.List, listFormula);
                 dv.ShowDropDown = true;   // hiện dropdown trong ô
+
+                main.Columns[colIdx].WidthInCharacters = 32;   // rộng hơn để đủ "Mã — Tên"
             }
 
             // Ghi chú ô tiêu đề. LƯU Ý: CommentCollection.Add(range, string) → string là AUTHOR, KHÔNG phải
@@ -99,9 +107,9 @@ internal sealed class ImportTemplateBuilder : IImportTemplateBuilder
         if (!string.IsNullOrWhiteSpace(col.TypeHint)) parts.Add("• Kiểu: " + col.TypeHint);
         if (col.Fk is not null)
         {
-            parts.Add("• Nhập MÃ (chọn từ dropdown)");
+            parts.Add("• Chọn \"Mã — Tên\" từ dropdown (import tự lấy Mã)");
             if (!string.IsNullOrWhiteSpace(auxSheetName))
-                parts.Add($"• Tra Mã ↔ Tên ở sheet \"{auxSheetName}\"");
+                parts.Add($"• Danh sách đầy đủ ở sheet \"{auxSheetName}\"");
         }
         return parts.Count == 0 ? null : string.Join("\n", parts);
     }

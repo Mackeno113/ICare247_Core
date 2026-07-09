@@ -256,7 +256,8 @@ public sealed partial class ImportEngine : IImportEngine
                     if (f.Required) errors.Add(new ImportCellError(f.FieldName, "import.required.missing", [f.Caption]));
                     values[f.FieldName] = null;
                 }
-                else if (fkMap.TryResolve(text, out var id))
+                // Ô có thể là "Mã — Tên" (chọn từ dropdown) hoặc chỉ Mã (gõ tay) → cắt lấy Mã.
+                else if (fkMap.TryResolve(ImportConventions.ExtractFkCode(text), out var id))
                     values[f.FieldName] = id;
                 else
                     errors.Add(new ImportCellError(f.FieldName, "import.fk.code_not_found",
