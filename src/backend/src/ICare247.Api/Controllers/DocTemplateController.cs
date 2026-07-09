@@ -74,6 +74,32 @@ public sealed class DocTemplateController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sinh tài liệu theo <c>Ma</c> bộ mẫu (thay vì Id) — dùng khi màn lưới gắn nút xuất qua
+    /// <c>Ui_View_Action.Target = Ma</c>. Body = JSON dòng đang chọn (đầy đủ cột); <c>format</c> = pdf|docx.
+    /// </summary>
+    [HttpPost("by-code/{code}/render")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RenderByCode(
+        string code, [FromQuery] string format = "pdf",
+        [FromBody] Dictionary<string, JsonElement>? keyParams = null, CancellationToken ct = default)
+    {
+        var fmt = string.Equals(format, "docx", StringComparison.OrdinalIgnoreCase)
+            ? DocOutputFormat.Docx : DocOutputFormat.Pdf;
+        var resolved = ToClrParams(keyParams);
+        try
+        {
+            var result = await _renderer.RenderByCodeAsync(code, resolved, fmt, ct);
+            return File(result.Bytes, result.ContentType, result.FileName);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Render bộ mẫu mã '{Code}' thất bại.", code);
+            return Problem(ex.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+    }
+
     /// <summary>Ép JsonElement (từ body) về CLR primitive để bind tham số Dapper. Không phát event.</summary>
     private static Dictionary<string, object?> ToClrParams(Dictionary<string, JsonElement>? src)
     {

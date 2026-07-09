@@ -229,7 +229,28 @@ Tham chiếu `DevExpress.Docs`. Luồng `RenderAsync`:
 | GET | `/api/v1/doc-templates` | danh sách |
 | GET/PUT/POST/DELETE | `/api/v1/doc-templates/{id}` | CRUD cấu hình |
 | GET | `/api/v1/doc-templates/describe?proc=...` | khám phá biến |
-| POST | `/api/v1/doc-templates/{id}/render?format=pdf` | sinh (body = keyParams) |
+| POST | `/api/v1/doc-templates/{id}/render?format=pdf` | sinh theo Id (body = keyParams) |
+| POST | `/api/v1/doc-templates/by-code/{code}/render?format=pdf` | sinh theo **Ma** (dùng khi gắn màn qua `Ui_View_Action.Target`) |
+
+## 7.4 Gắn mẫu vào màn hình (binding) — tái dùng `Ui_View_Action`
+
+**Không thêm bảng binding mới.** Một bộ mẫu gắn vào **màn lưới** bằng đúng cơ chế nút hành động của lưới
+(`Ui_View_Action`, Spec 14 §2.3): thêm 1 dòng action với
+
+- `Action_Type = 'Export'` (hoặc `'Print'`), `Export_Format = 'docx'|'pdf'`, `Export_Engine = 'Server'`,
+- **`Target = Doc_Template.Ma`** ← đây là liên kết "màn này ↔ mẫu này",
+- `Scope = 'Toolbar'|'Row'|'Both'`, `Require_Selection = 1`.
+
+**Runtime:** web (`DataView`) nhận diện action Export/Print + `Engine='Server'` + có `Target` → gom **dòng đang chọn**
+(đầy đủ cột) làm `keyParams` → gọi `POST /doc-templates/by-code/{Target}/render` → tải file. `Doc_Template_Param`
+(`Nguon='key'`, `Nguon_Key = <tên cột lưới>`) ánh xạ cột dòng sang tham số proc.
+
+**Authoring:** ConfigStudio màn *Quản lý View* → tab *Actions* có combo **"Bộ mẫu (Xuất tài liệu)"** liệt kê
+`Doc_Template` (Config DB) → chọn mẫu tự điền `Target = Ma` + `Engine='Server'`.
+
+> **Màn form chi tiết** (mở 1 bản ghi) chưa có cơ chế action tương đương (`Ui_Form_Action` chưa tồn tại) → binding
+> hiện chỉ áp cho **lưới/danh sách**. Nút xuất trên form là pha sau.
+> Hướng dẫn deployer đầy đủ: `docs/huong-dan-wpf/cau-hinh-xuat-tai-lieu.md`.
 
 ## 8. Màn soạn template (authoring)
 

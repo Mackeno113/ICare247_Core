@@ -30,6 +30,19 @@ internal sealed class DocTemplateRepository
             new { id, tenantId }, cancellationToken: ct));
     }
 
+    /// <summary>
+    /// Tra Id bộ mẫu theo <c>Ma</c> + tenant (chỉ bản Active, chưa xóa). Dùng khi màn lưới gắn action
+    /// bằng mã bộ mẫu (Ui_View_Action.Target = Ma). Sự kiện theo sau: null → caller trả 404/400.
+    /// </summary>
+    public async Task<long?> GetTemplateIdByCodeAsync(string ma, int tenantId, CancellationToken ct)
+    {
+        using var conn = _config.CreateConnection();
+        return await conn.ExecuteScalarAsync<long?>(new CommandDefinition(
+            "SELECT Id FROM dbo.Doc_Template " +
+            "WHERE Ma=@ma AND Tenant_Id=@tenantId AND IsDeleted=0 AND Is_Active=1",
+            new { ma, tenantId }, cancellationToken: ct));
+    }
+
     /// <summary>Lấy các mảnh detail của bộ mẫu, sắp theo Thu_Tu (thứ tự ghép/in). Không phát event.</summary>
     public async Task<IReadOnlyList<DocDetailRow>> GetDetailsAsync(long templateId, CancellationToken ct)
     {

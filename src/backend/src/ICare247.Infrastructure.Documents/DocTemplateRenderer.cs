@@ -80,6 +80,18 @@ internal sealed class DocTemplateRenderer : IDocTemplateRenderer
     }
 
     /// <inheritdoc />
+    public async Task<DocRenderResult> RenderByCodeAsync(
+        string code, IReadOnlyDictionary<string, object?> keyParams,
+        DocOutputFormat format, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+            throw new InvalidOperationException("Thiếu mã bộ mẫu (Target).");
+        var id = await _repo.GetTemplateIdByCodeAsync(code.Trim(), _tenant.TenantId, ct)
+            ?? throw new InvalidOperationException($"Bộ mẫu mã '{code}' không tồn tại hoặc chưa bật.");
+        return await RenderAsync(id, keyParams, format, ct);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<DocVariable>> DescribeVariablesAsync(
         string procName, CancellationToken ct = default)
     {

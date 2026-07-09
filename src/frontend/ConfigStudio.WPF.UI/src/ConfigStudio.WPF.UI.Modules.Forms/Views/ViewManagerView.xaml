@@ -522,6 +522,13 @@
                                     <dx:SimpleButton Command="{Binding RemoveActionCommand}" Content="− Xóa action" Margin="0,0,12,0" />
                                     <dx:SimpleButton Command="{Binding OpenActionLabelI18nCommand}" Content="🌐 Dịch nhãn"
                                                      ToolTip="Tạo/sửa bản dịch Label_Key cho action đang chọn" />
+                                    <Separator Style="{x:Null}" Width="1" Background="#22000000" Margin="12,2,12,2" />
+                                    <TextBlock Text="Bộ mẫu (Xuất tài liệu):" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding DocTemplateChoices}"
+                                                      SelectedItem="{Binding SelectedActionTemplate, Mode=TwoWay}"
+                                                      IsTextEditable="False" Width="260"
+                                                      NullText="Chọn action Export/Print rồi chọn bộ mẫu → điền Target"
+                                                      ToolTip="Gắn nút xuất vào bộ mẫu tài liệu: chọn mẫu sẽ điền Target = mã bộ mẫu và đặt Engine=Server. (Chạy db/077 + soạn mẫu ở màn 'Mẫu tài liệu' trước.)" />
                                 </StackPanel>
                                 <dxg:GridControl Grid.Row="1" ItemsSource="{Binding EditActions}"
                                                  SelectedItem="{Binding SelectedAction, Mode=TwoWay}"

@@ -32,6 +32,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly IAppConfigService? _appConfig;
     private readonly INavigationHistoryService? _history;
     private readonly IAppLogger? _logger;
+    private readonly IDocTemplateDataService? _docTemplateData;
     private bool _isProgrammaticSelect;
 
     /// <summary>Tạm ngưng rekey i18n khi đang nạp dữ liệu / reset editor (set key theo lô).</summary>
@@ -79,6 +80,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public ObservableCollection<ViewFilterRecord> EditFilters { get; } = [];
 
     /// <summary>
+    /// Danh sách bộ mẫu tài liệu (Doc_Template) — nguồn combo gắn <c>Target</c> cho action Export/Print
+    /// server-side. Nạp lười 1 lần khi vào màn (Config DB).
+    /// </summary>
+    public ObservableCollection<DocTemplateListItem> DocTemplateChoices { get; } = [];
+
+    /// <summary>
     /// Field FK của form sửa hiện chọn — nguồn cho dropdown "FK lookup" ở tab Cột (auto-JOIN hiện TÊN cha).
     /// Nạp lại khi đổi View / đổi Edit_Form.
     /// </summary>
@@ -121,7 +128,28 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             {
                 RemoveActionCommand.RaiseCanExecuteChanged();
                 OpenActionLabelI18nCommand.RaiseCanExecuteChanged();
+                RaisePropertyChanged(nameof(SelectedActionTemplate));
             }
+        }
+    }
+
+    /// <summary>
+    /// Bộ mẫu gắn cho action đang chọn — combo tiện lợi: chọn mẫu → điền <c>Target = Ma</c> và mặc định
+    /// <c>Export_Engine = 'Server'</c> (docx/pdf render theo mẫu). Đọc lại từ Target hiện có (khớp Ma).
+    /// </summary>
+    public DocTemplateListItem? SelectedActionTemplate
+    {
+        get => SelectedAction is null
+            ? null
+            : DocTemplateChoices.FirstOrDefault(t =>
+                string.Equals(t.Ma, SelectedAction.Target, StringComparison.OrdinalIgnoreCase));
+        set
+        {
+            if (SelectedAction is null || value is null) return;
+            SelectedAction.Target = value.Ma;
+            if (string.IsNullOrWhiteSpace(SelectedAction.ExportEngine))
+                SelectedAction.ExportEngine = "Server";
+            RaisePropertyChanged();
         }
     }
 
@@ -425,7 +453,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         IDialogService? dialogService = null,
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
-        IAppLogger? logger = null)
+        IAppLogger? logger = null,
+        IDocTemplateDataService? docTemplateData = null)
     {
         _viewData = viewData;
         _formData = formData;
@@ -435,6 +464,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         _appConfig = appConfig;
         _history = history;
         _logger = logger;
+        _docTemplateData = docTemplateData;
 
         ViewsView = CollectionViewSource.GetDefaultView(Views);
         ViewsView.Filter = ApplyFilter;
@@ -479,6 +509,21 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             new NavigationCrumb { ViewName = ViewNames.ViewManager, Title = "Views", Icon = "▦" },
             isHierarchical: false);
         _ = LoadDataSafeAsync();
+        _ = LoadDocTemplatesAsync();
+    }
+
+    /// <summary>Nạp danh sách bộ mẫu (Config DB) cho combo gắn Target. Nuốt lỗi (combo trống nếu module tắt).</summary>
+    private async Task LoadDocTemplatesAsync()
+    {
+        if (_docTemplateData is null) return;
+        try
+        {
+            var list = await _docTemplateData.GetTemplatesAsync();
+            DocTemplateChoices.Clear();
+            foreach (var t in list) DocTemplateChoices.Add(t);
+            RaisePropertyChanged(nameof(SelectedActionTemplate));
+        }
+        catch (Exception ex) { _logger?.Capture(ex, "ViewManager.LoadDocTemplates"); }
     }
 
     public bool IsNavigationTarget(NavigationContext navigationContext) => true;

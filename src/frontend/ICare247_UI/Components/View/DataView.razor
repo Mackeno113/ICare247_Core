@@ -193,6 +193,10 @@ else
     [Parameter] public EventCallback OnRefresh { get; set; }
     [Parameter] public EventCallback<ViewActionDto> OnUnhandledAction { get; set; }
 
+    /// <summary>Nút xuất tài liệu server-side theo mẫu (Export/Print + Engine=Server + Target=mã bộ mẫu).
+    /// Payload gồm dòng đang chọn để trang gọi DocTemplateApiService.</summary>
+    [Parameter] public EventCallback<ServerRenderRequest> OnServerRender { get; set; }
+
     /// <summary>Các dòng đang chọn (two-way) — chỉ có ý nghĩa khi Selection_Mode='multiple'.</summary>
     [Parameter] public IReadOnlyList<object> SelectedDataItems { get; set; } = [];
     [Parameter] public EventCallback<IReadOnlyList<object>> SelectedDataItemsChanged { get; set; }
@@ -283,10 +287,13 @@ else
         switch (a.ActionType.ToLowerInvariant())
         {
             case "export":
+                // Server-side (docx/pdf theo mẫu) → xuất qua Doc_Template; còn lại DxGrid client.
+                if (await TryServerRenderAsync(a)) return;
                 await ExportAsync(a.ExportFormat, a.ExportEngine);
                 return;
             case "print":
-                // Print client-side đơn giản — server-side template làm sau (VIEW-2e/3d).
+                // Print theo mẫu (Target = mã bộ mẫu) → render server; nếu không có mẫu, để caller xử lý.
+                if (await TryServerRenderAsync(a)) return;
                 await OnUnhandledAction.InvokeAsync(a);
                 return;
             case "navigate":
@@ -313,8 +320,27 @@ else
     }
 
     /// <summary>
+    /// Nếu action là xuất theo mẫu server-side (Target = mã bộ mẫu + docx/pdf hoặc Engine='Server'),
+    /// gom dòng đang chọn rồi phát <see cref="OnServerRender"/> để trang gọi render. Trả true nếu đã xử lý.
+    /// </summary>
+    private async Task<bool> TryServerRenderAsync(ViewActionDto a)
+    {
+        var fmt = (a.ExportFormat ?? "").ToLowerInvariant();
+        var isServer = string.Equals(a.ExportEngine, "Server", StringComparison.OrdinalIgnoreCase)
+                       || fmt is "pdf" or "docx";
+        if (!isServer || string.IsNullOrWhiteSpace(a.Target)) return false;
+
+        // Dòng đang chọn (tick checkbox) làm keyParams; lấy dòng đầu nếu chọn nhiều.
+        var sel = SelectedDataItems?.FirstOrDefault();
+        var row = AsRow(sel);
+        await OnServerRender.InvokeAsync(new ServerRenderRequest(
+            a.Target!.Trim(), fmt is "docx" ? "docx" : "pdf", row, row.Count > 0));
+        return true;
+    }
+
+    /// <summary>
     /// Export client qua DxGrid (giá trị thuần — DxGrid xuất theo FieldName, bỏ render template).
-    /// pdf/docx (Engine='Server') chưa hỗ trợ → báo lên caller.
+    /// docx/pdf theo mẫu đã tách sang <see cref="TryServerRenderAsync"/>; ở đây chỉ xlsx/csv.
     /// </summary>
     private async Task ExportAsync(string? format, string? engine)
     {
@@ -323,9 +349,8 @@ else
         var fmt = (format ?? "xlsx").ToLowerInvariant();
         var name = string.IsNullOrWhiteSpace(View.ExportFileName) ? View.ViewCode : View.ExportFileName!;
 
-        // Server-side (pdf/docx) chưa có endpoint → để caller xử lý/thông báo.
-        if (string.Equals(engine, "Server", StringComparison.OrdinalIgnoreCase)
-            || fmt is "pdf" or "docx")
+        // Server-side không có Target (mẫu) → không xuất được client, để caller thông báo.
+        if (string.Equals(engine, "Server", StringComparison.OrdinalIgnoreCase) || fmt is "pdf" or "docx")
         {
             await OnUnhandledAction.InvokeAsync(new ViewActionDto
             {

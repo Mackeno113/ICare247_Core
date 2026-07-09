@@ -7,6 +7,7 @@
 @using ICare247_UI.Components.View
 @using ICare247_UI.Components.MasterData
 @inject ViewApiService ViewApi
+@inject DocTemplateApiService DocApi
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject MasterDataApiService MasterApi
@@ -64,6 +65,7 @@
             <div class="dv-grid-area">
                 <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
                           OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction"
+                          OnServerRender="OnServerRenderAsync"
                           SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged" />
 
                 @if (_notice is not null)
@@ -364,11 +366,28 @@
         }
     }
 
-    /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side) → hiện thông báo.</summary>
+    /// <summary>Action chưa hỗ trợ client (print/event/api/export server-side không có mẫu) → hiện thông báo.</summary>
     private void OnUnhandledAction(ViewActionDto a)
     {
         _notice = a.ActionType.Equals("Export", StringComparison.OrdinalIgnoreCase)
-            ? Loc.L("view.action.exportUnsupported", "Xuất {0} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau.", a.ExportFormat ?? "")
+            ? Loc.L("view.action.exportNoTemplate", "Nút xuất server-side chưa gắn bộ mẫu (Target). Cấu hình Ui_View_Action.Target = mã bộ mẫu.")
             : Loc.L("view.action.unsupported", "Action '{0}' ({1}) chưa được hỗ trợ ở runtime.", a.ActionType, a.ActionCode);
+    }
+
+    /// <summary>
+    /// Xuất tài liệu theo mẫu (docx/pdf) từ nút lưới: dòng đang chọn làm keyParams → gọi API render → tải file.
+    /// Sự kiện theo sau: hiện thông báo nếu chưa chọn dòng hoặc render lỗi.
+    /// </summary>
+    private async Task OnServerRenderAsync(ServerRenderRequest req)
+    {
+        if (!req.HasSelection)
+        {
+            _notice = Loc.L("view.action.selectRowToExport", "Hãy chọn (tick) 1 dòng trước khi xuất tài liệu.");
+            return;
+        }
+        _notice = Loc.L("view.action.exporting", "Đang xuất tài liệu…");
+        StateHasChanged();
+        var err = await DocApi.RenderAsync(req.TemplateCode, req.Format, req.Row);
+        _notice = err ?? Loc.L("view.action.exportDone", "Đã xuất tài liệu.");
     }
 }

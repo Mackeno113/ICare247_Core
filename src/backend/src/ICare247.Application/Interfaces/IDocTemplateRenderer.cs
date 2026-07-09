@@ -30,6 +30,21 @@ public interface IDocTemplateRenderer
         CancellationToken ct = default);
 
     /// <summary>
+    /// Như <see cref="RenderAsync"/> nhưng định danh bộ mẫu bằng <c>Ma</c> thay vì Id — dùng khi màn lưới
+    /// gắn nút xuất qua <c>Ui_View_Action.Target = Ma</c> (mã ổn định/đọc được hơn Id sinh tự động).
+    /// Sự kiện theo sau: tra Id theo mã (tenant hiện tại) rồi render; không tồn tại → ném InvalidOperationException.
+    /// </summary>
+    /// <param name="code">Mã bộ mẫu (<c>Doc_Template.Ma</c>).</param>
+    /// <param name="keyParams">Tham số khóa (thường là cả dòng lưới đang chọn) — bind theo Doc_Template_Param.</param>
+    /// <param name="format">Định dạng đầu ra (Docx | Pdf).</param>
+    /// <param name="ct"></param>
+    Task<DocRenderResult> RenderByCodeAsync(
+        string code,
+        IReadOnlyDictionary<string, object?> keyParams,
+        DocOutputFormat format,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Khám phá danh sách biến (cột kết quả) của 1 stored proc — phục vụ màn soạn kéo biến.
     /// Sự kiện theo sau: chạy <c>sp_describe_first_result_set</c> (không side-effect) trên Data DB;
     /// proc phải nằm trong whitelist <c>Doc_Proc_Registry</c>.
