@@ -33,6 +33,7 @@
     <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Events\ConfigStudio.WPF.UI.Modules.Events.csproj" />
     <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.Grammar\ConfigStudio.WPF.UI.Modules.Grammar.csproj" />
     <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.I18n\ConfigStudio.WPF.UI.Modules.I18n.csproj" />
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Modules.DocTemplate\ConfigStudio.WPF.UI.Modules.DocTemplate.csproj" />
   </ItemGroup>
 
 </Project>

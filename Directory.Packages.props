@@ -82,6 +82,7 @@
     <!-- WPF ConfigStudio (DevExpress WPF + Prism) -->
     <PackageVersion Include="DevExpress.Wpf.Controls" Version="25.2.4" />
     <PackageVersion Include="DevExpress.Wpf.Core" Version="25.2.4" />
+    <PackageVersion Include="DevExpress.Wpf.RichEdit" Version="25.2.4" />
     <PackageVersion Include="DevExpress.Wpf.Grid" Version="25.2.4" />
     <PackageVersion Include="DevExpress.Wpf.LayoutControl" Version="25.2.4" />
     <PackageVersion Include="DevExpress.Wpf.NavBar" Version="25.2.4" />

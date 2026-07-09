@@ -22,6 +22,7 @@ public static class ViewNames
     public const string DependencyViewer = nameof(DependencyViewer);
     public const string GrammarLibrary = nameof(GrammarLibrary);
     public const string I18nManager = nameof(I18nManager);
+    public const string DocTemplateEditor = nameof(DocTemplateEditor);
     public const string PublishChecklist = nameof(PublishChecklist);
     public const string Settings = nameof(Settings);
     public const string DeactivateFormDialog        = nameof(DeactivateFormDialog);

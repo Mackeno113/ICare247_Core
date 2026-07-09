@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <!-- RichEditControl WPF cần System.Windows.Forms interop -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Prism.Wpf" />
+    <PackageReference Include="DevExpress.Wpf.Core" />
+    <PackageReference Include="DevExpress.Wpf.RichEdit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ConfigStudio.WPF.UI.Core\ConfigStudio.WPF.UI.Core.csproj" />
+  </ItemGroup>
+
+</Project>

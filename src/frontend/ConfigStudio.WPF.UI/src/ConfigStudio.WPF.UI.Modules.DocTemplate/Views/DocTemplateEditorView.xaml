@@ -1,0 +1,64 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.DocTemplate.Views.DocTemplateEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dxre="http://schemas.devexpress.com/winfx/2008/xaml/richedit"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="600" d:DesignWidth="1100" mc:Ignorable="d"
+             FontFamily="{DynamicResource AppFontFamily}"
+             Background="{DynamicResource AppPageBackgroundBrush}">
+
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Thanh công cụ -->
+        <Border Grid.Row="0" Padding="12"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Stored proc:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBox Width="240" VerticalAlignment="Center"
+                         Text="{Binding ProcName, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="Nạp biến" Command="{Binding LoadVariablesCommand}" Margin="6,0,0,0" Padding="10,4" />
+                <Separator Margin="10,0" />
+                <Button Content="Mở…"  Click="Open_Click"  Padding="10,4" />
+                <Button Content="Lưu…" Click="Save_Click" Margin="6,0,0,0" Padding="10,4" />
+                <Separator Margin="10,0" />
+                <Button Content="Chèn biến" Click="InsertField_Click" Padding="10,4" />
+                <Button Content="Đổi hướng giấy (dọc/ngang)" Click="ToggleOrientation_Click"
+                        Margin="6,0,0,0" Padding="10,4" />
+            </StackPanel>
+        </Border>
+
+        <!-- Editor + panel biến -->
+        <Grid Grid.Row="1" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="260" />
+            </Grid.ColumnDefinitions>
+
+            <dxre:RichEditControl x:Name="RichEdit" Grid.Column="0" />
+
+            <Border Grid.Column="1" Margin="12,0,0,0" Padding="8"
+                    Background="{DynamicResource AppSurfaceBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Biến (cột proc)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="Chọn biến rồi bấm 'Chèn biến' để chèn MERGEFIELD tại con trỏ." />
+                    <ListBox ItemsSource="{Binding Variables}" SelectedItem="{Binding SelectedVariable}"
+                             DisplayMemberPath="DisplayLabel" />
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- Trạng thái -->
+        <TextBlock Grid.Row="2" Margin="4,8,0,0" Text="{Binding Status}" />
+    </Grid>
+</UserControl>

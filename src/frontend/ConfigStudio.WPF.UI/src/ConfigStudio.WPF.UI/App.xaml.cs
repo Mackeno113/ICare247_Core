@@ -12,6 +12,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Infrastructure;
 using ConfigStudio.WPF.UI.Infrastructure.Logging;
+using ConfigStudio.WPF.UI.Modules.DocTemplate;
 using ConfigStudio.WPF.UI.Modules.Events;
 using ConfigStudio.WPF.UI.Modules.Forms;
 using ConfigStudio.WPF.UI.Modules.Grammar;
@@ -88,6 +89,7 @@ public partial class App : PrismApplication
         moduleCatalog.AddModule<EventsModule>();
         moduleCatalog.AddModule<GrammarModule>();
         moduleCatalog.AddModule<I18nModule>();
+        moduleCatalog.AddModule<DocTemplateModule>();
     }
 
     protected override void OnInitialized()
