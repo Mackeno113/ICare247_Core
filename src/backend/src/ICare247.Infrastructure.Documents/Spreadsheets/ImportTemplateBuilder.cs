@@ -46,17 +46,13 @@ internal sealed class ImportTemplateBuilder : IImportTemplateBuilder
             hf.Fill.BackgroundColor = HeaderFill;
             header.EndUpdateFormatting(hf);
 
-            // Ghi chú: kiểu dữ liệu + FK nhập Mã (comment ô — không chiếm dòng, tiêu đề vẫn ở dòng 1).
-            var note = BuildNote(col);
-            if (note is not null)
-                main.Comments.Add(header, note);
-
             main.Columns[colIdx].WidthInCharacters = 20;
 
-            // Cột FK → sheet phụ {Mã,Tên} + dropdown chọn Mã.
+            // Cột FK → sheet phụ {Mã,Tên} + dropdown chọn Mã (tạo TRƯỚC để ghi chú trỏ tên sheet).
+            string? auxName = null;
             if (col.Fk is { Items.Count: > 0 } fk)
             {
-                var auxName = SafeSheetName(col.Caption, "DanhMuc" + (colIdx + 1), usedNames);
+                auxName = SafeSheetName(col.Caption, "DanhMuc" + (colIdx + 1), usedNames);
                 usedNames.Add(auxName);
                 var aux = wb.Worksheets.Add(auxName);
 
@@ -79,6 +75,12 @@ internal sealed class ImportTemplateBuilder : IImportTemplateBuilder
                 var dv = main.DataValidations.Add(dvRange, DataValidationType.List, listFormula);
                 dv.ShowDropDown = true;   // hiện dropdown trong ô
             }
+
+            // Ghi chú ô tiêu đề. LƯU Ý: CommentCollection.Add(range, string) → string là AUTHOR, KHÔNG phải
+            // nội dung; phải dùng overload Add(range, author, text) mới có chữ (bản ClosedXML trước ghi thẳng).
+            var note = BuildNote(col, auxName);
+            if (note is not null)
+                main.Comments.Add(header, "ICare247", note);
         }
 
         main.FreezeRows(0);   // ghim dòng tiêu đề (hàng 0-based đầu tiên)
@@ -86,14 +88,22 @@ internal sealed class ImportTemplateBuilder : IImportTemplateBuilder
         return wb.SaveDocument(DocumentFormat.Xlsx);
     }
 
-    /// <summary>Dựng chú thích ô tiêu đề: kiểu dữ liệu + gợi ý "nhập Mã" cho cột FK. Null = không có.</summary>
-    private static string? BuildNote(ImportTemplateColumn col)
+    /// <summary>
+    /// Dựng chú thích ô tiêu đề: bắt buộc + kiểu dữ liệu + gợi ý "nhập Mã" cho cột FK (kèm tên sheet phụ
+    /// {Mã,Tên} để tra đúng). Null = không có ghi chú.
+    /// </summary>
+    private static string? BuildNote(ImportTemplateColumn col, string? auxSheetName)
     {
         var parts = new List<string>();
-        if (col.Required) parts.Add("Bắt buộc");
-        if (!string.IsNullOrWhiteSpace(col.TypeHint)) parts.Add("Kiểu: " + col.TypeHint);
-        if (col.Fk is not null) parts.Add("Nhập MÃ (chọn từ danh sách)");
-        return parts.Count == 0 ? null : string.Join(" · ", parts);
+        if (col.Required) parts.Add("• Bắt buộc");
+        if (!string.IsNullOrWhiteSpace(col.TypeHint)) parts.Add("• Kiểu: " + col.TypeHint);
+        if (col.Fk is not null)
+        {
+            parts.Add("• Nhập MÃ (chọn từ dropdown)");
+            if (!string.IsNullOrWhiteSpace(auxSheetName))
+                parts.Add($"• Tra Mã ↔ Tên ở sheet \"{auxSheetName}\"");
+        }
+        return parts.Count == 0 ? null : string.Join("\n", parts);
     }
 
     /// <summary>Đổi chỉ số cột 0-based → chữ cái cột Excel (0→A, 26→AA) cho địa chỉ A1 của vùng dropdown.</summary>
