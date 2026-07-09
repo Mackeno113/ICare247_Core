@@ -1,7 +1,21 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-09 (session 79 — Doc Template xuất Word/PDF + tách RCL control động). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-09 (session 80 — Doc Template GĐ4: gắn mẫu vào màn lưới). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 80 (2026-07-09) — Doc Template GĐ4: gắn mẫu tài liệu vào màn lưới (grid-first)
+
+**Bối cảnh:** user hỏi mắt xích còn thiếu — "làm sao xác định file template gắn vào màn hình, truyền thông tin gì". Phát hiện hệ **đã có sẵn** cơ chế đúng: `Ui_View_Action` (Spec 14 §2.3) với `Export_Engine='Server'` + `Target=report template`. Chốt (user): **grid-first** (tái dùng, KHÔNG thêm bảng binding) + làm **cả guide lẫn code wiring**. Form chi tiết để pha sau.
+
+**Cơ chế:** gắn mẫu vào lưới = 1 dòng `Ui_View_Action` (`Type=Export|Print`, `Format=docx|pdf`, `Engine=Server`, **`Target=Doc_Template.Ma`**, `Require_Selection`). Bấm nút → gom **dòng đang chọn** (đủ cột) làm `keyParams` → `Doc_Template_Param` (`Nguon='key', Nguon_Key=<tên cột>`) ánh xạ sang @param proc. Chuỗi backend `keyParams→BuildParams→proc` đã sẵn từ GĐ1.
+
+**Đã code (CHƯA build, CHƯA commit — branch `master`):**
+- **Backend**: `GetTemplateIdByCodeAsync` (repo) + `RenderByCodeAsync` (IDocTemplateRenderer + impl) + `POST /doc-templates/by-code/{code}/render`.
+- **Web**: `DocTemplateApiService` (POST→bytes→`icare.downloadBytes`) + DI Program.cs; `ServerRenderRequest`; `DataView.TryServerRenderAsync` + callback `OnServerRender`; `ViewPage.OnServerRenderAsync`.
+- **ConfigStudio WPF**: `ViewManagerViewModel` (`DocTemplateChoices` + `SelectedActionTemplate` điền Target/Engine) + combo "Bộ mẫu (Xuất tài liệu)" ở tab Actions (ViewManagerView.xaml). `IDocTemplateDataService` đã đăng ký DI sẵn (App.xaml.cs:80).
+- **Docs**: guide `docs/huong-dan-wpf/cau-hinh-xuat-tai-lieu.md` (6 bước E2E) + Spec 28 §7.4 binding + endpoint by-code.
+
+**⚠️ Chưa xong:** build verify 3 solution (user dừng lệnh build — nghi app đang chạy); commit + push; E2E thật (db/077 + đăng ký proc/param bằng SQL + soạn mẫu). Pha sau: `Ui_Form_Action` cho form chi tiết, Scope='Row' theo dòng, in hàng loạt (§13-D).
 
 ## Session 79 (2026-07-09) — Doc Template (xuất Word/PDF theo mẫu) + tách RCL control động
 

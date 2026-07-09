@@ -1,8 +1,9 @@
 // File    : ImportEngine.cs
 // Module  : Import
 // Layer   : Infrastructure
-// Purpose : ClosedXML implementation của IImportEngine — đọc workbook, trim, validate (format/required/FK/
-//           trùng khoá), dựng kế hoạch upsert khoá ghép, làm mờ Row_Json log. Spec 25 §11–§13, ADR-034.
+// Purpose : IImportEngine — đọc workbook qua ISpreadsheetReader (impl DevExpress cô lập ở Infrastructure.Documents),
+//           trim, validate (format/required/FK/trùng khoá), dựng kế hoạch upsert khoá ghép, làm mờ Row_Json log.
+//           Không tham chiếu thư viện Office trực tiếp. Spec 25 §11–§13, ADR-034 (rev: DevExpress).
 
 using System.Data;
 using System.Globalization;
@@ -10,7 +11,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using ClosedXML.Excel;
 using Dapper;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -26,6 +26,7 @@ public sealed partial class ImportEngine : IImportEngine
 {
     private readonly IFkLookupResolver _fk;
     private readonly IDataDbConnectionFactory _dataDb;
+    private readonly ISpreadsheetReader _reader;
     private readonly ILogger<ImportEngine> _logger;
 
     private const char KeySeparator = '';   // ngăn cách phần khoá ghép (như ConfigSync)
@@ -34,10 +35,12 @@ public sealed partial class ImportEngine : IImportEngine
     private static partial Regex SafeIdentifierRegex();
 
     public ImportEngine(
-        IFkLookupResolver fk, IDataDbConnectionFactory dataDb, ILogger<ImportEngine> logger)
+        IFkLookupResolver fk, IDataDbConnectionFactory dataDb,
+        ISpreadsheetReader reader, ILogger<ImportEngine> logger)
     {
         _fk = fk;
         _dataDb = dataDb;
+        _reader = reader;
         _logger = logger;
     }
 
@@ -47,25 +50,23 @@ public sealed partial class ImportEngine : IImportEngine
     {
         var fileErrors = new List<ImportCellError>();
 
-        // ── Mở workbook + chọn sheet chính ──────────────────────────────────
-        IXLWorksheet ws;
+        // ── Mở workbook + chọn sheet chính (qua ISpreadsheetReader — DevExpress cô lập) ──
+        SheetGrid grid;
         try
         {
-            var wb = new XLWorkbook(workbook);
-            ws = wb.Worksheets.FirstOrDefault(w =>
-                     string.Equals(w.Name, req.SheetName, StringComparison.OrdinalIgnoreCase))
-                 ?? wb.Worksheets.First();
+            grid = _reader.Read(workbook, req.SheetName);
         }
-        catch (Exception ex)
+        catch (Exception ex)   // SpreadsheetReadException hoặc lỗi đọc khác → lỗi cấp file
         {
             _logger.LogWarning(ex, "Import: không đọc được workbook cho View {View}", req.View.ViewCode);
             fileErrors.Add(new ImportCellError(null, "import.file.invalid", []));
             return Empty(fileErrors);
         }
 
-        // ── Map tiêu đề (dòng 1) → cột theo Caption/FieldName ────────────────
+        // ── Map tiêu đề (hàng đầu của grid) → cột theo Caption/FieldName ─────
         //    Cột bắt buộc VẮNG trong file KHÔNG chặn ở đây (partial update): chỉ chặn dòng THÊM MỚI (§phân loại).
-        var headerMap = MapHeaders(ws, req.Fields);
+        var headerRow = grid.Rows.Count > 0 ? grid.Rows[0] : [];
+        var headerMap = MapHeaders(headerRow, req.Fields);
         var present = new HashSet<string>(headerMap.Keys, StringComparer.OrdinalIgnoreCase);
 
         // ── FK: nạp bảng tra Mã→Id (lọc quyền) cho các cột FK có trong file ──
@@ -104,27 +105,29 @@ public sealed partial class ImportEngine : IImportEngine
         if (fileErrors.Count > 0)
             return Empty(fileErrors);
 
-        // ── Duyệt từng dòng dữ liệu (từ dòng 2) ─────────────────────────────
+        // ── Duyệt từng dòng dữ liệu (grid hàng 1..; hàng 0 = tiêu đề) ────────
         var parsed = new List<ParsedRow>();
         var skipped = 0;
-        var lastRow = ws.LastRowUsed()?.RowNumber() ?? 1;
-        for (var r = 2; r <= lastRow; r++)
+        for (var i = 1; i < grid.Rows.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
+            var cells = grid.Rows[i];
+            var excelRow = grid.FirstRowNumber + i;   // số dòng Excel 1-based để báo lỗi
 
             var raw = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
             var anyValue = false;
-            foreach (var (field, colNum) in headerMap)
+            foreach (var (field, colIdx) in headerMap)
             {
-                var text = ws.Cell(r, colNum).GetString().Trim();   // trim đầu/cuối (§11.2 b1)
-                raw[field] = text.Length == 0 ? null : text;
-                if (text.Length != 0) anyValue = true;
+                // Reader đã trim + trả null nếu ô rỗng (§11.2 b1).
+                var text = colIdx < cells.Count ? cells[colIdx] : null;
+                raw[field] = text;
+                if (text is not null) anyValue = true;
             }
             if (!anyValue) { skipped++; continue; }   // dòng rỗng hoàn toàn → bỏ
 
             var (values, errors) = ValidateRow(req.Fields, raw, fkMaps);
             var compositeKey = keyFields.Count > 0 ? BuildCompositeKey(keyFields, values) : null;
-            parsed.Add(new ParsedRow(r, raw, values, errors, compositeKey));
+            parsed.Add(new ParsedRow(excelRow, raw, values, errors, compositeKey));
         }
 
         // ── Nạp 1 lần tập khoá hiện có (upsert) — sau khi có giá trị resolve ──
@@ -205,20 +208,17 @@ public sealed partial class ImportEngine : IImportEngine
     private static ImportPlan Empty(IReadOnlyList<ImportCellError> fileErrors) =>
         new([], fileErrors, new ImportSummary(0, 0, 0, 0, 0));
 
-    /// <summary>Map tiêu đề dòng 1 → số cột theo Caption (bỏ hậu tố '*') rồi FieldName. Không phát sự kiện.</summary>
-    private static Dictionary<string, int> MapHeaders(IXLWorksheet ws, IReadOnlyList<ImportFieldSpec> fields)
+    /// <summary>Map hàng tiêu đề (0-based) → chỉ số cột theo Caption (bỏ hậu tố '*') rồi FieldName. Không phát sự kiện.</summary>
+    private static Dictionary<string, int> MapHeaders(
+        IReadOnlyList<string?> headerCells, IReadOnlyList<ImportFieldSpec> fields)
     {
-        // Tiêu đề chuẩn hóa (Caption bỏ '*'/trim, hoặc FieldName) → số cột.
+        // Tiêu đề chuẩn hóa (Caption bỏ '*'/trim, hoặc FieldName) → chỉ số cột (0-based).
         var headerToCol = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        var headerRow = ws.FirstRowUsed();
-        if (headerRow is not null)
+        for (var c = 0; c < headerCells.Count; c++)
         {
-            foreach (var cell in headerRow.CellsUsed())
-            {
-                var text = cell.GetString().TrimEnd('*', ' ').Trim();
-                if (text.Length > 0)
-                    headerToCol.TryAdd(text, cell.Address.ColumnNumber);
-            }
+            var text = headerCells[c]?.TrimEnd('*', ' ').Trim();
+            if (!string.IsNullOrEmpty(text))
+                headerToCol.TryAdd(text, c);
         }
 
         var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);

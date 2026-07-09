@@ -3,6 +3,44 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## 🟡 Đang dở — Import: đổi thư viện Excel ClosedXML → DevExpress Spreadsheet (session 80 — 2026-07-09, CHƯA build/commit)
+
+**Bối cảnh:** user yêu cầu dùng DevExpress thay thư viện import, **theo nguyên tắc cô lập giống in biểu mẫu**. Chốt (user, dù ADR-034 cố ý chọn ClosedXML MIT): **tiến hành toàn bộ** (builder + reader), chấp nhận **watermark trial + ràng buộc license** → sẽ mua Universal. ADR-034 đã ghi addendum đảo quyết định.
+
+### Đã code (CHƯA build/commit — branch `master`)
+- [x] **Seam** `ISpreadsheetReader` + `SheetGrid` (Application) — đọc .xlsx → lưới ô thuần (0-based, DisplayText đã trim). DevExpress ẩn sau interface như `IDocTemplateRenderer`.
+- [x] **Infrastructure.Documents** (project DevExpress DUY NHẤT): `Spreadsheets/SpreadsheetReader.cs` (Workbook.LoadDocument + GetUsedRange) + `Spreadsheets/ImportTemplateBuilder.cs` (port bản ClosedXML: header bold+fill, comment, dropdown `DataValidations.Add(List)`, freeze, aux sheet FK).
+- [x] **ImportEngine** (`Infrastructure`, KHÔNG tham chiếu DevExpress): thay mở workbook + `MapHeaders(ws)` + vòng đọc bằng `ISpreadsheetReader`/`SheetGrid`; giữ số dòng Excel để báo lỗi.
+- [x] **Gỡ ClosedXML**: xoá `Infrastructure/Import/ImportTemplateBuilder.cs` (bản cũ) + PackageReference + PackageVersion. DI: `AddDocuments` đăng ký `ISpreadsheetReader`+`IImportTemplateBuilder`; bỏ đăng ký ở `Infrastructure`.
+- [x] **API DevExpress Spreadsheet đã verify reflection** (không đoán): `Workbook`(ctor rỗng)/`LoadDocument(Stream)`/`SaveDocument(DocumentFormat.Xlsx)`; `Worksheet[r,c].DisplayText`/`GetUsedRange`(Top/BottomRowIndex,LeftColumnIndex,ColumnCount); `BeginUpdateFormatting().Font.Bold/.Fill`; `Columns[i].WidthInCharacters`; `Comments.Add`; `DataValidations.Add(range,List,formula).ShowDropDown`; `FreezeRows(0)`; `DocumentFormat` = struct field `.Xlsx`.
+
+### ⏳ Còn lại
+- [x] **Build verify backend** — ✅ **0 error** (chỉ 2 warning DX1000/DX1001 = license trial DevExpress, có `(Workbook)`; không có warning từ code).
+- [ ] E2E: tải template import (kiểm watermark trial + dropdown FK) + validate/commit file .xlsx thật.
+- [ ] Commit + push.
+- [ ] Cập nhật header Spec 25 (còn ghi "ClosedXML" — nay là DevExpress); ADR-034 đã có addendum.
+
+## 🟡 Đang dở — Doc Template GĐ4: gắn mẫu vào màn lưới (session 80 — 2026-07-09, CHƯA build/commit)
+
+**Bối cảnh:** khép mắt xích còn thiếu của Doc Template — "làm sao xác định mẫu gắn vào màn nào, truyền thông tin gì". Chốt (user): **grid-first** (tái dùng `Ui_View_Action`, KHÔNG thêm bảng), làm cả **guide + code wiring**. Form chi tiết để pha sau.
+
+### Cơ chế (đã chốt + tài liệu hóa)
+- Gắn mẫu vào **màn lưới** = 1 dòng `Ui_View_Action`: `Type=Export|Print`, `Export_Format=docx|pdf`, `Engine=Server`, **`Target = Doc_Template.Ma`**, `Scope`, `Require_Selection`.
+- **Thông tin truyền** = toàn bộ cột **dòng đang chọn** → `keyParams`; `Doc_Template_Param` (`Nguon='key', Nguon_Key=<tên cột lưới>`) ánh xạ sang tham số proc.
+- Backend đã sẵn chuỗi `keyParams → Doc_Template_Param (BuildParams) → @proc` từ GĐ1 — chỉ thiếu binding UI.
+
+### Đã code (CHƯA build verify, CHƯA commit — branch `master`)
+- [x] **Backend**: `GetTemplateIdByCodeAsync` (repo) + `RenderByCodeAsync` (interface+impl) + endpoint `POST /doc-templates/by-code/{code}/render`.
+- [x] **Web**: `DocTemplateApiService` (POST→bytes→`icare.downloadBytes`) + DI; `ServerRenderRequest` model; `DataView.TryServerRenderAsync` (Export/Print+Server+Target → gom dòng chọn → `OnServerRender`); `ViewPage.OnServerRenderAsync` (gọi render + tải + báo lỗi).
+- [x] **ConfigStudio WPF**: `ViewManagerViewModel` nạp `DocTemplateChoices` + `SelectedActionTemplate` (chọn mẫu → điền `Target=Ma`, `Engine=Server`); combo "Bộ mẫu (Xuất tài liệu)" ở tab Actions (`ViewManagerView.xaml`).
+- [x] **Docs**: guide deployer `docs/huong-dan-wpf/cau-hinh-xuat-tai-lieu.md` (6 bước E2E + sự cố); Spec 28 thêm §7.4 binding + endpoint by-code.
+
+### ⏳ Còn lại
+- [ ] **Build verify 3 solution** (backend / ICare247_UI / ConfigStudio) — session này CHƯA chạy (user dừng lệnh build; nghi app đang chạy).
+- [ ] Commit (chờ user chốt message + push cùng loạt CHƯA-push trước đó).
+- [ ] E2E thật: chạy `db/077` + đăng ký `Doc_Proc_Registry` + `Doc_Template_Param` (đang khai bằng SQL, chưa có màn quản trị) + soạn mẫu → xuất từ lưới.
+- [ ] Pha sau: nút xuất trên **form chi tiết** (`Ui_Form_Action` chưa tồn tại); nút **Scope='Row'** theo dòng; in hàng loạt (§13-D).
+
 ## ✅ Đã xong — Xuất Word/PDF theo mẫu (Doc Template) + tách RCL control động (session 79 — 2026-07-09, ĐÃ commit, CHƯA push)
 
 **Bối cảnh:** hỏi–chốt nhiều vòng về DevExpress Office File API (license/deploy IIS/trial) → dùng cho xuất hợp đồng Word/PDF. Kèm tách RCL control động (dọn nợ nhân bản RuntimeCheck).

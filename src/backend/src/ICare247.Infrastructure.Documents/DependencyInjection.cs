@@ -6,6 +6,7 @@
 
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure.Documents.Internal;
+using ICare247.Infrastructure.Documents.Spreadsheets;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ICare247.Infrastructure.Documents;
@@ -23,6 +24,10 @@ public static class DependencyInjection
         services.AddScoped<DocTemplateRepository>();
         services.AddScoped<DocProcRunner>();
         services.AddScoped<IDocTemplateRenderer, DocTemplateRenderer>();
+
+        // Excel I/O import (DevExpress Spreadsheet) — cô lập cùng project DevExpress. Spec 25 §11, ADR-034 (rev).
+        services.AddScoped<ISpreadsheetReader, SpreadsheetReader>();
+        services.AddScoped<IImportTemplateBuilder, ImportTemplateBuilder>();
         return services;
     }
 }

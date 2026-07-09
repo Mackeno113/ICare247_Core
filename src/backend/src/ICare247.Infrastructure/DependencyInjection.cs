@@ -107,8 +107,8 @@ public static class DependencyInjection
         services.AddScoped<IContextParamResolver, ContextParamResolver>();
         // Cầu FK dùng chung import + xuất template (Mã↔Id lọc quyền). Spec 25 §11–§14, ADR-034.
         services.AddScoped<IFkLookupResolver, FkLookupResolver>();
-        // Sinh workbook template import (ClosedXML) — sheet chính + sheet phụ FK + dropdown.
-        services.AddScoped<IImportTemplateBuilder, Import.ImportTemplateBuilder>();
+        // Sinh workbook template import (IImportTemplateBuilder) + đọc file (ISpreadsheetReader) đăng ký ở
+        // AddDocuments (DevExpress cô lập). ImportEngine chỉ phụ thuộc seam ISpreadsheetReader.
         // Engine đọc + validate + dựng kế hoạch upsert khoá ghép (preview NEW/UPDATE/ERROR). Spec 25 §11–§13.
         services.AddScoped<IImportEngine, Import.ImportEngine>();
         // Tổng hợp metadata import (cột nhập/kiểu/bắt buộc/khoá ghép/masking) + log import (Data DB) + hook.

@@ -551,3 +551,12 @@
   `IImportMetadataProvider`/`IImportLogRepository` · `ImportWizard.razor`+`ImportApiService` · hook v2 (@Source/
   @ImportSessionId zero-regression) + `sp_AfterImport_<T>` codegen. Migrations `db/071–073` + `db/procs/*` ⏳ CHƯA
   chạy DB; E2E ⏳. v1 = Grid phẳng; TreeGrid + Pha 3 Template sau.
+- **🔄 Addendum (2026-07-09, session 80) — đổi thư viện Excel: ClosedXML → DevExpress Spreadsheet.** User chốt
+  đồng nhất 1 thư viện Office (Document Processor) cho cả in biểu mẫu lẫn import; chấp nhận **watermark trial**
+  (template import tải về dính watermark tới khi mua Universal license) + ràng buộc license — **đảo điểm 1** của ADR này.
+  Cô lập DevExpress trong `ICare247.Infrastructure.Documents` (như in biểu mẫu, Spec 28 §2.3): reader qua seam mới
+  **`ISpreadsheetReader`** (Application) + `DevExpress...SpreadsheetReader`; template builder → `Infrastructure.Documents`
+  `ImportTemplateBuilder` (DevExpress). `ImportEngine` ở lại `Infrastructure` (KHÔNG tham chiếu DevExpress) — chỉ dùng
+  `ISpreadsheetReader`. Gỡ package `ClosedXML`. DI: `AddDocuments` đăng ký `ISpreadsheetReader`+`IImportTemplateBuilder`.
+  API DevExpress đã verify reflection (0-based; `Workbook`/`DisplayText`/`BeginUpdateFormatting`/`DataValidations.Add(List)`/
+  `Comments.Add`/`FreezeRows`/`DocumentFormat.Xlsx`). ⏳ CHƯA build/commit.

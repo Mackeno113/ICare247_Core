@@ -52,9 +52,8 @@
     <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
     <PackageVersion Include="System.Security.Cryptography.Xml" Version="8.0.3" />
 
-    <!-- Import/Export Excel (.xlsx) — ClosedXML (MIT, hợp SaaS thương mại). Template + đọc file import.
-         Spec 25 §11–§14 / ADR-034. Kéo theo DocumentFormat.OpenXml (transitive). -->
-    <PackageVersion Include="ClosedXML" Version="0.104.2" />
+    <!-- Import/Export Excel (.xlsx): DevExpress Spreadsheet — gói trong DevExpress.Document.Processor
+         (đã khai bên dưới cho in biểu mẫu), cô lập ở ICare247.Infrastructure.Documents. ADR-034 (rev). -->
 
     <!-- Xử lý ảnh server-side (MIT) — resize/nén + thumbnail. NativeAssets.Linux cho server Linux;
          Windows/macOS native đã kèm trong gói SkiaSharp gốc. -->
