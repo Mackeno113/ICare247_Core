@@ -5,14 +5,19 @@
 
 ## Session 80 (2026-07-09) — Doc Template GĐ4 (gắn mẫu vào lưới) + Import đổi ClosedXML→DevExpress
 
-**2 commit trên `master`, build backend 0 error, ĐÃ push:**
+**6 commit trên `master`, build backend + web 0 error, ĐÃ push:**
 
 **1) Doc Template GĐ4 — gắn mẫu vào màn lưới (commit `1c2dad2`).** Phát hiện `Ui_View_Action` (Spec 14) đã sẵn cơ chế (`Engine=Server`+`Target`). Grid-first, KHÔNG thêm bảng. Gắn = 1 dòng action `Type=Export|Print`, `Engine=Server`, **`Target=Doc_Template.Ma`**; bấm → dòng chọn làm `keyParams` → `Doc_Template_Param(Nguon='key')` → @proc (chuỗi backend sẵn từ GĐ1).
 - BE `GetTemplateIdByCodeAsync`+`RenderByCodeAsync`+`POST by-code/{code}/render`; Web `DocTemplateApiService`+`DataView.TryServerRenderAsync`+`ViewPage.OnServerRenderAsync`; ConfigStudio combo "Bộ mẫu (Xuất tài liệu)" tab Actions; guide `cau-hinh-xuat-tai-lieu.md`+Spec 28 §7.4.
 
 **2) Import: ClosedXML → DevExpress Spreadsheet (commit `c48bbc5`).** User chốt đồng nhất 1 thư viện Office, cô lập như in biểu mẫu; chấp nhận watermark trial+license (đảo điểm 1 ADR-034, có addendum). Seam `ISpreadsheetReader`+`SheetGrid` (Application) → impl DevExpress ở `Infrastructure.Documents`; `ImportEngine` KHÔNG đụng DevExpress. Gỡ hẳn ClosedXML. API verify reflection (0-based). Warning build = license trial DX1000/DX1001.
 
-**⚠️ Còn:** E2E cả 2 (Doc: db/077 + đăng ký proc/param SQL + soạn mẫu → xuất; Import: tải template kiểm watermark+dropdown, validate/commit .xlsx). Dọn header Spec 25 (còn "ClosedXML"). Pha sau Doc: `Ui_Form_Action`, Scope='Row', in hàng loạt.
+**3) Fix theo test của user + dọn nợ:**
+- Web Doc GĐ4: `293182f` (DataView sao dòng chọn sang Dictionary — ExpandoObject không implement IReadOnlyDictionary).
+- Import template: `ac1bd27` (ghi chú trống — DevExpress `Comments.Add(range,string)` là AUTHOR → dùng 3 tham số `Add(range,author,text)`); `4257491` (dropdown FK hiện **"Mã — Tên"**, import cắt lấy Mã qua `ImportConventions.ExtractFkCode` — có nối thì cắt, không thì cả ô là Mã).
+- Dọn nợ RCL session 79: `417a8fe` chuyển `LookupAddDialog` (+CSS scoped) từ host vào RCL `DynamicForms` (hết RZ10012, nút "➕ Thêm mới" hết hỏng); host dựng `FieldState` sau `ILookupQueryService.GetAddFormAsync`.
+
+**⚠️ Còn (E2E — chưa chạy):** Doc (db/077 + đăng ký proc/param SQL + soạn mẫu → xuất từ lưới); Import (validate/commit .xlsx thật, kiểm dropdown "Mã — Tên"); LookupBox có `AddFormCode` (xác nhận dialog bung). Dọn header Spec 25 (còn "ClosedXML"). Pha sau Doc: `Ui_Form_Action`, Scope='Row', in hàng loạt. 4 file i18n pre-existing vẫn để nguyên.
 
 ## Session 79 (2026-07-09) — Doc Template (xuất Word/PDF theo mẫu) + tách RCL control động
 

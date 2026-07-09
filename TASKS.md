@@ -3,13 +3,18 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
-## ✅ Đã xong — Import: đổi thư viện Excel ClosedXML → DevExpress Spreadsheet (session 80 — 2026-07-09, commit `c48bbc5`, ĐÃ push)
+## ✅ Đã xong — Import: đổi thư viện Excel ClosedXML → DevExpress Spreadsheet (session 80 — 2026-07-09, commits `c48bbc5`/`ac1bd27`/`4257491`, ĐÃ push)
 
 **Chốt (user):** đồng nhất 1 thư viện Office (DevExpress) cho cả in biểu mẫu lẫn import, **cô lập giống in biểu mẫu**; chấp nhận watermark trial + license → mua Universal sau. Đảo điểm 1 ADR-034 (có addendum).
 - Seam `ISpreadsheetReader`+`SheetGrid` (Application, 0-based lưới ô thuần) → impl DevExpress `Spreadsheets/SpreadsheetReader` + `ImportTemplateBuilder` ở `Infrastructure.Documents` (project DevExpress DUY NHẤT). `ImportEngine` ở `Infrastructure` KHÔNG tham chiếu DevExpress — chỉ dùng seam.
 - Gỡ hẳn ClosedXML (package + builder cũ). DI: `AddDocuments` đăng ký reader+builder. API verify reflection. Build backend **0 error** (chỉ warning license trial DX1000/DX1001).
+- **Fix theo test template (user):** (1) ghi chú trống — `Comments.Add(range,string)` là AUTHOR không phải nội dung → dùng `Add(range,author,text)` (`ac1bd27`). (2) dropdown FK hiện **"Mã — Tên"** (cột nối ở sheet phụ); import cắt lấy Mã qua `ImportConventions.ExtractFkCode` (có nối→cắt; không→cả ô là Mã) (`4257491`).
 
-**⏳ Còn:** E2E (tải template kiểm watermark+dropdown FK, validate/commit .xlsx thật); dọn header Spec 25 (còn ghi "ClosedXML").
+**⏳ Còn:** E2E (validate/commit .xlsx thật); dọn header Spec 25 (còn ghi "ClosedXML").
+
+## ✅ Đã xong — Dọn nợ tách RCL: chuyển LookupAddDialog vào RCL (session 80 — 2026-07-09, commit `417a8fe`, ĐÃ push)
+
+Nợ sót session 79: `LookupBoxRenderer` ở RCL nhưng `LookupAddDialog` còn ở host → thẻ render literal (RZ10012), nút "➕ Thêm mới" hỏng. Chuyển dialog + CSS scoped vào RCL; ẩn phụ thuộc host sau `ILookupQueryService.GetAddFormAsync` → `LookupAddForm(Title, List<FieldState>)` (host dựng FieldState + options). Build web **0 warning 0 error**. ⏳ E2E: mở LookupBox có `AddFormCode` xác nhận dialog bung.
 
 ## ✅ Đã xong — Doc Template GĐ4: gắn mẫu vào màn lưới (session 80 — 2026-07-09, commit `1c2dad2`, ĐÃ push)
 
@@ -17,7 +22,7 @@
 - BE: `GetTemplateIdByCodeAsync` + `RenderByCodeAsync` + `POST /doc-templates/by-code/{code}/render`.
 - Web: `DocTemplateApiService` + `DataView.TryServerRenderAsync` → `ViewPage.OnServerRenderAsync` (render+tải).
 - ConfigStudio: combo "Bộ mẫu (Xuất tài liệu)" ở tab Actions điền `Target`.
-- Docs: guide `cau-hinh-xuat-tai-lieu.md` + Spec 28 §7.4.
+- Docs: guide `cau-hinh-xuat-tai-lieu.md` + Spec 28 §7.4. Fix build web `293182f` (sao dòng chọn sang Dictionary — IReadOnlyDictionary).
 
 **⏳ Còn:** E2E (chạy `db/077` + đăng ký `Doc_Proc_Registry`/`Doc_Template_Param` bằng SQL + soạn mẫu → xuất). Pha sau: `Ui_Form_Action` (nút trên form chi tiết), `Scope='Row'`, in hàng loạt (§13-D).
 
