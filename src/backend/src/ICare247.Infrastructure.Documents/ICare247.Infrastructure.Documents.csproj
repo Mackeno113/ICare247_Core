@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ICare247.Infrastructure.Documents</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Project DevExpress DUY NHẤT của backend (cô lập Office File API) — Spec 28 §2.3 -->
+  <ItemGroup>
+    <ProjectReference Include="..\ICare247.Application\ICare247.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.Document.Processor" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+</Project>

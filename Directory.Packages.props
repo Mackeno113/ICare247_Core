@@ -76,6 +76,9 @@
     <PackageVersion Include="DevExpress.Blazor.Themes" Version="25.2.3" />
     <PackageVersion Include="DevExpress.Blazor.Themes.Fluent" Version="25.2.3" />
 
+    <!-- DevExpress Office File API (backend — chỉ project ICare247.Infrastructure.Documents dùng) -->
+    <PackageVersion Include="DevExpress.Document.Processor" Version="25.2.4" />
+
     <!-- WPF ConfigStudio (DevExpress WPF + Prism) -->
     <PackageVersion Include="DevExpress.Wpf.Controls" Version="25.2.4" />
     <PackageVersion Include="DevExpress.Wpf.Core" Version="25.2.4" />
