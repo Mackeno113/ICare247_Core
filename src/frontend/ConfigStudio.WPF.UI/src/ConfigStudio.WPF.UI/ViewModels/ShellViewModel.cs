@@ -341,6 +341,14 @@ public class ShellViewModel : ViewModelBase
 
         NavigationItems.Add(new NavigationItem
         {
+            Title = "Mẫu tài liệu",
+            Icon = "📄",
+            NavigateTo = ViewNames.DocTemplateEditor,
+            Level = 0
+        });
+
+        NavigationItems.Add(new NavigationItem
+        {
             IsDivider = true
         });
 

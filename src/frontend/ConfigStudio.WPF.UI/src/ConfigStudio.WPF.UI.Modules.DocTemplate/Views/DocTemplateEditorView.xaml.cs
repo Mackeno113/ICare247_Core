@@ -5,6 +5,7 @@
 //           Document control khó MVVM thuần → thao tác tài liệu để ở code-behind (chuẩn DevExpress).
 // Spec    : docs/spec/28_DOC_TEMPLATE_SPEC.md §8.2.
 
+using System.IO;
 using System.Windows;
 using ConfigStudio.WPF.UI.Modules.DocTemplate.ViewModels;
 using DevExpress.XtraRichEdit;
@@ -53,5 +54,23 @@ public partial class DocTemplateEditorView : UserControl
     {
         var page = RichEdit.Document.Sections[0].Page;
         page.Landscape = !page.Landscape;
+    }
+
+    /// <summary>Nạp bytes fragment đích (Master/mảnh) từ DB vào editor. Sự kiện theo sau: LoadDocument.</summary>
+    private async void LoadDb_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm is null) return;
+        var bytes = await Vm.LoadCurrentFragmentAsync();
+        if (bytes is { Length: > 0 })
+            RichEdit.LoadDocument(bytes, DocumentFormat.OpenXml);
+    }
+
+    /// <summary>Lưu document hiện tại (bytes) vào fragment đích trong DB. Sự kiện theo sau: SaveCurrentFragmentAsync.</summary>
+    private async void SaveDb_Click(object sender, RoutedEventArgs e)
+    {
+        if (Vm is null) return;
+        using var ms = new MemoryStream();
+        RichEdit.SaveDocument(ms, DocumentFormat.OpenXml);
+        await Vm.SaveCurrentFragmentAsync(ms.ToArray());
     }
 }

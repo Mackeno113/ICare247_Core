@@ -6,38 +6,68 @@
              xmlns:dxre="http://schemas.devexpress.com/winfx/2008/xaml/richedit"
              xmlns:prism="http://prismlibrary.com/"
              prism:ViewModelLocator.AutoWireViewModel="True"
-             d:DesignHeight="600" d:DesignWidth="1100" mc:Ignorable="d"
+             d:DesignHeight="640" d:DesignWidth="1200" mc:Ignorable="d"
              FontFamily="{DynamicResource AppFontFamily}"
              Background="{DynamicResource AppPageBackgroundBrush}">
 
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Thanh công cụ -->
-        <Border Grid.Row="0" Padding="12"
+        <!-- Hàng 0: biến + file + soạn -->
+        <Border Grid.Row="0" Padding="10"
                 Background="{DynamicResource AppSurfaceBrush}"
                 BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
-            <StackPanel Orientation="Horizontal">
+            <WrapPanel Orientation="Horizontal">
                 <TextBlock Text="Stored proc:" VerticalAlignment="Center" Margin="0,0,6,0" />
-                <TextBox Width="240" VerticalAlignment="Center"
+                <TextBox Width="200" VerticalAlignment="Center" Margin="0,0,6,0"
                          Text="{Binding ProcName, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Content="Nạp biến" Command="{Binding LoadVariablesCommand}" Margin="6,0,0,0" Padding="10,4" />
-                <Separator Margin="10,0" />
-                <Button Content="Mở…"  Click="Open_Click"  Padding="10,4" />
-                <Button Content="Lưu…" Click="Save_Click" Margin="6,0,0,0" Padding="10,4" />
-                <Separator Margin="10,0" />
-                <Button Content="Chèn biến" Click="InsertField_Click" Padding="10,4" />
-                <Button Content="Đổi hướng giấy (dọc/ngang)" Click="ToggleOrientation_Click"
-                        Margin="6,0,0,0" Padding="10,4" />
-            </StackPanel>
+                <Button Content="Nạp biến" Command="{Binding LoadVariablesCommand}" Margin="0,0,6,0" Padding="10,4" />
+                <Separator Margin="6,0" />
+                <Button Content="Mở file…" Click="Open_Click" Margin="0,0,6,0" Padding="10,4" />
+                <Button Content="Lưu file…" Click="Save_Click" Margin="0,0,6,0" Padding="10,4" />
+                <Separator Margin="6,0" />
+                <Button Content="Chèn biến" Click="InsertField_Click" Margin="0,0,6,0" Padding="10,4" />
+                <Button Content="Đổi hướng giấy (dọc/ngang)" Click="ToggleOrientation_Click" Padding="10,4" />
+            </WrapPanel>
         </Border>
 
-        <!-- Editor + panel biến -->
-        <Grid Grid.Row="1" Margin="0,12,0,0">
+        <!-- Hàng 1: bộ mẫu + mảnh + tạo + nạp/lưu DB -->
+        <Border Grid.Row="1" Margin="0,8,0,0" Padding="10"
+                Background="{DynamicResource AppSurfaceBrush}"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="6">
+            <WrapPanel Orientation="Horizontal">
+                <TextBlock Text="Bộ mẫu:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox Width="220" VerticalAlignment="Center" Margin="0,0,6,0"
+                          ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate}" />
+                <Button Content="Nạp DS" Command="{Binding LoadTemplatesCommand}" Margin="0,0,6,0" Padding="10,4" />
+                <Separator Margin="6,0" />
+                <TextBlock Text="Mã:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBox Width="90" VerticalAlignment="Center" Margin="0,0,6,0"
+                         Text="{Binding NewMa, UpdateSourceTrigger=PropertyChanged}" />
+                <TextBlock Text="Tên:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBox Width="140" VerticalAlignment="Center" Margin="0,0,6,0"
+                         Text="{Binding NewTen, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="Tạo mẫu" Command="{Binding CreateTemplateCommand}" Margin="0,0,6,0" Padding="10,4" />
+                <TextBlock Text="Proc detail:" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <TextBox Width="140" VerticalAlignment="Center" Margin="0,0,6,0"
+                         Text="{Binding NewDetailProc, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Content="+ Mảnh detail" Command="{Binding CreateDetailCommand}" Margin="0,0,6,0" Padding="10,4" />
+                <Separator Margin="6,0" />
+                <TextBlock Text="Đích:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <ComboBox Width="200" VerticalAlignment="Center" Margin="0,0,6,0"
+                          ItemsSource="{Binding FragmentTargets}" SelectedItem="{Binding SelectedFragment}" />
+                <Button Content="Nạp DB" Click="LoadDb_Click" Margin="0,0,6,0" Padding="10,4" />
+                <Button Content="Lưu DB" Click="SaveDb_Click" Padding="10,4" />
+            </WrapPanel>
+        </Border>
+
+        <!-- Hàng 2: editor + panel biến -->
+        <Grid Grid.Row="2" Margin="0,8,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="260" />
@@ -51,14 +81,14 @@
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="Biến (cột proc)" FontWeight="SemiBold" Margin="0,0,0,6" />
                     <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,0" TextWrapping="Wrap"
-                               Text="Chọn biến rồi bấm 'Chèn biến' để chèn MERGEFIELD tại con trỏ." />
+                               Text="Chọn biến rồi 'Chèn biến' để chèn MERGEFIELD tại con trỏ." />
                     <ListBox ItemsSource="{Binding Variables}" SelectedItem="{Binding SelectedVariable}"
                              DisplayMemberPath="DisplayLabel" />
                 </DockPanel>
             </Border>
         </Grid>
 
-        <!-- Trạng thái -->
-        <TextBlock Grid.Row="2" Margin="4,8,0,0" Text="{Binding Status}" />
+        <!-- Hàng 3: trạng thái -->
+        <TextBlock Grid.Row="3" Margin="4,8,0,0" Text="{Binding Status}" />
     </Grid>
 </UserControl>

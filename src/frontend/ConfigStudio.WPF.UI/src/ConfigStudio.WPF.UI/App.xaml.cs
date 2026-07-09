@@ -77,6 +77,7 @@ public partial class App : PrismApplication
         containerRegistry.Register<IImpactPreviewService, ImpactPreviewService>();
         containerRegistry.Register<ISchemaInspectorService, SchemaInspectorService>();
         containerRegistry.Register<ISchemaMaintenanceService, SchemaMaintenanceService>();
+        containerRegistry.Register<IDocTemplateDataService, DocTemplateDataService>();
 
         containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>(ViewNames.Dashboard);
         containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>(ViewNames.Settings);
