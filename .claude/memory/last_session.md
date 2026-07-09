@@ -1,7 +1,21 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-07 (session 77 — Hệ đính kèm / Upload file tổng quát P1–P6 + spec quản lý thông số). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-09 (session 79 — Doc Template xuất Word/PDF + tách RCL control động). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 79 (2026-07-09) — Doc Template (xuất Word/PDF theo mẫu) + tách RCL control động
+
+**Bối cảnh:** user hỏi–chốt nhiều vòng về DevExpress Office File API (đã cài 25.2.4 trên máy; license per-seat/royalty-free/trial-watermark; deploy IIS) → dùng cho xuất hợp đồng Word/PDF. Song song tách RCL control động.
+
+**Đã làm (7 commit trên `master`, build 3 solution 0 error, CHƯA push):**
+- **Tách RCL** (`fb26e33`): `ICare247.UI.DynamicForms` (FieldRenderer + 11 renderer + FieldState/models); interface hóa lookup/attachment service; **xóa hẳn `ICare247.Blazor.RuntimeCheck`** (mồ côi).
+- **Doc Template BE GĐ1** (`0542e5d`,`79d2818`,`4609752`): spec 28 + migration `db/077` (4 bảng, CHƯA chạy); `ICare247.Infrastructure.Documents` (DevExpress DUY NHẤT backend) — engine ghép-fragment master(dọc)+detail(ngang) + PDF, proc-runner whitelist, `IDocTemplateRenderer`, API describe/render. **PoC runtime xuất PDF 2 trang OK**.
+- **Doc Template WPF GĐ3** (`4b6d3ea`,`43cc0b4`): module `Modules.DocTemplate` (RichEditControl + panel biến + chèn MERGEFIELD + hướng giấy) + `IDocTemplateDataService` (CRUD bộ mẫu/mảnh + nạp/lưu fragment); menu "Mẫu tài liệu". WPF chỉ verify compile.
+- **Dọn solution**: `.slnx` backend/frontend/ConfigStudio bỏ RuntimeCheck + thêm 3 project mới.
+
+**⚠️ Để thấy kết quả:** chạy `db/077` + đăng ký `Doc_Proc_Registry` + soạn stored proc → E2E; mở ConfigStudio để test màn soạn WPF; mua license Universal khi prod (bỏ watermark).
+
+**Việc gợi ý tiếp:** push 7 commit (chờ user); tùy chọn UI param/registry + GĐ2 soạn Web (Blazor DxRichEdit). Các session 72/76/77/78 (FK, UI/UX, đính kèm, Import) vẫn CHƯA commit trên `master`.
 
 ## Session 77 (2026-07-07) — Hệ đính kèm / Upload file tổng quát
 

@@ -5,6 +5,7 @@
     <Project Path="src/ConfigStudio.WPF.UI.Modules.Forms/ConfigStudio.WPF.UI.Modules.Forms.csproj" />
     <Project Path="src/ConfigStudio.WPF.UI.Modules.Grammar/ConfigStudio.WPF.UI.Modules.Grammar.csproj" />
     <Project Path="src/ConfigStudio.WPF.UI.Modules.I18n/ConfigStudio.WPF.UI.Modules.I18n.csproj" />
+    <Project Path="src/ConfigStudio.WPF.UI.Modules.DocTemplate/ConfigStudio.WPF.UI.Modules.DocTemplate.csproj" />
     <Project Path="src/ConfigStudio.WPF.UI.Modules.Rules/ConfigStudio.WPF.UI.Modules.Rules.csproj" />
     <Project Path="src/ConfigStudio.WPF.UI/ConfigStudio.WPF.UI.csproj" />
   </Folder>

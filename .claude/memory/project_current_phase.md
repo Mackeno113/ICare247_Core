@@ -9,12 +9,16 @@
 danh mục nền tảng (CAT-CFG). F1 code xong (CFGSYNC-0→3, descriptor 14 bảng), `db/050` đã chạy; **còn E2E** +
 migration `db/062` (Config). Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Chi tiết + trạng thái từng task → `TASKS.md`.
 
-## Phạm vi tạm thời (đặt 2026-07-06)
+## Control động web = RCL dùng chung (2026-07-09)
 
-- **BỎ QUA project `ICare247.Blazor.RuntimeCheck`** cho đến khi user nhắc lại. Khi sửa component
-  web (VD `MasterDataForm.razor`, `FormRunner.razor`, FieldRenderers…) chỉ áp dụng cho
-  `src/frontend/ICare247_UI`, KHÔNG đồng bộ sang bản trùng trong `ICare247.Blazor.RuntimeCheck`
-  và không build/đụng project đó trừ khi user yêu cầu rõ.
+- `FieldRenderer` + renderer đã tách sang RCL **`ICare247.UI.DynamicForms`** (host + Portal tương lai dùng chung).
+- Project **`ICare247.Blazor.RuntimeCheck` đã XÓA HẲN** (session 79) — không còn bản nhân bản renderer.
+
+## Module xuất tài liệu (2026-07-09)
+
+- **Doc Template** (xuất Word/PDF theo mẫu, mail-merge, ghép-fragment) — spec `docs/spec/28_DOC_TEMPLATE_SPEC.md`.
+  Backend GĐ1 + soạn WPF GĐ3 xong; DevExpress cô lập ở `ICare247.Infrastructure.Documents` (backend) +
+  `ConfigStudio.WPF.UI.Modules.DocTemplate` (WPF). Còn: chạy `db/077`, GĐ2 soạn Web. Chi tiết → TASKS.md.
 
 ## Đang mở / ad-hoc gần đây (đầy đủ ở TASKS.md)
 

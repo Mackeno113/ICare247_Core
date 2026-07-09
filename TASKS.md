@@ -3,6 +3,34 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Xuất Word/PDF theo mẫu (Doc Template) + tách RCL control động (session 79 — 2026-07-09, ĐÃ commit, CHƯA push)
+
+**Bối cảnh:** hỏi–chốt nhiều vòng về DevExpress Office File API (license/deploy IIS/trial) → dùng cho xuất hợp đồng Word/PDF. Kèm tách RCL control động (dọn nợ nhân bản RuntimeCheck).
+
+### Tách RCL control động (commit `fb26e33`)
+- Rút `FieldRenderer` + 11 renderer + `FieldState`/models sang RCL mới **`ICare247.UI.DynamicForms`** (dùng chung host + Portal tương lai); interface hóa `ILookupQueryService`/`IAttachmentApiService` (impl ở lại host, DI). **Xóa hẳn project mồ côi `ICare247.Blazor.RuntimeCheck`**.
+
+### Doc Template — backend GĐ1 (commits `0542e5d`, `79d2818`, `4609752`)
+- Spec `docs/spec/28_DOC_TEMPLATE_SPEC.md` + migration `db/077` (4 bảng Config DB: `Doc_Template`/`_Detail`/`_Proc_Registry`/`_Param` — ⏳ CHƯA chạy).
+- Kiến trúc **ghép-fragment**: master A4 dọc + N detail A4 ngang → 1 file (đổi hướng giấy per-section: AppendSection + set Landscape).
+- **`ICare247.Infrastructure.Documents`** (project DevExpress DUY NHẤT backend, gói `DevExpress.Document.Processor 25.2.4`): engine merge+ghép+PDF + repo Config DB + proc runner (whitelist) + `IDocTemplateRenderer`. API `GET describe` + `POST {id}/render`.
+- **PoC runtime OK**: xuất PDF 2 trang dọc/ngang, tiếng Việt chuẩn (watermark trial).
+
+### Doc Template — soạn WPF GĐ3 (commits `4b6d3ea`, `43cc0b4`)
+- Module mới **`ConfigStudio.WPF.UI.Modules.DocTemplate`**: `RichEditControl` + panel biến (tái dùng `ISchemaInspectorService` dm_exec_describe Target DB) + chèn MERGEFIELD + đổi hướng giấy; menu "📄 Mẫu tài liệu".
+- `IDocTemplateDataService` (Config DB): tạo/list bộ mẫu + mảnh, nạp/lưu bytes fragment. Editor: picker bộ mẫu+đích, tạo mẫu/thêm mảnh, Nạp/Lưu DB.
+- WPF verify **compile** (không GUI ở môi trường). `UseWindowsForms=true` (RichEdit interop).
+
+### 📌 Decisions Log
+- **DevExpress Office File API**: xuất tài liệu; cô lập 1 project backend + dùng DevExpress WPF/Blazor sẵn có (KHÔNG phát sinh license mới). Per-seat-dev, runtime royalty-free; deploy IIS không cần license máy chạy; **trial = binary có hạn + watermark** → mua Universal khi prod.
+- **Mọi query qua stored proc** (không T-SQL trần) + whitelist `Doc_Proc_Registry`; tenant-local Config DB (ngoài ConfigSync); tham số ánh xạ `Doc_Template_Param`.
+- Detail = "nạp nguyên bảng" (header=tên cột); region-merge template-driven = tùy chọn sau.
+
+### ⏳ Còn lại
+- Chạy `db/077` + đăng ký proc `Doc_Proc_Registry` + soạn stored proc → E2E. Mua license Universal khi prod.
+- Tùy chọn: UI ánh xạ `Doc_Template_Param` + quản lý `Doc_Proc_Registry`; **GĐ2 soạn Web** (Blazor DxRichEdit).
+- Solution `.slnx` đã dọn RuntimeCheck + thêm `Infrastructure.Documents`/`Modules.DocTemplate`/`UI.DynamicForms`.
+
 ## ✅ Đã xong — Hệ đính kèm / Upload file tổng quát (session 77 — 2026-07-07, CHƯA commit)
 
 **Tính năng:** upload file tổng quát gắn field Form Engine, 4 trục: tối ưu ảnh · UX file lớn (streaming+progress) · bảo mật (allowlist+magic-byte+chặn mã thực thi) · lưu trữ linh hoạt (di dời gốc, đa-node). Spec `docs/spec/26_FILE_UPLOAD_SPEC.md` + hướng dẫn WPF `docs/huong-dan-wpf/cau-hinh-attachment.md`.

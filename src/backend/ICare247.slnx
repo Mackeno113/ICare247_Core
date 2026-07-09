@@ -4,10 +4,8 @@
     <Project Path="src/ICare247.Application/ICare247.Application.csproj" />
     <Project Path="src/ICare247.Domain/ICare247.Domain.csproj" />
     <Project Path="src/ICare247.Infrastructure/ICare247.Infrastructure.csproj" />
+    <Project Path="src/ICare247.Infrastructure.Documents/ICare247.Infrastructure.Documents.csproj" />
     <Project Path="src/ICare247.DbMigrator/ICare247.DbMigrator.csproj" />
-  </Folder>
-  <Folder Name="/web/">
-    <Project Path="../frontend/ICare247.Blazor.RuntimeCheck/ICare247.Blazor.RuntimeCheck.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj" />
