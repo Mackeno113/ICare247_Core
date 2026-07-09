@@ -40,6 +40,35 @@ public sealed class DocxRenderEngine
     }
 
     /// <summary>
+    /// Nạp nguyên 1 bảng dữ liệu (nhiều cột × nhiều dòng) vào fragment detail: nạp shell (giữ hướng giấy +
+    /// tiêu đề đã soạn) → chèn 1 bảng ở cuối gồm hàng tiêu đề (tên cột) + N hàng dữ liệu.
+    /// Sự kiện theo sau: trả bytes .docx detail đã điền — dùng cho <see cref="Assemble"/>.
+    /// </summary>
+    /// <param name="fragmentShellDocx">Bytes fragment detail (khổ A4 ngang, có thể có tiêu đề).</param>
+    /// <param name="data">Kết quả stored proc — mỗi cột 1 cột bảng, mỗi dòng 1 hàng.</param>
+    public byte[] BuildDetailTable(byte[] fragmentShellDocx, DataTable data)
+    {
+        using var server = new RichEditDocumentServer();
+        server.LoadDocument(fragmentShellDocx, DocumentFormat.OpenXml);
+        var doc = server.Document;
+
+        int cols = data.Columns.Count;
+        if (cols > 0)
+        {
+            var table = doc.Tables.Create(doc.Range.End, data.Rows.Count + 1, cols);
+            for (int c = 0; c < cols; c++)
+                doc.InsertText(table[0, c].Range.Start, data.Columns[c].ColumnName);
+            for (int r = 0; r < data.Rows.Count; r++)
+                for (int c = 0; c < cols; c++)
+                    doc.InsertText(table[r + 1, c].Range.Start, data.Rows[r][c]?.ToString() ?? "");
+        }
+
+        using var outStream = new MemoryStream();
+        server.SaveDocument(outStream, DocumentFormat.OpenXml);
+        return outStream.ToArray();
+    }
+
+    /// <summary>
     /// Ghép master + các detail (đã trộn) thành 1 tài liệu, giữ nguyên section/hướng giấy từng mảnh,
     /// rồi xuất theo định dạng yêu cầu.
     /// Sự kiện theo sau: nạp master → <c>AppendDocumentContent</c> lần lượt các detail → export .docx/.pdf.

@@ -28,6 +28,8 @@
     <!-- Api chỉ dùng Infrastructure tại composition root (Program.cs) - không dùng trong Controllers -->
     <ProjectReference Include="..\ICare247.Application\ICare247.Application.csproj" />
     <ProjectReference Include="..\ICare247.Infrastructure\ICare247.Infrastructure.csproj" />
+    <!-- Module xuất tài liệu (DevExpress Office File API) — composition root only -->
+    <ProjectReference Include="..\ICare247.Infrastructure.Documents\ICare247.Infrastructure.Documents.csproj" />
   </ItemGroup>
 
 </Project>

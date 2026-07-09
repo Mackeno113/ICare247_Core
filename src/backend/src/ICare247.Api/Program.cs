@@ -11,6 +11,7 @@ using ICare247.Api.Middleware;
 using ICare247.Application;
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure;
+using ICare247.Infrastructure.Documents;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -60,6 +61,7 @@ try
     // ── Application + Infrastructure ────────────────────────────────────────
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddDocuments();   // module xuất Word/PDF theo mẫu (DevExpress) — Spec 28
 
     // ── Tenant Context (scoped — set bởi TenantMiddleware) ─────────────────
     builder.Services.AddScoped<TenantContext>();
