@@ -331,8 +331,9 @@ else
         if (!isServer || string.IsNullOrWhiteSpace(a.Target)) return false;
 
         // Dòng đang chọn (tick checkbox) làm keyParams; lấy dòng đầu nếu chọn nhiều.
+        // Sao sang Dictionary cụ thể (ExpandoObject/IDictionary không implement IReadOnlyDictionary).
         var sel = SelectedDataItems?.FirstOrDefault();
-        var row = AsRow(sel);
+        var row = new Dictionary<string, object?>(AsRow(sel), StringComparer.OrdinalIgnoreCase);
         await OnServerRender.InvokeAsync(new ServerRenderRequest(
             a.Target!.Trim(), fmt is "docx" ? "docx" : "pdf", row, row.Count > 0));
         return true;
