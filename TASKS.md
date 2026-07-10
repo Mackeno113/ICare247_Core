@@ -3,7 +3,7 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
-## 🔴 Đang làm — Bỏ hẳn cột `Tenant_Id` (ADR-035, session 81 — 2026-07-10)
+## ✅ Đã xong — Bỏ hẳn cột `Tenant_Id` (ADR-035, session 81 — 2026-07-10, commits `904fbb3`/`83717b2`/`a302c37`/`ff7653b`)
 
 **Chốt (user):** cô lập tenant ở **tầng connection**, không ở tầng cột. Đích = **0 bảng** có `Tenant_Id`,
 cả Config lẫn Data DB. Giữ `TenantId` runtime (resolver + cache key). Quy tắc: `.claude-rules/database-design.md`.
@@ -30,7 +30,7 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
       → drop filtered index → drop DEFAULT → drop cột (9 bảng) → dựng lại UNIQUE thường + `IX_Sys_Lookup_Code`
       `(Lookup_Code, Is_Active)` → **DROP TABLE `Sys_Tenant`**. Toàn bộ trong **1 batch + 1 transaction + TRY/CATCH**
       (chèn `GO` giữa chừng sẽ khiến guard không chặn được các bước sau). Gỡ code `Doc_Template`/`Doc_Proc_Registry`
-      cùng commit (cột `NOT NULL` không default). ⏳ **CHƯA chạy trên DB nào.**
+      cùng commit (cột `NOT NULL` không default). ✅ **ĐÃ CHẠY** trên Config DB (2026-07-10).
 - [x] **TID-4 (spec)** — `docs/spec/02_DATABASE_SCHEMA.md` cập nhật: mục Tenant Isolation viết lại,
       `Sys_Tenant` đánh dấu ĐÃ DROP, gỡ 5 dòng cột + 4 cặp filtered index, sửa sơ đồ quan hệ.
       Cũng sửa `.claude-rules/dapper-patterns.md` (dòng 5–6 dạy ngược lại ADR-035).
@@ -57,17 +57,55 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
       - `ExecuteAddCode` là `async void` không `await` gì → đổi về `void` (async void nuốt exception).
       Build WPF xanh.
 
-> ℹ️ `DeleteCodeAsync` KHÔNG đụng `Sys_Resource` — `Label_Key` thành mồ côi, đồng nhất với `DeleteItemAsync`
-> sẵn có. Nếu muốn dọn resource mồ côi thì làm thành task riêng cho cả hai đường xóa.
+---
 
-> ✅ `db/078` **ĐÃ CHẠY** trên Config DB (2026-07-10). `db/015_create_cf_data_schema.sql` (bảng `Cf_*`,
-> `Tenant_Id NOT NULL`) = **tham khảo, không dùng** → cố ý để nguyên, không áp ADR-035.
+## 🔜 CÒN LẠI sau ADR-035 — gom 1 chỗ (2026-07-10)
 
-> ⚠️ **Mâu thuẫn spec cần chốt riêng (không thuộc TID-*):** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ
-> `Sys_Menu`/`Sys_MenuCatalog` nằm ở "Config DB dùng chung" (`Tenant_Id NULL` = dùng chung), còn
-> `docs/spec/16_CONFIG_SYNC_SPEC.md` §1 nói `ICare247_Master` (catalog) mới giữ `Sys_MenuCatalog`.
-> Hai spec chỉ hai DB khác nhau cho cùng một bảng. Thực tế: 1 + 45 dòng, **0 dòng override** → gỡ cột
-> không mất gì, nhưng **nơi đặt bảng vẫn cần user quyết**.
+> Code đã sạch `Tenant_Id`, `db/078` đã chạy. Phần dưới là **những gì CHƯA làm**, xếp theo mức nguy hiểm.
+
+### 🔥 R-1 — 4 migration seed sẽ VỠ nếu chạy lại (tham chiếu cột không còn)
+
+| File | Câu SQL |
+|---|---|
+| `db/032_seed_default_views.sql` | `INSERT dbo.Ui_View (..., Tenant_Id, ...) SELECT ..., t.Tenant_Id` |
+| `db/047_seed_ui_form_ht_vaitro.sql` | `WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL` |
+| `db/065_config_grid_chinhanhnganhang_fk.sql` | `ORDER BY CASE WHEN Tenant_Id IS NULL THEN 1 ELSE 0 END` |
+| `db/066_config_grid_chinhanhnganhang_autojoin.sql` | như trên |
+
+Provision DB mới chạy tuần tự `000 → 078` thì **vẫn đúng** (078 dọn sau cùng). Nhưng chạy lại bất kỳ file
+nào trong 4 file trên **sau** khi 078 đã áp → `Invalid column name 'Tenant_Id'`. Cần sửa 4 file này.
+
+Tám file khác (`000`, `001`, `002`, `009`, `031`, `043`, `044`, `077`) **CREATE** cột — chạy trước 078 nên
+không vỡ, chỉ là "dựng lên rồi phá đi". Dọn được thì gọn, không gấp.
+
+**KHÔNG đụng:** `db/036_create_catalog.sql` (Catalog DB — `dbo.Tenant.Tenant_Id` là PK, hợp lệ) ·
+`db/015_create_cf_data_schema.sql` (**tham khảo, không dùng** — user chốt để nguyên) ·
+`db/029`/`037`/`056` (chỉ là comment).
+
+### 📄 R-2 — 6 spec vẫn dạy mô hình cũ (nguy hiểm vì người ta copy theo)
+
+- `01_ARCHITECTURE.md:44` — *"Mọi query SQL phải có `AND Tenant_Id = @TenantId`"* → **quy tắc cứng nay SAI**.
+- `08_CONVENTIONS.md:53` — mẫu Dapper còn `f.Tenant_Id = @TenantId`.
+- `09_FIELD_CONFIG_GUIDE.md:273,321` + `12_CASCADE_LOOKUP_GUIDE.md:66` — ví dụ **Filter SQL**
+  `Is_Active = 1 AND Tenant_Id = @TenantId`. User gõ thẳng vào ConfigStudio → lỗi runtime.
+- `14_VIEW_CONFIG_SPEC.md:73,84` — DDL `Ui_View` còn cột + `FK_Ui_View_Tenant → Sys_Tenant` (bảng đã drop).
+- `28_DOC_TEMPLATE_SPEC.md:79,90` — vẫn ghi *"giữ `Tenant_Id` cho đồng nhất"*.
+- `docs/migrations/000_create_schema.sql` + `001_seed_all.sql` — bản sao cũ, còn `Sys_Tenant`.
+
+### ❓ R-3 — Chờ user quyết: `Sys_Menu` / `Sys_MenuCatalog` nằm ở DB nào?
+
+`15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ hai bảng ở **"Config DB dùng chung"**; `16_CONFIG_SYNC_SPEC.md` §1 nói
+**`ICare247_Master` (catalog)** mới giữ `Sys_MenuCatalog`. Hai spec chỉ hai DB khác nhau cho cùng một bảng.
+Thực tế: 1 + 45 dòng, **0 dòng override** → gỡ cột không mất gì, nhưng nơi đặt bảng vẫn cần chốt.
+
+Liên quan: phần **đồng bộ menu master → `HT_ChucNang`** (ADR-023) **chưa có dòng code nào** — đó là lý do
+grep không ra tham chiếu C# tới 2 bảng này, không phải vì bảng thừa.
+
+### 🧹 R-4 — Nợ nhỏ
+
+- `Sys_Resource` mồ côi: `DeleteItemAsync` lẫn `DeleteCodeAsync` đều KHÔNG xóa `Label_Key` tương ứng.
+  Nếu muốn dọn thì làm 1 task cho cả hai đường xóa (đừng sửa lệch nhau).
+- 4 file i18n (`catalog.json` ×2, `en.json`, `i18n-report.md`) dirty từ trước session 81 — chưa ai commit.
 
 ## ✅ Đã xong — Import: đổi thư viện Excel ClosedXML → DevExpress Spreadsheet (session 80 — 2026-07-09, commits `c48bbc5`/`ac1bd27`/`4257491`, ĐÃ push)
 

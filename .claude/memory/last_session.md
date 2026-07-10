@@ -1,7 +1,45 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-09 (session 80 — Doc Template GĐ4 + Import đổi sang DevExpress; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-10 (session 81 — ADR-035 bỏ hẳn cột `Tenant_Id`; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+
+## Session 81 (2026-07-10) — ADR-035: bỏ HẲN cột `Tenant_Id` + 5 bug lộ ra khi rà
+
+**4 commit trên `master`** (`904fbb3` backend · `83717b2` WPF+migration+spec · `a302c37` PublishCheckService ·
+`ff7653b` Sys_Lookup Manager). Build backend + WPF 0 error, 145/145 test. `db/078` **đã chạy** trên Config DB.
+
+**Quyết định (ADR-035):** cô lập tenant ở **tầng connection**, không ở tầng cột. ADR-018 cho mỗi tenant 1 Config
+DB riêng → cột định danh tenant *bên trong* DB đã-thuộc-1-tenant không phân biệt được gì. Vai trò "master vs
+tenant tùy biến" đã do ConfigSync đảm nhiệm qua `Is_System`/`Is_Customized`/`Source_Ver` (db/050).
+**Giữ `TenantId` runtime** (resolver chọn connection + `CacheKeys` — Redis L2 dùng chung).
+Quy tắc mới: `.claude-rules/database-design.md`.
+
+**Khảo sát DB live lật ngược giả định:** không phải 4 bảng như spec 02 ghi mà **9 bảng** có cột — `db/*.sql`
+và spec đều KHÔNG phản ánh đủ. `Sys_Table` 11/11 tenant-specific (0 global) ⇒ mệnh đề `OR Tenant_Id IS NULL`
+rải khắp ~20 chỗ SQL là **nhánh chết**.
+
+**5 bug lộ ra, đều là hệ quả của `Tenant_Id` tràn lan:**
+1. `LookupRepository` lọc `OR Tenant_Id = 0` trong khi db/009 đã đổi global sang `NULL` → **13 lookup global
+   im lặng biến mất** (`HINHTHUC_2FA`, `LOAI_TAIKHOAN`, `TRANGTHAI_DONVI`, `TRANGTHAI_NGUOIDUNG`).
+2. `SysLookupDataService` (WPF) mang **bản sao y hệt** bug đó — cùng sai lầm, 2 nơi.
+3–5. `PublishCheckService` có **3 query tham chiếu cột KHÔNG tồn tại**: `Ui_Field.ColumnCode`,
+   `Sys_Dependency.Source_Field_Code`, `Sys_Language.Is_Active`. Query thứ 2 nằm trong **`catch` trần**
+   → im lặng báo "Sys_Dependency chưa được build" ⇒ **check vòng lặp phụ thuộc CHƯA BAO GIỜ chạy**.
+
+**Bài học:** `catch` trần biến lỗi schema thành thông điệp sai lệch, sống lâu không ai biết.
+Hai quy ước cho cùng một khái niệm (`0` vs `NULL` cho "global") thì lỗi sinh sôi ở mọi nơi chạm vào cột.
+
+**Đính chính memory:** ADR-018 từng ghi `Status: 🔴 chưa code (infra resolver)` — **SAI**,
+`TenantConnectionResolver` đã code và đang chạy. Giả định sai đó suýt dẫn tới kết luận nhầm.
+
+**Cũng làm:** `Sys_Lookup Manager` (**đã có sẵn**, không phải dựng mới) — xóa `AddLookupCodeAsync` chết
+(`return exists == 0 || true;`), làm thật `DeleteCodeCommand` (nút 🗑 + confirm + đếm item **từ DB**,
+không từ `Items.Count` vì `LoadItemsAsync` chạy fire-and-forget).
+
+**⚠️ Còn lại → xem mục "🔜 CÒN LẠI sau ADR-035" trong TASKS.md:** 4 migration seed sẽ vỡ nếu chạy lại
+(`032`/`047`/`065`/`066`) · 6 spec vẫn dạy mô hình cũ (`01_ARCHITECTURE.md:44` ghi quy tắc cứng nay SAI) ·
+**chờ user chốt** `Sys_Menu`/`Sys_MenuCatalog` nằm ở Config DB hay Catalog DB (spec 15 vs 16 mâu thuẫn).
+4 file i18n pre-existing vẫn để nguyên.
 
 ## Session 80 (2026-07-09) — Doc Template GĐ4 (gắn mẫu vào lưới) + Import đổi ClosedXML→DevExpress
 
