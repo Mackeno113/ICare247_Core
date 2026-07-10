@@ -93,6 +93,7 @@
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <dxe:TextEdit Grid.Column="0"
                                              Text="{Binding NewCodeText, UpdateSourceTrigger=PropertyChanged}"
@@ -102,6 +103,10 @@
                                                  Margin="4,0,0,0"
                                                  Command="{Binding AddCodeCommand}"
                                                  ToolTip="Thêm lookup code mới"/>
+                                <dx:SimpleButton Grid.Column="2" Content="🗑"
+                                                 Margin="4,0,0,0"
+                                                 Command="{Binding DeleteCodeCommand}"
+                                                 ToolTip="Xóa code đang chọn cùng toàn bộ items của nó"/>
                             </Grid>
                             <!-- Lỗi new code -->
                             <TextBlock Text="{Binding NewCodeError}"

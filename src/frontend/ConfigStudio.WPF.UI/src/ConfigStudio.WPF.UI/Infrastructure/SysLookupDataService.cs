@@ -239,24 +239,15 @@ public sealed class SysLookupDataService : ISysLookupDataService
     }
 
     /// <inheritdoc />
-    public async Task<bool> AddLookupCodeAsync(string lookupCode, CancellationToken ct = default)
+    public async Task<int> DeleteCodeAsync(string lookupCode, CancellationToken ct = default)
     {
-        if (!_config.IsConfigured) return false;
+        if (!_config.IsConfigured) return 0;
 
-        // Kiểm tra code chưa tồn tại
-        const string checkSql = """
-            SELECT COUNT(1) FROM dbo.Sys_Lookup
-            WHERE Lookup_Code = @LookupCode
-            """;
+        const string sql = "DELETE FROM dbo.Sys_Lookup WHERE Lookup_Code = @LookupCode";
 
         await using var conn = new SqlConnection(_config.ConnectionString);
-        var exists = await conn.ExecuteScalarAsync<int>(
-            new CommandDefinition(checkSql,
-                new { LookupCode = lookupCode },
-                cancellationToken: ct));
-
-        // Code đã tồn tại — không thêm placeholder, coi như thành công
-        return exists == 0 || true;
+        return await conn.ExecuteAsync(
+            new CommandDefinition(sql, new { LookupCode = lookupCode }, cancellationToken: ct));
     }
 
     /// <inheritdoc />

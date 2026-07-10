@@ -4,6 +4,7 @@
 // Purpose : ViewModel cho màn hình Sys_Lookup Manager — quản lý danh mục dùng chung.
 
 using System.Collections.ObjectModel;
+using System.Linq;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
@@ -184,7 +185,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
 
         RefreshCommand    = new DelegateCommand(async () => await LoadCodesAsync());
         AddCodeCommand    = new DelegateCommand(ExecuteAddCode,    () => !string.IsNullOrWhiteSpace(NewCodeText));
-        DeleteCodeCommand = new DelegateCommand(ExecuteDeleteCode, () => SelectedCode is not null);
+        DeleteCodeCommand = new DelegateCommand(async () => await ExecuteDeleteCodeAsync(), () => SelectedCode is not null);
         AddItemCommand    = new DelegateCommand(ExecuteAddItem,    () => SelectedCode is not null);
         EditItemCommand   = new DelegateCommand(ExecuteEditItem,   () => SelectedItem is not null);
         DeleteItemCommand = new DelegateCommand(async () => await ExecuteDeleteItemAsync(), () => SelectedItem is not null);
@@ -246,7 +247,7 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
 
     // ── Code commands ─────────────────────────────────────────
 
-    private async void ExecuteAddCode()
+    private void ExecuteAddCode()
     {
         var code = NewCodeText.Trim().ToUpper();
 
@@ -269,11 +270,53 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
         NewCodeText  = "";
     }
 
-    private void ExecuteDeleteCode()
+    /// <summary>
+    /// Xóa 1 lookup code = xóa TOÀN BỘ items của nó (không có "bảng code" riêng).
+    /// Hỏi xác nhận trước vì đây là xóa cứng nhiều dòng — Sys_Lookup không có soft-delete.
+    /// Sự kiện theo sau: reload danh sách code, code vừa xóa biến mất khỏi dropdown.
+    /// </summary>
+    private async Task ExecuteDeleteCodeAsync()
     {
-        // Xóa code sẽ không xóa item trong DB — chỉ deselect.
-        // Để xóa hẳn, user phải xóa từng item.
-        StatusMessage = "Để xóa code, hãy xóa hết tất cả items của code đó.";
+        if (_lookupService is null || SelectedCode is null) return;
+
+        var code = SelectedCode;
+
+        IsBusy = true;
+        try
+        {
+            // Đếm từ DB, KHÔNG dùng Items.Count: LoadItemsAsync chạy fire-and-forget nên
+            // Items có thể còn rỗng lúc user bấm xóa → sẽ bỏ sót dòng thật trong DB.
+            var itemCount = (await _lookupService.GetItemsForEditAsync(code, _cts.Token)).Count;
+
+            // Code mới thêm, chưa có item nào → chỉ tồn tại trong list local, không chạm DB.
+            if (itemCount == 0)
+            {
+                LookupCodes.Remove(code);
+                SelectedCode  = LookupCodes.FirstOrDefault();
+                StatusMessage = $"Đã bỏ code '{code}' (chưa có item nào).";
+                return;
+            }
+
+            var answer = System.Windows.MessageBox.Show(
+                $"Xóa vĩnh viễn code '{code}' cùng toàn bộ {itemCount} item của nó?\n\n" +
+                "Thao tác này KHÔNG thể hoàn tác (Sys_Lookup không có soft-delete).",
+                "Xác nhận xóa lookup code",
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
+            if (answer == System.Windows.MessageBoxResult.No) return;
+
+            var deleted = await _lookupService.DeleteCodeAsync(code, _cts.Token);
+            IsEditorVisible = false;
+            StatusMessage   = $"Đã xóa code '{code}' ({deleted} item).";
+            await LoadCodesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysLookupManager.DeleteCode");
+            StatusMessage = $"Lỗi xóa code: {ex.Message}";
+        }
+        finally { IsBusy = false; }
     }
 
     // ── Item commands ─────────────────────────────────────────

@@ -45,10 +45,20 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
       - `CheckI18nCompletenessAsync`: `Sys_Language WHERE Is_Active = 1` → bảng không có cột đó.
       Build WPF xanh.
 
-- [ ] **TID-6 (nợ, chờ user quyết)** — `SysLookupDataService.AddLookupCodeAsync` kết thúc bằng
-      `return exists == 0 || true;` (luôn `true`), **không INSERT gì**, và **0 caller toàn repo**.
-      Một `Lookup_Code` không thể tồn tại khi chưa có item nào (mỗi dòng `Sys_Lookup` = 1 item) → method
-      bất khả thi về mô hình. Đề xuất: **xóa hẳn** khỏi `ISysLookupDataService` + impl. Chưa làm.
+- [x] **TID-6 (dọn Sys_Lookup Manager)** — Màn hình **đã có sẵn** (View 296 dòng + VM 428 dòng, nav Alt+3),
+      và đã chọn đúng hướng "code mới giữ ở client" (`ExecuteAddCode` không chạm DB — code chỉ tồn tại
+      khi có ≥1 item). Ba thứ hở, đã xử lý:
+      - `AddLookupCodeAsync` = tàn dư thiết kế cũ (`return exists == 0 || true;` → luôn `true`, không INSERT,
+        0 caller). **Đã xóa** khỏi interface + impl.
+      - `DeleteCodeCommand` khai báo nhưng **không nút nào trong XAML**, thân hàm chỉ hiện thông báo.
+        User chốt "làm thật" → thêm `DeleteCodeAsync` (DELETE theo `Lookup_Code`), nút 🗑, dialog xác nhận
+        (`MessageBox` YesNo — bám mẫu `FieldConfigViewModel`), đếm item **từ DB** chứ không từ `Items.Count`
+        (`LoadItemsAsync` fire-and-forget → có thể còn rỗng lúc bấm ⇒ bỏ sót dòng thật).
+      - `ExecuteAddCode` là `async void` không `await` gì → đổi về `void` (async void nuốt exception).
+      Build WPF xanh.
+
+> ℹ️ `DeleteCodeAsync` KHÔNG đụng `Sys_Resource` — `Label_Key` thành mồ côi, đồng nhất với `DeleteItemAsync`
+> sẵn có. Nếu muốn dọn resource mồ côi thì làm thành task riêng cho cả hai đường xóa.
 
 > ✅ `db/078` **ĐÃ CHẠY** trên Config DB (2026-07-10). `db/015_create_cf_data_schema.sql` (bảng `Cf_*`,
 > `Tenant_Id NOT NULL`) = **tham khảo, không dùng** → cố ý để nguyên, không áp ADR-035.

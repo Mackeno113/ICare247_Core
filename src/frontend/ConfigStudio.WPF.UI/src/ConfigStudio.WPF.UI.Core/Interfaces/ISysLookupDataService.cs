@@ -52,9 +52,17 @@ public interface ISysLookupDataService
     Task DeleteItemAsync(int lookupId, CancellationToken ct = default);
 
     /// <summary>
-    /// Thêm lookup code mới (chưa có item). Trả về true nếu thành công.
+    /// Xóa TOÀN BỘ items của một lookup code (1 transaction). Trả về số item đã xóa.
+    /// <para>
+    /// Không có "bảng code" riêng — mỗi dòng <c>Sys_Lookup</c> là 1 item, và một code chỉ tồn tại
+    /// chừng nào còn ít nhất 1 item. Xóa hết items ⇒ code biến mất khỏi <see cref="GetAllCodesAsync"/>.
+    /// </para>
+    /// <para>
+    /// Sự kiện theo sau: caller phải reload danh sách code. KHÔNG đụng <c>Sys_Resource</c> —
+    /// các <c>Label_Key</c> tương ứng thành mồ côi (đồng nhất với <see cref="DeleteItemAsync"/>).
+    /// </para>
     /// </summary>
-    Task<bool> AddLookupCodeAsync(string lookupCode, CancellationToken ct = default);
+    Task<int> DeleteCodeAsync(string lookupCode, CancellationToken ct = default);
 
     /// <summary>
     /// Kiểm tra Item_Code đã tồn tại trong lookup code chưa (để validate khi thêm).
