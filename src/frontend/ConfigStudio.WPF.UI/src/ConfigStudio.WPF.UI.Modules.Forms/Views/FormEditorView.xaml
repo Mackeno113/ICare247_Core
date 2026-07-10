@@ -448,6 +448,10 @@
                                         </Style>
                                     </MenuItem.ItemContainerStyle>
                                 </MenuItem>
+                                <Separator />
+                                <MenuItem Header="{Binding BulkDeleteHeader}"
+                                          Command="{Binding DeleteBulkCommand}"
+                                          IsEnabled="{Binding CanMoveBulk}" />
                             </ContextMenu>
                         </TreeView.ContextMenu>
                         <TreeView.Resources>
@@ -1801,6 +1805,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <!-- Bulk count badge -->
@@ -1864,8 +1869,23 @@
                 <!-- Spacer column 6 -->
                 <Border Grid.Column="6" Width="14" />
 
-                <!-- Apply button -->
+                <!-- Delete button — xóa hàng loạt field đã tick -->
                 <dx:SimpleButton Grid.Column="7"
+                                 Command="{Binding DeleteBulkCommand}"
+                                 Height="28" Padding="12,0" Margin="0,0,6,0"
+                                 ToolTip="Xóa tất cả field đã chọn khỏi form (không hoàn tác)">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🗑" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppDangerBrush}" />
+                        <TextBlock VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppDangerDarkBrush}">
+                            <Run Text="Xóa (" /><Run Text="{Binding BulkCount, Mode=OneWay}" /><Run Text=")" />
+                        </TextBlock>
+                    </StackPanel>
+                </dx:SimpleButton>
+
+                <!-- Apply button -->
+                <dx:SimpleButton Grid.Column="8"
                                  Command="{Binding ApplyBulkCommand}"
                                  Height="28" Padding="14,0" Margin="0,0,6,0"
                                  ToolTip="Áp dụng các thay đổi vào tất cả field đã chọn">
@@ -1879,7 +1899,7 @@
                 </dx:SimpleButton>
 
                 <!-- Clear button -->
-                <dx:SimpleButton Grid.Column="8"
+                <dx:SimpleButton Grid.Column="9"
                                  Command="{Binding ClearBulkSelectionCommand}"
                                  Height="28" Padding="10,0"
                                  ToolTip="Bỏ chọn tất cả">

@@ -78,6 +78,8 @@ public partial class App : PrismApplication
         containerRegistry.Register<ISchemaInspectorService, SchemaInspectorService>();
         containerRegistry.Register<ISchemaMaintenanceService, SchemaMaintenanceService>();
         containerRegistry.Register<IDocTemplateDataService, DocTemplateDataService>();
+        // Sinh nhanh Form / Lưới từ 1 bảng Sys_Table (2 nút 1-chạm, headless).
+        containerRegistry.Register<IScreenScaffolder, ScreenScaffolder>();
 
         containerRegistry.RegisterForNavigation<DashboardView, DashboardViewModel>(ViewNames.Dashboard);
         containerRegistry.RegisterForNavigation<SettingsView, SettingsViewModel>(ViewNames.Settings);

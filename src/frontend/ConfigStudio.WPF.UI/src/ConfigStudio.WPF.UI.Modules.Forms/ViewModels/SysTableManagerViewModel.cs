@@ -25,6 +25,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     private readonly IAppConfigService? _appConfig;
     private readonly ISchemaInspectorService? _schemaInspector;
     private readonly ISchemaMaintenanceService? _schemaMaintenance;
+    private readonly IScreenScaffolder? _scaffolder;
     private readonly IAppLogger? _logger;
     private bool _isProgrammaticEditorUpdate;
 
@@ -76,9 +77,12 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                 RaisePropertyChanged(nameof(IsEditMode));
                 RaisePropertyChanged(nameof(SaveButtonText));
                 RaisePropertyChanged(nameof(ShowCreateFormButton));
+                RaisePropertyChanged(nameof(ShowCreateGridButton));
                 SaveCommand.RaiseCanExecuteChanged();
                 CreateFormFromTableCommand.RaiseCanExecuteChanged();
+                CreateGridFromTableCommand.RaiseCanExecuteChanged();
                 _ = RefreshSelectedTableHasFormAsync();
+                _ = RefreshSelectedTableHasViewAsync();
             }
         }
     }
@@ -98,9 +102,28 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         }
     }
 
-    /// <summary>Hiện nút "Tạo Form từ bảng này": có region, đã chọn bảng đã lưu, và bảng CHƯA có form.</summary>
+    private bool _selectedTableHasView;
+    /// <summary>True khi bảng đang chọn ĐÃ có Ui_View (theo Table_Id hoặc View_Code=Table_Code) → ẩn nút sinh lưới.</summary>
+    public bool SelectedTableHasView
+    {
+        get => _selectedTableHasView;
+        private set
+        {
+            if (SetProperty(ref _selectedTableHasView, value))
+            {
+                RaisePropertyChanged(nameof(ShowCreateGridButton));
+                CreateGridFromTableCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    /// <summary>Hiện nút "Sinh Form": có scaffolder, đã chọn bảng đã lưu, và bảng CHƯA có form.</summary>
     public bool ShowCreateFormButton =>
-        _regionManager is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
+        _scaffolder is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
+
+    /// <summary>Hiện nút "Sinh Lưới": có scaffolder, đã chọn bảng đã lưu, và bảng CHƯA có view.</summary>
+    public bool ShowCreateGridButton =>
+        _scaffolder is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasView;
 
     private string _searchText = "";
     public string SearchText
@@ -205,6 +228,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                 NewCommand.RaiseCanExecuteChanged();
                 GenerateHookStoreCommand?.RaiseCanExecuteChanged();
                 CheckAuditColumnsCommand?.RaiseCanExecuteChanged();
+                CreateFormFromTableCommand?.RaiseCanExecuteChanged();
+                CreateGridFromTableCommand?.RaiseCanExecuteChanged();
             }
         }
     }
@@ -254,8 +279,10 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     public DelegateCommand GenerateHookStoreCommand { get; }
     /// <summary>Đối chiếu cột auto chuẩn (§0.1) của bảng đang chọn với Target DB → sinh .sql ALTER nếu thiếu.</summary>
     public DelegateCommand CheckAuditColumnsCommand { get; }
-    /// <summary>Mở màn hình Tạo Form mới với Business Table = bảng đang chọn (điền sẵn Form Code + Tên Form).</summary>
+    /// <summary>Sinh nhanh (1-chạm, headless) Ui_Form + field từ bảng đang chọn — không mở editor.</summary>
     public DelegateCommand CreateFormFromTableCommand { get; }
+    /// <summary>Sinh nhanh (1-chạm, headless) Ui_View (Grid) + cột từ bảng đang chọn.</summary>
+    public DelegateCommand CreateGridFromTableCommand { get; }
 
     private readonly INavigationHistoryService? _history;
     private readonly IRegionManager? _regionManager;
@@ -266,6 +293,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         INavigationHistoryService? history = null,
         ISchemaInspectorService? schemaInspector = null,
         ISchemaMaintenanceService? schemaMaintenance = null,
+        IScreenScaffolder? scaffolder = null,
         IAppLogger? logger = null,
         IRegionManager? regionManager = null)
     {
@@ -274,6 +302,7 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         _history = history;
         _schemaInspector = schemaInspector;
         _schemaMaintenance = schemaMaintenance;
+        _scaffolder = scaffolder;
         _logger = logger;
         _regionManager = regionManager;
 
@@ -285,7 +314,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         SaveCommand = new DelegateCommand(async () => await ExecuteSaveAsync(), CanSave);
         GenerateHookStoreCommand = new DelegateCommand(async () => await ExecuteGenerateHookStoreAsync(), CanGenerateHookStore);
         CheckAuditColumnsCommand = new DelegateCommand(async () => await ExecuteCheckAuditColumnsAsync(), CanCheckAuditColumns);
-        CreateFormFromTableCommand = new DelegateCommand(ExecuteCreateFormFromTable, CanCreateFormFromTable);
+        CreateFormFromTableCommand = new DelegateCommand(async () => await ExecuteCreateFormFromTableAsync(), CanCreateFormFromTable);
+        CreateGridFromTableCommand = new DelegateCommand(async () => await ExecuteCreateGridFromTableAsync(), CanCreateGridFromTable);
 
         ResetEditorForNew();
     }
@@ -315,9 +345,42 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
             && !string.IsNullOrWhiteSpace(EditSchemaName);
     }
 
-    /// <summary>Chỉ tạo form khi đã chọn 1 bảng ĐÃ LƯU (có Table_Id), có region, và bảng CHƯA có form.</summary>
+    /// <summary>Chỉ sinh form khi có scaffolder, đã chọn 1 bảng ĐÃ LƯU (có Table_Id), bảng CHƯA có form, và không bận.</summary>
     private bool CanCreateFormFromTable() =>
-        _regionManager is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
+        IsNotBusy && _scaffolder is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasForm;
+
+    /// <summary>Chỉ sinh lưới khi có scaffolder, đã chọn 1 bảng ĐÃ LƯU (có Table_Id), bảng CHƯA có view, và không bận.</summary>
+    private bool CanCreateGridFromTable() =>
+        IsNotBusy && _scaffolder is not null && SelectedTable is { TableId: > 0 } && !SelectedTableHasView;
+
+    /// <summary>
+    /// Kiểm tra bảng đang chọn đã có Ui_View chưa → cập nhật cờ ẩn nút "Sinh Lưới".
+    /// Ẩn nút trong lúc kiểm tra để không mời tạo trùng. Sự kiện theo sau: nút ẩn/hiện theo kết quả.
+    /// </summary>
+    private async Task RefreshSelectedTableHasViewAsync()
+    {
+        SelectedTableHasView = true; // mặc định ẩn trong lúc chờ
+
+        if (_scaffolder is null || SelectedTable is not { TableId: > 0 } table)
+        {
+            SelectedTableHasView = false;
+            return;
+        }
+
+        try
+        {
+            var exists = await _scaffolder.ViewExistsForTableAsync(
+                table.TableId, table.TableCode, _appConfig?.TenantId ?? 0);
+            if (SelectedTable?.TableId == table.TableId)
+                SelectedTableHasView = exists;
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.CheckViewExists");
+            if (SelectedTable?.TableId == table.TableId)
+                SelectedTableHasView = false;
+        }
+    }
 
     /// <summary>
     /// Kiểm tra bảng đang chọn đã có Ui_Form chưa (Table_Id hoặc Form_Code=Table_Code) → cập nhật cờ ẩn nút.
@@ -352,20 +415,107 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
     }
 
     /// <summary>
-    /// Mở màn hình Tạo Form mới (FormEditor, formId=0) với Business Table = bảng đang chọn.
-    /// Sự kiện theo sau: FormEditor nạp danh sách bảng rồi chọn sẵn theo businessTableId,
-    /// kéo theo tự điền Form Code (= Table_Code) và Tên Form (= Table_Name).
+    /// Sinh nhanh (1-chạm, headless) Ui_Form + toàn bộ field từ bảng đang chọn — KHÔNG mở editor.
+    /// Hỏi xác nhận, đọc cột thật từ Target DB, ghi Config DB, báo kết quả qua toast.
+    /// Sự kiện theo sau: nút Form ẩn đi (bảng đã có form); user tinh chỉnh tại màn Cấu hình Field.
     /// </summary>
-    private void ExecuteCreateFormFromTable()
+    private async Task ExecuteCreateFormFromTableAsync()
     {
-        if (_regionManager is null || SelectedTable is not { TableId: > 0 } table) return;
+        SaveStatusMessage = "";
+        IsSaveStatusError = false;
 
-        var p = new NavigationParameters
+        if (_scaffolder is null || SelectedTable is not { TableId: > 0 } table)
         {
-            { "formId", 0 },
-            { "businessTableId", table.TableId },
-        };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.FormEditor, p);
+            SetSaveError("Chưa chọn bảng đã lưu để sinh Form.");
+            return;
+        }
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Sinh nhanh Form nhập liệu cho bảng [{table.SchemaName}].[{table.TableCode}]?\n\n"
+            + "• Tạo Ui_Form (1 section) + field cho mọi cột nghiệp vụ (bỏ PK/Identity).\n"
+            + "• Control suy theo kiểu dữ liệu; cột FK (theo Sys_Relation) → LookupBox.\n\n"
+            + "Chỉnh chi tiết sau tại màn Cấu hình Field.",
+            "Sinh Form", System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No);
+        if (confirm != System.Windows.MessageBoxResult.Yes)
+        {
+            SaveStatusMessage = "Đã huỷ — không sinh Form.";
+            IsSaveStatusError = false;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var result = await _scaffolder.GenerateFormAsync(
+                table.TableId, table.SchemaName, table.TableCode, table.TableName,
+                _appConfig?.TenantId ?? 0);
+
+            SaveStatusMessage = result.Message;
+            IsSaveStatusError = !result.Success;
+            if (result.Success) await RefreshSelectedTableHasFormAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.CreateFormFromTable");
+            SetSaveError($"Lỗi sinh Form: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    /// <summary>
+    /// Sinh nhanh (1-chạm, headless) Ui_View (Grid) + toàn bộ cột từ bảng đang chọn.
+    /// Hỏi xác nhận, đọc cột thật từ Target DB, ghi Config DB, báo kết quả qua toast.
+    /// Sự kiện theo sau: nút Lưới ẩn đi (bảng đã có view); user gắn Form Thêm/Sửa tại màn Quản lý View.
+    /// </summary>
+    private async Task ExecuteCreateGridFromTableAsync()
+    {
+        SaveStatusMessage = "";
+        IsSaveStatusError = false;
+
+        if (_scaffolder is null || SelectedTable is not { TableId: > 0 } table)
+        {
+            SetSaveError("Chưa chọn bảng đã lưu để sinh Lưới.");
+            return;
+        }
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Sinh nhanh Lưới danh sách (Grid) cho bảng [{table.SchemaName}].[{table.TableCode}]?\n\n"
+            + "• Tạo Ui_View + cột cho mọi cột nghiệp vụ (bỏ PK/Identity).\n"
+            + "• Bật sẵn dòng lọc, chọn cột, thêm/sửa/xóa.\n\n"
+            + "Gắn Form Thêm/Sửa và tinh chỉnh sau tại màn Quản lý View.",
+            "Sinh Lưới", System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question, System.Windows.MessageBoxResult.No);
+        if (confirm != System.Windows.MessageBoxResult.Yes)
+        {
+            SaveStatusMessage = "Đã huỷ — không sinh Lưới.";
+            IsSaveStatusError = false;
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var result = await _scaffolder.GenerateGridAsync(
+                table.TableId, table.SchemaName, table.TableCode, table.TableName,
+                _appConfig?.TenantId ?? 0);
+
+            SaveStatusMessage = result.Message;
+            IsSaveStatusError = !result.Success;
+            if (result.Success) await RefreshSelectedTableHasViewAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.Capture(ex, "SysTableManager.CreateGridFromTable");
+            SetSaveError($"Lỗi sinh Lưới: {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     /// <summary>

@@ -121,7 +121,7 @@
                                     Visibility="{Binding SkippedCount, Converter={StaticResource BoolToVis}}">
                                 <TextBlock FontSize="11" Foreground="{DynamicResource AppWarningDarkBrush}">
                                     <TextBlock.Text>
-                                        <MultiBinding StringFormat="{}{0} cột ẩn (PK/Identity)">
+                                        <MultiBinding StringFormat="{}{0} cột ẩn (PK/Identity + audit)">
                                             <Binding Path="SkippedCount" />
                                         </MultiBinding>
                                     </TextBlock.Text>

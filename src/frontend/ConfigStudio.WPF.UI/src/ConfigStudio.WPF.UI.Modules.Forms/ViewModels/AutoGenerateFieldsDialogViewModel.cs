@@ -7,6 +7,7 @@
 using System.Collections.ObjectModel;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
+using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
 using Prism.Commands;
@@ -23,6 +24,10 @@ public sealed class AutoGenerateFieldsDialogViewModel : ViewModelBase, IDialogAw
 {
     private readonly ISchemaInspectorService _schemaInspector;
     private readonly IAppConfigService _appConfig;
+
+    /// <summary>Khối cột audit hệ thống — ẩn khỏi danh sách chọn (người dùng không cấu hình). Xem AuditColumnTemplate.</summary>
+    private static readonly HashSet<string> AuditColumns =
+        new(AuditColumnTemplate.RequiredColumns, StringComparer.OrdinalIgnoreCase);
 
     // ── IDialogAware ─────────────────────────────────────────
     public string Title => $"Tạo Fields tự động — {_tableName}";
@@ -91,7 +96,7 @@ public sealed class AutoGenerateFieldsDialogViewModel : ViewModelBase, IDialogAw
         }
     }
 
-    /// <summary>Số cột bị ẩn (PK/Identity).</summary>
+    /// <summary>Số cột bị ẩn (PK/Identity + khối cột audit hệ thống).</summary>
     public int SkippedCount => AllColumns.Count - VisibleColumns.Count;
 
     // ── Commands ──────────────────────────────────────────────
@@ -190,8 +195,8 @@ public sealed class AutoGenerateFieldsDialogViewModel : ViewModelBase, IDialogAw
                 };
                 AllColumns.Add(item);
 
-                // Chỉ hiển thị cột không phải PK/Identity
-                if (!col.ShouldSkip)
+                // Chỉ hiển thị cột nghiệp vụ: bỏ PK/Identity và khối cột audit hệ thống.
+                if (!col.ShouldSkip && !AuditColumns.Contains(col.ColumnName))
                     VisibleColumns.Add(item);
             }
 

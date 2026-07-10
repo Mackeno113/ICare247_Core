@@ -203,6 +203,11 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         ? $"Chuyển {BulkSelectedFields.Count} field đã chọn sang…"
         : "Chưa tick field nào để chuyển";
 
+    /// <summary>Header MenuItem xóa hàng loạt — kèm số field đã tick.</summary>
+    public string BulkDeleteHeader => BulkSelectedFields.Count > 0
+        ? $"Xóa {BulkSelectedFields.Count} field đã chọn"
+        : "Chưa tick field nào để xóa";
+
     // ── Undo/Redo state ───────────────────────────────────────
     private bool _canUndo;
     public bool CanUndoAction { get => _canUndo; private set => SetProperty(ref _canUndo, value); }
@@ -900,6 +905,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand<FormTreeNode?> ToggleBulkSelectionCommand { get; }
     public DelegateCommand ApplyBulkCommand { get; }
     public DelegateCommand ClearBulkSelectionCommand { get; }
+    /// <summary>Xóa hàng loạt các field đã tick khỏi form (Ui_Field) — hỏi xác nhận, không hoàn tác.</summary>
+    public DelegateCommand DeleteBulkCommand { get; }
 
     /// <summary>D2b — Chuyển các field đã tick sang section đích (param = <see cref="MoveTargetItem"/>).</summary>
     public DelegateCommand<MoveTargetItem?> MoveBulkToSectionCommand { get; }
@@ -980,6 +987,8 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                                          () => BulkSelectedFields.Count >= 2);
         ClearBulkSelectionCommand  = new DelegateCommand(ExecuteClearBulkSelection,
                                          () => BulkSelectedFields.Count > 0);
+        DeleteBulkCommand          = new DelegateCommand(async () => await ExecuteDeleteBulkAsync(),
+                                         () => BulkSelectedFields.Count > 0);
         MoveBulkToSectionCommand   = new DelegateCommand<MoveTargetItem?>(
                                          async t => await ExecuteMoveBulkToSectionAsync(t),
                                          _ => BulkSelectedFields.Count >= 1);
@@ -990,8 +999,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             RaisePropertyChanged(nameof(IsSingleFieldEditMode));
             RaisePropertyChanged(nameof(CanMoveBulk));
             RaisePropertyChanged(nameof(BulkMoveHeader));
+            RaisePropertyChanged(nameof(BulkDeleteHeader));
             ApplyBulkCommand.RaiseCanExecuteChanged();
             ClearBulkSelectionCommand.RaiseCanExecuteChanged();
+            DeleteBulkCommand.RaiseCanExecuteChanged();
             MoveBulkToSectionCommand.RaiseCanExecuteChanged();
         };
 
@@ -2846,6 +2857,56 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
         // Sau khi apply → clear de tranh apply nham lan sau.
         ExecuteClearBulkSelection();
+    }
+
+    // D2c — Xóa hàng loạt field đã tick. Chỉ xóa FIELD (không đụng section); mỗi field xóa khỏi
+    // Ui_Field nếu đã lưu (Id > 0), gỡ khỏi cây, reindex Order_No các section nguồn bị ảnh hưởng.
+    // Sự kiện theo sau: clear bulk selection + RebuildAllFields + set IsDirty. Không hoàn tác.
+    /// <summary>Xóa các field trong <see cref="BulkSelectedFields"/> khỏi form (hỏi xác nhận).</summary>
+    private async Task ExecuteDeleteBulkAsync()
+    {
+        // Chỉ thao tác trên node loại Field (bulk selection vốn chỉ tick field; guard phòng thủ).
+        var fields = BulkSelectedFields
+            .Where(f => f.NodeType == FormNodeType.Field)
+            .ToList();
+        if (fields.Count == 0) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"Xóa {fields.Count} field đã chọn khỏi form?\nThao tác này không thể hoàn tác.",
+            "Xác nhận xóa field",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        var affectedSources = new HashSet<FormTreeNode>();
+
+        foreach (var field in fields)
+        {
+            var parent = FindParentSection(field);
+            if (parent is not null)
+            {
+                parent.Children.Remove(field);
+                affectedSources.Add(parent);
+            }
+
+            // Persist xóa field xuống DB nếu đã lưu (Id > 0); field mới chỉ bỏ khỏi memory.
+            await PersistFieldDeleteAsync(field);
+        }
+
+        ReindexSortOrders();
+
+        // Ghi lại Order_No cho mọi section nguồn bị ảnh hưởng.
+        foreach (var src in affectedSources)
+            await PersistSectionOrderAsync(src);
+
+        ExecuteClearBulkSelection();
+        SelectedNode = null;
+        RaisePropertyChanged(nameof(TotalFields));
+        PushUndoState($"Xóa {fields.Count} field");
+        IsDirty = true;
+        _linting?.NotifyChanged();
+        RebuildAllFields();
     }
 
     // D2b — Dựng lại danh sách section đích cho context-menu (gọi khi mở menu).

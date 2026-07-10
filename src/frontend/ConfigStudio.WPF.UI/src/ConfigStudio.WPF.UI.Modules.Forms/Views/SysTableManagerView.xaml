@@ -244,10 +244,20 @@
                         <dx:SimpleButton Command="{Binding CreateFormFromTableCommand}"
                                          Margin="0,0,8,8"
                                          Visibility="{Binding ShowCreateFormButton, Converter={StaticResource BoolToVis}}"
-                                         ToolTip="Mở màn hình Tạo Form mới với Business Table = bảng đang chọn — tự điền sẵn Form Code và Tên Form. Nút ẩn nếu bảng đã có form.">
+                                         ToolTip="Sinh nhanh (1-chạm) Ui_Form + field cho bảng đang chọn TRỰC TIẾP vào Config DB — control suy theo kiểu dữ liệu, cột FK → LookupBox. Nút ẩn nếu bảng đã có form.">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="📝" VerticalAlignment="Center" />
-                                <TextBlock Text="Tạo Form từ bảng này" Margin="6,0,0,0" />
+                                <TextBlock Text="Sinh Form" Margin="6,0,0,0" />
+                            </StackPanel>
+                        </dx:SimpleButton>
+
+                        <dx:SimpleButton Command="{Binding CreateGridFromTableCommand}"
+                                         Margin="0,0,8,8"
+                                         Visibility="{Binding ShowCreateGridButton, Converter={StaticResource BoolToVis}}"
+                                         ToolTip="Sinh nhanh (1-chạm) Ui_View (Grid) + cột cho bảng đang chọn TRỰC TIẾP vào Config DB — bật sẵn lọc/chọn cột/thêm-sửa-xóa. Nút ẩn nếu bảng đã có view.">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="📊" VerticalAlignment="Center" />
+                                <TextBlock Text="Sinh Lưới" Margin="6,0,0,0" />
                             </StackPanel>
                         </dx:SimpleButton>
 
