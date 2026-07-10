@@ -11,7 +11,7 @@ namespace ICare247.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository cho <c>Ui_Field</c> + <c>Ui_Field_Lookup</c>.
-/// Tenant resolve qua Form → Sys_Table.Tenant_Id.
+/// Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class FieldRepository : IFieldRepository
 {
@@ -52,9 +52,7 @@ public sealed class FieldRepository : IFieldRepository
             LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = fi.Label_Key
                                         AND r.Lang_Code    = @LangCode
-            WHERE  fi.Form_Id = @FormId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
-            ORDER BY fi.Order_No
+            WHERE  fi.Form_Id = @FormId            ORDER BY fi.Order_No
             """;
 
         using var conn = _db.CreateConnection();
@@ -95,7 +93,6 @@ public sealed class FieldRepository : IFieldRepository
             JOIN   dbo.Sys_Table t ON t.Table_Id  = f.Table_Id
             LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
             WHERE  fi.Field_Id = @FieldId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
         using var conn = _db.CreateConnection();
@@ -149,9 +146,7 @@ public sealed class FieldRepository : IFieldRepository
             JOIN   dbo.Ui_Form f   ON f.Form_Id   = fi.Form_Id
             JOIN   dbo.Sys_Table t ON t.Table_Id  = f.Table_Id
             LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
-            WHERE  fi.Section_Id = @SectionId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
-            ORDER BY fi.Order_No
+            WHERE  fi.Section_Id = @SectionId            ORDER BY fi.Order_No
             """;
 
         using var conn = _db.CreateConnection();

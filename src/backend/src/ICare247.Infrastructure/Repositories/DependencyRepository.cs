@@ -41,7 +41,6 @@ public sealed class DependencyRepository : IDependencyRepository
               AND  d.Source_Type = 'Field'
               AND  d.Target_Type = 'Field'
               AND  d.Is_Active   = 1
-              AND  st.Tenant_Id  = @TenantId
             """;
 
         using var conn = _db.CreateConnection();

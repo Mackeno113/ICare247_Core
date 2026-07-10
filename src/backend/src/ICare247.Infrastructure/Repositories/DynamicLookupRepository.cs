@@ -98,7 +98,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         CancellationToken ct = default)
     {
         // ── Bước 1: Đọc cấu hình Ui_Field_Lookup theo FieldId ─────────────────
-        // Verify tenant qua Ui_Form → Sys_Table.Tenant_Id để ngăn cross-tenant query
+        // Cô lập tenant ở tầng connection (ADR-035) — Config DB đã thuộc đúng 1 tenant
         // Bao gồm cột Migration 014: CodeField dùng để mở rộng SELECT khi EditBoxMode = CodeAndName
         const string cfgSql = """
             SELECT fl.Query_Mode                           AS QueryMode,
@@ -115,7 +115,6 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
             JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
             WHERE  fl.Field_Id = @FieldId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
         // Bước 1 đọc cấu hình từ Config DB
@@ -426,7 +425,6 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
             JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
             WHERE  fl.Field_Id = @FieldId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
         using var configConn = _configDb.CreateConnection();
@@ -486,7 +484,6 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             JOIN   dbo.Sys_Table  t ON t.Table_Id    = fm.Table_Id
             WHERE  uf.Is_Unique = 1
               AND  t.Table_Code = @SourceName
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
         var uniqueCols = (await configConn.QueryAsync<string>(
             new CommandDefinition(uniqueColsSql, new { cfg.SourceName, TenantId = tenantId },
@@ -548,7 +545,6 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
                 JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
                 WHERE  fl.Field_Id = @FieldId
-                  AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
                 """,
                 new { FieldId = fieldId, TenantId = tenantId },
                 cancellationToken: ct));

@@ -101,8 +101,6 @@ public sealed class ViewMetadata
     /// <summary>Nhãn nút Đặt lại đã resolve theo langCode (null = dùng key chung common.filter.reset).</summary>
     public string? ResetLabel { get; init; }
 
-    public int? TenantId { get; init; }
-
     /// <summary>Phiên bản metadata — dùng làm cache key/slot.</summary>
     public int Version { get; init; } = 1;
     public bool IsActive { get; init; } = true;

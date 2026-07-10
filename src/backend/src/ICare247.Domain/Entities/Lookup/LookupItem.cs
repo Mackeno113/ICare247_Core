@@ -15,7 +15,6 @@ namespace ICare247.Domain.Entities.Lookup;
 public sealed class LookupItem
 {
     public int    LookupId    { get; init; }
-    public int    TenantId    { get; init; }
     public string LookupCode  { get; init; } = "";
     public string ItemCode    { get; init; } = "";
     public string LabelKey    { get; init; } = "";

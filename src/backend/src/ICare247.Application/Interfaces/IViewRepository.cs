@@ -9,7 +9,7 @@ namespace ICare247.Application.Interfaces;
 
 /// <summary>
 /// Repository cho <c>Ui_View</c> + <c>Ui_View_Column</c> + <c>Ui_View_Action</c> (Config DB).
-/// Mọi query resolve tenant qua <c>Ui_View.Tenant_Id</c> (global khi NULL) và localize text i18n.
+/// Cô lập tenant ở tầng connection (1 Config DB = 1 tenant, ADR-035); localize text i18n.
 /// </summary>
 public interface IViewRepository
 {
@@ -17,8 +17,8 @@ public interface IViewRepository
     /// Lấy <see cref="ViewMetadata"/> đầy đủ (header + cột + action) theo View_Code,
     /// đã resolve text i18n (Title/Caption/Label/...) theo <paramref name="langCode"/>.
     /// </summary>
-    /// <param name="viewCode">Ui_View.View_Code — unique trong tenant (hoặc global).</param>
-    /// <param name="tenantId">Tenant hiện tại; bản ghi global (Tenant_Id NULL) luôn match.</param>
+    /// <param name="viewCode">Ui_View.View_Code — unique trong Config DB.</param>
+    /// <param name="tenantId">Chỉ dùng dựng cache key (Redis L2 dùng chung), KHÔNG lọc SQL.</param>
     /// <param name="langCode">Mã ngôn ngữ resolve resource (mặc định "vi").</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns><see cref="ViewMetadata"/> nếu tồn tại và active; <c>null</c> nếu không.</returns>
@@ -66,9 +66,8 @@ public interface IViewRepository
 
     /// <summary>
     /// Lấy danh sách View (header tóm tắt) có phân trang + filter — không nạp cột/action.
-    /// Ưu tiên bản tenant-specific hơn bản global khi trùng View_Code (chỉ trả 1 dòng/code).
     /// </summary>
-    /// <param name="tenantId">Tenant hiện tại; bản global (Tenant_Id NULL) luôn match.</param>
+    /// <param name="tenantId">Chỉ dùng dựng cache key (Redis L2 dùng chung), KHÔNG lọc SQL.</param>
     /// <param name="langCode">Mã ngôn ngữ resolve Title (mặc định "vi").</param>
     /// <param name="isActive">Lọc theo trạng thái (null = tất cả).</param>
     /// <param name="search">Từ khóa LIKE trên View_Code/Title (null = không lọc).</param>

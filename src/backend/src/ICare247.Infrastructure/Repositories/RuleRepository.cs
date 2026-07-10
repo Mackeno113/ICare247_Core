@@ -13,7 +13,7 @@ namespace ICare247.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository cho <c>Val_Rule</c>.
-/// Tenant resolve qua Ui_Field → Ui_Form → Sys_Table.Tenant_Id.
+/// Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class RuleRepository : IRuleRepository
 {
@@ -35,7 +35,6 @@ public sealed class RuleRepository : IRuleRepository
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
                    sc.Column_Code     AS FieldCode,
-                   st.Tenant_Id       AS TenantId,
                    r.Rule_Type_Code   AS RuleType,
                    COALESCE(r.Severity, 'error') AS Severity,
                    r.Expression_Json  AS ExpressionJson,
@@ -49,7 +48,6 @@ public sealed class RuleRepository : IRuleRepository
             JOIN   dbo.Sys_Table st    ON st.Table_Id  = f.Table_Id
             WHERE  fi.Form_Id     = @FormId
               AND  sc.Column_Code = @FieldCode
-              AND  st.Tenant_Id   = @TenantId
               AND  r.Is_Active    = 1
             ORDER BY r.Order_No
             """;
@@ -73,7 +71,6 @@ public sealed class RuleRepository : IRuleRepository
             SELECT r.Rule_Id          AS RuleId,
                    f.Form_Id          AS FormId,
                    sc.Column_Code     AS FieldCode,
-                   st.Tenant_Id       AS TenantId,
                    r.Rule_Type_Code   AS RuleType,
                    COALESCE(r.Severity, 'error') AS Severity,
                    r.Expression_Json  AS ExpressionJson,
@@ -86,7 +83,6 @@ public sealed class RuleRepository : IRuleRepository
             JOIN   dbo.Ui_Form f       ON f.Form_Id    = fi.Form_Id
             JOIN   dbo.Sys_Table st    ON st.Table_Id   = f.Table_Id
             WHERE  fi.Form_Id   = @FormId
-              AND  st.Tenant_Id = @TenantId
               AND  r.Is_Active  = 1
             ORDER BY sc.Column_Code, r.Order_No
             """;

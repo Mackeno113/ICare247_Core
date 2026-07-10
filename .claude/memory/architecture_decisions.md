@@ -560,3 +560,33 @@
   `ISpreadsheetReader`. Gỡ package `ClosedXML`. DI: `AddDocuments` đăng ký `ISpreadsheetReader`+`IImportTemplateBuilder`.
   API DevExpress đã verify reflection (0-based; `Workbook`/`DisplayText`/`BeginUpdateFormatting`/`DataValidations.Add(List)`/
   `Comments.Add`/`FreezeRows`/`DocumentFormat.Xlsx`). ⏳ CHƯA build/commit.
+
+## ADR-035: Bỏ hẳn cột `Tenant_Id` — cô lập tenant ở tầng connection, không ở tầng cột (2026-07-10)
+- **Context:** ADR-018 chốt **DB-per-tenant** (mỗi tenant 1 Config DB + 1 Data DB riêng, cô lập vật lý);
+  `TenantConnectionResolver` ĐÃ code (memory cũ ghi "chưa code" — sai). Data DB đã bỏ `Tenant_Id` (ADR-019),
+  nhưng Config DB còn cột này ở **9 bảng** (khảo sát DB live 2026-07-10 — `db/*.sql` lẫn spec 02 đều KHÔNG
+  phản ánh đủ; spec 02 chỉ liệt kê 3): global/override `Sys_Table`/`Sys_Lookup`/`Ui_View` · cột chết
+  `Sys_Config`/`Sys_Role` · lọc cứng NOT NULL `Doc_Template`/`Doc_Proc_Registry` · master menu
+  `Sys_Menu`/`Sys_MenuCatalog` (bảng MASTER db/043 — sync xuống `HT_ChucNang`; chưa code sync nên 0 tham chiếu C#).
+  Số liệu live: `Sys_Table` 11 dòng **toàn tenant-specific, 0 global** → nhánh `OR Tenant_Id IS NULL` rải khắp
+  ~20 chỗ SQL là **nhánh chết**. `Ui_View` 8/8 tenant-specific. `Sys_Lookup` 13 global + 3 tenant.
+  `Sys_Config`/`Sys_Role`/`Doc_*` rỗng. `SoTenantKhacNhau = 1` mọi bảng → 1 Config DB = 1 tenant, tiền đề vững.
+- **Quyết định:** **0 bảng có cột `Tenant_Id`, ở cả hai DB.**
+  1. Config DB đã thuộc về đúng 1 tenant → cột định danh tenant *bên trong* nó không phân biệt được gì.
+     Đúng lập luận đã áp cho Data DB ở ADR-019.
+  2. Vai trò thật của `Sys_Table.Tenant_Id` là **nguồn gốc bản ghi** (`NULL` = từ master, `NOT NULL` = tenant
+     tự thêm), không phải định danh tenant. ConfigSync (db/050) đã thay bằng cờ tường minh
+     **`Is_System` / `Is_Customized` / `Source_Ver`** → giữ cả hai = 2 nguồn sự thật.
+  3. `Sys_Role.Tenant_Id`, `Sys_Config.Tenant_Id` = **code chết** (không repo nào lọc theo).
+     `Sys_Tenant` vestigial: resolver đọc `dbo.Tenant` ở **Catalog DB**, không đọc `Sys_Tenant`.
+- **GIỮ `TenantId` ở tầng runtime** (bỏ *cột*, không bỏ *khái niệm*): `ITenantContext.TenantId` vẫn cần để
+  (a) resolver chọn connection string, (b) làm thành phần **cache key** — Redis L2 dùng chung giữa tenant.
+  KHÔNG gỡ tham số `tenantId` khỏi repository/`CacheKeys`.
+- **Bug phát hiện khi rà (đã sửa):** db/009 đổi global sentinel `Sys_Lookup` từ `0` → `NULL`, nhưng
+  `LookupRepository` vẫn lọc `OR l.Tenant_Id = 0`. `NULL = 0` → `UNKNOWN` ⇒ **mọi lookup global (GENDER…)
+  im lặng biến mất** trên đường `ConfigCache.GetLookupAsync` + `ViewRepository` (dropdown filter lưới).
+  Sửa: `OR l.Tenant_Id IS NULL` + doc `ILookupRepository`. Bài học: 2 quy ước global (`0` vs `NULL`) cùng tồn
+  tại chính là hệ quả của việc `Tenant_Id` tràn lan.
+- **Liên quan:** ADR-018 (DB-per-tenant), ADR-019 (Data DB không có Tenant_Id), ConfigSync F1 (db/050).
+- **Status:** ✅ quyết định chốt · ✅ bug `Sys_Lookup` đã sửa (build xanh)
+  · 🔴 gỡ cột + dọn ~82 dòng SQL/C# (33 file backend + ConfigStudio WPF) — **chưa làm, HIGH risk**.

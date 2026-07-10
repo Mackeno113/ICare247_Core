@@ -9,7 +9,7 @@ namespace ICare247.Application.Interfaces;
 
 /// <summary>
 /// Repository cho bảng <c>Ui_Field</c>.
-/// Query luôn resolve tenant qua Form → Sys_Table.Tenant_Id.
+/// Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public interface IFieldRepository
 {

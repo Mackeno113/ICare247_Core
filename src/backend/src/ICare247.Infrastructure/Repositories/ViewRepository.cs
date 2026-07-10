@@ -15,7 +15,7 @@ namespace ICare247.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository cho <c>Ui_View</c> + <c>Ui_View_Column</c> + <c>Ui_View_Action</c>.
-/// Ưu tiên bản tenant-specific hơn bản global (Tenant_Id NULL) khi trùng View_Code.
+/// Cô lập tenant ở tầng connection (1 Config DB = 1 tenant, ADR-035) — View_Code duy nhất.
 /// </summary>
 /// <remarks>
 /// Metadata đọc ở Config DB; dữ liệu (<see cref="GetDataAsync"/>) đọc ở Data DB. An toàn injection:
@@ -95,7 +95,6 @@ public sealed partial class ViewRepository : IViewRepository
                    rsl.Resource_Value      AS SearchLabel,
                    v.Reset_Label_Key       AS ResetLabelKey,
                    rrl.Resource_Value      AS ResetLabel,
-                   v.Tenant_Id            AS TenantId,
                    v.Version,
                    v.Is_Active            AS IsActive,
                    v.Description
@@ -111,9 +110,7 @@ public sealed partial class ViewRepository : IViewRepository
             LEFT JOIN dbo.Sys_Resource rrl ON rrl.Resource_Key = v.Reset_Label_Key
                                           AND rrl.Lang_Code     = @LangCode
             WHERE  v.View_Code = @ViewCode
-              AND  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
               AND  v.Is_Active  = 1
-            ORDER BY v.Tenant_Id DESC   -- tenant-specific (non-NULL) ưu tiên; NULL xếp cuối khi DESC
             """;
 
         const string sqlColumns = """
@@ -286,7 +283,6 @@ public sealed partial class ViewRepository : IViewRepository
             SearchLabel = header.SearchLabel,
             ResetLabelKey = header.ResetLabelKey,
             ResetLabel = header.ResetLabel,
-            TenantId = header.TenantId,
             Version = header.Version,
             IsActive = header.IsActive,
             Description = header.Description,
@@ -799,35 +795,26 @@ public sealed partial class ViewRepository : IViewRepository
         int tenantId, string langCode = "vi", bool? isActive = null, string? search = null,
         int page = 1, int pageSize = 50, CancellationToken ct = default)
     {
-        // ROW_NUMBER khử trùng View_Code: giữ bản tenant-specific (Tenant_Id non-NULL) trước bản global.
+        // View_Code là duy nhất trong 1 Config DB (= 1 tenant, ADR-035) → không cần khử trùng.
         const string sqlList = """
-            WITH Ranked AS (
-                SELECT v.View_Id       AS ViewId,
-                       v.View_Code     AS ViewCode,
-                       v.View_Type     AS ViewType,
-                       t.Table_Code    AS TableCode,
-                       rt.Resource_Value AS Title,
-                       ef.Form_Code    AS EditFormCode,
-                       v.Version,
-                       v.Is_Active     AS IsActive,
-                       (SELECT COUNT(*) FROM dbo.Ui_View_Column c
-                         WHERE c.View_Id = v.View_Id AND c.Is_Active = 1) AS ColumnCount,
-                       ROW_NUMBER() OVER (PARTITION BY v.View_Code
-                                          ORDER BY CASE WHEN v.Tenant_Id IS NULL THEN 1 ELSE 0 END) AS Rn
-                FROM   dbo.Ui_View v
-                JOIN   dbo.Sys_Table t  ON t.Table_Id = v.Table_Id
-                LEFT JOIN dbo.Ui_Form ef ON ef.Form_Id = v.Edit_Form_Id
-                LEFT JOIN dbo.Sys_Resource rt ON rt.Resource_Key = v.Title_Key
-                                             AND rt.Lang_Code     = @LangCode
-                WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
-                  AND  (@IsActive IS NULL OR v.Is_Active = @IsActive)
-                  AND  (@Search IS NULL OR v.View_Code LIKE @Search OR rt.Resource_Value LIKE @Search)
-            )
-            SELECT ViewId, ViewCode, ViewType, TableCode, Title, EditFormCode,
-                   ColumnCount, Version, IsActive
-            FROM   Ranked
-            WHERE  Rn = 1
-            ORDER BY ViewCode
+            SELECT v.View_Id       AS ViewId,
+                   v.View_Code     AS ViewCode,
+                   v.View_Type     AS ViewType,
+                   t.Table_Code    AS TableCode,
+                   rt.Resource_Value AS Title,
+                   ef.Form_Code    AS EditFormCode,
+                   v.Version,
+                   v.Is_Active     AS IsActive,
+                   (SELECT COUNT(*) FROM dbo.Ui_View_Column c
+                     WHERE c.View_Id = v.View_Id AND c.Is_Active = 1) AS ColumnCount
+            FROM   dbo.Ui_View v
+            JOIN   dbo.Sys_Table t  ON t.Table_Id = v.Table_Id
+            LEFT JOIN dbo.Ui_Form ef ON ef.Form_Id = v.Edit_Form_Id
+            LEFT JOIN dbo.Sys_Resource rt ON rt.Resource_Key = v.Title_Key
+                                         AND rt.Lang_Code     = @LangCode
+            WHERE  (@IsActive IS NULL OR v.Is_Active = @IsActive)
+              AND  (@Search IS NULL OR v.View_Code LIKE @Search OR rt.Resource_Value LIKE @Search)
+            ORDER BY v.View_Code
             OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY
             """;
 
@@ -836,14 +823,12 @@ public sealed partial class ViewRepository : IViewRepository
             FROM   dbo.Ui_View v
             LEFT JOIN dbo.Sys_Resource rt ON rt.Resource_Key = v.Title_Key
                                          AND rt.Lang_Code     = @LangCode
-            WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)
-              AND  (@IsActive IS NULL OR v.Is_Active = @IsActive)
+            WHERE  (@IsActive IS NULL OR v.Is_Active = @IsActive)
               AND  (@Search IS NULL OR v.View_Code LIKE @Search OR rt.Resource_Value LIKE @Search)
             """;
 
         var prm = new
         {
-            TenantId = tenantId,
             LangCode = langCode,
             IsActive = isActive,
             Search = string.IsNullOrWhiteSpace(search) ? null : $"%{search.Trim()}%",

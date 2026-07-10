@@ -14,7 +14,7 @@ namespace ICare247.Infrastructure.Repositories;
 
 /// <summary>
 /// Repository cho <c>Ui_Form</c> + <c>Ui_Section</c> + <c>Ui_Field</c>.
-/// Mọi query resolve tenant qua <c>Sys_Table.Tenant_Id</c>.
+/// Cô lập tenant ở tầng connection (1 Config DB = 1 tenant, ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class FormRepository : IFormRepository
 {
@@ -43,8 +43,7 @@ public sealed class FormRepository : IFormRepository
             SELECT COUNT(*)
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
-            WHERE  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
-              AND  (@Platform IS NULL OR f.Platform = @Platform)
+            WHERE  (@Platform IS NULL OR f.Platform = @Platform)
               AND  (@TableId IS NULL OR f.Table_Id = @TableId)
               AND  (@IsActive IS NULL OR f.Is_Active = @IsActive)
               AND  (@Search IS NULL OR f.Form_Code LIKE '%' + @Search + '%');
@@ -66,8 +65,7 @@ public sealed class FormRepository : IFormRepository
                     WHERE fi.Form_Id = f.Form_Id) AS FieldCount
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
-            WHERE  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
-              AND  (@Platform IS NULL OR f.Platform = @Platform)
+            WHERE  (@Platform IS NULL OR f.Platform = @Platform)
               AND  (@TableId IS NULL OR f.Table_Id = @TableId)
               AND  (@IsActive IS NULL OR f.Is_Active = @IsActive)
               AND  (@Search IS NULL OR f.Form_Code LIKE '%' + @Search + '%')
@@ -113,7 +111,6 @@ public sealed class FormRepository : IFormRepository
             LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = f.Title_Key
                                         AND r.Lang_Code     = @LangCode
             WHERE  f.Form_Code = @FormCode
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
               AND  f.Is_Active = 1
             """;
 
@@ -313,7 +310,6 @@ public sealed class FormRepository : IFormRepository
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
             WHERE  f.Form_Id = @FormId
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
         using var conn = _db.CreateConnection();
@@ -334,7 +330,6 @@ public sealed class FormRepository : IFormRepository
                 FROM   dbo.Ui_Form f
                 JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
                 WHERE  f.Form_Code = @FormCode
-                  AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             ) THEN 1 ELSE 0 END
             """;
 
@@ -456,8 +451,7 @@ public sealed class FormRepository : IFormRepository
                    f.Updated_At = GETDATE()
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
-            WHERE  f.Form_Code = @FormCode
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL);
+            WHERE  f.Form_Code = @FormCode;
             """;
 
         using var conn = _db.CreateConnection();

@@ -3,6 +3,40 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## 🔴 Đang làm — Bỏ hẳn cột `Tenant_Id` (ADR-035, session 81 — 2026-07-10)
+
+**Chốt (user):** cô lập tenant ở **tầng connection**, không ở tầng cột. Đích = **0 bảng** có `Tenant_Id`,
+cả Config lẫn Data DB. Giữ `TenantId` runtime (resolver + cache key). Quy tắc: `.claude-rules/database-design.md`.
+
+**Khảo sát DB live (2026-07-10):** 9 bảng còn cột (`db/*.sql` + spec 02 KHÔNG phản ánh đủ).
+`SoTenantKhacNhau = 1` mọi bảng → 1 Config DB = 1 tenant, tiền đề vững. `Sys_Table` 11/11 tenant-specific,
+`Ui_View` 8/8, `Sys_Lookup` 13 global + 3 tenant (GENDER), `Sys_Config`/`Sys_Role`/`Doc_*` rỗng.
+Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQUE.
+
+- [x] **TID-1 (backend)** — Gỡ 24 chỗ SQL ở 9 repository + `LookupItem.TenantId` + `ViewMetadata.TenantId`
+      + `ViewInfoResponse.TenantId` + 8 doc-comment. Thu gọn CTE `ROW_NUMBER` thừa ở `LookupRepository`
+      và `ViewRepository`. Build xanh, 145/145 test qua.
+- [x] **TID-0 (bug)** — `LookupRepository` lọc `OR Tenant_Id = 0` trong khi db/009 đã đổi global sang `NULL`
+      → **13 lookup global im lặng biến mất** (`HINHTHUC_2FA`, `LOAI_TAIKHOAN`, `TRANGTHAI_DONVI`,
+      `TRANGTHAI_NGUOIDUNG`). Đã sửa cùng TID-1.
+- [ ] **TID-2 (ConfigStudio WPF)** — ~12 file. Gồm 2 bug lộ ra khi rà:
+      - `SysLookupDataService` (dòng 48/77/113/268/293) mang **đúng bản sao bug `Tenant_Id = 0`** → màn lookup
+        cũng giấu mất 13 dòng global.
+      - `PublishCheckService` (dòng 49/89/222/279/385/533) truy vấn `Ui_Field.Tenant_Id` / `Ui_Form.Tenant_Id`
+        — **hai cột không tồn tại** → `Invalid column name` lúc chạy. Bug có sẵn; gỡ predicate sửa luôn.
+      - `FormDataService` (~1200 dòng) dựng SQL động, dò cột runtime `formCols.Contains("Tenant_Id")` → gỡ cẩn thận.
+- [ ] **TID-3 (migration `db/078`)** — Drop 5 FK → drop filtered index (`UQ_*_Global` / `UQ_*_Tenant`) → drop cột
+      → tạo lại UNIQUE thường, trên 9 bảng. Dựng lại `IX_Sys_Lookup_Code` thành `(Lookup_Code, Is_Active)`
+      (đang dẫn đầu bằng `Tenant_Id` → vô dụng). Gỡ code `Doc_Template`/`Doc_Proc_Registry` **cùng commit**
+      (cột `NOT NULL` không default). **Drop luôn `Sys_Tenant`** (user chốt; 0 tham chiếu C#).
+- [ ] **TID-4 (spec)** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (đang stale: liệt kê 3 bảng, thiếu `Sys_Lookup`).
+
+> ⚠️ **Mâu thuẫn spec cần chốt riêng (không thuộc TID-*):** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ
+> `Sys_Menu`/`Sys_MenuCatalog` nằm ở "Config DB dùng chung" (`Tenant_Id NULL` = dùng chung), còn
+> `docs/spec/16_CONFIG_SYNC_SPEC.md` §1 nói `ICare247_Master` (catalog) mới giữ `Sys_MenuCatalog`.
+> Hai spec chỉ hai DB khác nhau cho cùng một bảng. Thực tế: 1 + 45 dòng, **0 dòng override** → gỡ cột
+> không mất gì, nhưng **nơi đặt bảng vẫn cần user quyết**.
+
 ## ✅ Đã xong — Import: đổi thư viện Excel ClosedXML → DevExpress Spreadsheet (session 80 — 2026-07-09, commits `c48bbc5`/`ac1bd27`/`4257491`, ĐÃ push)
 
 **Chốt (user):** đồng nhất 1 thư viện Office (DevExpress) cho cả in biểu mẫu lẫn import, **cô lập giống in biểu mẫu**; chấp nhận watermark trial + license → mua Universal sau. Đảo điểm 1 ADR-034 (có addendum).

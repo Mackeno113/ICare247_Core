@@ -11,7 +11,7 @@ namespace ICare247.Application.Interfaces;
 /// <summary>
 /// Repository cho <c>Val_Rule</c>.
 /// Field_Id nằm trực tiếp trong Val_Rule (sau Migration 003 — bỏ bảng junction Val_Rule_Field).
-/// Tenant resolve qua Ui_Field → Ui_Form → Sys_Table.Tenant_Id.
+/// Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public interface IRuleRepository
 {

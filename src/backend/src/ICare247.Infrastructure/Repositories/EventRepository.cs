@@ -51,7 +51,6 @@ public sealed class EventRepository : IEventRepository
             WHERE   ed.Form_Id = @FormId
               AND   ed.Trigger_Code = @TriggerCode
               AND   ed.Is_Active = 1
-              AND   st.Tenant_Id = @TenantId
               AND   (@FieldCode IS NULL OR sc.Column_Code = @FieldCode)
             ORDER BY ed.Order_No
             """;

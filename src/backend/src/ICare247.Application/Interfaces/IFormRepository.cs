@@ -9,7 +9,7 @@ namespace ICare247.Application.Interfaces;
 
 /// <summary>
 /// Repository cho bảng <c>Ui_Form</c> và các bảng liên quan (Section, Field, Event).
-/// Tất cả query phải có <c>tenantId</c> (resolve qua Sys_Table.Tenant_Id).
+/// Cô lập tenant ở tầng connection (ADR-035); <c>tenantId</c> chỉ để dựng cache key.
 /// </summary>
 public interface IFormRepository
 {

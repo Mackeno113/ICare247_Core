@@ -65,7 +65,6 @@ public sealed class ViewInfoResponse
     public string? ResetLabelKey { get; init; }
     public string? ResetLabel { get; init; }
 
-    public int? TenantId { get; init; }
     public int Version { get; init; } = 1;
     public bool IsActive { get; init; } = true;
     public string? Description { get; init; }
@@ -137,7 +136,6 @@ public sealed class ViewInfoResponse
         SearchLabel = view.SearchLabel,
         ResetLabelKey = view.ResetLabelKey,
         ResetLabel = view.ResetLabel,
-        TenantId = view.TenantId,
         Version = view.Version,
         IsActive = view.IsActive,
         Description = view.Description,

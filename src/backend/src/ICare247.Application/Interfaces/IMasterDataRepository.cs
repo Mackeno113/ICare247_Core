@@ -13,7 +13,7 @@ namespace ICare247.Application.Interfaces;
 /// Mọi thao tác:
 /// <list type="bullet">
 ///   <item>Đọc bảng đích từ <c>Ui_Form.Table_Id → Sys_Table</c> (Schema_Name + Table_Code).</item>
-///   <item>Verify tenant qua Sys_Table.Tenant_Id.</item>
+///   <item>Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.</item>
 ///   <item>Identifier validate regex; giá trị luôn truyền qua Dapper params (chống injection).</item>
 /// </list>
 /// </remarks>

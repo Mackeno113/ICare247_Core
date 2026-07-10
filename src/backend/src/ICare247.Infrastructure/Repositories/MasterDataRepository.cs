@@ -43,7 +43,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         using var cfg = _configDb.CreateConnection();
 
-        // Form + bảng đích (verify tenant qua Sys_Table.Tenant_Id)
+        // Form + bảng đích (cô lập tenant ở tầng connection — ADR-035)
         const string formSql = """
             SELECT fm.Form_Id      AS FormId,
                    fm.Form_Code    AS FormCode,
@@ -55,7 +55,6 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
             JOIN   dbo.Sys_Table t ON t.Table_Id = fm.Table_Id
             WHERE  fm.Form_Code = @FormCode
               AND  fm.Is_Active = 1
-              AND  (t.Tenant_Id = @TenantId OR t.Tenant_Id IS NULL)
             """;
 
         var head = await cfg.QueryFirstOrDefaultAsync<FormHeadRow>(
