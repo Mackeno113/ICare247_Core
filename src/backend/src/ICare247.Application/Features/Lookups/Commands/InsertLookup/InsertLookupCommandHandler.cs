@@ -42,7 +42,7 @@ public sealed class InsertLookupCommandHandler
         try
         {
             result = await _repo.InsertAsync(
-                request.FieldId, request.TenantId, request.Values, ct);
+                request.FieldId, request.TenantId, request.Values, request.UserId, ct);
         }
         catch (DuplicateValueException dup)
         {

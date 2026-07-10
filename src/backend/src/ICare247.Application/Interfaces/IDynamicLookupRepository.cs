@@ -59,8 +59,9 @@ public interface IDynamicLookupRepository
     /// được map thẳng thành cột → tham số Dapper (key phải là identifier hợp lệ).
     /// </summary>
     /// <param name="fieldId">Field_Id của LookupBox — xác định bảng nguồn + Value/Display column.</param>
-    /// <param name="tenantId">Tenant hiện tại — verify ownership qua Ui_Form → Sys_Table.</param>
+    /// <param name="tenantId">Tenant hiện tại — chỉ dùng dựng cache key, KHÔNG lọc SQL (ADR-035).</param>
     /// <param name="values">Cặp Cột↔Giá trị từ dialog thêm mới (key = tên cột DB).</param>
+    /// <param name="userId">Người thao tác (claim sub) — engine bơm vào <c>CreatedBy</c> nếu bảng đích có cột.</param>
     /// <param name="ct"></param>
     /// <returns>
     /// Dictionary gồm <c>value</c> (khóa vừa insert, từ OUTPUT INSERTED) và <c>display</c>
@@ -70,5 +71,6 @@ public interface IDynamicLookupRepository
         int fieldId,
         int tenantId,
         Dictionary<string, object?> values,
+        long? userId = null,
         CancellationToken ct = default);
 }

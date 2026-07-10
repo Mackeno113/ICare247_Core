@@ -172,7 +172,7 @@ public sealed class LookupController : ControllerBase
 
         try
         {
-            var command = new InsertLookupCommand(body.FieldId, GetTenantId(), body.Values);
+            var command = new InsertLookupCommand(body.FieldId, GetTenantId(), body.Values, GetUserId());
             var result  = await _mediator.Send(command, ct);
             return Ok(result);
         }
@@ -207,6 +207,14 @@ public sealed class LookupController : ControllerBase
     // Tenant_Id từ TenantContext (TenantMiddleware phân giải) — không đọc header trực tiếp. ADR-018.
     private int GetTenantId()
         => HttpContext.RequestServices.GetRequiredService<Application.Interfaces.ITenantContext>().TenantId;
+
+    /// <summary>Id người thao tác từ claim (sub / NameIdentifier) — bơm vào CreatedBy. 0 = không xác định.</summary>
+    private long GetUserId()
+    {
+        var raw = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                  ?? User.FindFirst("sub")?.Value;
+        return long.TryParse(raw, out var id) ? id : 0;
+    }
 }
 
 /// <summary>Request body cho POST /api/v1/lookups/query-dynamic.</summary>

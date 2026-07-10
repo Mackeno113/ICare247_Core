@@ -4,6 +4,7 @@
 // Purpose : Dapper implementation của IDynamicLookupRepository.
 //           Đọc cấu hình Ui_Field_Lookup rồi build + execute parameterized SQL an toàn.
 
+using System.Data;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
@@ -39,6 +40,10 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     // Các keyword DDL/DML nguy hiểm — không cho phép trong FilterSql / OrderBy
     private static readonly string[] DangerousKeywords =
         ["DROP", "DELETE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "TRUNCATE", "ALTER", "CREATE", "MERGE", "--", ";"];
+
+    // Cột audit do SERVER bơm khi insert — client gửi lên thì bỏ qua (chống giả mạo CreatedBy).
+    private static readonly HashSet<string> AuditColumns =
+        new(StringComparer.OrdinalIgnoreCase) { "CreatedBy", "CreatedAt", "UpdatedBy", "UpdatedAt" };
 
     private readonly ICacheService _cache;
     private readonly ILookupCacheVersion _lookupVer;
@@ -412,6 +417,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         int fieldId,
         int tenantId,
         Dictionary<string, object?> values,
+        long? userId = null,
         CancellationToken ct = default)
     {
         // ── Đọc config + verify tenant (giống QueryAsync) ─────────────────────
@@ -458,6 +464,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             // Bỏ qua cột khóa (ValueColumn thường là identity) + tên không an toàn
             if (!SafeIdentifierRegex().IsMatch(key)) continue;
             if (key.Equals(valueCol, StringComparison.OrdinalIgnoreCase)) continue;
+            // Cột audit do server bơm — KHÔNG cho client tự đặt (chống giả mạo CreatedBy).
+            if (AuditColumns.Contains(key)) continue;
             cols.Add(key);
             dp.Add(key, UnwrapParamValue(val));
         }
@@ -466,14 +474,29 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: không có cột hợp lệ để insert.");
 
-        var colList   = string.Join(", ", cols);
-        var paramList = string.Join(", ", cols.Select(c => "@" + c));
-        var insertSql =
-            $"INSERT INTO {cfg.SourceName} ({colList}) " +
-            $"OUTPUT INSERTED.{valueCol} AS NewValue " +
-            $"VALUES ({paramList})";
-
         using var dataConn = _dataDb.CreateConnection();
+
+        // ── Bơm cột audit (ADR-022 §0.1): CreatedBy NOT NULL và KHÔNG có DEFAULT (db/061),
+        //    nên phải set tường minh. Chỉ bơm cột bảng đích THỰC SỰ có — bảng cũ/opt-out không vỡ.
+        var audit = await GetAuditColumnsAsync(dataConn, cfg.SourceName, ct);
+
+        var insCols = cols.Select(c => $"[{c}]").ToList();
+        var insVals = cols.Select(c => "@" + c).ToList();
+
+        if (audit.Contains("CreatedBy"))
+        {
+            if (userId is null or 0)
+                throw new InvalidOperationException(
+                    $"LookupInsert FieldId={fieldId}: bảng '{cfg.SourceName}' yêu cầu CreatedBy nhưng " +
+                    "không xác định được người thao tác (thiếu claim sub/NameIdentifier).");
+            insCols.Add("[CreatedBy]"); insVals.Add("@__CreatedBy"); dp.Add("__CreatedBy", userId.Value);
+        }
+        if (audit.Contains("CreatedAt")) { insCols.Add("[CreatedAt]"); insVals.Add("SYSUTCDATETIME()"); }
+
+        var insertSql =
+            $"INSERT INTO {cfg.SourceName} ({string.Join(", ", insCols)}) " +
+            $"OUTPUT INSERTED.{valueCol} AS NewValue " +
+            $"VALUES ({string.Join(", ", insVals)})";
 
         // ── Check trùng các cột Is_Unique của form gắn bảng đích (chống trùng mã) ──
         const string uniqueColsSql = """
@@ -674,5 +697,33 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         public string Column { get; init; } = "";
         // captionKey / caption không cần cho SQL builder — chỉ cần tên cột DB
         public int Width { get; init; }
+    }
+
+    /// <summary>
+    /// Cột audit (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt) THỰC SỰ có trên bảng đích của Data DB.
+    /// Bảng cũ / bảng opt-out (vd <c>HT_NguoiDung_LuoiLayout</c>) không có → engine bỏ qua, không vỡ.
+    /// <para>
+    /// <paramref name="sourceName"/> có thể là <c>Bang</c> hoặc <c>schema.Bang</c> — <c>SafeIdentifierRegex</c>
+    /// cho phép dấu chấm. Không tách schema thì <c>TABLE_NAME</c> không khớp ⇒ trả rỗng ⇒ KHÔNG bơm CreatedBy
+    /// ⇒ SQL lại báo "Cannot insert NULL into CreatedBy". Đã dính một lần, đừng bỏ nhánh này.
+    /// </para>
+    /// <para>Sự kiện theo sau: caller chỉ bơm những cột nằm trong tập trả về.</para>
+    /// </summary>
+    private static async Task<HashSet<string>> GetAuditColumnsAsync(
+        IDbConnection data, string sourceName, CancellationToken ct)
+    {
+        var dot    = sourceName.LastIndexOf('.');
+        var schema = dot > 0 ? sourceName[..dot] : "dbo";
+        var table  = dot > 0 ? sourceName[(dot + 1)..] : sourceName;
+
+        const string sql = """
+            SELECT COLUMN_NAME
+            FROM   INFORMATION_SCHEMA.COLUMNS
+            WHERE  TABLE_SCHEMA = @Schema AND TABLE_NAME = @Table
+              AND  COLUMN_NAME IN ('CreatedBy','CreatedAt','UpdatedBy','UpdatedAt')
+            """;
+        var rows = await data.QueryAsync<string>(
+            new CommandDefinition(sql, new { Schema = schema, Table = table }, cancellationToken: ct));
+        return new HashSet<string>(rows, StringComparer.OrdinalIgnoreCase);
     }
 }
