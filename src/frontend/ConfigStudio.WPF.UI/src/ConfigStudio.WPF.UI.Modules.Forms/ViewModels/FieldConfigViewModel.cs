@@ -7,6 +7,7 @@ using System.Collections.ObjectModel;
 using System.Text.Json;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Helpers;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
@@ -1124,8 +1125,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     }
 
     /// <summary>
-    /// Khi user nhập xong Nhãn rồi rời ô (binding LostFocus): nếu Gợi ý nhập / Mô tả đang TRỐNG thì
-    /// lấy mặc định = text Nhãn. Ô nào user đã tự nhập riêng (không trống) thì tôn trọng, không đè.
+    /// Khi user nhập xong Nhãn rồi rời ô (binding LostFocus): Gợi ý nhập / Mô tả đang TRỐNG — hoặc còn giữ
+    /// mặc định sinh từ mã cột — thì lấy text Nhãn. Ô nào user đã tự dịch riêng thì tôn trọng, không đè.
     /// Chỉ chạy do user thao tác (gọi từ setter khi suppress=false) → không kích hoạt lúc load/resolve.
     /// Sự kiện theo sau: ô được điền sẽ dirty → ghi Sys_Resource khi Lưu field.
     /// </summary>
@@ -1134,11 +1135,19 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         var label = (_labelPreview ?? "").Trim();
         if (label.Length == 0) return;
 
-        if (string.IsNullOrWhiteSpace(PlaceholderPreview))
+        var defaults = DisplayDefaultValues;
+        if (I18nDefaults.IsUntranslated(PlaceholderPreview, defaults))
             PlaceholderPreview = label;
-        if (string.IsNullOrWhiteSpace(TooltipPreview))
+        if (I18nDefaults.IsUntranslated(TooltipPreview, defaults))
             TooltipPreview = label;
     }
+
+    /// <summary>
+    /// Giá trị coi như "chưa dịch" của field này: mã cột hiệu lực (ảo → FieldCode) ở dạng thô và tách hoa.
+    /// Placeholder/Tooltip còn mang giá trị này ⇒ được phép ghi đè theo Nhãn.
+    /// </summary>
+    private IReadOnlyList<string> DisplayDefaultValues
+        => I18nDefaults.BuildColumnMarkers(IsVirtual ? FieldCode : ColumnCode);
 
     private string _placeholderPreview = "";
     /// <summary>Giá trị placeholder (vi) — user nhập thẳng; key tự sinh ngầm.</summary>
@@ -3418,31 +3427,18 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (!string.IsNullOrWhiteSpace(LabelKey))
             await UpsertOrInitViAsync(LabelKey, LabelPreview, ColumnCode, ct);
 
-        // Placeholder/Tooltip thường CÙNG text với label: user bỏ trống → mặc định lấy text của label
-        // (tạo luôn bản dịch); user nhập KHÁC → tôn trọng giá trị user. Sau khi ghi, phản ánh lại ô nhập.
+        // Placeholder/Tooltip thường CÙNG text với label: ô để trống (hoặc còn giữ mặc định = mã cột) →
+        // lấy text của label; user nhập KHÁC → tôn trọng giá trị user. Sau khi ghi, phản ánh lại ô nhập.
         var labelText = (LabelPreview ?? "").Trim();
+        var defaults  = DisplayDefaultValues;
 
-        if (!string.IsNullOrWhiteSpace(PlaceholderKey))
-        {
-            var text = string.IsNullOrWhiteSpace(PlaceholderPreview) ? labelText : PlaceholderPreview.Trim();
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                await _i18nService.SaveResourceAsync(PlaceholderKey, "vi", text, ct);
-                if (string.IsNullOrWhiteSpace(PlaceholderPreview))
-                    SetResolvedValue(v => PlaceholderPreview = v, text);
-            }
-        }
+        await SaveDisplayViAsync(PlaceholderKey, PlaceholderPreview, labelText, defaults,
+                                 v => PlaceholderPreview = v, ct);
+        await SaveDisplayViAsync(TooltipKey, TooltipPreview, labelText, defaults,
+                                 v => TooltipPreview = v, ct);
 
-        if (!string.IsNullOrWhiteSpace(TooltipKey))
-        {
-            var text = string.IsNullOrWhiteSpace(TooltipPreview) ? labelText : TooltipPreview.Trim();
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                await _i18nService.SaveResourceAsync(TooltipKey, "vi", text, ct);
-                if (string.IsNullOrWhiteSpace(TooltipPreview))
-                    SetResolvedValue(v => TooltipPreview = v, text);
-            }
-        }
+        // Các ngôn ngữ khác (bản dịch nhập qua popup của Nhãn) cũng lan sang placeholder/tooltip.
+        await CascadeLabelToOtherLanguagesAsync(defaults, ct);
 
         if (IsRequired && !string.IsNullOrWhiteSpace(RequiredErrorKey))
             await UpsertOrInitViAsync(RequiredErrorKey, RequiredErrorKeyPreview,
@@ -3481,6 +3477,55 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             await _i18nService.SaveResourceAsync(key, "vi", value.Trim(), ct);
         else
             await _i18nService.InitResourceIfMissingAsync(key, "vi", fallbackDefault, ct);
+    }
+
+    /// <summary>
+    /// Ghi bản dịch (vi) cho 1 ô hiển thị ăn theo Nhãn (Gợi ý nhập / Mô tả): ô trống hoặc còn giữ mặc định
+    /// (= mã cột) → lấy <paramref name="labelText"/> rồi phản ánh lại ô nhập; user đã dịch riêng → ghi đúng
+    /// giá trị user. Sự kiện theo sau: ô hiển thị giá trị vừa ghi (không đánh dấu dirty).
+    /// </summary>
+    private async Task SaveDisplayViAsync(
+        string key, string? currentValue, string labelText, IReadOnlyList<string> defaults,
+        Action<string> refresh, CancellationToken ct)
+    {
+        if (_i18nService is null || string.IsNullOrWhiteSpace(key)) return;
+
+        var useLabel = I18nDefaults.IsUntranslated(currentValue, defaults);
+        var text     = useLabel ? labelText : currentValue!.Trim();
+        if (string.IsNullOrWhiteSpace(text)) return;   // chưa có Nhãn → chưa ghi gì
+
+        await _i18nService.SaveResourceAsync(key, "vi", text, ct);
+        if (useLabel)
+            SetResolvedValue(refresh, text);
+    }
+
+    /// <summary>
+    /// Lan bản dịch của Nhãn sang Gợi ý nhập / Mô tả ở CÁC NGÔN NGỮ NGOÀI vi (vi đã xử lý qua ô nhập inline):
+    /// ngôn ngữ nào Nhãn đã dịch mà placeholder/tooltip còn rỗng hoặc giữ mặc định (= mã cột) thì ghi theo Nhãn.
+    /// Bản dịch riêng của user được giữ nguyên. Sự kiện theo sau: web đọc Sys_Resource thấy đủ 3 key mọi ngôn ngữ.
+    /// </summary>
+    private async Task CascadeLabelToOtherLanguagesAsync(IReadOnlyList<string> defaults, CancellationToken ct)
+    {
+        if (_i18nService is null || string.IsNullOrWhiteSpace(LabelKey)) return;
+
+        var followKeys = new[] { PlaceholderKey, TooltipKey };
+        if (followKeys.All(string.IsNullOrWhiteSpace)) return;
+
+        foreach (var lang in await _i18nService.GetLanguagesAsync(ct))
+        {
+            if (string.Equals(lang.LangCode, "vi", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var labelValue = await _i18nService.ResolveKeyAsync(LabelKey, lang.LangCode, ct);
+            if (string.IsNullOrWhiteSpace(labelValue)) continue;   // Nhãn chưa dịch → không có gì để lan
+
+            foreach (var key in followKeys)
+            {
+                if (string.IsNullOrWhiteSpace(key)) continue;
+                var current = await _i18nService.ResolveKeyAsync(key, lang.LangCode, ct);
+                if (I18nDefaults.IsUntranslated(current, defaults))
+                    await _i18nService.SaveResourceAsync(key, lang.LangCode, labelValue.Trim(), ct);
+            }
+        }
     }
 
     private void ExecuteCancel()
@@ -3564,10 +3609,24 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             { "contextLabel", label },
             { "seedValue",    seed ?? "" }
         };
+
+        // Nhãn là nguồn của Gợi ý nhập / Mô tả: popup ghi luôn 2 key kia ở ngôn ngữ nào chúng chưa dịch.
+        var isLabel = which == "label";
+        if (isLabel)
+        {
+            p.Add("followKeys", (IReadOnlyList<string>)new[] { PlaceholderKey, TooltipKey });
+            p.Add("defaultValues", DisplayDefaultValues);
+        }
+
         _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
         {
             if (result.Result != ButtonResult.OK) return;
             refresh(result.Parameters.GetValue<string>("primaryValue") ?? "");
+
+            // Popup vừa có thể ghi đè placeholder/tooltip (vi) → resolve lại để ô nhập khớp DB.
+            if (!isLabel) return;
+            _ = ResolveI18nPreviewAsync(PlaceholderKey, v => PlaceholderPreview = v);
+            _ = ResolveI18nPreviewAsync(TooltipKey, v => TooltipPreview = v);
         });
     }
 

@@ -5,6 +5,7 @@
 //           Dùng chung ở mọi nơi có i18n (Section, Tab, Field, Event...).
 
 using System.Collections.ObjectModel;
+using ConfigStudio.WPF.UI.Core.Helpers;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.I18n.Models;
@@ -16,13 +17,16 @@ namespace ConfigStudio.WPF.UI.Modules.I18n.ViewModels;
 /// <summary>
 /// Popup nhập bản dịch cho một resource key cố định.
 /// Tham số vào (DialogParameters):
-///   - "key"          (string, bắt buộc) — resource key cần dịch.
-///   - "contextLabel" (string, tùy chọn) — nhãn ngữ cảnh hiển thị ở header.
-///   - "keyEditable"  (bool,   tùy chọn) — cho phép sửa key (mặc định false).
-///   - "seedValue"    (string, tùy chọn) — giá trị mồi cho ngôn ngữ mặc định nếu key chưa có.
+///   - "key"           (string, bắt buộc) — resource key cần dịch.
+///   - "contextLabel"  (string, tùy chọn) — nhãn ngữ cảnh hiển thị ở header.
+///   - "keyEditable"   (bool,   tùy chọn) — cho phép sửa key (mặc định false).
+///   - "seedValue"     (string, tùy chọn) — giá trị mồi cho ngôn ngữ mặc định nếu key chưa có.
+///   - "followKeys"    (IReadOnlyList&lt;string&gt;, tùy chọn) — key "ăn theo" key chính (vd label →
+///                     placeholder/tooltip): ngôn ngữ nào key đó CHƯA dịch thì ghi theo giá trị vừa nhập.
+///   - "defaultValues" (IReadOnlyList&lt;string&gt;, tùy chọn) — giá trị coi như chưa dịch (vd mã cột).
 /// Trả về (ButtonResult.OK):
-///   - "key"          — key cuối cùng (nếu user sửa).
-///   - "primaryValue" — bản dịch ngôn ngữ mặc định (để caller cập nhật preview inline).
+///   - "key"           — key cuối cùng (nếu user sửa).
+///   - "primaryValue"  — bản dịch ngôn ngữ mặc định (để caller cập nhật preview inline).
 /// </summary>
 public sealed class I18nEditorDialogViewModel : ViewModelBase, IDialogAware
 {
@@ -65,6 +69,12 @@ public sealed class I18nEditorDialogViewModel : ViewModelBase, IDialogAware
     /// <summary>Danh sách bản dịch theo từng ngôn ngữ.</summary>
     public ObservableCollection<I18nValueRow> Rows { get; } = [];
 
+    /// <summary>Key ăn theo key chính khi chúng chưa được dịch riêng (rỗng = không lan).</summary>
+    private IReadOnlyList<string> _followKeys = [];
+
+    /// <summary>Giá trị coi như "chưa dịch" của key ăn theo — thường là mã cột + dạng tách hoa.</summary>
+    private IReadOnlyList<string> _defaultValues = [];
+
     private bool _isSaving;
     public bool IsSaving { get => _isSaving; private set => SetProperty(ref _isSaving, value); }
 
@@ -89,6 +99,11 @@ public sealed class I18nEditorDialogViewModel : ViewModelBase, IDialogAware
         ContextLabel = parameters.TryGetValue("contextLabel", out string? lbl) ? lbl ?? "" : "";
         KeyEditable = parameters.TryGetValue("keyEditable", out bool editable) && editable;
         var seedValue = parameters.TryGetValue("seedValue", out string? seed) ? seed ?? "" : "";
+
+        _followKeys = parameters.TryGetValue("followKeys", out IReadOnlyList<string>? follow)
+            ? follow ?? [] : [];
+        _defaultValues = parameters.TryGetValue("defaultValues", out IReadOnlyList<string>? defaults)
+            ? defaults ?? [] : [];
 
         await LoadLanguagesAsync(seedValue);
     }
@@ -156,6 +171,8 @@ public sealed class I18nEditorDialogViewModel : ViewModelBase, IDialogAware
                 if (!string.IsNullOrWhiteSpace(row.Value))
                     await _i18n.SaveResourceAsync(ResourceKey, row.LangCode, row.Value);
 
+            await CascadeToFollowKeysAsync();
+
             var result = new DialogResult(ButtonResult.OK);
             result.Parameters.Add("key", ResourceKey);
             result.Parameters.Add("primaryValue", defaultRow?.Value ?? "");
@@ -168,6 +185,33 @@ public sealed class I18nEditorDialogViewModel : ViewModelBase, IDialogAware
         finally
         {
             IsSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Lan bản dịch vừa nhập sang các key ăn theo (label → placeholder/tooltip), xét TỪNG ngôn ngữ:
+    /// key nào đang rỗng hoặc còn giữ mặc định (= mã cột) thì ghi theo giá trị key chính; key đã có bản
+    /// dịch riêng thì giữ nguyên. Sự kiện theo sau: dialog đóng, caller resolve lại preview để thấy giá trị mới.
+    /// </summary>
+    private async Task CascadeToFollowKeysAsync()
+    {
+        if (_i18n is null || _followKeys.Count == 0) return;
+
+        foreach (var followKey in _followKeys)
+        {
+            if (string.IsNullOrWhiteSpace(followKey)
+                || string.Equals(followKey, ResourceKey, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            foreach (var row in Rows)
+            {
+                var value = (row.Value ?? "").Trim();
+                if (value.Length == 0) continue;   // ngôn ngữ chưa nhập ở key chính → không có gì để lan
+
+                var current = await _i18n.ResolveKeyAsync(followKey, row.LangCode);
+                if (I18nDefaults.IsUntranslated(current, _defaultValues))
+                    await _i18n.SaveResourceAsync(followKey, row.LangCode, value);
+            }
         }
     }
 }
