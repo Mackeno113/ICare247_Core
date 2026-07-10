@@ -92,14 +92,73 @@ không vỡ, chỉ là "dựng lên rồi phá đi". Dọn được thì gọn, 
 - `28_DOC_TEMPLATE_SPEC.md:79,90` — vẫn ghi *"giữ `Tenant_Id` cho đồng nhất"*.
 - `docs/migrations/000_create_schema.sql` + `001_seed_all.sql` — bản sao cũ, còn `Sys_Tenant`.
 
-### ❓ R-3 — Chờ user quyết: `Sys_Menu` / `Sys_MenuCatalog` nằm ở DB nào?
+### 🧊 R-3 — HOÃN: `Sys_Menu` / `Sys_MenuCatalog` — giàn giáo cho pha nâng cấp menu
 
-`15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ hai bảng ở **"Config DB dùng chung"**; `16_CONFIG_SYNC_SPEC.md` §1 nói
-**`ICare247_Master` (catalog)** mới giữ `Sys_MenuCatalog`. Hai spec chỉ hai DB khác nhau cho cùng một bảng.
-Thực tế: 1 + 45 dòng, **0 dòng override** → gỡ cột không mất gì, nhưng nơi đặt bảng vẫn cần chốt.
+**Chốt (user, 2026-07-10):** menu server-driven **chưa áp dụng** vào project hiện tại; nó đến từ
+**project cũ đang chờ nâng cấp lên**. Không xử lý gì trong pha này.
 
-Liên quan: phần **đồng bộ menu master → `HT_ChucNang`** (ADR-023) **chưa có dòng code nào** — đó là lý do
-grep không ra tham chiếu C# tới 2 bảng này, không phải vì bảng thừa.
+> Ghi lại đầy đủ vì đã phải tra 2 lần: hai bảng này **không phải bảng rác**, cũng **chưa phải tính năng
+> đang chạy**. Chúng là **định nghĩa gốc (master) của cây chức năng / menu**, dựng sẵn chờ code đồng bộ.
+
+#### Hai bảng chứa gì
+
+**`Sys_Menu` = một *bộ* menu.** `Menu_Code` (`MAIN`, `MOBILE`…), `Menu_Type` (Sidebar/Top/Mobile/Context).
+Seed đúng 1 dòng: `MAIN` — "Menu chính", Sidebar. Tồn tại để sau này có nhiều bộ menu song song
+(sidebar web, menu mobile, thanh trên), mỗi bộ một cây riêng.
+
+**`Sys_MenuCatalog` = cây chức năng base** thuộc một bộ menu. 45 dòng seed = bộ khung ứng dụng:
+
+```
+dashboard (/)                    ManHinh
+group.operations "Vận hành"      Menu
+  ├─ organization /m/organization   TC
+  ├─ hr           /m/hr             NS
+  └─ payroll      /m/payroll        TL
+group.business   "Kinh doanh"    Menu
+group.system     "Hệ thống"      Menu
+devtools         /dev/forms      ManHinh
+...
+```
+
+Cột: `Func_Code` (khóa nghiệp vụ ổn định) · `Func_Name` · `Parent_Code` · `Func_Type` (Menu/ManHinh/
+ChucNangCon) · `Module` (`TC`/`NS`/`TL`/`TM`/`CN`/`BC`/`HT` — đúng bộ tiền tố ADR-022) · `Route` · `Icon` ·
+`Display_Pos` · `Display_Order` · `Default_Enabled` · `Version`.
+
+#### Vì sao tồn tại (ADR-023) — tách ĐỊNH NGHĨA khỏi PHÂN QUYỀN
+
+| | Định nghĩa | Phân quyền |
+|---|---|---|
+| Ai làm | DEV / builder | Admin của tenant |
+| Công cụ | ConfigStudio WPF | Web, qua API |
+| Ghi vào | **Config DB** — `Sys_Menu`, `Sys_MenuCatalog` | **Data DB tenant** — `HT_VaiTro_Quyen` |
+| Thấy gì | route, icon, cấu trúc cây | chỉ Tên + tick Xem/Thêm/Sửa/Xóa/In |
+
+DEV định nghĩa "hệ thống có màn nào, route gì, icon gì" **một lần ở master**. Khi provision/nâng cấp 1 tenant,
+cây đó **UPSERT theo `Func_Code`** xuống `HT_ChucNang` (Data DB của tenant). Admin tenant chỉ tick quyền trên
+chức năng đã có, **không bao giờ thấy** route hay API.
+
+Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không phải để đọc trực tiếp:
+- Cây khai bằng **`Parent_Code`, KHÔNG phải `Parent_Id`** — `Id` mỗi tenant một khác, chỉ code là bền.
+- `Default_Enabled` = giá trị khởi tạo `HT_ChucNang.KichHoat`; `Version` để lần sync sau biết bản nào mới.
+  `db/042` đã thêm sẵn vào `HT_ChucNang` 4 cột khớp cặp: `Menu_Id`, `LaHeThong`, `KichHoat`, `ViTriHienThi`.
+  **`LaHeThong` đóng vai trò y hệt `Is_System` của ConfigSync**: bản gốc từ master → re-sync ghi đè;
+  bản tenant tự thêm → không đụng.
+
+#### Trạng thái thật
+
+- **Schema xong:** `db/042` (mở rộng `HT_ChucNang`) · `db/043` (tạo 2 bảng) · `db/044` (seed 45 dòng) ·
+  `db/045` (seed `HT_ChucNang` base). Đã chạy — bảng và dữ liệu có thật (`Sys_Menu` 1 dòng,
+  `Sys_MenuCatalog` 45 dòng, **toàn global, 0 override**). `db/078` gỡ cột `Tenant_Id` khỏi chúng, không mất gì.
+- **Phía TENANT đã code xong** (đừng nhầm là chưa làm gì): `NavMenu.razor` nạp menu từ API `/me/navigation`
+  (server-driven, đã lọc theo quyền, đọc `HT_ChucNang`); `AppNav.cs` chỉ là **fallback tĩnh khi API rỗng/lỗi**.
+  Có cả màn **Menu Builder** sửa cây `HT_ChucNang` qua `MenuAdminController` (`/api/v1/admin/menu/*`)
+  + `MenuAdminApiService`, và màn Phân quyền dùng `HT_VaiTro_Quyen`.
+- **Thứ DUY NHẤT thiếu = tiến trình đồng bộ master → tenant** (`Sys_MenuCatalog` → `HT_ChucNang`, UPSERT theo
+  `Func_Code`). Vì vậy 2 bảng master có **0 tham chiếu C#** — grep không ra là do đây, KHÔNG phải bảng thừa.
+- ⚠️ **Mâu thuẫn spec — chưa cần quyết, vì chưa code nào phụ thuộc câu trả lời:**
+  `15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ hai bảng ở "Config DB dùng chung";
+  `16_CONFIG_SYNC_SPEC.md` §1 nói `ICare247_Master` (catalog) mới giữ `Sys_MenuCatalog`.
+  Chốt khi bắt tay vào pha nâng cấp.
 
 ### 🧹 R-4 — Nợ nhỏ
 
