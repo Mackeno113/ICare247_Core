@@ -174,13 +174,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         }
     }
 
-    private bool _editIsTenant = true;
-    public bool EditIsTenant
-    {
-        get => _editIsTenant;
-        set => SetProperty(ref _editIsTenant, value);
-    }
-
     private bool _editIsActive = true;
     public bool EditIsActive
     {
@@ -553,7 +546,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                     normalizedCode,
                     normalizedName,
                     normalizedSchema,
-                    EditIsTenant,
                     EditIsActive,
                     _appConfig.TenantId,
                     normalizedDescription);
@@ -568,7 +560,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
                     normalizedCode,
                     normalizedName,
                     normalizedSchema,
-                    EditIsTenant,
                     _appConfig.TenantId,
                     normalizedDescription);
 
@@ -787,7 +778,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         EditTableCode = table.TableCode;
         EditTableName = table.TableName;
         EditSchemaName = string.IsNullOrWhiteSpace(table.SchemaName) ? "dbo" : table.SchemaName;
-        EditIsTenant = table.IsTenant;
         EditIsActive = table.IsActive;
         EditDescription = table.Description;
 
@@ -803,7 +793,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         EditTableCode = "";
         EditTableName = "";
         EditSchemaName = "dbo";
-        EditIsTenant = true;
         EditIsActive = true;
         EditDescription = "";
         _selectedDbObject = null;                       // không kích hoạt auto-fill khi reset

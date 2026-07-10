@@ -152,8 +152,6 @@ public sealed class FormDataService : IFormDataService
         var whereParts = new List<string> { "1 = 1" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
-        if (sysTableCols.Contains("Is_Tenant"))
-            whereParts.Add("st.Is_Tenant = 1");
 
         var orderBy = sysTableCols.Contains("Table_Code")
             ? "st.Table_Code"
@@ -200,9 +198,6 @@ public sealed class FormDataService : IFormDataService
         var schemaExpr = sysTableCols.Contains("Schema_Name")
             ? "ISNULL(st.Schema_Name, 'dbo') AS SchemaName"
             : "CAST('dbo' AS nvarchar(128)) AS SchemaName";
-        var isTenantExpr = sysTableCols.Contains("Is_Tenant")
-            ? "st.Is_Tenant AS IsTenant"
-            : "CAST(1 AS bit) AS IsTenant";
         var versionExpr = sysTableCols.Contains("Version")
             ? "st.Version AS Version"
             : "CAST(1 AS int) AS Version";
@@ -234,7 +229,6 @@ public sealed class FormDataService : IFormDataService
                 + "       " + tableCodeExpr + ",\n"
                 + "       " + tableNameExpr + ",\n"
                 + "       " + schemaExpr + ",\n"
-                + "       " + isTenantExpr + ",\n"
                 + "       " + versionExpr + ",\n"
                 + "       " + checksumExpr + ",\n"
                 + "       " + isActiveExpr + ",\n"
@@ -256,7 +250,6 @@ public sealed class FormDataService : IFormDataService
         string tableCode,
         string tableName,
         string schemaName,
-        bool isTenant,
         int tenantId,
         string? description = null,
         CancellationToken ct = default)
@@ -310,11 +303,6 @@ public sealed class FormDataService : IFormDataService
             insertCols.Add("Schema_Name");
             insertVals.Add("@SchemaName");
         }
-        if (sysTableCols.Contains("Is_Tenant"))
-        {
-            insertCols.Add("Is_Tenant");
-            insertVals.Add("@IsTenant");
-        }
         if (sysTableCols.Contains("Version"))
         {
             insertCols.Add("Version");
@@ -360,7 +348,6 @@ public sealed class FormDataService : IFormDataService
                     TableCode = normalizedCode,
                     TableName = normalizedName,
                     SchemaName = normalizedSchema,
-                    IsTenant = isTenant,
                     Description = normalizedDescription,
                 },
                 cancellationToken: ct));
@@ -372,7 +359,6 @@ public sealed class FormDataService : IFormDataService
         string tableCode,
         string tableName,
         string schemaName,
-        bool isTenant,
         bool isActive,
         int tenantId,
         string? description = null,
@@ -424,8 +410,6 @@ public sealed class FormDataService : IFormDataService
             setParts.Add("Table_Name = @TableName");
         if (sysTableCols.Contains("Schema_Name"))
             setParts.Add("Schema_Name = @SchemaName");
-        if (sysTableCols.Contains("Is_Tenant"))
-            setParts.Add("Is_Tenant = @IsTenant");
         if (sysTableCols.Contains("Is_Active"))
             setParts.Add("Is_Active = @IsActive");
         if (sysTableCols.Contains("Description"))
@@ -449,7 +433,6 @@ public sealed class FormDataService : IFormDataService
                     TableCode = normalizedCode,
                     TableName = normalizedName,
                     SchemaName = normalizedSchema,
-                    IsTenant = isTenant,
                     IsActive = isActive,
                     Description = normalizedDescription,
                 },
@@ -707,8 +690,6 @@ public sealed class FormDataService : IFormDataService
         var whereParts = new List<string> { "1 = 1" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("Is_Active = 1");
-        if (sysTableCols.Contains("Is_Tenant"))
-            whereParts.Add("Is_Tenant = 1");
 
         var sql = "SELECT TOP (1) Table_Id\n"
                 + "FROM   dbo.Sys_Table\n"
@@ -734,8 +715,6 @@ public sealed class FormDataService : IFormDataService
         var whereParts = new List<string> { "Table_Id = @TableId" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("Is_Active = 1");
-        if (sysTableCols.Contains("Is_Tenant"))
-            whereParts.Add("Is_Tenant = 1");
 
         var sql = "SELECT TOP (1) 1\n"
                 + "FROM   dbo.Sys_Table\n"

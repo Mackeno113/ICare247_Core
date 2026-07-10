@@ -76,7 +76,6 @@ public interface IFormDataService
         string tableCode,
         string tableName,
         string schemaName,
-        bool isTenant,
         int tenantId,
         string? description = null,
         CancellationToken ct = default);
@@ -89,7 +88,6 @@ public interface IFormDataService
         string tableCode,
         string tableName,
         string schemaName,
-        bool isTenant,
         bool isActive,
         int tenantId,
         string? description = null,

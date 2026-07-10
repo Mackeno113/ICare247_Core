@@ -118,7 +118,6 @@
                         <dxg:GridColumn Header="Table_Code" FieldName="TableCode" Width="150" AllowEditing="False" />
                         <dxg:GridColumn Header="Table_Name" FieldName="TableName" Width="*" AllowEditing="False" />
                         <dxg:GridColumn Header="Schema" FieldName="SchemaName" Width="90" AllowEditing="False" />
-                        <dxg:GridColumn Header="Is_Tenant" FieldName="IsTenant" Width="85" AllowEditing="False" />
                         <dxg:GridColumn Header="Active" FieldName="IsActive" Width="70" AllowEditing="False" />
                         <dxg:GridColumn Header="Updated_At" FieldName="UpdatedAt" Width="130" AllowEditing="False">
                             <dxg:GridColumn.EditSettings>
@@ -211,16 +210,12 @@
                                           Margin="0,0,0,10" />
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <dxe:CheckEdit Content="Is_Tenant"
-                                               IsChecked="{Binding EditIsTenant}"
-                                               ToolTip="Bật nếu bảng chứa dữ liệu riêng theo từng tenant (mỗi tenant một bộ dữ liệu); tắt nếu là bảng dùng chung."
-                                               Margin="0,0,16,0" />
                                 <dxe:CheckEdit Content="Is_Active"
                                                IsChecked="{Binding EditIsActive}"
                                                ToolTip="Bật = bản ghi đang hiệu lực và xuất hiện trong cấu hình; tắt = ẩn/vô hiệu khỏi hệ thống." />
                             </StackPanel>
                             <TextBlock FontSize="11" Opacity="0.5" TextWrapping="Wrap" Margin="0,0,0,10"
-                                       Text="Is_Tenant: bảng có dữ liệu riêng theo từng tenant. • Is_Active: bản ghi đang hiệu lực (tắt để ẩn/vô hiệu)." />
+                                       Text="Is_Active: bản ghi đang hiệu lực (tắt để ẩn/vô hiệu)." />
 
                             <TextBlock Text="Description" FontSize="12" FontWeight="SemiBold" Opacity="0.75" Margin="0,0,0,2" />
                             <TextBlock Text="Ghi chú nội bộ mô tả mục đích/ý nghĩa của bảng (không bắt buộc)."

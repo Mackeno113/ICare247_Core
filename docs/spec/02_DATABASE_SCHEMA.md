@@ -54,7 +54,6 @@ tra Catalog DB (`dbo.Tenant`) để chọn connection string — đó là **ranh
 | Table_Code | nvarchar(100) | NOT NULL | Mã bảng |
 | Table_Name | nvarchar(255) | NOT NULL DEFAULT '' | Tên hiển thị |
 | Schema_Name | nvarchar(50) | NOT NULL DEFAULT 'dbo' | SQL schema |
-| Is_Tenant | bit | NOT NULL DEFAULT 0 | Bảng có data theo tenant không |
 | Version | int | NOT NULL DEFAULT 1 | |
 | Checksum | nvarchar(64) | NULL | Hash để detect thay đổi |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
