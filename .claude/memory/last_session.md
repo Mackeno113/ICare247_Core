@@ -1,12 +1,25 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-10 (session 81 — ADR-035 bỏ hẳn cột `Tenant_Id`; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-10 (session 81 — ADR-035 + dọn ADR mục + bug runtime; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
+> **Task tiếp theo gợi ý:** verify E2E trên app (thêm/xóa ngân hàng sau khi restart API) · quyết định bảo vệ FK `DM_NganHang`→`DM_ChiNhanhNganHang`.
 
-## Session 81 (2026-07-10) — ADR-035: bỏ HẲN cột `Tenant_Id` + 5 bug lộ ra khi rà
+## Session 81 (2026-07-10) — ADR-035: bỏ HẲN cột `Tenant_Id` + dọn ADR mục + bug runtime
 
-**4 commit trên `master`** (`904fbb3` backend · `83717b2` WPF+migration+spec · `a302c37` PublishCheckService ·
-`ff7653b` Sys_Lookup Manager). Build backend + WPF 0 error, 145/145 test. `db/078` **đã chạy** trên Config DB.
+**Commit trên `master`** (đã push): `904fbb3` backend · `83717b2` WPF+migration+spec · `a302c37`
+PublishCheckService · `ff7653b` Sys_Lookup Manager · `7643bb5`+`7dbaa8f` TASKS · `943c4c3` **dọn ADR mục** ·
+`24acc2f` i18n · `b53329c` **2 bug E2E MasterData**. Build backend+WPF 0 error, 145/145 test. `db/078` đã chạy.
+
+**Dọn ADR mục (`943c4c3`):** gỡ toàn bộ 18 dòng `Status:` khỏi `architecture_decisions.md` — ADR = quyết định
+bất biến, trạng thái chuyển sang bảng `TASKS.md § Trạng thái triển khai ADR`. Rà thấy **8/18 dòng Status SAI**
+(ghi "chưa code" trong khi code đã chạy). `/finish-task` thêm bước soát ADR. Xem [[feedback-adr-no-status]].
+
+**3 bug runtime lộ khi E2E màn danh mục (`b53329c` + `a302c37`), đều có sẵn:**
+1. `InsertAsync` CreatedBy NULL (LookupBox thêm mới) — không bơm cột audit. Sửa: dò `INFORMATION_SCHEMA` +
+   bơm CreatedBy/CreatedAt, chặn client giả mạo, nối userId từ claim.
+2. `ReferenceCheckService` chặn nhầm mọi xóa — fallback đoán-theo-tên khớp `Id`/`*_Id` toàn Data DB sau khi
+   ADR-019 đổi PK thành `Id`. **GỠ HẲN** fallback; chỉ `Sys_Relation` + FK vật lý. Xem [[feedback-no-fk-inference]].
+3. `PublishCheckService` 3 query cột không tồn tại; #2 trong `catch` trần → check vòng lặp chưa từng chạy.
 
 **Quyết định (ADR-035):** cô lập tenant ở **tầng connection**, không ở tầng cột. ADR-018 cho mỗi tenant 1 Config
 DB riêng → cột định danh tenant *bên trong* DB đã-thuộc-1-tenant không phân biệt được gì. Vai trò "master vs
