@@ -195,8 +195,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         set => SetProperty(ref _editDescription, value);
     }
 
-    public int TenantId => _appConfig?.TenantId ?? 0;
-
     public bool IsEditMode => SelectedTable is not null && EditTableId.HasValue;
 
     public string SaveButtonText => IsEditMode ? "Cập nhật" : "Lưu";
@@ -345,7 +343,8 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
 
         try
         {
-            var exists = await _formDataService.FormExistsForTableAsync(table.TableId, table.TableCode, TenantId);
+            var exists = await _formDataService.FormExistsForTableAsync(
+                table.TableId, table.TableCode, _appConfig?.TenantId ?? 0);
             // Bỏ qua nếu user đã đổi sang bảng khác trong lúc chờ (tránh ghi đè cờ sai).
             if (SelectedTable?.TableId == table.TableId)
                 SelectedTableHasForm = exists;
@@ -400,7 +399,6 @@ public sealed class SysTableManagerViewModel : ViewModelBase, INavigationAware, 
         try
         {
             await EnsureAppConfigLoadedAsync();
-            RaisePropertyChanged(nameof(TenantId));
 
             if (_formDataService is null || _appConfig is null || !_appConfig.IsConfigured)
             {

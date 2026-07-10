@@ -68,17 +68,6 @@
                                    IsChecked="{Binding ShowInactive}"
                                    VerticalAlignment="Center"
                                    Margin="0,0,12,0" />
-
-                    <Border Background="{DynamicResource AppAccentSoftBrush}"
-                            BorderBrush="{DynamicResource AppAccentLightBrush}"
-                            BorderThickness="1"
-                            CornerRadius="4"
-                            Padding="10,5">
-                        <TextBlock FontSize="12"
-                                   Foreground="{DynamicResource AppAccentDarkBrush}"
-                                   FontWeight="SemiBold"
-                                   Text="{Binding TenantId, Mode=OneWay, StringFormat=Tenant_Id: {0}}" />
-                    </Border>
                 </StackPanel>
 
                 <Border Grid.Row="2"
