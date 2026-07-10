@@ -15,7 +15,6 @@ public sealed class SysTableRecord
     public string TableName { get; init; } = "";
     public string SchemaName { get; init; } = "";
     public bool IsTenant { get; init; }
-    public int TenantId { get; init; }
     public int Version { get; init; }
     public string Checksum { get; init; } = "";
     public bool IsActive { get; init; }

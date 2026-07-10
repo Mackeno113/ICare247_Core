@@ -19,17 +19,24 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
 - [x] **TID-0 (bug)** — `LookupRepository` lọc `OR Tenant_Id = 0` trong khi db/009 đã đổi global sang `NULL`
       → **13 lookup global im lặng biến mất** (`HINHTHUC_2FA`, `LOAI_TAIKHOAN`, `TRANGTHAI_DONVI`,
       `TRANGTHAI_NGUOIDUNG`). Đã sửa cùng TID-1.
-- [ ] **TID-2 (ConfigStudio WPF)** — ~12 file. Gồm 2 bug lộ ra khi rà:
-      - `SysLookupDataService` (dòng 48/77/113/268/293) mang **đúng bản sao bug `Tenant_Id = 0`** → màn lookup
-        cũng giấu mất 13 dòng global.
-      - `PublishCheckService` (dòng 49/89/222/279/385/533) truy vấn `Ui_Field.Tenant_Id` / `Ui_Form.Tenant_Id`
-        — **hai cột không tồn tại** → `Invalid column name` lúc chạy. Bug có sẵn; gỡ predicate sửa luôn.
-      - `FormDataService` (~1200 dòng) dựng SQL động, dò cột runtime `formCols.Contains("Tenant_Id")` → gỡ cẩn thận.
-- [ ] **TID-3 (migration `db/078`)** — Drop 5 FK → drop filtered index (`UQ_*_Global` / `UQ_*_Tenant`) → drop cột
-      → tạo lại UNIQUE thường, trên 9 bảng. Dựng lại `IX_Sys_Lookup_Code` thành `(Lookup_Code, Is_Active)`
-      (đang dẫn đầu bằng `Tenant_Id` → vô dụng). Gỡ code `Doc_Template`/`Doc_Proc_Registry` **cùng commit**
-      (cột `NOT NULL` không default). **Drop luôn `Sys_Tenant`** (user chốt; 0 tham chiếu C#).
-- [ ] **TID-4 (spec)** — Cập nhật `docs/spec/02_DATABASE_SCHEMA.md` (đang stale: liệt kê 3 bảng, thiếu `Sys_Lookup`).
+- [x] **TID-2 (ConfigStudio WPF)** — 9 file + 3 record DTO. Sửa luôn 2 bug lộ ra khi rà:
+      - `SysLookupDataService` mang **đúng bản sao bug `Tenant_Id = 0`** (5 chỗ) → màn lookup cũng giấu 13 dòng global.
+      - `PublishCheckService` (6 chỗ) truy vấn `Ui_Field.Tenant_Id` / `Sys_Dependency.Tenant_Id` — **cột không tồn tại**
+        → `Invalid column name` lúc chạy. Bug có sẵn; gỡ predicate sửa luôn.
+      - `FormDataService` (~1200 dòng): gỡ nhánh dò cột `useTenantFromForm/SysTable`; đổi tên
+        `IsTableInTenantAsync`→`IsTableActiveAsync`, `ResolveTableIdForTenantAsync`→`ResolveDefaultTableIdAsync`.
+      - Build WPF xanh.
+- [x] **TID-3 (migration `db/078_drop_tenant_id.sql`)** — Guard (dừng nếu >1 tenant hoặc trùng khóa) → drop 5 FK
+      → drop filtered index → drop DEFAULT → drop cột (9 bảng) → dựng lại UNIQUE thường + `IX_Sys_Lookup_Code`
+      `(Lookup_Code, Is_Active)` → **DROP TABLE `Sys_Tenant`**. Toàn bộ trong **1 batch + 1 transaction + TRY/CATCH**
+      (chèn `GO` giữa chừng sẽ khiến guard không chặn được các bước sau). Gỡ code `Doc_Template`/`Doc_Proc_Registry`
+      cùng commit (cột `NOT NULL` không default). ⏳ **CHƯA chạy trên DB nào.**
+- [x] **TID-4 (spec)** — `docs/spec/02_DATABASE_SCHEMA.md` cập nhật: mục Tenant Isolation viết lại,
+      `Sys_Tenant` đánh dấu ĐÃ DROP, gỡ 5 dòng cột + 4 cặp filtered index, sửa sơ đồ quan hệ.
+      Cũng sửa `.claude-rules/dapper-patterns.md` (dòng 5–6 dạy ngược lại ADR-035).
+
+> ⏳ **Bước tiếp theo:** chạy `db/078` trên Config DB (dev trước). Migration tự guard và ROLLBACK nếu tiền đề sai.
+> Deploy code TRƯỚC, chạy migration SAU — code đã thôi lọc cột nên chạy được với cả schema cũ lẫn mới.
 
 > ⚠️ **Mâu thuẫn spec cần chốt riêng (không thuộc TID-*):** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ
 > `Sys_Menu`/`Sys_MenuCatalog` nằm ở "Config DB dùng chung" (`Tenant_Id NULL` = dùng chung), còn

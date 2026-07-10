@@ -12,7 +12,7 @@ namespace ConfigStudio.WPF.UI.Infrastructure;
 
 /// <summary>
 /// Implementation IFormDataService dùng Dapper query thẳng SQL Server.
-/// Mọi query đều parameterized, filter Tenant_Id bắt buộc.
+/// Mọi query đều parameterized. Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class FormDataService : IFormDataService
 {
@@ -46,15 +46,8 @@ public sealed class FormDataService : IFormDataService
         var evtDefCols = await GetTableColumnsAsync(conn, "dbo", "Evt_Definition", ct);
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
 
-        var useTenantFromForm = formCols.Contains("Tenant_Id");
-        var useTenantFromSysTable = !useTenantFromForm
-            && formCols.Contains("Table_Id")
-            && sysTableCols.Contains("Table_Id")
-            && sysTableCols.Contains("Tenant_Id");
-
-        if (!useTenantFromForm && !useTenantFromSysTable)
-            throw new InvalidOperationException(
-                "Không tìm được cột tenant cho Ui_Form. Cần Ui_Form.Tenant_Id hoặc mapping Ui_Form.Table_Id -> Sys_Table.Tenant_Id.");
+        // Cô lập tenant ở tầng connection (ADR-035). JOIN Sys_Table chỉ để lọc st.Is_Active.
+        var joinSysTable = formCols.Contains("Table_Id") && sysTableCols.Contains("Table_Id");
 
         var formNameExpr = formCols.Contains("Form_Name")
             ? "f.Form_Name AS FormName"
@@ -90,17 +83,14 @@ public sealed class FormDataService : IFormDataService
         var fieldCountExpr    = BuildCountExpr("Ui_Field",       "fi",  fieldCols,    "FieldCount");
         var eventCountExpr    = BuildCountExpr("Evt_Definition", "ed",  evtDefCols,   "EventCount");
 
-        var fromClause = useTenantFromSysTable
+        var fromClause = joinSysTable
             ? "dbo.Ui_Form f\n            INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
             : "dbo.Ui_Form f";
 
-        var whereParts = new List<string>
-        {
-            useTenantFromSysTable ? "st.Tenant_Id = @TenantId" : "f.Tenant_Id = @TenantId"
-        };
+        var whereParts = new List<string> { "1 = 1" };
         if (formCols.Contains("Is_Active"))
             whereParts.Add("(@IncludeInactive = 1 OR f.Is_Active = 1)");
-        if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
+        if (joinSysTable && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
         var sql = "SELECT f.Form_Id AS FormId, f.Form_Code AS FormCode,\n"
@@ -121,7 +111,7 @@ public sealed class FormDataService : IFormDataService
         var result = await conn.QueryAsync<FormRecord>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, IncludeInactive = includeInactive ? 1 : 0 },
+                new { IncludeInactive = includeInactive ? 1 : 0 },
                 cancellationToken: ct));
 
         return result.ToList();
@@ -140,8 +130,8 @@ public sealed class FormDataService : IFormDataService
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
         if (sysTableCols.Count == 0)
             throw new InvalidOperationException("Không tìm thấy bảng dbo.Sys_Table.");
-        if (!sysTableCols.Contains("Table_Id") || !sysTableCols.Contains("Tenant_Id"))
-            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id/Tenant_Id.");
+        if (!sysTableCols.Contains("Table_Id"))
+            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id.");
 
         var tableCodeExpr = sysTableCols.Contains("Table_Code")
             ? "st.Table_Code AS TableCode"
@@ -159,7 +149,7 @@ public sealed class FormDataService : IFormDataService
             ? "ISNULL(st.Description, '') AS Description"
             : "CAST('' AS nvarchar(4000)) AS Description";
 
-        var whereParts = new List<string> { "st.Tenant_Id = @TenantId" };
+        var whereParts = new List<string> { "1 = 1" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
         if (sysTableCols.Contains("Is_Tenant"))
@@ -179,10 +169,7 @@ public sealed class FormDataService : IFormDataService
                 + "ORDER BY " + orderBy;
 
         var result = await conn.QueryAsync<TableLookupRecord>(
-            new CommandDefinition(
-                sql,
-                new { TenantId = tenantId },
-                cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
 
         return result.ToList();
     }
@@ -201,8 +188,8 @@ public sealed class FormDataService : IFormDataService
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
         if (sysTableCols.Count == 0)
             throw new InvalidOperationException("Không tìm thấy bảng dbo.Sys_Table.");
-        if (!sysTableCols.Contains("Table_Id") || !sysTableCols.Contains("Tenant_Id"))
-            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id/Tenant_Id.");
+        if (!sysTableCols.Contains("Table_Id"))
+            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id.");
 
         var tableCodeExpr = sysTableCols.Contains("Table_Code")
             ? "st.Table_Code AS TableCode"
@@ -235,10 +222,7 @@ public sealed class FormDataService : IFormDataService
             ? "ISNULL(st.Description, '') AS Description"
             : "CAST('' AS nvarchar(max)) AS Description";
 
-        var whereParts = new List<string>
-        {
-            "st.Tenant_Id = @TenantId"
-        };
+        var whereParts = new List<string> { "1 = 1" };
         if (!includeInactive && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
@@ -251,7 +235,6 @@ public sealed class FormDataService : IFormDataService
                 + "       " + tableNameExpr + ",\n"
                 + "       " + schemaExpr + ",\n"
                 + "       " + isTenantExpr + ",\n"
-                + "       st.Tenant_Id AS TenantId,\n"
                 + "       " + versionExpr + ",\n"
                 + "       " + checksumExpr + ",\n"
                 + "       " + isActiveExpr + ",\n"
@@ -263,10 +246,7 @@ public sealed class FormDataService : IFormDataService
                 + "ORDER BY " + orderBy;
 
         var result = await conn.QueryAsync<SysTableRecord>(
-            new CommandDefinition(
-                sql,
-                new { TenantId = tenantId },
-                cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
 
         return result.ToList();
     }
@@ -300,26 +280,25 @@ public sealed class FormDataService : IFormDataService
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
         if (sysTableCols.Count == 0)
             throw new InvalidOperationException("Không tìm thấy bảng dbo.Sys_Table.");
-        if (!sysTableCols.Contains("Table_Code") || !sysTableCols.Contains("Tenant_Id"))
-            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Code/Tenant_Id.");
+        if (!sysTableCols.Contains("Table_Code"))
+            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Code.");
 
         var duplicateSql = """
             SELECT TOP (1) 1
             FROM   dbo.Sys_Table
             WHERE  Table_Code = @TableCode
-              AND  Tenant_Id  = @TenantId
             """;
         var duplicate = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 duplicateSql,
-                new { TableCode = normalizedCode, TenantId = tenantId },
+                new { TableCode = normalizedCode },
                 cancellationToken: ct));
         if (duplicate.HasValue)
             throw new InvalidOperationException(
-                $"Table_Code '{normalizedCode}' đã tồn tại trong tenant {tenantId}.");
+                $"Table_Code '{normalizedCode}' đã tồn tại.");
 
-        var insertCols = new List<string> { "Table_Code", "Tenant_Id" };
-        var insertVals = new List<string> { "@TableCode", "@TenantId" };
+        var insertCols = new List<string> { "Table_Code" };
+        var insertVals = new List<string> { "@TableCode" };
 
         if (sysTableCols.Contains("Table_Name"))
         {
@@ -382,7 +361,6 @@ public sealed class FormDataService : IFormDataService
                     TableName = normalizedName,
                     SchemaName = normalizedSchema,
                     IsTenant = isTenant,
-                    TenantId = tenantId,
                     Description = normalizedDescription,
                 },
                 cancellationToken: ct));
@@ -419,8 +397,8 @@ public sealed class FormDataService : IFormDataService
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
         if (sysTableCols.Count == 0)
             throw new InvalidOperationException("Không tìm thấy bảng dbo.Sys_Table.");
-        if (!sysTableCols.Contains("Table_Id") || !sysTableCols.Contains("Tenant_Id"))
-            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id/Tenant_Id.");
+        if (!sysTableCols.Contains("Table_Id"))
+            throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Id.");
         if (!sysTableCols.Contains("Table_Code"))
             throw new InvalidOperationException("Bảng dbo.Sys_Table thiếu cột bắt buộc Table_Code.");
 
@@ -429,16 +407,15 @@ public sealed class FormDataService : IFormDataService
             FROM   dbo.Sys_Table
             WHERE  Table_Id   <> @TableId
               AND  Table_Code = @TableCode
-              AND  Tenant_Id  = @TenantId
             """;
         var duplicate = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 duplicateSql,
-                new { TableId = tableId, TableCode = normalizedCode, TenantId = tenantId },
+                new { TableId = tableId, TableCode = normalizedCode },
                 cancellationToken: ct));
         if (duplicate.HasValue)
             throw new InvalidOperationException(
-                $"Table_Code '{normalizedCode}' đã tồn tại trong tenant {tenantId}.");
+                $"Table_Code '{normalizedCode}' đã tồn tại.");
 
         var setParts = new List<string>();
         if (sysTableCols.Contains("Table_Code"))
@@ -461,8 +438,7 @@ public sealed class FormDataService : IFormDataService
 
         var sql = "UPDATE dbo.Sys_Table\n"
                 + "SET    " + string.Join(", ", setParts) + "\n"
-                + "WHERE  Table_Id = @TableId\n"
-                + "  AND  Tenant_Id = @TenantId";
+                + "WHERE  Table_Id = @TableId";
 
         var affected = await conn.ExecuteAsync(
             new CommandDefinition(
@@ -475,7 +451,6 @@ public sealed class FormDataService : IFormDataService
                     SchemaName = normalizedSchema,
                     IsTenant = isTenant,
                     IsActive = isActive,
-                    TenantId = tenantId,
                     Description = normalizedDescription,
                 },
                 cancellationToken: ct));
@@ -511,34 +486,29 @@ public sealed class FormDataService : IFormDataService
         var insertVals = new List<string> { "@FormCode" };
         int? tableIdForInsert = null;
 
-        if (formCols.Contains("Tenant_Id"))
-        {
-            insertCols.Insert(0, "Tenant_Id");
-            insertVals.Insert(0, "@TenantId");
-        }
-        else if (formCols.Contains("Table_Id"))
+        if (formCols.Contains("Table_Id"))
         {
             // NOTE: Ưu tiên Table_Id từ UI để tránh tạo sai bảng metadata.
             if (tableId.HasValue)
             {
-                var isValidTable = await IsTableInTenantAsync(conn, tableId.Value, tenantId, ct);
+                var isValidTable = await IsTableActiveAsync(conn, tableId.Value, ct);
                 if (!isValidTable)
                 {
                     throw new InvalidOperationException(
-                        $"Table_Id={tableId.Value} không thuộc tenant {tenantId} hoặc không active.");
+                        $"Table_Id={tableId.Value} không tồn tại hoặc không active.");
                 }
                 tableIdForInsert = tableId.Value;
             }
             else
             {
                 // NOTE: Backward-compatible cho flow cũ chưa truyền Table_Id.
-                tableIdForInsert = await ResolveTableIdForTenantAsync(conn, tenantId, ct);
+                tableIdForInsert = await ResolveDefaultTableIdAsync(conn, ct);
             }
 
             if (!tableIdForInsert.HasValue)
             {
                 throw new InvalidOperationException(
-                    $"Không tìm thấy Sys_Table hợp lệ cho tenant {tenantId}. Vui lòng chọn Table_Id trước khi tạo form.");
+                    "Không tìm thấy Sys_Table hợp lệ. Vui lòng chọn Table_Id trước khi tạo form.");
             }
 
             insertCols.Insert(0, "Table_Id");
@@ -613,7 +583,7 @@ public sealed class FormDataService : IFormDataService
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, FormCode = formCode, FormName = formName, Platform = platform, TableId = tableIdForInsert, DisplayMode = displayMode },
+                new { FormCode = formCode, FormName = formName, Platform = platform, TableId = tableIdForInsert, DisplayMode = displayMode },
                 cancellationToken: ct));
     }
 
@@ -636,33 +606,22 @@ public sealed class FormDataService : IFormDataService
             throw new InvalidOperationException("Bảng dbo.Ui_Form thiếu cột bắt buộc Form_Code.");
 
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
-        var useTenantFromForm = formCols.Contains("Tenant_Id");
-        var useTenantFromSysTable = !useTenantFromForm
-            && formCols.Contains("Table_Id")
-            && sysTableCols.Contains("Table_Id")
-            && sysTableCols.Contains("Tenant_Id");
+        // Cô lập tenant ở tầng connection (ADR-035). JOIN Sys_Table chỉ để lọc st.Is_Active.
+        var joinSysTable = formCols.Contains("Table_Id") && sysTableCols.Contains("Table_Id");
 
-        if (!useTenantFromForm && !useTenantFromSysTable)
-            throw new InvalidOperationException(
-                "Không tìm được cột tenant cho check duplicate Form_Code. Cần Ui_Form.Tenant_Id hoặc mapping qua Sys_Table.");
-
-        // ── Check duplicate Form_Code trong tenant hiện tại ─────
-        var whereParts = new List<string>
-        {
-            "f.Form_Code = @FormCode",
-            useTenantFromSysTable ? "st.Tenant_Id = @TenantId" : "f.Tenant_Id = @TenantId",
-        };
+        // ── Check duplicate Form_Code (unique trong Config DB) ─────
+        var whereParts = new List<string> { "f.Form_Code = @FormCode" };
 
         if (formCols.Contains("Is_Active"))
             whereParts.Add("f.Is_Active = 1");
-        if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
+        if (joinSysTable && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
         // Loại trừ chính form đang edit để không báo trùng với chính nó
         if (excludeFormId > 0 && formCols.Contains("Form_Id"))
             whereParts.Add("f.Form_Id <> @ExcludeFormId");
 
-        var fromClause = useTenantFromSysTable
+        var fromClause = joinSysTable
             ? "dbo.Ui_Form f INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
             : "dbo.Ui_Form f";
 
@@ -673,7 +632,7 @@ public sealed class FormDataService : IFormDataService
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, FormCode = formCode, ExcludeFormId = excludeFormId },
+                new { FormCode = formCode, ExcludeFormId = excludeFormId },
                 cancellationToken: ct));
 
         return exists.HasValue;
@@ -701,14 +660,8 @@ public sealed class FormDataService : IFormDataService
 
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
         var hasTableId = formCols.Contains("Table_Id");
-        var useTenantFromForm = formCols.Contains("Tenant_Id");
-        var useTenantFromSysTable = !useTenantFromForm
-            && hasTableId
-            && sysTableCols.Contains("Table_Id")
-            && sysTableCols.Contains("Tenant_Id");
-
-        if (!useTenantFromForm && !useTenantFromSysTable)
-            return false;
+        // Cô lập tenant ở tầng connection (ADR-035). JOIN Sys_Table chỉ để lọc st.Is_Active.
+        var joinSysTable = hasTableId && sysTableCols.Contains("Table_Id");
 
         // Khớp bảng: Form_Code = Table_Code; nếu Ui_Form có Table_Id thì OR thêm Table_Id.
         var matchParts = new List<string> { "f.Form_Code = @TableCode" };
@@ -717,14 +670,13 @@ public sealed class FormDataService : IFormDataService
         var whereParts = new List<string>
         {
             "(" + string.Join(" OR ", matchParts) + ")",
-            useTenantFromSysTable ? "st.Tenant_Id = @TenantId" : "f.Tenant_Id = @TenantId",
         };
         if (formCols.Contains("Is_Active"))
             whereParts.Add("f.Is_Active = 1");
-        if (useTenantFromSysTable && sysTableCols.Contains("Is_Active"))
+        if (joinSysTable && sysTableCols.Contains("Is_Active"))
             whereParts.Add("st.Is_Active = 1");
 
-        var fromClause = useTenantFromSysTable
+        var fromClause = joinSysTable
             ? "dbo.Ui_Form f INNER JOIN dbo.Sys_Table st ON st.Table_Id = f.Table_Id"
             : "dbo.Ui_Form f";
 
@@ -735,25 +687,24 @@ public sealed class FormDataService : IFormDataService
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 sql,
-                new { TenantId = tenantId, TableCode = tableCode, TableId = tableId },
+                new { TableCode = tableCode, TableId = tableId },
                 cancellationToken: ct));
 
         return exists.HasValue;
     }
 
     /// <summary>
-    /// Resolve Table_Id đầu tiên của tenant khi schema đặt tenant ở Sys_Table.
+    /// Resolve Table_Id đầu tiên còn active trong Config DB (= 1 tenant, ADR-035).
     /// </summary>
-    private static async Task<int?> ResolveTableIdForTenantAsync(
+    private static async Task<int?> ResolveDefaultTableIdAsync(
         SqlConnection conn,
-        int tenantId,
         CancellationToken ct)
     {
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
-        if (!sysTableCols.Contains("Table_Id") || !sysTableCols.Contains("Tenant_Id"))
+        if (!sysTableCols.Contains("Table_Id"))
             return null;
 
-        var whereParts = new List<string> { "Tenant_Id = @TenantId" };
+        var whereParts = new List<string> { "1 = 1" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("Is_Active = 1");
         if (sysTableCols.Contains("Is_Tenant"))
@@ -765,30 +716,22 @@ public sealed class FormDataService : IFormDataService
                 + "ORDER BY Table_Id";
 
         return await conn.ExecuteScalarAsync<int?>(
-            new CommandDefinition(
-                sql,
-                new { TenantId = tenantId },
-                cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
     }
 
     /// <summary>
-    /// Kiểm tra Table_Id có thuộc tenant hiện tại và còn active hay không.
+    /// Kiểm tra Table_Id có tồn tại và còn active hay không.
     /// </summary>
-    private static async Task<bool> IsTableInTenantAsync(
+    private static async Task<bool> IsTableActiveAsync(
         SqlConnection conn,
         int tableId,
-        int tenantId,
         CancellationToken ct)
     {
         var sysTableCols = await GetTableColumnsAsync(conn, "dbo", "Sys_Table", ct);
-        if (!sysTableCols.Contains("Table_Id") || !sysTableCols.Contains("Tenant_Id"))
+        if (!sysTableCols.Contains("Table_Id"))
             return false;
 
-        var whereParts = new List<string>
-        {
-            "Table_Id = @TableId",
-            "Tenant_Id = @TenantId",
-        };
+        var whereParts = new List<string> { "Table_Id = @TableId" };
         if (sysTableCols.Contains("Is_Active"))
             whereParts.Add("Is_Active = 1");
         if (sysTableCols.Contains("Is_Tenant"))
@@ -801,7 +744,7 @@ public sealed class FormDataService : IFormDataService
         var exists = await conn.ExecuteScalarAsync<int?>(
             new CommandDefinition(
                 sql,
-                new { TableId = tableId, TenantId = tenantId },
+                new { TableId = tableId },
                 cancellationToken: ct));
 
         return exists.HasValue;
@@ -862,14 +805,12 @@ public sealed class FormDataService : IFormDataService
         if (formCols.Count == 0)
             throw new InvalidOperationException("Không tìm thấy bảng dbo.Ui_Form.");
 
-        var hasTenantId = formCols.Contains("Tenant_Id");
-
         await using var tx = (SqlTransaction)await conn.BeginTransactionAsync(ct);
         try
         {
             // ── Bước 1: Clone Ui_Form ─────────────────────────
             var newFormId = await CloneFormRowAsync(
-                conn, tx, formCols, sourceFormId, newFormCode, newFormName, tenantId, hasTenantId, ct);
+                conn, tx, formCols, sourceFormId, newFormCode, newFormName, ct);
 
             // ── Bước 2a: Clone Ui_Tab (lấy mapping oldTabId→newTabId) ──
             var tabMap = new Dictionary<int, int>();
@@ -900,7 +841,7 @@ public sealed class FormDataService : IFormDataService
         SqlConnection conn, SqlTransaction tx,
         HashSet<string> cols,
         int sourceFormId, string newFormCode, string newFormName,
-        int tenantId, bool hasTenantId, CancellationToken ct)
+        CancellationToken ct)
     {
         // Các cột được gán giá trị cố định (không copy từ source)
         var fixedCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -930,9 +871,7 @@ public sealed class FormDataService : IFormDataService
             }
         }
 
-        var whereClause = hasTenantId
-            ? "WHERE src.Form_Id = @SourceFormId AND src.Tenant_Id = @TenantId"
-            : "WHERE src.Form_Id = @SourceFormId";
+        var whereClause = "WHERE src.Form_Id = @SourceFormId";
 
         var sql = $"""
             INSERT INTO dbo.Ui_Form ({string.Join(", ", insertCols)})
@@ -945,7 +884,7 @@ public sealed class FormDataService : IFormDataService
         return await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(sql,
                 new { NewFormCode = newFormCode, NewFormName = newFormName,
-                      SourceFormId = sourceFormId, TenantId = tenantId },
+                      SourceFormId = sourceFormId },
                 tx, cancellationToken: ct));
     }
 
@@ -1228,11 +1167,7 @@ public sealed class FormDataService : IFormDataService
             ? "Role_Name"
             : "Role_Code";
 
-        // Lấy global roles (Tenant_Id IS NULL) + roles của tenant hiện tại
-        var tenantFilter = cols.Contains("Tenant_Id")
-            ? "AND (r.Tenant_Id IS NULL OR r.Tenant_Id = @TenantId)"
-            : "";
-
+        // Cô lập tenant ở tầng connection (ADR-035) — mọi role trong Config DB đều của tenant này.
         var activeFilter = cols.Contains("Is_Active")
             ? "AND r.Is_Active = 1"
             : "";
@@ -1243,13 +1178,12 @@ public sealed class FormDataService : IFormDataService
                    r.{roleNameExpr} AS RoleName
             FROM   dbo.Sys_Role r
             WHERE  1 = 1
-                   {tenantFilter}
                    {activeFilter}
             ORDER BY r.Role_Id
             """;
 
         var rows = await conn.QueryAsync<RoleLookupRecord>(
-            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
         return rows.AsList();
     }
 

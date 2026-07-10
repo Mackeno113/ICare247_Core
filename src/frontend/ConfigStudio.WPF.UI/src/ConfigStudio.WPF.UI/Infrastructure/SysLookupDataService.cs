@@ -12,7 +12,7 @@ namespace ConfigStudio.WPF.UI.Infrastructure;
 
 /// <summary>
 /// Truy vấn và quản lý <c>Sys_Lookup</c> kèm resolve label từ <c>Sys_Resource</c>.
-/// Ưu tiên tenant riêng, fallback về global (Tenant_Id = 0).
+/// Cô lập tenant ở tầng connection (1 Config DB = 1 tenant, ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class SysLookupDataService : ISysLookupDataService
 {
@@ -29,38 +29,25 @@ public sealed class SysLookupDataService : ISysLookupDataService
     {
         if (!_config.IsConfigured) return [];
 
-        // Ưu tiên tenant riêng, fallback global. Label từ Sys_Resource, fallback Label_Key.
+        // Label từ Sys_Resource, fallback Label_Key.
         const string sql = """
-            WITH ranked AS (
-                SELECT l.Item_Code,
-                       l.Label_Key,
-                       COALESCE(r.Resource_Value, l.Label_Key) AS Label,
-                       l.Sort_Order,
-                       ROW_NUMBER() OVER (
-                           PARTITION BY l.Item_Code
-                           ORDER BY CASE WHEN l.Tenant_Id = @TenantId THEN 0 ELSE 1 END
-                       ) AS rn
-                FROM   dbo.Sys_Lookup l
-                LEFT JOIN dbo.Sys_Resource r
-                       ON r.Resource_Key = l.Label_Key
-                      AND r.Lang_Code    = @LangCode
-                WHERE  l.Lookup_Code = @LookupCode
-                  AND  (l.Tenant_Id  = @TenantId OR l.Tenant_Id = 0)
-                  AND  l.Is_Active   = 1
-            )
-            SELECT Item_Code  AS ItemCode,
-                   Label_Key  AS LabelKey,
-                   Label,
-                   Sort_Order AS SortOrder
-            FROM   ranked
-            WHERE  rn = 1
-            ORDER BY Sort_Order, Item_Code
+            SELECT l.Item_Code                             AS ItemCode,
+                   l.Label_Key                             AS LabelKey,
+                   COALESCE(r.Resource_Value, l.Label_Key) AS Label,
+                   l.Sort_Order                            AS SortOrder
+            FROM   dbo.Sys_Lookup l
+            LEFT JOIN dbo.Sys_Resource r
+                   ON r.Resource_Key = l.Label_Key
+                  AND r.Lang_Code    = @LangCode
+            WHERE  l.Lookup_Code = @LookupCode
+              AND  l.Is_Active   = 1
+            ORDER BY l.Sort_Order, l.Item_Code
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         var items = await conn.QueryAsync<LookupItemRecord>(
             new CommandDefinition(sql,
-                new { LookupCode = lookupCode, TenantId = _config.TenantId, LangCode = langCode },
+                new { LookupCode = lookupCode, LangCode = langCode },
                 cancellationToken: ct));
 
         return items.AsList();
@@ -74,15 +61,12 @@ public sealed class SysLookupDataService : ISysLookupDataService
         const string sql = """
             SELECT DISTINCT Lookup_Code
             FROM   dbo.Sys_Lookup
-            WHERE  (Tenant_Id = @TenantId OR Tenant_Id = 0)
             ORDER BY Lookup_Code
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         var codes = await conn.QueryAsync<string>(
-            new CommandDefinition(sql,
-                new { TenantId = _config.TenantId },
-                cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
 
         return codes.AsList();
     }
@@ -96,7 +80,6 @@ public sealed class SysLookupDataService : ISysLookupDataService
         // Lấy đầy đủ cả inactive, join Sys_Resource để lấy label vi + en.
         const string sql = """
             SELECT l.Lookup_Id   AS LookupId,
-                   l.Tenant_Id   AS TenantId,
                    l.Lookup_Code AS LookupCode,
                    l.Item_Code   AS ItemCode,
                    l.Label_Key   AS LabelKey,
@@ -110,14 +93,13 @@ public sealed class SysLookupDataService : ISysLookupDataService
             LEFT JOIN dbo.Sys_Resource ren
                    ON ren.Resource_Key = l.Label_Key AND ren.Lang_Code = N'en'
             WHERE  l.Lookup_Code = @LookupCode
-              AND  (l.Tenant_Id  = @TenantId OR l.Tenant_Id = 0)
             ORDER BY l.Sort_Order, l.Item_Code
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         var items = await conn.QueryAsync<LookupItemEditRecord>(
             new CommandDefinition(sql,
-                new { LookupCode = lookupCode, TenantId = _config.TenantId },
+                new { LookupCode = lookupCode },
                 cancellationToken: ct));
 
         return items.AsList();
@@ -135,9 +117,9 @@ public sealed class SysLookupDataService : ISysLookupDataService
         item.LabelKey = labelKey;
 
         const string insertLookup = """
-            INSERT INTO dbo.Sys_Lookup (Tenant_Id, Lookup_Code, Item_Code, Label_Key, Sort_Order, Is_Active)
+            INSERT INTO dbo.Sys_Lookup (Lookup_Code, Item_Code, Label_Key, Sort_Order, Is_Active)
             OUTPUT INSERTED.Lookup_Id
-            VALUES (@TenantId, @LookupCode, @ItemCode, @LabelKey, @SortOrder, @IsActive)
+            VALUES (@LookupCode, @ItemCode, @LabelKey, @SortOrder, @IsActive)
             """;
 
         // Upsert Sys_Resource vi + en
@@ -159,7 +141,7 @@ public sealed class SysLookupDataService : ISysLookupDataService
         {
             var newId = await conn.ExecuteScalarAsync<int>(
                 new CommandDefinition(insertLookup,
-                    new { TenantId = _config.TenantId, item.LookupCode, item.ItemCode,
+                    new { item.LookupCode, item.ItemCode,
                           item.LabelKey, item.SortOrder, item.IsActive },
                     transaction: tx, cancellationToken: ct));
 
@@ -265,13 +247,12 @@ public sealed class SysLookupDataService : ISysLookupDataService
         const string checkSql = """
             SELECT COUNT(1) FROM dbo.Sys_Lookup
             WHERE Lookup_Code = @LookupCode
-              AND (Tenant_Id = @TenantId OR Tenant_Id = 0)
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
         var exists = await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(checkSql,
-                new { LookupCode = lookupCode, TenantId = _config.TenantId },
+                new { LookupCode = lookupCode },
                 cancellationToken: ct));
 
         // Code đã tồn tại — không thêm placeholder, coi như thành công
@@ -290,7 +271,6 @@ public sealed class SysLookupDataService : ISysLookupDataService
             SELECT COUNT(1) FROM dbo.Sys_Lookup
             WHERE  Lookup_Code = @LookupCode
               AND  Item_Code   = @ItemCode
-              AND  (Tenant_Id  = @TenantId OR Tenant_Id = 0)
               AND  Lookup_Id  <> @ExcludeId
             """;
 
@@ -298,7 +278,7 @@ public sealed class SysLookupDataService : ISysLookupDataService
         var count = await conn.ExecuteScalarAsync<int>(
             new CommandDefinition(sql,
                 new { LookupCode = lookupCode, ItemCode = itemCode,
-                      TenantId = _config.TenantId, ExcludeId = excludeLookupId },
+                      ExcludeId = excludeLookupId },
                 cancellationToken: ct));
 
         return count > 0;

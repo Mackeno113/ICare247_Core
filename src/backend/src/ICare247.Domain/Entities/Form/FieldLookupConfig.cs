@@ -42,7 +42,8 @@ public sealed class FieldLookupConfig
     /// Mệnh đề WHERE tùy chọn (parameterized — KHÔNG string interpolation).
     /// Hỗ trợ system params: @TenantId, @Today, @CurrentUser.
     /// Hỗ trợ field params dạng @FieldCode cho cascading lookup.
-    /// Ví dụ: "Is_Active = 1 AND Tenant_Id = @TenantId".
+    /// Ví dụ: "Is_Active = 1 AND Loai = @LoaiField".
+    /// KHÔNG lọc cột Tenant_Id — cột đã bỏ, tenant cô lập ở tầng connection (ADR-035).
     /// </summary>
     public string? FilterSql { get; init; }
 

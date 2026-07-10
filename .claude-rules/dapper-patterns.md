@@ -6,8 +6,9 @@
 2. LUÔN dùng `IDbConnectionFactory` — KHÔNG `new SqlConnection()` trực tiếp
 3. LUÔN dùng async: `QueryAsync`, `QueryFirstOrDefaultAsync`, `ExecuteAsync`
 4. LUÔN truyền `CancellationToken` qua `CommandDefinition`
-5. LUÔN có `AND Tenant_Id = @TenantId` cho bảng có Tenant_Id
-6. LUÔN có `AND Is_Active = 1` cho soft-delete tables
+5. **KHÔNG** lọc `Tenant_Id` — cột này đã bỏ (ADR-035). Tenant cô lập ở tầng connection.
+   `tenantId` chỉ dùng dựng cache key. Xem `database-design.md`.
+6. LUÔN lọc soft-delete: `AND Is_Active = 1` (Config DB) · `AND IsDeleted = 0` (Data DB)
 7. KHÔNG `SELECT *` — chỉ SELECT cột cần thiết
 8. **LUÔN dùng `N'...'` (Unicode prefix) cho mọi string literal trong SQL** — đặc biệt dữ liệu tiếng Việt
 
@@ -37,11 +38,10 @@ const string sql = """
     SELECT f.Form_Id, f.Form_Code, f.Version
     FROM   dbo.Ui_Form f
     WHERE  f.Form_Code = @FormCode
-      AND  f.Tenant_Id = @TenantId
       AND  f.Is_Active = 1
     """;
 var result = await conn.QueryFirstOrDefaultAsync<FormMetadata>(
-    new CommandDefinition(sql, new { FormCode = formCode, TenantId = tenantId },
+    new CommandDefinition(sql, new { FormCode = formCode },
         cancellationToken: ct));
 ```
 
@@ -49,7 +49,7 @@ var result = await conn.QueryFirstOrDefaultAsync<FormMetadata>(
 
 ```csharp
 var items = await conn.QueryAsync<FieldMetadata>(
-    new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId },
+    new CommandDefinition(sql, new { FormId = formId },
         cancellationToken: ct));
 return items.AsList();
 ```

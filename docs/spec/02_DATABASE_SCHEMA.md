@@ -16,36 +16,37 @@
 | JSON | `nvarchar(max)` — suffix `_Json` hoặc `_Schema` |
 | Localisation | Text hiển thị lưu dưới dạng **resource key** (`_Key`) → tra `Sys_Resource` |
 
-### Chiến lược Tenant Isolation
+### Chiến lược Tenant Isolation — **cô lập ở tầng connection** (ADR-035)
 
-`Tenant_Id` **không** có mặt ở mọi bảng. Thay vào đó:
+> **`Tenant_Id` KHÔNG còn tồn tại ở bất kỳ bảng nào** (gỡ bởi `db/078_drop_tenant_id.sql`).
+> Bảng `Sys_Tenant` cũng đã drop.
 
-- `Sys_Table` là trung tâm — có `Tenant_Id` (nullable: `NULL` = global, có giá trị = tenant-specific)
-- `Ui_Form` → `Table_Id` → `Sys_Table.Tenant_Id`
-- `Ui_Section`, `Ui_Field` → qua `Form_Id` → `Ui_Form` → `Sys_Table`
-- `Sys_Column` → qua `Table_Id` → `Sys_Table`
-- Các bảng có `Tenant_Id` trực tiếp: `Sys_Tenant` (master), `Sys_Role`, `Sys_Config`
+ADR-018 cấp cho **mỗi tenant 1 Config DB riêng** (cô lập vật lý), nên cột định danh tenant
+*bên trong* một DB đã-thuộc-về-1-tenant không phân biệt được gì. `ITenantConnectionResolver`
+tra Catalog DB (`dbo.Tenant`) để chọn connection string — đó là **ranh giới cô lập duy nhất**.
+
+- Phân biệt **bản ghi master vs. tenant tự tùy biến** → dùng `Is_System` / `Is_Customized` /
+  `Source_Ver` (ConfigSync, `db/050`), KHÔNG dùng `Tenant_Id`.
+- `TenantId` ở **tầng runtime vẫn giữ**: resolver chọn connection + thành phần `CacheKeys`
+  (Redis L2 dùng chung giữa các tenant). Bỏ *cột*, không bỏ *khái niệm*.
+- Mã định danh (`Table_Code`, `View_Code`, `Role_Code`, `Lookup_Code`+`Item_Code`…) nay
+  **UNIQUE thường** trong phạm vi cả DB — không còn cặp filtered index Global/Tenant.
+
+> Chi tiết + danh sách cấm: [`.claude-rules/database-design.md`](../../.claude-rules/database-design.md) §1.1
 
 ---
 
 ## Module: System (`Sys_*`)
 
-### Sys_Tenant
-> Master table cho multi-tenant. Mỗi tenant = 1 organisation/khách hàng.
-
-| Column | Type | Constraint | Mô tả |
-|---|---|---|---|
-| Tenant_Id | int | PK IDENTITY | |
-| Tenant_Code | nvarchar(100) | UNIQUE NOT NULL | Mã định danh duy nhất |
-| Tenant_Name | nvarchar(255) | NOT NULL | Tên hiển thị |
-| Is_Active | bit | DEFAULT 1 | Soft delete |
-| Created_At | datetime | DEFAULT getdate() | |
-| Updated_At | datetime | DEFAULT getdate() | |
+### ~~Sys_Tenant~~ — ĐÃ DROP (ADR-035, `db/078`)
+> Bảng đăng ký tenant nay nằm ở **Catalog DB** (`ICare247_Master`, bảng `dbo.Tenant`) —
+> nơi `ITenantConnectionResolver` thực sự đọc. `Sys_Tenant` trong Config DB là bản thừa,
+> không code nào tham chiếu, đã drop cùng 5 FK trỏ về nó.
 
 ---
 
 ### Sys_Table
-> Registry metadata của tất cả business table trong hệ thống. Là trung tâm của tenant isolation.
+> Registry metadata của tất cả business table trong hệ thống.
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
@@ -54,7 +55,6 @@
 | Table_Name | nvarchar(255) | NOT NULL DEFAULT '' | Tên hiển thị |
 | Schema_Name | nvarchar(50) | NOT NULL DEFAULT 'dbo' | SQL schema |
 | Is_Tenant | bit | NOT NULL DEFAULT 0 | Bảng có data theo tenant không |
-| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global, có giá trị = tenant-specific |
 | Version | int | NOT NULL DEFAULT 1 | |
 | Checksum | nvarchar(64) | NULL | Hash để detect thay đổi |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
@@ -63,8 +63,7 @@
 | Description | nvarchar(500) | NULL | |
 
 **Indexes:**
-- `UQ_Sys_Table_Code_Global`: UNIQUE `(Table_Code)` WHERE `Tenant_Id IS NULL`
-- `UQ_Sys_Table_Code_Tenant`: UNIQUE `(Table_Code, Tenant_Id)` WHERE `Tenant_Id IS NOT NULL`
+- `UQ_Sys_Table_Code`: UNIQUE `(Table_Code)`
 
 ---
 
@@ -159,19 +158,17 @@
 ---
 
 ### Sys_Role
-> Quản lý roles. Role có thể là global (Tenant_Id = NULL) hoặc per-tenant.
+> Quản lý roles trong Config DB (= 1 tenant, ADR-035).
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Role_Id | int | PK IDENTITY | |
 | Role_Code | nvarchar(100) | NOT NULL | |
 | Role_Name | nvarchar(255) | NOT NULL | |
-| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global role |
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 
 **Indexes:**
-- `UQ_Sys_Role_Code_Global`: UNIQUE `(Role_Code)` WHERE `Tenant_Id IS NULL`
-- `UQ_Sys_Role_Code_Tenant`: UNIQUE `(Role_Code, Tenant_Id)` WHERE `Tenant_Id IS NOT NULL`
+- `UQ_Sys_Role_Code`: UNIQUE `(Role_Code)`
 
 ---
 
@@ -203,12 +200,10 @@
 | Config_Key | nvarchar(150) | NOT NULL | |
 | Config_Value | nvarchar(max) | NOT NULL | |
 | Scope | nvarchar(50) | NOT NULL DEFAULT 'Global' | Nhóm cấu hình |
-| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global |
 | Version | int | NOT NULL DEFAULT 1 | |
 
 **Indexes:**
-- `UQ_Sys_Config_Global`: UNIQUE `(Config_Key, Scope)` WHERE `Tenant_Id IS NULL`
-- `UQ_Sys_Config_Tenant`: UNIQUE `(Config_Key, Scope, Tenant_Id)` WHERE `Tenant_Id IS NOT NULL`
+- `UQ_Sys_Config_Key`: UNIQUE `(Config_Key, Scope)`
 
 ---
 
@@ -318,7 +313,6 @@
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Lookup_Id | int | PK IDENTITY | |
-| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global (dùng chung mọi tenant) |
 | Lookup_Code | nvarchar(50) | NOT NULL | VD: 'GENDER', 'MARITAL_STATUS', 'BLOOD_TYPE' |
 | Item_Code | nvarchar(50) | NOT NULL | Giá trị lưu vào cột nghiệp vụ. VD: 'NAM', 'NU', 'KXD' |
 | Label_Key | nvarchar(200) | NOT NULL | Key trong Sys_Resource → resolve theo ngôn ngữ |
@@ -326,9 +320,8 @@
 | Is_Active | bit | NOT NULL DEFAULT 1 | |
 
 **Constraints:**
-- `UQ_Sys_Lookup_Global`: UNIQUE `(Lookup_Code, Item_Code)` WHERE `Tenant_Id IS NULL`
-- `UQ_Sys_Lookup_Tenant`: UNIQUE `(Lookup_Code, Item_Code, Tenant_Id)` WHERE `Tenant_Id IS NOT NULL`
-- `IX_Sys_Lookup_Code (Tenant_Id, Lookup_Code, Is_Active)` — query nhanh theo code
+- `UQ_Sys_Lookup_Item`: UNIQUE `(Lookup_Code, Item_Code)`
+- `IX_Sys_Lookup_Code (Lookup_Code, Is_Active)` — query nhanh theo code
 
 **Quy tắc sử dụng:**
 - Cột nghiệp vụ kiểu `nvarchar` lưu `Item_Code`: `NhanVien.GioiTinh = 'NAM'`
@@ -372,7 +365,7 @@
 
 ### Ui_Form
 > Định nghĩa một form. Gắn với một business table và một platform.
-> Tenant được resolve qua `Table_Id → Sys_Table.Tenant_Id`.
+> Tenant cô lập ở tầng connection (ADR-035) — không lọc theo cột.
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
@@ -523,10 +516,9 @@
 | Key_Field, Parent_Field, Expand_Level | nvarchar/int | NULL | TreeList (cây) |
 | Detail_View_Id | int | NULL FK→Ui_View | Master-detail (row detail) |
 | Default_Filter_Json, Options_Json | nvarchar(max) | NULL | Lọc mặc định / thoát hiểm |
-| Tenant_Id | int | NULL FK→Sys_Tenant | NULL = global |
 | Version, Is_Active, Created_At, Updated_At, Description | | | Chuẩn |
 
-**Indexes:** `UQ_Ui_View_Code_Global (View_Code) WHERE Tenant_Id IS NULL`; `UQ_Ui_View_Code_Tenant (View_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL`; `IX_Ui_View_Table (Table_Id, Is_Active)`.
+**Indexes:** `UQ_Ui_View_Code (View_Code)`; `IX_Ui_View_Table (Table_Id, Is_Active)`.
 
 ### Ui_View_Column
 > Cột + thuộc tính cột của một View (render + export + format + conditional style). Text i18n = `*_Key`.
@@ -775,20 +767,19 @@
 ## Sơ đồ quan hệ tổng thể
 
 ```
-Sys_Tenant
-    └── Sys_Table (Tenant_Id nullable)
-            ├── Sys_Column
-            │       └── Ui_Field ──────────────── Val_Rule (Field_Id FK) ── Val_Rule_Type
-            │               └── Ui_Field_Lookup  (1-1, khi Lookup_Source='dynamic')
-            └── Ui_Form (Table_Id)
-                    ├── Ui_Tab
-                    │       └── Ui_Section (Tab_Id nullable)
-                    │               └── Ui_Field (Section_Id nullable)
-                    ├── Evt_Definition (Form_Id / Field_Id)
-                    │       └── Evt_Action ── Evt_Action_Type
-                    └── Sys_Dependency
+Sys_Table
+    ├── Sys_Column
+    │       └── Ui_Field ──────────────── Val_Rule (Field_Id FK) ── Val_Rule_Type
+    │               └── Ui_Field_Lookup  (1-1, khi Lookup_Source='dynamic')
+    └── Ui_Form (Table_Id)
+            ├── Ui_Tab
+            │       └── Ui_Section (Tab_Id nullable)
+            │               └── Ui_Field (Section_Id nullable)
+            ├── Evt_Definition (Form_Id / Field_Id)
+            │       └── Evt_Action ── Evt_Action_Type
+            └── Sys_Dependency
 
-Sys_Lookup (Tenant_Id nullable)
+Sys_Lookup
     → Ui_Field.Lookup_Code  (logic ref, khi Lookup_Source='static')
 
 Sys_Relation  : Sys_Table ←→ Sys_Table
@@ -801,10 +792,10 @@ Gram_Function        (lookup, độc lập)
 Sys_Language
     └── Sys_Resource (Resource_Key + Lang_Code → text)
 
-Sys_Role (Tenant_Id nullable)
+Sys_Role
     └── Sys_Permission
 
-Sys_Config (Tenant_Id nullable)
+Sys_Config
 Sys_Version
 Sys_Cache_Invalidation
 Sys_Audit_Log

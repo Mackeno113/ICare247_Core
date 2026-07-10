@@ -345,7 +345,6 @@ public sealed class SysLookupManagerViewModel : ViewModelBase, INavigationAware,
             var record = new LookupItemEditRecord
             {
                 LookupId   = _editLookupId,
-                TenantId   = _appConfig!.TenantId,
                 LookupCode = SelectedCode,
                 ItemCode   = itemCode,
                 LabelKey   = labelKey,

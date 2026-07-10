@@ -18,20 +18,20 @@ internal sealed class DocTemplateRepository
     public DocTemplateRepository(IDbConnectionFactory config) => _config = config;
 
     /// <summary>
-    /// Lấy 1 bộ mẫu master theo Id + tenant (chỉ bản Active, chưa xóa).
-    /// Sự kiện theo sau: null nếu không tồn tại/không thuộc tenant → caller trả 404.
+    /// Lấy 1 bộ mẫu master theo Id (chỉ bản Active, chưa xóa). Cô lập tenant ở tầng connection (ADR-035).
+    /// Sự kiện theo sau: null nếu không tồn tại → caller trả 404.
     /// </summary>
     public async Task<DocTemplateRow?> GetTemplateAsync(long id, int tenantId, CancellationToken ct)
     {
         using var conn = _config.CreateConnection();
         return await conn.QuerySingleOrDefaultAsync<DocTemplateRow>(new CommandDefinition(
             "SELECT Id, Ma, Ten, Master_Proc AS MasterProc, Master_Docx AS MasterDocx " +
-            "FROM dbo.Doc_Template WHERE Id=@id AND Tenant_Id=@tenantId AND IsDeleted=0 AND Is_Active=1",
-            new { id, tenantId }, cancellationToken: ct));
+            "FROM dbo.Doc_Template WHERE Id=@id AND IsDeleted=0 AND Is_Active=1",
+            new { id }, cancellationToken: ct));
     }
 
     /// <summary>
-    /// Tra Id bộ mẫu theo <c>Ma</c> + tenant (chỉ bản Active, chưa xóa). Dùng khi màn lưới gắn action
+    /// Tra Id bộ mẫu theo <c>Ma</c> (chỉ bản Active, chưa xóa). Dùng khi màn lưới gắn action
     /// bằng mã bộ mẫu (Ui_View_Action.Target = Ma). Sự kiện theo sau: null → caller trả 404/400.
     /// </summary>
     public async Task<long?> GetTemplateIdByCodeAsync(string ma, int tenantId, CancellationToken ct)
@@ -39,8 +39,8 @@ internal sealed class DocTemplateRepository
         using var conn = _config.CreateConnection();
         return await conn.ExecuteScalarAsync<long?>(new CommandDefinition(
             "SELECT Id FROM dbo.Doc_Template " +
-            "WHERE Ma=@ma AND Tenant_Id=@tenantId AND IsDeleted=0 AND Is_Active=1",
-            new { ma, tenantId }, cancellationToken: ct));
+            "WHERE Ma=@ma AND IsDeleted=0 AND Is_Active=1",
+            new { ma }, cancellationToken: ct));
     }
 
     /// <summary>Lấy các mảnh detail của bộ mẫu, sắp theo Thu_Tu (thứ tự ghép/in). Không phát event.</summary>
@@ -66,7 +66,8 @@ internal sealed class DocTemplateRepository
     }
 
     /// <summary>
-    /// Kiểm 1 proc có nằm trong whitelist <c>Doc_Proc_Registry</c> (Active) của tenant không.
+    /// Kiểm 1 proc có nằm trong whitelist <c>Doc_Proc_Registry</c> (Active) không.
+    /// Cô lập tenant ở tầng connection (ADR-035).
     /// Sự kiện theo sau: false → caller từ chối render (chặn gọi proc tùy tiện).
     /// </summary>
     public async Task<bool> IsProcRegisteredAsync(string procName, int tenantId, CancellationToken ct)
@@ -74,8 +75,8 @@ internal sealed class DocTemplateRepository
         using var conn = _config.CreateConnection();
         var ok = await conn.ExecuteScalarAsync<int>(new CommandDefinition(
             "SELECT CASE WHEN EXISTS(SELECT 1 FROM dbo.Doc_Proc_Registry " +
-            "WHERE Proc_Name=@procName AND Tenant_Id=@tenantId AND IsDeleted=0 AND Is_Active=1) THEN 1 ELSE 0 END",
-            new { procName, tenantId }, cancellationToken: ct));
+            "WHERE Proc_Name=@procName AND IsDeleted=0 AND Is_Active=1) THEN 1 ELSE 0 END",
+            new { procName }, cancellationToken: ct));
         return ok == 1;
     }
 }

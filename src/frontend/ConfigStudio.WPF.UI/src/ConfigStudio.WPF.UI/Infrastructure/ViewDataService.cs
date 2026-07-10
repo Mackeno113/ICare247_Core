@@ -33,7 +33,7 @@ public sealed class ViewDataService : IViewDataService
         await using var conn = new SqlConnection(_config.ConnectionString);
         await EnsureSchemaAsync(conn, ct);
 
-        var whereActive = includeInactive ? "" : "  AND v.Is_Active = 1\n";
+        var whereActive = includeInactive ? "" : "WHERE  v.Is_Active = 1\n";
 
         var sql =
             "SELECT v.View_Id AS ViewId, v.View_Code AS ViewCode, v.View_Type AS ViewType,\n" +
@@ -51,17 +51,16 @@ public sealed class ViewDataService : IViewDataService
             "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
             "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
             "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
-            "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
+            "       v.Options_Json AS OptionsJson, v.Version AS Version,\n" +
             "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
             "       v.Description AS Description\n" +
             "FROM   dbo.Ui_View v\n" +
             "LEFT JOIN dbo.Sys_Table st ON st.Table_Id = v.Table_Id\n" +
-            "WHERE  (v.Tenant_Id = @TenantId OR v.Tenant_Id IS NULL)\n" +
             whereActive +
             "ORDER BY v.View_Code";
 
         var result = await conn.QueryAsync<ViewRecord>(
-            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
         return result.ToList();
     }
 
@@ -89,7 +88,7 @@ public sealed class ViewDataService : IViewDataService
             "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
             "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
             "       v.Detail_View_Id AS DetailViewId, v.Default_Filter_Json AS DefaultFilterJson,\n" +
-            "       v.Options_Json AS OptionsJson, v.Tenant_Id AS TenantId, v.Version AS Version,\n" +
+            "       v.Options_Json AS OptionsJson, v.Version AS Version,\n" +
             "       v.Is_Active AS IsActive, v.Created_At AS CreatedAt, v.Updated_At AS UpdatedAt,\n" +
             "       v.Description AS Description\n" +
             "FROM   dbo.Ui_View v\n" +
@@ -175,19 +174,18 @@ public sealed class ViewDataService : IViewDataService
         await using var tx = await conn.BeginTransactionAsync(ct);
         try
         {
-            // ── Chống trùng View_Code trong phạm vi tenant ────────
+            // ── Chống trùng View_Code (unique trong Config DB — ADR-035) ────────
             var dupSql =
                 "SELECT TOP (1) 1 FROM dbo.Ui_View\n" +
-                "WHERE View_Code = @Code AND (Tenant_Id = @TenantId OR Tenant_Id IS NULL)\n" +
-                "  AND View_Id <> @ViewId";
+                "WHERE View_Code = @Code AND View_Id <> @ViewId";
             var duplicate = await conn.ExecuteScalarAsync<int?>(new CommandDefinition(
-                dupSql, new { Code = code, TenantId = tenantId, ViewId = request.ViewId ?? 0 },
+                dupSql, new { Code = code, ViewId = request.ViewId ?? 0 },
                 tx, cancellationToken: ct));
             if (duplicate.HasValue)
                 throw new InvalidOperationException($"View_Code '{code}' đã tồn tại.");
 
             int viewId;
-            var p = BuildHeaderParams(request, code, tenantId);
+            var p = BuildHeaderParams(request, code);
 
             if (request.ViewId is null or 0)
             {
@@ -199,14 +197,14 @@ public sealed class ViewDataService : IViewDataService
                     "    Key_Field, Parent_Field, Expand_Level, Filter_Panel_Enabled, Filter_Panel_Position,\n" +
                     "    Filter_Collapsible, Auto_Search_On_Load, Search_Label_Key, Reset_Label_Key,\n" +
                     "    Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
-                    "    Tenant_Id, Version, Is_Active, Created_At, Updated_At, Description)\n" +
+                    "    Version, Is_Active, Created_At, Updated_At, Description)\n" +
                     "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @SourceObject, @TitleKey, @EditFormId,\n" +
                     "    @PageSize, @AllowPaging, @VirtualScroll, @ShowFilterRow, @ShowGroupPanel, @ShowSearchBox,\n" +
                     "    @ShowColumnChooser, @SelectionMode, @AllowAdd, @AllowEdit, @AllowDelete, @AllowExport,\n" +
                     "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel,\n" +
                     "    @FilterPanelEnabled, @FilterPanelPosition, @FilterCollapsible, @AutoSearchOnLoad,\n" +
                     "    @SearchLabelKey, @ResetLabelKey,\n" +
-                    "    @DetailViewId, @DefaultFilterJson, @OptionsJson, @TenantId, 1, @IsActive, GETDATE(), GETDATE(),\n" +
+                    "    @DetailViewId, @DefaultFilterJson, @OptionsJson, 1, @IsActive, GETDATE(), GETDATE(),\n" +
                     "    @Description);\n" +
                     "SELECT CAST(SCOPE_IDENTITY() AS INT);";
                 viewId = await conn.ExecuteScalarAsync<int>(
@@ -275,8 +273,8 @@ public sealed class ViewDataService : IViewDataService
 
         var affected = await conn.ExecuteAsync(new CommandDefinition(
             "UPDATE dbo.Ui_View SET Is_Active = 0, Updated_At = GETDATE()\n" +
-            "WHERE View_Id = @ViewId AND (Tenant_Id = @TenantId OR Tenant_Id IS NULL)",
-            new { ViewId = viewId, TenantId = tenantId }, cancellationToken: ct));
+            "WHERE View_Id = @ViewId",
+            new { ViewId = viewId }, cancellationToken: ct));
         if (affected == 0)
             throw new InvalidOperationException($"Không tìm thấy View_Id={viewId} để ẩn.");
     }
@@ -314,9 +312,8 @@ public sealed class ViewDataService : IViewDataService
     /// </summary>
     /// <param name="r">Payload upsert.</param>
     /// <param name="code">View_Code đã trim.</param>
-    /// <param name="tenantId">Tenant gắn vào bản ghi mới.</param>
     /// <returns><see cref="DynamicParameters"/> đủ tham số cho INSERT/UPDATE.</returns>
-    private static DynamicParameters BuildHeaderParams(ViewUpsertRequest r, string code, int tenantId)
+    private static DynamicParameters BuildHeaderParams(ViewUpsertRequest r, string code)
     {
         var p = new DynamicParameters();
         p.Add("ViewCode", code);
@@ -353,7 +350,6 @@ public sealed class ViewDataService : IViewDataService
         p.Add("DetailViewId", r.DetailViewId);
         p.Add("DefaultFilterJson", NullIfEmpty(r.DefaultFilterJson));
         p.Add("OptionsJson", NullIfEmpty(r.OptionsJson));
-        p.Add("TenantId", tenantId);
         p.Add("IsActive", r.IsActive);
         p.Add("Description", NullIfEmpty(r.Description));
         return p;

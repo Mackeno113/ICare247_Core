@@ -588,5 +588,6 @@
   Sửa: `OR l.Tenant_Id IS NULL` + doc `ILookupRepository`. Bài học: 2 quy ước global (`0` vs `NULL`) cùng tồn
   tại chính là hệ quả của việc `Tenant_Id` tràn lan.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-019 (Data DB không có Tenant_Id), ConfigSync F1 (db/050).
-- **Status:** ✅ quyết định chốt · ✅ bug `Sys_Lookup` đã sửa (build xanh)
-  · 🔴 gỡ cột + dọn ~82 dòng SQL/C# (33 file backend + ConfigStudio WPF) — **chưa làm, HIGH risk**.
+- **Status:** ✅ quyết định chốt · ✅ bug `Sys_Lookup` đã sửa · ✅ code backend + ConfigStudio WPF đã gỡ sạch predicate
+  · ✅ migration `db/078_drop_tenant_id.sql` đã viết (guard + 1 batch/1 transaction/TRY-CATCH) — ⏳ CHƯA chạy trên DB nào.
+- **Bug thứ 2 (đã sửa):** `PublishCheckService` (WPF) truy vấn `Ui_Field.Tenant_Id`/`Sys_Dependency.Tenant_Id` — cột KHÔNG tồn tại → `Invalid column name` mỗi lần bấm kiểm tra trước publish. Có sẵn từ trước, gỡ predicate sửa luôn.

@@ -81,7 +81,6 @@ public sealed class RuleDataService : IRuleDataService
             JOIN   dbo.Ui_Form f ON f.Form_Id = fi.Form_Id
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
             WHERE  fi.Form_Id = @FormId
-              AND  (st.Tenant_Id = @TenantId OR st.Tenant_Id IS NULL)
               AND  ISNULL(sc.Column_Code, '') <> ''
             ORDER BY sc.Column_Code
             """;
@@ -90,7 +89,7 @@ public sealed class RuleDataService : IRuleDataService
         var items = await conn.QueryAsync<string>(
             new CommandDefinition(
                 sql,
-                new { FormId = formId, TenantId = _config.TenantId },
+                new { FormId = formId },
                 cancellationToken: ct));
         return items.AsList();
     }

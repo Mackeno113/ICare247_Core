@@ -96,8 +96,8 @@ public interface IFormDataService
         CancellationToken ct = default);
 
     /// <summary>
-    /// Lấy danh sách roles từ <c>Sys_Role</c> — bao gồm global (Tenant_Id IS NULL)
-    /// và roles riêng của tenant. Dùng để build danh sách quyền trong FormEditor.
+    /// Lấy danh sách roles từ <c>Sys_Role</c> (1 Config DB = 1 tenant, ADR-035).
+    /// Dùng để build danh sách quyền trong FormEditor.
     /// </summary>
     Task<IReadOnlyList<RoleLookupRecord>> GetRolesAsync(
         int tenantId,

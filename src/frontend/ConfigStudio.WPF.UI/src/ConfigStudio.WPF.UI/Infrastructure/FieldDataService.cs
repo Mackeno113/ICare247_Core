@@ -63,7 +63,6 @@ public sealed class FieldDataService : IFieldDataService
             JOIN   dbo.Ui_Form f ON f.Form_Id = fi.Form_Id
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
             WHERE  fi.Field_Id = @FieldId
-              AND  (st.Tenant_Id = @TenantId OR st.Tenant_Id IS NULL)
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
@@ -233,7 +232,6 @@ public sealed class FieldDataService : IFieldDataService
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
             WHERE  f.Form_Id = @FormId
-              AND  (st.Tenant_Id = @TenantId OR st.Tenant_Id IS NULL)
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);

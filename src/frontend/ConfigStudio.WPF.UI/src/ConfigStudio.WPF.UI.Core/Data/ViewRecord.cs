@@ -58,7 +58,6 @@ public sealed class ViewRecord
     public string? DefaultFilterJson { get; init; }
 
     public string? OptionsJson { get; init; }
-    public int? TenantId { get; init; }
     public int Version { get; init; } = 1;
     public bool IsActive { get; init; } = true;
     public DateTime? CreatedAt { get; init; }

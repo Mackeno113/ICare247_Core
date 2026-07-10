@@ -46,7 +46,6 @@ public sealed class PublishCheckService : IPublishCheckService
             FROM   dbo.Val_Rule vr
             JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
-              AND  uf.Tenant_Id = @TenantId
               AND  vr.Is_Active = 1
               AND  vr.Expression_Json IS NOT NULL
             """;
@@ -62,7 +61,7 @@ public sealed class PublishCheckService : IPublishCheckService
             """;
 
         var results = new List<(string, string?)>();
-        var p = new { FormId = formId, TenantId = tenantId };
+        var p = new { FormId = formId };
 
         var ruleExprs = await conn.QueryAsync<(string Source, string? ExprJson)>(
             new CommandDefinition(sqlRules, p, cancellationToken: ct));
@@ -86,13 +85,12 @@ public sealed class PublishCheckService : IPublishCheckService
             SELECT ColumnCode
             FROM   dbo.Ui_Field
             WHERE  Form_Id = @FormId
-              AND  Tenant_Id = @TenantId
               AND  (Label_Key IS NULL OR LTRIM(RTRIM(Label_Key)) = '')
             """;
 
         await using var conn = CreateConn();
         var missing = (await conn.QueryAsync<string>(
-            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct)))
+            new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct)))
             .AsList();
 
         if (missing.Count == 0)
@@ -219,7 +217,6 @@ public sealed class PublishCheckService : IPublishCheckService
             FROM   dbo.Val_Rule vr
             JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
-              AND  uf.Tenant_Id = @TenantId
               AND  vr.Rule_Type_Code = 'CUSTOM'
               AND  vr.Is_Active = 1
               AND  vr.Expression_Json IS NOT NULL
@@ -227,7 +224,7 @@ public sealed class PublishCheckService : IPublishCheckService
 
         await using var conn = CreateConn();
         var rules = await conn.QueryAsync<(string Source, string? ExprJson, string RuleType)>(
-            new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct));
 
         var issues = new List<string>();
         foreach (var (source, json, _) in rules)
@@ -276,7 +273,6 @@ public sealed class PublishCheckService : IPublishCheckService
                    Target_Field_Code AS TargetId
             FROM   dbo.Sys_Dependency
             WHERE  Form_Id = @FormId
-              AND  Tenant_Id = @TenantId
             """;
 
         await using var conn = CreateConn();
@@ -284,7 +280,7 @@ public sealed class PublishCheckService : IPublishCheckService
         try
         {
             edges = (await conn.QueryAsync<(string SourceId, string TargetId)>(
-                new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct)))
+                new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct)))
                 .AsList();
         }
         catch
@@ -382,7 +378,6 @@ public sealed class PublishCheckService : IPublishCheckService
             FROM   dbo.Val_Rule vr
             JOIN   dbo.Ui_Field uf ON uf.Field_Id = vr.Field_Id
             WHERE  uf.Form_Id = @FormId
-              AND  uf.Tenant_Id = @TenantId
               AND  vr.Is_Active = 1
               AND  vr.Error_Key IS NOT NULL
               AND  vr.Error_Key <> ''
@@ -401,7 +396,7 @@ public sealed class PublishCheckService : IPublishCheckService
         await using var conn = CreateConn();
 
         var errorKeys = (await conn.QueryAsync<string>(
-            new CommandDefinition(sqlKeys, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct)))
+            new CommandDefinition(sqlKeys, new { FormId = formId }, cancellationToken: ct)))
             .AsList();
 
         if (errorKeys.Count == 0)
@@ -530,10 +525,10 @@ public sealed class PublishCheckService : IPublishCheckService
         {
             const string sqlCount = """
                 SELECT COUNT(*) FROM dbo.Sys_Dependency
-                WHERE Form_Id = @FormId AND Tenant_Id = @TenantId
+                WHERE Form_Id = @FormId
                 """;
             depCount = await conn.QuerySingleAsync<int>(
-                new CommandDefinition(sqlCount, new { FormId = formId, TenantId = tenantId }, cancellationToken: ct));
+                new CommandDefinition(sqlCount, new { FormId = formId }, cancellationToken: ct));
         }
         catch
         {

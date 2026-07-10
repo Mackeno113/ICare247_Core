@@ -12,7 +12,8 @@ using Microsoft.Data.SqlClient;
 
 namespace ConfigStudio.WPF.UI.Infrastructure;
 
-/// <summary>CRUD bộ mẫu tài liệu trên Config DB (Ui_* cùng nhóm). Lọc theo Tenant_Id hiện tại.</summary>
+/// <summary>CRUD bộ mẫu tài liệu trên Config DB (Ui_* cùng nhóm).
+/// Cô lập tenant ở tầng connection (1 Config DB = 1 tenant, ADR-035) — KHÔNG lọc theo cột.</summary>
 public sealed class DocTemplateDataService : IDocTemplateDataService
 {
     private const long SystemUserId = 1;   // sentinel CreatedBy — ConfigStudio không có phiên người dùng
@@ -27,8 +28,8 @@ public sealed class DocTemplateDataService : IDocTemplateDataService
         if (!_config.IsConfigured) return [];
         await using var conn = new SqlConnection(_config.ConnectionString);
         var rows = await conn.QueryAsync<DocTemplateListItem>(new CommandDefinition(
-            "SELECT Id, Ma, Ten FROM dbo.Doc_Template WHERE Tenant_Id=@TenantId AND IsDeleted=0 ORDER BY Ma",
-            new { TenantId = _config.TenantId }, cancellationToken: ct));
+            "SELECT Id, Ma, Ten FROM dbo.Doc_Template WHERE IsDeleted=0 ORDER BY Ma",
+            cancellationToken: ct));
         return rows.AsList();
     }
 
@@ -38,10 +39,10 @@ public sealed class DocTemplateDataService : IDocTemplateDataService
     {
         await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.ExecuteScalarAsync<long>(new CommandDefinition(
-            "INSERT INTO dbo.Doc_Template (Tenant_Id, Ma, Ten, Master_Proc, Is_Active, CreatedBy, CreatedAt) " +
-            "VALUES (@TenantId, @Ma, @Ten, @MasterProc, 1, @By, SYSUTCDATETIME()); " +
+            "INSERT INTO dbo.Doc_Template (Ma, Ten, Master_Proc, Is_Active, CreatedBy, CreatedAt) " +
+            "VALUES (@Ma, @Ten, @MasterProc, 1, @By, SYSUTCDATETIME()); " +
             "SELECT CAST(SCOPE_IDENTITY() AS BIGINT);",
-            new { TenantId = _config.TenantId, Ma = ma, Ten = ten, MasterProc = masterProc, By = SystemUserId },
+            new { Ma = ma, Ten = ten, MasterProc = masterProc, By = SystemUserId },
             cancellationToken: ct));
     }
 
@@ -76,8 +77,8 @@ public sealed class DocTemplateDataService : IDocTemplateDataService
     {
         await using var conn = new SqlConnection(_config.ConnectionString);
         return await conn.ExecuteScalarAsync<byte[]?>(new CommandDefinition(
-            "SELECT Master_Docx FROM dbo.Doc_Template WHERE Id=@Id AND Tenant_Id=@TenantId AND IsDeleted=0",
-            new { Id = templateId, TenantId = _config.TenantId }, cancellationToken: ct));
+            "SELECT Master_Docx FROM dbo.Doc_Template WHERE Id=@Id AND IsDeleted=0",
+            new { Id = templateId }, cancellationToken: ct));
     }
 
     /// <inheritdoc />
@@ -86,8 +87,8 @@ public sealed class DocTemplateDataService : IDocTemplateDataService
         await using var conn = new SqlConnection(_config.ConnectionString);
         await conn.ExecuteAsync(new CommandDefinition(
             "UPDATE dbo.Doc_Template SET Master_Docx=@Docx, UpdatedBy=@By, UpdatedAt=SYSUTCDATETIME(), Ver=Ver+1 " +
-            "WHERE Id=@Id AND Tenant_Id=@TenantId",
-            new { Docx = docx, Id = templateId, TenantId = _config.TenantId, By = SystemUserId }, cancellationToken: ct));
+            "WHERE Id=@Id",
+            new { Docx = docx, Id = templateId, By = SystemUserId }, cancellationToken: ct));
     }
 
     /// <inheritdoc />

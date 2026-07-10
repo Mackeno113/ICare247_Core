@@ -64,11 +64,11 @@ public sealed class RelationDataService : IRelationDataService
             "SELECT Table_Id AS TableId, Table_Code AS TableCode, ISNULL(Table_Name, '') AS TableName,\n" +
             "       ISNULL(Schema_Name, 'dbo') AS SchemaName\n" +
             "FROM   dbo.Sys_Table\n" +
-            "WHERE  Is_Active = 1 AND (Tenant_Id = @TenantId OR Tenant_Id IS NULL)\n" +
+            "WHERE  Is_Active = 1\n" +
             "ORDER BY Table_Code";
 
         var result = await conn.QueryAsync<TableLookupRecord>(
-            new CommandDefinition(sql, new { TenantId = tenantId }, cancellationToken: ct));
+            new CommandDefinition(sql, cancellationToken: ct));
         return result.ToList();
     }
 

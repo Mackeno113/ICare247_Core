@@ -125,7 +125,7 @@ internal static class ConfigSyncTables
         },
 
         // 10) Sys_Lookup — danh mục tĩnh; mỗi item = 1 dòng, khóa GHÉP (Lookup_Code + Item_Code).
-        //    Có Lookup_Id identity. Không có cột Version. (Sync dòng global; Tenant_Id copy nguyên.)
+        //    Có Lookup_Id identity. Không có cột Version. (Cột copy dò động qua GetColumnsAsync.)
         new ConfigTableDescriptor
         {
             TableName = "Sys_Lookup",

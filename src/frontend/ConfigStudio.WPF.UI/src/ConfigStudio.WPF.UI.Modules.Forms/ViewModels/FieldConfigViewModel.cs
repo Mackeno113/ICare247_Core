@@ -566,7 +566,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     private string _fkFilterSql = "";
     /// <summary>
-    /// Điều kiện lọc bổ sung (parameterized). VD: "Is_Active = 1 AND Tenant_Id = @TenantId".
+    /// Điều kiện lọc bổ sung (parameterized). VD: "Is_Active = 1 AND Loai = @LoaiField".
+    /// KHÔNG lọc cột Tenant_Id — cột đã bỏ (ADR-035).
     /// Các tham số hệ thống (@TenantId, @CurrentUser) được inject tự động lúc runtime.
     /// </summary>
     public string FkFilterSql

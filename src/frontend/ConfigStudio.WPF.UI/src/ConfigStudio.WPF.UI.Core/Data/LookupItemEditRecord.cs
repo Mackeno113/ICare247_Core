@@ -12,7 +12,6 @@ namespace ConfigStudio.WPF.UI.Core.Data;
 public sealed class LookupItemEditRecord
 {
     public int    LookupId   { get; set; }
-    public int    TenantId   { get; set; }
     public string LookupCode { get; set; } = "";
     public string ItemCode   { get; set; } = "";
     public string LabelKey   { get; set; } = "";

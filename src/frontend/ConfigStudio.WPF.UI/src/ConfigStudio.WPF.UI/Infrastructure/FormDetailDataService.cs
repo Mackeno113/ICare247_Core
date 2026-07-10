@@ -12,7 +12,7 @@ namespace ConfigStudio.WPF.UI.Infrastructure;
 
 /// <summary>
 /// Truy vấn chi tiết form: header, sections, fields, events, rules, audit log.
-/// Tenant resolve qua Sys_Table.Tenant_Id.
+/// Cô lập tenant ở tầng connection (ADR-035) — KHÔNG lọc theo cột.
 /// </summary>
 public sealed class FormDetailDataService : IFormDetailDataService
 {
@@ -47,7 +47,6 @@ public sealed class FormDetailDataService : IFormDetailDataService
             FROM   dbo.Ui_Form f
             JOIN   dbo.Sys_Table st ON st.Table_Id = f.Table_Id
             WHERE  f.Form_Id = @FormId
-              AND  (st.Tenant_Id = @TenantId OR st.Tenant_Id IS NULL)
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);
