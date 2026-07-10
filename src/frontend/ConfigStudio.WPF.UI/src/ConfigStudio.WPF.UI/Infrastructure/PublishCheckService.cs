@@ -81,11 +81,16 @@ public sealed class PublishCheckService : IPublishCheckService
     {
         if (!_config.IsConfigured) return NotConfigured();
 
+        // Ui_Field KHÔNG có cột ColumnCode: mã field = COALESCE(Field_Code, Sys_Column.Column_Code)
+        // (db/020). Column_Id nullable từ db/019 → LEFT JOIN; virtual field không Field_Code thì
+        // rơi về 'Field#<id>' để không đẩy NULL vào danh sách hiển thị.
         const string sql = """
-            SELECT ColumnCode
-            FROM   dbo.Ui_Field
-            WHERE  Form_Id = @FormId
-              AND  (Label_Key IS NULL OR LTRIM(RTRIM(Label_Key)) = '')
+            SELECT COALESCE(fi.Field_Code, sc.Column_Code, CONCAT(N'Field#', fi.Field_Id)) AS FieldCode
+            FROM   dbo.Ui_Field fi
+            LEFT JOIN dbo.Sys_Column sc ON sc.Column_Id = fi.Column_Id
+            WHERE  fi.Form_Id = @FormId
+              AND  (fi.Label_Key IS NULL OR LTRIM(RTRIM(fi.Label_Key)) = N'')
+            ORDER BY fi.Order_No
             """;
 
         await using var conn = CreateConn();
@@ -267,12 +272,21 @@ public sealed class PublishCheckService : IPublishCheckService
     {
         if (!_config.IsConfigured) return NotConfigured();
 
-        // Kiểm tra qua Sys_Dependency (nếu có) hoặc tự build từ expressions
+        // Sys_Dependency lưu cạnh dưới dạng (Source_Type, Source_Id) → (Target_Type, Target_Id);
+        // KHÔNG có cột Source_Field_Code/Target_Field_Code. Mã field = COALESCE(Field_Code,
+        // Sys_Column.Column_Code) — db/020. Column_Id nullable (db/019) → LEFT JOIN Sys_Column.
         const string sql = """
-            SELECT Source_Field_Code AS SourceId,
-                   Target_Field_Code AS TargetId
-            FROM   dbo.Sys_Dependency
-            WHERE  Form_Id = @FormId
+            SELECT COALESCE(src.Field_Code, sc_src.Column_Code, CONCAT(N'Field#', src.Field_Id)) AS SourceId,
+                   COALESCE(tgt.Field_Code, sc_tgt.Column_Code, CONCAT(N'Field#', tgt.Field_Id)) AS TargetId
+            FROM   dbo.Sys_Dependency d
+            JOIN   dbo.Ui_Field src ON src.Field_Id = d.Source_Id
+            JOIN   dbo.Ui_Field tgt ON tgt.Field_Id = d.Target_Id
+            LEFT JOIN dbo.Sys_Column sc_src ON sc_src.Column_Id = src.Column_Id
+            LEFT JOIN dbo.Sys_Column sc_tgt ON sc_tgt.Column_Id = tgt.Column_Id
+            WHERE  d.Form_Id     = @FormId
+              AND  d.Source_Type = N'Field'
+              AND  d.Target_Type = N'Field'
+              AND  d.Is_Active   = 1
             """;
 
         await using var conn = CreateConn();
@@ -283,9 +297,11 @@ public sealed class PublishCheckService : IPublishCheckService
                 new CommandDefinition(sql, new { FormId = formId }, cancellationToken: ct)))
                 .AsList();
         }
-        catch
+        catch (SqlException ex)
         {
-            // Sys_Dependency có thể chưa có — skip
+            // Chỉ nuốt lỗi khi Sys_Dependency thật sự chưa tồn tại (208 = Invalid object name).
+            // Mọi lỗi SQL khác phải nổi lên, không được nguỵ trang thành "chưa build".
+            if (ex.Number != 208) throw;
             return new CheckResult(Passed: true, IsWarning: true, Detail: "Bảng Sys_Dependency chưa được build.");
         }
 
@@ -383,8 +399,9 @@ public sealed class PublishCheckService : IPublishCheckService
               AND  vr.Error_Key <> ''
             """;
 
-        // Lấy danh sách ngôn ngữ active
-        const string sqlLangs = "SELECT Lang_Code FROM dbo.Sys_Language WHERE Is_Active = 1";
+        // Sys_Language KHÔNG có cột Is_Active (chỉ Lang_Code / Lang_Name / Is_Default) — mọi ngôn ngữ
+        // khai báo đều dùng được. Thứ tự khớp ResourceRepository: mặc định trước.
+        const string sqlLangs = "SELECT Lang_Code FROM dbo.Sys_Language ORDER BY Is_Default DESC, Lang_Code";
 
         // Lấy tất cả resources đã có
         const string sqlResources = """

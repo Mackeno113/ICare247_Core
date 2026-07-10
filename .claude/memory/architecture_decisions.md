@@ -185,7 +185,9 @@
     dùng conn cố định hiện có (dev không vỡ).
   - `TenantMiddleware`: suy tenant từ Host thay vì tin header `X-Tenant-Id` → đồng thời khép lỗ hổng bảo mật #1.
 - **Hybrid on-prem + cloud:** thiết kế chạy cả 2 (SQL Server on-prem lẫn Azure SQL); chọn hạ tầng qua config.
-- **Status:** 🔴 thiết kế chốt — chưa code (infra resolver + catalog).
+- **Status:** ✅ `TenantConnectionResolver` + `TenantConnectionProtector` ĐÃ code (`Infrastructure/MultiTenancy`),
+  đăng ký DI singleton, fallback conn cố định khi chưa cấu hình catalog (`FallbackTenantId = 1`).
+  _(Đính chính 2026-07-10: dòng này từng ghi "🔴 chưa code" — SAI, và suýt dẫn tới kết luận nhầm khi làm ADR-035.)_
 
 ## ADR-019: Quy ước Data DB — tên tiếng Việt + cột hệ thống tiếng Anh + PK 'Id' + soft-check qua Sys_Relation (2026-06-12)
 - **Context:** Data DB là dữ liệu vận hành người dùng/khách nhìn trực tiếp; tách khỏi Config DB (metadata).
@@ -589,5 +591,11 @@
   tại chính là hệ quả của việc `Tenant_Id` tràn lan.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-019 (Data DB không có Tenant_Id), ConfigSync F1 (db/050).
 - **Status:** ✅ quyết định chốt · ✅ bug `Sys_Lookup` đã sửa · ✅ code backend + ConfigStudio WPF đã gỡ sạch predicate
-  · ✅ migration `db/078_drop_tenant_id.sql` đã viết (guard + 1 batch/1 transaction/TRY-CATCH) — ⏳ CHƯA chạy trên DB nào.
+  · ✅ migration `db/078_drop_tenant_id.sql` ĐÃ CHẠY trên Config DB (2026-07-10). `db/015` (bảng `Cf_*`) = tham khảo, không dùng → cố ý không áp ADR-035.
 - **Bug thứ 2 (đã sửa):** `PublishCheckService` (WPF) truy vấn `Ui_Field.Tenant_Id`/`Sys_Dependency.Tenant_Id` — cột KHÔNG tồn tại → `Invalid column name` mỗi lần bấm kiểm tra trước publish. Có sẵn từ trước, gỡ predicate sửa luôn.
+- **Bug 3–5 (đã sửa, cùng `PublishCheckService`):** rà kỹ lộ thêm 3 query tham chiếu cột không tồn tại —
+  `Ui_Field.ColumnCode` (đúng: `COALESCE(Field_Code, Sys_Column.Column_Code)`, db/019+020) ·
+  `Sys_Dependency.Source_Field_Code/Target_Field_Code` (đúng: `Source_Id/Target_Id` + JOIN) ·
+  `Sys_Language.Is_Active` (bảng không có cột đó). Query thứ 2 nằm trong **`catch` trần** → im lặng báo
+  "Sys_Dependency chưa được build" ⇒ **check vòng lặp phụ thuộc CHƯA BAO GIỜ chạy**. Đã thu hẹp `catch`
+  về `SqlException.Number == 208`. **Bài học: `catch` trần biến lỗi schema thành thông điệp sai lệch.**

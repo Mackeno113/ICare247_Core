@@ -35,8 +35,23 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
       `Sys_Tenant` đánh dấu ĐÃ DROP, gỡ 5 dòng cột + 4 cặp filtered index, sửa sơ đồ quan hệ.
       Cũng sửa `.claude-rules/dapper-patterns.md` (dòng 5–6 dạy ngược lại ADR-035).
 
-> ⏳ **Bước tiếp theo:** chạy `db/078` trên Config DB (dev trước). Migration tự guard và ROLLBACK nếu tiền đề sai.
-> Deploy code TRƯỚC, chạy migration SAU — code đã thôi lọc cột nên chạy được với cả schema cũ lẫn mới.
+- [x] **TID-5 (bug WPF — `PublishCheckService`)** — 3 query tham chiếu **cột KHÔNG tồn tại**, phát hiện khi rà TID-2:
+      - `CheckLabelKeysAsync`: `SELECT ColumnCode FROM Ui_Field` → `Ui_Field` chỉ có `Column_Id`.
+        Sửa: `COALESCE(Field_Code, Sys_Column.Column_Code, 'Field#<id>')` + LEFT JOIN (db/019 + db/020).
+      - `CheckCircularDependencyAsync`: `SELECT Source_Field_Code, Target_Field_Code FROM Sys_Dependency`
+        → bảng lưu `(Source_Type, Source_Id)`. Query nằm trong `catch` TRẦN nên **im lặng báo
+        "Sys_Dependency chưa được build"** — check phát hiện vòng lặp CHƯA BAO GIỜ chạy. Sửa query
+        (bám mẫu `DependencyRepository`) + thu hẹp `catch` về `SqlException.Number == 208`.
+      - `CheckI18nCompletenessAsync`: `Sys_Language WHERE Is_Active = 1` → bảng không có cột đó.
+      Build WPF xanh.
+
+- [ ] **TID-6 (nợ, chờ user quyết)** — `SysLookupDataService.AddLookupCodeAsync` kết thúc bằng
+      `return exists == 0 || true;` (luôn `true`), **không INSERT gì**, và **0 caller toàn repo**.
+      Một `Lookup_Code` không thể tồn tại khi chưa có item nào (mỗi dòng `Sys_Lookup` = 1 item) → method
+      bất khả thi về mô hình. Đề xuất: **xóa hẳn** khỏi `ISysLookupDataService` + impl. Chưa làm.
+
+> ✅ `db/078` **ĐÃ CHẠY** trên Config DB (2026-07-10). `db/015_create_cf_data_schema.sql` (bảng `Cf_*`,
+> `Tenant_Id NOT NULL`) = **tham khảo, không dùng** → cố ý để nguyên, không áp ADR-035.
 
 > ⚠️ **Mâu thuẫn spec cần chốt riêng (không thuộc TID-*):** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md` §4 vẽ
 > `Sys_Menu`/`Sys_MenuCatalog` nằm ở "Config DB dùng chung" (`Tenant_Id NULL` = dùng chung), còn
