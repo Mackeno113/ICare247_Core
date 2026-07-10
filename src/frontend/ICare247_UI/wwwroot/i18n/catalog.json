@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-07-08 09:05:20",
+  "generatedAt": "2026-07-09 18:00:51",
   "source": "ICare247_UI",
-  "count": 343,
+  "count": 339,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -1895,10 +1895,6 @@
       "source": "ICare247_UI",
       "occurrences": [
         {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 48
-        },
-        {
           "file": "src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor",
           "line": 45
         },
@@ -1908,11 +1904,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 39
+          "line": 52
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 107
+          "line": 109
         }
       ]
     },
@@ -1928,14 +1924,6 @@
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
           "line": 28
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 27
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/TreeLookupBoxRenderer.razor",
-          "line": 24
         }
       ]
     },
@@ -1949,16 +1937,12 @@
           "line": 15
         },
         {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 15
-        },
-        {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 36
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 90
+          "line": 103
         }
       ]
     },
@@ -1987,14 +1971,6 @@
       "source": "ICare247_UI",
       "occurrences": [
         {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 14
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 80
-        },
-        {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 27
         },
@@ -2012,11 +1988,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 52
+          "line": 53
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 171
+          "line": 173
         }
       ]
     },
@@ -2124,10 +2100,6 @@
       "source": "ICare247_UI",
       "occurrences": [
         {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 50
-        },
-        {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 131
         }
@@ -2135,13 +2107,9 @@
     },
     {
       "key": "common.action.saving",
-      "vi": "Đang lưu...",
+      "vi": "Đang lưu…",
       "source": "ICare247_UI",
       "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 50
-        },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 131
@@ -2185,7 +2153,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 171
+          "line": 173
         }
       ]
     },
@@ -2385,43 +2353,6 @@
       ]
     },
     {
-      "key": "common.combo.choose",
-      "vi": "-- Chọn --",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/ComboBoxRenderer.razor",
-          "line": 60
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupComboBoxRenderer.razor",
-          "line": 75
-        }
-      ]
-    },
-    {
-      "key": "common.combo.loaderror",
-      "vi": "Lỗi tải dữ liệu",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/ComboBoxRenderer.razor",
-          "line": 20
-        }
-      ]
-    },
-    {
-      "key": "common.combo.loading",
-      "vi": "Đang tải...",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/ComboBoxRenderer.razor",
-          "line": 16
-        }
-      ]
-    },
-    {
       "key": "common.company.all",
       "vi": "Tất cả công ty",
       "source": "ICare247_UI",
@@ -2528,81 +2459,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 24
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.choose",
-      "vi": "-- Chọn --",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 18
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/TreeLookupBoxRenderer.razor",
-          "line": 15
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.loadingData",
-      "vi": "Đang tải dữ liệu...",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 42
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/TreeLookupBoxRenderer.razor",
-          "line": 44
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.noData",
-      "vi": "Không có dữ liệu",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/TreeLookupBoxRenderer.razor",
-          "line": 52
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.noResults",
-      "vi": "Không tìm thấy kết quả",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 50
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.openList",
-      "vi": "Mở danh sách",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/LookupBoxRenderer.razor",
-          "line": 31
-        }
-      ]
-    },
-    {
-      "key": "common.lookup.openTree",
-      "vi": "Mở cây",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/FieldRenderers/TreeLookupBoxRenderer.razor",
-          "line": 28
+          "line": 25
         }
       ]
     },
@@ -2611,10 +2468,6 @@
       "vi": "Lưu thất bại.",
       "source": "ICare247_UI",
       "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 186
-        },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 297
@@ -2808,7 +2661,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 110
+          "line": 112
         }
       ]
     },
@@ -2838,7 +2691,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 110
+          "line": 112
         }
       ]
     },
@@ -3415,7 +3268,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 87
+          "line": 100
         }
       ]
     },
@@ -3426,7 +3279,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 64
+          "line": 77
         }
       ]
     },
@@ -3437,11 +3290,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 50
+          "line": 51
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 120
+          "line": 122
         }
       ]
     },
@@ -3452,7 +3305,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 49
+          "line": 50
         }
       ]
     },
@@ -3463,7 +3316,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 42
+          "line": 55
         }
       ]
     },
@@ -3474,7 +3327,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 42
+          "line": 55
         }
       ]
     },
@@ -3485,7 +3338,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 211
+          "line": 225
         }
       ]
     },
@@ -3496,7 +3349,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 209
+          "line": 223
         }
       ]
     },
@@ -3507,7 +3360,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 214
+          "line": 228
         }
       ]
     },
@@ -3518,7 +3371,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 210
+          "line": 224
         }
       ]
     },
@@ -3529,7 +3382,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 229
+          "line": 243
         }
       ]
     },
@@ -3540,7 +3393,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 228
+          "line": 242
         }
       ]
     },
@@ -3551,7 +3404,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 71
+          "line": 84
         }
       ]
     },
@@ -3562,7 +3415,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 70
+          "line": 83
         }
       ]
     },
@@ -3573,7 +3426,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 140
+          "line": 154
         }
       ]
     },
@@ -3584,7 +3437,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 55
+          "line": 68
         }
       ]
     },
@@ -3600,17 +3453,72 @@
       ]
     },
     {
+      "key": "import.mode.hint",
+      "vi": "Có thể bỏ bớt cột trong file — chỉ ghi các cột có mặt (cột vắng giữ nguyên). Dòng có Mã mới thiếu trường bắt buộc sẽ bị loại.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "key": "import.mode.insert",
+      "vi": "Chỉ thêm mới",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
+          "line": 42
+        }
+      ]
+    },
+    {
+      "key": "import.mode.label",
+      "vi": "Chế độ import",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "key": "import.mode.update",
+      "vi": "Chỉ cập nhật (theo Mã)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
+          "line": 41
+        }
+      ]
+    },
+    {
+      "key": "import.mode.upsert",
+      "vi": "Thêm mới + cập nhật (upsert)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
+          "line": 40
+        }
+      ]
+    },
+    {
       "key": "import.noTarget",
       "vi": "Màn này chưa có form Thêm/Sửa để import.",
       "source": "ICare247_UI",
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 157
+          "line": 171
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 176
+          "line": 190
         }
       ]
     },
@@ -3621,7 +3529,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 202
+          "line": 216
         }
       ]
     },
@@ -3632,7 +3540,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 204
+          "line": 218
         }
       ]
     },
@@ -3643,7 +3551,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
-          "line": 203
+          "line": 217
         }
       ]
     },
@@ -3655,39 +3563,6 @@
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
           "line": 26
-        }
-      ]
-    },
-    {
-      "key": "lookupadd.noData",
-      "vi": "Chưa có dữ liệu để lưu.",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 179
-        }
-      ]
-    },
-    {
-      "key": "lookupadd.notfound",
-      "vi": "Form '{0}' không tồn tại trong tenant.",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 84
-        }
-      ]
-    },
-    {
-      "key": "lookupadd.required",
-      "vi": "Vui lòng nhập: {0}",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 167
         }
       ]
     },
@@ -3726,13 +3601,9 @@
     },
     {
       "key": "masterdata.form.loading",
-      "vi": "Đang tải form...",
+      "vi": "Đang tải form…",
       "source": "ICare247_UI",
       "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/LookupAddDialog.razor",
-          "line": 21
-        },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
           "line": 16
@@ -3946,13 +3817,46 @@
       ]
     },
     {
-      "key": "view.action.exportUnsupported",
-      "vi": "Xuất {0} server-side (pdf/docx) chưa hỗ trợ — sẽ bổ sung sau.",
+      "key": "view.action.exportDone",
+      "vi": "Đã xuất tài liệu.",
       "source": "ICare247_UI",
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 371
+          "line": 391
+        }
+      ]
+    },
+    {
+      "key": "view.action.exportNoTemplate",
+      "vi": "Nút xuất server-side chưa gắn bộ mẫu (Target). Cấu hình Ui_View_Action.Target = mã bộ mẫu.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 373
+        }
+      ]
+    },
+    {
+      "key": "view.action.exporting",
+      "vi": "Đang xuất tài liệu…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 388
+        }
+      ]
+    },
+    {
+      "key": "view.action.selectRowToExport",
+      "vi": "Hãy chọn (tick) 1 dòng trước khi xuất tài liệu.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 385
         }
       ]
     },
@@ -3963,7 +3867,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 372
+          "line": 374
         }
       ]
     },
@@ -3974,7 +3878,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 43
+          "line": 44
         }
       ]
     },
@@ -3985,7 +3889,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 104
+          "line": 106
         }
       ]
     },
@@ -3996,7 +3900,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 363
+          "line": 365
         }
       ]
     },
@@ -4007,7 +3911,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 101
+          "line": 103
         }
       ]
     },
@@ -4018,7 +3922,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 37
+          "line": 38
         }
       ]
     },
@@ -4029,7 +3933,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 211
+          "line": 213
         }
       ]
     },
@@ -4040,7 +3944,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 36
+          "line": 37
         }
       ]
     },
@@ -4051,7 +3955,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 210
+          "line": 212
         }
       ]
     },
@@ -4066,7 +3970,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 74
+          "line": 76
         }
       ]
     },
@@ -4077,7 +3981,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 20
+          "line": 21
         }
       ]
     },
@@ -4088,7 +3992,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 182
+          "line": 184
         }
       ]
     }
