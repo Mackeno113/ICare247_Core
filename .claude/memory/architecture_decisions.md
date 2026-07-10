@@ -1,5 +1,24 @@
 # Architecture Decision Records (ADR)
 
+> ## ⛔ KHÔNG ghi trạng thái triển khai vào file này
+>
+> ADR = **bản ghi quyết định BẤT BIẾN**: bối cảnh, lựa chọn, lý do, ngày. Đã ghi thì không sửa
+> (muốn đổi hướng → viết ADR mới đảo lại ADR cũ, như ADR-034 addendum đảo điểm 1 của chính nó).
+>
+> **Trạng thái triển khai** ("đã code chưa", "còn E2E", "chờ chạy migration") đổi theo từng commit
+> ⇒ sống ở **[TASKS.md § Trạng thái triển khai ADR](../../TASKS.md)**, KHÔNG ở đây.
+>
+> **Vì sao có luật này (2026-07-10):** file từng có 18 dòng `Status:`; rà lại thấy **8 dòng SAI**, tất cả
+> lệch cùng hướng — ghi "chưa code" trong khi code đã chạy (ADR-015/018/019/020/021/022/023/025).
+> Nguyên nhân: trộn phần bất biến với phần biến động thì phần bất biến **bảo vệ** phần biến động —
+> không ai dám "sửa ADR", nên dòng Status hóa thạch. Và `"chưa code"` là **khẳng định phủ định**:
+> lúc viết thì đúng, khi code xuất hiện thì chẳng có gì buộc ai quay lại. Hai lần trong session 81
+> nó suýt dẫn tới kết luận sai (ADR-018 "chưa code" → suýt kết luận nhầm về `Tenant_Id`;
+> ADR-023 "chưa code" → suýt ghi sai rằng menu vẫn tĩnh).
+>
+> Nếu **buộc** phải nhắc tới code trong ADR: **trỏ vào symbol/file cụ thể** (`TenantConnectionResolver`,
+> `Infrastructure/Files/`) — kiểm được bằng grep. Tuyệt đối không viết "chưa code".
+
 ## ADR-001: Api.csproj reference Infrastructure (2026-03-03)
 - **Context:** Program.cs cần gọi AddInfrastructure()
 - **Decision:** Chấp nhận reference trực tiếp cho composition root
@@ -133,7 +152,6 @@
   ResourceMap loader nạp thêm prefix `{tableCode}.view.%`.
 - **Ownership:** db + ConfigStudio = Codex; Domain/Application/Infrastructure/Api/Blazor = Claude.
 - **Chi tiết schema đầy đủ:** `docs/spec/14_VIEW_CONFIG_SPEC.md`.
-- **Status:** thiết kế chốt; triển khai chưa bắt đầu (cần handoff Codex).
 
 ---
 
@@ -166,8 +184,6 @@
 - **Ownership:** db migration (034) + ConfigStudio = Codex; Domain/App/Infra/Api/Blazor = Claude.
   *(Session 2026-06-11: user yêu cầu Claude làm trọn gói cả db + ConfigStudio.)*
 - **Chi tiết schema:** `docs/spec/14_VIEW_CONFIG_SPEC.md §9`. Migration `db/034_create_ui_view_filter.sql`.
-- **Status:** ✅ thiết kế chốt; backend (Domain/App/Infra/Api) đã code + build xanh (2026-06-11);
-  Blazor FilterPanel + ConfigStudio đang triển khai.
 
 ## ADR-018: Multi-tenant database-per-tenant + Catalog DB master, nhận tenant qua subdomain (2026-06-12)
 - **Context:** 1 IIS API + 1 IIS app phải chạy cho nhiều DB khác nhau; mỗi tenant có cấu hình +
@@ -185,9 +201,6 @@
     dùng conn cố định hiện có (dev không vỡ).
   - `TenantMiddleware`: suy tenant từ Host thay vì tin header `X-Tenant-Id` → đồng thời khép lỗ hổng bảo mật #1.
 - **Hybrid on-prem + cloud:** thiết kế chạy cả 2 (SQL Server on-prem lẫn Azure SQL); chọn hạ tầng qua config.
-- **Status:** ✅ `TenantConnectionResolver` + `TenantConnectionProtector` ĐÃ code (`Infrastructure/MultiTenancy`),
-  đăng ký DI singleton, fallback conn cố định khi chưa cấu hình catalog (`FallbackTenantId = 1`).
-  _(Đính chính 2026-07-10: dòng này từng ghi "🔴 chưa code" — SAI, và suýt dẫn tới kết luận nhầm khi làm ADR-035.)_
 
 ## ADR-019: Quy ước Data DB — tên tiếng Việt + cột hệ thống tiếng Anh + PK 'Id' + soft-check qua Sys_Relation (2026-06-12)
 - **Context:** Data DB là dữ liệu vận hành người dùng/khách nhìn trực tiếp; tách khỏi Config DB (metadata).
@@ -205,7 +218,6 @@
     `On_Delete`, `Relation_Code`. `ReferenceCheckService` **hybrid**: Sys_Relation trước → fallback name-match
     cho bảng chưa khai (giai đoạn chuyển tiếp).
 - **Sys_User → Data DB** (không phải Config DB) → auth repo dùng `IDataDbConnectionFactory`.
-- **Status:** Sys_Relation + soft-check ✅ code xong (REL-1/REL-2); convention bảng/cột 🔴 chờ thiết kế Data DB.
 
 ## ADR-020: Audit-log chi tiết — bắt diff tầng Application, JSON, bật/tắt theo bảng+màn hình (2026-06-12)
 - **Context:** Cần log toàn bộ thao tác user: ai tạo/sửa/xóa dữ liệu nào, **cột nào sửa, cũ→mới**;
@@ -217,7 +229,6 @@
     ThoiGian, Form_Code, ChiTiet JSON `[{Cot,Cu,Moi}]`). Truy vấn được bằng OPENJSON.
   - **Bật/tắt theo bảng + màn hình:** cờ `Sys_Table.Audit_Enabled` + `Ui_Form.Audit_Enabled` (màn hình đè bảng).
 - **Phụ thuộc:** user context (NguoiThaoTacID) từ JWT claim → cần pha Auth.
-- **Status:** 🔴 thiết kế chốt — chưa code (cần Data DB + Auth).
 
 ## ADR-021: Scale-out nhiều IIS — stateless + Redis chia sẻ + DataProtection shared + file ở DB qua abstraction (2026-06-12)
 - **Context:** Sau này tách site (app/web/từng module = IIS riêng) → phải đảm bảo "ở đâu cũng lấy được dữ liệu".
@@ -232,7 +243,6 @@
     chunked streaming (không nạp cả file vào RAM) · cache+ETag (Redis/CDN) · dedup SHA-256 + RefCount.
     ⚠️ FILESTREAM hợp on-prem nhưng **Azure SQL không hỗ trợ** → giữ provider cắm được (on-prem→FILESTREAM,
     cloud→Blob), default varbinary chạy mọi nơi.
-- **Status:** DataProtection 🔴 đang code đợt này; file storage 🔴 backlog (user chọn chưa code).
 
 ## ADR-Sec: Đóng lỗ hổng CORS + JWT SecretKey (2026-06-12)
 - **#2 CORS:** bỏ `AllowAnyOrigin`; whitelist `Cors:AllowedOrigins` + `AllowCredentials`; dev tự nhận loopback;
@@ -264,8 +274,6 @@
 
 - **Ví dụ:** `TM_PhieuNhapKho`, `NS_NhanVien`, `HT_NguoiDung`, `DM_TinhThanhPho`, `NK_ThayDoi`.
 - **Liên quan:** ADR-019 (quy ước tên/cột Data DB), ADR-020 (`NK_ThayDoi`), ADR-018 (DB-per-tenant).
-- **Status:** ✅ convention chốt — áp dụng khi thiết kế bảng Data DB thật (chưa có bảng nào ngoài `NK_*` thiết kế).
-- **Status:** #2/#3 ✅ code xong (Program.cs), build xanh; #1 hoãn.
 
 ## ADR-023: Menu động + phân quyền — server-driven từ HT_ChucNang, master→tenant (2026-06-13)
 - **Context:** `AppNav.cs` vẽ menu tĩnh, `NavMenu.CanShow()` luôn `true` → mọi tài khoản thấy đủ. DB tenant
@@ -295,7 +303,6 @@
 - **Hoãn:** `ChucNangCon` (quyền cấp nút), `Sys_Menu` nhiều bộ menu (Top/Mobile), `Duyet` (workflow).
 - **Spec:** `docs/spec/15_AUTHZ_NAVIGATION_SPEC.md`.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-007 (ConfigStudio Direct DB), ADR-022 (tiền tố `HT_`/`Sys_`), ADR-014 (ConfigCache).
-- **Status:** 📋 thiết kế CHỐT — chưa code. Việc theo `TASKS.md` phase-auth.
 
 ## ADR-024: Màn nghiệp vụ chuẩn = engine-driven (no-code), KHÔNG bespoke — màn Công ty pivot (2026-06-15)
 - **Context:** Đã dựng màn Công ty **bespoke full-stack** (commit `d658ff8`: RCL `ICare247.UI.Organization` +
@@ -321,7 +328,6 @@
     theo mã** (không bê `*_Id` identity) — tái dùng pattern menu `Sys_MenuCatalog→HT_ChucNang` (ADR-023).
   - Cờ **`LaHeThong`** (hệ thống/tenant) + **`DaTuyBien`** → tenant chỉnh không mất khi re-sync. Xóa = `Is_Active=0`.
   - Incremental theo version; tích hợp invalidate `ConfigCache`.
-- **Status:** 📋 thiết kế CHỐT (spec `16_CONFIG_SYNC_SPEC.md`) — chưa code; chờ duyệt 5 quyết định mở (§10 spec).
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-023 (master→tenant menu), ADR-024 (engine-driven), ADR-014 (ConfigCache).
 
 ## ADR-026: Menu Builder web — ghi đơn-DB (Data) + picker đọc Config; LC1 (Group+View) dựng sẵn lên LC3 (+Form) (2026-06-17)
@@ -387,7 +393,6 @@
   `system_type_name`); `ViewManagerViewModel` (`EnsureColumnsLoadedAsync` rẽ nhánh + `ResolveSourceObject`).
   `Api`/`Sql` để sau (api: nguồn cột chưa rõ).
 - **Liên quan:** ADR-015 (Ui_View), ADR-016 (Ui_View_Filter Source_Type Sp/Sql), ADR-007 (ConfigStudio Direct DB).
-- **Status:** ✅ code xong, compile xanh (build chỉ fail copy DLL do app đang chạy — cần đóng app build lại để chạy thử).
 
 ## ADR-029: Save hook stored-proc per màn — `spc_Grid_<T>` (validate trước) + `sp_AfterSave_Grid_<T>` (hậu xử lý) (2026-06-22)
 - **Context:** Màn engine-driven (vd Xã/Phường, pipeline `SaveMasterData`) cần thêm lớp validation cuối ở DB +
@@ -421,7 +426,6 @@
   tự nạp ở lần lưu đầu (không pre-warm vì key store = bảng edit-form, không phải view nguồn).
 - **Spec:** `docs/spec/18_SAVE_VALIDATION_HOOK_SPEC.md` (§9 cache).
 - **Liên quan:** ADR-024 (engine-driven), ADR-014 (ConfigCache resolve i18n + cache-aside), spec 10 (Resource Key), spec 14 (View).
-- **Status:** ✅ code xong (session 60, build BE/FE/WPF 0/0) + cache-aside cờ store. ⏳ E2E (SVHOOK-6: chạy SQL).
 - **Cập nhật (ADR-030, 2026-06-22):** đổi context param `@NguoiThucHien` → **`@NguoiDungID`** (đồng nhất registry).
 
 ## ADR-030: Bộ lọc liên kết (cascade) + token ngữ cảnh `Sys_Context_Param` + prefill Thêm mới (2026-06-22)
@@ -447,8 +451,6 @@
 - **Spec:** `docs/spec/14_VIEW_CONFIG_SPEC.md` §10 · `docs/spec/19_CONTEXT_PARAM_SPEC.md`.
 - **Liên quan:** ADR-016 (Ui_View_Filter), ADR-029 (hook store — đồng nhất tên), ADR-023 (phân quyền), spec 11 (Data DB).
 - **Mở:** chốt bảng phân công user↔công ty thật (Validate_Sql `CongTyID_Active` đang là MẪU).
-- **Status:** ✅ thiết kế + cấu hình DB/WPF (build chưa chạy — app có thể đang mở). ⏳ chạy `db/059`+`db/060` (Config DB),
-  chạy lại 2 proc `spc_/sp_AfterSave_Grid_DM_PhuongXa` (Data DB, vì đổi `@NguoiDungID`); roadmap runtime `VFILTER-*`/`CTXPARAM-*`.
 
 ## ADR-031: Theme control tập trung WPF ConfigStudio (2026-06-24)
 - **Context:** Style lặp + 685 hex inline rải 30 view → muốn "sửa 1 nơi".
@@ -461,7 +463,6 @@
 - **Rule:** style implicit OK ở app này (tiền lệ dxg:TableView). Combo nào ép `IsTextEditable="False"` tại chỗ → filter chết, đã gỡ.
 - **Palette:** ~115 hex → 30 token (gom hue nhẹ: gray→slate, cyan/teal→Info, indigo/violet→Accent).
 - **Verify:** API DevExpress v25.2 qua reflection (CornerRadius/Background/BorderBrush là DP thật). XML well-formed; token đủ.
-- **Status:** ⏳ build PENDING (app đang chạy lúc làm). Rủi ro: editor mất template nếu DevExpress theme phản ứng → fix = `BasedOn` style mặc định DX.
 - **Liên quan:** Phase 5 trong `docs/ICare247 Config Studio/TASKS_WPF.md`; ADR-003/004 (Prism/DevExpress).
 
 ## ADR-032: Lỗi backend có MÃ ổn định → frontend localize i18n (`ApiProblemException` + `ApiErrorLocalizer`) (2026-06-28)
@@ -478,7 +479,6 @@
 - **Tái dùng:** thêm 1 mã lỗi mới = (a) thêm hằng `Code` ở exception domain + nhánh middleware (hoặc tái dùng `MetadataConfigurationException`),
   (b) thêm nhánh `switch` trong `ApiErrorLocalizer` với key i18n. KHÔNG cần sửa từng call-site catch.
 - **Liên quan:** ADR-014 (resolve i18n server-side cho validation), memory "Error correlation & observability" (correlationId/log), `project-frontend-i18n-shell` (L(key,fallback)).
-- **Status:** ✅ code xong (MasterData path: list/form/save). ⏳ build PENDING (app đang chạy) → cần restart API + hard-reload WASM để áp dụng. Áp cho form `DM_CHINHANHNGANHANG` (bảng thiếu PK — chưa sửa DB theo yêu cầu user).
 
 ## ADR-033: Nguồn khóa ngoại (FK) dùng chung — tái dùng `Ui_Field_Lookup` cho lưới · form · import · template (2026-06-28)
 - **Context:** Cột FK ở lưới (vd `DM_ChiNhanhNganHang.NganHang_Id`) hiện ra `1` (id thô). User mở rộng yêu cầu:
@@ -503,9 +503,6 @@
   Q3 (thư viện Excel ClosedXML/EPPlus/OpenXML) ⏳ mở — chốt khi tới Pha 2.
 - **Liên quan:** ADR-024 (đọc SQL View + lọc quyền), ADR-030/spec 19 (token ngữ cảnh), ADR-014 (ConfigCache),
   ADR-015/spec 14 (Ui_View), ADR-029/spec 18 (error_key i18n cho lỗi import), Migration 014 (`Code_Field`).
-- **Status:** 📋 mô hình chốt (Q1/Q2/Q4). **Pha 1 ✅ xong** (db/064 view `vw_DM_ChiNhanhNganHang` + db/065 cấu hình
-  Ui_View Source_Type=View, cột `TenNganHang` hiện/`NganHang_Id` ẩn, Props_Json `fkLookup.fieldId=34`, i18n vi/en) —
-  ĐÃ áp live Tenant 1 (DB 100.126.222.117). Pha 2 (import) chốt thiết kế ở **ADR-034**; Pha 3 (template) chưa làm.
 
 ## ADR-034: Import Excel Pha 2 — ClosedXML + upsert khoá ghép + 2 hook proc (spec 18) + log/masking (2026-07-07)
 - **Context:** Chi tiết hoá Pha 2 của ADR-033 (import dữ liệu Excel vào Data DB dựa cấu hình `Ui_View` grid). User yêu cầu:
@@ -548,11 +545,6 @@
 - **Liên quan:** ADR-033 (nguồn FK dùng chung, đóng Q3), ADR-029/spec 18 (hook proc + codegen + `IHookStoreCatalog`),
   ADR-030/spec 19 (token ngữ cảnh lọc quyền), ADR-024 (engine-driven), ADR-022 (audit tường minh/tiền tố), ADR-027 (tree
   ordering — cho TreeGrid pha sau), ADR-014 (ConfigCache resolve i18n).
-- **Status:** ✅ **CODE XONG (session 78, 2026-07-07)** — build BE 0/0 · FE 0/0 · WPF Core+Forms 0/0. IMPORT-1→6:
-  `IFkLookupResolver` · `IImportTemplateBuilder`(ClosedXML) · `IImportEngine` · `ImportController`+3 handler +
-  `IImportMetadataProvider`/`IImportLogRepository` · `ImportWizard.razor`+`ImportApiService` · hook v2 (@Source/
-  @ImportSessionId zero-regression) + `sp_AfterImport_<T>` codegen. Migrations `db/071–073` + `db/procs/*` ⏳ CHƯA
-  chạy DB; E2E ⏳. v1 = Grid phẳng; TreeGrid + Pha 3 Template sau.
 - **🔄 Addendum (2026-07-09, session 80) — đổi thư viện Excel: ClosedXML → DevExpress Spreadsheet.** User chốt
   đồng nhất 1 thư viện Office (Document Processor) cho cả in biểu mẫu lẫn import; chấp nhận **watermark trial**
   (template import tải về dính watermark tới khi mua Universal license) + ràng buộc license — **đảo điểm 1** của ADR này.
@@ -590,8 +582,6 @@
   Sửa: `OR l.Tenant_Id IS NULL` + doc `ILookupRepository`. Bài học: 2 quy ước global (`0` vs `NULL`) cùng tồn
   tại chính là hệ quả của việc `Tenant_Id` tràn lan.
 - **Liên quan:** ADR-018 (DB-per-tenant), ADR-019 (Data DB không có Tenant_Id), ConfigSync F1 (db/050).
-- **Status:** ✅ quyết định chốt · ✅ bug `Sys_Lookup` đã sửa · ✅ code backend + ConfigStudio WPF đã gỡ sạch predicate
-  · ✅ migration `db/078_drop_tenant_id.sql` ĐÃ CHẠY trên Config DB (2026-07-10). `db/015` (bảng `Cf_*`) = tham khảo, không dùng → cố ý không áp ADR-035.
 - **Bug thứ 2 (đã sửa):** `PublishCheckService` (WPF) truy vấn `Ui_Field.Tenant_Id`/`Sys_Dependency.Tenant_Id` — cột KHÔNG tồn tại → `Invalid column name` mỗi lần bấm kiểm tra trước publish. Có sẵn từ trước, gỡ predicate sửa luôn.
 - **Bug 3–5 (đã sửa, cùng `PublishCheckService`):** rà kỹ lộ thêm 3 query tham chiếu cột không tồn tại —
   `Ui_Field.ColumnCode` (đúng: `COALESCE(Field_Code, Sys_Column.Column_Code)`, db/019+020) ·

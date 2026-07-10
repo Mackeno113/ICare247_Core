@@ -82,7 +82,8 @@
 | `.claude/memory/MEMORY.md` | Index tất cả memory files |
 | `.claude/memory/last_session.md` | Session trước làm gì → đọc ĐẦU TIÊN |
 | `.claude/memory/project_current_phase.md` | Phase hiện tại, priorities |
-| `.claude/memory/architecture_decisions.md` | ADR — quyết định kiến trúc |
+| `.claude/memory/architecture_decisions.md` | ADR — quyết định kiến trúc **BẤT BIẾN**. ⛔ KHÔNG ghi trạng thái triển khai vào đây |
+| `TASKS.md` § Trạng thái triển khai ADR | **Nguồn sự thật duy nhất** cho "ADR nào đã code xong / còn gì" |
 | `.claude/memory/coding_style_feedback.md` | User corrections |
 | `.claude/memory/user_profile.md` | Preferences của user |
 
