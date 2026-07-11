@@ -1,7 +1,31 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-06
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-11
 > Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
+
+---
+
+## ✅ Done (2026-07-11) — Sinh nhanh Form/Lưới từ Sys_Table + xóa bulk field + loại cột audit
+
+Commit `16f7645` trên `master`. Build ConfigStudio compile OK (chỉ lock DLL do app đang chạy).
+
+- **SCAFFOLD-SCREEN** — 2 nút **1-chạm độc lập** trên màn Sys_Table: **📝 Sinh Form** + **📊 Sinh Lưới**
+  (headless, ghi thẳng Config DB, không mở editor). Service mới `IScreenScaffolder`/`ScreenScaffolder`
+  (Core interface + Infra impl, đăng ký DI ở `App.xaml.cs`) tái dùng các data-service sẵn có:
+  đọc cột thật từ Target DB (`ISchemaInspectorService`), `EnsureColumnExistsAsync` tự tạo Sys_Column,
+  cột FK theo **Sys_Relation** → LookupBox dynamic, `Sys_Resource` (vi) tách PascalCase.
+  Form: `CreateFormAsync`+`UpsertSectionAsync`+`SaveFieldAsync`. Lưới: `SaveViewAsync` + toàn bộ cột
+  (bật sẵn filter-row/column-chooser/add-edit-delete). Nút cũ "Tạo Form từ bảng này" (điều hướng
+  FormEditor 2 bước) → đổi thành **1-chạm headless**. Ẩn nút theo `FormExistsForTableAsync`/
+  `ViewExistsForTableAsync`. Form ↔ View **không ép đi kèm nhau**.
+- **SCAFFOLD-NO-AUDIT** — auto-generate **loại nguyên khối cột audit** (CreatedBy/CreatedAt/UpdatedBy/
+  UpdatedAt/IsDeleted/Ver) dùng chung `AuditColumnTemplate.RequiredColumns`. Áp **cả** nút mới lẫn dialog
+  **"Tạo Fields tự động"** trong FormEditor (`AutoGenerateFieldsDialogViewModel`): cột audit ẩn khỏi danh
+  sách chọn; nhãn "N cột ẩn (PK/Identity + audit)".
+- **BULK-DELETE-FIELD** — FormEditor: **xóa hàng loạt field đã tick** (`DeleteBulkCommand`/
+  `ExecuteDeleteBulkAsync`), nút **🗑 Xóa (N)** trong thanh Bulk + mục context-menu (`BulkDeleteHeader`).
+  Có xác nhận; xóa `Ui_Field` khi Id>0 (`DeleteFieldAsync`), gỡ khỏi cây, reindex `Order_No` section nguồn,
+  clear tick + IsDirty. Trước đây thanh Bulk chỉ đổi thuộc tính, không có xóa nhóm.
 
 ---
 

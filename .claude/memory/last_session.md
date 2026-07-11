@@ -1,8 +1,31 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-10 (session 81 — ADR-035 + dọn ADR mục + bug runtime; ĐÃ commit+push). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-11 (session 82 — sinh nhanh Form/Lưới từ Sys_Table + xóa bulk field + loại audit; ĐÃ commit, CHƯA push). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
-> **Task tiếp theo gợi ý:** verify E2E trên app (thêm/xóa ngân hàng sau khi restart API) · quyết định bảo vệ FK `DM_NganHang`→`DM_ChiNhanhNganHang`.
+> **Task tiếp theo gợi ý:** nghiệm thu scaffold trên app (đóng+mở lại ConfigStudio → Sys_Table → Sinh Form/Lưới, xóa bulk field) · đẩy ConfigSync config vừa sinh sang tenant.
+
+## Session 82 (2026-07-11) — Sinh nhanh Form/Lưới từ Sys_Table + xóa bulk field + loại cột audit
+
+**Commit trên `master`** (CHƯA push): `16f7645` (9 files, +663/−24). Build ConfigStudio compile OK
+(chỉ lock DLL do app đang chạy — coi như đạt). Chi tiết → [TASKS_WPF.md](../../docs/ICare247%20Config%20Studio/TASKS_WPF.md).
+
+**Bối cảnh:** user muốn "khai báo Sys_Table xong thì tạo nhanh form/view". Auto-generate Form vốn ĐÃ có
+nhưng đi 2 bước (mở FormEditor → dialog "Tạo Fields tự động"). User chốt: **2 nút tách biệt, độc lập**
+(không phải lúc nào tạo Form cũng kèm View), mỗi nút **1-chạm headless**; hiện chỉ 1 màn/1 lưới đơn,
+master-detail để nâng cấp sau.
+
+**Đã làm:**
+1. **Service mới `IScreenScaffolder`/`ScreenScaffolder`** — sinh Form (Ui_Form+section+field) và Lưới
+   (Ui_View+cột) headless, ghi thẳng Config DB; tái dùng data-service sẵn có (không Dapper trực tiếp).
+2. **2 nút trên Sys_Table** — 📝 Sinh Form / 📊 Sinh Lưới; nút Form cũ (điều hướng) đổi thành 1-chạm.
+3. **Loại khối cột audit** (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt/IsDeleted/Ver) qua `AuditColumnTemplate`
+   — áp cả nút mới lẫn dialog "Tạo Fields tự động" cũ (user phát hiện audit lọt vào form sinh ra).
+4. **Xóa bulk field trong FormEditor** — nút 🗑 Xóa (N) trong thanh Bulk + context-menu; trước chỉ có
+   đổi thuộc tính, không có xóa nhóm.
+
+**Lưu ý bàn giao:** sửa forward-only — form/view đã lỡ sinh kèm audit (VD `TC_PhongBan`) phải dọn tay
+(xóa bulk hoặc xóa form rồi sinh lại). Config sinh nằm ở Config DB master → cần ConfigSync sang tenant.
+3 file i18n (`catalog.json`×2, `i18n-report.md`) sửa từ trước, KHÔNG gộp vào commit này.
 
 ## Session 81 (2026-07-10) — ADR-035: bỏ HẲN cột `Tenant_Id` + dọn ADR mục + bug runtime
 
