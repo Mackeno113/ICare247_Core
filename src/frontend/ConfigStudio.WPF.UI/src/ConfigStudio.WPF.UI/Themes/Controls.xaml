@@ -254,6 +254,9 @@
         <Setter Property="Padding" Value="16,8" />
     </Style>
 
+    <!-- MỌI lưới trong app đều: có hàng lọc "chứa" dưới header, kéo giãn + đổi vị trí cột,
+         và tự nhớ format lưới (độ rộng / thứ tự / ẩn-hiện / sắp xếp) ra file local.
+         Chi tiết cơ chế + gotcha: xem GridLayoutBehavior và .claude-rules/wpf-configstudio.md §12. -->
     <Style TargetType="{x:Type dxg:TableView}">
         <Setter Property="ShowGroupPanel" Value="False" />
         <Setter Property="ShowIndicator" Value="False" />
@@ -263,13 +266,24 @@
         <Setter Property="AutoWidth" Value="False" />
         <Setter Property="RowMinHeight" Value="30" />
         <Setter Property="AllowPerPixelScrolling" Value="True" />
-        <!-- Cho phép kéo chỉnh độ rộng cột + tự lưu/phục hồi layout ra file local (xem GridLayoutBehavior). -->
+        <!-- Người dùng tự sắp lưới: kéo giãn độ rộng + kéo đổi vị trí cột. -->
         <Setter Property="AllowResizing" Value="True" />
+        <Setter Property="AllowColumnMoving" Value="True" />
+        <!-- Lọc: hàng filter ngay dưới header, mỗi cột 1 ô, gõ tới đâu lọc tới đó.
+             Điều kiện "chứa" cho cột text do GridLayoutBehavior gán theo FieldType
+             (không set AutoFilterCondition ở style vì cột số/ngày không dùng Contains). -->
+        <Setter Property="AllowColumnFiltering" Value="True" />
+        <Setter Property="ShowAutoFilterRow" Value="True" />
+        <!-- Tự lưu/phục hồi format lưới ra file local + ép lại chính sách lọc sau khi phục hồi. -->
         <Setter Property="behaviors:GridLayoutBehavior.Persist" Value="True" />
     </Style>
 
     <Style TargetType="{x:Type dxg:GridColumn}">
         <Setter Property="MinWidth" Value="80" />
+        <!-- Gõ tới đâu lọc tới đó (không phải nhấn Enter). -->
+        <Setter Property="ImmediateUpdateAutoFilter" Value="True" />
+        <Setter Property="AllowMoving" Value="True" />
+        <Setter Property="AllowResizing" Value="True" />
     </Style>
 
     <!-- ════════════════════════════════════════════════════════════════════
