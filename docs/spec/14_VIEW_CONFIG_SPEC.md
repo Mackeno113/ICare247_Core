@@ -70,7 +70,7 @@ CREATE TABLE dbo.Ui_View
     Default_Filter_Json NVARCHAR(MAX)  NULL,                      -- bộ lọc khởi tạo
 
     Options_Json        NVARCHAR(MAX)  NULL,                      -- thuộc tính phụ (thoát hiểm)
-    Tenant_Id           INT            NULL,
+    -- ADR-035: KHÔNG có cột Tenant_Id — mỗi tenant 1 Config DB riêng (cô lập ở tầng connection).
     Version             INT            NOT NULL DEFAULT 1,
     Is_Active           BIT            NOT NULL DEFAULT 1,
     Created_At          DATETIME       NOT NULL DEFAULT GETDATE(),
@@ -80,12 +80,10 @@ CREATE TABLE dbo.Ui_View
     CONSTRAINT PK_Ui_View PRIMARY KEY (View_Id),
     CONSTRAINT FK_Ui_View_Table   FOREIGN KEY (Table_Id)      REFERENCES dbo.Sys_Table(Table_Id),
     CONSTRAINT FK_Ui_View_EditForm FOREIGN KEY (Edit_Form_Id) REFERENCES dbo.Ui_Form(Form_Id),
-    CONSTRAINT FK_Ui_View_Detail  FOREIGN KEY (Detail_View_Id) REFERENCES dbo.Ui_View(View_Id),
-    CONSTRAINT FK_Ui_View_Tenant  FOREIGN KEY (Tenant_Id)     REFERENCES dbo.Sys_Tenant(Tenant_Id)
+    CONSTRAINT FK_Ui_View_Detail  FOREIGN KEY (Detail_View_Id) REFERENCES dbo.Ui_View(View_Id)
 );
 
-CREATE UNIQUE INDEX UQ_Ui_View_Code_Global ON dbo.Ui_View(View_Code) WHERE Tenant_Id IS NULL;
-CREATE UNIQUE INDEX UQ_Ui_View_Code_Tenant ON dbo.Ui_View(View_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL;
+CREATE UNIQUE INDEX UQ_Ui_View_Code ON dbo.Ui_View(View_Code);
 CREATE INDEX IX_Ui_View_Table ON dbo.Ui_View(Table_Id, Is_Active);
 ```
 

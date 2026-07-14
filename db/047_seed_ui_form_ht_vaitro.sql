@@ -16,13 +16,13 @@ SET XACT_ABORT ON;
 GO
 
 -- ── 1. Sys_Table: bảng đích HT_VaiTro (Data DB) ─────────────────────────────
-IF NOT EXISTS (SELECT 1 FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL)
+IF NOT EXISTS (SELECT 1 FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro')
     INSERT INTO dbo.Sys_Table (Table_Code, Table_Name, Schema_Name)
     VALUES (N'HT_VaiTro', N'Vai trò', N'dbo');
 GO
 
 -- ── 2. Sys_Column: cột phơi cho form (Id PK + Ma/Ten/MoTa) ──────────────────
-DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL);
+DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro');
 
 INSERT INTO dbo.Sys_Column (Table_Id, Column_Code, Data_Type, Net_Type, Is_Nullable, Is_PK, Is_Identity)
 SELECT @TableId, v.Code, v.Dt, v.Nt, v.Nullable, v.Pk, v.Ident
@@ -36,7 +36,7 @@ WHERE NOT EXISTS (SELECT 1 FROM dbo.Sys_Column c WHERE c.Table_Id = @TableId AND
 GO
 
 -- ── 3. Ui_Form ──────────────────────────────────────────────────────────────
-DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL);
+DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro');
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Form WHERE Form_Code = N'HT_VaiTro')
     INSERT INTO dbo.Ui_Form (Form_Code, Table_Id, Platform, Display_Mode)
@@ -44,7 +44,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Form WHERE Form_Code = N'HT_VaiTro')
 GO
 
 -- ── 4. Ui_Field (Ma/Ten/MoTa) — Id là identity PK, không phơi nhập ───────────
-DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL);
+DECLARE @TableId INT = (SELECT Table_Id FROM dbo.Sys_Table WHERE Table_Code = N'HT_VaiTro');
 DECLARE @FormId  INT = (SELECT Form_Id  FROM dbo.Ui_Form  WHERE Form_Code  = N'HT_VaiTro');
 
 INSERT INTO dbo.Ui_Field (Form_Id, Column_Id, Editor_Type, Label_Key, Order_No, Show_In_List, Is_Unique)

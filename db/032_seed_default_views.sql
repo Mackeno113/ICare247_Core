@@ -12,18 +12,17 @@ USE [ICare247_Config];
 GO
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 1. Header: 1 Grid view / form active (chưa có view trùng code trong tenant)
+-- 1. Header: 1 Grid view / form active (chưa có view trùng code)
 -- ─────────────────────────────────────────────────────────────────────────────
 INSERT INTO dbo.Ui_View
     (View_Code, View_Type, Table_Id, Source_Type, Title_Key, Edit_Form_Id,
-     Tenant_Id, Description)
+     Description)
 SELECT 'Grid_' + f.Form_Code,
        'Grid',
        f.Table_Id,
        'Table',
        f.Title_Key,
        f.Form_Id,
-       t.Tenant_Id,
        N'View Grid mặc định (seed từ Ui_Form — VIEW-1b)'
 FROM   dbo.Ui_Form  f
 JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
@@ -31,8 +30,6 @@ WHERE  f.Is_Active = 1
   AND  NOT EXISTS (
         SELECT 1 FROM dbo.Ui_View v
         WHERE  v.View_Code = 'Grid_' + f.Form_Code
-          AND  ((v.Tenant_Id = t.Tenant_Id)
-                OR (v.Tenant_Id IS NULL AND t.Tenant_Id IS NULL))
   );
 GO
 

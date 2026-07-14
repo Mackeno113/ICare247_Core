@@ -76,7 +76,7 @@ Impl DevExpress nằm trong **`ICare247.Infrastructure.Documents`** — project 
 **Vị trí DB (chốt §13-A):** đặt trong **Config DB** (`ICare247_Config`) — truy cập qua
 `IDbConnectionFactory` (nhóm `Ui_*`/`Sys_*`), **KHÔNG** ở Data DB ("Data DB không chứa cấu hình"),
 **KHÔNG** đưa vào descriptor ConfigSync (tenant-local). Mô hình **mỗi tenant 1 DB** → ranh giới tenant là
-chính DB. Cột `Tenant_Id` giữ lại cho **đồng nhất** với `Sys_Table`/`Ui_*` (hằng số trong 1 DB tenant).
+chính DB, nên **KHÔNG có cột `Tenant_Id`** (ADR-035 — cô lập ở tầng connection, không ở tầng cột).
 
 Stored proc dữ liệu (§5) chạy trên **Data DB** qua `IDataDbConnectionFactory` — tách hẳn Config DB.
 
@@ -87,7 +87,6 @@ Stored proc dữ liệu (§5) chạy trên **Data DB** qua `IDataDbConnectionFac
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Id | bigint | PK IDENTITY | |
-| Tenant_Id | int | NOT NULL | giữ đồng nhất `Ui_*`/`Sys_*` (hằng số trong DB tenant) |
 | Ma | nvarchar(50) | filtered UNIQUE `WHERE IsDeleted=0` | mã bộ mẫu |
 | Ten | nvarchar(200) | NOT NULL | tên hiển thị |
 | Master_Proc | nvarchar(128) | NOT NULL | tên stored proc master (trả **1 dòng**) |
@@ -119,7 +118,6 @@ Chỉ proc có trong bảng này mới được render/khám phá biến gọi (
 | Cột | Kiểu | Ràng buộc | Ý nghĩa |
 |---|---|---|---|
 | Id | bigint | PK IDENTITY | |
-| Tenant_Id | int | NOT NULL | đồng nhất |
 | Proc_Name | nvarchar(128) | filtered UNIQUE `WHERE IsDeleted=0` | tên proc (validate regex `^[A-Za-z_][A-Za-z0-9_]*$`) |
 | Loai | nvarchar(20) | NOT NULL | `master` \| `detail` (gợi ý vai trò) |
 | Mo_Ta | nvarchar(500) | NULL | mô tả proc |
@@ -138,7 +136,7 @@ Khai báo tham số mỗi proc cần + nguồn lấy giá trị lúc render.
 | Template_Id | bigint | NOT NULL FK→Doc_Template | thuộc bộ mẫu |
 | Detail_Id | bigint | NULL FK→Doc_Template_Detail | NULL = tham số cho proc master; có = cho proc detail cụ thể |
 | Param_Name | nvarchar(64) | NOT NULL | tên tham số proc, VD `@NhanVien_Id` |
-| Nguon | nvarchar(20) | NOT NULL | `key` (từ keyParams render) \| `context` (Tenant_Id/NguoiDungId) \| `const` |
+| Nguon | nvarchar(20) | NOT NULL | `key` (từ keyParams render) \| `context` (NguoiDungId) \| `const` |
 | Nguon_Key | nvarchar(64) | NULL | khóa trong keyParams / tên context / giá trị const |
 | Kieu | nvarchar(20) | NOT NULL DEFAULT 'string' | ép kiểu tham số |
 | Thu_Tu | int | NOT NULL DEFAULT 0 | thứ tự (nếu cần) |
@@ -160,8 +158,9 @@ Mọi proc nhận cùng bộ tham số ngữ cảnh (đặt tên thống nhất)
 | Tham số | Nguồn | Bắt buộc |
 |---|---|---|
 | `@KhoaChinh` (hoặc theo nghiệp vụ, VD `@NhanVien_Id`) | tham số render truyền vào | ✔ |
-| `@Tenant_Id` | ngữ cảnh phiên | ✔ |
 | `@NguoiDungId` | ngữ cảnh phiên (lọc quyền) | tùy proc |
+
+> ADR-035: **không** truyền `@Tenant_Id` — proc chạy trên Data DB đã thuộc đúng tenant (connection tự trỏ).
 
 > Ánh xạ tên tham số khai báo ở **bảng phụ `Doc_Template_Param`** (§4.4) — chốt §13-C.
 > Gọi qua Dapper `CommandType.StoredProcedure`, **tham số hóa 100%**, không nối chuỗi.
@@ -169,7 +168,7 @@ Mọi proc nhận cùng bộ tham số ngữ cảnh (đặt tên thống nhất)
 ### 5.3 Whitelist proc (bảo mật) — chốt §13-B = **bảng đăng ký**
 
 Chỉ proc có trong **`Doc_Proc_Registry`** (§4.3, `Is_Active=1`) mới được gọi. Trước khi thực thi:
-1. Tên proc phải khớp `Doc_Proc_Registry` (theo `Tenant_Id`).
+1. Tên proc phải khớp `Doc_Proc_Registry` (registry nằm trong Config DB của chính tenant).
 2. Validate lại tên bằng regex `^[A-Za-z_][A-Za-z0-9_]*$` (phòng thủ 2 lớp).
 3. Chạy trên **Data DB tenant** dưới principal **read-only**; proc chỉ `SELECT` (không DML/DDL).
 
@@ -287,7 +286,7 @@ hiển thị kèm chú thích i18n nếu có bảng ánh xạ (tương lai).
 - **GĐ3 (soạn WPF):** module ConfigStudio RichEditControl + panel biến.
 
 ## 13. Quyết định (đã chốt)
-- **A. ✅** `Doc_Template*` đặt ở **Config DB** (`IDbConnectionFactory`), per-tenant DB, ngoài ConfigSync; giữ `Tenant_Id` cho đồng nhất. Proc chạy trên Data DB (`IDataDbConnectionFactory`).
+- **A. ✅** `Doc_Template*` đặt ở **Config DB** (`IDbConnectionFactory`), per-tenant DB, ngoài ConfigSync; **không có cột `Tenant_Id`** (ADR-035 — cô lập ở tầng connection). Proc chạy trên Data DB (`IDataDbConnectionFactory`).
 - **B. ✅** Whitelist = **bảng đăng ký `Doc_Proc_Registry`** (§4.3) + regex phòng thủ.
 - **C. ✅** Ánh xạ tham số proc = **bảng phụ `Doc_Template_Param`** (§4.4).
 - **D. ⏳** Sinh hàng loạt (1 file nhiều bản vs nhiều file) — **hoãn quyết sau GĐ1**.

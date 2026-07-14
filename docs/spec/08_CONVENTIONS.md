@@ -43,6 +43,11 @@ public static class CacheKeys
 ## Dapper Patterns
 
 ### Query chuẩn
+
+> **ADR-035:** connection đã trỏ đúng Config/Data DB của tenant (qua `TenantConnectionResolver`)
+> → **KHÔNG lọc `AND Tenant_Id = @TenantId`**; cột `Tenant_Id` đã bỏ khỏi mọi bảng (`db/078`).
+> `tenantId` chỉ dùng cho cache key + chọn connection, không truyền vào SQL.
+
 ```csharp
 const string sql = """
     SELECT f.Form_Id,
@@ -50,19 +55,18 @@ const string sql = """
            f.Version
     FROM   dbo.Ui_Form f
     WHERE  f.Form_Code = @FormCode
-      AND  f.Tenant_Id = @TenantId
       AND  f.Is_Active = 1
     """;
 
 var result = await conn.QueryFirstOrDefaultAsync<FormMetadata>(
-    new CommandDefinition(sql, new { FormCode = formCode, TenantId = tenantId },
+    new CommandDefinition(sql, new { FormCode = formCode },
         cancellationToken: ct));
 ```
 
 ### Danh sách
 ```csharp
 var items = await conn.QueryAsync<FieldMetadata>(
-    new CommandDefinition(sql, new { FormId = formId, TenantId = tenantId },
+    new CommandDefinition(sql, new { FormId = formId },
         cancellationToken: ct));
 return items.AsList();
 ```

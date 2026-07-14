@@ -84,34 +84,42 @@ Không có va chạm `(Lookup_Code, Item_Code)` → drop cột không vỡ UNIQU
 
 > Code đã sạch `Tenant_Id`, `db/078` đã chạy. Phần dưới là **những gì CHƯA làm**, xếp theo mức nguy hiểm.
 
-### 🔥 R-1 — 4 migration seed sẽ VỠ nếu chạy lại (tham chiếu cột không còn)
+### ✅ R-1 — 4 migration seed đã sửa (session 83 — 2026-07-14)
 
-| File | Câu SQL |
+Đã gỡ tham chiếu `Tenant_Id` khỏi 4 file → chạy lại sau `db/078` không còn `Invalid column name`:
+
+| File | Đã sửa |
 |---|---|
-| `db/032_seed_default_views.sql` | `INSERT dbo.Ui_View (..., Tenant_Id, ...) SELECT ..., t.Tenant_Id` |
-| `db/047_seed_ui_form_ht_vaitro.sql` | `WHERE Table_Code = N'HT_VaiTro' AND Tenant_Id IS NULL` |
-| `db/065_config_grid_chinhanhnganhang_fk.sql` | `ORDER BY CASE WHEN Tenant_Id IS NULL THEN 1 ELSE 0 END` |
+| `db/032_seed_default_views.sql` | Bỏ cột `Tenant_Id` + `t.Tenant_Id` khỏi INSERT/SELECT; NOT EXISTS chỉ theo `View_Code` |
+| `db/047_seed_ui_form_ht_vaitro.sql` | Bỏ `AND Tenant_Id IS NULL` (4 chỗ) |
+| `db/065_config_grid_chinhanhnganhang_fk.sql` | Bỏ `ORDER BY CASE WHEN Tenant_Id IS NULL...` |
 | `db/066_config_grid_chinhanhnganhang_autojoin.sql` | như trên |
 
-Provision DB mới chạy tuần tự `000 → 078` thì **vẫn đúng** (078 dọn sau cùng). Nhưng chạy lại bất kỳ file
-nào trong 4 file trên **sau** khi 078 đã áp → `Invalid column name 'Tenant_Id'`. Cần sửa 4 file này.
-
-Tám file khác (`000`, `001`, `002`, `009`, `031`, `043`, `044`, `077`) **CREATE** cột — chạy trước 078 nên
-không vỡ, chỉ là "dựng lên rồi phá đi". Dọn được thì gọn, không gấp.
+> Tám file khác (`000`, `001`, `002`, `009`, `031`, `043`, `044`, `077`) **CREATE** cột — chạy trước 078 nên
+> không vỡ. `002/009/031/043/044/077` (db/) chưa dọn (chỉ "dựng lên rồi phá đi", không gấp).
+> `docs/migrations/000` + `001` (bản snapshot) đã dọn ở R-2.
 
 **KHÔNG đụng:** `db/036_create_catalog.sql` (Catalog DB — `dbo.Tenant.Tenant_Id` là PK, hợp lệ) ·
 `db/015_create_cf_data_schema.sql` (**tham khảo, không dùng** — user chốt để nguyên) ·
 `db/029`/`037`/`056` (chỉ là comment).
 
-### 📄 R-2 — 6 spec vẫn dạy mô hình cũ (nguy hiểm vì người ta copy theo)
+### ✅ R-2 — 6 spec + 2 snapshot migration đã sửa (session 83 — 2026-07-14)
 
-- `01_ARCHITECTURE.md:44` — *"Mọi query SQL phải có `AND Tenant_Id = @TenantId`"* → **quy tắc cứng nay SAI**.
-- `08_CONVENTIONS.md:53` — mẫu Dapper còn `f.Tenant_Id = @TenantId`.
-- `09_FIELD_CONFIG_GUIDE.md:273,321` + `12_CASCADE_LOOKUP_GUIDE.md:66` — ví dụ **Filter SQL**
-  `Is_Active = 1 AND Tenant_Id = @TenantId`. User gõ thẳng vào ConfigStudio → lỗi runtime.
-- `14_VIEW_CONFIG_SPEC.md:73,84` — DDL `Ui_View` còn cột + `FK_Ui_View_Tenant → Sys_Tenant` (bảng đã drop).
-- `28_DOC_TEMPLATE_SPEC.md:79,90` — vẫn ghi *"giữ `Tenant_Id` cho đồng nhất"*.
-- `docs/migrations/000_create_schema.sql` + `001_seed_all.sql` — bản sao cũ, còn `Sys_Tenant`.
+- `01_ARCHITECTURE.md` — viết lại mục Multi-tenant: cô lập ở tầng connection (resolver), **không** lọc SQL
+  theo `Tenant_Id`; cache key vẫn giữ `TenantId` (Redis L2 dùng chung).
+- `08_CONVENTIONS.md` — bỏ `f.Tenant_Id = @TenantId` + param `TenantId` khỏi mẫu Dapper + note ADR-035.
+- `09_FIELD_CONFIG_GUIDE.md` + `12_CASCADE_LOOKUP_GUIDE.md` — gỡ `Tenant_Id = @TenantId` khỏi mọi ví dụ
+  Filter SQL/Function/SELECT + gỡ `@TenantId` khỏi bảng tham số hệ thống + thêm cảnh báo "gõ vào sẽ lỗi runtime".
+- `14_VIEW_CONFIG_SPEC.md` — DDL `Ui_View`: bỏ cột `Tenant_Id` + `FK_Ui_View_Tenant`; gộp 2 filtered index
+  thành `UQ_Ui_View_Code`.
+- `28_DOC_TEMPLATE_SPEC.md` — bỏ cột `Tenant_Id` khỏi `Doc_Template`/`Doc_Proc_Registry`, §13-A, tham số proc,
+  whitelist filter.
+- `docs/migrations/000_create_schema.sql` — **viết lại đầy đủ**: DROP `Sys_Tenant` + gỡ `Tenant_Id` (và `Is_Tenant`)
+  khỏi `Sys_Table`/`Sys_Lookup`/`Sys_Role`/`Sys_Config` + gộp filtered index → unique thường. Header ghi rõ vẫn là
+  snapshot 000–016 (chưa gồm 017+).
+- `docs/migrations/001_seed_all.sql` — gỡ block seed `Sys_Tenant` + cột `Tenant_Id` khỏi MERGE `Sys_Lookup` GENDER.
+
+> ⚠️ Chưa build/E2E (chỉ là docs + migration seed chưa chạy lại). Không có code C# thay đổi.
 
 ### 🧊 R-3 — HOÃN: `Sys_Menu` / `Sys_MenuCatalog` — giàn giáo cho pha nâng cấp menu
 

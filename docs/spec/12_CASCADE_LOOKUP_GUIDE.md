@@ -63,12 +63,13 @@ Form Editor → chọn field → panel **Field Config**:
 | **Tên bảng** | `DM_TinhThanh` |
 | **Cột Value (FK lưu DB)** | `TinhId` |
 | **Cột Display** | `Ten_Tinh` |
-| **Filter SQL** | `Is_Active = 1 AND Tenant_Id = @TenantId` |
+| **Filter SQL** | `Is_Active = 1` |
 | **ORDER BY** | `Ten_Tinh ASC` |
 | **Cho phép tìm kiếm** | ✓ |
 
-> Field cha không cần cấu hình cascade. `@TenantId`, `@Today`, `@CurrentUser` là tham số
-> hệ thống tự bơm vào.
+> Field cha không cần cấu hình cascade. `@Today`, `@CurrentUser` là tham số hệ thống tự bơm vào.
+> ⚠️ **ADR-035:** KHÔNG dùng `@TenantId` / `Tenant_Id` trong Filter SQL — Data DB đã theo tenant,
+> cột `Tenant_Id` đã bỏ, viết vào sẽ lỗi `Invalid column name`.
 
 ---
 
@@ -121,7 +122,7 @@ WHERE  TinhId = @TinhId AND Is_Active = 1
 ORDER BY Ten_Xa ASC
 ```
 
-`@TinhId` = giá trị field `TinhId` hiện tại trên form, `@TenantId` được bơm sẵn.
+`@TinhId` = giá trị field `TinhId` hiện tại trên form (connection đã trỏ đúng Data DB của tenant — không cần lọc theo tenant trong SQL).
 
 ---
 

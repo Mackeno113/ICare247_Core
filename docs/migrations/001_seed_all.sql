@@ -8,15 +8,8 @@
 USE [ICare247_Config];
 GO
 
--- ── Tenant mặc định ──────────────────────────────────────────────────────────
-IF NOT EXISTS (SELECT 1 FROM dbo.Sys_Tenant WHERE Tenant_Id = 1)
-BEGIN
-    SET IDENTITY_INSERT dbo.Sys_Tenant ON;
-    INSERT INTO dbo.Sys_Tenant (Tenant_Id, Tenant_Code, Tenant_Name, Is_Active)
-    VALUES (1, 'DEFAULT', N'Tenant mặc định', 1);
-    SET IDENTITY_INSERT dbo.Sys_Tenant OFF;
-END;
-GO
+-- ── Tenant mặc định — ĐÃ BỎ (ADR-035) ────────────────────────────────────────
+-- Bảng Sys_Tenant đã DROP (db/078). Mỗi tenant = 1 Config DB riêng, không seed tenant.
 
 -- ── Ngôn ngữ ─────────────────────────────────────────────────────────────────
 MERGE dbo.Sys_Language AS target
@@ -162,16 +155,15 @@ GO
 -- ── Sys_Lookup — GENDER ───────────────────────────────────────────────────────
 MERGE dbo.Sys_Lookup AS target
 USING (VALUES
-    (NULL, 'GENDER', 'NAM', 'common.gender.male',    1),
-    (NULL, 'GENDER', 'NU',  'common.gender.female',  2),
-    (NULL, 'GENDER', 'KXD', 'common.gender.unknown', 3)
-) AS source (Tenant_Id, Lookup_Code, Item_Code, Label_Key, Sort_Order)
+    ('GENDER', 'NAM', 'common.gender.male',    1),
+    ('GENDER', 'NU',  'common.gender.female',  2),
+    ('GENDER', 'KXD', 'common.gender.unknown', 3)
+) AS source (Lookup_Code, Item_Code, Label_Key, Sort_Order)
 ON  target.Lookup_Code = source.Lookup_Code
 AND target.Item_Code   = source.Item_Code
-AND target.Tenant_Id   IS NULL
 WHEN NOT MATCHED THEN
-    INSERT (Tenant_Id, Lookup_Code, Item_Code, Label_Key, Sort_Order)
-    VALUES (source.Tenant_Id, source.Lookup_Code, source.Item_Code,
+    INSERT (Lookup_Code, Item_Code, Label_Key, Sort_Order)
+    VALUES (source.Lookup_Code, source.Item_Code,
             source.Label_Key, source.Sort_Order);
 GO
 
@@ -194,5 +186,5 @@ WHEN MATCHED THEN
     UPDATE SET Resource_Value = source.Resource_Value;
 GO
 
-PRINT N'Seed completed — Tenant, Language, TriggerTypes, ActionTypes(9), RuleTypes(6), Functions(25), Operators(14), Lookup GENDER, Resource i18n.';
+PRINT N'Seed completed — Language, TriggerTypes, ActionTypes(9), RuleTypes(6), Functions(25), Operators(14), Lookup GENDER, Resource i18n.';
 GO

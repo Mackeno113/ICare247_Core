@@ -37,12 +37,15 @@ L3: SQL Server qua Dapper
 
 Tất cả cache key dùng `CacheKeys.cs` — không hardcode string.
 
-## Multi-tenant
+## Multi-tenant (ADR-035 — cô lập ở tầng connection, KHÔNG ở tầng cột)
 
 - Mọi HTTP request phải có header `X-Tenant-Id`
 - Middleware extract → đưa vào `ITenantContext`
-- Mọi query SQL phải có `AND Tenant_Id = @TenantId`
-- Mọi cache key phải có Tenant_Id
+- `TenantConnectionResolver` dùng `TenantId` để **chọn Config DB / Data DB của tenant**
+  (mỗi tenant 1 DB riêng — ADR-018). Vì kết nối đã trỏ đúng DB nên **query SQL KHÔNG lọc
+  `AND Tenant_Id = @TenantId`** — cột `Tenant_Id` đã bị bỏ hẳn khỏi mọi bảng (`db/078`).
+- **Cache key vẫn phải có `TenantId`** — Redis L2 dùng chung giữa các instance/tenant, key gắn
+  `TenantId` để không lẫn dữ liệu (xem `CacheKeys.cs`).
 
 ## Security
 

@@ -270,16 +270,19 @@ LookupBox có 3 chế độ truy vấn:
 | **Cột Value (lưu vào DB)** | Cột FK sẽ lưu vào DB. | `PhongBan_Id` |
 | **Cột Display (hiển thị)** | Cột hiển thị trong ô và popup. | `Ten_PhongBan` |
 | **Tên bảng hoặc View** | Tên bảng nguồn hoặc View. View có thể chứa JOIN sẵn. | `DM_PhongBan` hoặc `vw_PhongBan_Full` |
-| **Filter SQL / WHERE** | Điều kiện lọc thêm. Dùng tham số hệ thống. | `Is_Active = 1 AND Tenant_Id = @TenantId` |
+| **Filter SQL / WHERE** | Điều kiện lọc thêm. Dùng tham số hệ thống. | `Is_Active = 1` |
 | **Sắp xếp (ORDER BY)** | Thứ tự hiển thị trong popup. | `Ten_PhongBan ASC` |
 
 **Tham số hệ thống có thể dùng trong Filter SQL:**
 
 | Tham số | Giá trị |
 |---------|---------|
-| `@TenantId` | ID tenant hiện tại |
 | `@Today` | Ngày hiện tại (không có giờ) |
 | `@CurrentUser` | Username người đang đăng nhập |
+
+> ⚠️ **ADR-035:** KHÔNG dùng `@TenantId` / `Tenant_Id` trong Filter SQL. Data DB đã theo từng
+> tenant (connection tự trỏ đúng DB) và cột `Tenant_Id` đã bị bỏ hẳn — viết `Tenant_Id = @TenantId`
+> sẽ lỗi runtime `Invalid column name`.
 
 **Tham số từ field khác trong form:**
 
@@ -302,7 +305,7 @@ Dùng khi cần truyền nhiều tham số hoặc logic phức tạp hơn WHERE 
 | Property | Mô tả | Ví dụ |
 |----------|-------|-------|
 | **Tên Function** | Table-Valued Function trong DB. | `fn_GetPhongBanHieuLuc` |
-| **Tham số Function** | Danh sách tham số theo thứ tự định nghĩa hàm. Nguồn: `field` (từ form) hoặc `system` (`@TenantId`, `@Today`, `@CurrentUser`). | |
+| **Tham số Function** | Danh sách tham số theo thứ tự định nghĩa hàm. Nguồn: `field` (từ form) hoặc `system` (`@Today`, `@CurrentUser`). | |
 
 #### Chế độ: SQL tùy chỉnh
 
@@ -318,7 +321,6 @@ SELECT p.PhongBan_Id, p.Ten_PhongBan
 FROM   DM_PhongBan p
 JOIN   DM_ChiNhanh c ON c.ChiNhanh_Id = p.ChiNhanh_Id
 WHERE  p.Is_Active = 1
-  AND  p.Tenant_Id = @TenantId
 ORDER BY p.Ten_PhongBan
 ```
 
@@ -657,7 +659,7 @@ Actions:
 | Source Table | `DM_PhongBan` |
 | Value Field | `PhongBan_Id` |
 | Display Field | `Ten_PhongBan` |
-| Filter SQL | `Is_Active = 1 AND Tenant_Id = @TenantId` |
+| Filter SQL | `Is_Active = 1` |
 | Order By | `Ten_PhongBan ASC` |
 | Popup Columns | Mã phòng ban (80px), Tên phòng ban (200px) |
 

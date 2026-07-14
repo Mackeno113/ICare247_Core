@@ -15,8 +15,7 @@ GO
 
 DECLARE @ViewId INT =
     (SELECT TOP 1 View_Id FROM dbo.Ui_View
-     WHERE View_Code = N'Grid_DM_ChiNhanhNganHang'
-     ORDER BY CASE WHEN Tenant_Id IS NULL THEN 1 ELSE 0 END);   -- tenant-specific ưu tiên
+     WHERE View_Code = N'Grid_DM_ChiNhanhNganHang');
 
 IF @ViewId IS NULL
 BEGIN

@@ -1,7 +1,9 @@
 -- =============================================================================
 -- File    : 000_create_schema.sql
 -- Purpose : Tạo toàn bộ schema ICare247_Config — trạng thái HIỆN TẠI (canonical).
--- Version : 2026-04-25 (tổng hợp từ migrations 000–016)
+-- Version : 2026-04-25 (tổng hợp từ migrations 000–016) · cập nhật ADR-035 (2026-07-14):
+--           gỡ bảng Sys_Tenant + mọi cột Tenant_Id (khớp db/078). ⚠ Vẫn là snapshot 000–016,
+--           CHƯA gồm thay đổi từ migration 017+ — nguồn chuẩn provisioning là chuỗi db/000→078.
 -- Note    : Idempotent — IF NOT EXISTS trước mỗi bảng/cột/index.
 --           Chạy file này trên DB mới thay vì chạy 16 migrations riêng lẻ.
 --           Thứ tự: lookup tables → Sys → Ui → Val → Gram → Evt
@@ -14,22 +16,9 @@ GO
 -- MODULE: System (Sys_*)
 -- ═══════════════════════════════════════════════════════════════════════════════
 
--- ── Sys_Tenant ──────────────────────────────────────────────────────────────
-IF OBJECT_ID('dbo.Sys_Tenant', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.Sys_Tenant
-    (
-        Tenant_Id       INT             IDENTITY(1,1) NOT NULL,
-        Tenant_Code     NVARCHAR(100)   NOT NULL,
-        Tenant_Name     NVARCHAR(255)   NOT NULL,
-        Is_Active       BIT             NOT NULL DEFAULT 1,
-        Created_At      DATETIME        NOT NULL DEFAULT GETDATE(),
-        Updated_At      DATETIME        NOT NULL DEFAULT GETDATE(),
-        CONSTRAINT PK_Sys_Tenant PRIMARY KEY (Tenant_Id),
-        CONSTRAINT UQ_Sys_Tenant_Code UNIQUE (Tenant_Code)
-    );
-END;
-GO
+-- ── Sys_Tenant ĐÃ BỎ (ADR-035) ───────────────────────────────────────────────
+-- Mỗi tenant 1 Config DB riêng → cô lập ở tầng connection, không cần bảng tenant
+-- bên trong DB. `db/078_drop_tenant_id.sql` đã DROP bảng này + gỡ mọi cột Tenant_Id.
 
 -- ── Sys_Language ────────────────────────────────────────────────────────────
 IF OBJECT_ID('dbo.Sys_Language', 'U') IS NULL
@@ -72,22 +61,17 @@ BEGIN
         Table_Code      NVARCHAR(100)   NOT NULL,
         Table_Name      NVARCHAR(255)   NOT NULL DEFAULT '',
         Schema_Name     NVARCHAR(50)    NOT NULL DEFAULT 'dbo',
-        Is_Tenant       BIT             NOT NULL DEFAULT 0,
-        Tenant_Id       INT             NULL,
+        -- ADR-035: KHÔNG có Tenant_Id; Is_Tenant cũng đã bỏ (b413ad7).
         Version         INT             NOT NULL DEFAULT 1,
         Checksum        NVARCHAR(64)    NULL,
         Is_Active       BIT             NOT NULL DEFAULT 1,
         Created_At      DATETIME        NOT NULL DEFAULT GETDATE(),
         Updated_At      DATETIME        NOT NULL DEFAULT GETDATE(),
         Description     NVARCHAR(500)   NULL,
-        CONSTRAINT PK_Sys_Table PRIMARY KEY (Table_Id),
-        CONSTRAINT FK_Sys_Table_Tenant FOREIGN KEY (Tenant_Id)
-            REFERENCES dbo.Sys_Tenant (Tenant_Id)
+        CONSTRAINT PK_Sys_Table PRIMARY KEY (Table_Id)
     );
-    CREATE UNIQUE INDEX UQ_Sys_Table_Code_Global
-        ON dbo.Sys_Table (Table_Code) WHERE Tenant_Id IS NULL;
-    CREATE UNIQUE INDEX UQ_Sys_Table_Code_Tenant
-        ON dbo.Sys_Table (Table_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL;
+    CREATE UNIQUE INDEX UQ_Sys_Table_Code
+        ON dbo.Sys_Table (Table_Code);
 END;
 GO
 
@@ -147,22 +131,18 @@ BEGIN
     CREATE TABLE dbo.Sys_Lookup
     (
         Lookup_Id       INT             IDENTITY(1,1) NOT NULL,
-        Tenant_Id       INT             NULL,           -- NULL = global
+        -- ADR-035: KHÔNG có Tenant_Id (global lookup dùng chung trong DB tenant).
         Lookup_Code     NVARCHAR(50)    NOT NULL,
         Item_Code       NVARCHAR(50)    NOT NULL,
         Label_Key       NVARCHAR(200)   NOT NULL,
         Sort_Order      INT             NOT NULL DEFAULT 0,
         Is_Active       BIT             NOT NULL DEFAULT 1,
-        CONSTRAINT PK_Sys_Lookup PRIMARY KEY (Lookup_Id),
-        CONSTRAINT FK_Sys_Lookup_Tenant FOREIGN KEY (Tenant_Id)
-            REFERENCES dbo.Sys_Tenant (Tenant_Id)
+        CONSTRAINT PK_Sys_Lookup PRIMARY KEY (Lookup_Id)
     );
-    CREATE UNIQUE INDEX UQ_Sys_Lookup_Global
-        ON dbo.Sys_Lookup (Lookup_Code, Item_Code) WHERE Tenant_Id IS NULL;
-    CREATE UNIQUE INDEX UQ_Sys_Lookup_Tenant
-        ON dbo.Sys_Lookup (Lookup_Code, Item_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL;
+    CREATE UNIQUE INDEX UQ_Sys_Lookup_Code
+        ON dbo.Sys_Lookup (Lookup_Code, Item_Code);
     CREATE INDEX IX_Sys_Lookup_Code
-        ON dbo.Sys_Lookup (Tenant_Id, Lookup_Code, Is_Active);
+        ON dbo.Sys_Lookup (Lookup_Code, Is_Active);
 END;
 GO
 
@@ -174,16 +154,12 @@ BEGIN
         Role_Id         INT             IDENTITY(1,1) NOT NULL,
         Role_Code       NVARCHAR(100)   NOT NULL,
         Role_Name       NVARCHAR(255)   NOT NULL,
-        Tenant_Id       INT             NULL,
+        -- ADR-035: KHÔNG có Tenant_Id.
         Is_Active       BIT             NOT NULL DEFAULT 1,
-        CONSTRAINT PK_Sys_Role PRIMARY KEY (Role_Id),
-        CONSTRAINT FK_Sys_Role_Tenant FOREIGN KEY (Tenant_Id)
-            REFERENCES dbo.Sys_Tenant (Tenant_Id)
+        CONSTRAINT PK_Sys_Role PRIMARY KEY (Role_Id)
     );
-    CREATE UNIQUE INDEX UQ_Sys_Role_Code_Global
-        ON dbo.Sys_Role (Role_Code) WHERE Tenant_Id IS NULL;
-    CREATE UNIQUE INDEX UQ_Sys_Role_Code_Tenant
-        ON dbo.Sys_Role (Role_Code, Tenant_Id) WHERE Tenant_Id IS NOT NULL;
+    CREATE UNIQUE INDEX UQ_Sys_Role_Code
+        ON dbo.Sys_Role (Role_Code);
 END;
 GO
 
@@ -218,16 +194,12 @@ BEGIN
         Config_Key      NVARCHAR(150)   NOT NULL,
         Config_Value    NVARCHAR(MAX)   NOT NULL,
         Scope           NVARCHAR(50)    NOT NULL DEFAULT 'Global',
-        Tenant_Id       INT             NULL,
+        -- ADR-035: KHÔNG có Tenant_Id.
         Version         INT             NOT NULL DEFAULT 1,
-        CONSTRAINT PK_Sys_Config PRIMARY KEY (Config_Id),
-        CONSTRAINT FK_Sys_Config_Tenant FOREIGN KEY (Tenant_Id)
-            REFERENCES dbo.Sys_Tenant (Tenant_Id)
+        CONSTRAINT PK_Sys_Config PRIMARY KEY (Config_Id)
     );
-    CREATE UNIQUE INDEX UQ_Sys_Config_Global
-        ON dbo.Sys_Config (Config_Key, Scope) WHERE Tenant_Id IS NULL;
-    CREATE UNIQUE INDEX UQ_Sys_Config_Tenant
-        ON dbo.Sys_Config (Config_Key, Scope, Tenant_Id) WHERE Tenant_Id IS NOT NULL;
+    CREATE UNIQUE INDEX UQ_Sys_Config_Key
+        ON dbo.Sys_Config (Config_Key, Scope);
 END;
 GO
 
