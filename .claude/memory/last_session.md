@@ -1,8 +1,36 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-11 (session 82 — sinh nhanh Form/Lưới từ Sys_Table + xóa bulk field + loại audit; ĐÃ commit, CHƯA push). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-14 (session 83 — dọn nợ ADR-035: 4 migration seed + 6 spec + 2 snapshot schema; ĐÃ commit `e92f5d0`, CHƯA push). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
-> **Task tiếp theo gợi ý:** nghiệm thu scaffold trên app (đóng+mở lại ConfigStudio → Sys_Table → Sinh Form/Lưới, xóa bulk field) · đẩy ConfigSync config vừa sinh sang tenant.
+> **Task tiếp theo gợi ý:** nghiệm thu scaffold trên app (đóng+mở lại ConfigStudio → Sys_Table → Sinh Form/Lưới, xóa bulk field) · đẩy ConfigSync config vừa sinh sang tenant · R-3 Sys_Menu (HOÃN — chờ pha nâng cấp menu).
+
+## Session 83 (2026-07-14) — Dọn nợ ADR-035 (R-1 + R-2)
+
+**Commit `e92f5d0` trên `master`** (CHƯA push; 13 file, +101/−127). Thuần docs + SQL seed chưa chạy lại,
+KHÔNG có code C# → không build/E2E. Đầu session đã **push 6 commit tồn** (`cd2bd1f..ee8f2a9`).
+
+**R-1 — 4 migration seed** (`db/032,047,065,066`): gỡ hết tham chiếu `Tenant_Id` → chạy lại **sau** `db/078`
+không còn `Invalid column name`. 032 bỏ cột+`t.Tenant_Id` khỏi INSERT/SELECT + NOT EXISTS chỉ theo `View_Code`;
+047 bỏ `AND Tenant_Id IS NULL` (4 chỗ); 065/066 bỏ `ORDER BY CASE WHEN Tenant_Id IS NULL`.
+
+**R-2 — 6 spec + 2 snapshot migration:**
+- Spec 01/08/09/12/14/28: nguyên tắc mới = **cô lập ở tầng connection** (resolver chọn DB), **không** lọc SQL
+  theo `Tenant_Id`; **cache key VẪN giữ `TenantId`** (Redis L2 dùng chung). Gỡ `@TenantId` khỏi bảng tham số
+  Filter SQL + thêm cảnh báo "gõ vào ConfigStudio sẽ lỗi runtime". Spec 14 DDL `Ui_View` bỏ cột+FK→Sys_Tenant,
+  gộp 2 filtered index → `UQ_Ui_View_Code`. Spec 28 bỏ `Tenant_Id` khỏi `Doc_Template`/`Doc_Proc_Registry`+§13-A.
+- `docs/migrations/000` **viết lại đầy đủ** (user chốt): DROP `Sys_Tenant` + gỡ `Tenant_Id` **và `Is_Tenant`**
+  (b413ad7) khỏi `Sys_Table`/`Sys_Lookup`/`Sys_Role`/`Sys_Config`, gộp filtered index → unique thường. Header
+  ghi rõ **vẫn là snapshot 000–016** (chưa gồm migration 017+) — nguồn chuẩn provisioning là chuỗi `db/000→078`.
+- `docs/migrations/001` gỡ block seed `Sys_Tenant` + cột `Tenant_Id` khỏi MERGE `Sys_Lookup` GENDER.
+
+**Gỡ hết `Is_Tenant`** (user chốt, commit sau): gỡ khai báo cột `Is_Tenant BIT` khỏi `db/000_create_schema.sql`
+(migration đầu chuỗi) → thay bằng comment. `db/081_drop_sys_table_is_tenant.sql` GIỮ (idempotent, drop cho DB đã
+provision trước 081). Grep toàn repo: không còn khai báo cột `Is_Tenant` nào, chỉ còn comment + file 081 + tracking.
+Lưu ý: `Tenant_Id` ở `db/000` (dòng kế) GIỮ nguyên — đó là scope R-1 hoãn riêng, `db/078` lo.
+
+**Còn lại sau ADR-035:** R-3 (`Sys_Menu`/`Sys_MenuCatalog`) — HOÃN, chờ pha nâng cấp menu (chốt 2026-07-10).
+6 file `db/` (`002/009/031/043/044/077`) CREATE cột `Tenant_Id` chưa dọn — không gấp (chạy trước 078, không vỡ).
+**Quy tắc mới:** 3 file i18n LUÔN bỏ qua (không commit) — user chốt session này.
 
 ## Session 82 (2026-07-11) — Sinh nhanh Form/Lưới từ Sys_Table + xóa bulk field + loại cột audit
 

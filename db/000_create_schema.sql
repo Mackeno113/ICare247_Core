@@ -75,7 +75,7 @@ BEGIN
         Table_Code      NVARCHAR(100)   NOT NULL,
         Table_Name      NVARCHAR(255)   NOT NULL DEFAULT '',
         Schema_Name     NVARCHAR(50)    NOT NULL DEFAULT 'dbo',
-        Is_Tenant       BIT             NOT NULL DEFAULT 0,
+        -- Is_Tenant đã bỏ (db/081 — ADR-035/ADR-018): DB-per-tenant nên cờ này vô nghĩa.
         Tenant_Id       INT             NULL,
         Version         INT             NOT NULL DEFAULT 1,
         Checksum        NVARCHAR(64)    NULL,
