@@ -157,3 +157,6 @@ docker-compose.override.yml
 
 # Claude Code hook flag files (local state, không sync qua git)
 .claude/.memory_needs_update
+
+# Source legacy tham khảo (WPF Ngọc Chương) — chỉ dùng làm spec nghiệp vụ (spec 29), KHÔNG track
+src/frontend/source_can_update/
