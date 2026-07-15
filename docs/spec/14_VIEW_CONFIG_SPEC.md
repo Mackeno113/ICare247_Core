@@ -394,3 +394,22 @@ Lưới (`Source_Type=Sp/Sql`) nhận `@CongTyId/@PhongBanId/@Nam`, lọc `NgayB
 Cascade cần **load options thật** cho Combo/MultiSelect (hiện fallback text — "đợt 2" §9.4.5). Khi sang
 giai đoạn code runtime phải làm phần load options trước. Bản ghi/giá trị bên trong màn = **dữ liệu thật
 theo cấu hình**, không mock.
+
+---
+
+## 11. Master-detail 2 lưới (`Detail_View_Id`) — CHƯA code (ghi nhận 2026-07-15)
+
+**Hiện trạng (đã verify):** cột `Detail_View_Id` tồn tại ở schema §2.1 và descriptor ConfigSync,
+nhưng dữ liệu toàn NULL và **không có runtime Blazor nào render lưới con** — mới là "đặt chỗ".
+
+**Hành vi dự kiến khi code (task VIEWMD trong TASKS.md):**
+
+1. `Detail_View_Id` trỏ tới một `Ui_View` con (nguồn Table/Sp/Sql như view thường).
+2. `Options_Json` của view cha khai khóa liên kết: `{"detailParam":"@GiaoDichId","masterKeyField":"Id"}`.
+3. Runtime `ViewPage`: chọn dòng master → gọi search view con với param khóa cha
+   (tái dùng `POST /views/{code}/search` §9.5 — không cần API mới) → render lưới dưới/panel phải.
+4. Action toolbar của view con hoạt động bình thường (thêm detail nhận sẵn khóa cha qua prefill §10.4).
+5. ConfigStudio: ô chọn Detail View + khai khóa liên kết trên màn View Config.
+
+Phân biệt phạm vi: đây là màn **list read-oriented** (kiểu màn ② spec 29 §10);
+form **nhập** master-detail là spec 30 (`Ui_Form_Detail`) — hai cơ chế độc lập.

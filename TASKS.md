@@ -895,6 +895,20 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 
 ---
 
+## 📋 Roadmap — Form chứng từ master-detail (capability Form Engine) — Spec 30 (2026-07-15)
+
+> Spec: `docs/spec/30_FORM_CHUNG_TU_SPEC.md`. Xuất phát: đánh giá 3 kiểu màn vertical thu mua
+> (spec 29 §10) — kiểu ③ "1 đơn / 1 khách / n dòng hàng / nhiều giá" là gap lớn nhất nền tảng,
+> nhưng là năng lực chung mọi module ERP cần. Trụ kiến trúc: AstParser/AstCompiler ở
+> `ICare247.Domain` thuần C# → WASM tham chiếu trực tiếp ⇒ công thức dòng chạy client-side.
+
+- [x] **FDOC-000** — Viết spec 30: `Ui_Form_Detail` (cột lưới = Ui_Field form con), `Ui_Field.Formula_Json` (AST), DetailGridRenderer, event server mức dòng (UiDelta + RowContext), save-document 1 transaction ✅ Done (2026-07-15)
+- [ ] **FDOC-001** — Chốt 4 câu hỏi mở (spec 30 §8): EditMode cell-inline vs popup · aggregate formula đợt nào · bảng vệ tinh 1-1 nhập kiểu gì · virtual scrolling
+- [ ] **FDOC-1→6** — Triển khai theo spec 30 §7 (migration+ConfigStudio → renderer read → edit+công thức client → save tổ hợp → event giá → ConfigSync+E2E màn Mua hàng tươi)
+- [ ] **VIEWMD-001** — Master-detail 2 lưới cho màn list: hiện thực `Detail_View_Id` theo spec 14 §11 (runtime ViewPage + khóa liên kết Options_Json + ô cấu hình ConfigStudio) — kiểu màn ② spec 29 §10 đang thiếu đúng mảnh này
+
+---
+
 ## 🟠 Kế hoạch (Next Up)
 
 ### Backend — Claude Code

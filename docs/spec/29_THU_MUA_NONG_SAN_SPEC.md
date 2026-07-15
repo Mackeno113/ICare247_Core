@@ -374,3 +374,21 @@ Toàn bộ dựng bằng Form Engine + Ui_View; section vệ tinh (cân hàng, k
 3. **Số dư đầu kỳ** khi go-live tenant Ngọc Chương: nhập tay qua màn Opening hay import từ DB cũ?
 4. **Đơn vị tính:** cố định kg hay đa DVT + quy đổi DVT? (legacy thuần kg)
 5. ADR-027 (cây) chưa code — Đ1 kéo theo việc code cơ chế cây generic trước.
+
+---
+
+## 10. Đánh giá năng lực nền tảng cho 3 kiểu màn (2026-07-15 — đã verify trên code)
+
+Vertical này cần đúng 3 kiểu màn. Đối chiếu với nền tảng hiện tại:
+
+| Kiểu màn | Mức đáp ứng | Chi tiết |
+|---|---|---|
+| **① Danh mục** | ✅ Đủ | Ui_Form + Ui_View + lookup/cây + validation + i18n — đã chạy thật |
+| **② Master list** (nút thêm/sửa/xóa/in, lọc ngày bắt đầu/kết thúc, Xem dữ liệu, 1 hoặc 2 lưới) | ⚠️ ~80% | ĐÃ có: `Ui_View_Action` (toolbar/row + confirm + Require_Selection), panel lọc trái `Ui_View_Filter` (param DATE + nút Tìm, spec 14 §9, `ViewPage.razor` đã render), in Doc Template theo dòng chọn. **THIẾU: 2 lưới master-detail** — `Detail_View_Id` mới đặt chỗ ở schema (dữ liệu NULL, không có runtime Blazor render) → spec 14 §11 |
+| **③ Form chứng từ** (1 đơn / 1 khách / n dòng hàng / nhiều giá, sự kiện dày) | ❌ Gap lớn nhất | ĐÃ có nền: FormRunner với vòng đời FIELD_CHANGED → UiDelta (nhưng chỉ field đơn của form 1 bản ghi); validation AST; lookup/cascade. THIẾU 4 mảnh: (1) renderer **lưới chi tiết editable** (bộ renderer hiện chỉ 10 control field đơn); (2) **công thức + sự kiện mức dòng** (ThanhTien=SoLuong×DonGia, tổng footer, lấy giá theo chính sách khi chọn khách+hàng); (3) **save master + n detail 1 transaction** (API hiện save theo 1 bảng); (4) **màn cấu hình ConfigStudio WPF** cho form master-detail |
+
+Khoảng trống ③ **không phải đặc thù vertical** — là năng lực nền tảng "form chứng từ" mà mọi
+module ERP cần → thiết kế thành capability chung: **spec `30_FORM_CHUNG_TU_SPEC.md`**.
+Phát hiện kiến trúc quan trọng: `AstParser`/`AstCompiler` nằm ở `ICare247.Domain` thuần C#
+không phụ thuộc hạ tầng → **Blazor WASM tham chiếu trực tiếp được** ⇒ công thức dòng chạy
+client-side bằng chính AST Grammar V1, không JS, không round-trip mỗi phím gõ.

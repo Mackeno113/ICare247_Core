@@ -1,8 +1,31 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-15 (session 85 — phân tích legacy Ngọc Chương + viết spec 29 Thu mua nông sản). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-15 (session 85 — phân tích legacy Ngọc Chương → spec 29 + đánh giá 3 kiểu màn → spec 30 Form chứng từ). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
-> **Task tiếp theo gợi ý:** TM-001 chốt 5 câu hỏi mở spec 29 §9 (giá xuất kho, lãi vay, số dư đầu kỳ, đa DVT, thứ tự code ADR-027) · nghiệm thu lưới WPF session 84 · đẩy ConfigSync config sang tenant.
+> **Task tiếp theo gợi ý:** FDOC-001 chốt 4 câu hỏi spec 30 §8 (EditMode, aggregate, vệ tinh 1-1, virtual scroll) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
+
+## Session 85 (tiếp) — Đánh giá 3 kiểu màn + Spec 30 Form chứng từ master-detail
+
+**User đặt bài:** phần mua bán có 3 kiểu màn — ① danh mục (đáp ứng rồi), ② master list (nút CRUD/in,
+lọc ngày, Xem dữ liệu, 1–2 lưới), ③ màn thêm mới đơn hàng (1 đơn/1 khách/n dòng hàng/nhiều giá,
+event dày — WPF Config chưa cấu hình được). Yêu cầu: đánh giá với những gì đang có, chốt tài liệu.
+
+**Kết quả verify trên code:** ② đạt ~80% (Ui_View_Action + panel lọc Ui_View_Filter + in DocTemplate
+ĐÃ chạy; THIẾU 2 lưới — `Detail_View_Id` chỉ đặt chỗ schema, dữ liệu NULL, 0 dòng runtime Blazor).
+③ gap lớn nhất: renderer chỉ có 10 control field đơn, không có lưới chi tiết editable; FIELD_CHANGED→
+UiDelta có nhưng chỉ form 1 bản ghi; API save theo 1 bảng; ConfigStudio chưa có màn cấu hình.
+
+**Phát hiện kiến trúc đắt giá:** `AstParser`/`AstCompiler` ở `ICare247.Domain` THUẦN C# (csproj không
+package hạ tầng) → RCL DynamicForms tham chiếu trực tiếp được ⇒ **công thức dòng chạy client-side
+trong WASM bằng chính AST Grammar V1** — không JS, không round-trip; server recalc lại khi save.
+
+**Tài liệu đã chốt:** spec 29 thêm §10 (bảng đánh giá 3 kiểu màn); spec 14 thêm §11 (hiện trạng +
+hành vi dự kiến `Detail_View_Id`, task VIEWMD-001); **spec 30_FORM_CHUNG_TU_SPEC.md mới** —
+`Ui_Form_Detail` (cột lưới = Ui_Field của form CON, tái dùng control map/validation/i18n),
+`Ui_Field.Formula_Json`, DetailGridRenderer (cell-inline, row state client), event server mức dòng
+(RowContext + UiDelta target dòng — ca chuẩn: chọn hàng → tra chính sách giá → set DonGia),
+`POST /forms/{code}/save-document` 1 transaction (điểm cắm posting engine spec 29). TASKS.md thêm
+FDOC-000→FDOC-1→6 + VIEWMD-001. Còn mở: 4 câu hỏi spec 30 §8.
 
 ## Session 85 (2026-07-15) — Phân tích legacy Ngọc Chương → Spec 29 Thu mua nông sản ký gửi
 
