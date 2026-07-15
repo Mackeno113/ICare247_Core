@@ -1180,6 +1180,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _isReadOnly, value)) IsDirty = true; }
     }
 
+    // ── Mẫu thông báo validation mặc định (vi/en) ─────────────
+    // Token runtime do backend thay: {0} = giá trị user nhập · {1} = nhãn field
+    // (ResourceResolver.ApplyTokens + SaveMasterDataCommandHandler). Vì vậy mẫu KHÔNG nhúng sẵn
+    // nhãn — đổi nhãn field là thông báo tự đúng theo, không cần sửa lại bản dịch.
+    // Required: {0} luôn rỗng (giá trị bỏ trống) → chỉ dùng {1}.
+
+    /// <summary>Mẫu mặc định (vi) cho thông báo lỗi khi field bắt buộc bị bỏ trống.</summary>
+    private const string DefaultRequiredMessageVi = "{1} không được để trống!";
+
+    /// <summary>Mẫu mặc định (vi) cho thông báo khi giá trị field duy nhất bị trùng.</summary>
+    private const string DefaultUniqueMessageVi = "{1} {0} đã được sử dụng. Vui lòng nhập {1} khác!";
+
+    /// <summary>Mẫu mặc định (en) cho thông báo khi giá trị field duy nhất bị trùng.</summary>
+    private const string DefaultUniqueMessageEn = "{1} {0} is already in use. Please enter a different {1}!";
+
     private bool _isRequired;
     public bool IsRequired
     {
@@ -1288,7 +1303,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 IsDirty = true;
                 RaisePropertyChanged(nameof(IsUniqueExpanded));
                 RaisePropertyChanged(nameof(UniqueErrorKey));
-                if (value) _ = ResolveI18nPreviewAsync(UniqueErrorKey, v => UniqueErrorKeyPreview = v);
+                // Key chưa có bản dịch → điền mẫu mặc định để user thấy ngay text sẽ được lưu.
+                if (value)
+                    _ = ResolveI18nPreviewAsync(
+                        UniqueErrorKey,
+                        v => UniqueErrorKeyPreview = string.IsNullOrWhiteSpace(v) ? DefaultUniqueMessageVi : v);
             }
         }
     }
@@ -2216,7 +2235,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         var key = $"{tableCode}.val.{columnCode}.required";
         _requiredErrorKey = key;
         RaisePropertyChanged(nameof(RequiredErrorKey));
-        _ = ResolveI18nPreviewAsync(key, v => RequiredErrorKeyPreview = v);
+        // Key chưa có bản dịch → điền mẫu mặc định để user thấy ngay text sẽ được lưu.
+        _ = ResolveI18nPreviewAsync(
+            key,
+            v => RequiredErrorKeyPreview = string.IsNullOrWhiteSpace(v) ? DefaultRequiredMessageVi : v);
     }
 
     // ── Field Navigator loader ────────────────────────────────
@@ -2291,6 +2313,29 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         }
         catch (OperationCanceledException) { /* bỏ qua */ }
         catch (Exception ex) { _logger?.Capture(ex, "FieldConfig.LoadFieldNavigator"); }
+    }
+
+    /// <summary>
+    /// Đồng bộ item navigator cho field vừa Lưu — navigator chỉ nạp lại khi ĐỔI form nên phải cập
+    /// nhật tại chỗ: badge theo cờ <c>Ui_Field.Is_Configured</c> vừa ghi, và tên hiển thị theo nhãn
+    /// (vi) vừa lưu vào <c>Sys_Resource</c> (nếu không, item vẫn hiện mã cột như trước khi cấu hình).
+    /// Không tìm thấy item (field mới chưa nằm trong navigator) → bỏ qua, lần nạp sau lấy đúng từ DB.
+    /// Sự kiện theo sau: badge đổi sang "đã cấu hình" + tên đổi sang nhãn tiếng Việt, không query lại.
+    /// </summary>
+    private void SyncNavigatorItemAfterSave(int fieldId)
+    {
+        var item = FieldNavigatorGroups
+            .SelectMany(g => g.Fields)
+            .FirstOrDefault(f => f.FieldId == fieldId);
+
+        if (item is null) return;
+
+        item.Status   = FieldNavStatus.Configured;
+        item.LabelKey = LabelKey;
+
+        var label = (LabelPreview ?? "").Trim();
+        if (!string.IsNullOrEmpty(label))
+            item.DisplayName = label;   // rỗng → giữ nguyên, Title tự fallback về mã cột
     }
 
     /// <summary>
@@ -3376,7 +3421,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 // User bấm "Lưu Field" → đánh dấu ĐÃ cấu hình (badge navigator). Chỉ ở đây, không
                 // gọi từ auto-generate/bulk nên field sinh tự động vẫn ở trạng thái "chưa cấu hình".
                 if (savedId > 0)
+                {
                     await _fieldService.MarkFieldConfiguredAsync(savedId, _cts.Token);
+
+                    // Navigator chỉ nạp lại khi ĐỔI form → phải đồng bộ item ngay tại chỗ, nếu không
+                    // badge vẫn hiện "chưa cấu hình" và tên vẫn là mã cột dù DB đã cập nhật.
+                    // Gọi SAU RegisterI18nKeysAsync để lấy đúng nhãn (vi) vừa ghi vào Sys_Resource.
+                    SyncNavigatorItemAfterSave(savedId);
+                }
 
                 IsDirty = false;
 
@@ -3442,7 +3494,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
         if (IsRequired && !string.IsNullOrWhiteSpace(RequiredErrorKey))
             await UpsertOrInitViAsync(RequiredErrorKey, RequiredErrorKeyPreview,
-                                      $"Trường {ColumnCode} là bắt buộc", ct);
+                                      DefaultRequiredMessageVi, ct);
 
         // Đăng ký captionKey của từng cột popup LookupBox (chỉ init default, không có ô nhập riêng).
         foreach (var col in FkPopupColumns)
@@ -3458,11 +3510,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             if (!string.IsNullOrEmpty(tableCode) && !string.IsNullOrEmpty(columnCode))
             {
                 var uniqueKey = $"{tableCode}.val.{columnCode}.unique";
-                var label     = string.IsNullOrWhiteSpace(LabelPreview) ? ColumnCode : LabelPreview;
-                // vi: user gõ thẳng → upsert (ghi đè); bỏ trống → init mặc định "{label} đã tồn tại".
-                await UpsertOrInitViAsync(uniqueKey, UniqueErrorKeyPreview, $"{label} đã tồn tại", ct);
+                // vi: user gõ thẳng → upsert (ghi đè); bỏ trống → init mẫu mặc định (token, không nhúng nhãn).
+                await UpsertOrInitViAsync(uniqueKey, UniqueErrorKeyPreview, DefaultUniqueMessageVi, ct);
                 // en: chỉ init mặc định nếu chưa có (nhập bản dịch khác qua nút Dịch).
-                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", $"{label} already exists", ct);
+                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", DefaultUniqueMessageEn, ct);
             }
         }
     }

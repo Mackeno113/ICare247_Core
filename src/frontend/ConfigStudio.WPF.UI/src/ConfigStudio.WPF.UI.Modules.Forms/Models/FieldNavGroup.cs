@@ -88,12 +88,13 @@ public sealed class FieldReorderArgs
 
 /// <summary>
 /// Trạng thái cấu hình của 1 item trong Field Navigator — để nhận biết mức độ hoàn thiện.
+/// Nguồn sự thật = cờ <c>Ui_Field.Is_Configured</c> (db/067), KHÔNG suy từ nhãn i18n.
 /// </summary>
 public enum FieldNavStatus
 {
-    /// <summary>Đã có Ui_Field + nhãn i18n (vi) → cấu hình đầy đủ.</summary>
+    /// <summary>Đã có Ui_Field và user đã bấm "Lưu Field" (Is_Configured = 1).</summary>
     Configured,
-    /// <summary>Đã có Ui_Field nhưng thiếu nhãn i18n (vi) → chưa cấu hình xong.</summary>
+    /// <summary>Đã có Ui_Field nhưng chưa bấm "Lưu Field" lần nào (Is_Configured = 0) — VD field sinh tự động.</summary>
     Incomplete,
     /// <summary>Chỉ có cột trong Sys_Column, chưa tạo Ui_Field.</summary>
     ColumnOnly
@@ -114,8 +115,26 @@ public sealed class FieldNavItem : INotifyPropertyChanged
     /// <summary>Label_Key i18n của field (Ui_Field.Label_Key) — nguồn để resolve <see cref="DisplayName"/>.</summary>
     public string? LabelKey { get; set; }
 
-    /// <summary>Trạng thái cấu hình — điều khiển badge trong navigator.</summary>
-    public FieldNavStatus Status { get; set; } = FieldNavStatus.Configured;
+    private FieldNavStatus _status = FieldNavStatus.Configured;
+    /// <summary>
+    /// Trạng thái cấu hình — điều khiển badge trong navigator.
+    /// Đổi lúc runtime (VD: user bấm "Lưu Field" → Configured) nên phải notify cả các
+    /// property dẫn xuất; nếu không badge giữ nguyên giá trị lúc nạp navigator.
+    /// </summary>
+    public FieldNavStatus Status
+    {
+        get => _status;
+        set
+        {
+            if (_status == value) return;
+            _status = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(StatusKey));
+            OnPropertyChanged(nameof(StatusLabel));
+            OnPropertyChanged(nameof(StatusTooltip));
+            OnPropertyChanged(nameof(IsColumnOnly));
+        }
+    }
 
     /// <summary>Khóa trạng thái (dùng cho DataTrigger tô màu badge trong XAML).</summary>
     public string StatusKey => Status switch
@@ -137,8 +156,8 @@ public sealed class FieldNavItem : INotifyPropertyChanged
     public string StatusTooltip => Status switch
     {
         FieldNavStatus.ColumnOnly => "Cột đã có trong bảng nhưng chưa tạo field. Bấm để tạo field từ cột này.",
-        FieldNavStatus.Incomplete => "Field đã tạo nhưng chưa có nhãn hiển thị (i18n). Bấm để bổ sung cấu hình.",
-        _                          => "Field đã cấu hình đầy đủ (có nhãn hiển thị)."
+        FieldNavStatus.Incomplete => "Field đã tạo nhưng chưa Lưu cấu hình lần nào. Bấm để mở và bấm 'Lưu Field'.",
+        _                          => "Field đã được cấu hình và lưu."
     };
 
     /// <summary>True khi chỉ là cột chưa tạo field — dùng ẩn nút ↑↓ (chưa có Order_No).</summary>
