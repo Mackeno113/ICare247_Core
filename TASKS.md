@@ -903,8 +903,8 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 > `ICare247.Domain` thuần C# → WASM tham chiếu trực tiếp ⇒ công thức dòng chạy client-side.
 
 - [x] **FDOC-000** — Viết spec 30: `Ui_Form_Detail` (cột lưới = Ui_Field form con), `Ui_Field.Formula_Json` (AST), DetailGridRenderer, event server mức dòng (UiDelta + RowContext), save-document 1 transaction ✅ Done (2026-07-15)
-- [ ] **FDOC-001** — Chốt 4 câu hỏi mở (spec 30 §8): EditMode cell-inline vs popup · aggregate formula đợt nào · bảng vệ tinh 1-1 nhập kiểu gì · virtual scrolling
-- [ ] **FDOC-1→6** — Triển khai theo spec 30 §7 (migration+ConfigStudio → renderer read → edit+công thức client → save tổ hợp → event giá → ConfigSync+E2E màn Mua hàng tươi)
+- [x] **FDOC-001** — ~~Chốt 4 câu hỏi mở~~ ✅ Done (2026-07-15, spec 30 §8): EditMode = **cả 3 chế độ** per lưới, mặc định **EntryPanel** (khu nhập trên + lưới dưới kiểu legacy) · aggregate lên master **ngay FDOC-3** · vệ tinh 1-1 = **section field** (không lưới 1 dòng) · **có ca 100+ dòng** → virtual scroll từ FDOC-2
+- [ ] **FDOC-1→6** — Triển khai theo spec 30 §7 (migration+ConfigStudio → renderer read → EntryPanel+công thức client → CellInline/RowPopup → save tổ hợp → event giá → ConfigSync+E2E màn Mua hàng tươi)
 - [ ] **VIEWMD-001** — Master-detail 2 lưới cho màn list: hiện thực `Detail_View_Id` theo spec 14 §11 (runtime ViewPage + khóa liên kết Options_Json + ô cấu hình ConfigStudio) — kiểu màn ② spec 29 §10 đang thiếu đúng mảnh này
 
 ---

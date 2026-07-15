@@ -36,6 +36,7 @@ CREATE TABLE dbo.Ui_Form_Detail
     Detail_Form_Id    INT            NOT NULL,       -- Ui_Form CON: định nghĩa field dòng
     Section_Id        INT            NULL,           -- section đặt lưới (null = section riêng cuối form)
     Parent_Key_Column NVARCHAR(100)  NOT NULL,       -- cột FK bảng con trỏ về master (vd 'GiaoDich_Id')
+    Edit_Mode         NVARCHAR(20)   NOT NULL DEFAULT 'EntryPanel', -- EntryPanel|CellInline|RowPopup (§3.1)
     Title_Key         NVARCHAR(150)  NULL,           -- i18n tiêu đề lưới
     Allow_Add         BIT NOT NULL DEFAULT 1,
     Allow_Delete      BIT NOT NULL DEFAULT 1,
@@ -74,14 +75,28 @@ ALTER TABLE dbo.Ui_Field ADD Formula_Json NVARCHAR(MAX) NULL;  -- AST Grammar V1
 
 ## 3. Runtime Blazor (RCL `ICare247.UI.DynamicForms`)
 
-### 3.1 `DetailGridRenderer` (renderer MỚI — thứ 11)
+### 3.1 `DetailGridRenderer` (renderer MỚI — thứ 11) — 3 chế độ theo `Edit_Mode` (chốt 2026-07-15)
 
-- `DxGrid` EditMode **cell-inline** (nhập liên tục như Excel — khớp thói quen legacy); nút
-  ➕ thêm dòng / 🗑 xóa dòng theo `Allow_Add/Allow_Delete`; footer summary theo `Summary_Json`.
-- Cell editor map từ `Editor_Type` của Ui_Field form con → tái dùng renderer field hiện có
-  (Lookup trong cell dùng `LookupComboBoxRenderer`).
+**`EntryPanel` (MẶC ĐỊNH — kiểu legacy quen tay):** khu nhập liệu phía trên (field form con render
+như section thường) + lưới **chỉ hiển thị** bên dưới.
+- Bấm **Lưu dòng** → validate dòng → đẩy vào lưới → panel tự làm trống, focus về field đầu → nhập tiếp.
+- Click dòng trên lưới → nạp lên panel (chế độ sửa). Giảm rắc rối mà user đã chỉ ra
+  ("lỡ chọn dòng, muốn thêm mới phải Lưu hoặc làm trống"): panel hiện **badge "Đang sửa dòng #n"**
+  + nút **Thêm mới** luôn hiển thị để thoát chế độ sửa và làm trống panel bằng 1 click
+  (có cảnh báo nếu panel đang có thay đổi chưa Lưu dòng).
+- **`CellInline`:** gõ trực tiếp trên ô như Excel, Tab/Enter nhảy ô — cho phiếu nhiều dòng nhập nhanh.
+- **`RowPopup`:** bấm sửa → dialog form dòng — cho dòng nhiều field không vừa bề ngang lưới.
+
+Chung cả 3 chế độ:
+- Nút ➕ thêm / 🗑 xóa dòng theo `Allow_Add/Allow_Delete`; footer summary theo `Summary_Json`.
+- Editor map từ `Editor_Type` của Ui_Field form con → tái dùng renderer field hiện có
+  (Lookup dùng `LookupComboBoxRenderer`).
 - Row state giữ client: `Added / Modified / Deleted / Unchanged` — xóa dòng đã có Id chỉ đánh dấu,
-  gửi lên khi save. Luôn ghim header + giới hạn height theo rule lưới ([[project-grid-sticky-header]]).
+  gửi lên khi save. Luôn ghim header + giới hạn height ([[project-grid-sticky-header]]);
+  **`VirtualScrollingEnabled` bật từ FDOC-2** (đã chốt: có ca phiếu 100+ dòng) — đo hiệu năng
+  recalc công thức trên phiếu lớn ngay từ FDOC-3.
+- Thứ tự làm: **EntryPanel trước (FDOC-3)**; CellInline + RowPopup nối tiếp (FDOC-3b) —
+  cùng row-state/công thức, chỉ khác lớp tương tác.
 
 ### 3.2 Công thức client-side — AST chạy trong WASM
 
@@ -138,6 +153,10 @@ validate field/form (ValidationEngine, cả dòng detail)
 Lỗi bất kỳ → rollback toàn bộ + ProblemDetails RFC 7807. Payload lưu tôn trọng quy tắc
 "payload = mọi field IsVisible" hiện hành.
 
+**Bảng vệ tinh 1-1** (đã chốt §8.3): không nằm trong `details` — field của bảng vệ tinh render là
+section trên form, payload gửi kèm object 1-1 (`"satellites": { "KD_CanHang": {...} }`),
+engine UPSERT theo khóa liên kết trong cùng transaction.
+
 ---
 
 ## 5. ConfigStudio WPF
@@ -159,16 +178,18 @@ re-link `Detail_Form_Id`/`Section_Id`); `Ui_Field.Formula_Json` đi theo descrip
 |---|---|---|
 | FDOC-1 | Migration `Ui_Form_Detail` + `Ui_Field.Formula_Json` + ConfigStudio tab Lưới chi tiết | mở khóa cấu hình |
 | FDOC-2 | `DetailGridRenderer` read-only + metadata API trả kèm detail | thấy được lưới |
-| FDOC-3 | Edit inline + row state + công thức client (WASM ref Domain) + footer | trái tim UX |
+| FDOC-3 | Edit chế độ **EntryPanel** + row state + công thức client (WASM ref Domain) + footer + aggregate lên master | trái tim UX |
+| FDOC-3b | Chế độ CellInline + RowPopup (cùng row-state/công thức) | nối tiếp FDOC-3 |
 | FDOC-4 | Save tổ hợp 1 transaction + server recalc + validate hook | dữ liệu an toàn |
 | FDOC-5 | Event server mức dòng (chính sách giá) | "nhiều giá" |
 | FDOC-6 | ConfigSync + E2E bằng màn Mua hàng tươi (spec 29 Đ3) | nghiệm thu thật |
 
-## 8. Điểm cần chốt trước FDOC-1
+## 8. Quyết định đã chốt (user, 2026-07-15) — FDOC-001 ✅
 
-1. **EditMode lưới:** cell-inline (đề xuất — nhập nhanh kiểu Excel) hay popup edit form từng dòng?
-2. **Aggregate trong Formula** (`SUM(ChiTiet.X)` cho field master): làm ngay FDOC-3 hay tách đợt sau
-   (footer summary thì FDOC-3 đã có qua `Summary_Json`)?
-3. Bảng vệ tinh spec 29 (KD_CanHang…) nhập trên form: là detail 1-dòng của `Ui_Form_Detail`
-   hay section field thẳng trên form con? (đề xuất: section trên form của bảng vệ tinh, quan hệ 1-1)
-4. Số dòng lớn (100+ dòng/phiếu) có phải ca thực tế không → quyết virtual scrolling từ FDOC-2.
+1. **EditMode:** hỗ trợ **cả 3 chế độ**, cấu hình per lưới qua `Ui_Form_Detail.Edit_Mode`;
+   mặc định **EntryPanel** (khu nhập trên + lưới dưới, kiểu legacy) — chi tiết UX §3.1.
+2. **Aggregate** (`SUM(ChiTiet.X)` cho field master): làm **ngay FDOC-3** cùng công thức dòng.
+3. **Bảng vệ tinh 1-1** (KD_CanHang, KD_ChotGia…): render là **section field 1-1** trên form,
+   engine save hiểu quan hệ 1-1 — KHÔNG dùng lưới 1 dòng.
+4. **Virtual scrolling:** có ca phiếu 100+ dòng → bật `VirtualScrollingEnabled` từ FDOC-2
+   + đo hiệu năng recalc công thức trên phiếu lớn.

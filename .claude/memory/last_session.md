@@ -2,7 +2,12 @@
 
 > Cập nhật: 2026-07-15 (session 85 — phân tích legacy Ngọc Chương → spec 29 + đánh giá 3 kiểu màn → spec 30 Form chứng từ). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
-> **Task tiếp theo gợi ý:** FDOC-001 chốt 4 câu hỏi spec 30 §8 (EditMode, aggregate, vệ tinh 1-1, virtual scroll) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
+> **Task tiếp theo gợi ý:** FDOC-1 (migration Ui_Form_Detail + Formula_Json + ConfigStudio tab Lưới chi tiết — chờ user ra lệnh code) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
+>
+> **FDOC-001 ĐÃ CHỐT (user, 2026-07-15):** EditMode = cả 3 chế độ per lưới (`Ui_Form_Detail.Edit_Mode`),
+> mặc định **EntryPanel** — khu nhập trên + lưới dưới kiểu legacy (Lưu dòng → đẩy vào lưới; click dòng
+> → nạp lên sửa; badge "Đang sửa dòng #n" + nút Thêm mới để thoát) · aggregate lên master ngay FDOC-3 ·
+> vệ tinh 1-1 = section field, payload `satellites` riêng · có ca 100+ dòng → virtual scroll từ FDOC-2.
 
 ## Session 85 (tiếp) — Đánh giá 3 kiểu màn + Spec 30 Form chứng từ master-detail
 
