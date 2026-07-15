@@ -880,6 +880,21 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 
 ---
 
+## 📋 Roadmap — Vertical Thu mua nông sản ký gửi (Ngọc Chương) — Spec 29 (2026-07-15)
+
+> Spec: `docs/spec/29_THU_MUA_NONG_SAN_SPEC.md` — trích xuất từ legacy `src/frontend/source_can_update/`
+> (WPF .NET 4.8, 63 VM CategoryNgocChuong). Đã chốt: tiền tố `KD_`/`KT_`, thiết kế generic ngành
+> thu mua nông sản (cà phê = tenant đầu), posting engine C# cùng transaction (khớp ADR-029),
+> spec viết trọn trước khi code. KHÔNG port code legacy — chỉ dùng làm spec nghiệp vụ.
+
+- [x] **TM-000** — Viết spec 29: glossary tiếng Việt thống nhất (hết nhồi nghĩa cột), schema `KD_`/`KT_`, cây nghiệp vụ + định khoản cấu hình, lộ trình 6 đợt ✅ Done (2026-07-15)
+- [ ] **TM-001** — Chốt 5 câu hỏi mở (spec 29 §9): giá xuất kho, cách tính lãi vay, số dư đầu kỳ, đa DVT, thứ tự code ADR-027
+- [ ] **TM-002** — Đ1: migration `KD_`/`KT_`/`DM_TaiKhoan`/`DM_HangHoa_QuyDoi` + màn ConfigStudio cấu hình cây nghiệp vụ & định khoản + seed mẫu cà phê (phụ thuộc ADR-027 chưa code)
+- [ ] **TM-003** — Đ2: posting engine C# (sinh `KT_ButToan` từ config, cùng transaction) + unit test bất biến Nợ=Có
+- [ ] **TM-004** — Đ3→Đ6: các cụm màn theo spec 29 §8 (mua/cân/ký gửi → chốt giá → sơ chế/tín dụng → bán/báo cáo)
+
+---
+
 ## 🟠 Kế hoạch (Next Up)
 
 ### Backend — Claude Code

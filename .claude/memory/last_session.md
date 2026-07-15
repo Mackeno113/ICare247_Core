@@ -1,8 +1,35 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-14 (session 84 — chuẩn hóa lưới WPF: lọc Contains + nhớ format + đổi vị trí/độ rộng cột; commit `fb6f634`). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-15 (session 85 — phân tích legacy Ngọc Chương + viết spec 29 Thu mua nông sản). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
-> **Task tiếp theo gợi ý:** nghiệm thu trên app (mở ConfigStudio → hàng lọc dưới header, kéo đổi vị trí/độ rộng cột, đóng-mở lại thấy format giữ nguyên) · nghiệm thu scaffold Sinh Form/Lưới · đẩy ConfigSync config vừa sinh sang tenant · R-3 Sys_Menu (HOÃN — chờ pha nâng cấp menu).
+> **Task tiếp theo gợi ý:** TM-001 chốt 5 câu hỏi mở spec 29 §9 (giá xuất kho, lãi vay, số dư đầu kỳ, đa DVT, thứ tự code ADR-027) · nghiệm thu lưới WPF session 84 · đẩy ConfigSync config sang tenant.
+
+## Session 85 (2026-07-15) — Phân tích legacy Ngọc Chương → Spec 29 Thu mua nông sản ký gửi
+
+**Đầu vào:** user thêm `src/frontend/source_can_update/` — app WPF legacy .NET 4.8 (4 project, ~488 file C#),
+là cơ sở phần kinh doanh. Yêu cầu: tập trung Ngọc Chương, đề xuất nâng cấp, chuyển bảng tiếng Việt,
+đồng nhất khái niệm/trường dữ liệu giữa các màn, phân tích chi tiết lõi nghiệp vụ.
+
+**Kết quả:** viết **`docs/spec/29_THU_MUA_NONG_SAN_SPEC.md`** + block TM-000→TM-004 trong TASKS.md.
+
+**Lõi nghiệp vụ trích được (6 cụm):** ① ký gửi–chốt giá (cân hàng: bì 200gr/bao, độ cà/tạp/thủy phần
+→ quy chuẩn → quy nhân; TK ngoài bảng 002; chốt giá → rút tiền/trả hàng); ② mua 4 biến thể
+(tươi/khô/nhân/non — non có thế chấp, TK 151); ③ sơ chế mẻ (phơi/sấy/xay); ④ tín dụng nông hộ
+(cho vay 1283 / nhận vay 341, lãi tháng); ⑤ bán (HĐ kinh tế/giao hàng — hàng bán vs hàng gửi 157,
+cân 2 lần); ⑥ báo cáo proc-only từ bút toán.
+
+**Bệnh legacy (lý do không port code):** nhồi nghĩa cột (`SalePrice` = số bao HOẶC %thủy phần HOẶC tiền vay
+tùy màn — bảng dẫn chứng ở spec §2); định khoản hardcode trong ViewModel (`"1561"/"331"/"002"`, có cả `"X"`
+placeholder); lưu không transaction (đếm `StepSave`); SQL string-format; view/proc đặt tên theo ngày.
+
+**4 quyết định user chốt (2026-07-15):** tiền tố `KD_`+`KT_` · viết trọn spec trước khi code ·
+thiết kế generic ngành thu mua nông sản (cà phê = tenant đầu) · posting engine **C#** cùng transaction
+(khớp ADR-029). Kiến trúc: `KD_LoaiGiaoDich` (cây ADR-027) + `KD_LoaiGiaoDich_DinhKhoan` (Nợ/Có + biểu thức
+AST nguồn số liệu) → engine sinh `KT_ButToan`; bảng vệ tinh theo cờ (`KD_CanHang/KyGui/ChotGia/KhoanVay/SoChe/HopDong`);
+`KD_KyGui` là ledger SUM chứ không lưu số dư đè. Còn mở: 5 câu hỏi spec §9 (TM-001).
+
+**Phụ:** `.claude/launch.json` thêm `"autoPort": false` cho `icare247-ui` (app cần đúng cổng 5173 vì CORS;
+preview mở thẳng instance đang chạy, không khởi động bản trùng).
 
 ## Session 84 (2026-07-14) — Chuẩn hóa lưới WPF (grid design rules)
 

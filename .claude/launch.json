@@ -11,7 +11,8 @@
       "name": "icare247-ui",
       "runtimeExecutable": "dotnet",
       "runtimeArgs": ["run", "--project", "src/frontend/ICare247_UI/ICare247_UI.csproj", "--urls", "http://localhost:5173"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": false
     }
   ]
 }
