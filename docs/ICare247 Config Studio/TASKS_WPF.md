@@ -1,7 +1,26 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-14
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-15
 > Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
+
+---
+
+## ✅ Done (2026-07-15) — Hướng dẫn sử dụng khi trỏ chuột — màn Cấu hình Field
+
+Commit `13e999f` (+ `94b0693` badge Is_Configured session trước) trên `master`. Build **0 warning / 0 error**.
+
+- **Tooltip chi tiết từng ô nhập** (tab Control Props): trỏ chuột vào ô nào → tooltip hướng dẫn riêng ô đó
+  (mục đích, cách cấu hình đúng, ví dụ, ⚠ lỗi thường gặp). Hạ tầng:
+  - `Models/FieldHelpTopic.cs` — record nội dung 1 topic.
+  - `Models/FieldHelpCatalog.cs` — kho ~35 topic tiếng Việt, key nhóm `fk.` `tree.` `popup.` `cb.` `lookup.` `addNew.` `prop.`.
+  - `Behaviors/HelpAssist.cs` — attached property `help:HelpAssist.Topic="key"` (ô tĩnh) +
+    `help:HelpAssist.Prop="{Binding}"` (dynamic props form — fallback tự dựng từ Label/Description).
+    ToolTip style theo DesignTokens qua `SetResourceReference` (ADR-031), ShowDuration 120s, Cursor=Help.
+- **Quy trình từng bước trên banner**: `ControlTypeGuide` thêm `Steps` — trỏ chuột vào banner tên control
+  (tab Cơ bản + banner ghim đầu tab Control Props) → popup các bước cấu hình đúng cho cả 12 editor type.
+- Panel đã gắn: `LookupBoxPropsPanel`, `ComboBoxPropsPanel`, section RadioGroup Sys_Lookup, 4 template dynamic props.
+- **Thêm topic/step mới**: thêm entry vào `FieldHelpCatalog` rồi khai `help:HelpAssist.Topic` trong XAML;
+  step theo editor type → sửa `BuildGuide` trong `FieldConfigViewModel`.
 
 ---
 

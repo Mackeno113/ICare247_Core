@@ -1,6 +1,6 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-15 (session 85 — phân tích legacy Ngọc Chương → spec 29 + đánh giá 3 kiểu màn → spec 30 Form chứng từ). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-15 (session 86 — hướng dẫn sử dụng khi trỏ chuột màn Cấu hình Field WPF). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 > **Task tiếp theo gợi ý:** FDOC-1 (migration Ui_Form_Detail + Formula_Json + ConfigStudio tab Lưới chi tiết — chờ user ra lệnh code) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
 >
@@ -8,6 +8,22 @@
 > mặc định **EntryPanel** — khu nhập trên + lưới dưới kiểu legacy (Lưu dòng → đẩy vào lưới; click dòng
 > → nạp lên sửa; badge "Đang sửa dòng #n" + nút Thêm mới để thoát) · aggregate lên master ngay FDOC-3 ·
 > vệ tinh 1-1 = section field, payload `satellites` riêng · có ca 100+ dòng → virtual scroll từ FDOC-2.
+
+## Session 86 (2026-07-15) — Hướng dẫn sử dụng khi trỏ chuột — màn Cấu hình Field (WPF)
+
+**User đặt bài:** nâng cấp tính năng hướng dẫn sử dụng — trỏ chuột vào là có hướng dẫn chi tiết
+phải làm gì để cấu hình đúng control. Chốt qua hỏi-đáp: làm CẢ HAI (tooltip từng ô nhập + popup
+quy trình từng bước trên banner tên control), phạm vi TẤT CẢ editor type.
+
+**Đã làm (commit `13e999f`):** `FieldHelpTopic` + `FieldHelpCatalog` (~35 topic tiếng Việt:
+mục đích/cách làm/ví dụ/lỗi thường gặp) + attached property `Behaviors/HelpAssist` (Topic key tĩnh,
+Prop cho dynamic props có fallback) + `ControlTypeGuide.Steps` (12 editor type) hiện tooltip trên
+2 banner (tab Cơ bản + banner ghim Control Props). Gắn đủ LookupBoxPropsPanel, ComboBoxPropsPanel,
+RadioGroup Sys_Lookup, 4 template dynamic props. Style theo DesignTokens (ADR-031). Build 0W/0E.
+
+**Dọn nợ:** commit riêng `94b0693` — thay đổi dở từ session trước (badge Field Navigator theo
+`Ui_Field.Is_Configured` db/067 + mẫu thông báo Required/Unique mặc định) đã build OK, tách khỏi
+commit tính năng theo yêu cầu user. Chi tiết → TASKS_WPF.md mục Done 2026-07-15.
 
 ## Session 85 (tiếp) — Đánh giá 3 kiểu màn + Spec 30 Form chứng từ master-detail
 
