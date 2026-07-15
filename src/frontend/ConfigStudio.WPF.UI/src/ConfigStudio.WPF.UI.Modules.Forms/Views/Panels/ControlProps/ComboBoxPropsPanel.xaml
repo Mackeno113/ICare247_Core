@@ -11,6 +11,7 @@
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:help="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Behaviors"
              mc:Ignorable="d"
              d:DesignHeight="600" d:DesignWidth="680">
 
@@ -33,13 +34,15 @@
                 <TextBlock Text="Nguồn dữ liệu — Sys_Lookup" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,14" />
 
-                <TextBlock Text="Lookup Code" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" />
-                <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
-                                ItemsSource="{Binding AvailableLookupCodes}"
-                                EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
-                                Margin="0,0,0,4"
-                                NullText="VD: GENDER, MARITAL_STATUS" />
+                <StackPanel help:HelpAssist.Topic="lookup.code">
+                    <TextBlock Text="Lookup Code" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" />
+                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                    ItemsSource="{Binding AvailableLookupCodes}"
+                                    EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
+                                    Margin="0,0,0,4"
+                                    NullText="VD: GENDER, MARITAL_STATUS" />
+                </StackPanel>
                 <TextBlock FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" TextWrapping="Wrap"
                            Margin="0,0,0,12">
                     <Run Text="Mã danh mục trong Sys_Lookup. VD: " />
@@ -76,8 +79,10 @@
 
                 <!-- Mode selector -->
                 <TextBlock Text="Chế độ truy vấn" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8" />
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8"
+                           help:HelpAssist.Topic="fk.queryMode" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,14"
+                            help:HelpAssist.Topic="fk.queryMode">
                     <RadioButton Content="Bảng / View"
                                  IsChecked="{Binding IsTableMode, Mode=OneWay}"
                                  GroupName="CbQueryMode" Margin="0,0,16,0"
@@ -102,13 +107,13 @@
                         <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="fk.valueField">
                         <TextBlock Text="Cột Value (lưu vào DB)" FontSize="11"
                                    Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                         <dxe:TextEdit Text="{Binding FkValueField, UpdateSourceTrigger=PropertyChanged}"
                                       Height="32" NullText="VD: PhongBan_Code" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="2" help:HelpAssist.Topic="fk.displayField">
                         <TextBlock Text="Cột Display (hiển thị)" FontSize="11"
                                    Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                         <dxe:TextEdit Text="{Binding FkDisplayField, UpdateSourceTrigger=PropertyChanged}"
@@ -118,24 +123,29 @@
 
                 <!-- Panel: Bảng / View -->
                 <StackPanel Visibility="{Binding IsTableMode, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Tên bảng hoặc View" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
-                    <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,10"
-                                  NullText="VD: DM_PhongBan  hoặc  vw_PhongBan_Full" />
-                    <TextBlock Text="Filter SQL / WHERE (tùy chọn)" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
-                    <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,2"
-                                  NullText="VD: Is_Active = 1 AND Tenant_Id = @TenantId" />
-                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0">
-                        <Run Text="Tham số hệ thống: " />
-                        <Run Text="@TenantId  @Today  @CurrentUser" FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}" />
-                    </TextBlock>
+                    <StackPanel help:HelpAssist.Topic="fk.tableName">
+                        <TextBlock Text="Tên bảng hoặc View" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,10"
+                                      NullText="VD: DM_PhongBan  hoặc  vw_PhongBan_Full" />
+                    </StackPanel>
+                    <StackPanel help:HelpAssist.Topic="fk.filterSql">
+                        <TextBlock Text="Filter SQL / WHERE (tùy chọn)" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,2"
+                                      NullText="VD: Is_Active = 1 AND Tenant_Id = @TenantId" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0">
+                            <Run Text="Tham số hệ thống: " />
+                            <Run Text="@TenantId  @Today  @CurrentUser" FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}" />
+                        </TextBlock>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Panel: Function (TVF) -->
-                <StackPanel Visibility="{Binding IsFunctionMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel Visibility="{Binding IsFunctionMode, Converter={StaticResource BoolToVis}}"
+                            help:HelpAssist.Topic="fk.functionName">
                     <TextBlock Text="Tên Function (TVF)" FontSize="11"
                                Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                     <dxe:TextEdit Text="{Binding FkFunctionName, UpdateSourceTrigger=PropertyChanged}"
@@ -144,7 +154,8 @@
                 </StackPanel>
 
                 <!-- Panel: SQL tùy chỉnh -->
-                <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}"
+                            help:HelpAssist.Topic="fk.selectSql">
                     <TextBlock Text="SELECT SQL tùy chỉnh" FontSize="11"
                                Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                     <dxe:TextEdit Text="{Binding FkSelectSql, UpdateSourceTrigger=PropertyChanged}"
@@ -154,9 +165,11 @@
                 </StackPanel>
 
                 <!-- Order By -->
-                <TextBlock Text="Sắp xếp (ORDER BY)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,12,0,3" />
-                <dxe:TextEdit Text="{Binding FkOrderBy, UpdateSourceTrigger=PropertyChanged}"
-                              Height="32" NullText="VD: Ten_PhongBan ASC" />
+                <StackPanel help:HelpAssist.Topic="fk.orderBy">
+                    <TextBlock Text="Sắp xếp (ORDER BY)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,12,0,3" />
+                    <dxe:TextEdit Text="{Binding FkOrderBy, UpdateSourceTrigger=PropertyChanged}"
+                                  Height="32" NullText="VD: Ten_PhongBan ASC" />
+                </StackPanel>
             </StackPanel>
         </Border>
 
@@ -176,7 +189,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="cb.searchMode">
                         <TextBlock Text="Chế độ tìm kiếm" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding SearchModeOptions}"
                                           EditValue="{Binding CbSearchMode, UpdateSourceTrigger=PropertyChanged}"
@@ -186,7 +199,8 @@
                     </StackPanel>
 
                     <StackPanel Grid.Column="2"
-                                Visibility="{Binding ShowSearchFilterCondition, Converter={StaticResource BoolToVis}}">
+                                Visibility="{Binding ShowSearchFilterCondition, Converter={StaticResource BoolToVis}}"
+                                help:HelpAssist.Topic="cb.searchFilterCondition">
                         <TextBlock Text="Điều kiện so khớp" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding SearchFilterConditionOptions}"
                                           EditValue="{Binding CbSearchFilterCondition, UpdateSourceTrigger=PropertyChanged}"
@@ -196,11 +210,13 @@
                     </StackPanel>
                 </Grid>
 
-                <dxe:CheckEdit Content="Cho phép nhập text tự do (AllowUserInput)"
-                               IsChecked="{Binding CbAllowUserInput}"
-                               FontSize="12" Margin="0,0,0,4" />
-                <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75"
-                           Text="Khi bật: user có thể nhập giá trị không có trong list." />
+                <StackPanel help:HelpAssist.Topic="cb.allowUserInput">
+                    <dxe:CheckEdit Content="Cho phép nhập text tự do (AllowUserInput)"
+                                   IsChecked="{Binding CbAllowUserInput}"
+                                   FontSize="12" Margin="0,0,0,4" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75"
+                               Text="Khi bật: user có thể nhập giá trị không có trong list." />
+                </StackPanel>
             </StackPanel>
         </Border>
 
@@ -214,13 +230,15 @@
                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,14" />
 
                 <!-- NullText key -->
-                <TextBlock Text="Placeholder key (NullText)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
-                           Margin="0,0,0,3" FontWeight="SemiBold" />
-                <dxe:TextEdit Text="{Binding CbNullTextKey, UpdateSourceTrigger=PropertyChanged}"
-                              Height="32" Margin="0,0,0,2"
-                              NullText="VD: nhanvien.placeholder.phong_ban" />
-                <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,12"
-                           Text="I18n key cho text hiển thị khi chưa chọn giá trị." />
+                <StackPanel help:HelpAssist.Topic="cb.nullTextKey">
+                    <TextBlock Text="Placeholder key (NullText)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
+                               Margin="0,0,0,3" FontWeight="SemiBold" />
+                    <dxe:TextEdit Text="{Binding CbNullTextKey, UpdateSourceTrigger=PropertyChanged}"
+                                  Height="32" Margin="0,0,0,2"
+                                  NullText="VD: nhanvien.placeholder.phong_ban" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,12"
+                               Text="I18n key cho text hiển thị khi chưa chọn giá trị." />
+                </StackPanel>
 
                 <!-- DropDownWidthMode + ClearButton -->
                 <Grid Margin="0,0,0,12">
@@ -230,7 +248,7 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="cb.dropDownWidthMode">
                         <TextBlock Text="Chiều rộng dropdown" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding DropDownWidthModeOptions}"
@@ -238,7 +256,7 @@
                                           Height="32" />
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="2" help:HelpAssist.Topic="cb.clearButton">
                         <TextBlock Text="Nút xóa (Clear)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,6" FontWeight="SemiBold" />
                         <dxe:ComboBoxEdit ItemsSource="{Binding ClearButtonModeOptions}"
@@ -256,7 +274,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0">
+                        <StackPanel Grid.Column="0" help:HelpAssist.Topic="cb.groupField">
                             <TextBlock Text="Group theo field (tùy chọn)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                        Margin="0,0,0,3" FontWeight="SemiBold" />
                             <dxe:TextEdit Text="{Binding CbGroupFieldName, UpdateSourceTrigger=PropertyChanged}"
@@ -265,7 +283,7 @@
                                        Text="Tên field để nhóm items trong dropdown." />
                         </StackPanel>
 
-                        <StackPanel Grid.Column="2">
+                        <StackPanel Grid.Column="2" help:HelpAssist.Topic="cb.disabledField">
                             <TextBlock Text="Field disable item (tùy chọn)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                        Margin="0,0,0,3" FontWeight="SemiBold" />
                             <dxe:TextEdit Text="{Binding CbDisabledFieldName, UpdateSourceTrigger=PropertyChanged}"

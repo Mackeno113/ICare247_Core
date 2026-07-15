@@ -11,6 +11,7 @@
              xmlns:conv="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Converters"
              xmlns:coreconv="clr-namespace:ConfigStudio.WPF.UI.Core.Converters;assembly=ConfigStudio.WPF.UI.Core"
              xmlns:panels="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Views.Panels.ControlProps"
+             xmlns:help="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Behaviors"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="700"
              d:DesignWidth="950"
@@ -191,7 +192,7 @@
 
         <!-- ── Control Props DataTemplates ─────────────────────── -->
         <DataTemplate x:Key="StringPropTemplate" DataType="{x:Type models:ControlPropValue}">
-            <StackPanel Style="{StaticResource FieldGroupStyle}">
+            <StackPanel Style="{StaticResource FieldGroupStyle}" help:HelpAssist.Prop="{Binding}">
                 <TextBlock Text="{Binding Definition.Label}" Style="{StaticResource FieldLabelStyle}" />
                 <dxe:TextEdit EditValue="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                               NullText="{Binding Definition.Description}" />
@@ -200,7 +201,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="NumberPropTemplate" DataType="{x:Type models:ControlPropValue}">
-            <StackPanel Style="{StaticResource FieldGroupStyle}">
+            <StackPanel Style="{StaticResource FieldGroupStyle}" help:HelpAssist.Prop="{Binding}">
                 <TextBlock Text="{Binding Definition.Label}" Style="{StaticResource FieldLabelStyle}" />
                 <dxe:TextEdit EditValue="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                               NullText="0" Width="150" HorizontalAlignment="Left" />
@@ -208,7 +209,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="BooleanPropTemplate" DataType="{x:Type models:ControlPropValue}">
-            <StackPanel Style="{StaticResource FieldGroupStyle}" Orientation="Horizontal">
+            <StackPanel Style="{StaticResource FieldGroupStyle}" Orientation="Horizontal" help:HelpAssist.Prop="{Binding}">
                 <dxe:ToggleSwitchEdit IsChecked="{Binding Value}" Margin="0,0,10,0" />
                 <TextBlock Text="{Binding Definition.Label}" VerticalAlignment="Center"
                            FontSize="13" Foreground="{DynamicResource AppTextSecondaryBrush}" />
@@ -216,7 +217,7 @@
         </DataTemplate>
 
         <DataTemplate x:Key="EnumPropTemplate" DataType="{x:Type models:ControlPropValue}">
-            <StackPanel Style="{StaticResource FieldGroupStyle}">
+            <StackPanel Style="{StaticResource FieldGroupStyle}" help:HelpAssist.Prop="{Binding}">
                 <TextBlock Text="{Binding Definition.Label}" Style="{StaticResource FieldLabelStyle}" />
                 <dxe:ComboBoxEdit ItemsSource="{Binding Definition.AllowedValues}"
                                   EditValue="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
@@ -730,7 +731,37 @@
                                         BorderThickness="1"
                                         CornerRadius="6"
                                         Padding="14,12"
-                                        Margin="0,0,0,16">
+                                        Margin="0,0,0,16"
+                                        Cursor="Help"
+                                        ToolTipService.InitialShowDelay="300"
+                                        ToolTipService.ShowDuration="120000">
+                                    <!-- Trỏ chuột vào banner → popup quy trình cấu hình từng bước cho control đang chọn -->
+                                    <Border.ToolTip>
+                                        <ToolTip MaxWidth="480" Padding="14,12" HasDropShadow="True"
+                                                 Background="{DynamicResource AppSurfaceBrush}"
+                                                 BorderBrush="{DynamicResource AppBorderStrongBrush}"
+                                                 BorderThickness="1">
+                                            <StackPanel MaxWidth="450">
+                                                <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource AppAccentDarkBrush}" Margin="0,0,0,6">
+                                                    <Run Text="Quy trình cấu hình đúng — " /><Run Text="{Binding EditorTypeGuide.Title, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <ItemsControl ItemsSource="{Binding EditorTypeGuide.Steps}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock FontSize="11.5" TextWrapping="Wrap" Margin="4,2,0,2"
+                                                                       Foreground="{DynamicResource AppTextSecondaryBrush}">
+                                                                <Run Text="▸ " Foreground="{DynamicResource AppAccentBrush}" /><Run Text="{Binding Mode=OneWay}" />
+                                                            </TextBlock>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <TextBlock FontSize="10.5" TextWrapping="Wrap" Margin="0,8,0,0" Opacity="0.8"
+                                                           Foreground="{DynamicResource AppTextMutedBrush}"
+                                                           Text="Mẹo: trỏ chuột vào từng ô nhập ở tab Control Props để xem hướng dẫn chi tiết của riêng ô đó." />
+                                            </StackPanel>
+                                        </ToolTip>
+                                    </Border.ToolTip>
                                     <StackPanel>
                                         <!-- Header: icon + title -->
                                         <DockPanel Margin="0,0,0,8">
@@ -783,6 +814,12 @@
                                                 <Run Text=" phía trên." />
                                             </TextBlock>
                                         </Border>
+
+                                        <!-- Gợi ý khám phá tooltip quy trình từng bước -->
+                                        <TextBlock FontSize="10.5" Margin="0,8,0,0" Opacity="0.85" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource AppInfoBrush}"
+                                                   Visibility="{Binding EditorTypeGuide.HasSteps, Converter={StaticResource BoolToVis}}"
+                                                   Text="🖱 Trỏ chuột vào khung này để xem quy trình cấu hình từng bước." />
                                     </StackPanel>
                                 </Border>
                                 </Grid>
@@ -1162,11 +1199,45 @@
                             Visibility="{Binding EditorTypeGuide.HasProps, Converter={StaticResource BoolToVis}}"
                             Background="{DynamicResource AppInfoSoftBrush}"
                             BorderBrush="{DynamicResource AppInfoBorderBrush}"
-                            BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,12,0,8">
+                            BorderThickness="1" CornerRadius="6" Padding="14,10" Margin="0,12,0,8"
+                            Cursor="Help"
+                            ToolTipService.InitialShowDelay="300"
+                            ToolTipService.ShowDuration="120000">
+                        <!-- Trỏ chuột vào banner → popup quy trình cấu hình từng bước cho control đang chọn -->
+                        <Border.ToolTip>
+                            <ToolTip MaxWidth="480" Padding="14,12" HasDropShadow="True"
+                                     Background="{DynamicResource AppSurfaceBrush}"
+                                     BorderBrush="{DynamicResource AppBorderStrongBrush}"
+                                     BorderThickness="1">
+                                <StackPanel MaxWidth="450">
+                                    <TextBlock FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource AppAccentDarkBrush}" Margin="0,0,0,6">
+                                        <Run Text="Quy trình cấu hình đúng — " /><Run Text="{Binding EditorTypeGuide.Title, Mode=OneWay}" />
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding EditorTypeGuide.Steps}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock FontSize="11.5" TextWrapping="Wrap" Margin="4,2,0,2"
+                                                           Foreground="{DynamicResource AppTextSecondaryBrush}">
+                                                    <Run Text="▸ " Foreground="{DynamicResource AppAccentBrush}" /><Run Text="{Binding Mode=OneWay}" />
+                                                </TextBlock>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock FontSize="10.5" TextWrapping="Wrap" Margin="0,8,0,0" Opacity="0.8"
+                                               Foreground="{DynamicResource AppTextMutedBrush}"
+                                               Text="Mẹo: trỏ chuột vào từng ô nhập bên dưới để xem hướng dẫn chi tiết của riêng ô đó." />
+                                </StackPanel>
+                            </ToolTip>
+                        </Border.ToolTip>
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock Text="{Binding EditorTypeGuide.Icon}" FontSize="15"
                                            VerticalAlignment="Center" Margin="0,0,8,0" DockPanel.Dock="Left" />
+                                <TextBlock Text="🖱 trỏ vào đây — quy trình từng bước" FontSize="10.5"
+                                           Foreground="{DynamicResource AppInfoBrush}" Opacity="0.85"
+                                           VerticalAlignment="Center" HorizontalAlignment="Right" DockPanel.Dock="Right"
+                                           Visibility="{Binding EditorTypeGuide.HasSteps, Converter={StaticResource BoolToVis}}" />
                                 <TextBlock Text="{Binding EditorTypeGuide.Title}" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppInfoBrush}" VerticalAlignment="Center" />
                             </DockPanel>
@@ -1253,12 +1324,14 @@
                             <StackPanel>
                                 <TextBlock Text="Cấu hình Lookup — Sys_Lookup" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,12" />
-                                <TextBlock Text="Lookup Code" FontSize="11"
-                                           Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
-                                <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
-                                                ItemsSource="{Binding AvailableLookupCodes}"
-                                                EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
-                                                Margin="0,0,0,4" />
+                                <StackPanel help:HelpAssist.Topic="lookup.code">
+                                    <TextBlock Text="Lookup Code" FontSize="11"
+                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3" />
+                                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                                    ItemsSource="{Binding AvailableLookupCodes}"
+                                                    EditValue="{Binding LookupCode, UpdateSourceTrigger=PropertyChanged}"
+                                                    Margin="0,0,0,4" />
+                                </StackPanel>
                                 <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12">
                                     <Run Text="Mã danh mục trong Sys_Lookup. VD: " />
                                     <Run Text="GENDER" FontFamily="Consolas" Foreground="{StaticResource AccentDarkBrush}" />

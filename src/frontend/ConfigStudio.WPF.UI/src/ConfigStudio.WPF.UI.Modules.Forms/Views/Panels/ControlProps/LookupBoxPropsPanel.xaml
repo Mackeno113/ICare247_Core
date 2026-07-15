@@ -11,6 +11,7 @@
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:help="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Behaviors"
              mc:Ignorable="d"
              d:DesignHeight="900" d:DesignWidth="680">
 
@@ -39,8 +40,10 @@
 
                 <!-- Mode selector -->
                 <TextBlock Text="Chế độ truy vấn" FontSize="11" FontWeight="SemiBold"
-                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8" />
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8"
+                           help:HelpAssist.Topic="fk.queryMode" />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,14"
+                            help:HelpAssist.Topic="fk.queryMode">
                     <RadioButton Content="Bảng / View"
                                  IsChecked="{Binding IsTableMode, Mode=OneWay}"
                                  GroupName="LbQueryMode" Margin="0,0,16,0"
@@ -65,13 +68,13 @@
                         <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="fk.valueField">
                         <TextBlock Text="Cột Value — FK lưu vào DB" FontSize="11"
                                    Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" FontWeight="SemiBold" />
                         <dxe:TextEdit Text="{Binding FkValueField, UpdateSourceTrigger=PropertyChanged}"
                                       Height="32" NullText="VD: PhongBan_Id (int)" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="2" help:HelpAssist.Topic="fk.displayField">
                         <TextBlock Text="Cột Display (hiển thị)" FontSize="11"
                                    Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" FontWeight="SemiBold" />
                         <dxe:TextEdit Text="{Binding FkDisplayField, UpdateSourceTrigger=PropertyChanged}"
@@ -81,22 +84,26 @@
 
                 <!-- Panel: Bảng / View -->
                 <StackPanel Visibility="{Binding IsTableMode, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="Tên bảng hoặc View" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
-                    <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,2"
-                                  NullText="VD: DM_PhongBan  hoặc  vw_PhongBan_Full" />
-                    <TextBlock Text="Bảng hoặc View — View có thể chứa JOIN sẵn." FontSize="10"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10" />
-                    <TextBlock Text="Filter SQL / WHERE (tùy chọn)" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
-                    <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,2"
-                                  NullText="VD: Is_Active = 1 AND Tenant_Id = @TenantId" />
-                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0">
-                        <Run Text="Tham số hệ thống tự động: " />
-                        <Run Text="@TenantId  @Today  @CurrentUser" FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}" />
-                    </TextBlock>
+                    <StackPanel help:HelpAssist.Topic="fk.tableName">
+                        <TextBlock Text="Tên bảng hoặc View" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,2"
+                                      NullText="VD: DM_PhongBan  hoặc  vw_PhongBan_Full" />
+                        <TextBlock Text="Bảng hoặc View — View có thể chứa JOIN sẵn." FontSize="10"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10" />
+                    </StackPanel>
+                    <StackPanel help:HelpAssist.Topic="fk.filterSql">
+                        <TextBlock Text="Filter SQL / WHERE (tùy chọn)" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,2"
+                                      NullText="VD: Is_Active = 1 AND Tenant_Id = @TenantId" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0">
+                            <Run Text="Tham số hệ thống tự động: " />
+                            <Run Text="@TenantId  @Today  @CurrentUser" FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}" />
+                        </TextBlock>
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Panel: Function (TVF) -->
@@ -110,16 +117,19 @@
                             <Run Text="Thứ tự tham số phải khớp định nghĩa hàm trong DB." />
                         </TextBlock>
                     </Border>
-                    <TextBlock Text="Tên Function (TVF)" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
-                    <dxe:TextEdit Text="{Binding FkFunctionName, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,12" FontFamily="Consolas"
-                                  NullText="VD: fn_GetPhongBanHieuLuc" />
+                    <StackPanel help:HelpAssist.Topic="fk.functionName">
+                        <TextBlock Text="Tên Function (TVF)" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkFunctionName, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,12" FontFamily="Consolas"
+                                      NullText="VD: fn_GetPhongBanHieuLuc" />
+                    </StackPanel>
 
                     <!-- Function params -->
                     <DockPanel Margin="0,0,0,8">
                         <TextBlock Text="Tham số hàm (theo thứ tự)" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center" />
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                   help:HelpAssist.Topic="fk.functionParams" />
                         <Button Content="+ Thêm" DockPanel.Dock="Right" HorizontalAlignment="Right"
                                 Height="26" Padding="10,0" FontSize="11"
                                 Foreground="{DynamicResource AppAccentDarkBrush}" Background="Transparent"
@@ -177,7 +187,8 @@
                 </StackPanel>
 
                 <!-- Panel: SQL tùy chỉnh -->
-                <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}"
+                            help:HelpAssist.Topic="fk.selectSql">
                     <TextBlock Text="SELECT SQL tùy chỉnh" FontSize="11"
                                Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                     <dxe:TextEdit Text="{Binding FkSelectSql, UpdateSourceTrigger=PropertyChanged}"
@@ -197,12 +208,12 @@
                         <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="160" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="fk.orderBy">
                         <TextBlock Text="Sắp xếp (ORDER BY)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
                         <dxe:TextEdit Text="{Binding FkOrderBy, UpdateSourceTrigger=PropertyChanged}"
                                       Height="32" NullText="VD: Ten_PhongBan ASC" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom" help:HelpAssist.Topic="fk.searchEnabled">
                         <dxe:CheckEdit Content="Cho phép tìm kiếm"
                                        IsChecked="{Binding FkSearchEnabled}"
                                        FontSize="12" />
@@ -212,18 +223,22 @@
                 <!-- Cột Mã (Code_Field) — LUÔN HIỆN. Cầu Mã↔Id cho IMPORT + xuất template;
                      cũng là cột code khi EditBox = 'mã + tên'. Tách khỏi chế độ hiển thị. -->
                 <StackPanel Margin="0,12,0,0">
-                    <TextBlock Text="Cột Mã (Code_Field) — cho Import / template" FontSize="11"
-                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" FontWeight="SemiBold" />
-                    <dxe:TextEdit Text="{Binding CodeField, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" NullText="VD: Ma" />
-                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0"
-                               Text="Cột chứa Mã (VD: Ma). Import đổi Mã→Id + xuất template dùng cột này; cũng dùng khi EditBox = 'mã + tên'." />
+                    <StackPanel help:HelpAssist.Topic="fk.codeField">
+                        <TextBlock Text="Cột Mã (Code_Field) — cho Import / template" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" FontWeight="SemiBold" />
+                        <dxe:TextEdit Text="{Binding CodeField, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" NullText="VD: Ma" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0"
+                                   Text="Cột chứa Mã (VD: Ma). Import đổi Mã→Id + xuất template dùng cột này; cũng dùng khi EditBox = 'mã + tên'." />
+                    </StackPanel>
 
                     <!-- Import: resolve Mã toàn cục (bỏ lọc cha cascade) -->
-                    <dxe:CheckEdit IsChecked="{Binding ImportGlobalCode}" Margin="0,10,0,0"
-                                   Content="Import: resolve Mã toàn cục (bỏ lọc cha)" FontSize="12" />
-                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
-                               Text="Cho FK lọc theo cha (cascade — vd Chi nhánh theo Ngân hàng): khi import bỏ Filter_Sql, tra Mã con trên toàn bảng. CHỈ bật khi Mã con DUY NHẤT toàn cục; trùng Mã → import từ chối cả file." />
+                    <StackPanel help:HelpAssist.Topic="fk.importGlobalCode">
+                        <dxe:CheckEdit IsChecked="{Binding ImportGlobalCode}" Margin="0,10,0,0"
+                                       Content="Import: resolve Mã toàn cục (bỏ lọc cha)" FontSize="12" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,2,0,0" TextWrapping="Wrap"
+                                   Text="Cho FK lọc theo cha (cascade — vd Chi nhánh theo Ngân hàng): khi import bỏ Filter_Sql, tra Mã con trên toàn bảng. CHỈ bật khi Mã con DUY NHẤT toàn cục; trùng Mã → import từ chối cả file." />
+                    </StackPanel>
                 </StackPanel>
             </StackPanel>
         </Border>
@@ -237,11 +252,13 @@
                 <TextBlock Text="EditBox hiển thị" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,14" />
 
-                <TextBlock Text="Chế độ hiển thị trong ô input khi đã chọn" FontSize="11"
-                           Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
-                <dxe:ComboBoxEdit ItemsSource="{Binding EditBoxModeOptions}"
-                                  EditValue="{Binding EditBoxMode, UpdateSourceTrigger=PropertyChanged}"
-                                  Height="32" Margin="0,0,0,4" />
+                <StackPanel help:HelpAssist.Topic="fk.editBoxMode">
+                    <TextBlock Text="Chế độ hiển thị trong ô input khi đã chọn" FontSize="11"
+                               Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" FontWeight="SemiBold" />
+                    <dxe:ComboBoxEdit ItemsSource="{Binding EditBoxModeOptions}"
+                                      EditValue="{Binding EditBoxMode, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,4" />
+                </StackPanel>
                 <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,12">
                     <Run Text="TextOnly" FontFamily="Consolas" />
                     <Run Text=" = chỉ text  |  " />
@@ -279,13 +296,13 @@
                         <ColumnDefinition Width="12" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" help:HelpAssist.Topic="popup.size">
                         <TextBlock Text="Chiều rộng popup (px)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,3" FontWeight="SemiBold" />
                         <dxe:SpinEdit Value="{Binding DropDownWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       MinValue="200" MaxValue="1200" Increment="50" Height="32" Mask="d" />
                     </StackPanel>
-                    <StackPanel Grid.Column="2">
+                    <StackPanel Grid.Column="2" help:HelpAssist.Topic="popup.size">
                         <TextBlock Text="Chiều cao popup (px)" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
                                    Margin="0,0,0,3" FontWeight="SemiBold" />
                         <dxe:SpinEdit Value="{Binding DropDownHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
@@ -296,7 +313,8 @@
                 <!-- Popup columns datagrid -->
                 <DockPanel Margin="0,0,0,8">
                     <TextBlock Text="Cột hiển thị trong popup" FontSize="11" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"
+                               help:HelpAssist.Topic="popup.columns" />
                     <Button Content="+ Thêm cột" DockPanel.Dock="Right" HorizontalAlignment="Right"
                             Height="26" Padding="10,0" FontSize="11"
                             Foreground="{DynamicResource AppAccentDarkBrush}" Background="Transparent"
@@ -392,7 +410,8 @@
                 <!-- Reload trigger field (single) — NÂNG CAO: chỉ cần cho TVF/Full SQL hoặc field
                      ngoài Filter SQL. Chế độ Bảng/View đã tự reload theo mọi @param trong Filter SQL. -->
                 <Expander Header="Nâng cao — Tự reload thủ công theo 1 field" IsExpanded="False"
-                          Margin="0,14,0,0" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}">
+                          Margin="0,14,0,0" FontSize="11" Foreground="{DynamicResource AppTextSecondaryBrush}"
+                          help:HelpAssist.Topic="fk.reloadTrigger">
                     <StackPanel Margin="0,8,0,0">
                         <dxe:TextEdit Text="{Binding ReloadTriggerField, UpdateSourceTrigger=PropertyChanged}"
                                       Height="32" NullText="VD: ChiNhanhId (FieldCode trong form)" />
@@ -438,22 +457,26 @@
                                        FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource AppSuccessDarkBrush}"
                                        VerticalAlignment="Center" />
                         </DockPanel>
-                        <TextBlock Text="Cột cha (Parent Column) *" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,4" />
-                        <dxe:TextEdit Text="{Binding ParentColumn, UpdateSourceTrigger=PropertyChanged}"
-                                      Height="32" FontFamily="Consolas"
-                                      NullText="VD: Parent_Id — tên cột chứa ID cha trong bảng nguồn" />
-                        <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Text="Bắt buộc. Bảng nguồn phải có cột này để build hierarchy cha/con." />
+                        <StackPanel help:HelpAssist.Topic="tree.parentColumn">
+                            <TextBlock Text="Cột cha (Parent Column) *" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,4" />
+                            <dxe:TextEdit Text="{Binding ParentColumn, UpdateSourceTrigger=PropertyChanged}"
+                                          Height="32" FontFamily="Consolas"
+                                          NullText="VD: Parent_Id — tên cột chứa ID cha trong bảng nguồn" />
+                            <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Text="Bắt buộc. Bảng nguồn phải có cột này để build hierarchy cha/con." />
+                        </StackPanel>
 
                         <!-- Cấp node được chọn (Migration 069) -->
-                        <TextBlock Text="Cấp node được chọn" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,10,0,4" />
-                        <dxe:ComboBoxEdit ItemsSource="{Binding TreeSelectableLevelOptions}"
-                                          EditValue="{Binding TreeSelectableLevel, UpdateSourceTrigger=PropertyChanged}"
-                                          Height="32" IsTextEditable="False" />
-                        <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Text="all = chọn mọi node · leaf = chỉ node lá (VD chỉ Xã, không Tỉnh) · branch = chỉ node có con." />
+                        <StackPanel help:HelpAssist.Topic="tree.selectableLevel">
+                            <TextBlock Text="Cấp node được chọn" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,10,0,4" />
+                            <dxe:ComboBoxEdit ItemsSource="{Binding TreeSelectableLevelOptions}"
+                                              EditValue="{Binding TreeSelectableLevel, UpdateSourceTrigger=PropertyChanged}"
+                                              Height="32" IsTextEditable="False" />
+                            <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Text="all = chọn mọi node · leaf = chỉ node lá (VD chỉ Xã, không Tỉnh) · branch = chỉ node có con." />
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </StackPanel>
@@ -468,15 +491,18 @@
                 <TextBlock Text="Thêm mới entity" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,12" />
 
-                <dxe:CheckEdit Content="Cho phép thêm mới ngay trên control (➕)"
-                               IsChecked="{Binding AllowAddNew}"
-                               FontSize="12" Margin="0,0,0,8" />
-                <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10"
-                           TextWrapping="Wrap"
-                           Text="Khi bật, dropdown LookupBox hiện nút 'Thêm mới' → mở dialog form nhập liệu entity nguồn." />
+                <StackPanel help:HelpAssist.Topic="addNew.allow">
+                    <dxe:CheckEdit Content="Cho phép thêm mới ngay trên control (➕)"
+                                   IsChecked="{Binding AllowAddNew}"
+                                   FontSize="12" Margin="0,0,0,8" />
+                    <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10"
+                               TextWrapping="Wrap"
+                               Text="Khi bật, dropdown LookupBox hiện nút 'Thêm mới' → mở dialog form nhập liệu entity nguồn." />
+                </StackPanel>
 
                 <!-- AddFormCode — chỉ hiện khi AllowAddNew bật -->
-                <StackPanel Visibility="{Binding AllowAddNew, Converter={StaticResource BoolToVis}}">
+                <StackPanel Visibility="{Binding AllowAddNew, Converter={StaticResource BoolToVis}}"
+                            help:HelpAssist.Topic="addNew.formCode">
                     <TextBlock Text="Form Code dialog thêm mới *" FontSize="11" FontWeight="SemiBold"
                                Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,4" />
                     <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"

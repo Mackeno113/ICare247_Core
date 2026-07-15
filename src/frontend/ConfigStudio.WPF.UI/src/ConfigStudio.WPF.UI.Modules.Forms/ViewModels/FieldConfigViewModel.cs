@@ -290,6 +290,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("maxLength",   "Độ dài ký tự tối đa (mặc định 255)"),
                 new("isMultiline", "Cho phép nhiều dòng (true/false)"),
                 new("rows",        "Số dòng hiển thị khi isMultiline = true"),
+            ],
+            Steps:
+            [
+                "Tab Cơ bản: kiểm tra field map đúng cột nvarchar và đặt nhãn i18n.",
+                "Tab Control Props: đặt maxLength ≤ độ dài cột DB (nvarchar(100) → 100).",
+                "Cần nhiều dòng (ghi chú ngắn)? Bật isMultiline và đặt rows.",
+                "Bấm Lưu Field — trỏ chuột vào từng ô nhập để xem hướng dẫn riêng.",
             ]),
 
         "TextArea" => new(
@@ -301,6 +308,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             [
                 new("maxLength",   "Độ dài ký tự tối đa"),
                 new("rows",        "Số dòng hiển thị (khuyến nghị ≥ 3)"),
+            ],
+            Steps:
+            [
+                "Dùng cho cột nvarchar(max)/text chứa nội dung dài (mô tả, ghi chú).",
+                "Tab Control Props: đặt rows ≥ 3 để vùng nhập đủ cao.",
+                "Nếu cột DB có giới hạn độ dài → đặt maxLength khớp.",
             ]),
 
         "NumericBox" => new(
@@ -315,6 +328,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("decimals",  "Số chữ số thập phân (0 = số nguyên)"),
                 new("spinStep",  "Bước nhảy khi bấm mũi tên (mặc định 1)"),
                 new("allowNull", "Cho phép để trống (true/false)"),
+            ],
+            Steps:
+            [
+                "Xác định khoảng hợp lệ theo nghiệp vụ → đặt minValue / maxValue.",
+                "Cột decimal(x,y)? Đặt decimals = y (VD decimal(18,2) → 2); số nguyên → 0.",
+                "Ô tiền tệ: đặt spinStep 1000/10000 để bấm mũi tên nhanh.",
+                "Cột DB NULLABLE và nghiệp vụ cho phép trống → bật allowNull.",
             ]),
 
         "DatePicker" => new(
@@ -327,6 +347,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("format",  "Định dạng: dd/MM/yyyy · dd/MM/yyyy HH:mm · MM/yyyy · yyyy"),
                 new("minDate", "Ngày tối thiểu được chọn (bỏ trống = không giới hạn)"),
                 new("maxDate", "Ngày tối đa được chọn (bỏ trống = không giới hạn)"),
+            ],
+            Steps:
+            [
+                "Chọn format khớp cột DB: date → dd/MM/yyyy; datetime cần giờ → dd/MM/yyyy HH:mm.",
+                "Kỳ báo cáo tháng/năm → format MM/yyyy hoặc yyyy.",
+                "Giới hạn khoảng chọn bằng minDate / maxDate nếu nghiệp vụ yêu cầu.",
             ]),
 
         "CheckBox" => new(
@@ -334,14 +360,23 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             Title:      "CheckBox — Có / Không",
             WhenToUse:  "Trạng thái bật/tắt, đồng ý điều khoản...",
             ColumnType: "bit (0/1)",
-            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")]),
+            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")],
+            Steps:
+            [
+                "Chỉ cần map đúng cột bit ở tab Cơ bản + đặt nhãn i18n — không có props thêm.",
+            ]),
 
         "ToggleSwitch" => new(
             Icon:       "🔘",
             Title:      "ToggleSwitch — Công tắc",
             WhenToUse:  "Active/Inactive, bật/tắt tính năng...",
             ColumnType: "bit (0/1)",
-            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")]),
+            Props:      [new("(không cần cấu hình thêm)", "Mapping trực tiếp vào cột bit")],
+            Steps:
+            [
+                "Chỉ cần map đúng cột bit ở tab Cơ bản + đặt nhãn i18n — không có props thêm.",
+                "Chọn ToggleSwitch thay CheckBox khi ý nghĩa là bật/tắt trạng thái (Active/Inactive).",
+            ]),
 
         "ComboBox" => new(
             Icon:       "🔽",
@@ -354,6 +389,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("valueField",   "Field dùng làm giá trị lưu (mặc định: id)"),
                 new("displayField", "Field hiển thị trong dropdown (mặc định: name)"),
                 new("allowNull",    "Cho phép chọn trống (mặc định: true)"),
+            ],
+            Steps:
+            [
+                "Tab Control Props → mục Nguồn dữ liệu: chọn chế độ Bảng/View (phổ biến) hoặc TVF / SQL.",
+                "Khai Cột Value (giá trị lưu DB) và Cột Display (text hiển thị).",
+                "Nhập tên bảng/View nguồn; thêm Filter SQL nếu cần lọc (hỗ trợ @TenantId, @FieldCode cascade).",
+                "Mục Tìm kiếm: chọn AutoFilter + Contains cho danh mục dài.",
+                "Mục Hiển thị: đặt placeholder key i18n, nút Clear cho field không bắt buộc.",
+                "Bấm Diễn giải để kiểm tra cấu hình rồi Lưu Field.",
             ]),
 
         "RadioGroup" => new(
@@ -365,6 +409,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             [
                 new("Lookup Code", "Mã danh mục trong Sys_Lookup (VD: GENDER, TRANGTHAI_PO)"),
                 new("(cấu hình tại tab Control Props)", "→ mục Cấu hình Lookup"),
+            ],
+            Steps:
+            [
+                "Chỉ dùng cho danh mục TĨNH ≤ 5 lựa chọn (giới tính, trạng thái đơn giản).",
+                "Tab Control Props: chọn Lookup Code trong Sys_Lookup (VD: GENDER).",
+                "Kiểm tra mục 'Xem trước options' hiển thị đúng danh mục.",
+                "Giá trị lưu DB là Item_Code (nvarchar) — không phải Id.",
             ]),
 
         "LookupComboBox" => new(
@@ -376,6 +427,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             [
                 new("Lookup Code", "Mã danh mục trong Sys_Lookup (VD: DM_LOAI_HD)"),
                 new("(cấu hình tại tab Control Props)", "→ mục Cấu hình Lookup"),
+            ],
+            Steps:
+            [
+                "Dùng cho danh mục TĨNH > 5 lựa chọn từ Sys_Lookup — dạng dropdown.",
+                "Tab Control Props: chọn Lookup Code, kiểm tra 'Xem trước options'.",
+                "Mục Tìm kiếm: bật AutoFilter + Contains để user gõ lọc nhanh.",
+                "Danh mục nghiệp vụ có bảng riêng (DM_...) → dùng LookupBox (FK) thay vì control này.",
             ]),
 
         "LookupBox" => new(
@@ -393,6 +451,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("Popup Columns",  "Danh sách cột hiển thị trong bảng popup chọn"),
                 new("Reload OnChange","FieldCode trigger reload datasource khi thay đổi"),
                 new("(cấu hình tại tab Control Props)", "→ mục FK Lookup"),
+            ],
+            Steps:
+            [
+                "Tab Control Props → Nguồn dữ liệu FK: chọn chế độ Bảng/View (mặc định, khuyên dùng).",
+                "Khai Cột Value = cột Id bảng nguồn (lưu vào FK) và Cột Display = cột tên hiển thị.",
+                "Nhập tên bảng nguồn (VD: DM_PhongBan); cần lọc → Filter SQL (VD: Is_Active = 1).",
+                "Lọc cascade theo field khác: dùng @FieldCode trong Filter SQL — tự reload khi field đó đổi.",
+                "Popup grid: khai các cột hiển thị + Resource Key i18n; để trống nếu danh mục đơn giản.",
+                "Muốn Import Excel theo Mã → khai Cột Mã (Code_Field).",
+                "Bấm Diễn giải kiểm tra toàn bộ cấu hình rồi Lưu Field.",
             ]),
 
         "TreeLookupBox" => new(
@@ -409,6 +477,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("Filter SQL",      "Điều kiện lọc, hỗ trợ @TenantId, @FieldRef (VD: ChiNhanh_Id = @ChiNhanhId)"),
                 new("Reload OnChange", "FieldCode trigger reload cây khi thay đổi"),
                 new("(cấu hình tại tab Control Props)", "→ mục FK Lookup + ParentColumn"),
+            ],
+            Steps:
+            [
+                "Bảng nguồn PHẢI có cột self-reference chứa Id cha (VD: Parent_Id) — kiểm tra trước.",
+                "Tab Control Props → Nguồn dữ liệu FK: nhập bảng nguồn + Cột Value + Cột Display.",
+                "Mục Cấu hình Tree (khung xanh): nhập Cột cha (Parent Column) — BẮT BUỘC.",
+                "Chọn 'Cấp node được chọn': all / leaf (chỉ node lá) / branch (chỉ node có con).",
+                "Cần lọc theo field khác (VD chi nhánh): Filter SQL với @FieldCode — cây tự reload.",
+                "Bấm Diễn giải kiểm tra rồi Lưu Field.",
             ]),
 
         "AttachmentBox" => new(
@@ -424,6 +501,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 new("ownerTable",   "[đa tệp] Bảng chủ. Bỏ trống = tự suy từ form. (1-tệp không cần)"),
                 new("ownerIdField", "[đa tệp] Khóa record trong context để lấy Owner_Id (mặc định: Id)."),
                 new("(bảo mật)",    "Server tự kiểm allowlist + magic-byte + chặn mã thực thi; ảnh được nén + tạo thumbnail."),
+            ],
+            Steps:
+            [
+                "Chọn chế độ theo cờ IsVirtual ở tab Cơ bản: BẬT = đa tệp (hồ sơ, ảnh SP); TẮT + map cột int = 1 tệp (logo, avatar).",
+                "Tab Control Props: đặt 'loai' nếu muốn phân loại tệp (VD: HopDong).",
+                "Chế độ đa tệp: ownerTable/ownerIdField thường ĐỂ TRỐNG — hệ thống tự suy từ form.",
+                "Bảo mật upload server tự xử lý — không cần cấu hình thêm.",
             ]),
 
         _ => new(
