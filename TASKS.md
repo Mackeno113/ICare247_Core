@@ -3,6 +3,25 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## 🔴 Đang làm — Switcher công ty dạng cây + màn Người dùng + phân quyền cây công ty (session 87 — 2026-07-16, CODE XONG, CHƯA verify UI/CHƯA commit)
+
+**Mô hình đã chốt với user:** Vai trò (HT_VaiTro) = khái niệm nhóm duy nhất, gánh 2 trục kế thừa ĐỘNG:
+chức năng (HT_VaiTro_Quyen, có sẵn) + phạm vi công ty (HT_VaiTro_CongTy, MỚI db/082). Quyền công ty
+hiệu lực = gán riêng (HT_NguoiDung_CongTy) ∪ theo vai trò. Switcher chọn node = scope đúng node đó
+(@CongTyID_Active đơn, không gộp nhánh). Cây checkbox WYSIWYG: tick cha auto-tick nhánh trên UI,
+bỏ tick tự do, lưu đúng tập tick; bỏ tick con KHÔNG ảnh hưởng cha; công ty tạo sau không tự có quyền.
+
+- [x] db/082_create_ht_vaitro_congty.sql (bảng map vai trò × công ty; node menu administration.users đã có sẵn từ db/045)
+- [x] BE: MeCompanyRepository union gán riêng ∪ vai trò + trả ParentId/CanAccess (cây, tổ tiên disabled)
+- [x] BE: AdminUserController /api/v1/admin/users (list/detail/create PBKDF2/update/reset-password/delete mềm/roles/companies) + feature Admin/Users + IUserAdminRepository/UserAdminRepository
+- [x] BE: AdminPermissionController GET/PUT roles/{id}/companies + PermissionAdminRepository mở rộng
+- [x] FE: CompanySwitcher.razor dropdown cây (indent, node CanAccess=false mờ, giữ localStorage/reload)
+- [x] FE: UserManagementPage.razor (/m/administration/users) master-detail 3 tab: Thông tin / Vai trò / Công ty truy cập (cây WYSIWYG + radio mặc định + badge "Theo vai trò")
+- [x] FE: PermissionMatrixPage thêm view "Phạm vi công ty" (cây WYSIWYG, 1 CTA Lưu chung)
+- [ ] Chạy migration db/082 vào Data DB tenant
+- [ ] Restart API + UI server rồi verify end-to-end (build đè khi server chạy bị cấm — session này chỉ verify compile backend 0 lỗi; UI CHƯA compile được vì cả 2 server đang chạy)
+- [ ] Commit sau khi verify
+
 ## ✅ Đã xong — 3 bug runtime lộ khi chạy thật màn danh mục (session 81 — 2026-07-10, commit `b53329c` + `a302c37`)
 
 Đều là bug **có sẵn** (không do ADR-035), lộ ra khi E2E LookupBox/MasterData lần đầu:

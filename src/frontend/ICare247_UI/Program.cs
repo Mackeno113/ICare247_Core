@@ -89,6 +89,7 @@ builder.Services.AddScoped<NavigationApiService>();
 builder.Services.AddScoped<MeCompanyApiService>();
 builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
+builder.Services.AddScoped<AdminUserApiService>();
 builder.Services.AddScoped<MenuAdminApiService>();
 builder.Services.AddScoped<ConfigSyncApiService>();
 builder.Services.AddScoped<CacheAdminApiService>();

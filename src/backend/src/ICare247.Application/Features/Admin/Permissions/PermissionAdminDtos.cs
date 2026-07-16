@@ -29,3 +29,11 @@ public sealed record RolePermNodeDto(
 
 /// <summary>1 dòng quyền cần lưu (gửi từ màn Phân quyền).</summary>
 public sealed record SavePermItem(long ChucNangId, bool Xem, bool Them, bool Sua, bool Xoa, bool InAn);
+
+/// <summary>
+/// Một node cây công ty ở phần "Phạm vi công ty" của màn Phân quyền: toàn bộ cây TC_CongTy
+/// + cờ đã gán vào vai trò (HT_VaiTro_CongTy). User thuộc vai trò kế thừa ĐỘNG các công ty này.
+/// </summary>
+/// <param name="ParentId">CongTy_Cha_Id (null = gốc) — client dựng cây.</param>
+/// <param name="DaGan">Công ty đang thuộc phạm vi của vai trò.</param>
+public sealed record RoleCompanyNodeDto(long Id, string? Ma, string Ten, long? ParentId, bool DaGan);

@@ -343,6 +343,8 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
    CSS isolation không gắn scope [b-xxx] lên root DxTreeList/DxGrid (component con) → rule scoped
    `.perm-tree{height}` không khớp root, height không áp, header trôi. Global thì áp đúng root. */
 .perm-tree { height: calc(100vh - 230px); min-height: 320px; }
+/* Lưới màn Người dùng: GHIM tiêu đề — height global vì CSS isolation không áp root DxGrid. */
+.usr-grid { height: calc(100vh - 230px); min-height: 320px; }
 .cfg-grid { max-height: calc(100vh - 320px); min-height: 160px; }
 .md-list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .md-list-footer { margin-top: 12px; }

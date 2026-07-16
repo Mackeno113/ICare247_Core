@@ -92,4 +92,69 @@ public sealed class PermissionAdminRepository : IPermissionAdminRepository
         await conn.ExecuteAsync(new CommandDefinition(sql, rows, tx, cancellationToken: ct));
         tx.Commit();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RoleCompanyNodeDto>> GetRoleCompaniesAsync(
+        long roleId, CancellationToken ct = default)
+    {
+        // Toàn bộ cây công ty active + cờ đã gán. OBJECT_ID guard — tenant chưa chạy db/082
+        // thì mọi node DaGan=0 (màn vẫn mở được, lưu sẽ tạo dòng mới sau khi migrate).
+        const string sql = """
+            IF OBJECT_ID('dbo.HT_VaiTro_CongTy', 'U') IS NOT NULL
+            BEGIN
+                SELECT c.Id, c.Ma, c.Ten, c.CongTy_Cha_Id AS ParentId,
+                       CAST(CASE WHEN vc.Id IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS DaGan
+                FROM dbo.TC_CongTy c
+                LEFT JOIN dbo.HT_VaiTro_CongTy vc
+                     ON vc.CongTy_Id = c.Id AND vc.VaiTro_Id = @RoleId AND vc.IsDeleted = 0
+                WHERE c.IsDeleted = 0
+                ORDER BY c.Ten;
+            END
+            ELSE
+            BEGIN
+                SELECT c.Id, c.Ma, c.Ten, c.CongTy_Cha_Id AS ParentId, CAST(0 AS BIT) AS DaGan
+                FROM dbo.TC_CongTy c
+                WHERE c.IsDeleted = 0
+                ORDER BY c.Ten;
+            END
+            """;
+        using var conn = _db.CreateConnection();
+        var rows = await conn.QueryAsync<RoleCompanyNodeDto>(
+            new CommandDefinition(sql, new { RoleId = roleId }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task SaveRoleCompaniesAsync(
+        long roleId, IReadOnlyList<long> congTyIds, long userId, CancellationToken ct = default)
+    {
+        // Diff tập công ty của vai trò: xóa mềm dòng thừa, insert dòng thiếu — 1 transaction.
+        const string sql = """
+            DECLARE @ids TABLE (Id BIGINT PRIMARY KEY);
+            INSERT INTO @ids (Id)
+            SELECT DISTINCT value FROM OPENJSON(@CongTyIdsJson) WITH (value BIGINT '$');
+
+            UPDATE vc
+            SET vc.IsDeleted = 1, vc.UpdatedBy = @UserId, vc.UpdatedAt = SYSUTCDATETIME(), vc.Ver = vc.Ver + 1
+            FROM dbo.HT_VaiTro_CongTy vc
+            WHERE vc.VaiTro_Id = @RoleId AND vc.IsDeleted = 0
+              AND NOT EXISTS (SELECT 1 FROM @ids i WHERE i.Id = vc.CongTy_Id);
+
+            INSERT INTO dbo.HT_VaiTro_CongTy (VaiTro_Id, CongTy_Id, CreatedBy, CreatedAt)
+            SELECT @RoleId, i.Id, @UserId, SYSUTCDATETIME()
+            FROM @ids i
+            WHERE NOT EXISTS (SELECT 1 FROM dbo.HT_VaiTro_CongTy vc
+                              WHERE vc.VaiTro_Id = @RoleId AND vc.CongTy_Id = i.Id AND vc.IsDeleted = 0);
+            """;
+        using var conn = _db.CreateConnection();
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        await conn.ExecuteAsync(new CommandDefinition(sql, new
+        {
+            RoleId = roleId,
+            CongTyIdsJson = System.Text.Json.JsonSerializer.Serialize(congTyIds),
+            UserId = userId
+        }, tx, cancellationToken: ct));
+        tx.Commit();
+    }
 }

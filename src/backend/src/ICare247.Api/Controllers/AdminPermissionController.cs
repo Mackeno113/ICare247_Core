@@ -6,8 +6,10 @@
 
 using ICare247.Api.Authorization;
 using ICare247.Application.Features.Admin.Permissions;
+using ICare247.Application.Features.Admin.Permissions.GetRoleCompanies;
 using ICare247.Application.Features.Admin.Permissions.GetRolePermissions;
 using ICare247.Application.Features.Admin.Permissions.GetRoles;
+using ICare247.Application.Features.Admin.Permissions.SaveRoleCompanies;
 using ICare247.Application.Features.Admin.Permissions.SaveRolePermissions;
 using ICare247.Application.Interfaces;
 using MediatR;
@@ -55,6 +57,27 @@ public sealed class AdminPermissionController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Cây công ty + cờ đã gán của 1 vai trò (phạm vi dữ liệu — kế thừa động).</summary>
+    /// <remarks>GET /api/v1/admin/roles/{roleId}/companies</remarks>
+    [HttpGet("roles/{roleId:long}/companies")]
+    [RequirePermission("administration.permissions", PermissionOp.Xem)]
+    public async Task<IActionResult> GetRoleCompanies(long roleId, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new GetRoleCompaniesQuery(roleId), ct));
+
+    /// <summary>Ghi lại tập công ty của vai trò (WYSIWYG từ cây checkbox).</summary>
+    /// <remarks>PUT /api/v1/admin/roles/{roleId}/companies</remarks>
+    [HttpPut("roles/{roleId:long}/companies")]
+    [RequirePermission("administration.permissions", PermissionOp.Sua)]
+    public async Task<IActionResult> SaveRoleCompanies(
+        long roleId, [FromBody] SaveRoleCompaniesRequest body, CancellationToken ct = default)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        await _mediator.Send(new SaveRoleCompaniesCommand(roleId, body.CongTyIds ?? [], userId.Value), ct);
+        return NoContent();
+    }
+
     private long? GetUserId()
     {
         var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
@@ -67,4 +90,11 @@ public sealed class SavePermissionsRequest
 {
     /// <summary>Trạng thái cờ từng node chức năng.</summary>
     public List<SavePermItem>? Items { get; set; }
+}
+
+/// <summary>Body PUT lưu phạm vi công ty của vai trò.</summary>
+public sealed class SaveRoleCompaniesRequest
+{
+    /// <summary>Toàn bộ CongTy_Id thuộc vai trò sau khi lưu.</summary>
+    public List<long>? CongTyIds { get; set; }
 }

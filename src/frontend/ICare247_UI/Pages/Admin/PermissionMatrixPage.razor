@@ -4,11 +4,12 @@
 
 @*
     PermissionMatrixPage — màn Phân quyền (bespoke, ADR-023).
-    - Chọn vai trò → DxTreeList cây chức năng (HT_ChucNang) + cột "Tất cả" + 5 cột Xem/Thêm/Sửa/Xóa/In.
-    - Cascade 2 chiều: tick cha → toàn bộ con; bỏ hết con → cha bỏ; 1 phần con → cha "một phần" (indeterminate).
-      Trạng thái ô CHA được SUY từ con (CellState) — KHÔNG lưu cứng (DB chỉ có bit 0/1; reload tự suy lại).
-    - Check nhanh: cột "Tất cả" (cả 5 quyền 1 dòng) · checkbox header (cả 1 cột mọi dòng) · ô master (tất cả).
-    - 1 CTA "Lưu" → PUT /api/v1/admin/roles/{id}/permissions. Duyệt KHÔNG có (thuộc workflow).
+    2 view theo vai trò đang chọn:
+    · "Chức năng" — DxTreeList cây chức năng (HT_ChucNang) + cột "Tất cả" + 5 cột Xem/Thêm/Sửa/Xóa/In.
+      Cascade 2 chiều: tick cha → toàn bộ con; trạng thái CHA suy từ con (indeterminate), KHÔNG lưu cứng.
+    · "Phạm vi công ty" — cây TC_CongTy checkbox WYSIWYG (HT_VaiTro_CongTy): tick cha auto-tick nhánh,
+      bỏ tick tự do, lưu đúng những gì tick. User thuộc vai trò KẾ THỪA ĐỘNG các công ty này.
+    - 1 CTA "Lưu" duy nhất → lưu view đang mở (PUT permissions hoặc PUT companies).
 *@
 
 <PageTitle>@Loc.L("admin.perm.title", "Phân quyền") — ICare247</PageTitle>
@@ -23,6 +24,13 @@
             <option value="@r.Id" selected="@(r.Id == _roleId)">@r.Ten</option>
         }
     </select>
+    <span class="perm-sep">·</span>
+    <div class="perm-viewtabs">
+        <button class="perm-viewtab @(_view == ViewMode.Functions ? "perm-viewtab--active" : null)"
+                @onclick="() => _view = ViewMode.Functions">@Loc.L("admin.perm.view.functions", "Chức năng")</button>
+        <button class="perm-viewtab @(_view == ViewMode.Companies ? "perm-viewtab--active" : null)"
+                @onclick="OpenCompaniesViewAsync">@Loc.L("admin.perm.view.companies", "Phạm vi công ty")</button>
+    </div>
     <span class="perm-spacer"></span>
     @if (_saved)
     {
@@ -33,7 +41,35 @@
     </button>
 </div>
 
-@if (_loading)
+@if (_view == ViewMode.Companies)
+{
+    @if (_companiesLoading)
+    {
+        <div class="perm-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+    }
+    else if (_companyTree.Count == 0)
+    {
+        <div class="perm-empty">@Loc.L("admin.perm.companies.empty", "Chưa có công ty nào (tạo ở màn Công ty).")</div>
+    }
+    else
+    {
+        <div class="perm-cohint">@Loc.L("admin.perm.companies.hint", "User thuộc vai trò này được truy cập các công ty tick bên dưới (kế thừa động — sửa là áp ngay). Tick công ty cha sẽ tick cả nhánh con, bỏ tick từng công ty tùy ý. Công ty tạo sau này không tự có quyền.")</div>
+        <div class="perm-cotree">
+            @foreach (var node in _companyTree)
+            {
+                var c = node.Node;
+                <div class="perm-conode" style="padding-left:@(node.Depth * 20)px">
+                    <label class="perm-cocheck">
+                        <input type="checkbox" checked="@c.DaGan"
+                               @onchange="e => ToggleCompany(c, (bool)e.Value!)" />
+                        <span>@c.Ten <span class="perm-comuted">(@c.Ma)</span></span>
+                    </label>
+                </div>
+            }
+        </div>
+    }
+}
+else if (_loading)
 {
     <div class="perm-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
 }
@@ -100,6 +136,8 @@ else
 }
 
 @code {
+    private enum ViewMode { Functions, Companies }
+
     private List<RoleVm> _roles = new();
     private List<PermNode> _nodes = new();
     private Dictionary<long, List<PermNode>> _childrenByParent = new();
@@ -107,6 +145,13 @@ else
     private bool _loading;
     private bool _saving;
     private bool _saved;
+
+    // ── Phạm vi công ty (HT_VaiTro_CongTy) — WYSIWYG tree ──
+    private ViewMode _view = ViewMode.Functions;
+    private List<RoleCompanyNodeVm> _companies = new();
+    private List<(RoleCompanyNodeVm Node, int Depth)> _companyTree = new();
+    private Dictionary<long, List<RoleCompanyNodeVm>> _companyChildren = new();
+    private bool _companiesLoading;
 
     // 5 cột thao tác (Duyệt → workflow, không có ở đây). Caption qua Loc.L(key, def).
     private List<(string Key, string Def, Func<PermNode, bool> Get, Action<PermNode, bool> Set)> Cols => new()
@@ -135,8 +180,58 @@ else
         {
             _roleId = id;
             _saved = false;
+            _companies = new();
+            _companyTree = new();
             await LoadPermissionsAsync();
+            if (_view == ViewMode.Companies) await LoadCompaniesAsync();
         }
+    }
+
+    /// <summary>Mở view Phạm vi công ty — nạp cây lần đầu cho vai trò đang chọn.</summary>
+    private async Task OpenCompaniesViewAsync()
+    {
+        _view = ViewMode.Companies;
+        if (_companies.Count == 0) await LoadCompaniesAsync();
+    }
+
+    private async Task LoadCompaniesAsync()
+    {
+        if (_roleId is null) return;
+        _companiesLoading = true;
+        _companies = await Api.GetRoleCompaniesAsync(_roleId.Value);
+
+        var ids = _companies.Select(c => c.Id).ToHashSet();
+        _companyChildren = _companies
+            .Where(c => c.ParentId is { } p && ids.Contains(p))
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Ten).ToList());
+
+        _companyTree = new();
+        void Walk(IEnumerable<RoleCompanyNodeVm> nodes, int depth)
+        {
+            foreach (var c in nodes.OrderBy(c => c.Ten))
+            {
+                _companyTree.Add((c, depth));
+                if (_companyChildren.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
+            }
+        }
+        Walk(_companies.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+        _companiesLoading = false;
+    }
+
+    /// <summary>
+    /// Tick/bỏ tick 1 công ty — áp cùng giá trị xuống TOÀN NHÁNH con (WYSIWYG). Cha không đổi khi con đổi.
+    /// </summary>
+    private void ToggleCompany(RoleCompanyNodeVm node, bool value)
+    {
+        _saved = false;
+        void Apply(RoleCompanyNodeVm n)
+        {
+            n.DaGan = value;
+            if (_companyChildren.TryGetValue(n.Id, out var kids))
+                foreach (var k in kids) Apply(k);
+        }
+        Apply(node);
     }
 
     private async Task LoadPermissionsAsync()
@@ -215,13 +310,15 @@ else
         _saved = false;
     }
 
-    /// <summary>Lưu toàn bộ trạng thái cờ (mọi node).</summary>
+    /// <summary>Lưu view đang mở: ma trận chức năng hoặc phạm vi công ty (1 CTA duy nhất).</summary>
     private async Task SaveAsync()
     {
         if (_roleId is null) return;
         _saving = true;
         _saved = false;
-        _saved = await Api.SaveAsync(_roleId.Value, _nodes);
+        _saved = _view == ViewMode.Companies
+            ? await Api.SaveRoleCompaniesAsync(_roleId.Value, _companies.Where(c => c.DaGan).Select(c => c.Id).ToList())
+            : await Api.SaveAsync(_roleId.Value, _nodes);
         _saving = false;
     }
 }

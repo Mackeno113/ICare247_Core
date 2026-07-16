@@ -1,0 +1,501 @@
+@page "/m/administration/users"
+@inject AdminUserApiService Api
+@inject LocalizationService Loc
+
+@*
+    UserManagementPage — màn Người dùng (bespoke, administration.users).
+    Master-detail: lưới user (trái) + panel chi tiết 3 tab (phải):
+      · Thông tin  — CRUD HT_NguoiDung (mật khẩu chỉ khi tạo; đặt lại ở section riêng).
+      · Vai trò    — tick vai trò (HT_NguoiDung_VaiTro); vai trò mang cả quyền chức năng
+                     lẫn phạm vi công ty kế thừa ĐỘNG (HT_VaiTro_CongTy).
+      · Công ty    — cây TC_CongTy checkbox WYSIWYG (tick cha auto-tick nhánh, bỏ tick tự do,
+                     lưu đúng những gì đang tick) + radio công ty mặc định + badge "Theo vai trò".
+    1 CTA primary hiển thị tại 1 thời điểm (nút Lưu của tab đang mở).
+*@
+
+<PageTitle>@Loc.L("admin.users.title", "Người dùng") — ICare247</PageTitle>
+
+<div class="usr-toolbar">
+    <span class="usr-title">@Loc.L("admin.users.title", "Người dùng")</span>
+    <input class="usr-search" placeholder="@Loc.L("admin.users.search", "Tìm mã, tên đăng nhập…")"
+           value="@_search" @oninput="OnSearchInput" />
+    <span class="usr-spacer"></span>
+    <button class="usr-btn-secondary" @onclick="NewUser">
+        + @Loc.L("admin.users.add", "Thêm người dùng")
+    </button>
+</div>
+
+<div class="usr-body">
+    <div class="usr-list">
+        @if (_loading)
+        {
+            <div class="usr-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+        }
+        else
+        {
+            <DxGrid Data="FilteredUsers" KeyFieldName="Id" CssClass="usr-grid"
+                    TextWrapEnabled="true" AllowColumnReorder="true"
+                    ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                    HighlightRowOnHover="true" FocusedRowEnabled="true"
+                    VirtualScrollingEnabled="true"
+                    FocusedRowChanged="OnRowFocused">
+                <Columns>
+                    <DxGridDataColumn Caption="@Loc.L("admin.users.col.ma", "Mã")" FieldName="Ma" Width="110px" />
+                    <DxGridDataColumn Caption="@Loc.L("admin.users.col.username", "Tên đăng nhập")" FieldName="TenDangNhap" />
+                    <DxGridDataColumn Caption="@Loc.L("admin.users.col.roles", "Vai trò")" FieldName="VaiTro" />
+                    <DxGridDataColumn Caption="@Loc.L("admin.users.col.status", "Trạng thái")" FieldName="TrangThai" Width="130px">
+                        <CellDisplayTemplate>
+                            @{ var u = (UserListVm)context.DataItem; }
+                            <span class="usr-badge usr-badge--@u.TrangThai.ToLowerInvariant()">@StatusLabel(u.TrangThai)</span>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                    <DxGridDataColumn Caption="@Loc.L("admin.users.col.admin", "Quản trị")" FieldName="LaQuanTri" Width="86px">
+                        <CellDisplayTemplate>
+                            @{ var u = (UserListVm)context.DataItem; }
+                            <span class="usr-center">@(u.LaQuanTri ? "✓" : "")</span>
+                        </CellDisplayTemplate>
+                    </DxGridDataColumn>
+                </Columns>
+            </DxGrid>
+        }
+    </div>
+
+    <div class="usr-detail">
+        @if (_detail is null)
+        {
+            <div class="usr-empty">@Loc.L("admin.users.pick", "Chọn một người dùng, hoặc bấm Thêm người dùng.")</div>
+        }
+        else
+        {
+            <div class="usr-tabs">
+                <button class="usr-tab @(_tab == Tab.Info ? "usr-tab--active" : null)"
+                        @onclick="() => _tab = Tab.Info">@Loc.L("admin.users.tab.info", "Thông tin")</button>
+                <button class="usr-tab @(_tab == Tab.Roles ? "usr-tab--active" : null)"
+                        disabled="@IsNew" @onclick="() => _tab = Tab.Roles">@Loc.L("admin.users.tab.roles", "Vai trò")</button>
+                <button class="usr-tab @(_tab == Tab.Companies ? "usr-tab--active" : null)"
+                        disabled="@IsNew" @onclick="OpenCompaniesTab">@Loc.L("admin.users.tab.companies", "Công ty truy cập")</button>
+            </div>
+
+            @if (_error is not null)
+            {
+                <div class="usr-error">@_error</div>
+            }
+            @if (_saved)
+            {
+                <div class="usr-saved">@Loc.L("admin.perm.saved", "Đã lưu")</div>
+            }
+
+            @if (_tab == Tab.Info)
+            {
+                <div class="usr-section">
+                    <div class="usr-section__title">@Loc.L("admin.users.section.identity", "Định danh")</div>
+                    <div class="usr-row">
+                        <label class="usr-field usr-field--sm">
+                            <span>@Loc.L("admin.users.f.ma", "Mã")</span>
+                            <input @bind="_detail.Ma" maxlength="50" />
+                        </label>
+                        <label class="usr-field">
+                            <span>@Loc.L("admin.users.f.username", "Tên đăng nhập")</span>
+                            <input @bind="_detail.TenDangNhap" maxlength="100" />
+                        </label>
+                    </div>
+                    @if (IsNew)
+                    {
+                        <div class="usr-row">
+                            <label class="usr-field">
+                                <span>@Loc.L("admin.users.f.password", "Mật khẩu")</span>
+                                <input type="password" @bind="_newPassword" maxlength="100"
+                                       placeholder="@Loc.L("admin.users.f.password.hint", "Tối thiểu 6 ký tự")" />
+                            </label>
+                        </div>
+                    }
+                </div>
+
+                <div class="usr-section">
+                    <div class="usr-section__title">@Loc.L("admin.users.section.state", "Trạng thái & bảo mật")</div>
+                    <div class="usr-row">
+                        <label class="usr-field usr-field--sm">
+                            <span>@Loc.L("admin.users.f.status", "Trạng thái")</span>
+                            <select @bind="_detail.TrangThai">
+                                <option value="HoatDong">@StatusLabel("HoatDong")</option>
+                                <option value="TamKhoa">@StatusLabel("TamKhoa")</option>
+                                <option value="NgungHoatDong">@StatusLabel("NgungHoatDong")</option>
+                            </select>
+                        </label>
+                        <label class="usr-field usr-field--sm">
+                            <span>@Loc.L("admin.users.f.expire", "Hết hạn tài khoản")</span>
+                            <input type="date" @bind="_detail.HetHanTaiKhoan" />
+                        </label>
+                    </div>
+                    <label class="usr-check">
+                        <input type="checkbox" @bind="_detail.LaQuanTri" />
+                        <span>@Loc.L("admin.users.f.isadmin", "Quản trị tenant (bỏ qua kiểm tra quyền)")</span>
+                    </label>
+                    <label class="usr-check">
+                        <input type="checkbox" @bind="_detail.KichHoatMobile" />
+                        <span>@Loc.L("admin.users.f.mobile", "Cho phép đăng nhập app mobile")</span>
+                    </label>
+                    <label class="usr-check">
+                        <input type="checkbox" @bind="_detail.DoiMatKhauLanSau" />
+                        <span>@Loc.L("admin.users.f.forcechange", "Bắt đổi mật khẩu ở lần đăng nhập kế")</span>
+                    </label>
+                </div>
+
+                @if (!IsNew)
+                {
+                    <div class="usr-section">
+                        <div class="usr-section__title">@Loc.L("admin.users.section.password", "Đặt lại mật khẩu")</div>
+                        <div class="usr-row">
+                            <label class="usr-field">
+                                <span>@Loc.L("admin.users.f.newpassword", "Mật khẩu mới")</span>
+                                <input type="password" @bind="_newPassword" maxlength="100"
+                                       placeholder="@Loc.L("admin.users.f.password.hint", "Tối thiểu 6 ký tự")" />
+                            </label>
+                            <button class="usr-btn-secondary usr-field__btn"
+                                    disabled="@(_saving || string.IsNullOrEmpty(_newPassword))"
+                                    @onclick="ResetPasswordAsync">
+                                @Loc.L("admin.users.btn.resetpw", "Đặt lại")
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="usr-footer">
+                    @if (!IsNew)
+                    {
+                        @if (_confirmDelete)
+                        {
+                            <button class="usr-btn-danger-solid" disabled="@_saving" @onclick="DeleteAsync">
+                                @Loc.L("admin.users.btn.confirmdelete", "Xác nhận xóa?")
+                            </button>
+                            <button class="usr-btn-secondary" @onclick="() => _confirmDelete = false">
+                                @Loc.L("common.btn.cancel", "Hủy")
+                            </button>
+                        }
+                        else
+                        {
+                            <button class="usr-btn-danger" disabled="@_saving" @onclick="() => _confirmDelete = true">
+                                @Loc.L("common.btn.delete", "Xóa")
+                            </button>
+                        }
+                    }
+                    <span class="usr-spacer"></span>
+                    <button class="usr-btn-primary" disabled="@_saving" @onclick="SaveInfoAsync">
+                        @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+                    </button>
+                </div>
+            }
+            else if (_tab == Tab.Roles)
+            {
+                <div class="usr-section">
+                    <div class="usr-section__title">@Loc.L("admin.users.section.roles", "Vai trò của người dùng")</div>
+                    <div class="usr-hint">@Loc.L("admin.users.roles.hint", "Vai trò quyết định quyền chức năng và phạm vi công ty kế thừa (cấu hình ở màn Phân quyền).")</div>
+                    @foreach (var r in _detail.VaiTro)
+                    {
+                        <label class="usr-check">
+                            <input type="checkbox" checked="@r.DaGan"
+                                   @onchange="e => r.DaGan = (bool)e.Value!" />
+                            <span>@r.Ten <span class="usr-muted">(@r.Ma)</span></span>
+                        </label>
+                    }
+                </div>
+                <div class="usr-footer">
+                    <span class="usr-spacer"></span>
+                    <button class="usr-btn-primary" disabled="@_saving" @onclick="SaveRolesAsync">
+                        @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+                    </button>
+                </div>
+            }
+            else if (_tab == Tab.Companies)
+            {
+                <div class="usr-section">
+                    <div class="usr-section__title">@Loc.L("admin.users.section.companies", "Công ty được truy cập (gán riêng)")</div>
+                    <div class="usr-hint">@Loc.L("admin.users.companies.hint", "Tick công ty cha sẽ tick cả nhánh con — bỏ tick từng công ty tùy ý trước khi Lưu. Công ty tạo sau này không tự có quyền.")</div>
+                    @if (_companyTree.Count == 0)
+                    {
+                        <div class="usr-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+                    }
+                    else
+                    {
+                        <div class="usr-cotree">
+                            @foreach (var node in _companyTree)
+                            {
+                                var c = node.Node;
+                                <div class="usr-conode" style="padding-left:@(node.Depth * 20)px">
+                                    <label class="usr-check usr-check--inline">
+                                        <input type="checkbox" checked="@c.GanRieng"
+                                               @onchange="e => ToggleCompany(c, (bool)e.Value!)" />
+                                        <span>@c.Ten <span class="usr-muted">(@c.Ma)</span></span>
+                                    </label>
+                                    @if (c.TheoVaiTro)
+                                    {
+                                        <span class="usr-badge usr-badge--role"
+                                              title="@Loc.L("admin.users.companies.byrole.tip", "Kế thừa từ vai trò — sửa ở màn Phân quyền")">
+                                            @Loc.L("admin.users.companies.byrole", "Theo vai trò")
+                                        </span>
+                                    }
+                                    @if (c.GanRieng)
+                                    {
+                                        <label class="usr-default"
+                                               title="@Loc.L("admin.users.companies.default.tip", "Công ty chọn sẵn khi đăng nhập")">
+                                            <input type="radio" name="usr-macdinh"
+                                                   checked="@(_macDinhId == c.Id)"
+                                                   @onchange="() => _macDinhId = c.Id" />
+                                            <span>@Loc.L("admin.users.companies.default", "Mặc định")</span>
+                                        </label>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="usr-footer">
+                    <button class="usr-btn-ghost" disabled="@_saving" @onclick="ClearAllCompanies"
+                            title="@Loc.L("admin.users.companies.clear.tip", "Bỏ toàn bộ gán riêng — quyền theo vai trò vẫn giữ")">
+                        @Loc.L("admin.users.companies.clear", "Bỏ hết gán riêng")
+                    </button>
+                    <span class="usr-spacer"></span>
+                    <button class="usr-btn-primary" disabled="@_saving" @onclick="SaveCompaniesAsync">
+                        @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+                    </button>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private enum Tab { Info, Roles, Companies }
+
+    private List<UserListVm> _users = [];
+    private UserDetailVm? _detail;
+    private List<UserCompanyNodeVm> _companies = [];
+    private List<(UserCompanyNodeVm Node, int Depth)> _companyTree = [];
+    private Dictionary<long, List<UserCompanyNodeVm>> _companyChildren = [];
+    private long? _macDinhId;
+
+    private Tab _tab = Tab.Info;
+    private string _search = "";
+    private string _newPassword = "";
+    private bool _loading;
+    private bool _saving;
+    private bool _saved;
+    private bool _confirmDelete;
+    private string? _error;
+
+    private bool IsNew => _detail is { Id: 0 };
+
+    private IEnumerable<UserListVm> FilteredUsers
+        => string.IsNullOrWhiteSpace(_search)
+            ? _users
+            : _users.Where(u =>
+                u.Ma.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || u.TenDangNhap.Contains(_search, StringComparison.OrdinalIgnoreCase)
+                || (u.VaiTro?.Contains(_search, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    /// <summary>Nhãn trạng thái tài khoản (enum HT → label i18n shell).</summary>
+    private string StatusLabel(string code) => code switch
+    {
+        "HoatDong"      => Loc.L("common.status.active", "Hoạt động"),
+        "TamKhoa"       => Loc.L("common.status.locked", "Tạm khóa"),
+        "NgungHoatDong" => Loc.L("common.status.inactive", "Ngừng hoạt động"),
+        _               => code
+    };
+
+    /// <summary>Khởi tạo: nạp danh sách người dùng.</summary>
+    protected override async Task OnInitializedAsync() => await LoadUsersAsync();
+
+    private async Task LoadUsersAsync()
+    {
+        _loading = true;
+        _users = await Api.GetUsersAsync();
+        _loading = false;
+    }
+
+    private void OnSearchInput(ChangeEventArgs e) => _search = e.Value?.ToString() ?? "";
+
+    /// <summary>Chọn dòng trên lưới → nạp chi tiết user đó. Sự kiện theo sau: panel phải đổ dữ liệu.</summary>
+    private async Task OnRowFocused(GridFocusedRowChangedEventArgs e)
+    {
+        if (e.DataItem is not UserListVm row || row.Id == (_detail?.Id ?? 0)) return;
+        await LoadDetailAsync(row.Id);
+    }
+
+    private async Task LoadDetailAsync(long id)
+    {
+        ResetMessages();
+        _tab = Tab.Info;
+        _newPassword = "";
+        _companies = [];
+        _companyTree = [];
+        _detail = await Api.GetUserAsync(id);
+    }
+
+    /// <summary>Bắt đầu tạo user mới (tab Vai trò/Công ty mở sau khi lưu lần đầu).</summary>
+    private void NewUser()
+    {
+        ResetMessages();
+        _tab = Tab.Info;
+        _newPassword = "";
+        _companies = [];
+        _companyTree = [];
+        _detail = new UserDetailVm();
+    }
+
+    /// <summary>Lưu tab Thông tin: tạo mới (kèm mật khẩu) hoặc cập nhật, rồi reload lưới.</summary>
+    private async Task SaveInfoAsync()
+    {
+        if (_detail is null) return;
+        ResetMessages();
+        _saving = true;
+
+        if (IsNew)
+        {
+            var (id, err) = await Api.CreateAsync(_detail, _newPassword);
+            if (id is not null)
+            {
+                await LoadUsersAsync();
+                await LoadDetailAsync(id.Value);
+                _saved = true;
+            }
+            else _error = err;
+        }
+        else
+        {
+            _error = await Api.UpdateAsync(_detail);
+            if (_error is null)
+            {
+                await LoadUsersAsync();
+                _saved = true;
+            }
+        }
+        _saving = false;
+    }
+
+    /// <summary>Đặt lại mật khẩu cho user đang mở (kèm mở khóa đăng nhập sai phía server).</summary>
+    private async Task ResetPasswordAsync()
+    {
+        if (_detail is null || IsNew) return;
+        ResetMessages();
+        _saving = true;
+        _error = await Api.ResetPasswordAsync(_detail.Id, _newPassword, _detail.DoiMatKhauLanSau);
+        if (_error is null)
+        {
+            _newPassword = "";
+            _saved = true;
+        }
+        _saving = false;
+    }
+
+    /// <summary>Xóa mềm user (đã qua bước xác nhận). Sự kiện theo sau: lưới reload, panel đóng.</summary>
+    private async Task DeleteAsync()
+    {
+        if (_detail is null || IsNew) return;
+        ResetMessages();
+        _saving = true;
+        _error = await Api.DeleteAsync(_detail.Id);
+        if (_error is null)
+        {
+            _detail = null;
+            await LoadUsersAsync();
+        }
+        _saving = false;
+        _confirmDelete = false;
+    }
+
+    /// <summary>Lưu tab Vai trò: gửi toàn bộ vai trò đang tick.</summary>
+    private async Task SaveRolesAsync()
+    {
+        if (_detail is null || IsNew) return;
+        ResetMessages();
+        _saving = true;
+        var ids = _detail.VaiTro.Where(r => r.DaGan).Select(r => r.Id).ToList();
+        _error = await Api.SaveRolesAsync(_detail.Id, ids);
+        if (_error is null)
+        {
+            await LoadUsersAsync();
+            // Vai trò đổi → quyền công ty kế thừa đổi theo → nạp lại cây nếu đã mở.
+            if (_companies.Count > 0) await LoadCompaniesAsync();
+            _saved = true;
+        }
+        _saving = false;
+    }
+
+    /// <summary>Mở tab Công ty truy cập — nạp cây lần đầu.</summary>
+    private async Task OpenCompaniesTab()
+    {
+        _tab = Tab.Companies;
+        ResetMessages();
+        if (_companies.Count == 0) await LoadCompaniesAsync();
+    }
+
+    private async Task LoadCompaniesAsync()
+    {
+        if (_detail is null || IsNew) return;
+        _companies = await Api.GetCompaniesAsync(_detail.Id);
+        _macDinhId = _companies.FirstOrDefault(c => c.LaMacDinh)?.Id;
+
+        var ids = _companies.Select(c => c.Id).ToHashSet();
+        _companyChildren = _companies
+            .Where(c => c.ParentId is { } p && ids.Contains(p))
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Ten).ToList());
+
+        _companyTree = [];
+        void Walk(IEnumerable<UserCompanyNodeVm> nodes, int depth)
+        {
+            foreach (var c in nodes.OrderBy(c => c.Ten))
+            {
+                _companyTree.Add((c, depth));
+                if (_companyChildren.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
+            }
+        }
+        Walk(_companies.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+    }
+
+    /// <summary>
+    /// Tick/bỏ tick 1 node — áp cùng giá trị xuống TOÀN NHÁNH con (WYSIWYG: nhìn thấy ngay,
+    /// bỏ tick từng con tùy ý trước khi Lưu). Cha không bị ảnh hưởng khi con đổi.
+    /// </summary>
+    private void ToggleCompany(UserCompanyNodeVm node, bool value)
+    {
+        _saved = false;
+        void Apply(UserCompanyNodeVm n)
+        {
+            n.GanRieng = value;
+            if (_companyChildren.TryGetValue(n.Id, out var kids))
+                foreach (var k in kids) Apply(k);
+        }
+        Apply(node);
+        if (!value && _macDinhId is { } d && _companies.FirstOrDefault(c => c.Id == d)?.GanRieng != true)
+            _macDinhId = null; // công ty mặc định vừa bị bỏ tick → hủy chọn mặc định
+    }
+
+    /// <summary>Bỏ toàn bộ gán riêng (quyền kế thừa theo vai trò không bị đụng).</summary>
+    private void ClearAllCompanies()
+    {
+        _saved = false;
+        foreach (var c in _companies) c.GanRieng = false;
+        _macDinhId = null;
+    }
+
+    /// <summary>Lưu tab Công ty: gửi đúng tập node đang tick + công ty mặc định.</summary>
+    private async Task SaveCompaniesAsync()
+    {
+        if (_detail is null || IsNew) return;
+        ResetMessages();
+        _saving = true;
+        var ids = _companies.Where(c => c.GanRieng).Select(c => c.Id).ToList();
+        var macDinh = _macDinhId is { } d && ids.Contains(d) ? _macDinhId : null;
+        _error = await Api.SaveCompaniesAsync(_detail.Id, ids, macDinh);
+        if (_error is null) _saved = true;
+        _saving = false;
+    }
+
+    private void ResetMessages()
+    {
+        _error = null;
+        _saved = false;
+        _confirmDelete = false;
+    }
+}

@@ -1,0 +1,91 @@
+/* CompanySwitcher — dropdown cây công ty ở header. Token màu/size dùng chung từ theme (không hex). */
+
+.cs-root {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Nút toggle kế thừa nền/viền từ .app-company__select (MainLayout ::deep) — chỉ thêm bố cục. */
+.cs-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-width: 160px;
+}
+
+.cs-toggle__text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cs-toggle__caret {
+    color: var(--color-text-secondary);
+    font-size: 10px;
+}
+
+/* Lớp nền trong suốt bắt click ra ngoài để đóng popup. */
+.cs-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+}
+
+.cs-popup {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 100;
+    min-width: 280px;
+    max-width: 380px;
+    max-height: 60vh;
+    overflow: auto;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    padding: var(--space-1, 4px);
+}
+
+.cs-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    background: transparent;
+    padding: 6px 12px;
+    font-size: var(--fs-sm);
+    color: var(--color-text);
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cs-item:hover {
+    background: var(--gray-100, #f3f4f6);
+}
+
+.cs-item--active {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: var(--fw-medium);
+}
+
+/* Node tổ tiên không có quyền — giữ cấu trúc cây, không tương tác. */
+.cs-item--disabled {
+    color: var(--color-text-secondary);
+    cursor: default;
+    opacity: 0.65;
+}
+
+.cs-item--disabled:hover {
+    background: transparent;
+}
+
+.cs-item__branch {
+    color: var(--color-text-secondary);
+    margin-right: 4px;
+}

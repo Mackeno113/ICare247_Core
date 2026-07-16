@@ -65,4 +65,28 @@ public sealed class AdminPermissionApiService
         var resp = await _http.PutAsJsonAsync($"/api/v1/admin/roles/{roleId}/permissions", body, JsonOpts, ct);
         return resp.IsSuccessStatusCode;
     }
+
+    /// <summary>Cây công ty + cờ đã gán của vai trò (phạm vi dữ liệu); lỗi → rỗng.</summary>
+    public async Task<List<RoleCompanyNodeVm>> GetRoleCompaniesAsync(long roleId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<RoleCompanyNodeVm>>(
+                $"/api/v1/admin/roles/{roleId}/companies", JsonOpts, ct) ?? new();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không lấy được phạm vi công ty của vai trò {RoleId}.", roleId);
+            return new();
+        }
+    }
+
+    /// <summary>Lưu tập công ty của vai trò (kế thừa động — user thuộc vai trò áp ngay).</summary>
+    public async Task<bool> SaveRoleCompaniesAsync(
+        long roleId, IReadOnlyList<long> congTyIds, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/v1/admin/roles/{roleId}/companies",
+            new { congTyIds }, JsonOpts, ct);
+        return resp.IsSuccessStatusCode;
+    }
 }

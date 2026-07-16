@@ -6,8 +6,9 @@
 
 namespace ICare247.UI.Shared.State;
 
-/// <summary>Một công ty trong company-switcher (Id = CongTy_Id bigint, gửi qua header X-Active-CongTy).</summary>
-public sealed record CompanyOption(long Id, string? Code, string Name, bool IsDefault);
+/// <summary>Một node cây công ty trong company-switcher (Id = CongTy_Id bigint, gửi qua header X-Active-CongTy).
+/// ParentId dựng cây; CanAccess=false = node tổ tiên giữ cấu trúc, hiển thị disabled không chọn được.</summary>
+public sealed record CompanyOption(long Id, string? Code, string Name, long? ParentId, bool CanAccess, bool IsDefault);
 
 /// <summary>
 /// Giữ trạng thái dùng chung giữa các module trong 1 phiên Blazor WASM (Scoped — 1 instance/phiên).

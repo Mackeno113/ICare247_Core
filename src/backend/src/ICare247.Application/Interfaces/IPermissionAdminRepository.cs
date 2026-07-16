@@ -18,4 +18,10 @@ public interface IPermissionAdminRepository
 
     /// <summary>Lưu (upsert) quyền của vai trò theo danh sách node; ghi CreatedBy/UpdatedBy = userId.</summary>
     Task SaveRolePermissionsAsync(long roleId, IReadOnlyList<SavePermItem> items, long userId, CancellationToken ct = default);
+
+    /// <summary>Toàn bộ cây công ty + cờ đã gán vào vai trò (HT_VaiTro_CongTy — phạm vi dữ liệu).</summary>
+    Task<IReadOnlyList<RoleCompanyNodeDto>> GetRoleCompaniesAsync(long roleId, CancellationToken ct = default);
+
+    /// <summary>Ghi lại tập công ty của vai trò: thêm thiếu, xóa mềm thừa (1 transaction, WYSIWYG).</summary>
+    Task SaveRoleCompaniesAsync(long roleId, IReadOnlyList<long> congTyIds, long userId, CancellationToken ct = default);
 }

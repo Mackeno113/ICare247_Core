@@ -1,0 +1,308 @@
+/* UserManagementPage — màn Người dùng. Master-detail, toolbar mỏng, 1 primary/tab, surface phẳng. */
+
+.usr-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-3);
+}
+
+.usr-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-semibold);
+}
+
+.usr-search {
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-size: var(--fs-sm);
+    padding: 0 var(--space-2);
+    min-width: 240px;
+}
+
+.usr-spacer {
+    flex: 1 1 auto;
+}
+
+/* ── Master-detail 2 cột ─────────────────────────────────────────────────── */
+.usr-body {
+    display: flex;
+    gap: var(--space-4);
+    align-items: flex-start;
+}
+
+.usr-list {
+    flex: 1 1 55%;
+    min-width: 0;
+}
+
+.usr-detail {
+    flex: 1 1 45%;
+    min-width: 360px;
+    border-left: 1px solid var(--color-border);
+    padding-left: var(--space-4);
+}
+
+@media (max-width: 1100px) {
+    .usr-body { flex-direction: column; }
+    .usr-detail { border-left: 0; padding-left: 0; min-width: 0; width: 100%; }
+}
+
+.usr-empty {
+    padding: var(--space-8) var(--space-4);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm);
+}
+
+/* ── Tabs ────────────────────────────────────────────────────────────────── */
+.usr-tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-4);
+}
+
+.usr-tab {
+    border: 0;
+    background: transparent;
+    padding: 8px 12px;
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-text-secondary);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+}
+
+.usr-tab--active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+.usr-tab:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+/* ── Form: section 14/600, label top-aligned, field co theo data ─────────── */
+.usr-section {
+    margin-bottom: var(--space-6, 24px);
+}
+
+.usr-section__title {
+    font-size: 14px;
+    font-weight: var(--fw-semibold);
+    margin-bottom: var(--space-3);
+}
+
+.usr-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: flex-end;
+    margin-bottom: var(--space-3);
+    flex-wrap: wrap;
+}
+
+.usr-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 180px;
+}
+
+.usr-field--sm {
+    flex: 0 1 200px;
+    min-width: 140px;
+}
+
+.usr-field > span {
+    font-size: 13px;
+    font-weight: var(--fw-medium);
+    color: var(--color-text-secondary);
+}
+
+.usr-field > input,
+.usr-field > select {
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm, 4px);
+    background: var(--color-card);
+    color: var(--color-text);
+    font-size: var(--fs-sm);
+    padding: 0 var(--space-2);
+}
+
+.usr-field__btn {
+    flex: 0 0 auto;
+}
+
+.usr-check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--fs-sm);
+    padding: 4px 0;
+    cursor: pointer;
+}
+
+.usr-check--inline {
+    display: inline-flex;
+    padding: 0;
+}
+
+.usr-muted {
+    color: var(--color-text-muted);
+}
+
+.usr-hint {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: var(--space-3);
+}
+
+/* ── Cây công ty truy cập ────────────────────────────────────────────────── */
+.usr-cotree {
+    max-height: calc(100vh - 420px);
+    min-height: 160px;
+    overflow: auto;
+}
+
+.usr-conode {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--gray-50, #f8fafc);
+}
+
+.usr-default {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+/* ── Badge trạng thái (text-màu, không chấm to) ──────────────────────────── */
+.usr-badge {
+    font-size: 12px;
+    font-weight: var(--fw-medium);
+    padding: 1px 8px;
+    border-radius: var(--radius-sm, 4px);
+}
+
+.usr-badge--hoatdong { color: var(--color-success); background: var(--color-success-soft, transparent); }
+.usr-badge--tamkhoa { color: var(--color-warning, #b45309); }
+.usr-badge--ngunghoatdong { color: var(--color-text-muted); }
+.usr-badge--role {
+    color: var(--color-primary);
+    background: var(--color-primary-soft);
+    white-space: nowrap;
+}
+
+.usr-center {
+    display: block;
+    text-align: center;
+}
+
+/* ── Thông báo + footer ──────────────────────────────────────────────────── */
+.usr-error {
+    font-size: var(--fs-sm);
+    color: var(--color-danger, #b91c1c);
+    padding: var(--space-2) 0;
+}
+
+.usr-saved {
+    font-size: var(--fs-sm);
+    color: var(--color-success);
+    padding: var(--space-2) 0;
+}
+
+.usr-footer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+/* ── Nút (theo thang: 1 primary, secondary viền, ghost chữ, danger outline) ─ */
+.usr-btn-primary {
+    height: 32px;
+    padding: 0 var(--space-4);
+    border: none;
+    background: var(--color-primary);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}
+
+.usr-btn-primary:hover:not(:disabled) {
+    background: var(--color-primary-hover);
+}
+
+.usr-btn-primary:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+.usr-btn-secondary {
+    height: 32px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-card);
+    color: var(--color-text);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.usr-btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-border-strong);
+}
+
+.usr-btn-ghost {
+    height: 32px;
+    padding: 0 var(--space-2);
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.usr-btn-ghost:hover:not(:disabled) {
+    color: var(--color-text);
+}
+
+.usr-btn-danger {
+    height: 32px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-danger, #b91c1c);
+    background: transparent;
+    color: var(--color-danger, #b91c1c);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.usr-btn-danger-solid {
+    height: 32px;
+    padding: 0 var(--space-3);
+    border: none;
+    background: var(--color-danger, #b91c1c);
+    color: var(--color-text-inverse);
+    border-radius: var(--radius-sm, 4px);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    cursor: pointer;
+}

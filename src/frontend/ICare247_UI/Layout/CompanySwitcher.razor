@@ -7,40 +7,102 @@
 @inject NavigationManager Nav
 
 @*
-    CompanySwitcher — chọn công ty đang làm việc (VFILTER-ACTIVE, ADR-030).
+    CompanySwitcher — chọn công ty đang làm việc, hiển thị DẠNG CÂY (VFILTER-ACTIVE, ADR-030).
     Giá trị → AppState.ActiveCompanyId → header X-Active-CongTy (ActiveScopeHandler) → token @CongTyID_Active.
-    "Tất cả công ty" (rỗng) = không thu hẹp (server dùng default 0). Đổi công ty → tải lại trang để lưới/bộ lọc áp công ty mới.
-    Danh sách công ty đổ từ /me/companies; ranh giới bảo mật thật do @NguoiDungID enforce phía server.
+    Chọn node nào scope ĐÚNG node đó (không gộp nhánh con); "Tất cả công ty" (null) = không thu hẹp.
+    Node CanAccess=false = tổ tiên trả kèm để cây không đứt nhánh → hiển thị mờ, không chọn được.
+    Danh sách đổ từ /me/companies (gán riêng ∪ theo vai trò); ranh giới bảo mật thật enforce phía server.
 *@
 
-<select class="app-company__select" @onchange="OnChange"
-        aria-label="@Loc.L("common.company.choose", "Chọn công ty")">
-    <option value="" selected="@(AppState.ActiveCompanyId is null)">@Loc.L("common.company.all", "Tất cả công ty")</option>
-    @foreach (var c in AppState.Companies)
+<div class="cs-root">
+    <button type="button" class="app-company__select cs-toggle" @onclick="Toggle"
+            aria-haspopup="tree" aria-expanded="@_open"
+            aria-label="@Loc.L("common.company.choose", "Chọn công ty")">
+        <span class="cs-toggle__text">@CurrentName</span>
+        <span class="cs-toggle__caret" aria-hidden="true">▾</span>
+    </button>
+
+    @if (_open)
     {
-        <option value="@c.Id" selected="@(AppState.ActiveCompanyId == c.Id)">@c.Name</option>
+        <div class="cs-backdrop" @onclick="Close"></div>
+        <div class="cs-popup" role="tree">
+            <button type="button"
+                    class="cs-item @(AppState.ActiveCompanyId is null ? "cs-item--active" : null)"
+                    @onclick="() => SelectAsync(null)">
+                @Loc.L("common.company.all", "Tất cả công ty")
+            </button>
+            @foreach (var node in _flatTree)
+            {
+                @if (node.Company.CanAccess)
+                {
+                    <button type="button"
+                            class="cs-item @(AppState.ActiveCompanyId == node.Company.Id ? "cs-item--active" : null)"
+                            style="padding-left:@(IndentPx(node.Depth))px"
+                            title="@node.Company.Name"
+                            @onclick="() => SelectAsync(node.Company.Id)">
+                        @if (node.Depth > 0)
+                        {
+                            <span class="cs-item__branch" aria-hidden="true">└</span>
+                        }
+                        @node.Company.Name
+                    </button>
+                }
+                else
+                {
+                    <div class="cs-item cs-item--disabled" style="padding-left:@(IndentPx(node.Depth))px"
+                         title="@node.Company.Name">
+                        @if (node.Depth > 0)
+                        {
+                            <span class="cs-item__branch" aria-hidden="true">└</span>
+                        }
+                        @node.Company.Name
+                    </div>
+                }
+            }
+        </div>
     }
-</select>
+</div>
 
 @code {
     private const string StoreKey = "ic247.activeCongTy";
 
+    private bool _open;
+    private List<(CompanyOption Company, int Depth)> _flatTree = [];
+
+    /// <summary>Tên hiển thị trên nút: công ty đang chọn, hoặc "Tất cả công ty".</summary>
+    private string CurrentName
+        => AppState.Companies.FirstOrDefault(c => c.Id == AppState.ActiveCompanyId)?.Name
+           ?? Loc.L("common.company.all", "Tất cả công ty");
+
+    /// <summary>Thụt lề node theo độ sâu trong cây (px).</summary>
+    private static int IndentPx(int depth) => 12 + depth * 16;
+
     /// <summary>
-    /// Nạp danh sách công ty (/me/companies) vào AppState. Nếu chưa chọn công ty nào (id null) mà
-    /// localStorage trống + có công ty mặc định (LaMacDinh) → chọn sẵn. Sự kiện theo sau: render switcher.
+    /// Nạp cây công ty (/me/companies) vào AppState + dựng danh sách phẳng có độ sâu để render.
+    /// Nếu chưa chọn công ty nào mà localStorage trống + có công ty mặc định (LaMacDinh) → chọn sẵn.
+    /// Id đã lưu không còn quyền truy cập → xóa lựa chọn (server vẫn validate lại — ADR-030).
+    /// Sự kiện theo sau: render switcher dạng cây.
     /// </summary>
     protected override async Task OnInitializedAsync()
     {
         var companies = await Api.GetMyCompaniesAsync();
         AppState.SetCompanies(companies);
+        _flatTree = BuildFlatTree(companies);
 
-        // MainLayout đã nạp sớm id đã lưu vào AppState. Chỉ tự chọn mặc định khi thực sự chưa có lựa chọn.
+        // MainLayout đã nạp sớm id đã lưu vào AppState. Chỉ xử lý khi API trả được dữ liệu.
+        if (companies.Count > 0 && AppState.ActiveCompanyId is not null
+            && !companies.Any(c => c.Id == AppState.ActiveCompanyId && c.CanAccess))
+        {
+            AppState.SetActiveCompany(null);
+            await JS.InvokeVoidAsync("localStorage.removeItem", StoreKey);
+        }
+
         if (AppState.ActiveCompanyId is null)
         {
             var saved = await JS.InvokeAsync<string?>("localStorage.getItem", StoreKey);
             if (string.IsNullOrEmpty(saved))
             {
-                var def = companies.FirstOrDefault(c => c.IsDefault);
+                var def = companies.FirstOrDefault(c => c.IsDefault && c.CanAccess);
                 if (def is not null)
                 {
                     AppState.SetActiveCompany(def.Id);
@@ -50,10 +112,40 @@
         }
     }
 
-    /// <summary>Đổi công ty: lưu localStorage + AppState, rồi tải lại trang để mọi lưới/bộ lọc áp công ty mới.</summary>
-    private async Task OnChange(ChangeEventArgs e)
+    /// <summary>
+    /// Dựng danh sách phẳng theo DFS từ list phẳng (ParentId): con xếp ngay dưới cha kèm độ sâu.
+    /// Node có ParentId không nằm trong list (mồ côi) → coi như gốc để không mất dữ liệu.
+    /// </summary>
+    private static List<(CompanyOption, int)> BuildFlatTree(IReadOnlyList<CompanyOption> companies)
     {
-        long? id = long.TryParse(e.Value?.ToString(), out var v) ? v : null;
+        // Key Dictionary không nhận null → chỉ gom node CÓ cha trong list; gốc duyệt riêng bên dưới.
+        var ids = companies.Select(c => c.Id).ToHashSet();
+        var byParent = companies
+            .Where(c => c.ParentId is { } p && ids.Contains(p))
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Name).ToList());
+
+        var result = new List<(CompanyOption, int)>();
+        void Walk(IEnumerable<CompanyOption> nodes, int depth)
+        {
+            foreach (var c in nodes.OrderBy(c => c.Name))
+            {
+                result.Add((c, depth));
+                if (byParent.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
+            }
+        }
+        Walk(companies.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+        return result;
+    }
+
+    private void Toggle() => _open = !_open;
+
+    private void Close() => _open = false;
+
+    /// <summary>Chọn công ty: lưu localStorage + AppState, rồi tải lại trang để mọi lưới/bộ lọc áp công ty mới.</summary>
+    private async Task SelectAsync(long? id)
+    {
+        _open = false;
         if (id == AppState.ActiveCompanyId) return;
 
         if (id is null) await JS.InvokeVoidAsync("localStorage.removeItem", StoreKey);

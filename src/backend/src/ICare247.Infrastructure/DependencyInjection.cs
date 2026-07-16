@@ -148,6 +148,7 @@ public static class DependencyInjection
         // Probe backend cấu hình lúc khởi động: Provider != Db mà không đọc/ghi được → dừng app (fail-fast).
         services.AddHostedService<FileStorageStartupCheck>();
         services.AddScoped<IPermissionAdminRepository, PermissionAdminRepository>();
+        services.AddScoped<IUserAdminRepository, UserAdminRepository>();
         services.AddScoped<IMenuAdminRepository, MenuAdminRepository>();
         services.AddScoped<IPermissionService, Services.PermissionService>();
         services.AddSingleton<INavigationCache, Services.NavigationCache>();

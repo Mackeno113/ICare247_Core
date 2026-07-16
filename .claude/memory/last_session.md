@@ -1,6 +1,6 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-15 (session 86 — hướng dẫn sử dụng khi trỏ chuột màn Cấu hình Field WPF). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-16 (session 87 — switcher cây + màn Người dùng + phân quyền cây công ty). Lịch sử → [session_history.md](session_history.md).
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 > **Task tiếp theo gợi ý:** FDOC-1 (migration Ui_Form_Detail + Formula_Json + ConfigStudio tab Lưới chi tiết — chờ user ra lệnh code) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
 >
@@ -8,6 +8,20 @@
 > mặc định **EntryPanel** — khu nhập trên + lưới dưới kiểu legacy (Lưu dòng → đẩy vào lưới; click dòng
 > → nạp lên sửa; badge "Đang sửa dòng #n" + nút Thêm mới để thoát) · aggregate lên master ngay FDOC-3 ·
 > vệ tinh 1-1 = section field, payload `satellites` riêng · có ca 100+ dòng → virtual scroll từ FDOC-2.
+
+## Session 87 (2026-07-16) — Switcher công ty dạng cây + màn Người dùng + phân quyền cây công ty
+
+**User đặt bài:** màn Phòng ban cần lọc công ty theo quyền → chốt qua hỏi-đáp nhiều vòng:
+switcher tree (chọn node = scope đúng node, KHÔNG gộp nhánh, giữ @CongTyID_Active đơn) · màn Người
+dùng bespoke · cây checkbox WYSIWYG (tick cha auto-tick nhánh trên UI, bỏ tick tự do, lưu đúng tập
+tick, bỏ tick con KHÔNG rớt cha) · **"nhóm quyền" = HT_VaiTro mở rộng**, kế thừa ĐỘNG cả 2 trục
+(user chốt Động sau khi thấy PermissionService join động — bỏ phương án copy).
+
+**Đã làm (CHƯA commit):** db/082 HT_VaiTro_CongTy · BE MeCompanyRepository union + ParentId/CanAccess
+· AdminUserController CRUD/roles/companies (PBKDF2, chặn tự xóa) · roles/{id}/companies · FE
+CompanySwitcher cây + UserManagementPage 3 tab + PermissionMatrixPage view "Phạm vi công ty".
+Backend compile 0 lỗi (fail copy = file-lock, server chạy). **UI CHƯA compile verify** — cả API lẫn
+blazor-devserver đang chạy, cấm build đè; chờ user chốt cách restart/verify. Migration db/082 CHƯA chạy.
 
 ## Session 86 (2026-07-15) — Hướng dẫn sử dụng khi trỏ chuột — màn Cấu hình Field (WPF)
 
