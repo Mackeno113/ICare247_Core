@@ -17,11 +17,14 @@ dùng bespoke · cây checkbox WYSIWYG (tick cha auto-tick nhánh trên UI, bỏ
 tick, bỏ tick con KHÔNG rớt cha) · **"nhóm quyền" = HT_VaiTro mở rộng**, kế thừa ĐỘNG cả 2 trục
 (user chốt Động sau khi thấy PermissionService join động — bỏ phương án copy).
 
-**Đã làm (CHƯA commit):** db/082 HT_VaiTro_CongTy · BE MeCompanyRepository union + ParentId/CanAccess
+**Đã làm (commit `e6bc0b8`):** db/082 HT_VaiTro_CongTy · BE MeCompanyRepository union + ParentId/CanAccess
 · AdminUserController CRUD/roles/companies (PBKDF2, chặn tự xóa) · roles/{id}/companies · FE
 CompanySwitcher cây + UserManagementPage 3 tab + PermissionMatrixPage view "Phạm vi công ty".
-Backend compile 0 lỗi (fail copy = file-lock, server chạy). **UI CHƯA compile verify** — cả API lẫn
-blazor-devserver đang chạy, cấm build đè; chờ user chốt cách restart/verify. Migration db/082 CHƯA chạy.
+**Verify trên app thật** (user restart server): login admin → màn Người dùng OK, lưu gán công ty 204;
+bắt + fix bug Dictionary key null khi dựng cây switcher. **CÒN LẠI:** user chạy db/082 bằng SSMS
+(chưa chạy → Lưu ở "Phạm vi công ty" lỗi, đọc OK nhờ guard) · xem mắt switcher cây sau fix ·
+smoke test tạo user thường + login kiểm quyền. Lưu ý: verify đã gán admin 2 công ty + mặc định
+"Cầu Nối" vào HT_NguoiDung_CongTy thật — muốn bỏ thì "Bỏ hết gán riêng" → Lưu.
 
 ## Session 86 (2026-07-15) — Hướng dẫn sử dụng khi trỏ chuột — màn Cấu hình Field (WPF)
 

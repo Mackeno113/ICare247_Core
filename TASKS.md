@@ -3,7 +3,7 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
-## 🔴 Đang làm — Switcher công ty dạng cây + màn Người dùng + phân quyền cây công ty (session 87 — 2026-07-16, CODE XONG, CHƯA verify UI/CHƯA commit)
+## ✅ Đã xong — Switcher công ty dạng cây + màn Người dùng + phân quyền cây công ty (session 87 — 2026-07-16, commit `e6bc0b8`)
 
 **Mô hình đã chốt với user:** Vai trò (HT_VaiTro) = khái niệm nhóm duy nhất, gánh 2 trục kế thừa ĐỘNG:
 chức năng (HT_VaiTro_Quyen, có sẵn) + phạm vi công ty (HT_VaiTro_CongTy, MỚI db/082). Quyền công ty
@@ -18,9 +18,11 @@ bỏ tick tự do, lưu đúng tập tick; bỏ tick con KHÔNG ảnh hưởng c
 - [x] FE: CompanySwitcher.razor dropdown cây (indent, node CanAccess=false mờ, giữ localStorage/reload)
 - [x] FE: UserManagementPage.razor (/m/administration/users) master-detail 3 tab: Thông tin / Vai trò / Công ty truy cập (cây WYSIWYG + radio mặc định + badge "Theo vai trò")
 - [x] FE: PermissionMatrixPage thêm view "Phạm vi công ty" (cây WYSIWYG, 1 CTA Lưu chung)
-- [ ] Chạy migration db/082 vào Data DB tenant
-- [ ] Restart API + UI server rồi verify end-to-end (build đè khi server chạy bị cấm — session này chỉ verify compile backend 0 lỗi; UI CHƯA compile được vì cả 2 server đang chạy)
-- [ ] Commit sau khi verify
+- [x] Verify trên app thật (user restart server): login admin → màn Người dùng render + lưu gán công ty 204 "Đã lưu"; view Phạm vi công ty render; fix bug Dictionary key null khi dựng cây switcher (bắt được lúc verify)
+- [x] Commit `e6bc0b8` (bỏ 3 file i18n theo quy tắc)
+- [ ] **User chạy db/082 vào Data DB bằng SSMS** (chưa chạy thì nút Lưu ở view "Phạm vi công ty" lỗi; đọc vẫn OK nhờ OBJECT_ID guard)
+- [ ] Verify mắt thường switcher cây trên header sau fix (user tự xem — browser tool bị từ chối)
+- [ ] Test tạo user mới + đăng nhập bằng user thường (quyền hạn chế) — smoke test phân quyền end-to-end
 
 ## ✅ Đã xong — 3 bug runtime lộ khi chạy thật màn danh mục (session 81 — 2026-07-10, commit `b53329c` + `a302c37`)
 
