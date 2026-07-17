@@ -113,22 +113,7 @@
     overflow: auto;
 }
 
-.perm-conode {
-    padding: 4px 0;
-    border-bottom: 1px solid var(--gray-50, #f8fafc);
-}
-
-.perm-cocheck {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--fs-sm);
-    cursor: pointer;
-}
-
-.perm-comuted {
-    color: var(--color-text-muted);
-}
+/* Node/checkbox cây do IcCompanyPicker (Shared) tự style — ở đây chỉ giữ khung cuộn .perm-cotree. */
 
 /* ── Ma trận quyền (DxTreeList) ──────────────────────────────────────────── */
 /* Ô checkbox: căn giữa, click target rộng cả ô */

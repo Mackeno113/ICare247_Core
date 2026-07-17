@@ -211,41 +211,35 @@
                 <div class="usr-section">
                     <div class="usr-section__title">@Loc.L("admin.users.section.companies", "Công ty được truy cập (gán riêng)")</div>
                     <div class="usr-hint">@Loc.L("admin.users.companies.hint", "Tick công ty cha sẽ tick cả nhánh con — bỏ tick từng công ty tùy ý trước khi Lưu. Công ty tạo sau này không tự có quyền.")</div>
-                    @if (_companyTree.Count == 0)
+                    @if (_companyItems.Count == 0)
                     {
                         <div class="usr-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
                     }
                     else
                     {
                         <div class="usr-cotree">
-                            @foreach (var node in _companyTree)
-                            {
-                                var c = node.Node;
-                                <div class="usr-conode" style="padding-left:@(node.Depth * 20)px">
-                                    <label class="usr-check usr-check--inline">
-                                        <input type="checkbox" checked="@c.GanRieng"
-                                               @onchange="e => ToggleCompany(c, (bool)e.Value!)" />
-                                        <span>@c.Ten <span class="usr-muted">(@c.Ma)</span></span>
-                                    </label>
-                                    @if (c.TheoVaiTro)
+                            <IcCompanyPicker Mode="IcPickerMode.MultiCheck" Items="_companyItems"
+                                             SelectedIds="_selectedCompanyIds" SelectedIdsChanged="OnCompaniesChanged">
+                                <NodeExtra Context="node">
+                                    @if (_companyById.TryGetValue(node.Id, out var vm) && vm.TheoVaiTro)
                                     {
                                         <span class="usr-badge usr-badge--role"
                                               title="@Loc.L("admin.users.companies.byrole.tip", "Kế thừa từ vai trò — sửa ở màn Phân quyền")">
                                             @Loc.L("admin.users.companies.byrole", "Theo vai trò")
                                         </span>
                                     }
-                                    @if (c.GanRieng)
+                                    @if (_selectedCompanyIds.Contains(node.Id))
                                     {
                                         <label class="usr-default"
                                                title="@Loc.L("admin.users.companies.default.tip", "Công ty chọn sẵn khi đăng nhập")">
                                             <input type="radio" name="usr-macdinh"
-                                                   checked="@(_macDinhId == c.Id)"
-                                                   @onchange="() => _macDinhId = c.Id" />
+                                                   checked="@(_macDinhId == node.Id)"
+                                                   @onchange="() => _macDinhId = node.Id" />
                                             <span>@Loc.L("admin.users.companies.default", "Mặc định")</span>
                                         </label>
                                     }
-                                </div>
-                            }
+                                </NodeExtra>
+                            </IcCompanyPicker>
                         </div>
                     }
                 </div>
@@ -269,9 +263,9 @@
 
     private List<UserListVm> _users = [];
     private UserDetailVm? _detail;
-    private List<UserCompanyNodeVm> _companies = [];
-    private List<(UserCompanyNodeVm Node, int Depth)> _companyTree = [];
-    private Dictionary<long, List<UserCompanyNodeVm>> _companyChildren = [];
+    private List<IcPickerItem> _companyItems = [];
+    private Dictionary<long, UserCompanyNodeVm> _companyById = [];
+    private HashSet<long> _selectedCompanyIds = [];
     private long? _macDinhId;
 
     private Tab _tab = Tab.Info;
@@ -326,8 +320,7 @@
         ResetMessages();
         _tab = Tab.Info;
         _newPassword = "";
-        _companies = [];
-        _companyTree = [];
+        _companyItems = [];
         _detail = await Api.GetUserAsync(id);
     }
 
@@ -337,8 +330,7 @@
         ResetMessages();
         _tab = Tab.Info;
         _newPassword = "";
-        _companies = [];
-        _companyTree = [];
+        _companyItems = [];
         _detail = new UserDetailVm();
     }
 
@@ -415,7 +407,7 @@
         {
             await LoadUsersAsync();
             // Vai trò đổi → quyền công ty kế thừa đổi theo → nạp lại cây nếu đã mở.
-            if (_companies.Count > 0) await LoadCompaniesAsync();
+            if (_companyItems.Count > 0) await LoadCompaniesAsync();
             _saved = true;
         }
         _saving = false;
@@ -426,48 +418,26 @@
     {
         _tab = Tab.Companies;
         ResetMessages();
-        if (_companies.Count == 0) await LoadCompaniesAsync();
+        if (_companyItems.Count == 0) await LoadCompaniesAsync();
     }
 
+    /// <summary>Nạp cây công ty của user → map sang node picker (cây do IcCompanyPicker dựng).</summary>
     private async Task LoadCompaniesAsync()
     {
         if (_detail is null || IsNew) return;
-        _companies = await Api.GetCompaniesAsync(_detail.Id);
-        _macDinhId = _companies.FirstOrDefault(c => c.LaMacDinh)?.Id;
-
-        var ids = _companies.Select(c => c.Id).ToHashSet();
-        _companyChildren = _companies
-            .Where(c => c.ParentId is { } p && ids.Contains(p))
-            .GroupBy(c => c.ParentId!.Value)
-            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Ten).ToList());
-
-        _companyTree = [];
-        void Walk(IEnumerable<UserCompanyNodeVm> nodes, int depth)
-        {
-            foreach (var c in nodes.OrderBy(c => c.Ten))
-            {
-                _companyTree.Add((c, depth));
-                if (_companyChildren.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
-            }
-        }
-        Walk(_companies.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+        var companies = await Api.GetCompaniesAsync(_detail.Id);
+        _companyById = companies.ToDictionary(c => c.Id);
+        _companyItems = companies.Select(c => new IcPickerItem(c.Id, c.Ma, c.Ten, c.ParentId)).ToList();
+        _selectedCompanyIds = companies.Where(c => c.GanRieng).Select(c => c.Id).ToHashSet();
+        _macDinhId = companies.FirstOrDefault(c => c.LaMacDinh)?.Id;
     }
 
-    /// <summary>
-    /// Tick/bỏ tick 1 node — áp cùng giá trị xuống TOÀN NHÁNH con (WYSIWYG: nhìn thấy ngay,
-    /// bỏ tick từng con tùy ý trước khi Lưu). Cha không bị ảnh hưởng khi con đổi.
-    /// </summary>
-    private void ToggleCompany(UserCompanyNodeVm node, bool value)
+    /// <summary>Nhận tập tick mới từ picker (cascade WYSIWYG xử lý trong component).</summary>
+    private void OnCompaniesChanged(IReadOnlyCollection<long> ids)
     {
         _saved = false;
-        void Apply(UserCompanyNodeVm n)
-        {
-            n.GanRieng = value;
-            if (_companyChildren.TryGetValue(n.Id, out var kids))
-                foreach (var k in kids) Apply(k);
-        }
-        Apply(node);
-        if (!value && _macDinhId is { } d && _companies.FirstOrDefault(c => c.Id == d)?.GanRieng != true)
+        _selectedCompanyIds = [.. ids];
+        if (_macDinhId is { } d && !_selectedCompanyIds.Contains(d))
             _macDinhId = null; // công ty mặc định vừa bị bỏ tick → hủy chọn mặc định
     }
 
@@ -475,7 +445,7 @@
     private void ClearAllCompanies()
     {
         _saved = false;
-        foreach (var c in _companies) c.GanRieng = false;
+        _selectedCompanyIds = [];
         _macDinhId = null;
     }
 
@@ -485,7 +455,7 @@
         if (_detail is null || IsNew) return;
         ResetMessages();
         _saving = true;
-        var ids = _companies.Where(c => c.GanRieng).Select(c => c.Id).ToList();
+        var ids = _selectedCompanyIds.ToList();
         var macDinh = _macDinhId is { } d && ids.Contains(d) ? _macDinhId : null;
         _error = await Api.SaveCompaniesAsync(_detail.Id, ids, macDinh);
         if (_error is null) _saved = true;

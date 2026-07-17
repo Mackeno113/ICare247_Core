@@ -1,6 +1,21 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-16 (session 87 — switcher cây + màn Người dùng + phân quyền cây công ty). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-16 (session 87 — switcher cây + màn Người dùng + phân quyền cây công ty + spec 31 + PICKER-P2). Lịch sử → [session_history.md](session_history.md).
+
+## Session 87 (tiếp) — Spec 31 Shared Pickers + PICKER-P2
+
+**Spec 31** (`docs/spec/31_SHARED_PICKER_CONTROLS_SPEC.md`, commit `d3795b3`): control dữ liệu dùng chung
+2 tầng — hợp đồng dữ liệu + tham số canonical (ThoiDiem/CongTyId/ParentId; màn map tên field riêng);
+RCL IcControls (bespoke) + Ui_Lookup_Template/Param_Map (engine, P4). User chốt: song song 2 tầng,
+spec trước, IcCompanyPicker 1 control 2 chế độ.
+
+**PICKER-P2 đã code:** `Shared/Components/Pickers/` — IcPickerModels (IcPickerItem, IcPickerMode,
+ICompanyPickerSource) + IcCompanyPicker.razor (Single dropdown cây + AllowAll; MultiCheck WYSIWYG
+controlled-component, slot NodeExtra). MeCompanyApiService cài ICompanyPickerSource (DI forward).
+Refactor 3 chỗ về 1: CompanySwitcher (chỉ còn nghiệp vụ localStorage/default/reload),
+UserManagementPage tab Công ty (NodeExtra = radio Mặc định + badge Theo vaiTrò, page giữ
+_companyById tra cờ), PermissionMatrixPage view Phạm vi công ty. Build UI 0W/0E.
+Runtime chưa smoke (server tắt) — cần mở app bấm thử switcher + 2 cây khi chạy lại.
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 > **Task tiếp theo gợi ý:** FDOC-1 (migration Ui_Form_Detail + Formula_Json + ConfigStudio tab Lưới chi tiết — chờ user ra lệnh code) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
 >

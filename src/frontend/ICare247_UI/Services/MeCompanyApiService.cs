@@ -5,13 +5,15 @@
 
 using System.Net.Http.Json;
 using System.Text.Json;
+using ICare247.UI.Shared.Components.Pickers;
 using ICare247.UI.Shared.State;
 using Microsoft.Extensions.Logging;
 
 namespace ICare247_UI.Services;
 
-/// <summary>Lấy danh sách công ty user được phép chọn (đổ vào AppState/CompanySwitcher).</summary>
-public sealed class MeCompanyApiService
+/// <summary>Lấy danh sách công ty user được phép chọn (đổ vào AppState/CompanySwitcher).
+/// Kiêm nguồn dữ liệu cho IcCompanyPicker tự nạp (ICompanyPickerSource — spec 31).</summary>
+public sealed class MeCompanyApiService : ICompanyPickerSource
 {
     private readonly HttpClient _http;
     private readonly ILogger<MeCompanyApiService> _logger;
@@ -37,5 +39,12 @@ public sealed class MeCompanyApiService
             _logger.LogWarning(ex, "Không lấy được danh sách công ty từ /me/companies.");
             return [];
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<IcPickerItem>> GetCompaniesAsync(CancellationToken ct = default)
+    {
+        var companies = await GetMyCompaniesAsync(ct);
+        return companies.Select(c => new IcPickerItem(c.Id, c.Code, c.Name, c.ParentId, c.CanAccess)).ToList();
     }
 }

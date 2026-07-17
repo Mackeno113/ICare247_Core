@@ -87,6 +87,9 @@ builder.Services.AddScoped<ImportApiService>();
 builder.Services.AddScoped<DocTemplateApiService>();
 builder.Services.AddScoped<NavigationApiService>();
 builder.Services.AddScoped<MeCompanyApiService>();
+// Nguồn dữ liệu cho IcCompanyPicker tự nạp (spec 31) — trỏ về cùng instance MeCompanyApiService.
+builder.Services.AddScoped<ICare247.UI.Shared.Components.Pickers.ICompanyPickerSource>(
+    sp => sp.GetRequiredService<MeCompanyApiService>());
 builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<AdminUserApiService>();

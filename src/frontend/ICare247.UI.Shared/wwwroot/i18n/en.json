@@ -3,6 +3,9 @@
   "auth.error.invalidcredentials": "",
   "auth.error.loginfailed": "",
   "auth.error.noserver": "",
+  "common.company.all": "",
   "common.lang.choose": "",
+  "common.picker.company.choose": "",
+  "common.picker.company.placeholder": "",
   "error.metadata.noPrimaryKey": ""
 }

@@ -47,7 +47,7 @@
     {
         <div class="perm-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
     }
-    else if (_companyTree.Count == 0)
+    else if (_companyItems.Count == 0)
     {
         <div class="perm-empty">@Loc.L("admin.perm.companies.empty", "Chưa có công ty nào (tạo ở màn Công ty).")</div>
     }
@@ -55,17 +55,8 @@
     {
         <div class="perm-cohint">@Loc.L("admin.perm.companies.hint", "User thuộc vai trò này được truy cập các công ty tick bên dưới (kế thừa động — sửa là áp ngay). Tick công ty cha sẽ tick cả nhánh con, bỏ tick từng công ty tùy ý. Công ty tạo sau này không tự có quyền.")</div>
         <div class="perm-cotree">
-            @foreach (var node in _companyTree)
-            {
-                var c = node.Node;
-                <div class="perm-conode" style="padding-left:@(node.Depth * 20)px">
-                    <label class="perm-cocheck">
-                        <input type="checkbox" checked="@c.DaGan"
-                               @onchange="e => ToggleCompany(c, (bool)e.Value!)" />
-                        <span>@c.Ten <span class="perm-comuted">(@c.Ma)</span></span>
-                    </label>
-                </div>
-            }
+            <IcCompanyPicker Mode="IcPickerMode.MultiCheck" Items="_companyItems"
+                             SelectedIds="_selectedCompanyIds" SelectedIdsChanged="OnCompaniesChanged" />
         </div>
     }
 }
@@ -146,11 +137,10 @@ else
     private bool _saving;
     private bool _saved;
 
-    // ── Phạm vi công ty (HT_VaiTro_CongTy) — WYSIWYG tree ──
+    // ── Phạm vi công ty (HT_VaiTro_CongTy) — cây WYSIWYG do IcCompanyPicker đảm nhiệm ──
     private ViewMode _view = ViewMode.Functions;
-    private List<RoleCompanyNodeVm> _companies = new();
-    private List<(RoleCompanyNodeVm Node, int Depth)> _companyTree = new();
-    private Dictionary<long, List<RoleCompanyNodeVm>> _companyChildren = new();
+    private List<IcPickerItem> _companyItems = new();
+    private HashSet<long> _selectedCompanyIds = new();
     private bool _companiesLoading;
 
     // 5 cột thao tác (Duyệt → workflow, không có ở đây). Caption qua Loc.L(key, def).
@@ -180,8 +170,7 @@ else
         {
             _roleId = id;
             _saved = false;
-            _companies = new();
-            _companyTree = new();
+            _companyItems = new();
             await LoadPermissionsAsync();
             if (_view == ViewMode.Companies) await LoadCompaniesAsync();
         }
@@ -191,47 +180,25 @@ else
     private async Task OpenCompaniesViewAsync()
     {
         _view = ViewMode.Companies;
-        if (_companies.Count == 0) await LoadCompaniesAsync();
+        if (_companyItems.Count == 0) await LoadCompaniesAsync();
     }
 
+    /// <summary>Nạp cây công ty của vai trò → map sang node picker (cây + cascade do IcCompanyPicker lo).</summary>
     private async Task LoadCompaniesAsync()
     {
         if (_roleId is null) return;
         _companiesLoading = true;
-        _companies = await Api.GetRoleCompaniesAsync(_roleId.Value);
-
-        var ids = _companies.Select(c => c.Id).ToHashSet();
-        _companyChildren = _companies
-            .Where(c => c.ParentId is { } p && ids.Contains(p))
-            .GroupBy(c => c.ParentId!.Value)
-            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Ten).ToList());
-
-        _companyTree = new();
-        void Walk(IEnumerable<RoleCompanyNodeVm> nodes, int depth)
-        {
-            foreach (var c in nodes.OrderBy(c => c.Ten))
-            {
-                _companyTree.Add((c, depth));
-                if (_companyChildren.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
-            }
-        }
-        Walk(_companies.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+        var companies = await Api.GetRoleCompaniesAsync(_roleId.Value);
+        _companyItems = companies.Select(c => new IcPickerItem(c.Id, c.Ma, c.Ten, c.ParentId)).ToList();
+        _selectedCompanyIds = companies.Where(c => c.DaGan).Select(c => c.Id).ToHashSet();
         _companiesLoading = false;
     }
 
-    /// <summary>
-    /// Tick/bỏ tick 1 công ty — áp cùng giá trị xuống TOÀN NHÁNH con (WYSIWYG). Cha không đổi khi con đổi.
-    /// </summary>
-    private void ToggleCompany(RoleCompanyNodeVm node, bool value)
+    /// <summary>Nhận tập tick mới từ picker (cascade WYSIWYG xử lý trong component).</summary>
+    private void OnCompaniesChanged(IReadOnlyCollection<long> ids)
     {
         _saved = false;
-        void Apply(RoleCompanyNodeVm n)
-        {
-            n.DaGan = value;
-            if (_companyChildren.TryGetValue(n.Id, out var kids))
-                foreach (var k in kids) Apply(k);
-        }
-        Apply(node);
+        _selectedCompanyIds = new HashSet<long>(ids);
     }
 
     private async Task LoadPermissionsAsync()
@@ -317,7 +284,7 @@ else
         _saving = true;
         _saved = false;
         _saved = _view == ViewMode.Companies
-            ? await Api.SaveRoleCompaniesAsync(_roleId.Value, _companies.Where(c => c.DaGan).Select(c => c.Id).ToList())
+            ? await Api.SaveRoleCompaniesAsync(_roleId.Value, _selectedCompanyIds.ToList())
             : await Api.SaveAsync(_roleId.Value, _nodes);
         _saving = false;
     }

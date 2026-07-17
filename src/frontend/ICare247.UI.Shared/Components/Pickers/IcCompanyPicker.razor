@@ -1,0 +1,201 @@
+@namespace ICare247.UI.Shared.Components.Pickers
+@inherits LocalizedComponentBase
+@inject IServiceProvider Services
+
+@*
+    IcCompanyPicker — control cây công ty dùng chung (spec 31 §4.1). 2 chế độ:
+    · Single     — dropdown chọn 1 công ty (field form, switcher). AllowAll thêm option
+                   "Tất cả công ty" (Value null — semantics @CongTyID_Active = 0).
+    · MultiCheck — cây checkbox WYSIWYG (gán quyền): tick 1 node → áp cùng giá trị xuống
+                   TOÀN NHÁNH con, bỏ tick từng con tùy ý, cha không đổi khi con đổi.
+                   Slot NodeExtra cắm nội dung per-node (radio mặc định, badge…).
+    Items null (Single) → tự nạp qua ICompanyPickerSource (host đăng ký DI, /me/companies).
+    Node CanAccess=false = tổ tiên giữ cấu trúc cây — mờ, không tương tác.
+    Component CONTROLLED: SelectedIds do cha giữ; đổi tick chỉ bắn SelectedIdsChanged.
+*@
+
+@if (Mode == IcPickerMode.Single)
+{
+    <div class="icp-root">
+        <button type="button" class="icp-toggle @CssClass" disabled="@Disabled" @onclick="TogglePopup"
+                aria-haspopup="tree" aria-expanded="@_open"
+                aria-label="@Loc.L("common.picker.company.choose", "Chọn công ty")">
+            <span class="icp-toggle__text">@CurrentLabel</span>
+            <span class="icp-toggle__caret" aria-hidden="true">▾</span>
+        </button>
+
+        @if (_open)
+        {
+            <div class="icp-backdrop" @onclick="ClosePopup"></div>
+            <div class="icp-popup" role="tree">
+                @if (AllowAll)
+                {
+                    <button type="button" class="icp-item @(Value is null ? "icp-item--active" : null)"
+                            @onclick="() => SelectAsync(null)">
+                        @Loc.L("common.company.all", "Tất cả công ty")
+                    </button>
+                }
+                @foreach (var node in _flatTree)
+                {
+                    var c = node.Item;
+                    @if (c.CanAccess)
+                    {
+                        <button type="button"
+                                class="icp-item @(Value == c.Id ? "icp-item--active" : null)"
+                                style="padding-left:@(IndentPx(node.Depth))px" title="@c.Ten"
+                                @onclick="() => SelectAsync(c.Id)">
+                            @if (node.Depth > 0)
+                            {
+                                <span class="icp-branch" aria-hidden="true">└</span>
+                            }
+                            @c.Ten
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="icp-item icp-item--disabled" style="padding-left:@(IndentPx(node.Depth))px" title="@c.Ten">
+                            @if (node.Depth > 0)
+                            {
+                                <span class="icp-branch" aria-hidden="true">└</span>
+                            }
+                            @c.Ten
+                        </div>
+                    }
+                }
+            </div>
+        }
+    </div>
+}
+else
+{
+    <div class="icp-tree @CssClass">
+        @foreach (var node in _flatTree)
+        {
+            var c = node.Item;
+            <div class="icp-node" style="padding-left:@(node.Depth * 20)px">
+                <label class="icp-check @(c.CanAccess ? null : "icp-check--disabled")">
+                    <input type="checkbox" checked="@IsChecked(c.Id)" disabled="@(Disabled || !c.CanAccess)"
+                           @onchange="e => ToggleCheckAsync(c, (bool)e.Value!)" />
+                    <span>@c.Ten @if (!string.IsNullOrEmpty(c.Ma)) { <span class="icp-muted">(@c.Ma)</span> }</span>
+                </label>
+                @if (NodeExtra is not null)
+                {
+                    @NodeExtra(c)
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>Chế độ hiển thị: Single (dropdown chọn 1) hoặc MultiCheck (cây checkbox).</summary>
+    [Parameter] public IcPickerMode Mode { get; set; } = IcPickerMode.Single;
+
+    /// <summary>Dữ liệu cây truyền ngoài. Null + Single → tự nạp qua ICompanyPickerSource.</summary>
+    [Parameter] public IReadOnlyList<IcPickerItem>? Items { get; set; }
+
+    /// <summary>Giá trị đang chọn (Single). Null = "Tất cả công ty" khi AllowAll.</summary>
+    [Parameter] public long? Value { get; set; }
+    [Parameter] public EventCallback<long?> ValueChanged { get; set; }
+
+    /// <summary>Single: thêm option "Tất cả công ty" (null — không thu hẹp phạm vi).</summary>
+    [Parameter] public bool AllowAll { get; set; }
+
+    /// <summary>MultiCheck: tập Id đang tick — cha giữ state (controlled component).</summary>
+    [Parameter] public IReadOnlyCollection<long>? SelectedIds { get; set; }
+    [Parameter] public EventCallback<IReadOnlyCollection<long>> SelectedIdsChanged { get; set; }
+
+    /// <summary>MultiCheck: nội dung thêm per-node (radio mặc định, badge…), render sau tên node.</summary>
+    [Parameter] public RenderFragment<IcPickerItem>? NodeExtra { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Class thêm: Single → gắn lên nút toggle (kế thừa style ngoài); MultiCheck → gắn lên root.</summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    private bool _open;
+    private IReadOnlyList<IcPickerItem>? _autoItems;   // nạp từ ICompanyPickerSource khi Items null
+    private IReadOnlyList<IcPickerItem>? _builtFrom;   // tham chiếu list đã dựng cây — tránh dựng lại mỗi render
+    private List<(IcPickerItem Item, int Depth)> _flatTree = [];
+    private Dictionary<long, List<IcPickerItem>> _children = [];
+
+    private IReadOnlyList<IcPickerItem> EffectiveItems => Items ?? _autoItems ?? [];
+
+    /// <summary>Nhãn trên nút toggle (Single): tên công ty đang chọn / "Tất cả" / placeholder.</summary>
+    private string CurrentLabel
+        => EffectiveItems.FirstOrDefault(c => c.Id == Value)?.Ten
+           ?? (AllowAll ? Loc.L("common.company.all", "Tất cả công ty")
+                        : Loc.L("common.picker.company.placeholder", "Chọn công ty"));
+
+    private static int IndentPx(int depth) => 12 + depth * 16;
+
+    private bool IsChecked(long id) => SelectedIds?.Contains(id) == true;
+
+    /// <summary>Items null ở chế độ Single → tự nạp cây công ty theo quyền từ nguồn host đăng ký.
+    /// (OnInitialized của LocalizedComponentBase được framework tự gọi trước — không gọi lại.)</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (Items is null && Mode == IcPickerMode.Single
+            && Services.GetService(typeof(ICompanyPickerSource)) is ICompanyPickerSource source)
+        {
+            _autoItems = await source.GetCompaniesAsync();
+        }
+    }
+
+    /// <summary>Dựng lại cây phẳng khi nguồn dữ liệu đổi (so tham chiếu — list bất biến theo lần nạp).</summary>
+    protected override void OnParametersSet()
+    {
+        var items = EffectiveItems;
+        if (ReferenceEquals(items, _builtFrom)) return;
+        _builtFrom = items;
+
+        // Key Dictionary không nhận null → chỉ gom node CÓ cha trong list; gốc duyệt riêng.
+        var ids = items.Select(c => c.Id).ToHashSet();
+        _children = items
+            .Where(c => c.ParentId is { } p && ids.Contains(p))
+            .GroupBy(c => c.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderBy(c => c.Ten).ToList());
+
+        _flatTree = [];
+        void Walk(IEnumerable<IcPickerItem> nodes, int depth)
+        {
+            foreach (var c in nodes.OrderBy(c => c.Ten))
+            {
+                _flatTree.Add((c, depth));
+                if (_children.TryGetValue(c.Id, out var kids)) Walk(kids, depth + 1);
+            }
+        }
+        Walk(items.Where(c => c.ParentId is null || !ids.Contains(c.ParentId.Value)), 0);
+    }
+
+    private void TogglePopup() => _open = !_open;
+    private void ClosePopup() => _open = false;
+
+    /// <summary>Single: chọn giá trị → đóng popup, bắn ValueChanged (bỏ qua khi không đổi).</summary>
+    private async Task SelectAsync(long? id)
+    {
+        _open = false;
+        if (id == Value) return;
+        await ValueChanged.InvokeAsync(id);
+    }
+
+    /// <summary>
+    /// MultiCheck WYSIWYG: tick/bỏ tick 1 node → áp cùng giá trị xuống TOÀN NHÁNH con
+    /// (chỉ node CanAccess). Cha không đổi khi con đổi. Bắn SelectedIdsChanged với tập mới.
+    /// </summary>
+    private async Task ToggleCheckAsync(IcPickerItem node, bool value)
+    {
+        var next = SelectedIds is null ? new HashSet<long>() : [.. SelectedIds];
+        void Apply(IcPickerItem n)
+        {
+            if (n.CanAccess)
+            {
+                if (value) next.Add(n.Id); else next.Remove(n.Id);
+            }
+            if (_children.TryGetValue(n.Id, out var kids))
+                foreach (var k in kids) Apply(k);
+        }
+        Apply(node);
+        await SelectedIdsChanged.InvokeAsync(next);
+    }
+}

@@ -1,38 +1,39 @@
-/* CompanySwitcher — dropdown cây công ty ở header. Token màu/size dùng chung từ theme (không hex). */
+/* IcCompanyPicker — picker cây công ty dùng chung (spec 31). Token theme, không hex cứng. */
 
-.cs-root {
+/* ── Chế độ Single: dropdown ─────────────────────────────────────────────── */
+.icp-root {
     position: relative;
     display: inline-flex;
 }
 
-/* Nút toggle kế thừa nền/viền từ .app-company__select (MainLayout ::deep) — chỉ thêm bố cục. */
-.cs-toggle {
+/* Nút toggle: style nền/viền kế thừa qua CssClass truyền ngoài (vd .app-company__select). */
+.icp-toggle {
     display: inline-flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2);
+    gap: var(--space-2, 8px);
     min-width: 160px;
 }
 
-.cs-toggle__text {
+.icp-toggle__text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.cs-toggle__caret {
+.icp-toggle__caret {
     color: var(--color-text-secondary);
     font-size: 10px;
 }
 
 /* Lớp nền trong suốt bắt click ra ngoài để đóng popup. */
-.cs-backdrop {
+.icp-backdrop {
     position: fixed;
     inset: 0;
     z-index: 90;
 }
 
-.cs-popup {
+.icp-popup {
     position: absolute;
     top: calc(100% + 4px);
     left: 0;
@@ -43,12 +44,12 @@
     overflow: auto;
     background: var(--color-card);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     padding: var(--space-1, 4px);
 }
 
-.cs-item {
+.icp-item {
     display: block;
     width: 100%;
     text-align: left;
@@ -64,28 +65,59 @@
     text-overflow: ellipsis;
 }
 
-.cs-item:hover {
+.icp-item:hover {
     background: var(--gray-100, #f3f4f6);
 }
 
-.cs-item--active {
+.icp-item--active {
     background: var(--color-primary-soft);
     color: var(--color-primary);
     font-weight: var(--fw-medium);
 }
 
 /* Node tổ tiên không có quyền — giữ cấu trúc cây, không tương tác. */
-.cs-item--disabled {
+.icp-item--disabled {
     color: var(--color-text-secondary);
     cursor: default;
     opacity: 0.65;
 }
 
-.cs-item--disabled:hover {
+.icp-item--disabled:hover {
     background: transparent;
 }
 
-.cs-item__branch {
+.icp-branch {
     color: var(--color-text-secondary);
     margin-right: 4px;
+}
+
+/* ── Chế độ MultiCheck: cây checkbox ─────────────────────────────────────── */
+.icp-tree {
+    min-height: 120px;
+}
+
+.icp-node {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    padding: 4px 0;
+    border-bottom: 1px solid var(--gray-50, #f8fafc);
+}
+
+.icp-check {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2, 8px);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+}
+
+.icp-check--disabled {
+    color: var(--color-text-secondary);
+    opacity: 0.65;
+    cursor: default;
+}
+
+.icp-muted {
+    color: var(--color-text-muted);
 }
