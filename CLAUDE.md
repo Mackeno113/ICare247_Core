@@ -48,6 +48,7 @@
 | `.claude-rules/architecture.md` | Layer dependency, DI registration, CQRS pattern |
 | `.claude-rules/csharp-naming.md` | Naming conventions, CQRS/Repository naming |
 | `.claude-rules/dapper-patterns.md` | SQL patterns, connection factory, async methods |
+| `.claude-rules/debugging.md` | Truy root cause trước khi fix, dừng lại sau ≥3 fix thất bại, validate nhiều lớp (defense-in-depth) |
 | `.claude-rules/database-design.md` | Thiết kế bảng: Config DB vs Data DB, khối cột auto, tiền tố ADR-022, FK/index/audit |
 | `.claude-rules/caching.md` | CacheKeys.cs, L1/L2 TTL, hybrid strategy |
 | `.claude-rules/ast-grammar.md` | AST nodes, operators, functions, null rules |

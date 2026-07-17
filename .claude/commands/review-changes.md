@@ -37,5 +37,9 @@ Review code thay đổi hiện tại theo tiêu chuẩn ICare247. Thực hiện:
 - [ ] Không commit secrets (.env, connection strings, JWT keys)
 - [ ] Không hardcode string SQL
 
-4. Báo cáo kết quả: ✅/❌ cho mỗi mục + tổng hợp
-5. Đề xuất fix cụ thể nếu có issue (file, dòng, cách sửa)
+4. **Verify trước khi kết luận** — không đánh dấu ✅ nếu chưa có bằng chứng:
+   - [ ] Mỗi mục ✅ phải trỏ được vào dòng code cụ thể đã xem trong diff, không suy đoán
+   - [ ] Nếu checklist có mục liên quan build/test → đã chạy lệnh đó, không chỉ đọc code bằng mắt
+   - [ ] Không dùng "chắc ổn", "nhìn hợp lý" — chưa chắc thì ghi ⚠️ cần kiểm thêm, không ghi ✅
+5. Báo cáo kết quả: ✅/❌ cho mỗi mục + tổng hợp
+6. Đề xuất fix cụ thể nếu có issue (file, dòng, cách sửa)

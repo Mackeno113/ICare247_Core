@@ -6,6 +6,13 @@ Hoàn thành task hiện tại. Thực hiện đúng thứ tự:
    - ConfigStudio: `dotnet build src/frontend/ConfigStudio.WPF.UI/ConfigStudio.WPF.UI.slnx`
    - Có test → `dotnet test src/backend/tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj`
    - Fail → sửa lỗi trước, KHÔNG tiếp tục. (Fail chỉ do **file-lock** vì app đang chạy = coi như xong.)
+
+   **Checklist verify-before-done (bắt buộc trước khi báo "xong"/"hoàn thành"):**
+   - [ ] Lệnh build/test vừa chạy TRONG message này (không tính lần chạy cũ hơn)
+   - [ ] Đã đọc full output — 0 error thật sự, không chỉ nhìn thoáng dòng cuối
+   - [ ] Nếu là fix bug: đã verify lại đúng triệu chứng gốc hết lỗi (không chỉ "code đã đổi")
+   - [ ] Không dùng "chắc là", "should", "nhìn ổn" để báo trạng thái — chỉ báo cáo dựa trên output vừa thấy
+   - [ ] Chưa chạy được lệnh verify (vd. thiếu DB/env) → nói rõ "chưa verify được", KHÔNG báo "xong"
 2. **Soát ADR — thay đổi này có làm ADR nào "bắt kịp" không?**
    - Vừa code xong thứ mà một ADR mô tả? → cập nhật bảng **`TASKS.md § Trạng thái triển khai ADR`**.
    - ⛔ **KHÔNG sửa `architecture_decisions.md`** để ghi trạng thái — ADR là quyết định bất biến.
