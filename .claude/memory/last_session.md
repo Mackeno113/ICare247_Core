@@ -15,7 +15,13 @@ controlled-component, slot NodeExtra). MeCompanyApiService cài ICompanyPickerSo
 Refactor 3 chỗ về 1: CompanySwitcher (chỉ còn nghiệp vụ localStorage/default/reload),
 UserManagementPage tab Công ty (NodeExtra = radio Mặc định + badge Theo vaiTrò, page giữ
 _companyById tra cờ), PermissionMatrixPage view Phạm vi công ty. Build UI 0W/0E.
-Runtime chưa smoke (server tắt) — cần mở app bấm thử switcher + 2 cây khi chạy lại.
+
+**PICKER-P3 đã code (commit cùng ngày):** BE PickersController `/api/v1/pickers/dia-ban`
+(tỉnh/xã/resolve-id, IPickerRepository trên DM_TinhThanhPho+DM_PhuongXa schema db/037) ·
+Shared IDiaBanPickerSource + IcAddressBlock (DiaChi+PhuongXaId là 2 giá trị lưu, tỉnh = bộ lọc
+suy ra; xã search server-side debounce 300ms; đổi tỉnh xóa xã) · host PickerApiService cache L0 tỉnh.
+Build BE+FE 0W/0E. **Runtime P2+P3 chưa smoke (server tắt)** — khi chạy lại: bấm switcher,
+2 cây gán quyền, và màn Phòng ban sắp tới dùng IcCompanyPicker + IcAddressBlock đầu tiên.
 > Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 > **Task tiếp theo gợi ý:** FDOC-1 (migration Ui_Form_Detail + Formula_Json + ConfigStudio tab Lưới chi tiết — chờ user ra lệnh code) · TM-001 chốt 5 câu hỏi spec 29 §9 · nghiệm thu lưới WPF session 84.
 >

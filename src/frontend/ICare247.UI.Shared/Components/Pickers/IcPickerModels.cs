@@ -31,3 +31,20 @@ public interface ICompanyPickerSource
     /// <summary>Cây công ty user được truy cập (kèm tổ tiên CanAccess=false giữ cấu trúc).</summary>
     Task<IReadOnlyList<IcPickerItem>> GetCompaniesAsync(CancellationToken ct = default);
 }
+
+/// <summary>
+/// Nguồn dữ liệu địa bàn cho <c>IcAddressBlock</c> (spec 31 §3 — /api/v1/pickers/dia-ban).
+/// Host cài đặt và đăng ký DI — component inject bắt buộc.
+/// </summary>
+public interface IDiaBanPickerSource
+{
+    /// <summary>Toàn bộ Tỉnh/Thành phố active.</summary>
+    Task<IReadOnlyList<IcPickerItem>> GetTinhThanhAsync(CancellationToken ct = default);
+
+    /// <summary>Xã/Phường thuộc 1 tỉnh, lọc keyword server-side (giới hạn top server quyết).</summary>
+    Task<IReadOnlyList<IcPickerItem>> SearchPhuongXaAsync(
+        long tinhThanhPhoId, string? keyword, CancellationToken ct = default);
+
+    /// <summary>Resolve 1 Xã/Phường theo Id (ParentId = tỉnh) — hiển thị giá trị đã lưu.</summary>
+    Task<IcPickerItem?> GetPhuongXaAsync(long id, CancellationToken ct = default);
+}

@@ -1,0 +1,188 @@
+@namespace ICare247.UI.Shared.Components.Pickers
+@inherits LocalizedComponentBase
+@inject IDiaBanPickerSource DiaBan
+
+@*
+    IcAddressBlock — cụm địa chỉ composite dùng chung (spec 31 §4.2):
+    [Địa chỉ chi tiết ......... full-width]
+    [Tỉnh/Thành ⌄]  [Xã/Phường ⌄ + tìm]
+    · Chỉ LƯU 2 giá trị: DiaChi + PhuongXaId. Tỉnh là bộ lọc/suy ra — KHÔNG lưu trùng
+      (quy tắc blueprint màn Công ty: tỉnh suy từ DM_PhuongXa.TinhThanhPho_Id).
+    · Có sẵn PhuongXaId → resolve tên xã + tỉnh qua IDiaBanPickerSource.
+    · Xã/Phường tìm server-side theo keyword, debounce 300ms (rule blazor-ui — tránh gọi mỗi phím).
+    · Đổi Tỉnh → xóa Xã/Phường đang chọn (bắn PhuongXaIdChanged(null)).
+*@
+
+<div class="iab-root">
+    <label class="iab-field iab-field--full">
+        <span>@Loc.L("common.address.detail", "Địa chỉ chi tiết")</span>
+        <input value="@DiaChi" disabled="@Disabled" maxlength="500"
+               placeholder="@Loc.L("common.address.detail.hint", "Số nhà, đường, thôn/xóm…")"
+               @onchange="e => DiaChiChanged.InvokeAsync(e.Value?.ToString())" />
+    </label>
+
+    <div class="iab-row">
+        <label class="iab-field">
+            <span>@Loc.L("common.address.province", "Tỉnh/Thành phố")</span>
+            <select disabled="@Disabled" @onchange="OnTinhChangedAsync">
+                <option value="" selected="@(_tinhId is null)">@Loc.L("common.address.province.placeholder", "— Chọn tỉnh/thành —")</option>
+                @foreach (var t in _tinhList)
+                {
+                    <option value="@t.Id" selected="@(_tinhId == t.Id)">@t.Ten</option>
+                }
+            </select>
+        </label>
+
+        <div class="iab-field">
+            <span>@Loc.L("common.address.ward", "Xã/Phường")</span>
+            <div class="iab-xa">
+                <button type="button" class="iab-xa__toggle" disabled="@(Disabled || _tinhId is null)"
+                        @onclick="ToggleXaPopup" aria-haspopup="listbox" aria-expanded="@_xaOpen">
+                    <span class="iab-xa__text">
+                        @(_xaSelected?.Ten ?? Loc.L("common.address.ward.placeholder", "— Chọn xã/phường —"))
+                    </span>
+                    <span class="iab-xa__caret" aria-hidden="true">▾</span>
+                </button>
+
+                @if (_xaOpen)
+                {
+                    <div class="iab-backdrop" @onclick="CloseXaPopup"></div>
+                    <div class="iab-popup" role="listbox">
+                        <input class="iab-popup__search" value="@_keyword"
+                               placeholder="@Loc.L("common.picker.search", "Gõ để tìm…")"
+                               @oninput="OnKeywordInput" />
+                        @if (_searching)
+                        {
+                            <div class="iab-popup__empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+                        }
+                        else if (_xaOptions.Count == 0)
+                        {
+                            <div class="iab-popup__empty">@Loc.L("common.picker.noresult", "Không có kết quả")</div>
+                        }
+                        else
+                        {
+                            @foreach (var x in _xaOptions)
+                            {
+                                <button type="button"
+                                        class="iab-popup__item @(x.Id == PhuongXaId ? "iab-popup__item--active" : null)"
+                                        @onclick="() => SelectXaAsync(x)">
+                                    @x.Ten @if (!string.IsNullOrEmpty(x.Ma)) { <span class="iab-muted">(@x.Ma)</span> }
+                                </button>
+                            }
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>Địa chỉ chi tiết (số nhà, đường…) — bắn khi rời ô (onchange, tránh re-render mỗi phím).</summary>
+    [Parameter] public string? DiaChi { get; set; }
+    [Parameter] public EventCallback<string?> DiaChiChanged { get; set; }
+
+    /// <summary>Xã/Phường đã chọn — giá trị DUY NHẤT lưu DB cùng DiaChi (tỉnh suy ra).</summary>
+    [Parameter] public long? PhuongXaId { get; set; }
+    [Parameter] public EventCallback<long?> PhuongXaIdChanged { get; set; }
+
+    [Parameter] public bool Disabled { get; set; }
+
+    private IReadOnlyList<IcPickerItem> _tinhList = [];
+    private long? _tinhId;
+    private IcPickerItem? _xaSelected;
+    private List<IcPickerItem> _xaOptions = [];
+    private bool _xaOpen;
+    private bool _searching;
+    private string _keyword = "";
+    private CancellationTokenSource? _searchCts;
+
+    /// <summary>Nạp danh sách tỉnh; có sẵn PhuongXaId → resolve tên xã + suy tỉnh để chọn sẵn.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _tinhList = await DiaBan.GetTinhThanhAsync();
+        await ResolvePhuongXaAsync();
+    }
+
+    /// <summary>Cha đổi PhuongXaId từ ngoài (reset form, nạp bản ghi khác) → resolve lại hiển thị.</summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        if (PhuongXaId != _xaSelected?.Id) await ResolvePhuongXaAsync();
+    }
+
+    private async Task ResolvePhuongXaAsync()
+    {
+        if (PhuongXaId is { } id)
+        {
+            _xaSelected = await DiaBan.GetPhuongXaAsync(id);
+            _tinhId = _xaSelected?.ParentId ?? _tinhId;
+        }
+        else
+        {
+            _xaSelected = null;
+        }
+    }
+
+    /// <summary>Đổi tỉnh: xóa xã đang chọn (giá trị lưu là xã — tỉnh chỉ là bộ lọc).</summary>
+    private async Task OnTinhChangedAsync(ChangeEventArgs e)
+    {
+        _tinhId = long.TryParse(e.Value?.ToString(), out var v) ? v : null;
+        _keyword = "";
+        _xaOptions = [];
+        if (_xaSelected is not null)
+        {
+            _xaSelected = null;
+            await PhuongXaIdChanged.InvokeAsync(null);
+        }
+    }
+
+    private async Task ToggleXaPopup()
+    {
+        _xaOpen = !_xaOpen;
+        if (_xaOpen && _xaOptions.Count == 0) await SearchXaAsync(CancellationToken.None);
+    }
+
+    private void CloseXaPopup() => _xaOpen = false;
+
+    /// <summary>Gõ tìm xã: debounce 300ms rồi mới gọi server (hủy lượt gõ trước).</summary>
+    private void OnKeywordInput(ChangeEventArgs e)
+    {
+        _keyword = e.Value?.ToString() ?? "";
+        _searchCts?.Cancel();
+        var cts = _searchCts = new CancellationTokenSource();
+        _ = DebounceSearchAsync(cts.Token);
+    }
+
+    private async Task DebounceSearchAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(300, ct);
+            await SearchXaAsync(ct);
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (OperationCanceledException) { /* user gõ tiếp — lượt này bỏ */ }
+    }
+
+    private async Task SearchXaAsync(CancellationToken ct)
+    {
+        if (_tinhId is not { } tinhId) return;
+        _searching = true;
+        try
+        {
+            _xaOptions = (await DiaBan.SearchPhuongXaAsync(tinhId, _keyword, ct)).ToList();
+        }
+        finally
+        {
+            _searching = false; // kể cả khi lượt tìm bị debounce hủy — không kẹt "Đang tải"
+        }
+    }
+
+    /// <summary>Chọn xã: đóng popup, bắn PhuongXaIdChanged. Sự kiện theo sau: form cha giữ giá trị lưu.</summary>
+    private async Task SelectXaAsync(IcPickerItem xa)
+    {
+        _xaOpen = false;
+        _xaSelected = xa;
+        if (xa.Id != PhuongXaId) await PhuongXaIdChanged.InvokeAsync(xa.Id);
+    }
+}

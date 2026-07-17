@@ -90,6 +90,8 @@ builder.Services.AddScoped<MeCompanyApiService>();
 // Nguồn dữ liệu cho IcCompanyPicker tự nạp (spec 31) — trỏ về cùng instance MeCompanyApiService.
 builder.Services.AddScoped<ICare247.UI.Shared.Components.Pickers.ICompanyPickerSource>(
     sp => sp.GetRequiredService<MeCompanyApiService>());
+// Nguồn địa bàn cho IcAddressBlock (spec 31 P3).
+builder.Services.AddScoped<ICare247.UI.Shared.Components.Pickers.IDiaBanPickerSource, PickerApiService>();
 builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<AdminUserApiService>();

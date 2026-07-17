@@ -149,6 +149,7 @@ public static class DependencyInjection
         services.AddHostedService<FileStorageStartupCheck>();
         services.AddScoped<IPermissionAdminRepository, PermissionAdminRepository>();
         services.AddScoped<IUserAdminRepository, UserAdminRepository>();
+        services.AddScoped<IPickerRepository, PickerRepository>();
         services.AddScoped<IMenuAdminRepository, MenuAdminRepository>();
         services.AddScoped<IPermissionService, Services.PermissionService>();
         services.AddSingleton<INavigationCache, Services.NavigationCache>();
