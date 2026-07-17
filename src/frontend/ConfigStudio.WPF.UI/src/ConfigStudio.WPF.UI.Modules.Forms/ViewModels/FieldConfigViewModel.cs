@@ -169,13 +169,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>VM con vùng Field Navigator (cây field + bulk move). Khởi tạo trong ctor.</summary>
     public FieldNavigatorVm Navigator { get; }
 
-    // Prop ủy quyền GIỮ NGUYÊN public surface cho XAML/code-behind trong bước chuyển tiếp B2 —
-    // notify của CanMoveBulk/BulkMoveHeader được bridge từ Navigator.PropertyChanged (ctor).
-    public ObservableCollection<FieldNavGroup> FieldNavigatorGroups => Navigator.Groups;
-    public ObservableCollection<FieldNavItem> BulkSelectedFields => Navigator.BulkSelectedFields;
-    public ObservableCollection<FieldMoveTargetItem> MoveTargets => Navigator.MoveTargets;
-    public bool CanMoveBulk => Navigator.CanMoveBulk;
-    public string BulkMoveHeader => Navigator.BulkMoveHeader;
 
     public List<string> AvailableEditorTypes { get; } =
     [
@@ -945,7 +938,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>Tập FieldCode hiệu lực của các field KHÁC trong form (lấy từ navigator).</summary>
     private List<string> GetSiblingFieldCodes() =>
-        FieldNavigatorGroups
+        Navigator.Groups
             .SelectMany(g => g.Fields)
             .Where(f => f.FieldId != FieldId)
             .Select(f => string.IsNullOrWhiteSpace(f.FieldCode) ? f.ColumnCode : f.FieldCode)
@@ -1628,13 +1621,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
     public DelegateCommand<EventSummaryDto> DeleteEventCommand { get; }
     public DelegateCommand<string> OpenI18nKeyCommand { get; }
-    // Command navigator ủy quyền VM con (REFACTOR-B2) — cùng instance nên CanExecute vẫn tự cập nhật.
-    public DelegateCommand<FieldNavItem> NavigateToFieldCommand => Navigator.NavigateToFieldCommand;
-    public DelegateCommand RefreshNavigatorCommand => Navigator.RefreshNavigatorCommand;
-    public DelegateCommand<FieldNavItem> MoveFieldUpCommand => Navigator.MoveFieldUpCommand;
-    public DelegateCommand<FieldNavItem> MoveFieldDownCommand => Navigator.MoveFieldDownCommand;
-    public DelegateCommand<FieldNavItem?> ToggleBulkSelectionCommand => Navigator.ToggleBulkSelectionCommand;
-    public DelegateCommand<FieldMoveTargetItem?> MoveBulkToSectionCommand => Navigator.MoveBulkToSectionCommand;
 
     public FieldConfigViewModel(
         IRegionManager regionManager,
@@ -1686,13 +1672,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 FieldId, FormId, TableCode, FormCode, FormName, AvailableSections.ToList()),
             () => _cts.Token,
             RecomputeCascadeWarnings);
-        // Bridge notify: XAML đang bind qua prop ủy quyền trên root (CanMoveBulk/BulkMoveHeader)
-        // → re-raise cùng tên để binding root-path vẫn cập nhật trong bước chuyển tiếp.
-        Navigator.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(CanMoveBulk) or nameof(BulkMoveHeader))
-                RaisePropertyChanged(e.PropertyName);
-        };
 
         // FK Lookup commands
         AddFkColumnCommand         = new DelegateCommand(ExecuteAddFkColumn);

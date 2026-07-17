@@ -17,14 +17,14 @@ public partial class FieldConfigView : UserControl
     }
 
     // CheckBox click trên field trong navigator → forward sang ToggleBulkSelectionCommand.
-    // (giống FormEditorView.OnFieldBulkChecked)
+    // (giống FormEditorView.OnFieldBulkChecked; VM con Navigator — REFACTOR-B2)
     private void OnFieldBulkChecked(object sender, System.Windows.RoutedEventArgs e)
     {
         if (sender is CheckBox { DataContext: FieldNavItem item }
             && DataContext is FieldConfigViewModel vm
-            && vm.ToggleBulkSelectionCommand.CanExecute(item))
+            && vm.Navigator.ToggleBulkSelectionCommand.CanExecute(item))
         {
-            vm.ToggleBulkSelectionCommand.Execute(item);
+            vm.Navigator.ToggleBulkSelectionCommand.Execute(item);
         }
     }
 
@@ -32,6 +32,6 @@ public partial class FieldConfigView : UserControl
     private void OnNavigatorContextMenuOpening(object sender, ContextMenuEventArgs e)
     {
         if (DataContext is FieldConfigViewModel vm)
-            vm.RefreshMoveTargets();
+            vm.Navigator.RefreshMoveTargets();
     }
 }

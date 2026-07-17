@@ -362,7 +362,7 @@
                         Padding="12,6">
                     <DockPanel>
                         <Button DockPanel.Dock="Right"
-                                Command="{Binding RefreshNavigatorCommand}"
+                                Command="{Binding Navigator.RefreshNavigatorCommand}"
                                 ToolTip="Tải lại danh sách fields"
                                 Background="Transparent" BorderThickness="0"
                                 Padding="4" Cursor="Hand">
@@ -381,9 +381,9 @@
                     <ScrollViewer.ContextMenu>
                         <ContextMenu DataContext="{Binding PlacementTarget.DataContext,
                                                    RelativeSource={RelativeSource Self}}">
-                            <MenuItem Header="{Binding BulkMoveHeader}"
-                                      ItemsSource="{Binding MoveTargets}"
-                                      IsEnabled="{Binding CanMoveBulk}">
+                            <MenuItem Header="{Binding Navigator.BulkMoveHeader}"
+                                      ItemsSource="{Binding Navigator.MoveTargets}"
+                                      IsEnabled="{Binding Navigator.CanMoveBulk}">
                                 <MenuItem.ItemContainerStyle>
                                     <Style TargetType="MenuItem">
                                         <Setter Property="Header" Value="{Binding Header}" />
@@ -394,7 +394,7 @@
                             </MenuItem>
                         </ContextMenu>
                     </ScrollViewer.ContextMenu>
-                    <ItemsControl ItemsSource="{Binding FieldNavigatorGroups}">
+                    <ItemsControl ItemsSource="{Binding Navigator.Groups}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel>
@@ -446,7 +446,7 @@
 
                                                     <!-- Field name + editor type -->
                                                     <Button Grid.Column="1"
-                                                            Command="{Binding DataContext.NavigateToFieldCommand,
+                                                            Command="{Binding DataContext.Navigator.NavigateToFieldCommand,
                                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"
                                                             Background="Transparent" BorderThickness="0"
@@ -552,7 +552,7 @@
                                                                 </Style.Triggers>
                                                             </Style>
                                                         </StackPanel.Style>
-                                                        <Button Command="{Binding DataContext.MoveFieldUpCommand,
+                                                        <Button Command="{Binding DataContext.Navigator.MoveFieldUpCommand,
                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"
                                                                 Background="Transparent" BorderThickness="0"
@@ -560,7 +560,7 @@
                                                             <TextBlock Text="▲" FontSize="8"
                                                                        Foreground="{StaticResource MutedBrush}" />
                                                         </Button>
-                                                        <Button Command="{Binding DataContext.MoveFieldDownCommand,
+                                                        <Button Command="{Binding DataContext.Navigator.MoveFieldDownCommand,
                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"
                                                                 Background="Transparent" BorderThickness="0"
