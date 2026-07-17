@@ -1580,12 +1580,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     private string _controlPropsJson = "{}";
     public string ControlPropsJson { get => _controlPropsJson; set => SetProperty(ref _controlPropsJson, value); }
 
-    // ── Rules tab ────────────────────────────────────────────
-    public ObservableCollection<RuleSummaryDto> LinkedRules { get; } = [];
-
-
-    // ── Events tab ───────────────────────────────────────────
-    public ObservableCollection<EventSummaryDto> LinkedEvents { get; } = [];
+    // ── Rules + Events tab — VM con (REFACTOR-B3) ────────────
+    /// <summary>VM con 2 tab Rules/Events (danh sách + mở editor + xóa). Khởi tạo trong ctor.</summary>
+    public FieldRulesEventsVm RulesEvents { get; }
 
     // ── State ────────────────────────────────────────────────
     private bool _isRebuildingProps;
@@ -1614,12 +1611,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand CancelCommand { get; }
     public DelegateCommand BrowseColumnCommand { get; }
     public DelegateCommand ManageI18nCommand { get; }
-    public DelegateCommand AddRuleCommand { get; }
-    public DelegateCommand<RuleSummaryDto> OpenRuleCommand { get; }
-    public DelegateCommand<RuleSummaryDto> DeleteRuleCommand { get; }
-    public DelegateCommand AddEventCommand { get; }
-    public DelegateCommand<EventSummaryDto> OpenEventCommand { get; }
-    public DelegateCommand<EventSummaryDto> DeleteEventCommand { get; }
     public DelegateCommand<string> OpenI18nKeyCommand { get; }
 
     public FieldConfigViewModel(
@@ -1656,13 +1647,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         CancelCommand = new DelegateCommand(ExecuteCancel);
         BrowseColumnCommand = new DelegateCommand(ExecuteBrowseColumn);
         ManageI18nCommand = new DelegateCommand(ExecuteManageI18n);
-        AddRuleCommand  = new DelegateCommand(ExecuteAddRule);
-        OpenRuleCommand = new DelegateCommand<RuleSummaryDto>(ExecuteOpenRule);
-        DeleteRuleCommand    = new DelegateCommand<RuleSummaryDto>(async r => await ExecuteDeleteRuleAsync(r));
-        AddEventCommand    = new DelegateCommand(ExecuteAddEvent);
-        OpenEventCommand   = new DelegateCommand<EventSummaryDto>(ExecuteOpenEvent);
-        DeleteEventCommand = new DelegateCommand<EventSummaryDto>(ExecuteDeleteEvent);
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
+
+        // VM con Rules/Events (REFACTOR-B3): chụp ngữ cảnh root qua Func; markDirty → bật nút Lưu.
+        RulesEvents = new FieldRulesEventsVm(
+            ruleService, eventService, logger, regionManager,
+            () => new FieldRulesEventsVm.Context(FieldId, FormId, ColumnCode, TableCode, SectionName),
+            () => _cts.Token,
+            () => IsDirty = true);
 
         // VM con Field Navigator (REFACTOR-B2): chụp ngữ cảnh root qua Func (state đổi theo navigation),
         // token theo _cts hiện hành; onLoaded → soát cascade khi list sẵn sàng.
@@ -1771,8 +1763,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         {
             // Chưa cấu hình DB → trả về trạng thái rỗng, hiện thông báo
             AvailableColumns.Clear();
-            LinkedRules.Clear();
-            LinkedEvents.Clear();
+            RulesEvents.Clear();
             LoadError = "Chưa cấu hình kết nối DB. Vào Settings để nhập Connection String.";
             RaisePropertyChanged(nameof(HasLoadError));
             IsLoading = false;
@@ -1827,8 +1818,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _cbGroupFieldName = ""; _cbDisabledFieldName = "";
 
         // Rules / Events liên kết — field mới chưa có
-        LinkedRules.Clear();
-        LinkedEvents.Clear();
+        RulesEvents.Clear();
 
         // FK Lookup (LookupBox/TreeLookupBox/ComboBox dynamic) — tái dùng hàm clear sẵn có
         ClearFkLookupConfig();
@@ -2247,62 +2237,19 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             return;
         }
 
-        // ── 3. Linked rules (phụ — lỗi chỉ cần warning, không crash) ──────
-        if (FieldId > 0 && _ruleService is not null)
+        // ── 3+4. Linked rules + events — VM con (REFACTOR-B3). Lỗi rules → warning nhỏ;
+        //    OperationCanceled từ VM con ném tiếp → abort chuỗi load như trước.
+        try
         {
-            try
+            var rulesError = await RulesEvents.LoadRulesAsync(_cts.Token);
+            if (rulesError is not null)
             {
-                var rules = await _ruleService.GetRulesByFieldAsync(FieldId, _cts.Token);
-                LinkedRules.Clear();
-                foreach (var r in rules)
-                {
-                    LinkedRules.Add(new RuleSummaryDto
-                    {
-                        RuleId            = r.RuleId,
-                        OrderNo           = r.OrderNo,
-                        RuleTypeCode      = r.RuleTypeCode,
-                        ExpressionPreview = r.ExpressionJson ?? "",
-                        ErrorKey          = r.ErrorKey,
-                        IsActive          = r.IsActive
-                    });
-                }
-                // IsRequired là cột DB (Ui_Field.Is_Required) — đã load từ GetFieldDetailAsync
-            }
-            catch (OperationCanceledException) { return; }
-            catch (Exception ex)
-            {
-                // Rules load thất bại (VD: chưa chạy migration 003) → warning nhỏ
-                _logger?.Capture(ex, $"FieldConfig.LoadRules field #{FieldId}");
-                LoadError = string.IsNullOrEmpty(LoadError)
-                    ? $"Không tải được validation rules: {ex.Message}"
-                    : LoadError;
+                LoadError = string.IsNullOrEmpty(LoadError) ? rulesError : LoadError;
                 RaisePropertyChanged(nameof(HasLoadError));
             }
+            await RulesEvents.LoadEventsAsync(_cts.Token);
         }
-
-        // ── 4. Linked events (phụ — lỗi chỉ cần warning) ─────────────────
-        if (FieldId > 0 && _eventService is not null)
-        {
-            try
-            {
-                var events = await _eventService.GetEventsByFieldAsync(FieldId, _cts.Token);
-                LinkedEvents.Clear();
-                foreach (var e in events)
-                {
-                    LinkedEvents.Add(new EventSummaryDto
-                    {
-                        EventId          = e.EventId,
-                        OrderNo          = e.OrderNo,
-                        TriggerCode      = e.TriggerCode,
-                        ConditionPreview = e.ConditionExpr ?? "",
-                        ActionsCount     = e.ActionsCount,
-                        IsActive         = e.IsActive
-                    });
-                }
-            }
-            catch (OperationCanceledException) { return; }
-            catch (Exception ex) { _logger?.Capture(ex, $"FieldConfig.LoadEvents field #{FieldId}"); }
-        }
+        catch (OperationCanceledException) { return; }
 
         // ── 5. Field Navigator — chỉ load khi đổi form, refresh thủ công qua nút ────
         if (Navigator.LoadedFormId != FormId)
@@ -2750,18 +2697,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _                                       => "string",
     };
 
-    private void ReindexRuleOrders()
-    {
-        for (int i = 0; i < LinkedRules.Count; i++)
-            LinkedRules[i].OrderNo = i + 1;
-    }
-
-    private void ReindexEventOrders()
-    {
-        for (int i = 0; i < LinkedEvents.Count; i++)
-            LinkedEvents[i].OrderNo = i + 1;
-    }
-
     // ── Command handlers ─────────────────────────────────────
 
     private async Task ExecuteSaveAsync()
@@ -3143,105 +3078,5 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         });
     }
 
-    private void ExecuteAddRule()
-    {
-        var p = new NavigationParameters
-        {
-            { "fieldId",     FieldId     },
-            { "formId",      FormId      },
-            { "fieldCode",   ColumnCode  },
-            { "tableCode",   TableCode   },
-            { "sectionName", SectionName },
-            { "mode",        "new"       }
-        };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.ValidationRuleEditor, p);
-    }
-
-    private void ExecuteOpenRule(RuleSummaryDto? rule)
-    {
-        if (rule is null) return;
-        var p = new NavigationParameters
-        {
-            { "ruleId",      rule.RuleId },
-            { "fieldId",     FieldId     },
-            { "formId",      FormId      },
-            { "fieldCode",   ColumnCode  },
-            { "tableCode",   TableCode   },
-            { "sectionName", SectionName },
-        };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.ValidationRuleEditor, p);
-    }
-
-    private async Task ExecuteDeleteRuleAsync(RuleSummaryDto? rule)
-    {
-        if (rule is null) return;
-
-        // Xác nhận trước khi xóa
-        var confirm = System.Windows.MessageBox.Show(
-            $"Xóa rule [{rule.RuleTypeCode}] — {rule.ErrorKey}?\nThao tác này không thể hoàn tác.",
-            "Xác nhận xóa rule",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
-        // Xóa DB nếu rule đã được lưu (RuleId > 0)
-        if (rule.RuleId > 0 && _ruleService is not null)
-            await _ruleService.DeleteRuleAsync(rule.RuleId, _cts.Token);
-
-        LinkedRules.Remove(rule);
-        ReindexRuleOrders();
-        IsDirty = true;
-    }
-
-    private void ExecuteAddEvent()
-    {
-        var p = new NavigationParameters
-        {
-            { "fieldId",     FieldId     },
-            { "formId",      FormId      },
-            { "fieldCode",   ColumnCode  },
-            { "tableCode",   TableCode   },
-            { "sectionName", SectionName },
-            { "mode",        "new"       }
-        };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, p);
-    }
-
-    private async void ExecuteDeleteEvent(EventSummaryDto? evt)
-    {
-        if (evt is null) return;
-
-        // Xác nhận trước khi xóa — default No, không thể hoàn tác
-        var confirm = System.Windows.MessageBox.Show(
-            $"Xóa event [{evt.TriggerCode}] → '{evt.FieldTarget}'?\nThao tác này không thể hoàn tác.",
-            "Xác nhận xóa event",
-            System.Windows.MessageBoxButton.YesNo,
-            System.Windows.MessageBoxImage.Warning);
-
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
-        // Xóa DB nếu event đã được lưu (EventId > 0)
-        if (evt.EventId > 0 && _eventService is not null)
-            await _eventService.DeleteEventAsync(evt.EventId, _cts.Token);
-
-        LinkedEvents.Remove(evt);
-        ReindexEventOrders();
-        IsDirty = true;
-    }
-
-    private void ExecuteOpenEvent(EventSummaryDto? evt)
-    {
-        if (evt is null) return;
-        var p = new NavigationParameters
-        {
-            { "eventId",     evt.EventId },
-            { "fieldId",     FieldId     },
-            { "formId",      FormId      },
-            { "fieldCode",   ColumnCode  },
-            { "tableCode",   TableCode   },
-            { "sectionName", SectionName }
-        };
-        _regionManager.RequestNavigate(RegionNames.Content, ViewNames.EventEditor, p);
-    }
+    // Rules/Events command handlers đã chuyển sang FieldRulesEventsVm (REFACTOR-B3).
 }

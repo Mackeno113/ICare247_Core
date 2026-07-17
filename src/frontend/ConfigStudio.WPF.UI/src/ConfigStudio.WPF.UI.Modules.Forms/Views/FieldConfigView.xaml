@@ -1979,7 +1979,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Rules" VerticalAlignment="Center" />
                         <Border Style="{StaticResource TabBadgeStyle}">
-                            <TextBlock Text="{Binding LinkedRules.Count}" FontSize="10"
+                            <TextBlock Text="{Binding RulesEvents.LinkedRules.Count}" FontSize="10"
                                        FontWeight="Bold" Foreground="{StaticResource AccentDarkBrush}" />
                         </Border>
                     </StackPanel>
@@ -1991,7 +1991,7 @@
                             Padding="12,8" Margin="0,0,0,8">
                         <DockPanel>
                             <dx:SimpleButton DockPanel.Dock="Left"
-                                             Command="{Binding AddRuleCommand}"
+                                             Command="{Binding RulesEvents.AddRuleCommand}"
                                              ToolTip="Thêm validation rule mới">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="+" FontSize="14" VerticalAlignment="Center" />
@@ -2003,7 +2003,7 @@
                                        VerticalAlignment="Center" FontSize="11"
                                        Foreground="{StaticResource MutedBrush}">
                                 <Run Text="Tổng: " />
-                                <Run Text="{Binding LinkedRules.Count, Mode=OneWay}" FontWeight="Bold" />
+                                <Run Text="{Binding RulesEvents.LinkedRules.Count, Mode=OneWay}" FontWeight="Bold" />
                                 <Run Text=" rule" />
                             </TextBlock>
                         </DockPanel>
@@ -2013,7 +2013,7 @@
                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             CornerRadius="8" Background="{StaticResource SurfaceBrush}"
                             Effect="{StaticResource CardShadow}">
-                        <dxg:GridControl ItemsSource="{Binding LinkedRules}"
+                        <dxg:GridControl ItemsSource="{Binding RulesEvents.LinkedRules}"
                                          AutoPopulateColumns="False">
                             <dxg:GridControl.View>
                                 <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
@@ -2031,11 +2031,11 @@
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Button Style="{StaticResource IconBtnStyle}"
                                                         Width="28" Height="28" FontSize="13"
-                                                        Command="{Binding DataContext.OpenRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        Command="{Binding DataContext.RulesEvents.OpenRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                         CommandParameter="{Binding Row}"
                                                         ToolTip="Cấu hình rule" Content="⚙" />
                                                 <Button Style="{StaticResource InlineDeleteBtnStyle}"
-                                                        Command="{Binding DataContext.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        Command="{Binding DataContext.RulesEvents.DeleteRuleCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                         CommandParameter="{Binding Row}"
                                                         ToolTip="Xóa rule" Content="🗑" />
                                             </StackPanel>
@@ -2054,7 +2054,7 @@
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="Events" VerticalAlignment="Center" />
                         <Border Style="{StaticResource TabBadgeStyle}">
-                            <TextBlock Text="{Binding LinkedEvents.Count}" FontSize="10"
+                            <TextBlock Text="{Binding RulesEvents.LinkedEvents.Count}" FontSize="10"
                                        FontWeight="Bold" Foreground="{StaticResource AccentDarkBrush}" />
                         </Border>
                     </StackPanel>
@@ -2066,7 +2066,7 @@
                             Padding="12,8" Margin="0,0,0,8">
                         <DockPanel>
                             <dx:SimpleButton DockPanel.Dock="Left"
-                                             Command="{Binding AddEventCommand}"
+                                             Command="{Binding RulesEvents.AddEventCommand}"
                                              ToolTip="Thêm event mới">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="+" FontSize="14" VerticalAlignment="Center" />
@@ -2078,7 +2078,7 @@
                                        VerticalAlignment="Center" FontSize="11"
                                        Foreground="{StaticResource MutedBrush}">
                                 <Run Text="Tổng: " />
-                                <Run Text="{Binding LinkedEvents.Count, Mode=OneWay}" FontWeight="Bold" />
+                                <Run Text="{Binding RulesEvents.LinkedEvents.Count, Mode=OneWay}" FontWeight="Bold" />
                                 <Run Text=" event" />
                             </TextBlock>
                         </DockPanel>
@@ -2088,7 +2088,7 @@
                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
                             CornerRadius="8" Background="{StaticResource SurfaceBrush}"
                             Effect="{StaticResource CardShadow}">
-                        <dxg:GridControl ItemsSource="{Binding LinkedEvents}"
+                        <dxg:GridControl ItemsSource="{Binding RulesEvents.LinkedEvents}"
                                          AutoPopulateColumns="False">
                             <dxg:GridControl.View>
                                 <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
@@ -2106,11 +2106,11 @@
                                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Button Style="{StaticResource IconBtnStyle}"
                                                         Width="28" Height="28" FontSize="13"
-                                                        Command="{Binding DataContext.OpenEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        Command="{Binding DataContext.RulesEvents.OpenEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                         CommandParameter="{Binding Row}"
                                                         ToolTip="Cấu hình event" Content="⚙" />
                                                 <Button Style="{StaticResource InlineDeleteBtnStyle}"
-                                                        Command="{Binding DataContext.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                        Command="{Binding DataContext.RulesEvents.DeleteEventCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                         CommandParameter="{Binding Row}"
                                                         ToolTip="Xóa event" Content="🗑" />
                                             </StackPanel>
@@ -2132,14 +2132,14 @@
                 BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0"
                 Padding="20,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Command="{Binding AddRuleCommand}"
+                <Button Command="{Binding RulesEvents.AddRuleCommand}"
                         Background="Transparent" BorderThickness="0" Cursor="Hand"
                         Margin="0,0,16,0">
                     <TextBlock FontSize="12" Foreground="{StaticResource AccentBrush}">
                         <Run Text="Validation Rules →" />
                     </TextBlock>
                 </Button>
-                <Button Command="{Binding AddEventCommand}"
+                <Button Command="{Binding RulesEvents.AddEventCommand}"
                         Background="Transparent" BorderThickness="0" Cursor="Hand">
                     <TextBlock FontSize="12" Foreground="{StaticResource AccentBrush}">
                         <Run Text="Events →" />
