@@ -217,7 +217,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 RaisePropertyChanged(nameof(EditorTypeGuide));
                 RaisePropertyChanged(nameof(HasEditorTypeGuide));
                 if (IsLookupEditor && !_isLoading)
-                    _ = LoadLookupCodesAsync();
+                    _ = FkLookup.LoadLookupCodesAsync();
                 IsDirty = true;
             }
         }
@@ -1068,99 +1068,13 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>Các mức chọn hợp lệ cho TreeLookupBox.</summary>
     public List<string> TreeSelectableLevelOptions { get; } = ["all", "leaf", "branch"];
 
-    // ── ComboBox / LookupComboBox display props ───────────────────────
+    // ── ComboBox / LookupComboBox display props — ĐÃ DỜI sang FkLookupConfigVm (B4.2) ──
 
-    /// <summary>
-    /// Chế độ tìm kiếm trong dropdown DxComboBox.
-    /// "None" | "AutoFilter" | "AutoSearch". Mặc định: "AutoFilter".
-    /// </summary>
-    private string _cbSearchMode = "AutoFilter";
-    public string CbSearchMode
+    /// <summary>Hook cho VM con FkLookup: prop lookup đổi → rebuild Control_Props_Json (guard cờ đang-rebuild).</summary>
+    internal void NotifyLookupPropChanged()
     {
-        get => _cbSearchMode;
-        set
-        {
-            if (SetProperty(ref _cbSearchMode, value))
-            {
-                RaisePropertyChanged(nameof(ShowSearchFilterCondition));
-                if (!_isRebuildingProps) RebuildControlPropsJson();
-            }
-        }
+        if (!_isRebuildingProps) RebuildControlPropsJson();
     }
-
-    /// <summary>
-    /// Điều kiện so khớp khi tìm kiếm.
-    /// "Contains" | "StartsWith" | "Equals". Mặc định: "Contains".
-    /// </summary>
-    private string _cbSearchFilterCondition = "Contains";
-    public string CbSearchFilterCondition
-    {
-        get => _cbSearchFilterCondition;
-        set { if (SetProperty(ref _cbSearchFilterCondition, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>True khi SearchMode != "None" — hiện dropdown SearchFilterCondition.</summary>
-    public bool ShowSearchFilterCondition => _cbSearchMode != "None";
-
-    /// <summary>Cho phép người dùng nhập text tự do (AllowUserInput). Mặc định: false.</summary>
-    private bool _cbAllowUserInput;
-    public bool CbAllowUserInput
-    {
-        get => _cbAllowUserInput;
-        set { if (SetProperty(ref _cbAllowUserInput, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>I18n key cho placeholder khi chưa chọn. Null = dùng fallback "-- Chọn --".</summary>
-    private string _cbNullTextKey = "";
-    public string CbNullTextKey
-    {
-        get => _cbNullTextKey;
-        set { if (SetProperty(ref _cbNullTextKey, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>
-    /// Chiều rộng dropdown panel.
-    /// "ContentOrEditorWidth" | "ContentWidth" | "EditorWidth". Mặc định: "ContentOrEditorWidth".
-    /// </summary>
-    private string _cbDropDownWidthMode = "ContentOrEditorWidth";
-    public string CbDropDownWidthMode
-    {
-        get => _cbDropDownWidthMode;
-        set { if (SetProperty(ref _cbDropDownWidthMode, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>Nút xóa: "Hidden" | "Auto". Mặc định: "Auto".</summary>
-    private string _cbClearButton = "Auto";
-    public string CbClearButton
-    {
-        get => _cbClearButton;
-        set { if (SetProperty(ref _cbClearButton, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>Tên field để group items trong dropdown — chỉ ComboBox (dynamic). Null = không group.</summary>
-    private string _cbGroupFieldName = "";
-    public string CbGroupFieldName
-    {
-        get => _cbGroupFieldName;
-        set { if (SetProperty(ref _cbGroupFieldName, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>Tên field bool để disable item trong dropdown — chỉ ComboBox (dynamic). Null = không disable.</summary>
-    private string _cbDisabledFieldName = "";
-    public string CbDisabledFieldName
-    {
-        get => _cbDisabledFieldName;
-        set { if (SetProperty(ref _cbDisabledFieldName, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    /// <summary>Các chế độ SearchMode hợp lệ.</summary>
-    public List<string> SearchModeOptions { get; } = ["None", "AutoFilter", "AutoSearch"];
-    /// <summary>Các điều kiện so khớp khi search hợp lệ.</summary>
-    public List<string> SearchFilterConditionOptions { get; } = ["Contains", "StartsWith", "Equals"];
-    /// <summary>Các chế độ chiều rộng dropdown hợp lệ.</summary>
-    public List<string> DropDownWidthModeOptions { get; } = ["ContentOrEditorWidth", "ContentWidth", "EditorWidth"];
-    /// <summary>Các chế độ nút xóa hợp lệ.</summary>
-    public List<string> ClearButtonModeOptions { get; } = ["Hidden", "Auto"];
 
     /// <summary>
     /// Diễn giải cấu hình hiện tại bằng tiếng Việt — sinh tự động từ JSON.
@@ -1225,53 +1139,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public DelegateCommand ToggleExplanationCommand { get; private set; } = null!;
     public DelegateCommand CopyJsonCommand      { get; private set; } = null!;
 
-    private string _lookupCode = "";
-    /// <summary>Lookup code trong Sys_Lookup. VD: 'GENDER', 'MARITAL_STATUS'.</summary>
-    public string LookupCode
-    {
-        get => _lookupCode;
-        set
-        {
-            if (SetProperty(ref _lookupCode, value))
-            {
-                _ = LoadLookupPreviewAsync(value);
-                // Sync lookupCode vào ControlPropsJson để persist khi Lưu Field
-                if (!_isRebuildingProps)
-                    RebuildControlPropsJson();
-            }
-        }
-    }
-
-    /// <summary>Danh sách lookup codes có sẵn trong DB (dùng cho dropdown gợi ý).</summary>
-    public ObservableCollection<string> AvailableLookupCodes { get; } = [];
-
-    /// <summary>Preview các items của lookup code đang chọn.</summary>
-    public ObservableCollection<LookupItemDto> LookupPreviewItems { get; } = [];
-
-    private async Task LoadLookupCodesAsync()
-    {
-        if (_lookupService is null) return;
-        try
-        {
-            var codes = await _lookupService.GetAllCodesAsync(_cts.Token);
-            AvailableLookupCodes.Clear();
-            foreach (var c in codes) AvailableLookupCodes.Add(c);
-        }
-        catch (Exception ex)
-        {
-            // Log lỗi — thường do bảng Sys_Lookup chưa được tạo (migration 004 chưa chạy)
-            _logger?.Capture(ex, "FieldConfig.LoadLookupCodes");
-        }
-    }
-
-    private async Task LoadLookupPreviewAsync(string code)
-    {
-        LookupPreviewItems.Clear();
-        if (_lookupService is null || string.IsNullOrWhiteSpace(code)) return;
-        var items = await _lookupService.GetByCodeAsync(code, "vi", _cts.Token);
-        foreach (var i in items)
-            LookupPreviewItems.Add(new LookupItemDto { ItemCode = i.ItemCode, Label = i.Label });
-    }
+    // Sys_Lookup tĩnh (LookupCode + AvailableLookupCodes + LookupPreviewItems + loader)
+    // — ĐÃ DỜI sang FkLookupConfigVm (B4.2).
 
     private int _orderNo = 1;
     public int OrderNo
@@ -1655,7 +1524,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
 
         // VM con Rules/Events (REFACTOR-B3): chụp ngữ cảnh root qua Func; markDirty → bật nút Lưu.
-        FkLookup = new FkLookupConfigVm(this);
+        FkLookup = new FkLookupConfigVm(this, lookupService, logger, () => _cts.Token);
 
         RulesEvents = new FieldRulesEventsVm(
             ruleService, eventService, logger, regionManager,
@@ -1814,15 +1683,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _configExplanation = "";
         _isExplanationExpanded = true;
 
-        // Sys_Lookup (RadioGroup / LookupComboBox)
-        _lookupCode = "";
-        LookupPreviewItems.Clear();
-
-        // ComboBox display props
-        _cbSearchMode = "AutoFilter"; _cbSearchFilterCondition = "Contains";
-        _cbAllowUserInput = false; _cbNullTextKey = "";
-        _cbDropDownWidthMode = "ContentOrEditorWidth"; _cbClearButton = "Auto";
-        _cbGroupFieldName = ""; _cbDisabledFieldName = "";
+        // Sys_Lookup (RadioGroup / LookupComboBox) + ComboBox display props — state ở VM con (B4.2).
+        FkLookup.ResetComboAndLookupState();
 
         // Rules / Events liên kết — field mới chưa có
         RulesEvents.Clear();
@@ -1869,18 +1731,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         RaisePropertyChanged(nameof(HasConfigExplanation));
         RaisePropertyChanged(nameof(ShowConfigExplanation));
         RaisePropertyChanged(nameof(ExplanationToggleLabel));
-        RaisePropertyChanged(nameof(LookupCode));
         RaisePropertyChanged(nameof(HasCascadeWarnings));
         RaisePropertyChanged(nameof(ReloadOnChangeInput));
-        RaisePropertyChanged(nameof(CbSearchMode));
-        RaisePropertyChanged(nameof(CbSearchFilterCondition));
-        RaisePropertyChanged(nameof(ShowSearchFilterCondition));
-        RaisePropertyChanged(nameof(CbAllowUserInput));
-        RaisePropertyChanged(nameof(CbNullTextKey));
-        RaisePropertyChanged(nameof(CbDropDownWidthMode));
-        RaisePropertyChanged(nameof(CbClearButton));
-        RaisePropertyChanged(nameof(CbGroupFieldName));
-        RaisePropertyChanged(nameof(CbDisabledFieldName));
+        // LookupCode + Cb* — VM con tự raise trong ResetComboAndLookupState() (B4.2).
 
         // Editor type về mặc định "TextBox" — ép _selectedEditorType = "" để SetProperty luôn detect
         // change → LoadControlPropSchema() rebuild ControlProps sạch (đang trong load, _isLoading=true
@@ -2061,8 +1914,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     // Lookup_Source = "static" → đọc Lookup_Code trực tiếp từ DB (không parse JSON)
                     if (IsLookupEditor)
                     {
-                        await LoadLookupCodesAsync();
-                        LookupCode = field.LookupCode ?? "";
+                        await FkLookup.LoadLookupCodesAsync();
+                        FkLookup.LookupCode = field.LookupCode ?? "";
                     }
 
                     // ── Restore FK Lookup (LookupBox) — đọc từ Ui_Field_Lookup ──
@@ -2208,27 +2061,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     // ── Restore ComboBox / LookupComboBox display props từ ControlPropsJson ──
                     if (IsComboBoxEditor || SelectedEditorType == "LookupComboBox")
                     {
-                        // Parse trực tiếp từ JSON dict — WPF không reference backend Domain
+                        // Parse trực tiếp từ JSON dict — WPF không reference backend Domain.
+                        // State Cb* ở VM con (B4.2); giữ cờ đang-rebuild quanh restore như trước.
                         var raw = ControlPropsJsonService.ParseControlPropsJson(field.ControlPropsJson ?? "{}");
                         _isRebuildingProps = true;
-                        _cbSearchMode          = ControlPropsJsonService.GetStr(raw, "searchMode",           "AutoFilter");
-                        _cbSearchFilterCondition = ControlPropsJsonService.GetStr(raw, "searchFilterCondition", "Contains");
-                        _cbAllowUserInput      = ControlPropsJsonService.GetBool(raw, "allowUserInput",      false);
-                        _cbNullTextKey         = ControlPropsJsonService.GetStr(raw, "nullTextKey",          "");
-                        _cbDropDownWidthMode   = ControlPropsJsonService.GetStr(raw, "dropDownWidthMode",    "ContentOrEditorWidth");
-                        _cbClearButton         = ControlPropsJsonService.GetStr(raw, "clearButton",          "Auto");
-                        _cbGroupFieldName      = ControlPropsJsonService.GetStr(raw, "groupFieldName",       "");
-                        _cbDisabledFieldName   = ControlPropsJsonService.GetStr(raw, "disabledFieldName",    "");
-                        _isRebuildingProps     = false;
-                        RaisePropertyChanged(nameof(CbSearchMode));
-                        RaisePropertyChanged(nameof(CbSearchFilterCondition));
-                        RaisePropertyChanged(nameof(ShowSearchFilterCondition));
-                        RaisePropertyChanged(nameof(CbAllowUserInput));
-                        RaisePropertyChanged(nameof(CbNullTextKey));
-                        RaisePropertyChanged(nameof(CbDropDownWidthMode));
-                        RaisePropertyChanged(nameof(CbClearButton));
-                        RaisePropertyChanged(nameof(CbGroupFieldName));
-                        RaisePropertyChanged(nameof(CbDisabledFieldName));
+                        FkLookup.RestoreComboPropsFromJson(raw);
+                        _isRebuildingProps = false;
                     }
                 }
             }
@@ -2461,17 +2299,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 ControlProps = ControlProps.ToList(),
 
                 IsLookupEditor = IsLookupEditor,
-                LookupCode = _lookupCode,
+                LookupCode = FkLookup.LookupCode,
 
                 IsComboLike = IsComboBoxEditor || SelectedEditorType == "LookupComboBox",
-                CbSearchMode = _cbSearchMode,
-                CbSearchFilterCondition = _cbSearchFilterCondition,
-                CbAllowUserInput = _cbAllowUserInput,
-                CbDropDownWidthMode = _cbDropDownWidthMode,
-                CbClearButton = _cbClearButton,
-                CbNullTextKey = _cbNullTextKey,
-                CbGroupFieldName = _cbGroupFieldName,
-                CbDisabledFieldName = _cbDisabledFieldName,
+                CbSearchMode = FkLookup.CbSearchMode,
+                CbSearchFilterCondition = FkLookup.CbSearchFilterCondition,
+                CbAllowUserInput = FkLookup.CbAllowUserInput,
+                CbDropDownWidthMode = FkLookup.CbDropDownWidthMode,
+                CbClearButton = FkLookup.CbClearButton,
+                CbNullTextKey = FkLookup.CbNullTextKey,
+                CbGroupFieldName = FkLookup.CbGroupFieldName,
+                CbDisabledFieldName = FkLookup.CbDisabledFieldName,
 
                 IsFkLookupEditor = IsFkLookupEditor,
                 QueryMode = _queryMode,
@@ -2810,7 +2648,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 OrderNo          = OrderNo,
                 ColSpan          = ColSpan,
                 LookupSource     = lookupSource,
-                LookupCode       = IsLookupEditor ? LookupCode : null,
+                LookupCode       = IsLookupEditor ? FkLookup.LookupCode : null,
                 // LookupBox: ControlPropsJson = null (toàn bộ config lưu trong Ui_Field_Lookup)
                 // ComboBox/LookupComboBox: ControlPropsJson lưu search+display props
                 ControlPropsJson = IsFkLookupEditor ? null : ControlPropsJson
