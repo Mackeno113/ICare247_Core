@@ -12,6 +12,7 @@ using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
 using ConfigStudio.WPF.UI.Modules.Forms.Models;
+using ConfigStudio.WPF.UI.Modules.Forms.Services;
 using Prism.Commands;
 using Prism.Dialogs;
 using Prism.Navigation.Regions;
@@ -2239,16 +2240,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     if (IsComboBoxEditor || SelectedEditorType == "LookupComboBox")
                     {
                         // Parse trực tiếp từ JSON dict — WPF không reference backend Domain
-                        var raw = ParseControlPropsJson(field.ControlPropsJson ?? "{}");
+                        var raw = ControlPropsJsonService.ParseControlPropsJson(field.ControlPropsJson ?? "{}");
                         _isRebuildingProps = true;
-                        _cbSearchMode          = GetStr(raw, "searchMode",           "AutoFilter");
-                        _cbSearchFilterCondition = GetStr(raw, "searchFilterCondition", "Contains");
-                        _cbAllowUserInput      = GetBool(raw, "allowUserInput",      false);
-                        _cbNullTextKey         = GetStr(raw, "nullTextKey",          "");
-                        _cbDropDownWidthMode   = GetStr(raw, "dropDownWidthMode",    "ContentOrEditorWidth");
-                        _cbClearButton         = GetStr(raw, "clearButton",          "Auto");
-                        _cbGroupFieldName      = GetStr(raw, "groupFieldName",       "");
-                        _cbDisabledFieldName   = GetStr(raw, "disabledFieldName",    "");
+                        _cbSearchMode          = ControlPropsJsonService.GetStr(raw, "searchMode",           "AutoFilter");
+                        _cbSearchFilterCondition = ControlPropsJsonService.GetStr(raw, "searchFilterCondition", "Contains");
+                        _cbAllowUserInput      = ControlPropsJsonService.GetBool(raw, "allowUserInput",      false);
+                        _cbNullTextKey         = ControlPropsJsonService.GetStr(raw, "nullTextKey",          "");
+                        _cbDropDownWidthMode   = ControlPropsJsonService.GetStr(raw, "dropDownWidthMode",    "ContentOrEditorWidth");
+                        _cbClearButton         = ControlPropsJsonService.GetStr(raw, "clearButton",          "Auto");
+                        _cbGroupFieldName      = ControlPropsJsonService.GetStr(raw, "groupFieldName",       "");
+                        _cbDisabledFieldName   = ControlPropsJsonService.GetStr(raw, "disabledFieldName",    "");
                         _isRebuildingProps     = false;
                         RaisePropertyChanged(nameof(CbSearchMode));
                         RaisePropertyChanged(nameof(CbSearchFilterCondition));
@@ -2875,17 +2876,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // Nếu ControlProps rỗng (lần đầu load từ DB) → parse từ _controlPropsJson để restore giá trị đã lưu.
         var oldValues = ControlProps.Count > 0
             ? ControlProps.ToDictionary(p => p.Definition.PropName, p => p.Value)
-            : ParseControlPropsJson(_controlPropsJson);
+            : ControlPropsJsonService.ParseControlPropsJson(_controlPropsJson);
 
         ControlProps.Clear();
 
-        var definitions = GetPropDefinitions(SelectedEditorType);
+        var definitions = ControlPropsJsonService.GetPropDefinitions(SelectedEditorType);
 
         foreach (var def in definitions)
         {
             object? resolvedValue = def.DefaultValue;
             if (oldValues.TryGetValue(def.PropName, out var saved))
-                resolvedValue = ConvertJsonPropValue(saved, def.PropType) ?? def.DefaultValue;
+                resolvedValue = ControlPropsJsonService.ConvertJsonPropValue(saved, def.PropType) ?? def.DefaultValue;
 
             var propValue = new ControlPropValue
             {
@@ -2906,122 +2907,45 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     }
 
     /// <summary>
-    /// Rebuild JSON từ danh sách <see cref="ControlProps"/> hiện tại.
+    /// Rebuild JSON từ snapshot state hiện tại — logic lắp JSON nằm ở
+    /// <see cref="ControlPropsJsonService.BuildJson"/> (REFACTOR-B1); VM chỉ chụp state + gán kết quả.
     /// </summary>
-    /// <summary>
-    /// Ép giá trị prop về đúng kiểu trước khi serialize JSON.
-    /// DevExpress TextEdit trả EditValue dạng string ("2") nên prop kiểu Number
-    /// phải parse về số — nếu không Blazor renderer (int/double) sẽ deserialize lỗi.
-    /// </summary>
-    private static object? CoercePropValue(ControlPropValue p)
-    {
-        if (p.Definition.PropType != "Number") return p.Value;
-
-        return p.Value switch
-        {
-            null                                                    => null,
-            string s when string.IsNullOrWhiteSpace(s)              => null,
-            // Số nguyên thì giữ long, có phần thập phân thì giữ double
-            string s when long.TryParse(s, out var l)               => l,
-            string s when double.TryParse(s,
-                System.Globalization.NumberStyles.Any,
-                System.Globalization.CultureInfo.InvariantCulture,
-                out var d)                                          => d,
-            string s when double.TryParse(s, out var d)             => d,
-            _                                                       => p.Value
-        };
-    }
-
     private void RebuildControlPropsJson()
     {
         _isRebuildingProps = true;
         try
         {
-            var dict = ControlProps.ToDictionary(
-                p => p.Definition.PropName,
-                p => CoercePropValue(p));
-
-            // Sys_Lookup: đưa lookupCode vào JSON
-            if (IsLookupEditor && !string.IsNullOrWhiteSpace(_lookupCode))
-                dict["lookupCode"] = _lookupCode;
-
-            // ComboBox / LookupComboBox: merge search + display props vào JSON
-            if (IsComboBoxEditor || SelectedEditorType == "LookupComboBox")
+            ControlPropsJson = ControlPropsJsonService.BuildJson(new ControlPropsJsonService.BuildInput
             {
-                dict["searchMode"]           = _cbSearchMode;
-                dict["searchFilterCondition"]= _cbSearchFilterCondition;
-                dict["allowUserInput"]       = (object)_cbAllowUserInput;
-                dict["dropDownWidthMode"]    = _cbDropDownWidthMode;
-                dict["clearButton"]          = _cbClearButton;
-                if (!string.IsNullOrWhiteSpace(_cbNullTextKey))
-                    dict["nullTextKey"] = _cbNullTextKey;
-                if (!string.IsNullOrWhiteSpace(_cbGroupFieldName))
-                    dict["groupFieldName"] = _cbGroupFieldName;
-                if (!string.IsNullOrWhiteSpace(_cbDisabledFieldName))
-                    dict["disabledFieldName"] = _cbDisabledFieldName;
-            }
+                ControlProps = ControlProps.ToList(),
 
-            // FK Lookup: serialize toàn bộ config LookupBox theo queryMode
-            if (IsFkLookupEditor)
-            {
-                dict["queryMode"]    = _queryMode;
-                dict["valueField"]   = _fkValueField;
-                dict["displayField"] = _fkDisplayField;
-                dict["searchEnabled"]= _fkSearchEnabled;
-                dict["orderBy"]      = _fkOrderBy;
+                IsLookupEditor = IsLookupEditor,
+                LookupCode = _lookupCode,
 
-                switch (_queryMode)
-                {
-                    case "table":
-                        dict["tableName"] = (object?)_fkTableName;
-                        dict["filterSql"] = _fkFilterSql;
-                        if (FkFilterParams.Count > 0)
-                            dict["filterParams"] = FkFilterParams.Select(p => new
-                                { param = p.Param, fieldRef = p.FieldRef, type = p.Type }).ToList();
-                        break;
+                IsComboLike = IsComboBoxEditor || SelectedEditorType == "LookupComboBox",
+                CbSearchMode = _cbSearchMode,
+                CbSearchFilterCondition = _cbSearchFilterCondition,
+                CbAllowUserInput = _cbAllowUserInput,
+                CbDropDownWidthMode = _cbDropDownWidthMode,
+                CbClearButton = _cbClearButton,
+                CbNullTextKey = _cbNullTextKey,
+                CbGroupFieldName = _cbGroupFieldName,
+                CbDisabledFieldName = _cbDisabledFieldName,
 
-                    case "function":
-                        dict["functionName"] = (object?)_fkFunctionName;
-                        if (FkFunctionParams.Count > 0)
-                            dict["functionParams"] = FkFunctionParams.Select(p => new
-                            {
-                                name       = p.Name,
-                                sourceType = p.SourceType,
-                                fieldRef   = p.SourceType == "field"  ? p.FieldRef  : (string?)null,
-                                systemKey  = p.SourceType == "system" ? p.SystemKey : (string?)null,
-                                type       = p.Type
-                            }).ToList();
-                        break;
-
-                    case "sql":
-                        dict["selectSql"] = (object?)_fkSelectSql;
-                        if (FkFilterParams.Count > 0)
-                            dict["filterParams"] = FkFilterParams.Select(p => new
-                                { param = p.Param, fieldRef = p.FieldRef, type = p.Type }).ToList();
-                        break;
-                }
-
-                // Cột popup, reloadOnChange, dataSourceConditions — dùng cho cả 3 mode
-                // Lưu captionKey (i18n key) — backend resolve → text theo langCode khi trả Blazor
-                dict["columns"] = FkPopupColumns.Select(c => new
-                    { fieldName = c.FieldName, captionKey = c.CaptionKey, width = c.Width }).ToList();
-
-                // Multi-Trigger giờ lưu ở cột Ui_Field_Lookup.Reload_Trigger_Fields (Migration 068),
-                // KHÔNG serialize vào Control_Props_Json nữa (runtime đọc từ cột).
-
-                if (DataSourceConditions.Count > 0)
-                    dict["dataSourceConditions"] = DataSourceConditions.Select(c => new
-                    {
-                        when = new { field = c.WhenField, op = c.WhenOp, value = c.WhenValue },
-                        tableName    = c.TableName,
-                        displayField = c.DisplayField,
-                        filterSql    = c.FilterSql
-                    }).ToList();
-            }
-
-            ControlPropsJson = JsonSerializer.Serialize(dict, new JsonSerializerOptions
-            {
-                WriteIndented = true
+                IsFkLookupEditor = IsFkLookupEditor,
+                QueryMode = _queryMode,
+                FkValueField = _fkValueField,
+                FkDisplayField = _fkDisplayField,
+                FkSearchEnabled = _fkSearchEnabled,
+                FkOrderBy = _fkOrderBy,
+                FkTableName = _fkTableName,
+                FkFilterSql = _fkFilterSql,
+                FkFunctionName = _fkFunctionName,
+                FkSelectSql = _fkSelectSql,
+                FilterParams = FkFilterParams.ToList(),
+                FunctionParams = FkFunctionParams.ToList(),
+                PopupColumns = FkPopupColumns.ToList(),
+                DataSourceConditions = DataSourceConditions.ToList(),
             });
 
             IsDirty = true;
@@ -3031,114 +2955,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             _isRebuildingProps = false;
         }
     }
-
-    /// <summary>
-    /// Parse JSON string thành dictionary prop values (dùng khi restore từ DB).
-    /// </summary>
-    private static Dictionary<string, object?> ParseControlPropsJson(string json)
-    {
-        try
-        {
-            var raw = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
-            if (raw is null) return [];
-            return raw.ToDictionary(kv => kv.Key, kv => (object?)kv.Value);
-        }
-        catch { return []; }
-    }
-
-    /// <summary>Đọc string từ prop dict, fallback về <paramref name="def"/> nếu không tìm thấy.</summary>
-    private static string GetStr(Dictionary<string, object?> d, string key, string def)
-    {
-        if (!d.TryGetValue(key, out var v) || v is not JsonElement je) return def;
-        return je.ValueKind == JsonValueKind.String ? (je.GetString() ?? def) : def;
-    }
-
-    /// <summary>Đọc bool từ prop dict, fallback về <paramref name="def"/> nếu không tìm thấy.</summary>
-    private static bool GetBool(Dictionary<string, object?> d, string key, bool def)
-    {
-        if (!d.TryGetValue(key, out var v) || v is not JsonElement je) return def;
-        return je.ValueKind is JsonValueKind.True  ? true
-             : je.ValueKind is JsonValueKind.False ? false
-             : def;
-    }
-
-    /// <summary>
-    /// Chuyển JsonElement thành đúng kiểu dựa trên PropType của definition.
-    /// </summary>
-    private static object? ConvertJsonPropValue(object? raw, string propType)
-    {
-        if (raw is not JsonElement je) return raw;
-        return propType switch
-        {
-            "Number"  => je.ValueKind == JsonValueKind.Number  ? je.GetDouble()  : (object?)null,
-            "Boolean" => je.ValueKind is JsonValueKind.True
-                                      or JsonValueKind.False   ? je.GetBoolean() : (object?)null,
-            _         => je.ValueKind == JsonValueKind.String  ? je.GetString()  : je.ToString()
-        };
-    }
-
-    /// <summary>
-    /// Trả về danh sách <see cref="ControlPropDefinition"/> mock theo editor type.
-    /// Sau này sẽ load từ <c>Ui_Control_Map.Default_Props_Json</c>.
-    /// </summary>
-    private static List<ControlPropDefinition> GetPropDefinitions(string editorType) => editorType switch
-    {
-        "NumericBox" =>
-        [
-            new() { PropName = "minValue",  PropType = "Number",  DefaultValue = 0,      Label = "Giá trị tối thiểu" },
-            new() { PropName = "maxValue",  PropType = "Number",  DefaultValue = 999999, Label = "Giá trị tối đa" },
-            new() { PropName = "decimals",  PropType = "Number",  DefaultValue = 0,      Label = "Số chữ số thập phân" },
-            new() { PropName = "spinStep",  PropType = "Number",  DefaultValue = 1,      Label = "Bước nhảy" },
-            new() { PropName = "allowNull", PropType = "Boolean", DefaultValue = false,   Label = "Cho phép rỗng" },
-        ],
-        "TextBox" =>
-        [
-            new() { PropName = "maxLength",       PropType = "Number",  DefaultValue = 255,          Label = "Độ dài tối đa" },
-            new() { PropName = "isPassword",      PropType = "Boolean", DefaultValue = false,         Label = "Ẩn ký tự (password)" },
-            new() { PropName = "autoComplete",    PropType = "Enum",    DefaultValue = "off",         Label = "AutoComplete",
-                    AllowedValues = ["off", "on", "new-password"] },
-            new() { PropName = "bindValueMode",   PropType = "Enum",    DefaultValue = "OnLostFocus", Label = "Khi nào cập nhật giá trị",
-                    AllowedValues = ["OnLostFocus", "OnInput"] },
-            new() { PropName = "inputDelay",      PropType = "Number",  DefaultValue = 300,           Label = "Delay (ms) khi OnInput" },
-            new() { PropName = "clearButtonMode", PropType = "Enum",    DefaultValue = "Auto",        Label = "Nút xóa",
-                    AllowedValues = ["Auto", "Never"] },
-        ],
-        // TextArea = DxMemo — control riêng, user tự chọn
-        "TextArea" =>
-        [
-            new() { PropName = "maxLength",     PropType = "Number",  DefaultValue = 4000,          Label = "Độ dài tối đa" },
-            new() { PropName = "rows",          PropType = "Number",  DefaultValue = 4,             Label = "Số dòng hiển thị" },
-            new() { PropName = "bindValueMode", PropType = "Enum",    DefaultValue = "OnLostFocus", Label = "Khi nào cập nhật giá trị",
-                    AllowedValues = ["OnLostFocus", "OnInput"] },
-            new() { PropName = "inputDelay",    PropType = "Number",  DefaultValue = 300,           Label = "Delay (ms) khi OnInput" },
-        ],
-        // ComboBox dùng dedicated ComboBoxPropsPanel — không qua generic ControlProps
-        "ComboBox" => [],
-        "DatePicker" =>
-        [
-            new() { PropName = "format",  PropType = "Enum",   DefaultValue = "dd/MM/yyyy", Label = "Định dạng ngày", AllowedValues = ["dd/MM/yyyy", "dd/MM/yyyy HH:mm", "MM/yyyy", "yyyy"] },
-            new() { PropName = "minDate", PropType = "String", DefaultValue = "",            Label = "Ngày tối thiểu" },
-            new() { PropName = "maxDate", PropType = "String", DefaultValue = "",            Label = "Ngày tối đa" },
-        ],
-        // CheckBox = DxCheckBox với CheckType.CheckBox
-        "CheckBox" =>
-        [
-            new() { PropName = "allowIndeterminate", PropType = "Boolean", DefaultValue = false,   Label = "3 trạng thái (bool?)" },
-            new() { PropName = "labelPosition",      PropType = "Enum",    DefaultValue = "Right",  Label = "Vị trí label",
-                    AllowedValues = ["Right", "Left"] },
-            new() { PropName = "labelWrapMode",      PropType = "Enum",    DefaultValue = "WordWrap", Label = "Xuống dòng label",
-                    AllowedValues = ["WordWrap", "Ellipsis", "NoWrap"] },
-        ],
-        // ToggleSwitch = DxCheckBox với CheckType.Switch (không hỗ trợ indeterminate)
-        "ToggleSwitch" =>
-        [
-            new() { PropName = "labelPosition", PropType = "Enum", DefaultValue = "Right", Label = "Vị trí label",
-                    AllowedValues = ["Right", "Left"] },
-        ],
-        // LookupBox dùng panel riêng (FkTableName, FkValueField...) — không qua generic ControlProps
-        "LookupBox" => [],
-        _ => []
-    };
 
     // ── FK Lookup command handlers ───────────────────────────
 
