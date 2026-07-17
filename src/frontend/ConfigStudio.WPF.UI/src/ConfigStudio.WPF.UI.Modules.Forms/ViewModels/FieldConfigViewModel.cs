@@ -1584,6 +1584,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// <summary>VM con 2 tab Rules/Events (danh sách + mở editor + xóa). Khởi tạo trong ctor.</summary>
     public FieldRulesEventsVm RulesEvents { get; }
 
+    // ── FK Lookup / ComboBox — VM con facade (REFACTOR-B4.1) ─
+    /// <summary>VM con vùng FK Lookup/ComboBox — DataContext của 2 panel props. Hiện ủy quyền
+    /// 1-1 về root (strangler); các bước B4.x dời dần state vào con mà không đụng XAML.</summary>
+    public FkLookupConfigVm FkLookup { get; }
+
     // ── State ────────────────────────────────────────────────
     private bool _isRebuildingProps;
     private bool _isDirty;
@@ -1650,6 +1655,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
 
         // VM con Rules/Events (REFACTOR-B3): chụp ngữ cảnh root qua Func; markDirty → bật nút Lưu.
+        FkLookup = new FkLookupConfigVm(this);
+
         RulesEvents = new FieldRulesEventsVm(
             ruleService, eventService, logger, regionManager,
             () => new FieldRulesEventsVm.Context(FieldId, FormId, ColumnCode, TableCode, SectionName),

@@ -1360,11 +1360,13 @@
 
                         <!-- ── ComboBoxPropsPanel — LookupComboBox (static) + ComboBox (dynamic) ── -->
                         <panels:ComboBoxPropsPanel
+                            DataContext="{Binding FkLookup}"
                             Visibility="{Binding IsLookupOrComboBoxEditor, Converter={StaticResource BoolToVis}}" />
 
                         <!-- ── LookupBoxPropsPanel — LookupBox (DxDropDownBox) ── -->
                         <!-- REPLACED: FK Lookup Config inline section → dedicated UserControl -->
                         <panels:LookupBoxPropsPanel
+                            DataContext="{Binding FkLookup}"
                             Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}" />
 
                         <!-- ── FK Lookup Config (LEGACY — hidden, kept for reference) ── -->
