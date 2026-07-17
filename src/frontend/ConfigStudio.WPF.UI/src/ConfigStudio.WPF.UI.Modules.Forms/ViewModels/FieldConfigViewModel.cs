@@ -2403,24 +2403,16 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         PlaceholderKey = BuildFieldKey("placeholder");
         TooltipKey     = BuildFieldKey("tooltip");
         if (IsRequired)
-        {
-            var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
-            RequiredErrorKey  = $"{TableCode.ToLowerInvariant()}.val.{effectiveCode}.required";
-        }
+            RequiredErrorKey = FieldI18nKeyService.BuildValidationKey(
+                TableCode, IsVirtual ? FieldCode : ColumnCode, "required");
     }
 
     /// <summary>
-    /// Build key hiển thị field theo chuẩn spec 10 §1b: <c>{tableCode}.field.{code}.{qualifier}</c>
-    /// (qualifier = label / placeholder / tooltip). Trả rỗng nếu thiếu TableCode hoặc cột hiệu lực.
+    /// Build key hiển thị field theo chuẩn spec 10 §1b — logic ở
+    /// <see cref="FieldI18nKeyService.BuildFieldKey"/> (REFACTOR-B1), đây chỉ bơm ngữ cảnh VM.
     /// </summary>
     private string BuildFieldKey(string qualifier)
-    {
-        var tableCode     = TableCode.ToLowerInvariant();
-        var effectiveCode = (IsVirtual ? FieldCode : ColumnCode).ToLowerInvariant();
-        return string.IsNullOrEmpty(tableCode) || string.IsNullOrEmpty(effectiveCode)
-            ? ""
-            : $"{tableCode}.field.{effectiveCode}.{qualifier}";
-    }
+        => FieldI18nKeyService.BuildFieldKey(TableCode, IsVirtual ? FieldCode : ColumnCode, qualifier);
 
     /// <summary>
     /// Chuẩn hóa 3 key hiển thị về đúng cú pháp spec 10 cho field ĐANG SỬA — kể cả field cũ lưu key
@@ -2466,11 +2458,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// </summary>
     private async Task AutoSuggestRequiredErrorKeyAsync()
     {
-        var columnCode = ColumnCode.ToLowerInvariant();
-        var tableCode  = TableCode.ToLowerInvariant();
-        if (string.IsNullOrEmpty(columnCode) || string.IsNullOrEmpty(tableCode)) return;
+        var key = FieldI18nKeyService.BuildValidationKey(TableCode, ColumnCode, "required");
+        if (string.IsNullOrEmpty(key)) return;
 
-        var key = $"{tableCode}.val.{columnCode}.required";
         _requiredErrorKey = key;
         RaisePropertyChanged(nameof(RequiredErrorKey));
         // Key chưa có bản dịch → điền mẫu mặc định để user thấy ngay text sẽ được lưu.
@@ -3535,109 +3525,32 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     {
         if (_i18nService is null || _appConfig is not { IsConfigured: true }) return;
 
-        // Label/Placeholder/Tooltip/Required: user nhập THẲNG giá trị vi ở ô tương ứng.
-        // Có giá trị → upsert (ghi đè) bản dịch; rỗng → chỉ init default nếu chưa có.
-        if (!string.IsNullOrWhiteSpace(LabelKey))
-            await UpsertOrInitViAsync(LabelKey, LabelPreview, ColumnCode, ct);
-
-        // Placeholder/Tooltip thường CÙNG text với label: ô để trống (hoặc còn giữ mặc định = mã cột) →
-        // lấy text của label; user nhập KHÁC → tôn trọng giá trị user. Sau khi ghi, phản ánh lại ô nhập.
-        var labelText = (LabelPreview ?? "").Trim();
-        var defaults  = DisplayDefaultValues;
-
-        await SaveDisplayViAsync(PlaceholderKey, PlaceholderPreview, labelText, defaults,
-                                 v => PlaceholderPreview = v, ct);
-        await SaveDisplayViAsync(TooltipKey, TooltipPreview, labelText, defaults,
-                                 v => TooltipPreview = v, ct);
-
-        // Các ngôn ngữ khác (bản dịch nhập qua popup của Nhãn) cũng lan sang placeholder/tooltip.
-        await CascadeLabelToOtherLanguagesAsync(defaults, ct);
-
-        if (IsRequired && !string.IsNullOrWhiteSpace(RequiredErrorKey))
-            await UpsertOrInitViAsync(RequiredErrorKey, RequiredErrorKeyPreview,
-                                      DefaultRequiredMessageVi, ct);
-
-        // Đăng ký captionKey của từng cột popup LookupBox (chỉ init default, không có ô nhập riêng).
-        foreach (var col in FkPopupColumns)
-            if (!string.IsNullOrWhiteSpace(col.CaptionKey))
-                await _i18nService.InitResourceIfMissingAsync(col.CaptionKey, "vi", col.FieldName, ct);
-
-        // ── Unique: auto-tạo key chống trùng (vi + en) khi bật cờ Duy nhất ──
-        // Key khớp backend emit: {tableCode}.val.{columnCode}.unique (xem SaveMasterDataCommandHandler).
-        if (IsUnique)
+        // Toàn bộ orchestration ghi key nằm ở FieldI18nKeyService (REFACTOR-B1) — VM chụp state
+        // vào Request rồi áp Result lên ô nhập (SetResolvedValue — không kích hoạt dirty).
+        var result = await FieldI18nKeyService.RegisterKeysAsync(_i18nService, new FieldI18nKeyService.RegisterKeysRequest
         {
-            var tableCode  = TableCode.ToLowerInvariant();
-            var columnCode = ColumnCode.ToLowerInvariant();
-            if (!string.IsNullOrEmpty(tableCode) && !string.IsNullOrEmpty(columnCode))
-            {
-                var uniqueKey = $"{tableCode}.val.{columnCode}.unique";
-                // vi: user gõ thẳng → upsert (ghi đè); bỏ trống → init mẫu mặc định (token, không nhúng nhãn).
-                await UpsertOrInitViAsync(uniqueKey, UniqueErrorKeyPreview, DefaultUniqueMessageVi, ct);
-                // en: chỉ init mặc định nếu chưa có (nhập bản dịch khác qua nút Dịch).
-                await _i18nService.InitResourceIfMissingAsync(uniqueKey, "en", DefaultUniqueMessageEn, ct);
-            }
-        }
-    }
+            LabelKey = LabelKey,
+            LabelValue = LabelPreview,
+            PlaceholderKey = PlaceholderKey,
+            PlaceholderValue = PlaceholderPreview,
+            TooltipKey = TooltipKey,
+            TooltipValue = TooltipPreview,
+            ColumnCode = ColumnCode,
+            TableCode = TableCode,
+            IsRequired = IsRequired,
+            RequiredErrorKey = RequiredErrorKey,
+            RequiredErrorValue = RequiredErrorKeyPreview,
+            DefaultRequiredMessageVi = DefaultRequiredMessageVi,
+            IsUnique = IsUnique,
+            UniqueErrorValue = UniqueErrorKeyPreview,
+            DefaultUniqueMessageVi = DefaultUniqueMessageVi,
+            DefaultUniqueMessageEn = DefaultUniqueMessageEn,
+            PopupColumnKeys = FkPopupColumns.Select(c => (c.CaptionKey, c.FieldName)).ToList(),
+            DisplayDefaults = DisplayDefaultValues,
+        }, ct);
 
-    /// <summary>
-    /// Ghi bản dịch (vi) cho 1 key: có giá trị user nhập → upsert (ghi đè); rỗng → init default nếu chưa có.
-    /// </summary>
-    private async Task UpsertOrInitViAsync(string key, string? value, string fallbackDefault, CancellationToken ct)
-    {
-        if (_i18nService is null) return;
-        if (!string.IsNullOrWhiteSpace(value))
-            await _i18nService.SaveResourceAsync(key, "vi", value.Trim(), ct);
-        else
-            await _i18nService.InitResourceIfMissingAsync(key, "vi", fallbackDefault, ct);
-    }
-
-    /// <summary>
-    /// Ghi bản dịch (vi) cho 1 ô hiển thị ăn theo Nhãn (Gợi ý nhập / Mô tả): ô trống hoặc còn giữ mặc định
-    /// (= mã cột) → lấy <paramref name="labelText"/> rồi phản ánh lại ô nhập; user đã dịch riêng → ghi đúng
-    /// giá trị user. Sự kiện theo sau: ô hiển thị giá trị vừa ghi (không đánh dấu dirty).
-    /// </summary>
-    private async Task SaveDisplayViAsync(
-        string key, string? currentValue, string labelText, IReadOnlyList<string> defaults,
-        Action<string> refresh, CancellationToken ct)
-    {
-        if (_i18nService is null || string.IsNullOrWhiteSpace(key)) return;
-
-        var useLabel = I18nDefaults.IsUntranslated(currentValue, defaults);
-        var text     = useLabel ? labelText : currentValue!.Trim();
-        if (string.IsNullOrWhiteSpace(text)) return;   // chưa có Nhãn → chưa ghi gì
-
-        await _i18nService.SaveResourceAsync(key, "vi", text, ct);
-        if (useLabel)
-            SetResolvedValue(refresh, text);
-    }
-
-    /// <summary>
-    /// Lan bản dịch của Nhãn sang Gợi ý nhập / Mô tả ở CÁC NGÔN NGỮ NGOÀI vi (vi đã xử lý qua ô nhập inline):
-    /// ngôn ngữ nào Nhãn đã dịch mà placeholder/tooltip còn rỗng hoặc giữ mặc định (= mã cột) thì ghi theo Nhãn.
-    /// Bản dịch riêng của user được giữ nguyên. Sự kiện theo sau: web đọc Sys_Resource thấy đủ 3 key mọi ngôn ngữ.
-    /// </summary>
-    private async Task CascadeLabelToOtherLanguagesAsync(IReadOnlyList<string> defaults, CancellationToken ct)
-    {
-        if (_i18nService is null || string.IsNullOrWhiteSpace(LabelKey)) return;
-
-        var followKeys = new[] { PlaceholderKey, TooltipKey };
-        if (followKeys.All(string.IsNullOrWhiteSpace)) return;
-
-        foreach (var lang in await _i18nService.GetLanguagesAsync(ct))
-        {
-            if (string.Equals(lang.LangCode, "vi", StringComparison.OrdinalIgnoreCase)) continue;
-
-            var labelValue = await _i18nService.ResolveKeyAsync(LabelKey, lang.LangCode, ct);
-            if (string.IsNullOrWhiteSpace(labelValue)) continue;   // Nhãn chưa dịch → không có gì để lan
-
-            foreach (var key in followKeys)
-            {
-                if (string.IsNullOrWhiteSpace(key)) continue;
-                var current = await _i18nService.ResolveKeyAsync(key, lang.LangCode, ct);
-                if (I18nDefaults.IsUntranslated(current, defaults))
-                    await _i18nService.SaveResourceAsync(key, lang.LangCode, labelValue.Trim(), ct);
-            }
-        }
+        if (result.PlaceholderApplied is { } ph) SetResolvedValue(v => PlaceholderPreview = v, ph);
+        if (result.TooltipApplied is { } tt)     SetResolvedValue(v => TooltipPreview = v, tt);
     }
 
     private void ExecuteCancel()
