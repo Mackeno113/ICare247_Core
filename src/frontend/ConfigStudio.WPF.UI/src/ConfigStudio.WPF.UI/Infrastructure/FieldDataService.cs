@@ -162,6 +162,80 @@ public sealed class FieldDataService : IFieldDataService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<LookupTemplateRecord>> GetLookupTemplatesAsync(CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+        const string sql = """
+            SELECT Template_Code    AS TemplateCode,
+                   Ten              AS Ten,
+                   Mo_Ta            AS MoTa,
+                   Canonical_Params AS CanonicalParams
+            FROM   dbo.Ui_Lookup_Template
+            WHERE  Is_Active = 1
+            ORDER BY Ten
+            """;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            var rows = await conn.QueryAsync<LookupTemplateRecord>(
+                new CommandDefinition(sql, cancellationToken: ct));
+            return rows.AsList();
+        }
+        catch (SqlException)
+        {
+            return [];  // bảng Ui_Lookup_Template chưa migrate (db/083) → không có mẫu
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<(string? TemplateCode, string? ParamMap)> GetFieldLookupTemplateAsync(
+        int fieldId, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return (null, null);
+        const string sql = """
+            SELECT Template_Code AS TemplateCode, Param_Map AS ParamMap
+            FROM   dbo.Ui_Field_Lookup WHERE Field_Id = @FieldId
+            """;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            return await conn.QueryFirstOrDefaultAsync<(string?, string?)>(
+                new CommandDefinition(sql, new { FieldId = fieldId }, cancellationToken: ct));
+        }
+        catch (SqlException)
+        {
+            return (null, null);    // cột chưa migrate (db/083) → coi như không dùng mẫu
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SaveFieldLookupTemplateAsync(
+        int fieldId, string? templateCode, string? paramMapJson, CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured || fieldId <= 0) return;
+        const string sql = """
+            UPDATE dbo.Ui_Field_Lookup
+            SET    Template_Code = @TemplateCode,
+                   Param_Map     = @ParamMap
+            WHERE  Field_Id = @FieldId
+            """;
+        try
+        {
+            await using var conn = new SqlConnection(_config.ConnectionString);
+            await conn.ExecuteAsync(new CommandDefinition(sql, new
+            {
+                FieldId = fieldId,
+                TemplateCode = string.IsNullOrWhiteSpace(templateCode) ? null : templateCode,
+                ParamMap = string.IsNullOrWhiteSpace(paramMapJson) ? null : paramMapJson
+            }, cancellationToken: ct));
+        }
+        catch (SqlException)
+        {
+            /* cột chưa migrate (db/083) → bỏ qua, không chặn lưu field */
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<FieldLookupConfigRecord?> GetFieldLookupConfigAsync(
         int fieldId, CancellationToken ct = default)
     {

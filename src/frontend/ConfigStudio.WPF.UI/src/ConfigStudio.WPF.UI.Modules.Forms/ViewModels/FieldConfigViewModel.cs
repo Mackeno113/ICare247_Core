@@ -755,6 +755,156 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         set { if (SetProperty(ref _importGlobalCode, value)) IsDirty = true; }
     }
 
+    // ── Mẫu lookup dùng chung (Ui_Lookup_Template — db/083, PICKER-P4) ─────────
+    // Chọn mẫu → định nghĩa truy vấn (nguồn/cột/filter) lấy TỪ MẪU, phần "Nguồn dữ liệu FK"
+    // bên dưới bị bỏ qua ở runtime; admin chỉ còn map tham số canonical của mẫu.
+
+    /// <summary>Sentinel "không dùng mẫu" — đứng đầu combo.</summary>
+    private static readonly LookupTemplateRecord NoTemplate =
+        new() { TemplateCode = "", Ten = "— Không dùng mẫu (tự cấu hình) —" };
+
+    /// <summary>Danh sách mẫu cho combo (phần tử đầu = không dùng mẫu).</summary>
+    public ObservableCollection<LookupTemplateRecord> LookupTemplates { get; } = [NoTemplate];
+
+    private bool _lookupTemplatesLoaded;
+
+    private LookupTemplateRecord _selectedLookupTemplate = NoTemplate;
+    /// <summary>Mẫu đang chọn. Đổi mẫu → dựng lại lưới map tham số từ Canonical_Params.</summary>
+    public LookupTemplateRecord SelectedLookupTemplate
+    {
+        get => _selectedLookupTemplate;
+        set
+        {
+            if (!SetProperty(ref _selectedLookupTemplate, value ?? NoTemplate)) return;
+            IsDirty = true;
+            RebuildTemplateParamRows(existingParamMapJson: null);
+            RaisePropertyChanged(nameof(IsLookupTemplateSelected));
+            RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));
+        }
+    }
+
+    /// <summary>Đang dùng mẫu (ẩn/hiện lưới map + ghi chú trên panel).</summary>
+    public bool IsLookupTemplateSelected => _selectedLookupTemplate.TemplateCode.Length > 0;
+
+    /// <summary>Diễn giải mẫu đang chọn (hiện dưới combo).</summary>
+    public string? SelectedLookupTemplateMoTa => _selectedLookupTemplate.MoTa;
+
+    /// <summary>Lưới map tham số canonical của mẫu (rỗng khi mẫu không cần map).</summary>
+    public ObservableCollection<LookupTemplateParamRowVm> LookupTemplateParamRows { get; } = [];
+
+    /// <summary>Mẫu đang chọn CÓ tham số cần map → hiện lưới.</summary>
+    public bool HasLookupTemplateParams => IsLookupTemplateSelected && LookupTemplateParamRows.Count > 0;
+
+    /// <summary>Mẫu đang chọn KHÔNG cần map (token tự resolve) → hiện ghi chú.</summary>
+    public bool HasNoLookupTemplateParams => IsLookupTemplateSelected && LookupTemplateParamRows.Count == 0;
+
+    /// <summary>
+    /// Dựng lưới map tham số từ Canonical_Params của mẫu đang chọn; điền sẵn giá trị từ
+    /// Param_Map đã lưu (nếu có). JSON hỏng → lưới rỗng (không chặn màn).
+    /// </summary>
+    private void RebuildTemplateParamRows(string? existingParamMapJson)
+    {
+        foreach (var old in LookupTemplateParamRows) old.PropertyChanged -= OnTemplateParamRowChanged;
+        LookupTemplateParamRows.Clear();
+        if (!IsLookupTemplateSelected) return;
+
+        Dictionary<string, string> existing = [];
+        if (!string.IsNullOrWhiteSpace(existingParamMapJson))
+        {
+            try
+            {
+                var map = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(existingParamMapJson);
+                foreach (var (k, v) in map ?? [])
+                    existing[k] = v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.GetRawText();
+            }
+            catch (JsonException) { /* Param_Map cũ hỏng → để trống, admin map lại */ }
+        }
+
+        if (!string.IsNullOrWhiteSpace(_selectedLookupTemplate.CanonicalParams))
+        {
+            try
+            {
+                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var defs = JsonSerializer.Deserialize<List<CanonicalParamDef>>(
+                    _selectedLookupTemplate.CanonicalParams, opts) ?? [];
+                foreach (var d in defs)
+                {
+                    if (string.IsNullOrWhiteSpace(d.Name)) continue;
+                    var row = new LookupTemplateParamRowVm
+                    {
+                        Name = d.Name,
+                        Type = d.Type,
+                        Required = d.Required,
+                        MoTa = d.MoTa,
+                        MappedValue = existing.TryGetValue(d.Name, out var mv) ? mv : ""
+                    };
+                    row.PropertyChanged += OnTemplateParamRowChanged;
+                    LookupTemplateParamRows.Add(row);
+                }
+            }
+            catch (JsonException) { /* Canonical_Params của mẫu hỏng → không có dòng map */ }
+        }
+
+        RaisePropertyChanged(nameof(HasLookupTemplateParams));
+        RaisePropertyChanged(nameof(HasNoLookupTemplateParams));
+    }
+
+    /// <summary>Admin sửa ô map → form dơ (bật nút Lưu).</summary>
+    private void OnTemplateParamRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => IsDirty = true;
+
+    /// <summary>
+    /// Serialize lưới map → JSON Param_Map. Giá trị "@Token"/Field_Code giữ chuỗi; parse được
+    /// long/double/bool (không phải token) → ghi hằng số đúng kiểu JSON. Rỗng → null (không lưu).
+    /// </summary>
+    private string? BuildParamMapJson()
+    {
+        if (!IsLookupTemplateSelected) return null;
+        var map = new Dictionary<string, object?>();
+        foreach (var row in LookupTemplateParamRows)
+        {
+            var v = row.MappedValue?.Trim();
+            if (string.IsNullOrEmpty(v)) continue;
+            if (v.StartsWith('@'))                        map[row.Name] = v;
+            else if (bool.TryParse(v, out var b))         map[row.Name] = b;
+            else if (long.TryParse(v, out var l))         map[row.Name] = l;
+            else if (double.TryParse(v, System.Globalization.CultureInfo.InvariantCulture, out var d))
+                                                          map[row.Name] = d;
+            else                                          map[row.Name] = v; // Field_Code trên form
+        }
+        return map.Count == 0 ? null : JsonSerializer.Serialize(map);
+    }
+
+    /// <summary>Nạp danh sách mẫu (1 lần) + lựa chọn mẫu/Param_Map đã lưu của field — KHÔNG bật IsDirty.</summary>
+    private async Task LoadLookupTemplateStateAsync(int fieldId, CancellationToken ct)
+    {
+        if (_fieldService is null) return;
+
+        if (!_lookupTemplatesLoaded)
+        {
+            var templates = await _fieldService.GetLookupTemplatesAsync(ct);
+            foreach (var t in templates) LookupTemplates.Add(t);
+            _lookupTemplatesLoaded = true;
+        }
+
+        var (code, paramMap) = await _fieldService.GetFieldLookupTemplateAsync(fieldId, ct);
+        _selectedLookupTemplate = LookupTemplates.FirstOrDefault(
+            t => t.TemplateCode.Equals(code ?? "", StringComparison.OrdinalIgnoreCase)) ?? NoTemplate;
+        RaisePropertyChanged(nameof(SelectedLookupTemplate));
+        RaisePropertyChanged(nameof(IsLookupTemplateSelected));
+        RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));
+        RebuildTemplateParamRows(paramMap);
+    }
+
+    /// <summary>Schema 1 phần tử Canonical_Params của mẫu (JSON, case-insensitive).</summary>
+    private sealed class CanonicalParamDef
+    {
+        public string Name { get; set; } = "";
+        public string? Type { get; set; }
+        public bool Required { get; set; }
+        public string? MoTa { get; set; }
+    }
+
     /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
     private int _dropDownWidth = 600;
     public int DropDownWidth
@@ -1909,6 +2059,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     // Import global-code (Ui_Field_Lookup) — đọc phòng thủ theo Field_Id; cột chưa migrate → false.
                     _importGlobalCode = await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct);
                     RaisePropertyChanged(nameof(ImportGlobalCode));
+
+                    // Mẫu lookup dùng chung (db/083, PICKER-P4) — đọc phòng thủ; chưa migrate → không dùng mẫu.
+                    await LoadLookupTemplateStateAsync(field.FieldId, ct);
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
                     // để LoadControlPropSchema() có thể restore giá trị từ DB
                     _controlPropsJson      = field.ControlPropsJson ?? "{}";
@@ -3498,6 +3651,14 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 // Import global-code (Ui_Field_Lookup) → ghi riêng theo Field_Id sau khi row lookup đã tồn tại.
                 if (IsFkLookupEditor && savedId > 0)
                     await _fieldService.SaveFkImportGlobalAsync(savedId, _importGlobalCode, _cts.Token);
+
+                // Mẫu lookup dùng chung (db/083) → ghi Template_Code + Param_Map (phòng thủ — chưa migrate thì bỏ qua).
+                if (IsFkLookupEditor && savedId > 0)
+                    await _fieldService.SaveFieldLookupTemplateAsync(
+                        savedId,
+                        IsLookupTemplateSelected ? _selectedLookupTemplate.TemplateCode : null,
+                        BuildParamMapJson(),
+                        _cts.Token);
 
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
                 await RegisterI18nKeysAsync(_cts.Token);

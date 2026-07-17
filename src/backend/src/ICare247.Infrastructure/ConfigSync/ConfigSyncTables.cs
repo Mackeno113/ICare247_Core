@@ -102,6 +102,16 @@ internal static class ConfigSyncTables
             VersionColumn = null,
         },
 
+        // 7b) Ui_Lookup_Template — mẫu lookup dùng chung (PICKER-P4, db/083); Template_Code unique
+        //     toàn cục. Đứng TRƯỚC Ui_Field_Lookup (field tham chiếu mẫu theo CODE chuỗi — không FK Id
+        //     nên không cần re-link, chỉ cần mẫu có mặt trước cho dễ đọc). Cờ sync tạo sẵn trong 083.
+        new ConfigTableDescriptor
+        {
+            TableName = "Ui_Lookup_Template",
+            IdColumn = "Template_Id",
+            LocalKeyColumn = "Template_Code",
+        },
+
         // 8) Ui_Field_Lookup — cấu hình lookup field FK (con 1-1 của Ui_Field, UNIQUE Field_Id). KHÔNG có
         //    cột mã riêng → khóa CHỈ theo cha (KeyColumns rỗng). Không có Is_Active/Version. (db/062 cấp cờ.)
         new ConfigTableDescriptor

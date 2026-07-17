@@ -178,8 +178,38 @@ public sealed class FormRepository : IFormRepository
             """;
 
         // ── sqlLookupConfigs: cấu hình FK lookup cho tất cả dynamic fields ──
-        // Bao gồm các cột Migration 014: EditBox_Mode, Code_Field, DropDown_Width/Height, Reload_Trigger_Field
+        // PICKER-P4 (Migration 083): field chọn mẫu (Template_Code) → định nghĩa truy vấn lấy từ
+        // Ui_Lookup_Template; Popup/Code/Parent field override được. Param_Map đọc kèm để merge
+        // reload-trigger (C# bên dưới). Tenant chưa chạy 083 → fallback sqlLookupConfigsLegacy.
         const string sqlLookupConfigs = """
+            SELECT fl.Lookup_Cfg_Id                        AS LookupCfgId,
+                   fl.Field_Id                             AS FieldId,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Query_Mode     ELSE fl.Query_Mode     END AS QueryMode,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Source_Name    ELSE fl.Source_Name    END AS SourceName,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Value_Column   ELSE fl.Value_Column   END AS ValueColumn,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Display_Column ELSE fl.Display_Column END AS DisplayColumn,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Filter_Sql     ELSE fl.Filter_Sql     END AS FilterSql,
+                   CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Order_By       ELSE fl.Order_By       END AS OrderBy,
+                   fl.Search_Enabled                       AS SearchEnabled,
+                   COALESCE(fl.Popup_Columns_Json, lt.Popup_Columns_Json) AS PopupColumnsJson,
+                   ISNULL(fl.EditBox_Mode, N'TextOnly')    AS EditBoxMode,
+                   COALESCE(fl.Code_Field, lt.Code_Field)  AS CodeField,
+                   ISNULL(fl.DropDown_Width,  600)         AS DropDownWidth,
+                   ISNULL(fl.DropDown_Height, 400)         AS DropDownHeight,
+                   fl.Reload_Trigger_Field                 AS ReloadTriggerField,
+                   fl.Reload_Trigger_Fields                AS ReloadTriggerFieldsRaw,
+                   fl.Param_Map                            AS ParamMapRaw,
+                   fl.Tree_Selectable_Level                AS TreeSelectableLevel,
+                   ISNULL(fl.Allow_Add_New, 0)             AS AllowAddNew,
+                   fl.Add_Form_Code                        AS AddFormCode
+            FROM   dbo.Ui_Field_Lookup fl
+            JOIN   dbo.Ui_Field fi ON fi.Field_Id = fl.Field_Id
+            LEFT JOIN dbo.Ui_Lookup_Template lt
+                   ON lt.Template_Code = fl.Template_Code AND lt.Is_Active = 1
+            WHERE  fi.Form_Id = @FormId
+            """;
+
+        const string sqlLookupConfigsLegacy = """
             SELECT fl.Lookup_Cfg_Id                        AS LookupCfgId,
                    fl.Field_Id                             AS FieldId,
                    fl.Query_Mode                           AS QueryMode,
@@ -227,9 +257,25 @@ public sealed class FormRepository : IFormRepository
             new CommandDefinition(sqlFields, new { FormId = formDto.FormId, LangCode = langCode },
                 cancellationToken: ct))).AsList();
 
-        var lookupConfigMap = (await conn.QueryAsync<FieldLookupConfig>(
-            new CommandDefinition(sqlLookupConfigs, formParam, cancellationToken: ct)))
-            .ToDictionary(fl => fl.FieldId);
+        List<FieldLookupConfig> lookupRows;
+        try
+        {
+            lookupRows = (await conn.QueryAsync<FieldLookupConfig>(
+                new CommandDefinition(sqlLookupConfigs, formParam, cancellationToken: ct))).AsList();
+        }
+        catch (Microsoft.Data.SqlClient.SqlException)
+        {
+            // Tenant Config DB chưa chạy db/083 (thiếu Ui_Lookup_Template / cột mới) → đọc kiểu cũ.
+            lookupRows = (await conn.QueryAsync<FieldLookupConfig>(
+                new CommandDefinition(sqlLookupConfigsLegacy, formParam, cancellationToken: ct))).AsList();
+        }
+
+        // Merge Field_Code trong Param_Map vào Reload_Trigger_Fields: field nguồn tham số của mẫu
+        // tự thành trigger (đổi giá trị → lookup query lại), admin không phải khai 2 lần (spec 31 §5).
+        foreach (var lr in lookupRows)
+            lr.ReloadTriggerFieldsRaw = MergeParamMapTriggers(lr.ReloadTriggerFieldsRaw, lr.ParamMapRaw);
+
+        var lookupConfigMap = lookupRows.ToDictionary(fl => fl.FieldId);
 
         // ── Gán LookupConfig vào field dynamic ──────────────────────────────
         var allFields = rawFields.Select(f =>
@@ -555,5 +601,42 @@ public sealed class FormRepository : IFormRepository
         var input = $"{formCode}:v{version}:{DateTime.UtcNow:yyyyMMddHHmmss}";
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return Convert.ToHexStringLower(hash)[..16];
+    }
+
+    /// <summary>
+    /// Gộp các Field_Code trong Param_Map (mẫu lookup — Migration 083) vào danh sách
+    /// Reload_Trigger_Fields. Chỉ lấy giá trị chuỗi KHÔNG bắt đầu '@' (field trên form —
+    /// '@token' server tự resolve, hằng số không đổi theo form). JSON hỏng → giữ nguyên.
+    /// Sự kiện theo sau: client coi field nguồn là trigger, đổi giá trị → lookup reload.
+    /// </summary>
+    private static string? MergeParamMapTriggers(string? reloadTriggerFieldsRaw, string? paramMapRaw)
+    {
+        if (string.IsNullOrWhiteSpace(paramMapRaw)) return reloadTriggerFieldsRaw;
+
+        try
+        {
+            var map = System.Text.Json.JsonSerializer
+                .Deserialize<Dictionary<string, System.Text.Json.JsonElement>>(paramMapRaw);
+            if (map is null || map.Count == 0) return reloadTriggerFieldsRaw;
+
+            var triggers = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var part in (reloadTriggerFieldsRaw ?? "")
+                         .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+                if (seen.Add(part)) triggers.Add(part);
+
+            foreach (var src in map.Values)
+                if (src.ValueKind == System.Text.Json.JsonValueKind.String)
+                {
+                    var s = (src.GetString() ?? "").Trim();
+                    if (s.Length > 0 && !s.StartsWith('@') && seen.Add(s)) triggers.Add(s);
+                }
+
+            return triggers.Count == 0 ? reloadTriggerFieldsRaw : string.Join(",", triggers);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return reloadTriggerFieldsRaw;
+        }
     }
 }

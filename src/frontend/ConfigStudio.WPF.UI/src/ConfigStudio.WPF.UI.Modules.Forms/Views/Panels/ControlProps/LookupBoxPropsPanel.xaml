@@ -26,8 +26,62 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <!-- ══════ CỘT TRÁI: Nguồn dữ liệu FK · EditBox hiển thị ══════ -->
+        <!-- ══════ CỘT TRÁI: Mẫu lookup · Nguồn dữ liệu FK · EditBox hiển thị ══════ -->
         <StackPanel Grid.Column="0">
+
+        <!-- ══════════════════════════════════════════════════════
+             SECTION 0 — Mẫu lookup dùng chung (Ui_Lookup_Template — PICKER-P4)
+             Chọn mẫu → nguồn/cột/filter lấy TỪ MẪU (section "Nguồn dữ liệu FK"
+             bên dưới bị runtime bỏ qua); chỉ còn map tham số của mẫu.
+             ══════════════════════════════════════════════════════ -->
+        <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1"
+                CornerRadius="8" Padding="20,16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Mẫu lookup dùng chung" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,10" />
+
+                <!-- KHÔNG ép IsTextEditable=False — theme Controls.xaml bật gõ-để-lọc toàn cục (ADR-031). -->
+                <dxe:ComboBoxEdit ItemsSource="{Binding LookupTemplates}"
+                                  SelectedItem="{Binding SelectedLookupTemplate, Mode=TwoWay}"
+                                  DisplayMember="Ten"
+                                  Height="32" Margin="0,0,0,8" />
+
+                <TextBlock Text="{Binding SelectedLookupTemplateMoTa}"
+                           FontSize="11" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,8"
+                           Visibility="{Binding IsLookupTemplateSelected, Converter={StaticResource BoolToVis}}" />
+
+                <StackPanel Visibility="{Binding IsLookupTemplateSelected, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="Đang dùng mẫu — phần 'Nguồn dữ liệu FK' bên dưới sẽ bị bỏ qua khi chạy."
+                               FontSize="11" FontStyle="Italic" TextWrapping="Wrap"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8" />
+
+                    <TextBlock Text="Map tham số của mẫu"
+                               FontSize="11" FontWeight="SemiBold"
+                               Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,4"
+                               Visibility="{Binding HasLookupTemplateParams, Converter={StaticResource BoolToVis}}" />
+                    <dxg:GridControl ItemsSource="{Binding LookupTemplateParamRows}" MaxHeight="180"
+                                     AutoGenerateColumns="None"
+                                     Visibility="{Binding HasLookupTemplateParams, Converter={StaticResource BoolToVis}}">
+                        <dxg:GridControl.View>
+                            <dxg:TableView NavigationStyle="Cell" ShowGroupPanel="False"
+                                           AllowEditing="True" AllowPerPixelScrolling="True"
+                                           NewItemRowPosition="None" AutoWidth="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn FieldName="Name" Header="Tham số" AllowEditing="False" Width="110" />
+                            <dxg:GridColumn FieldName="Type" Header="Kiểu" AllowEditing="False" Width="70" />
+                            <dxg:GridColumn FieldName="MappedValue" Header="Nguồn giá trị (Field Code · @Token · hằng số)" Width="*" />
+                            <dxg:GridColumn FieldName="MoTa" Header="Diễn giải" AllowEditing="False" Width="160" />
+                        </dxg:GridControl.Columns>
+                    </dxg:GridControl>
+                    <TextBlock Text="Mẫu không cần map tham số (token hệ thống tự resolve)."
+                               FontSize="11" FontStyle="Italic"
+                               Foreground="{DynamicResource AppTextMutedBrush}"
+                               Visibility="{Binding HasNoLookupTemplateParams, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
         <!-- ══════════════════════════════════════════════════════
              SECTION 1 — Nguồn dữ liệu FK

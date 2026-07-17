@@ -37,6 +37,27 @@ public interface IFieldDataService
     /// Phòng thủ: cột chưa migrate hoặc không có row lookup → bỏ qua, KHÔNG ném.
     /// </summary>
     Task SaveFkImportGlobalAsync(int fieldId, bool importGlobal, CancellationToken ct = default);
+
+    /// <summary>
+    /// Danh sách mẫu lookup dùng chung (Ui_Lookup_Template — db/083, PICKER-P4) đang active.
+    /// Phòng thủ: bảng chưa migrate → danh sách rỗng, KHÔNG ném.
+    /// </summary>
+    Task<IReadOnlyList<LookupTemplateRecord>> GetLookupTemplatesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Đọc (Template_Code, Param_Map) của field từ Ui_Field_Lookup theo Field_Id.
+    /// Phòng thủ: cột chưa migrate (db/083) hoặc field không có lookup → (null, null), KHÔNG ném.
+    /// </summary>
+    Task<(string? TemplateCode, string? ParamMap)> GetFieldLookupTemplateAsync(
+        int fieldId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ghi Template_Code + Param_Map vào Ui_Field_Lookup theo Field_Id (gọi SAU khi lưu field —
+    /// row lookup đã tồn tại). Phòng thủ: cột chưa migrate → bỏ qua, KHÔNG ném.
+    /// </summary>
+    Task SaveFieldLookupTemplateAsync(
+        int fieldId, string? templateCode, string? paramMapJson, CancellationToken ct = default);
+
     Task<IReadOnlyList<ColumnInfoRecord>> GetColumnsByTableAsync(int tableId, CancellationToken ct = default);
     Task<int> GetTableIdByFormAsync(int formId, int tenantId, CancellationToken ct = default);
 

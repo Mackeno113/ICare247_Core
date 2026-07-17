@@ -93,8 +93,17 @@ public sealed class FieldLookupConfig
     /// <summary>
     /// Chuỗi thô từ DB (Reload_Trigger_Fields): danh sách FieldCode phân cách dấu phẩy.
     /// VD: "TinhId,NganHangId". Dùng <see cref="ReloadTriggerFields"/> để truy cập đã tách.
+    /// Settable: FormRepository merge thêm các Field_Code trong <see cref="ParamMapRaw"/>
+    /// (mẫu lookup — Migration 083) để field nguồn tự thành trigger, admin không khai 2 lần.
     /// </summary>
-    public string? ReloadTriggerFieldsRaw { get; init; }
+    public string? ReloadTriggerFieldsRaw { get; set; }
+
+    /// <summary>
+    /// JSON map tham số canonical của mẫu lookup (Ui_Field_Lookup.Param_Map — Migration 083):
+    /// {"TinhId": "TinhThanhPho_Id"} — giá trị là Field_Code trên form / "@Token" / hằng số.
+    /// Server-side (FormRepository merge trigger + DynamicLookupRepository bind); client không dùng.
+    /// </summary>
+    public string? ParamMapRaw { get; set; }
 
     /// <summary>
     /// Danh sách FieldCode cha kích hoạt reload (Multi-Trigger). Ưu tiên ReloadTriggerFieldsRaw;

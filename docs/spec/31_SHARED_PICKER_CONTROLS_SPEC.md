@@ -86,24 +86,33 @@ Props chính: `Mode`, `Value/ValueChanged` (Single), `SelectedIds/SelectedIdsCha
 - **Cache L0 phía client** theo khóa `(nguồn, tham số)` scoped per-phiên (`AppState` hoặc service riêng):
   địa bàn/công ty gọi 1 lần mỗi phiên; nguồn có `ThoiDiem` KHÔNG cache (biến thiên theo form).
 
-## 5. Tầng 2b — Lookup Template (màn engine no-code)
+## 5. Tầng 2b — Lookup Template (màn engine no-code) — ✅ ĐÃ CODE (P4, 2026-07-16)
 
 Đóng gói cấu hình lookup lặp lại thành **mẫu chọn được từ ConfigStudio** (quy tắc: mọi cấu hình có ô
-trên WPF, không SQL tay):
+trên WPF, không SQL tay). *Cập nhật theo thực tế engine (khác draft ban đầu): field lookup engine dùng
+bộ `Query_Mode / Source_Name / Filter_Sql` (DynamicLookupRepository), KHÔNG phải `Lookup_Sql`.*
 
-- **Bảng mới `Ui_Lookup_Template`** (Config DB): `Template_Code` (unique), `Ten`, `Lookup_Sql`
-  (dùng token spec 19 + placeholder tham số canonical), `Value_Column`, `Display_Column`,
-  `Parent_Column`, `Canonical_Params` (JSON khai báo tham số: tên + kiểu + bắt buộc), khối audit ADR-022.
-- **`Ui_Field_Lookup` thêm 2 cột:** `Template_Code` (NULL = tự viết như cũ — không phá màn hiện có)
-  + `Param_Map` (JSON, vd `{"ThoiDiem": "NgayHieuLuc", "CongTyId": "@CongTyID_Active"}`) — map
-  tham số canonical ← field trên form **hoặc** token ngữ cảnh.
-- **Reload:** field nguồn trong `Param_Map` tự động được engine coi như `Reload_Trigger_Fields`
-  (db/068) — đổi NgayHieuLuc → lookup nhân viên query lại. Không bắt admin khai 2 lần.
-- **ConfigStudio:** màn Cấu hình Field thêm combo "Mẫu lookup" + lưới map tham số (đọc
-  `Canonical_Params` của mẫu → mỗi param 1 dòng chọn field/token). Mẫu đọc/ghi cột mới theo
-  pattern try/catch phòng thủ.
-- **ConfigSync:** thêm `Ui_Lookup_Template` vào descriptor đồng bộ master→tenant (UPSERT theo
-  `Template_Code`); seed bộ mẫu nền: `TPL_CONG_TY`, `TPL_TINH_THANH`, `TPL_PHUONG_XA`, `TPL_NHAN_VIEN_TAI_THOI_DIEM`.
+- **Bảng `Ui_Lookup_Template`** (Config DB — db/083): `Template_Code` (unique), `Ten`, `Mo_Ta`,
+  bộ định nghĩa truy vấn cùng ngữ nghĩa `Ui_Field_Lookup` (`Query_Mode/Source_Name/Value_Column/
+  Display_Column/Code_Field/Filter_Sql/Order_By/Popup_Columns_Json/Parent_Column`),
+  `Canonical_Params` (JSON: `[{"name","type","required","moTa"}]`), `Is_Active` + 4 cờ sync CFGSYNC-1.
+- **`Ui_Field_Lookup` thêm 2 cột** (db/083): `Template_Code` (NULL = tự cấu hình như cũ) +
+  `Param_Map` (JSON `{"TinhId": "TinhThanhPho_Id"}` — giá trị = Field_Code / `"@Token"` / **hằng số**
+  number/bool — câu hỏi mở #2 chốt CÓ).
+- **Runtime resolve (DynamicLookupRepository + FormRepository):** field chọn mẫu → định nghĩa truy vấn
+  lấy TRỌN từ mẫu (Popup/Code/Parent field override được); tenant chưa chạy db/083 → fallback SQL cũ
+  (try/catch). **Token `Sys_Context_Param` engine TỰ resolve cho mọi @param còn thiếu** (qua
+  `IContextParamResolver` — spec 19) → mẫu dùng `@NguoiDungID` không cần map. ⚠️ Cache key hash SAU
+  khi bind đủ tham số — token theo user phải vào key.
+- **⚠️ Chuỗi con DDL/DML bị chặn trong Filter_Sql/custom_sql** (kể cả `IsDeleted` chứa "DELETE") →
+  nguồn mẫu trỏ **view `vw_*`** (db/051/052) hoặc **inline TVF** (`fn_CongTyTheoQuyen` — db/084).
+- **Reload:** field nguồn trong `Param_Map` tự merge vào `Reload_Trigger_Fields` (FormRepository) —
+  không bắt admin khai 2 lần.
+- **ConfigStudio (đã làm):** LookupBoxPropsPanel section "Mẫu lookup dùng chung" — combo mẫu + lưới
+  map tham số (GridControl); IO qua 3 method phòng thủ trên FieldDataService (pattern Import_Global_Code).
+- **ConfigSync (đã làm):** descriptor `Ui_Lookup_Template` (khóa `Template_Code`, trước Ui_Field_Lookup).
+- **Seed (db/083):** `TPL_CONG_TY` (theo quyền — fn db/084), `TPL_TINH_THANH`, `TPL_PHUONG_XA`.
+  `TPL_NHAN_VIEN_TAI_THOI_DIEM` **để đợt NS_** (bảng chưa có — không seed SQL trỏ bảng ma).
 
 ## 6. Lộ trình đề xuất
 

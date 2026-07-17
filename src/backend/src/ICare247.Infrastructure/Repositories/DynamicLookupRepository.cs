@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
+using Microsoft.Data.SqlClient;
 
 namespace ICare247.Infrastructure.Repositories;
 
@@ -47,15 +48,186 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 
     private readonly ICacheService _cache;
     private readonly ILookupCacheVersion _lookupVer;
+    private readonly IContextParamResolver _ctxResolver;
 
     public DynamicLookupRepository(
         IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb,
-        ICacheService cache, ILookupCacheVersion lookupVer)
+        ICacheService cache, ILookupCacheVersion lookupVer, IContextParamResolver ctxResolver)
     {
-        _configDb  = configDb;
-        _dataDb    = dataDb;
-        _cache     = cache;
-        _lookupVer = lookupVer;
+        _configDb    = configDb;
+        _dataDb      = dataDb;
+        _cache       = cache;
+        _lookupVer   = lookupVer;
+        _ctxResolver = ctxResolver;
+    }
+
+    // ── Đọc cấu hình lookup (PICKER-P4, spec 31 §5) ──────────────────────────
+    // Field chọn mẫu (Template_Code) → ĐỊNH NGHĨA TRUY VẤN lấy trọn từ Ui_Lookup_Template
+    // (kể cả Filter_Sql NULL của mẫu — không rơi về Filter_Sql riêng của field); các cột
+    // HIỂN THỊ phụ (Popup/Code/Parent) field được override mẫu. Template_Code trỏ mẫu không
+    // tồn tại/tắt → SourceName NULL → caller trả rỗng/báo lỗi rõ (misconfig nhìn thấy được).
+    private const string CfgSqlExtended = """
+        SELECT CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Query_Mode     ELSE fl.Query_Mode     END AS QueryMode,
+               CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Source_Name    ELSE fl.Source_Name    END AS SourceName,
+               CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Value_Column   ELSE fl.Value_Column   END AS ValueColumn,
+               CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Display_Column ELSE fl.Display_Column END AS DisplayColumn,
+               CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Filter_Sql     ELSE fl.Filter_Sql     END AS FilterSql,
+               CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Order_By       ELSE fl.Order_By       END AS OrderBy,
+               COALESCE(fl.Popup_Columns_Json, lt.Popup_Columns_Json)                              AS PopupColumnsJson,
+               COALESCE(fl.Code_Field,         lt.Code_Field)                                      AS CodeField,
+               COALESCE(fl.Parent_Column,      lt.Parent_Column)                                   AS ParentColumn,
+               fl.Param_Map                                                                        AS ParamMap
+        FROM   dbo.Ui_Field_Lookup fl
+        JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
+        JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
+        JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
+        LEFT JOIN dbo.Ui_Lookup_Template lt
+               ON lt.Template_Code = fl.Template_Code AND lt.Is_Active = 1
+        WHERE  fl.Field_Id = @FieldId
+        """;
+
+    // Fallback khi tenant Config DB CHƯA chạy db/083 (thiếu cột/bảng mới) — hành vi y hệt trước P4.
+    private const string CfgSqlLegacy = """
+        SELECT fl.Query_Mode          AS QueryMode,
+               fl.Source_Name         AS SourceName,
+               fl.Value_Column        AS ValueColumn,
+               fl.Display_Column      AS DisplayColumn,
+               fl.Filter_Sql          AS FilterSql,
+               fl.Order_By            AS OrderBy,
+               fl.Popup_Columns_Json  AS PopupColumnsJson,
+               fl.Code_Field          AS CodeField,
+               fl.Parent_Column       AS ParentColumn
+        FROM   dbo.Ui_Field_Lookup fl
+        JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
+        JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
+        JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
+        WHERE  fl.Field_Id = @FieldId
+        """;
+
+    /// <summary>Đọc cấu hình lookup (đã resolve template). Tenant chưa migrate db/083 → fallback legacy.</summary>
+    private static async Task<LookupCfgRow?> LoadCfgAsync(
+        IDbConnection configConn, int fieldId, int tenantId, CancellationToken ct)
+    {
+        try
+        {
+            return await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
+                new CommandDefinition(CfgSqlExtended, new { FieldId = fieldId, TenantId = tenantId },
+                    cancellationToken: ct));
+        }
+        catch (SqlException)
+        {
+            // Cột Template_Code/Param_Map hoặc bảng Ui_Lookup_Template chưa có — đọc kiểu cũ.
+            return await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
+                new CommandDefinition(CfgSqlLegacy, new { FieldId = fieldId, TenantId = tenantId },
+                    cancellationToken: ct));
+        }
+    }
+
+    /// <summary>
+    /// Build tham số Dapper cho câu lookup: giá trị form (client) + Param_Map của template
+    /// (field / hằng số / @token) + fallback token Sys_Context_Param cho @param còn thiếu.
+    /// Trả kèm map "tham số → giá trị đã bind" để hash cache key — token theo user (vd
+    /// @NguoiDungID) PHẢI vào key, không thì user này đọc trúng cache của user khác.
+    /// </summary>
+    private async Task<(DynamicParameters Dp, Dictionary<string, object?> Effective)> BuildParamsAsync(
+        LookupCfgRow cfg, Dictionary<string, object?> contextValues, int tenantId, string querySql,
+        int fieldId, CancellationToken ct)
+    {
+        var dp = new DynamicParameters();
+        var effective = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        dp.Add("TenantId", tenantId);
+
+        foreach (var (key, val) in contextValues)
+            if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
+            {
+                var v = UnwrapParamValue(val);
+                dp.Add(key, v);
+                effective[key] = v;
+            }
+
+        // ── Param_Map: {"Canonical": "FieldCode" | "@TokenName" | hằng số} ──
+        var mappedTokens = new List<(string Canonical, string TokenName)>();
+        if (!string.IsNullOrWhiteSpace(cfg.ParamMap))
+        {
+            try
+            {
+                var map = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(cfg.ParamMap);
+                foreach (var (canonical, src) in map ?? [])
+                {
+                    if (!SafeIdentifierRegex().IsMatch(canonical)) continue;
+                    if (src.ValueKind == JsonValueKind.String)
+                    {
+                        var s = src.GetString() ?? "";
+                        if (s.StartsWith('@'))
+                        {
+                            mappedTokens.Add((canonical, s.TrimStart('@')));
+                        }
+                        else
+                        {
+                            // Map từ field trên form — field chưa có giá trị → bind NULL (filter tự rỗng)
+                            contextValues.TryGetValue(s, out var fv);
+                            var v = UnwrapParamValue(fv);
+                            dp.Add(canonical, v);
+                            effective[canonical] = v;
+                        }
+                    }
+                    else
+                    {
+                        // Hằng số (number/bool) — spec 31 §7 câu 2: cho phép
+                        var v = UnwrapParamValue(src);
+                        dp.Add(canonical, v);
+                        effective[canonical] = v;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // Param_Map hỏng → bỏ qua; @param thiếu sẽ được chẩn đoán rõ bên dưới.
+            }
+        }
+
+        if (mappedTokens.Count > 0)
+        {
+            var resolved = await _ctxResolver.ResolveAsync(mappedTokens.Select(t => t.TokenName).Distinct(), ct);
+            foreach (var (canonical, tokenName) in mappedTokens)
+            {
+                resolved.TryGetValue(tokenName, out var v);
+                dp.Add(canonical, v);
+                effective[canonical] = v;
+            }
+        }
+
+        // ── @param còn thiếu → thử resolve như token đăng ký (spec 19) trước khi báo lỗi ──
+        var bound = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
+        var missing = SqlParamRegex().Matches(querySql)
+            .Select(m => m.Groups[1].Value)
+            .Where(p => !bound.Contains(p))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (missing.Count > 0)
+        {
+            var resolved = await _ctxResolver.ResolveAsync(missing, ct);
+            foreach (var (name, v) in resolved)
+            {
+                dp.Add(name, v);
+                effective[name] = v;
+                bound.Add(name);
+            }
+            missing = missing.Where(p => !bound.Contains(p)).ToList();
+        }
+        if (missing.Count > 0)
+        {
+            var ctxKeys = contextValues.Count > 0
+                ? string.Join(", ", contextValues.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+                : "(rỗng)";
+            throw new InvalidOperationException(
+                $"DynamicLookup FieldId={fieldId}: SQL cần tham số CHƯA CÓ trên form: " +
+                $"{string.Join(", ", missing.Select(p => "@" + p))}. " +
+                $"Map tham số qua Param_Map (mẫu lookup), hoặc thêm field Field Code trùng tên, " +
+                $"hoặc đăng ký token Sys_Context_Param. Field trên form hiện có: [{ctxKeys}].");
+        }
+
+        return (dp, effective);
     }
 
     /// <summary>
@@ -102,77 +274,32 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         Dictionary<string, object?> contextValues,
         CancellationToken ct = default)
     {
-        // ── Bước 1: Đọc cấu hình Ui_Field_Lookup theo FieldId ─────────────────
-        // Cô lập tenant ở tầng connection (ADR-035) — Config DB đã thuộc đúng 1 tenant
-        // Bao gồm cột Migration 014: CodeField dùng để mở rộng SELECT khi EditBoxMode = CodeAndName
-        const string cfgSql = """
-            SELECT fl.Query_Mode                           AS QueryMode,
-                   fl.Source_Name                         AS SourceName,
-                   fl.Value_Column                         AS ValueColumn,
-                   fl.Display_Column                       AS DisplayColumn,
-                   fl.Filter_Sql                           AS FilterSql,
-                   fl.Order_By                             AS OrderBy,
-                   fl.Popup_Columns_Json                   AS PopupColumnsJson,
-                   fl.Code_Field                           AS CodeField,
-                   fl.Parent_Column                        AS ParentColumn
-            FROM   dbo.Ui_Field_Lookup fl
-            JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
-            JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
-            JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
-            WHERE  fl.Field_Id = @FieldId
-            """;
-
-        // Bước 1 đọc cấu hình từ Config DB
+        // ── Bước 1: Đọc cấu hình (đã resolve Ui_Lookup_Template — PICKER-P4) ──────
+        // Cô lập tenant ở tầng connection (ADR-035) — Config DB đã thuộc đúng 1 tenant.
         using var configConn = _configDb.CreateConnection();
-
-        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
-            new CommandDefinition(cfgSql, new { FieldId = fieldId, TenantId = tenantId },
-                cancellationToken: ct));
+        var cfg = await LoadCfgAsync(configConn, fieldId, tenantId, ct);
 
         // Không có cấu hình, hoặc cấu hình chưa hoàn chỉnh (SourceName rỗng) → trả rỗng
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             return [];
 
-        // ── Bước 2: Cache-aside theo (version bảng nguồn) + hash @param context ──
+        // ── Bước 2: Build SQL + bind ĐỦ tham số (form + Param_Map + token) TRƯỚC khi
+        //    tính cache key — token theo user phải vào key, tránh dùng chung cache sai người.
+        var querySql = BuildSafeSql(cfg, out var error);
+        if (querySql is null)
+            throw new InvalidOperationException(
+                $"DynamicLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
+
+        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, tenantId, querySql, fieldId, ct);
+
+        // ── Bước 3: Cache-aside theo (version bảng nguồn) + hash tham số hiệu lực ──
         var cacheKey = CacheKeys.DynamicLookup(
             fieldId, tenantId, _lookupVer.Get(tenantId, cfg.SourceName!),
-            HashContext(cfg.FilterSql, contextValues), isTree: false);
+            HashContext(querySql, effectiveCtx), isTree: false);
 
         return await CachedAsync(cacheKey, async () =>
         {
-            // ── Validate identifiers để ngăn SQL injection ──
-            var querySql = BuildSafeSql(cfg, out var error);
-            if (querySql is null)
-                throw new InvalidOperationException(
-                    $"DynamicLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
-
-            // ── Build Dapper params: @TenantId + ContextValues ──
-            var dp = new DynamicParameters();
-            dp.Add("TenantId", tenantId);
-            foreach (var (key, val) in contextValues)
-                if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                    dp.Add(key, UnwrapParamValue(val));
-
-            // ── Chẩn đoán: @param chưa bind → báo lỗi RÕ thay vì SqlException "Must declare @X" ──
-            var boundNames = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
-            var missingParams = SqlParamRegex().Matches(querySql)
-                .Select(m => m.Groups[1].Value)
-                .Where(p => !boundNames.Contains(p))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-            if (missingParams.Count > 0)
-            {
-                var ctxKeys = contextValues.Count > 0
-                    ? string.Join(", ", contextValues.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
-                    : "(rỗng)";
-                throw new InvalidOperationException(
-                    $"DynamicLookup FieldId={fieldId}: Filter SQL cần tham số CHƯA CÓ trên form: " +
-                    $"{string.Join(", ", missingParams.Select(p => "@" + p))}. " +
-                    $"Cần 1 field (thường là field ảo cha, VD Tỉnh/Ngân hàng) có Field Code trùng đúng tên đó. " +
-                    $"Field trên form hiện có: [{ctxKeys}].");
-            }
-
-            // ── Execute query trên Data DB (DM_PhongBan, v.v.) → materialize (bỏ cột null cho JSON gọn) ──
+            // ── Execute query trên Data DB → materialize (bỏ cột null cho JSON gọn) ──
             using var dataConn = _dataDb.CreateConnection();
             var rows = await dataConn.QueryAsync(
                 new CommandDefinition(querySql, dp, cancellationToken: ct));
@@ -420,23 +547,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         long? userId = null,
         CancellationToken ct = default)
     {
-        // ── Đọc config + verify tenant (giống QueryAsync) ─────────────────────
-        const string cfgSql = """
-            SELECT fl.Query_Mode     AS QueryMode,
-                   fl.Source_Name    AS SourceName,
-                   fl.Value_Column   AS ValueColumn,
-                   fl.Display_Column AS DisplayColumn
-            FROM   dbo.Ui_Field_Lookup fl
-            JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
-            JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
-            JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
-            WHERE  fl.Field_Id = @FieldId
-            """;
-
+        // ── Đọc config (đã resolve template — mẫu 'table' vẫn AddNew được) ────
         using var configConn = _configDb.CreateConnection();
-        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
-            new CommandDefinition(cfgSql, new { FieldId = fieldId, TenantId = tenantId },
-                cancellationToken: ct));
+        var cfg = await LoadCfgAsync(configConn, fieldId, tenantId, ct);
 
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             throw new InvalidOperationException(
@@ -550,57 +663,33 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         CancellationToken ct = default)
     {
         using var configConn = _configDb.CreateConnection();
-        var cfg = await configConn.QueryFirstOrDefaultAsync<LookupCfgRow>(
-            new CommandDefinition(
-                // Dùng lại cfgSql constant — định nghĩa inline vì method khác scope
-                """
-                SELECT fl.Query_Mode       AS QueryMode,
-                       fl.Source_Name      AS SourceName,
-                       fl.Value_Column     AS ValueColumn,
-                       fl.Display_Column   AS DisplayColumn,
-                       fl.Filter_Sql       AS FilterSql,
-                       fl.Order_By        AS OrderBy,
-                       fl.Popup_Columns_Json AS PopupColumnsJson,
-                       fl.Code_Field      AS CodeField,
-                       fl.Parent_Column   AS ParentColumn
-                FROM   dbo.Ui_Field_Lookup fl
-                JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
-                JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
-                JOIN   dbo.Sys_Table       t  ON t.Table_Id  = fm.Table_Id
-                WHERE  fl.Field_Id = @FieldId
-                """,
-                new { FieldId = fieldId, TenantId = tenantId },
-                cancellationToken: ct));
+        var cfg = await LoadCfgAsync(configConn, fieldId, tenantId, ct);
 
         if (cfg is null || string.IsNullOrWhiteSpace(cfg.SourceName))
             return [];
 
-        // Cache-aside theo (version bảng nguồn) + hash @param context
+        // ParentColumn bắt buộc phải có với TreeLookupBox
+        if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
+        if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
+
+        var querySql = BuildSafeSqlForTree(cfg, out var error);
+        if (querySql is null)
+            throw new InvalidOperationException(
+                $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
+
+        // Bind đủ tham số TRƯỚC khi tính cache key (như QueryAsync — token theo user phải vào key)
+        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, tenantId, querySql, fieldId, ct);
+
         var cacheKey = CacheKeys.DynamicLookup(
             fieldId, tenantId, _lookupVer.Get(tenantId, cfg.SourceName!),
-            HashContext(cfg.FilterSql, contextValues), isTree: true);
+            HashContext(querySql, effectiveCtx), isTree: true);
 
         return await CachedAsync(cacheKey, async () =>
         {
-            // ParentColumn bắt buộc phải có với TreeLookupBox
-            if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
-                throw new InvalidOperationException(
-                    $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
-            if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
-                throw new InvalidOperationException(
-                    $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
-
-            var querySql = BuildSafeSqlForTree(cfg, out var error);
-            if (querySql is null)
-                throw new InvalidOperationException(
-                    $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
-
-            var dp = new DynamicParameters();
-            dp.Add("TenantId", tenantId);
-            foreach (var (key, val) in contextValues)
-                if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                    dp.Add(key, UnwrapParamValue(val));
-
             using var dataConn = _dataDb.CreateConnection();
             var rows = await dataConn.QueryAsync(
                 new CommandDefinition(querySql, dp, cancellationToken: ct));
@@ -683,6 +772,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         public string? CodeField        { get; init; }
         /// <summary>Cột chứa Parent Id — dùng khi EditorType = TreeLookupBox (Migration 021).</summary>
         public string? ParentColumn     { get; init; }
+        /// <summary>JSON map tham số canonical của mẫu lookup ← Field_Code/@token/hằng số (Migration 083).</summary>
+        public string? ParamMap         { get; init; }
     }
 
     /// <summary>

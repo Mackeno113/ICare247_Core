@@ -16,6 +16,16 @@ Refactor 3 chỗ về 1: CompanySwitcher (chỉ còn nghiệp vụ localStorage/
 UserManagementPage tab Công ty (NodeExtra = radio Mặc định + badge Theo vaiTrò, page giữ
 _companyById tra cờ), PermissionMatrixPage view Phạm vi công ty. Build UI 0W/0E.
 
+**PICKER-P4 đã code (commit cùng ngày):** db/083 (Ui_Lookup_Template + 2 cột Ui_Field_Lookup + seed
+3 mẫu) + db/084 (fn_CongTyTheoQuyen — vì DangerousKeywords chặn chuỗi con "IsDeleted" trong
+custom_sql nên nguồn phải là view/TVF) · DynamicLookupRepository: LoadCfgAsync resolve template
+(CASE template thắng, fallback legacy) + BuildParamsAsync (Param_Map: field/@token/hằng số; token
+tự resolve @param thiếu qua IContextParamResolver; **cache key hash sau khi bind đủ** — chống share
+cache sai user) · FormRepository merge Param_Map→Reload_Trigger_Fields · ConfigSync descriptor ·
+WPF: LookupTemplateRecord + 3 method FieldDataService phòng thủ + FieldConfigViewModel
+(SelectedLookupTemplate/ParamRows, hook load ~d1910/save ~d3500) + LookupBoxPropsPanel section mới.
+Build BE + WPF 0W/0E. CHƯA chạy migration 083/084, chưa smoke. Hover-help topic cho section mới: nợ.
+
 **PICKER-P3 đã code (commit cùng ngày):** BE PickersController `/api/v1/pickers/dia-ban`
 (tỉnh/xã/resolve-id, IPickerRepository trên DM_TinhThanhPho+DM_PhuongXa schema db/037) ·
 Shared IDiaBanPickerSource + IcAddressBlock (DiaChi+PhuongXaId là 2 giá trị lưu, tỉnh = bộ lọc
