@@ -3,6 +3,16 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## 📋 Roadmap — Shared Data Picker Controls (spec 31, session 87 — 2026-07-16, SPEC DRAFT chờ duyệt)
+
+Control dữ liệu dùng chung 2 thế giới (bespoke RCL + engine template) — chi tiết `docs/spec/31_SHARED_PICKER_CONTROLS_SPEC.md`.
+Đã chốt với user: làm SONG SONG 2 tầng · spec trước code sau · IcCompanyPicker 1 control 2 chế độ (Single/MultiCheck).
+
+- [ ] PICKER-P2: IcPickerBase + IcCompanyPicker (Single + MultiCheck WYSIWYG + slot NodeExtra) + refactor 3 chỗ tự chế (CompanySwitcher, tab Công ty màn Người dùng, view Phạm vi công ty)
+- [ ] PICKER-P3: PickersController + nguồn dia-ban + IcAddressBlock (xin DDL bảng địa bàn live trước)
+- [ ] PICKER-P4: Ui_Lookup_Template + Ui_Field_Lookup.Template_Code/Param_Map + ô ConfigStudio + ConfigSync + seed 4 mẫu nền
+- [ ] PICKER-P5: nguồn nhan-vien + IcEmployeePicker (chờ đợt NS_NhanVien; ThoiDiem = tham số canonical, màn bind field ngày riêng)
+
 ## ✅ Đã xong — Switcher công ty dạng cây + màn Người dùng + phân quyền cây công ty (session 87 — 2026-07-16, commit `e6bc0b8`)
 
 **Mô hình đã chốt với user:** Vai trò (HT_VaiTro) = khái niệm nhóm duy nhất, gánh 2 trục kế thừa ĐỘNG:
