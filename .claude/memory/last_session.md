@@ -1,7 +1,63 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-16 (session 87 — authz cây công ty + spec 31 P2/P3/P4 + refactor FieldConfigViewModel B1→B4.2). Lịch sử → [session_history.md](session_history.md).
-> **Task tiếp theo gợi ý:** ① REFACTOR B4.2 nhóm 2 (EditBox/Tree/AddNew → FkLookupConfigVm — xem TASKS.md khối REFACTOR có đủ lộ trình nhóm 2/3/4 + B5) · ② user chạy migration db/082+083+084 bằng SSMS · ③ màn Phòng ban (khách hàng đầu tiên của IcCompanyPicker + IcAddressBlock).
+> Cập nhật: 2026-07-18 (session 88 — xong REFACTOR FieldConfigViewModel B4.2+B5 trọn vẹn + đổi tên
+> fnt_/fns_ + xây bộ 3 control TreeList/Lookup dùng chung Feature A/B/C). Lịch sử → [session_history.md](session_history.md).
+> **Task tiếp theo gợi ý:** ① **user chạy `db/085`→`086`→`087`→`088` bằng SSMS ĐÚNG THỨ TỰ** trước
+> khi restart API (bắt buộc — `ViewRepository.GetByCodeAsync` là hub mọi màn View) · ② smoke test tay
+> cả 3 Feature (kéo-thả cây, lọc theo công ty, self-ref parent picker) — CHƯA chạy runtime · ③ màn
+> Phòng ban (no-code qua ConfigStudio, dùng cả 3 control vừa xây, KHÔNG viết SQL tay) · ④ task đã
+> spawn `task_2b59b40a` (fix mismatch chuỗi "function"/"sql" vs "tvf"/"custom_sql" trong
+> LookupBoxPropsPanel — bug tiền tồn tại, phát hiện tình cờ, chưa sửa).
+
+## Session 88 (2026-07-18) — Xong REFACTOR B4.2+B5 + đổi tên fnt_/fns_ + Bộ 3 control TreeList/Lookup
+
+**Đầu phiên — fix migration đổi tên (commit `63e874e`):** user báo đã chạy db/082+083+084 bằng SSMS
+với quy tắc mới: hàm bảng (TVF) tiền tố `fnt_`, hàm vô hướng tiền tố `fns_`. Đổi `fn_CongTyTheoQuyen`
+→ `fnt_CongTyTheoQuyen` (db/084 thêm bước DROP tên cũ, db/083 tự vá dòng seed TPL_CONG_TY — cả 2
+idempotent, an toàn chạy lại). Ghi quy tắc tiền tố vào `.claude-rules/database-design.md` §7b.
+User re-run 083+084 xong trong phiên.
+
+**REFACTOR FieldConfigViewModel — hoàn tất B4.2 (4 nhóm) + B5** (commit `ff69dec`/`7fbe336`/
+`6397389`/`aeb98e3`): dời hết state/logic FK Lookup từ root sang `FkLookupConfigVm` theo công thức
+đã chốt từ nhóm 1 (side-effect gọi ngược root, restore/reset qua method internal). Nhóm 2 kèm fix
+bug nhóm 1 để lại (RadioGroup Sys_Lookup binding gãy). Nhóm 3 (khối lớn nhất — nguồn FK + 13 command,
+diệt lambda `+=` → handler đặt tên) kèm xóa ~380 dòng XAML legacy Collapsed. Nhóm 4 (template P4 +
+cascade + diễn giải) có coupling khác — `RecomputeCascadeWarnings` cần Navigator+FieldId nên
+`GetSiblingFieldCodes` giữ ở root. B5 gộp 3 lệnh reset rời rạc thành 1 method `ResetForNewField()`.
+**Kết quả: VM root 4.030 → 2.137 dòng (−47%)**, FkLookupConfigVm 1.172 dòng. Build 0W/0E mỗi bước.
+**CHƯA smoke test** (đè lên cả 5 bước, cần restart ConfigStudio).
+
+**Bộ 3 control TreeList/Lookup dùng chung** (Plan mode duyệt, xem
+`C:\Users\Mackeno_01\.claude\plans\inherited-floating-shannon.md`) — ban đầu định làm thẳng màn
+Phòng ban, user chốt xây control tái dùng TRƯỚC (không SQL tay):
+- **Feature C** (`4c656a7`) — kéo-thả sắp xếp TreeList (ADR-027, nay đã code — xem TASKS.md bảng ADR):
+  proc generic `sp_RecomputeTreeOrder` (db/085) + `Ui_View.Allow_Reorder` (db/086) + API reorder
+  (chặn cycle qua CTE hậu duệ) + wiring `DxTreeList.AllowDragRows`/`ItemsDropped` (API xác nhận có
+  thật qua reflection DLL, không đoán) + checkbox WPF.
+- **Feature A** (`6d467fe`) — lọc TreeList/Grid theo công ty declarative: `Ui_View.Scope_By_Company`
+  (db/087) + mở rộng `GetDataAsync` tự JOIN `fnt_CongTyTheoQuyen` + `@CongTyID_Active`; kèm fix bug
+  `Validate_Sql` CongTyID_Active thiếu nhánh vai trò (dùng thẳng hàm đã có).
+- **Feature B** (`44ed677`) — self-ref parent picker: `Query_Mode='self_parent'` (db/088), CTE loại
+  chính nó + hậu duệ, `@__SelfId` tự bind qua cơ chế contextValues generic sẵn có (không cần code
+  riêng); thêm ở CẢ `MasterDataForm` VÀ `FormRunner` (tránh lặp bug "quên 1 renderer" session 77).
+
+**⚠️ Cả 3 Feature đụng `ViewRepository.GetByCodeAsync` (hub mọi màn View)** → GitNexus báo risk
+CRITICAL cho Feature C/A — không phải bug, chỉ vì thêm cột SELECT vào hub dùng chung. **Bắt buộc
+chạy `db/085`→`086`→`087`→`088` ĐÚNG THỨ TỰ trước khi restart API**, nếu không mọi màn `/view/...`
+lỗi "Invalid column name".
+
+**Phát hiện tình cờ, đã flag riêng KHÔNG sửa** (`task_2b59b40a`): `FkLookupConfigVm.IsFunctionMode`/
+`IsSqlMode` so sánh chuỗi "function"/"sql" nhưng CommandParameter + DB CHECK constraint dùng
+"tvf"/"custom_sql" — bug tiền tồn tại (không phải do session này tạo ra), field cấu hình TVF/SQL
+không hiện đúng radio khi mở lại + Lưu có thể vi phạm CHECK constraint.
+
+**Ghi nhận:** Codex (AI khác, quy trình `AI_HANDOFF.md`) làm song song `WEB-UX-04` (chuẩn hóa design
+system Web) trong cùng working tree — không đụng vào, đã cẩn thận `git add -p` tách hunk khi TASKS.md
+bị 2 bên cùng sửa.
+
+**Build verify `/finish-task`:** backend `dotnet build ICare247.slnx` 0 `error CS` (fail còn lại
+thuần file-lock do API đang chạy — coi như OK theo quy tắc dự án) · Web + ConfigStudio WPF 0W/0E ·
+`dotnet test ICare247.Application.Tests` **145/145 pass**.
 
 ## Session 87 (tiếp) — REFACTOR FieldConfigViewModel (WPF 4.030 dòng) — ĐANG DỞ B4.2
 

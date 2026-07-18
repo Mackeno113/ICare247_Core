@@ -1,6 +1,6 @@
 # Project Current Phase
 
-> Cập nhật: 2026-07-04. Lịch sử tiến độ per-session (61→5) + bảng phase đã xong → [project_phase_history.md](project_phase_history.md).
+> Cập nhật: 2026-07-18. Lịch sử tiến độ per-session (61→5) + bảng phase đã xong → [project_phase_history.md](project_phase_history.md).
 > Trạng thái phiên gần nhất → [last_session.md](last_session.md). Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 
 ## Roadmap chính (đường tới hạn)
@@ -8,6 +8,11 @@
 **F1 — Đồng bộ config master→tenant** (nền cho engine-hóa màn) → **F2 — engine-hóa màn Công ty** (ORG-CFG) →
 danh mục nền tảng (CAT-CFG). F1 code xong (CFGSYNC-0→3, descriptor 14 bảng), `db/050` đã chạy; **còn E2E** +
 migration `db/062` (Config). Spec: `docs/spec/16_CONFIG_SYNC_SPEC.md`. Chi tiết + trạng thái từng task → `TASKS.md`.
+
+**Nền tảng mới cho F2 (2026-07-18):** bộ 3 control TreeList/Lookup dùng chung (kéo-thả sắp xếp cây
+ADR-027, lọc theo công ty declarative, self-ref parent picker) đã code xong — engine không còn cần
+viết SQL tay cho màn có cây + có công ty (Phòng ban, Công ty, Vị trí công việc...). Xem TASKS.md +
+last_session.md session 88.
 
 ## Control động web = RCL dùng chung (2026-07-09)
 
