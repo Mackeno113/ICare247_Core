@@ -243,6 +243,83 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         return ((IDictionary<string, object>)row).ToDictionary(k => k.Key, v => (object?)v.Value);
     }
 
+    // ── Đọc field ảo từ VIEW denormalized (cách chính) ────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, object?>> ReadVirtualFieldsFromViewAsync(
+        string formCode, int tenantId, object id, IReadOnlyCollection<string> virtualFieldCodes,
+        CancellationToken ct = default)
+    {
+        var empty = (IReadOnlyDictionary<string, object?>)EmptyMap;
+        if (virtualFieldCodes.Count == 0) return empty;
+
+        // 1) Tìm view danh sách denormalized gắn Edit_Form của form (Config DB).
+        ViewSourceRow? src;
+        using (var cfg = _configDb.CreateConnection())
+        {
+            const string viewSql = """
+                SELECT TOP 1 v.Source_Object AS SourceObject, v.Key_Field AS KeyField
+                FROM   dbo.Ui_View v
+                JOIN   dbo.Ui_Form f ON f.Form_Id = v.Edit_Form_Id
+                WHERE  f.Form_Code   = @FormCode
+                  AND  v.Is_Active   = 1
+                  AND  v.Source_Type = 'View'
+                  AND  v.Source_Object IS NOT NULL
+                  AND  v.Key_Field     IS NOT NULL
+                ORDER BY v.View_Id
+                """;
+            src = await cfg.QueryFirstOrDefaultAsync<ViewSourceRow>(
+                new CommandDefinition(viewSql, new { FormCode = formCode, TenantId = tenantId },
+                    cancellationToken: ct));
+        }
+        if (src is null) return empty;   // form không có view denormalized → caller fallback
+
+        var source = TryParseQualified(src.SourceObject);
+        if (source is null || string.IsNullOrWhiteSpace(src.KeyField)
+            || !SafeIdentifierRegex().IsMatch(src.KeyField))
+            return empty;
+
+        // 2) Đọc 1 dòng theo khóa chính (SELECT * — chỉ 1 dòng, rẻ; tránh phải kiểm cột view tồn tại).
+        var sql = $"SELECT * FROM {source} WHERE {Bracket(src.KeyField)} = @Id";
+        using var data = _dataDb.CreateConnection();
+        var row = await data.QueryFirstOrDefaultAsync(
+            new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+        if (row is null) return empty;
+
+        // 3) Lọc về đúng các field ảo view thực có (khớp tên, non-null).
+        var wanted = new HashSet<string>(virtualFieldCodes, StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in (IDictionary<string, object>)row)
+            if (wanted.Contains(kv.Key) && kv.Value is not null and not DBNull)
+                result[kv.Key] = kv.Value;
+        return result;
+    }
+
+    /// <summary>Map rỗng dùng chung (tránh cấp phát khi form không có view/field ảo).</summary>
+    private static readonly IReadOnlyDictionary<string, object?> EmptyMap =
+        new Dictionary<string, object?>();
+
+    // ── Resolve derived value (fallback: suy field ảo cascade-cha từ field con) ────
+
+    /// <inheritdoc />
+    public async Task<object?> ResolveDerivedValueAsync(
+        string sourceName, string selectColumn, string valueColumn, object childValue,
+        CancellationToken ct = default)
+    {
+        if (childValue is null or DBNull) return null;
+        // Identifier không an toàn → bỏ qua (không suy còn hơn dựng SQL sai/nguy hiểm).
+        if (!SafeIdentifierRegex().IsMatch(selectColumn) || !SafeIdentifierRegex().IsMatch(valueColumn))
+            return null;
+        var source = TryParseQualified(sourceName);
+        if (source is null) return null;
+
+        var sql = $"SELECT TOP 1 {Bracket(selectColumn)} FROM {source} " +
+                  $"WHERE {Bracket(valueColumn)} = @Val";
+        using var data = _dataDb.CreateConnection();
+        return await data.ExecuteScalarAsync<object?>(
+            new CommandDefinition(sql, new { Val = childValue }, cancellationToken: ct));
+    }
+
     // ── Insert ──────────────────────────────────────────────────────────────────
 
     /// <inheritdoc />
@@ -533,6 +610,29 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     }
 
     private static string Bracket(string identifier) => $"[{identifier}]";
+
+    /// <summary>
+    /// Tách tên nguồn 'schema.object' hoặc 'object' → '[schema].[object]' (mặc định dbo);
+    /// mỗi phần whitelist identifier. Trả null nếu không hợp lệ (caller bỏ qua, không dựng SQL).
+    /// Chỉ nhận tên bảng/view đơn giản — QueryMode tvf/custom_sql không suy được (trả null).
+    /// </summary>
+    private static string? TryParseQualified(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var parts = name.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+            return null;
+        return parts.Length == 2
+            ? $"{Bracket(parts[0])}.{Bracket(parts[1])}"
+            : $"[dbo].{Bracket(parts[0])}";
+    }
+
+    /// <summary>Dapper row: nguồn view denormalized + cột khóa của một Ui_View gắn Edit_Form.</summary>
+    private sealed class ViewSourceRow
+    {
+        public string SourceObject { get; init; } = "";
+        public string KeyField     { get; init; } = "";
+    }
 
     /// <summary>Dapper mapping cho header form + bảng đích.</summary>
     private sealed class FormHeadRow

@@ -40,6 +40,31 @@ public interface IMasterDataRepository
         string formCode, int tenantId, object id, CancellationToken ct = default);
 
     /// <summary>
+    /// Đọc giá trị các cột field ẢO từ VIEW danh sách denormalized của form (cách CHÍNH suy field ảo).
+    /// Tìm <c>Ui_View</c> gắn <c>Edit_Form</c> = form này, <c>Source_Type='View'</c>, rồi
+    /// <c>SELECT * FROM {Source_Object} WHERE [{Key_Field}] = @Id</c> (Data DB) — view đã JOIN sẵn mọi cấp
+    /// cha (Tỉnh, và sâu hơn) nên lấy 1 dòng là đủ, không cần suy nhiều truy vấn/thứ tự.
+    /// Match view↔bảng bằng KHÓA CHÍNH: view không khai được PK nhưng cột PK chảy qua view giữ nguyên tên
+    /// (<c>Key_Field</c>). Trả map <c>{FieldCode: value}</c> CHỈ gồm cột view thực có + khớp tên field ảo (non-null).
+    /// Rỗng nếu form không có view denormalized → caller fallback sang <see cref="ResolveDerivedValueAsync"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<string, object?>> ReadVirtualFieldsFromViewAsync(
+        string formCode, int tenantId, object id, IReadOnlyCollection<string> virtualFieldCodes,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// (Fallback) Suy 1 giá trị vô hướng từ bảng/view nguồn của field con:
+    /// <c>SELECT TOP 1 {selectColumn} FROM {sourceName} WHERE {valueColumn} = @Val</c> (Data DB).
+    /// Dùng khi form KHÔNG có view denormalized: suy field ẢO cascade-cha (VD Tỉnh) từ field con đã lưu (VD Phường/Xã).
+    /// Chỉ suy được 1 cấp + nguồn bảng/view + filter đẳng thức đơn (xem handler).
+    /// Trả <c>null</c> khi <paramref name="childValue"/> null, identifier không an toàn, hoặc không tra được dòng.
+    /// An toàn injection: mọi identifier whitelist regex + bọc <c>[]</c>; giá trị qua Dapper param.
+    /// </summary>
+    Task<object?> ResolveDerivedValueAsync(
+        string sourceName, string selectColumn, string valueColumn, object childValue,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Insert 1 bản ghi. Trả về giá trị PK mới (OUTPUT INSERTED).
     /// Chỉ nhận cột thuộc Ui_Field của form (lọc cột lạ).
     /// </summary>
