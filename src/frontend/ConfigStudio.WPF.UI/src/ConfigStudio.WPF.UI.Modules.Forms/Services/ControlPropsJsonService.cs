@@ -105,7 +105,7 @@ public static class ControlPropsJsonService
                             { param = p.Param, fieldRef = p.FieldRef, type = p.Type }).ToList();
                     break;
 
-                case "function":
+                case "tvf":
                     dict["functionName"] = (object?)input.FkFunctionName;
                     if (input.FunctionParams.Count > 0)
                         dict["functionParams"] = input.FunctionParams.Select(p => new
@@ -118,7 +118,7 @@ public static class ControlPropsJsonService
                         }).ToList();
                     break;
 
-                case "sql":
+                case "custom_sql":
                     dict["selectSql"] = (object?)input.FkSelectSql;
                     if (input.FilterParams.Count > 0)
                         dict["filterParams"] = input.FilterParams.Select(p => new

@@ -107,7 +107,7 @@
                                  IsChecked="{Binding IsFunctionMode, Mode=OneWay}"
                                  GroupName="LbQueryMode" Margin="0,0,16,0"
                                  Command="{Binding SetQueryModeCommand}"
-                                 CommandParameter="function" />
+                                 CommandParameter="tvf" />
                     <RadioButton Content="SQL tùy chỉnh"
                                  IsChecked="{Binding IsSqlMode, Mode=OneWay}"
                                  GroupName="LbQueryMode" Margin="0,0,16,0"

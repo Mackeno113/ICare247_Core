@@ -80,8 +80,10 @@ public sealed class FkLookupConfigVm : BindableBase
 
     private string _queryMode = "table";
     /// <summary>
-    /// Chế độ truy vấn dữ liệu lookup:
-    /// "table" = Bảng/View + WHERE; "function" = TVF; "sql" = Full SQL.
+    /// Chế độ truy vấn dữ liệu lookup. Dùng ĐÚNG literal canonical khớp DB CHECK constraint
+    /// (Ui_Field_Lookup.Query_Mode, db/008+088) và backend engine (DynamicLookupRepository.BuildSafeSql):
+    /// "table" = Bảng/View + WHERE; "tvf" = TVF (table-valued function); "custom_sql" = Full SELECT SQL;
+    /// "self_parent" = self-ref parent picker. Giá trị này lưu/nạp THẲNG với DB (không map trung gian).
     /// </summary>
     public string QueryMode
     {
@@ -100,8 +102,8 @@ public sealed class FkLookupConfigVm : BindableBase
     }
 
     public bool IsTableMode    => _queryMode == "table";
-    public bool IsFunctionMode => _queryMode == "function";
-    public bool IsSqlMode      => _queryMode == "sql";
+    public bool IsFunctionMode => _queryMode == "tvf";
+    public bool IsSqlMode      => _queryMode == "custom_sql";
 
     /// <summary>
     /// Feature B (bộ control dùng chung) — self-ref parent picker: chọn "cha" trong CHÍNH bảng

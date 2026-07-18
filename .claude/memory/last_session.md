@@ -1,13 +1,29 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-18 (session 88 — xong REFACTOR FieldConfigViewModel B4.2+B5 trọn vẹn + đổi tên
-> fnt_/fns_ + xây bộ 3 control TreeList/Lookup dùng chung Feature A/B/C). Lịch sử → [session_history.md](session_history.md).
-> **Task tiếp theo gợi ý:** ① **user chạy `db/085`→`086`→`087`→`088` bằng SSMS ĐÚNG THỨ TỰ** trước
-> khi restart API (bắt buộc — `ViewRepository.GetByCodeAsync` là hub mọi màn View) · ② smoke test tay
-> cả 3 Feature (kéo-thả cây, lọc theo công ty, self-ref parent picker) — CHƯA chạy runtime · ③ màn
-> Phòng ban (no-code qua ConfigStudio, dùng cả 3 control vừa xây, KHÔNG viết SQL tay) · ④ task đã
-> spawn `task_2b59b40a` (fix mismatch chuỗi "function"/"sql" vs "tvf"/"custom_sql" trong
-> LookupBoxPropsPanel — bug tiền tồn tại, phát hiện tình cờ, chưa sửa).
+> Cập nhật: 2026-07-18 (session 89 — sửa bug ④ mismatch query-mode "function"/"sql" vs canonical
+> "tvf"/"custom_sql" trong ConfigStudio; session 88 xong REFACTOR B4.2+B5 + bộ 3 control TreeList/
+> Lookup Feature A/B/C). Lịch sử → [session_history.md](session_history.md).
+> **Trạng thái việc treo session 88:** ① migration `db/085→088` — **XONG** (user chạy) · ② smoke 3
+> Feature — **XONG** · ③ smoke REFACTOR FieldConfigViewModel — **XONG** · ④ bug query-mode
+> (`task_2b59b40a`) — **XONG** (session 89).
+> **Task tiếp theo gợi ý:** màn Phòng ban (no-code qua ConfigStudio, dùng cả 3 control vừa xây,
+> KHÔNG viết SQL tay).
+
+## Session 89 (2026-07-18) — Fix bug ④ query-mode literal lệch canonical (ConfigStudio)
+
+**Root cause:** ConfigStudio WPF so/gửi literal query-mode CŨ (`"function"`/`"sql"`) trong khi nguồn
+sự thật duy nhất — DB CHECK constraint `Ui_Field_Lookup.Query_Mode` (db/008+088: `table|tvf|custom_sql|
+self_parent`) + backend `DynamicLookupRepository.BuildSafeSql` + runtime DTO `FieldLookupConfigDto` —
+đều dùng `tvf`/`custom_sql`. Load/Save trong VM truyền THẲNG giá trị DB (không map) ⇒ ConfigStudio là
+nơi DUY NHẤT lệch. Verify bằng grep + đọc DB CHECK/backend, không đoán.
+
+**Sửa 6 chỗ / 4 file:** `FkLookupConfigVm` (`IsFunctionMode`→`"tvf"`, `IsSqlMode`→`"custom_sql"`) ·
+`LookupBoxPropsPanel.xaml` + `ComboBoxPropsPanel.xaml` (radio TVF CommandParameter `"function"`→`"tvf"`;
+radio SQL đã đúng `custom_sql` từ trước) · `ControlPropsJsonService` + `FieldConfigExplainService`
+(case `"function"`/`"sql"` → `"tvf"`/`"custom_sql"`, thêm nhánh `self_parent` diễn giải).
+
+**Không cần dọn dữ liệu:** CHECK constraint đã chặn `"function"` từ đầu (Lưu TVF cũ luôn lỗi → 0 hàng
+rác); SQL luôn lưu `custom_sql` (chỉ hỏng hiển thị khi mở lại). **User đã smoke — OK.** Chưa commit.
 
 ## Session 88 (2026-07-18) — Xong REFACTOR B4.2+B5 + đổi tên fnt_/fns_ + Bộ 3 control TreeList/Lookup
 

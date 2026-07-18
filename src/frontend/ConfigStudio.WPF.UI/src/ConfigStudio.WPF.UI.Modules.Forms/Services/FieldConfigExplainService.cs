@@ -44,7 +44,7 @@ public static class FieldConfigExplainService
         // ── Thông tin chung ──
         if (r.IsVirtual)
             sb.AppendLine("🔮  Field ảo: KHÔNG lưu DB (chỉ để lọc/tham chiếu cascade).");
-        sb.AppendLine($"⚙  Chế độ truy vấn: {r.QueryMode switch { "table" => "Bảng / View", "function" => "Table-Valued Function (TVF)", "sql" => "SQL tùy chỉnh", _ => r.QueryMode }}");
+        sb.AppendLine($"⚙  Chế độ truy vấn: {r.QueryMode switch { "table" => "Bảng / View", "tvf" => "Table-Valued Function (TVF)", "custom_sql" => "SQL tùy chỉnh", "self_parent" => "Cha trong cùng bảng", _ => r.QueryMode }}");
         if (!string.IsNullOrWhiteSpace(r.FkValueField))
             sb.AppendLine($"    Lưu vào DB: cột \"{r.FkValueField}\" (FK int)");
         if (!string.IsNullOrWhiteSpace(r.FkDisplayField))
@@ -74,7 +74,7 @@ public static class FieldConfigExplainService
                 sb.AppendLine($"    WHERE  {(string.IsNullOrWhiteSpace(r.FkFilterSql) ? "(không có filter)" : r.FkFilterSql)}");
                 break;
 
-            case "function":
+            case "tvf":
                 sb.AppendLine($"⚡  TVF: \"{r.FkFunctionName}\"");
                 if (r.FunctionParams.Count > 0)
                 {
@@ -95,7 +95,7 @@ public static class FieldConfigExplainService
                 }
                 break;
 
-            case "sql":
+            case "custom_sql":
                 sb.AppendLine("📝  Full SQL tùy chỉnh:");
                 sb.AppendLine($"    {r.FkSelectSql}");
                 if (r.FilterParams.Count > 0)
