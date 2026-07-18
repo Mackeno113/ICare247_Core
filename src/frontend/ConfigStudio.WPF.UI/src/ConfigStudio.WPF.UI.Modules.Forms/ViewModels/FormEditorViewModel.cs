@@ -143,7 +143,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     [
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox", "LookupBox", "TextArea",
-        "CheckBox", "ToggleSwitch", "TreePicker"
+        "CheckBox", "ToggleSwitch", "TreePicker", "AddressBox"
     ];
 
     /// <summary>4 lua chon ColSpan cho QPB combo.</summary>
@@ -185,7 +185,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         "",  // giu nguyen
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox", "LookupBox", "TextArea",
-        "CheckBox", "ToggleSwitch", "TreePicker"
+        "CheckBox", "ToggleSwitch", "TreePicker", "AddressBox"
     ];
 
     public List<byte> BulkColSpanOptions { get; } = [0, 1, 2, 3, 4]; // 0 = giu nguyen

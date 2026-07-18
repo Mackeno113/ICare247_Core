@@ -1,0 +1,41 @@
+<!-- File    : AddressBoxPropsPanel.xaml
+     Module  : Forms / Views / Panels / ControlProps
+     Layer   : Presentation
+     Purpose : Panel cấu hình cho Editor_Type = AddressBox (khối địa chỉ composite).
+               Field NÀY map cột xã/phường (int). Cần chọn thêm 1 field (text) cùng form
+               để lưu "địa chỉ chi tiết". Tỉnh/Thành chỉ để lọc — không lưu.
+               DataContext kế thừa từ FieldConfigView → FieldConfigViewModel (KHÔNG override). -->
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.Panels.ControlProps.AddressBoxPropsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:help="clr-namespace:ConfigStudio.WPF.UI.Modules.Forms.Behaviors"
+             mc:Ignorable="d"
+             d:DesignHeight="240" d:DesignWidth="680">
+
+    <StackPanel>
+        <Border Background="{DynamicResource AppSurfaceBrush}" BorderBrush="{DynamicResource AppBorderBrush}"
+                BorderThickness="1" CornerRadius="8" Padding="20,16" Margin="0,0,0,12">
+            <StackPanel help:HelpAssist.Topic="address.textField">
+                <TextBlock Text="Khối địa chỉ (AddressBox)" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource AppTextMutedBrush}"
+                           Margin="0,0,0,14"
+                           Text="Field này lưu cột XÃ/PHƯỜNG (int). Chọn thêm 1 field (text) cùng form để lưu 'địa chỉ chi tiết'. Tỉnh/Thành chỉ để lọc xã — không lưu cột riêng." />
+
+                <TextBlock Text="Field địa chỉ chi tiết (text)" FontSize="11" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,6" />
+                <dxe:ComboBoxEdit ItemsSource="{Binding AddressTextFieldOptions}"
+                                  EditValue="{Binding AddressTextField, UpdateSourceTrigger=PropertyChanged}"
+                                  IsTextEditable="False"
+                                  NullText="— Chọn field text lưu địa chỉ chi tiết —"
+                                  Margin="0,0,0,4" />
+                <TextBlock TextWrapping="Wrap" FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}"
+                           Margin="0,6,0,0"
+                           Text="Field text được chọn sẽ KHÔNG hiển thị riêng (khối địa chỉ đã có ô đó) nhưng vẫn được lưu vào DB." />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -3,7 +3,9 @@
              Hỗ trợ: text, number, date, datetime, bool, textarea, select, fklookup.
              Phát event OnChange khi user thay đổi giá trị. *@
 
-@if (State is not null && State.IsVisible)
+@* IsHiddenByComposite: field companion (VD địa chỉ text) do control AddressBox render thay → bỏ render riêng.
+   Field vẫn IsVisible để nằm trong payload Lưu — chỉ ẩn ở tầng render. *@
+@if (State is not null && State.IsVisible && !State.IsHiddenByComposite)
 {
     @* --col-span: ý đồ rộng từ metadata; CSS .fields-grid clamp lại theo --cols mỗi breakpoint *@
     <div class="field-wrapper @(State.Errors.Count > 0 ? "has-error" : "")"
@@ -112,6 +114,15 @@
                                     OnChange="OnChange"
                                     OnBlur="OnBlur"
                                     Context="Context" />
+                break;
+
+            case "address":
+                @* AddressBox — khối địa chỉ composite: chọn Tỉnh→Xã (lọc) + nhập địa chỉ chi tiết.
+                   Lưu 2 cột: xã/phường (field neo) + địa chỉ text (field companion, ControlProps). *@
+                <AddressRenderer State="State"
+                                 OnChange="OnChange"
+                                 OnBlur="OnBlur"
+                                 Context="Context" />
                 break;
 
             default:

@@ -1371,6 +1371,11 @@
                             DataContext="{Binding FkLookup}"
                             Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}" />
 
+                        <!-- ── AddressBoxPropsPanel — AddressBox (khối địa chỉ composite) ──
+                             DataContext kế thừa root (AddressTextField/AddressTextFieldOptions ở root VM). -->
+                        <panels:AddressBoxPropsPanel
+                            Visibility="{Binding IsAddressEditor, Converter={StaticResource BoolToVis}}" />
+
 
                         <!-- ── Multi-Trigger reload (Migration 068) ──────────────────────────
                              Danh sách field cha → runtime reload khi BẤT KỲ field nào đổi. Lưu ở cột

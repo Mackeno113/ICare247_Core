@@ -209,6 +209,9 @@ else
                     ControlPropsJson = f.ControlPropsJson,
                 }).ToList();
 
+            // AddressBox: đánh dấu field địa chỉ text (companion) là ẩn-render nhưng-vẫn-lưu.
+            CompositeFieldHelper.MarkAddressCompanions(_fieldStates);
+
             await LoadLookupOptionsAsync();
 
             // Prefill khi Sửa
@@ -390,6 +393,7 @@ else
             "lookupbox"                                          => "fklookup",
             "treelookupbox" or "treelookup"                      => "treelookup",
             "attachmentbox" or "attachment" or "fileupload"      => "attachment",
+            "addressbox" or "address"                            => "address",
             _                                                    => "text"
         };
 }

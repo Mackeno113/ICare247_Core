@@ -1,13 +1,50 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-18 (session 89 — sửa bug ④ mismatch query-mode "function"/"sql" vs canonical
-> "tvf"/"custom_sql" trong ConfigStudio; session 88 xong REFACTOR B4.2+B5 + bộ 3 control TreeList/
-> Lookup Feature A/B/C). Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái việc treo session 88:** ① migration `db/085→088` — **XONG** (user chạy) · ② smoke 3
-> Feature — **XONG** · ③ smoke REFACTOR FieldConfigViewModel — **XONG** · ④ bug query-mode
-> (`task_2b59b40a`) — **XONG** (session 89).
-> **Task tiếp theo gợi ý:** màn Phòng ban (no-code qua ConfigStudio, dùng cả 3 control vừa xây,
-> KHÔNG viết SQL tay).
+> Cập nhật: 2026-07-19 (session 90 — EditorType **AddressBox** cho form động: nối IcAddressBlock vào
+> engine no-code, cơ chế 2-field companion-ẩn; + fix SpinEdit ViewManager; session 89 fix bug ④
+> query-mode). Lịch sử → [session_history.md](session_history.md).
+> **Trạng thái:** AddressBox build Web+WPF 0W/0E — **runtime user đang test trên màn Công ty** (đã
+> render khối; fix JsonElement để tỉnh/xã resolve khi Sửa — chờ user rebuild nghiệm thu).
+> **Task tiếp theo gợi ý:** ① user rebuild `ICare247_UI` + hard reload → smoke AddressBox (Sửa hiện
+> tỉnh/xã) · ② xóa field Tỉnh riêng trên form Công ty (trùng với tỉnh trong khối) · ③ trả lời câu hỏi
+> đang treo: TreeList TC_PhongBan chưa hiện dạng cây ở runtime (định dạng lưới/tree dùng chung?) —
+> CHƯA điều tra.
+
+## Session 90 (2026-07-19) — EditorType AddressBox (khối địa chỉ) cho form no-code + fix SpinEdit
+
+**User đặt bài (nhiều vòng hỏi-đáp, chốt từng bước):** địa chỉ = bộ 3 (chọn Tỉnh → Xã lọc theo tỉnh →
+nhập địa chỉ text); LƯU 2 giá trị: `DiaChi` (text) + `PhuongXa_Id` (int), **KHÔNG lưu tỉnh**. Chốt
+**Hướng A** — nối `IcAddressBlock` (đã xây P3, chưa dùng ở đâu) thành editor type dùng được qua
+ConfigStudio (build-then-configure).
+
+**Ràng buộc kiến trúc (verify code):** backend `MasterDataRepository.BuildColumnParams` chỉ ghi cột
+của **field đã khai** → không thể "1 field ghi 2 cột". ⇒ khối địa chỉ = **2 Ui_Field**, 1 field NEO
+render cả khối + ghi cả 2, field text là **companion ẩn-render-nhưng-vẫn-lưu**.
+
+**Đã làm — Runtime (RCL+host):** `FieldState.IsHiddenByComposite` · `AddressRenderer.razor` (host
+IcAddressBlock, bắn OnChange cho neo `PhuongXa_Id` + companion text) · `CompositeFieldHelper.MarkAddressCompanions`
+(quét field neo→đánh dấu companion, gọi ở CẢ MasterDataForm + FormRunner) · `FieldRenderer` case
+"address" + bỏ render companion · `NormalizeFieldType` "addressbox"→"address" (3 nơi). **ConfigStudio:**
+`ControlPropsJsonService` (+`addressTextField`) · `FieldConfigViewModel` (AddressBox vào list, `IsAddressEditor`,
+`AddressTextField`+options, restore/reset, guide 📍) · `FormEditorViewModel` (2 list) · `AddressBoxPropsPanel.xaml(.cs)`
+(dropdown chọn field text) · `FieldConfigView.xaml` (nối panel). **Backend KHÔNG đổi** (tái dùng PickersController).
+
+**Bug runtime fix trong phiên:** mở Sửa → tỉnh/xã trống (địa chỉ text vẫn hiện). Gốc: `GetByIdAsync`
+(`ReadFromJsonAsync`) trả số dạng **JsonElement** không unwrap → switch parse `_wardId` cũ trả null →
+IcAddressBlock không resolve. Fix: `AddressRenderer.ToLong` bắt JsonElement (Number/String) + số/chuỗi.
+
+**Fix phụ (ADR-027 ViewManager, không liên quan AddressBox):** SpinEdit `Expand_Level`/`Page_Size` thiếu
+`IsFloatValue="False"` → chạy float → "Value 'X' could not be converted". Thêm cờ (pattern SysLookupManager).
+
+**Build:** `ICare247_UI.slnx` + `ConfigStudio.WPF.UI.slnx` **0W/0E** (build thật trong phiên).
+Backend không đụng. **Runtime CHƯA nghiệm thu** (user cần rebuild Web + hard reload).
+
+**Cũng làm:** doc `cau-hinh-address-box.md` + `cau-hinh-man-phong-ban.md` (guide ráp 3 control Feature
+A/B/C vào màn Phòng ban). Giải thích cho user: "Lỗi lưu — thử lại" ở FormEditor = version-conflict
+auto-save cấu trúc (Ctrl+S/reload để đồng bộ), KHÔNG phải AddressBox.
+
+**Việc treo (chưa làm):** câu hỏi user — TreeList TC_PhongBan cấu hình rồi nhưng runtime chưa hiện
+dạng cây / "định dạng lưới treelist dùng chung?" — CHƯA điều tra, làm tiếp phiên sau.
 
 ## Session 89 (2026-07-18) — Fix bug ④ query-mode literal lệch canonical (ConfigStudio)
 

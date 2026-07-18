@@ -331,7 +331,7 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
                                             <TextBlock Text="Page_Size" Style="{StaticResource EditorLabel}" />
-                                            <dxe:SpinEdit Width="120" EditValue="{Binding EditPageSize, UpdateSourceTrigger=PropertyChanged}"
+                                            <dxe:SpinEdit Width="120" IsFloatValue="False" EditValue="{Binding EditPageSize, UpdateSourceTrigger=PropertyChanged}"
                                                           MinValue="1" MaxValue="1000" MaskUseAsDisplayFormat="True" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2">
@@ -404,7 +404,7 @@
                                     <dxe:TextEdit EditValue="{Binding EditParentField, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="VD: ParentId" Margin="0,0,0,10" />
                                     <TextBlock Text="Expand_Level — mở sẵn tới cấp" Style="{StaticResource EditorLabel}" />
-                                    <dxe:SpinEdit Width="120" HorizontalAlignment="Left"
+                                    <dxe:SpinEdit Width="120" HorizontalAlignment="Left" IsFloatValue="False"
                                                   EditValue="{Binding EditExpandLevel, UpdateSourceTrigger=PropertyChanged}" MinValue="0" MaxValue="20" />
                                     <dxe:CheckEdit Content="Allow_Reorder — cho phép kéo-thả sắp xếp (ADR-027)"
                                                    IsChecked="{Binding EditAllowReorder}" Margin="0,10,0,2" />

@@ -1,0 +1,107 @@
+@* File    : AddressRenderer.razor
+   Purpose : Render khối địa chỉ composite (IcAddressBlock) cho form động.
+             EditorType "AddressBox" — 1 field NEO map cột xã/phường (int); ô "địa chỉ chi tiết"
+             (text) ghi vào 1 field COMPANION khác cùng form (ControlProps.addressTextField).
+             Tỉnh/Thành: bộ lọc nội bộ IcAddressBlock, KHÔNG lưu (suy từ DM_PhuongXa.TinhThanhPho_Id).
+   Sự kiện theo sau: bắn OnChange cho CẢ field neo (xã) lẫn companion (địa chỉ) → host cập nhật
+                     payload; cả hai đều là Ui_Field đã khai nên BuildColumnParams ghi được. *@
+
+@namespace ICare247.UI.DynamicForms.Components.FieldRenderers
+@using System.Text.Json
+@using System.Text.Json.Serialization
+@using ICare247.UI.Shared.Components.Pickers
+
+<IcAddressBlock DiaChi="@_diaChi"
+                DiaChiChanged="OnDiaChiChangedAsync"
+                PhuongXaId="@_wardId"
+                PhuongXaIdChanged="OnWardChangedAsync"
+                Disabled="@(State?.EffectiveReadOnly ?? false)" />
+
+@code {
+    [Parameter, EditorRequired] public FieldState?                               State   { get; set; }
+    [Parameter]                 public EventCallback<(string Code, object? Value)> OnChange { get; set; }
+    [Parameter]                 public EventCallback<string>                      OnBlur  { get; set; }
+    /// <summary>Snapshot toàn form (FieldCode→Value) — đọc giá trị hiện tại field companion (địa chỉ text).</summary>
+    [Parameter]                 public Dictionary<string, object?>               Context { get; set; } = [];
+
+    private string? _addressTextField;   // FieldCode của field companion (địa chỉ chi tiết)
+    private string? _diaChi;
+    private long?   _wardId;
+
+    /// <summary>Đọc props + đồng bộ giá trị hiển thị từ State (xã) và Context (địa chỉ) mỗi lần render.</summary>
+    protected override void OnParametersSet()
+    {
+        _addressTextField = AddressProps.Parse(State?.ControlPropsJson).AddressTextField;
+        // State.Value khi Sửa đến từ API (ReadFromJsonAsync) dưới dạng JsonElement — PHẢI unwrap,
+        // nếu không tỉnh/xã sẽ không resolve khi mở lại (địa chỉ text vẫn hiện vì ToString ra chuỗi).
+        _wardId = ToLong(State?.Value);
+        _diaChi = !string.IsNullOrEmpty(_addressTextField)
+                  && Context.TryGetValue(_addressTextField!, out var tv) ? UnwrapString(tv) : null;
+    }
+
+    /// <summary>Ép object? (kể cả JsonElement từ API) về long? — Id xã/phường.</summary>
+    private static long? ToLong(object? v) => v switch
+    {
+        null                                          => null,
+        long l                                        => l,
+        int i                                         => i,
+        short sh                                      => sh,
+        string s when long.TryParse(s, out var r)     => r,
+        JsonElement je when je.ValueKind == JsonValueKind.Number && je.TryGetInt64(out var r) => r,
+        JsonElement je when je.ValueKind == JsonValueKind.String
+                            && long.TryParse(je.GetString(), out var r)                       => r,
+        IConvertible c                                => TryConvertLong(c),
+        _                                             => null
+    };
+
+    private static long? TryConvertLong(IConvertible c)
+    {
+        try { return c.ToInt64(System.Globalization.CultureInfo.InvariantCulture); }
+        catch { return null; }
+    }
+
+    /// <summary>Lấy chuỗi từ object? (JsonElement string → nội dung chuỗi; khác → ToString).</summary>
+    private static string? UnwrapString(object? v) => v switch
+    {
+        null                                                     => null,
+        JsonElement je when je.ValueKind == JsonValueKind.Null    => null,
+        JsonElement je when je.ValueKind == JsonValueKind.String  => je.GetString(),
+        JsonElement je                                            => je.ToString(),
+        _                                                         => v.ToString()
+    };
+
+    /// <summary>User nhập địa chỉ chi tiết → ghi vào field companion (cột text). Sự kiện: host cập nhật payload.</summary>
+    private async Task OnDiaChiChangedAsync(string? val)
+    {
+        _diaChi = val;
+        if (!string.IsNullOrEmpty(_addressTextField))
+            await OnChange.InvokeAsync((_addressTextField!, (object?)val));
+    }
+
+    /// <summary>User chọn xã/phường → ghi vào field neo (cột int). Sự kiện: host cập nhật payload.</summary>
+    private async Task OnWardChangedAsync(long? id)
+    {
+        _wardId = id;
+        if (State is not null)
+            await OnChange.InvokeAsync((State.FieldCode, (object?)id));
+    }
+
+    /// <summary>Props từ Control_Props_Json. JSON mẫu: {"addressTextField":"DiaChi"}.</summary>
+    private sealed class AddressProps
+    {
+        /// <summary>FieldCode của field "địa chỉ chi tiết" (text) trên cùng form.</summary>
+        [JsonPropertyName("addressTextField")]
+        public string? AddressTextField { get; set; }
+
+        public static AddressProps Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new();
+            try
+            {
+                return JsonSerializer.Deserialize<AddressProps>(json,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new();
+            }
+            catch { return new(); }
+        }
+    }
+}

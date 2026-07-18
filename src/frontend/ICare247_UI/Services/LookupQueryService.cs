@@ -259,6 +259,7 @@ public sealed class LookupQueryService : ILookupQueryService
             or "radiogroup" or "lookupcombobox"               => "select",
         "lookupbox"                                           => "fklookup",
         "treelookupbox" or "treelookup"                       => "treelookup",
+        "addressbox" or "address"                             => "address",
         _                                                     => "text"
     };
 

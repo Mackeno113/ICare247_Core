@@ -285,6 +285,9 @@ else if (_form is not null)
                 ControlPropsJson = f.ControlPropsJson,
             }).ToList();
 
+            // AddressBox: đánh dấu field địa chỉ text (companion) là ẩn-render nhưng-vẫn-lưu.
+            CompositeFieldHelper.MarkAddressCompanions(_fieldStates);
+
             // Load Sys_Lookup options cho tất cả static select fields (gọi song song theo code)
             await LoadLookupOptionsAsync();
 
@@ -613,6 +616,8 @@ else if (_form is not null)
         "treelookupbox" or "treelookup"                                 => "treelookup",
         // AttachmentBox = upload/đính kèm tệp (nén ảnh + progress + preview)
         "attachmentbox" or "attachment" or "fileupload"                 => "attachment",
+        // AddressBox = khối địa chỉ composite (Tỉnh→Xã lọc + địa chỉ text; lưu 2 cột)
+        "addressbox" or "address"                                       => "address",
         _                                                               => "text"
     };
 

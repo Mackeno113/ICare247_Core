@@ -175,7 +175,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         "TextBox", "NumericBox", "ComboBox", "DatePicker",
         "RadioGroup", "LookupComboBox",
         "LookupBox", "TreeLookupBox", "TextArea", "CheckBox", "ToggleSwitch",
-        "AttachmentBox"
+        "AttachmentBox", "AddressBox"
     ];
 
     private string _selectedEditorType = "TextBox";
@@ -213,7 +213,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 RaisePropertyChanged(nameof(IsFkLookupEditor));
                 RaisePropertyChanged(nameof(IsTreeLookupEditor));
                 RaisePropertyChanged(nameof(IsComboBoxEditor));
+                RaisePropertyChanged(nameof(IsAddressEditor));
                 RaisePropertyChanged(nameof(IsDynamicDataEditor));
+                if (IsAddressEditor) RefreshAddressTextFieldOptions();
                 RaisePropertyChanged(nameof(EditorTypeGuide));
                 RaisePropertyChanged(nameof(HasEditorTypeGuide));
                 if (IsLookupEditor && !_isLoading)
@@ -249,6 +251,36 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     /// <summary>True khi EditorType là ComboBox (dynamic data từ Bảng/TVF/SQL, dùng DxComboBox).</summary>
     public bool IsComboBoxEditor => SelectedEditorType == "ComboBox";
+
+    /// <summary>True khi EditorType là AddressBox — khối địa chỉ composite (Tỉnh→Xã + địa chỉ text).</summary>
+    public bool IsAddressEditor => SelectedEditorType == "AddressBox";
+
+    // ── AddressBox (khối địa chỉ composite) ──────────────────────────────────
+    /// <summary>Danh sách FieldCode field KHÁC trong form — để chọn field "địa chỉ chi tiết" (text) đi kèm.</summary>
+    public ObservableCollection<string> AddressTextFieldOptions { get; } = [];
+
+    private string? _addressTextField;
+    /// <summary>
+    /// FieldCode field companion giữ "địa chỉ chi tiết" (text). Field neo (this) tự lưu cột xã/phường (int).
+    /// Lưu vào Control_Props_Json (addressTextField); runtime AddressRenderer đọc để ghi/đọc CẢ 2 cột.
+    /// </summary>
+    public string? AddressTextField
+    {
+        get => _addressTextField;
+        set
+        {
+            if (SetProperty(ref _addressTextField, value) && !_isRebuildingProps && !_isLoading)
+                RebuildControlPropsJson();
+        }
+    }
+
+    /// <summary>Nạp lại danh sách field anh-em cho dropdown chọn field địa chỉ text (từ Navigator).</summary>
+    private void RefreshAddressTextFieldOptions()
+    {
+        AddressTextFieldOptions.Clear();
+        foreach (var code in GetSiblingFieldCodes())
+            AddressTextFieldOptions.Add(code);
+    }
 
     /// <summary>
     /// True khi EditorType cần cấu hình nguồn dữ liệu động từ Ui_Field_Lookup
@@ -492,6 +524,28 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 "Tab Control Props: đặt 'loai' nếu muốn phân loại tệp (VD: HopDong).",
                 "Chế độ đa tệp: ownerTable/ownerIdField thường ĐỂ TRỐNG — hệ thống tự suy từ form.",
                 "Bảo mật upload server tự xử lý — không cần cấu hình thêm.",
+            ]),
+
+        "AddressBox" => new(
+            Icon:       "📍",
+            Title:      "AddressBox — Khối địa chỉ (Tỉnh→Xã + địa chỉ chi tiết)",
+            WhenToUse:  "Địa chỉ hành chính VN. LƯU 2 CỘT: field NÀY map cột xã/phường (int); ô 'địa chỉ\n" +
+                        "chi tiết' (text) ghi vào 1 field KHÁC cùng form. Tỉnh chỉ để lọc xã — KHÔNG lưu.",
+            ColumnType: "int (FK PhuongXa) — field này; text — field địa chỉ đi kèm",
+            Props:
+            [
+                new("Field địa chỉ text", "Chọn field (text) cùng form dùng lưu 'địa chỉ chi tiết' (số nhà, đường)."),
+                new("(field này)",        "Map cột xã/phường int (VD: PhuongXa_Id). Value = Id xã đã chọn."),
+                new("Tỉnh/Thành",         "Bộ lọc nội bộ, suy từ xã khi mở Sửa — KHÔNG lưu cột riêng."),
+            ],
+            Steps:
+            [
+                "Khai 2 field: 1 field text (địa chỉ chi tiết) + 1 field int map cột xã/phường (VD PhuongXa_Id).",
+                "Trên field int: chọn EditorType = AddressBox.",
+                "Tab Control Props → 'Field địa chỉ text': chọn đúng field text ở bước 1.",
+                "Field text đi kèm sẽ KHÔNG hiện riêng (khối địa chỉ đã có ô đó) nhưng vẫn được lưu.",
+                "Đặt Col_Span rộng (full) cho field AddressBox để khối hiển thị cân đối.",
+                "Lưu Field. Runtime: chọn Tỉnh→lọc Xã→chọn Xã; nhập địa chỉ; cả 2 cột được ghi.",
             ]),
 
         _ => new(
@@ -1135,6 +1189,11 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // ConfigExplanation/HasConfigExplanation/ShowConfigExplanation/ExplanationToggleLabel +
         // HasCascadeWarnings + ReloadOnChangeInput + LookupCode + Cb* — VM con tự raise (B4.2).
 
+        // AddressBox: xóa field companion đã chọn + danh sách option (field mới chưa cấu hình địa chỉ).
+        _addressTextField = null;
+        AddressTextFieldOptions.Clear();
+        RaisePropertyChanged(nameof(AddressTextField));
+
         // Editor type về mặc định "TextBox" — ép _selectedEditorType = "" để SetProperty luôn detect
         // change → LoadControlPropSchema() rebuild ControlProps sạch (đang trong load, _isLoading=true
         // nên không bật hộp thoại xác nhận đổi kiểu).
@@ -1452,6 +1511,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                         FkLookup.RestoreComboPropsFromJson(raw);
                         _isRebuildingProps = false;
                     }
+
+                    // ── Restore AddressBox: field địa chỉ text đi kèm (addressTextField) ──
+                    if (IsAddressEditor)
+                    {
+                        RefreshAddressTextFieldOptions();
+                        var raw = ControlPropsJsonService.ParseControlPropsJson(field.ControlPropsJson ?? "{}");
+                        _isRebuildingProps = true;
+                        AddressTextField = raw.TryGetValue("addressTextField", out var atf)
+                            ? atf?.ToString() : null;
+                        _isRebuildingProps = false;
+                    }
                 }
             }
         }
@@ -1483,6 +1553,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // ── 5. Field Navigator — chỉ load khi đổi form, refresh thủ công qua nút ────
         if (Navigator.LoadedFormId != FormId)
             await Navigator.LoadAsync(_cts.Token);
+
+        // AddressBox: Navigator vừa sẵn sàng → nạp danh sách field text đi kèm cho dropdown
+        // (restore ở trên có thể chạy trước khi Navigator load xong → danh sách rỗng, nạp lại ở đây).
+        if (IsAddressEditor) RefreshAddressTextFieldOptions();
 
         // Refresh JSON preview — RebuildControlPropsJson đã gọi khi set SelectedEditorType,
         // nhưng FK/ComboBox config được load sau (async) → cần gọi lại để JSON phản ánh đúng
@@ -1714,6 +1788,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                 FunctionParams = FkLookup.FkFunctionParams.ToList(),
                 PopupColumns = FkLookup.FkPopupColumns.ToList(),
                 DataSourceConditions = FkLookup.DataSourceConditions.ToList(),
+
+                IsAddressEditor = IsAddressEditor,
+                AddressTextField = AddressTextField,
             });
 
             IsDirty = true;

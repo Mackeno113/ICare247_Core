@@ -54,6 +54,11 @@ public static class ControlPropsJsonService
         public IReadOnlyList<FunctionParam> FunctionParams { get; init; } = [];
         public IReadOnlyList<FkColumnConfig> PopupColumns { get; init; } = [];
         public IReadOnlyList<DataSourceCondition> DataSourceConditions { get; init; } = [];
+
+        // AddressBox (khối địa chỉ composite) — field neo map cột xã/phường (int);
+        // AddressTextField = FieldCode field companion giữ "địa chỉ chi tiết" (text) cùng form.
+        public bool IsAddressEditor { get; init; }
+        public string? AddressTextField { get; init; }
     }
 
     /// <summary>
@@ -143,6 +148,12 @@ public static class ControlPropsJsonService
                     filterSql    = c.FilterSql
                 }).ToList();
         }
+
+        // AddressBox: cột "địa chỉ chi tiết" (text) đi kèm — field companion cùng form.
+        // Field neo tự lưu cột xã/phường (int) qua chính FieldCode; runtime dùng addressTextField
+        // để biết field text nào ghi/đọc kèm (xem AddressRenderer + CompositeFieldHelper).
+        if (input.IsAddressEditor && !string.IsNullOrWhiteSpace(input.AddressTextField))
+            dict["addressTextField"] = input.AddressTextField;
 
         return JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true });
     }
@@ -272,6 +283,9 @@ public static class ControlPropsJsonService
         ],
         // LookupBox dùng panel riêng (FkTableName, FkValueField...) — không qua generic ControlProps
         "LookupBox" => [],
+        // AddressBox dùng panel riêng (AddressBoxPropsPanel: chọn field địa chỉ text) — addressTextField
+        // được merge trong BuildJson, không qua generic ControlProps.
+        "AddressBox" => [],
         _ => []
     };
 }

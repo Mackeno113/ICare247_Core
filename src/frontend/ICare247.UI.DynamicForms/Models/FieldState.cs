@@ -26,6 +26,13 @@ public sealed class FieldState
     public bool    IsVirtual  { get; init; }
 
     /// <summary>
+    /// true = field bị một control composite (VD AddressBox) render THAY → host KHÔNG render riêng.
+    /// Vẫn nằm trong payload Lưu (IsVisible &amp;&amp; !IsVirtual) để cột companion được ghi bình thường.
+    /// Được set bởi host sau khi dựng field states (quét field neo AddressBox → đánh dấu cột text đi kèm).
+    /// </summary>
+    public bool    IsHiddenByComposite { get; set; }
+
+    /// <summary>
     /// Form đang ở chế độ Edit (record đã tồn tại, RecordId > 0). Cùng giá trị cho mọi FieldState
     /// của 1 form — copy từ FormRunner. Dùng để compute EffectiveReadOnly với LockOnEdit.
     /// </summary>
