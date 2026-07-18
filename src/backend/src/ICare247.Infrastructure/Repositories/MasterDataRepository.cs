@@ -243,6 +243,25 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         return ((IDictionary<string, object>)row).ToDictionary(k => k.Key, v => (object?)v.Value);
     }
 
+    // ── Derived value (virtual cascade field) ────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<object?> ResolveDerivedValueAsync(
+        string sourceName, string selectColumn, string whereColumn, object? whereValue,
+        CancellationToken ct = default)
+    {
+        if (whereValue is null) return null;
+        if (!SafeIdentifierRegex().IsMatch(sourceName) ||
+            !SafeIdentifierRegex().IsMatch(selectColumn) ||
+            !SafeIdentifierRegex().IsMatch(whereColumn))
+            return null;
+
+        var sql = $"SELECT {Bracket(selectColumn)} FROM {sourceName} WHERE {Bracket(whereColumn)} = @Val";
+        using var data = _dataDb.CreateConnection();
+        return await data.ExecuteScalarAsync<object?>(
+            new CommandDefinition(sql, new { Val = whereValue }, cancellationToken: ct));
+    }
+
     // ── Insert ──────────────────────────────────────────────────────────────────
 
     /// <inheritdoc />

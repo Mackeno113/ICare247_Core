@@ -40,6 +40,16 @@ public interface IMasterDataRepository
         string formCode, int tenantId, object id, CancellationToken ct = default);
 
     /// <summary>
+    /// Suy 1 giá trị cột từ bảng/view nguồn theo điều kiện khóa — dùng để derive giá trị field ảo
+    /// cascade-cha (VD Tỉnh) từ field con đã lưu (VD PhuongXa_Id) khi mở form Sửa (GetMasterDataRecordQueryHandler).
+    /// sourceName/selectColumn/whereColumn đến từ Config DB (Ui_Field_Lookup, admin-trust) — vẫn
+    /// validate qua identifier regex, không nội suy chuỗi vào SQL nếu không khớp.
+    /// </summary>
+    Task<object?> ResolveDerivedValueAsync(
+        string sourceName, string selectColumn, string whereColumn, object? whereValue,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Insert 1 bản ghi. Trả về giá trị PK mới (OUTPUT INSERTED).
     /// Chỉ nhận cột thuộc Ui_Field của form (lọc cột lạ).
     /// </summary>
