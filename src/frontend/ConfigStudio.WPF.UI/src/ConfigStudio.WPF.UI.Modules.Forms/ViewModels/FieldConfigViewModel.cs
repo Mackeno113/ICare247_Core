@@ -1089,17 +1089,15 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _controlPropsJson = "{}";
         ControlProps.Clear();
 
-        // Sys_Lookup (RadioGroup / LookupComboBox) + ComboBox display props — state ở VM con (B4.2).
-        FkLookup.ResetComboAndLookupState();
-
         // Rules / Events liên kết — field mới chưa có
         RulesEvents.Clear();
 
-        // FK Lookup (LookupBox/TreeLookupBox/ComboBox dynamic) — tái dùng hàm clear sẵn có
+        // FK Lookup (LookupBox/TreeLookupBox/ComboBox dynamic) — tái dùng hàm clear sẵn có (giữ
+        // guard _isRebuildingProps private của root, không dời được xuống VM con — xem ClearFkLookupConfig).
         ClearFkLookupConfig();
-        FkLookup.ReloadOnChangeInput = "";
-        // Diễn giải + cảnh báo cascade — state ở VM con (B4.2 nhóm 4)
-        FkLookup.ResetExplainAndCascadeState();
+        // Phần còn lại của VM con FkLookup (Sys_Lookup/Cb*, ReloadOnChangeInput, diễn giải + cascade)
+        // — gộp 1 lệnh duy nhất (B5, thay 3 lệnh rời rạc trước đây).
+        FkLookup.ResetForNewField();
 
         // Raise toàn bộ property để UI cập nhật về trạng thái rỗng
         RaisePropertyChanged(nameof(SelectedColumn));

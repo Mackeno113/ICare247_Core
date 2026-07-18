@@ -1153,4 +1153,20 @@ public sealed class FkLookupConfigVm : BindableBase
         DataSourceConditions.Remove(cond);
         _root.RebuildControlPropsJson();
     }
+
+    // ═════════════════════════ B5 — reset gộp cho field mới ══════════════════
+
+    /// <summary>
+    /// Reset toàn bộ phần state VM con KHÔNG cần guard <c>_isRebuildingProps</c> của root — gộp
+    /// Sys_Lookup/Cb* (<see cref="ResetComboAndLookupState"/>), input tạm ReloadOnChangeInput, diễn giải
+    /// + cảnh báo cascade (<see cref="ResetExplainAndCascadeState"/>). Root gọi 1 lần từ
+    /// ResetFieldStateForNew, cùng nhóm với <c>ClearFkLookupConfig()</c> (giữ ở root vì cần toggling
+    /// cờ đang-rebuild private của root quanh ResetFkSourceState/ResetLookupDbState).
+    /// </summary>
+    internal void ResetForNewField()
+    {
+        ResetComboAndLookupState();
+        ReloadOnChangeInput = "";
+        ResetExplainAndCascadeState();
+    }
 }
