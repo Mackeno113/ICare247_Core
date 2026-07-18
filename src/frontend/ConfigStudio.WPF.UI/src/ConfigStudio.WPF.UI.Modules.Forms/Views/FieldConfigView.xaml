@@ -1319,9 +1319,11 @@
                         <!-- Bảng Props hướng dẫn đã GHIM ở đầu tab (ngoài vùng cuộn) — xem DockPanel.Dock="Top" phía trên -->
 
                         <!-- ── Lookup Config — chỉ RadioGroup (Sys_Lookup đơn giản) ─── -->
+                        <!-- LookupCode/AvailableLookupCodes/LookupPreviewItems ở VM con (B4.2 nhóm 1)
+                             → DataContext = FkLookup (Visibility ngoài Border vẫn theo root). -->
                         <Border Style="{StaticResource SectionCardStyle}"
                                 Visibility="{Binding IsRadioGroupEditor, Converter={StaticResource BoolToVis}}">
-                            <StackPanel>
+                            <StackPanel DataContext="{Binding FkLookup}">
                                 <TextBlock Text="Cấu hình Lookup — Sys_Lookup" FontSize="13" FontWeight="SemiBold"
                                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,12" />
                                 <StackPanel help:HelpAssist.Topic="lookup.code">

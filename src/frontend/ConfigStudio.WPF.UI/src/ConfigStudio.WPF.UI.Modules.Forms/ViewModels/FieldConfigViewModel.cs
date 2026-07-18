@@ -528,18 +528,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         FkFunctionParams.Clear();
         ReloadOnChangeFields.Clear();
         DataSourceConditions.Clear();
-        // LookupBox new props (Migration 014)
-        _editBoxMode          = "TextOnly";
-        _codeField            = "";
-        _dropDownWidth        = 600;
-        _dropDownHeight       = 400;
-        _reloadTriggerField   = "";
-        // TreeLookupBox (Migration 021 + 069)
-        _parentColumn         = "";
-        _treeSelectableLevel  = "all";
-        // Thêm mới entity (Migration 022)
-        _allowAddNew          = false;
-        _addFormCode          = "";
+        // EditBox/Tree/AddNew (Migration 014/021/022/069) — state ở VM con (B4.2 nhóm 2)
+        FkLookup.ResetLookupDbState();
         _isRebuildingProps = false;
         // Raise tất cả property liên quan
         RaisePropertyChanged(nameof(QueryMode));
@@ -704,40 +694,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     public List<string> WhenOpOptions { get; } =
         ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "startsWith"];
 
-    // ── LookupBox new props (Migration 014) ───────────────────────────
-
-    /// <summary>
-    /// Chế độ hiển thị EditBox khi đã chọn FK record (chỉ LookupBox).
-    /// "TextOnly" | "CodeAndName" | "Custom". Mặc định: "TextOnly".
-    /// </summary>
-    private string _editBoxMode = "TextOnly";
-    public string EditBoxMode
-    {
-        get => _editBoxMode;
-        set { if (SetProperty(ref _editBoxMode, value)) { RaisePropertyChanged(nameof(IsCodeAndNameMode)); IsDirty = true; } }
-    }
-
-    /// <summary>True khi EditBoxMode = "CodeAndName" — hiện thêm input CodeField.</summary>
-    public bool IsCodeAndNameMode => _editBoxMode == "CodeAndName";
-
-    /// <summary>Tên cột mã code trong data source — dùng khi EditBoxMode = "CodeAndName".</summary>
-    private string _codeField = "";
-    public string CodeField
-    {
-        get => _codeField;
-        set { if (SetProperty(ref _codeField, value)) IsDirty = true; }
-    }
-
-    /// <summary>
-    /// Import: bỏ Filter_Sql (lọc cha cascade) → tra Mã con trên toàn bảng (Ui_Field_Lookup.Import_Global_Code).
-    /// Chỉ bật cho FK có Mã con DUY NHẤT toàn cục (vd chi nhánh); trùng Mã → engine từ chối cả file khi import.
-    /// </summary>
-    private bool _importGlobalCode;
-    public bool ImportGlobalCode
-    {
-        get => _importGlobalCode;
-        set { if (SetProperty(ref _importGlobalCode, value)) IsDirty = true; }
-    }
+    // EditBox hiển thị (EditBoxMode/CodeField/ImportGlobalCode — Migration 014)
+    // — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 2).
 
     // ── Mẫu lookup dùng chung (Ui_Lookup_Template — db/083, PICKER-P4) ─────────
     // Chọn mẫu → định nghĩa truy vấn (nguồn/cột/filter) lấy TỪ MẪU, phần "Nguồn dữ liệu FK"
@@ -889,32 +847,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         public string? MoTa { get; set; }
     }
 
-    /// <summary>Chiều rộng popup grid (px). Mặc định: 600.</summary>
-    private int _dropDownWidth = 600;
-    public int DropDownWidth
-    {
-        get => _dropDownWidth;
-        set { if (SetProperty(ref _dropDownWidth, value)) IsDirty = true; }
-    }
-
-    /// <summary>Chiều cao popup grid (px). Mặc định: 400.</summary>
-    private int _dropDownHeight = 400;
-    public int DropDownHeight
-    {
-        get => _dropDownHeight;
-        set { if (SetProperty(ref _dropDownHeight, value)) IsDirty = true; }
-    }
-
-    /// <summary>
-    /// FieldCode của field khác trong form — khi thay đổi, LookupBox tự clear + reload.
-    /// Lưu vào Ui_Field_Lookup.Reload_Trigger_Field (single field, đơn giản nhất).
-    /// </summary>
-    private string _reloadTriggerField = "";
-    public string ReloadTriggerField
-    {
-        get => _reloadTriggerField;
-        set { if (SetProperty(ref _reloadTriggerField, value)) { IsDirty = true; RecomputeCascadeWarnings(); } }
-    }
+    // DropDownWidth/Height + ReloadTriggerField — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 2).
 
     // ── Cảnh báo cascade (P2/P3) — chống cấu hình sai field ảo + cascade ──────
 
@@ -951,9 +884,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     /// Chỉ còn P2 (@param không khớp field cha nào → danh sách con rỗng). Cảnh báo P3 cũ
     /// ("chưa đặt Tự reload") đã BỎ: renderer chế độ Bảng/View nay tự reload theo mọi @param
     /// trong Filter SQL nên không cần khai reload thủ công.
-    /// Gọi khi đổi Filter SQL / sau khi nạp navigator.
+    /// Gọi khi đổi Filter SQL / sau khi nạp navigator; internal để VM con FkLookup gọi khi đổi
+    /// ReloadTriggerField (B4.2 nhóm 2).
     /// </summary>
-    private void RecomputeCascadeWarnings()
+    internal void RecomputeCascadeWarnings()
     {
         CascadeWarnings.Clear();
 
@@ -988,85 +922,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         RaisePropertyChanged(nameof(HasCascadeWarnings));
     }
 
-    /// <summary>Các chế độ EditBox hợp lệ cho LookupBox.</summary>
-    public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
-
-    // ── Thêm mới entity từ LookupBox (Migration 022) ──────────────────
-
-    private bool _allowAddNew;
-    /// <summary>Bật nút "➕ Thêm mới" trên LookupBox runtime → lưu Ui_Field_Lookup.Allow_Add_New.</summary>
-    public bool AllowAddNew
-    {
-        get => _allowAddNew;
-        set
-        {
-            if (SetProperty(ref _allowAddNew, value))
-            {
-                IsDirty = true;
-                // Bật thêm mới → nạp danh sách Form_Code cho combobox chọn form (nếu chưa có)
-                if (value && AvailableFormCodes.Count == 0) _ = LoadFormCodesAsync();
-            }
-        }
-    }
-
-    private string _addFormCode = "";
-    /// <summary>Form_Code của Ui_Form render dialog thêm mới → lưu Ui_Field_Lookup.Add_Form_Code.</summary>
-    public string AddFormCode
-    {
-        get => _addFormCode;
-        set { if (SetProperty(ref _addFormCode, value)) IsDirty = true; }
-    }
-
-    /// <summary>Danh sách Form_Code có sẵn của tenant — nguồn cho combobox chọn form dialog thêm mới.</summary>
-    public ObservableCollection<string> AvailableFormCodes { get; } = [];
-
-    /// <summary>
-    /// Nạp danh sách Form_Code thật từ <c>Ui_Form</c> của tenant qua <see cref="IFormDataService"/>.
-    /// Dùng cho combobox "Form Code dialog thêm mới". Sau sự kiện: combobox có dữ liệu để chọn.
-    /// </summary>
-    private async Task LoadFormCodesAsync()
-    {
-        if (_formService is null || _appConfig is not { IsConfigured: true }) return;
-        try
-        {
-            var forms = await _formService.GetAllFormsAsync(_appConfig.TenantId, false, _cts.Token);
-            AvailableFormCodes.Clear();
-            foreach (var code in forms.Select(f => f.FormCode)
-                                      .Where(c => !string.IsNullOrWhiteSpace(c))
-                                      .Distinct()
-                                      .OrderBy(c => c, StringComparer.OrdinalIgnoreCase))
-                AvailableFormCodes.Add(code);
-        }
-        catch (Exception ex)
-        {
-            // Log lỗi — thường do bảng Ui_Form chưa cấu hình hoặc connection lỗi
-            _logger?.Capture(ex, "FieldConfig.LoadFormCodes");
-        }
-    }
-
-    // ── TreeLookupBox props (Migration 021) ───────────────────────────
-
-    /// <summary>
-    /// Tên cột Parent Id trong bảng nguồn — bắt buộc với TreeLookupBox.
-    /// VD: "Parent_Id". Lưu vào Ui_Field_Lookup.Parent_Column.
-    /// </summary>
-    private string _parentColumn = "";
-    public string ParentColumn
-    {
-        get => _parentColumn;
-        set { if (SetProperty(ref _parentColumn, value) && !_isRebuildingProps) RebuildControlPropsJson(); }
-    }
-
-    // ── TreeLookupBox: cấp node được chọn (Migration 069) ─────────────────
-    private string _treeSelectableLevel = "all";
-    /// <summary>Giới hạn node được chọn: "all" | "leaf" | "branch". Lưu Ui_Field_Lookup.Tree_Selectable_Level.</summary>
-    public string TreeSelectableLevel
-    {
-        get => _treeSelectableLevel;
-        set { if (SetProperty(ref _treeSelectableLevel, value)) IsDirty = true; }
-    }
-    /// <summary>Các mức chọn hợp lệ cho TreeLookupBox.</summary>
-    public List<string> TreeSelectableLevelOptions { get; } = ["all", "leaf", "branch"];
+    // Thêm mới entity (AllowAddNew/AddFormCode/AvailableFormCodes/LoadFormCodesAsync — Migration 022)
+    // + TreeLookupBox (ParentColumn/TreeSelectableLevel — Migration 021/069)
+    // + 2 option list EditBoxModeOptions/TreeSelectableLevelOptions
+    // — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 2).
 
     // ── ComboBox / LookupComboBox display props — ĐÃ DỜI sang FkLookupConfigVm (B4.2) ──
 
@@ -1524,7 +1383,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
 
         // VM con Rules/Events (REFACTOR-B3): chụp ngữ cảnh root qua Func; markDirty → bật nút Lưu.
-        FkLookup = new FkLookupConfigVm(this, lookupService, logger, () => _cts.Token);
+        FkLookup = new FkLookupConfigVm(this, lookupService, formService, appConfig, logger, () => _cts.Token);
 
         RulesEvents = new FieldRulesEventsVm(
             ruleService, eventService, logger, regionManager,
@@ -1880,8 +1739,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     RaisePropertyChanged(nameof(CanConfigMasking));
 
                     // Import global-code (Ui_Field_Lookup) — đọc phòng thủ theo Field_Id; cột chưa migrate → false.
-                    _importGlobalCode = await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct);
-                    RaisePropertyChanged(nameof(ImportGlobalCode));
+                    FkLookup.RestoreImportGlobalCode(await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct));
 
                     // Mẫu lookup dùng chung (db/083, PICKER-P4) — đọc phòng thủ; chưa migrate → không dùng mẫu.
                     await LoadLookupTemplateStateAsync(field.FieldId, ct);
@@ -1972,37 +1830,21 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                                 }
                                 catch { /* bỏ qua nếu JSON không hợp lệ */ }
                             }
-                            // LookupBox new props (Migration 014)
-                            _editBoxMode        = cfg.EditBoxMode;
-                            _codeField          = cfg.CodeField ?? "";
-                            _dropDownWidth      = cfg.DropDownWidth;
-                            _dropDownHeight     = cfg.DropDownHeight;
-                            _reloadTriggerField = cfg.ReloadTriggerField ?? "";
+                            // EditBox/Tree/AddNew (Migration 014/021/022/069) — state ở VM con
+                            // (B4.2 nhóm 2): gán backing trong lúc cờ đang-rebuild bật, raise sau.
+                            FkLookup.RestoreLookupDbConfig(cfg);
                             // Multi-Trigger (Migration 068): CSV → danh sách tag ReloadOnChangeFields.
                             ReloadOnChangeFields.Clear();
                             if (!string.IsNullOrWhiteSpace(cfg.ReloadTriggerFields))
                                 foreach (var f in cfg.ReloadTriggerFields.Split(',',
                                              StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
                                     ReloadOnChangeFields.Add(f);
-                            _parentColumn       = cfg.ParentColumn ?? "";
-                            _treeSelectableLevel = string.IsNullOrWhiteSpace(cfg.TreeSelectableLevel) ? "all" : cfg.TreeSelectableLevel;
-                            _allowAddNew        = cfg.AllowAddNew;
-                            _addFormCode        = cfg.AddFormCode ?? "";
 
                             _isRebuildingProps = false;
                             // Raise LookupBox new props sau khi _isRebuildingProps = false
-                            RaisePropertyChanged(nameof(EditBoxMode));
-                            RaisePropertyChanged(nameof(ParentColumn));
-                            RaisePropertyChanged(nameof(TreeSelectableLevel));
-                            RaisePropertyChanged(nameof(IsCodeAndNameMode));
-                            RaisePropertyChanged(nameof(CodeField));
-                            RaisePropertyChanged(nameof(DropDownWidth));
-                            RaisePropertyChanged(nameof(DropDownHeight));
-                            RaisePropertyChanged(nameof(ReloadTriggerField));
-                            RaisePropertyChanged(nameof(AllowAddNew));
-                            RaisePropertyChanged(nameof(AddFormCode));
+                            FkLookup.RaiseLookupDbProps();
                             // Field đã bật thêm mới → nạp danh sách Form_Code cho combobox chọn form
-                            if (_allowAddNew) await LoadFormCodesAsync();
+                            if (FkLookup.AllowAddNew) await FkLookup.LoadFormCodesAsync();
                             skipFkRestore:;
                         }
                         catch (Exception fkEx) { HandleFkConfigLoadError(fkEx); }
@@ -2684,28 +2526,28 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     OrderBy          = string.IsNullOrWhiteSpace(FkOrderBy)   ? null : FkOrderBy,
                     SearchEnabled    = FkSearchEnabled,
                     PopupColumnsJson = popupColumnsJson,
-                    // LookupBox-specific props — ComboBox giữ default
-                    EditBoxMode         = IsFkLookupEditor ? _editBoxMode        : "TextOnly",
-                    CodeField           = IsFkLookupEditor && !string.IsNullOrWhiteSpace(_codeField)
-                                          ? _codeField : null,
-                    DropDownWidth       = IsFkLookupEditor ? _dropDownWidth      : 600,
-                    DropDownHeight      = IsFkLookupEditor ? _dropDownHeight     : 400,
-                    ReloadTriggerField  = !string.IsNullOrWhiteSpace(_reloadTriggerField)
-                                          ? _reloadTriggerField : null,
+                    // LookupBox-specific props (state ở VM con — B4.2 nhóm 2) — ComboBox giữ default
+                    EditBoxMode         = IsFkLookupEditor ? FkLookup.EditBoxMode : "TextOnly",
+                    CodeField           = IsFkLookupEditor && !string.IsNullOrWhiteSpace(FkLookup.CodeField)
+                                          ? FkLookup.CodeField : null,
+                    DropDownWidth       = IsFkLookupEditor ? FkLookup.DropDownWidth  : 600,
+                    DropDownHeight      = IsFkLookupEditor ? FkLookup.DropDownHeight : 400,
+                    ReloadTriggerField  = !string.IsNullOrWhiteSpace(FkLookup.ReloadTriggerField)
+                                          ? FkLookup.ReloadTriggerField : null,
                     // Multi-Trigger (Migration 068): danh sách field cha → CSV. Runtime hợp với @param Filter SQL.
                     ReloadTriggerFields = ReloadOnChangeFields.Count > 0
                                           ? string.Join(",", ReloadOnChangeFields) : null,
                     // TreeLookupBox (Migration 021 + 069)
-                    ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(_parentColumn)
-                                          ? _parentColumn : null,
-                    TreeSelectableLevel = IsTreeLookupEditor && _treeSelectableLevel != "all"
-                                          ? _treeSelectableLevel : null,
+                    ParentColumn        = IsTreeLookupEditor && !string.IsNullOrWhiteSpace(FkLookup.ParentColumn)
+                                          ? FkLookup.ParentColumn : null,
+                    TreeSelectableLevel = IsTreeLookupEditor && FkLookup.TreeSelectableLevel != "all"
+                                          ? FkLookup.TreeSelectableLevel : null,
                     // Thêm mới entity (Migration 022) — chỉ lưu khi bật + có form code
-                    AllowAddNew         = IsFkLookupEditor && _allowAddNew
-                                          && !string.IsNullOrWhiteSpace(_addFormCode),
-                    AddFormCode         = IsFkLookupEditor && _allowAddNew
-                                          && !string.IsNullOrWhiteSpace(_addFormCode)
-                                          ? _addFormCode.Trim() : null,
+                    AllowAddNew         = IsFkLookupEditor && FkLookup.AllowAddNew
+                                          && !string.IsNullOrWhiteSpace(FkLookup.AddFormCode),
+                    AddFormCode         = IsFkLookupEditor && FkLookup.AllowAddNew
+                                          && !string.IsNullOrWhiteSpace(FkLookup.AddFormCode)
+                                          ? FkLookup.AddFormCode.Trim() : null,
                 };
             }
 
@@ -2724,7 +2566,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
                 // Import global-code (Ui_Field_Lookup) → ghi riêng theo Field_Id sau khi row lookup đã tồn tại.
                 if (IsFkLookupEditor && savedId > 0)
-                    await _fieldService.SaveFkImportGlobalAsync(savedId, _importGlobalCode, _cts.Token);
+                    await _fieldService.SaveFkImportGlobalAsync(savedId, FkLookup.ImportGlobalCode, _cts.Token);
 
                 // Mẫu lookup dùng chung (db/083) → ghi Template_Code + Param_Map (phòng thủ — chưa migrate thì bỏ qua).
                 if (IsFkLookupEditor && savedId > 0)
