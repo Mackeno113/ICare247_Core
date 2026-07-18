@@ -38,9 +38,25 @@ Kế hoạch đầy đủ → `C:\Users\Mackeno_01\.claude\plans\inherited-float
   `detect-changes` tổng vẫn "critical" nhưng CÙNG nguyên nhân đã cảnh báo ở Feature C (chung hub
   `GetByCodeAsync`, `db/087` CŨNG phải chạy trước deploy cùng lý do). Build Application+Infrastructure
   +WPF 0W/0E.
-- [ ] Feature B — Self-ref parent picker dùng chung (`Ui_Field_Lookup.Query_Mode='self_parent'`,
-  loại chính nó + hậu duệ qua `@__SelfId`) — CHƯA làm.
-- [ ] Màn Phòng ban (no-code, dùng cả 3 control) — HOÃN tới khi A/B/C xong + verify.
+- [x] **Feature B — Self-ref parent picker dùng chung**: `db/088` mở CHECK constraint
+  `Ui_Field_Lookup.Query_Mode` thêm `'self_parent'` (Config DB). Backend
+  `DynamicLookupRepository.BuildSafeSql`: mode `self_parent` dùng NGUYÊN Source_Name/Value_Column/
+  Display_Column/Filter_Sql như table-mode (không đổi cấu trúc cấu hình), cộng thêm prepend CTE
+  đệ quy `__self_cte` (theo `ParentColumn` đã có sẵn cho TreeLookupBox) loại chính bản ghi đang sửa
+  + mọi hậu duệ khỏi kết quả (`NOT IN` — CTE rỗng khi Thêm mới → không loại gì, đúng ý nghĩa).
+  `@__SelfId` KHÔNG cần code đặc biệt ở `BuildParamsAsync` — cơ chế bind contextValues generic sẵn
+  có (mọi key qua `SafeIdentifierRegex`) tự nhận. Web: `MasterDataForm.BuildContext()` +
+  `FormRunner.BuildContext()` (cả 2 renderer — tránh lặp bug "quên 1 renderer" từng gặp session 77)
+  thêm `ctx["__SelfId"] = Id/RecordId`. WPF: radio thứ 4 "Cha trong cùng bảng (chống vòng lặp)"
+  trong `LookupBoxPropsPanel.xaml` (`IsSelfParentMode`, dùng đúng literal `"self_parent"` khớp DB —
+  không lặp bug mismatch đã flag riêng), panel tái dùng `FkTableName`/`ParentColumn`/`FkFilterSql`
+  sẵn có. **Phát hiện + flag riêng (KHÔNG sửa, ngoài phạm vi)**: bug tiền tồn tại
+  `IsFunctionMode`/`IsSqlMode` so sánh chuỗi "function"/"sql" nhưng CommandParameter + DB CHECK
+  constraint dùng "tvf"/"custom_sql" — field cấu hình TVF/SQL không hiện đúng radio khi mở lại,
+  Lưu có thể vi phạm CHECK constraint (task đã spawn `task_2b59b40a`). GitNexus detect-changes:
+  risk LOW, 0 affected processes. Build Infrastructure+Web+WPF 0W/0E.
+- [ ] Màn Phòng ban (no-code, dùng cả 3 control) — bây giờ có thể bắt đầu, A/B/C đã xong + build sạch
+  (CHƯA smoke runtime cả 3 — cần verify tay trước khi coi hoàn tất).
 
 ## 📋 Roadmap — Shared Data Picker Controls (spec 31, session 87 — 2026-07-16, SPEC DRAFT chờ duyệt)
 

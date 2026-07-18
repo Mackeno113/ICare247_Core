@@ -93,6 +93,7 @@ public sealed class FkLookupConfigVm : BindableBase
                 RaisePropertyChanged(nameof(IsTableMode));
                 RaisePropertyChanged(nameof(IsFunctionMode));
                 RaisePropertyChanged(nameof(IsSqlMode));
+                RaisePropertyChanged(nameof(IsSelfParentMode));
                 if (!_root.IsRebuildingProps) _root.RebuildControlPropsJson();
             }
         }
@@ -101,6 +102,13 @@ public sealed class FkLookupConfigVm : BindableBase
     public bool IsTableMode    => _queryMode == "table";
     public bool IsFunctionMode => _queryMode == "function";
     public bool IsSqlMode      => _queryMode == "sql";
+
+    /// <summary>
+    /// Feature B (bộ control dùng chung) — self-ref parent picker: chọn "cha" trong CHÍNH bảng
+    /// của field, engine tự loại chính bản ghi đang sửa + hậu duệ. Dùng đúng literal khớp DB
+    /// CHECK constraint ('self_parent') — không lặp lại mismatch "function"/"tvf" (đã flag riêng).
+    /// </summary>
+    public bool IsSelfParentMode => _queryMode == "self_parent";
 
     public DelegateCommand<string> SetQueryModeCommand { get; }
 

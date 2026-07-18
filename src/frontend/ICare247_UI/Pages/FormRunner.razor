@@ -534,7 +534,14 @@ else if (_form is not null)
     /// ADR-017: ReadOnly/LockOnEdit fields VẪN submit (giữ giá trị hiện tại).
     /// </summary>
     private Dictionary<string, object?> BuildContext()
-        => _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+    {
+        var ctx = _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+        // Feature B (self-ref parent picker) — Id bản ghi đang sửa để engine loại chính nó + hậu duệ
+        // khỏi dropdown chọn cha (Query_Mode='self_parent'). Null khi Thêm mới → không loại gì.
+        // Mirror MasterDataForm.BuildContext — quên 1 trong 2 renderer từng là bug (session 77).
+        ctx["__SelfId"] = RecordId;
+        return ctx;
+    }
 
     private static object? ParseDefaultValue(string? json)
     {

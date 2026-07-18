@@ -345,6 +345,9 @@ else
         // Khóa dành riêng (prefix __, không trùng field code) cho control Attachment tự suy bảng chủ + Id record.
         ctx["__ownerTable"] = FormCode;
         ctx["__ownerId"] = Id;
+        // Feature B (self-ref parent picker) — Id bản ghi đang sửa để engine loại chính nó + hậu duệ
+        // khỏi dropdown chọn cha (Query_Mode='self_parent'). Null khi Thêm mới → không loại gì.
+        ctx["__SelfId"] = Id;
         return ctx;
     }
 

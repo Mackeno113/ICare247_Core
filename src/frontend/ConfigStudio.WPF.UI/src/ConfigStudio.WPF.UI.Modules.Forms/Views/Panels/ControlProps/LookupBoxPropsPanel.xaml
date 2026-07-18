@@ -110,9 +110,14 @@
                                  CommandParameter="function" />
                     <RadioButton Content="SQL tùy chỉnh"
                                  IsChecked="{Binding IsSqlMode, Mode=OneWay}"
-                                 GroupName="LbQueryMode"
+                                 GroupName="LbQueryMode" Margin="0,0,16,0"
                                  Command="{Binding SetQueryModeCommand}"
                                  CommandParameter="custom_sql" />
+                    <RadioButton Content="Cha trong cùng bảng (chống vòng lặp)"
+                                 IsChecked="{Binding IsSelfParentMode, Mode=OneWay}"
+                                 GroupName="LbQueryMode"
+                                 Command="{Binding SetQueryModeCommand}"
+                                 CommandParameter="self_parent" />
                 </StackPanel>
 
                 <!-- Value + Display — chung 3 mode -->
@@ -253,6 +258,37 @@
                         <Run Text="Tham số hệ thống: " />
                         <Run Text="@TenantId  @Today  @CurrentUser" FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}" />
                     </TextBlock>
+                </StackPanel>
+
+                <!-- Panel: Cha trong cùng bảng (self_parent, Feature B — bộ control dùng chung) -->
+                <StackPanel Visibility="{Binding IsSelfParentMode, Converter={StaticResource BoolToVis}}">
+                    <StackPanel help:HelpAssist.Topic="fk.tableName">
+                        <TextBlock Text="Tên bảng (chính bảng của field này)" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,2"
+                                      NullText="VD: TC_PhongBan — bảng chứa field cha đang cấu hình" />
+                        <TextBlock Text="Cùng bảng với field (self-ref) — VD field PhongBan_Cha_Id thì đây là TC_PhongBan."
+                                   FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10" />
+                    </StackPanel>
+                    <StackPanel help:HelpAssist.Topic="tree.parentColumn">
+                        <TextBlock Text="Cột cha (Parent Column) *" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,4" />
+                        <dxe:TextEdit Text="{Binding ParentColumn, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" FontFamily="Consolas" Margin="0,0,0,2"
+                                      NullText="VD: PhongBan_Cha_Id — chính cột FK của field này" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" Margin="0,0,0,10" TextWrapping="Wrap"
+                                   Text="Bắt buộc. Engine tự loại chính bản ghi đang sửa + mọi hậu duệ khỏi danh sách chọn (chống tạo vòng lặp cây)." />
+                    </StackPanel>
+                    <StackPanel help:HelpAssist.Topic="fk.filterSql">
+                        <TextBlock Text="Filter SQL bổ sung (tùy chọn)" FontSize="11"
+                                   Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,0,0,3" />
+                        <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
+                                      Height="32" Margin="0,0,0,2"
+                                      NullText="VD: CongTy_Id = @CongTy_Id — chỉ cho chọn cha cùng công ty" />
+                        <TextBlock FontSize="10" Foreground="{DynamicResource AppTextMutedBrush}" Opacity="0.75" TextWrapping="Wrap"
+                                   Text="Cộng thêm (AND) vào điều kiện loại-trừ tự động. @param = Field Code field cha ảo/thường trên form (cascade như LookupBox thường)." />
+                    </StackPanel>
                 </StackPanel>
 
                 <!-- Order By + Search -->

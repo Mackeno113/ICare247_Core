@@ -370,13 +370,38 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             return null;
         }
 
+        // ── Feature B (bộ control dùng chung): Query_Mode='self_parent' — chọn "cha" trong CHÍNH
+        // bảng của field, tự loại chính bản ghi đang sửa + mọi hậu duệ (chống tạo vòng lặp cây).
+        // Cần Parent_Column hợp lệ (đã dùng sẵn cho TreeLookupBox — Ui_Field_Lookup.Parent_Column).
+        // @__SelfId do client gửi kèm contextValues khi đang sửa record có Id (rỗng khi Thêm mới →
+        // CTE rỗng → NOT IN so với tập rỗng luôn TRUE → không loại gì, đúng ý nghĩa "chưa có gì để loại").
+        string? selfParentCte = null;
+        var whereClauses = new List<string>();
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql))
+            whereClauses.Add(cfg.FilterSql!);
+
+        if (mode == "self_parent")
+        {
+            if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn ?? ""))
+            {
+                error = "Query_Mode='self_parent' cần Parent_Column hợp lệ (cột cha tự tham chiếu).";
+                return null;
+            }
+            selfParentCte =
+                $"; WITH __self_cte AS (" +
+                $"SELECT {cfg.ValueColumn} AS Id FROM {cfg.SourceName} WHERE {cfg.ValueColumn} = @__SelfId " +
+                $"UNION ALL " +
+                $"SELECT t.{cfg.ValueColumn} FROM {cfg.SourceName} t JOIN __self_cte c ON t.{cfg.ParentColumn} = c.Id" +
+                $") ";
+            whereClauses.Add($"{cfg.ValueColumn} NOT IN (SELECT Id FROM __self_cte)");
+        }
+
         // Build SELECT — gồm ValueColumn, DisplayColumn, CodeField (nếu có), và các cột từ PopupColumnsJson
         var selectCols = BuildSelectColumns(cfg);
-        var sql = $"SELECT {selectCols} FROM {cfg.SourceName}";
+        var sql = (selfParentCte ?? "") + $"SELECT {selectCols} FROM {cfg.SourceName}";
 
-        // WHERE — FilterSql thường có @TenantId nên luôn thêm (nếu không có FilterSql, thêm WHERE 1=1)
-        if (!string.IsNullOrWhiteSpace(cfg.FilterSql))
-            sql += $" WHERE {cfg.FilterSql}";
+        if (whereClauses.Count > 0)
+            sql += " WHERE " + string.Join(" AND ", whereClauses);
 
         // ORDER BY
         if (!string.IsNullOrWhiteSpace(cfg.OrderBy))
