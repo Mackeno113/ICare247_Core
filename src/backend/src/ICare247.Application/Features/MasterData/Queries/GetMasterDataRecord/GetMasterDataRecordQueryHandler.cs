@@ -42,10 +42,16 @@ public sealed class GetMasterDataRecordQueryHandler
 
     /// <summary>
     /// Field ảo cascade-cha (VD Tỉnh) không lưu cột riêng — giá trị suy từ field con đã chọn
-    /// (VD PhuongXa_Id) bằng chính config lookup đã khai cho field con: Param_Map trỏ tới field ảo
-    /// + Filter_Sql dạng "{Cột}=@{param}" trỏ tới cột chứa giá trị cha trong nguồn dữ liệu của field con.
+    /// (VD PhuongXa_Id) bằng chính config lookup đã khai cho field con: Filter_Sql dạng
+    /// "{Cột}=@{param}" trỏ tới cột chứa giá trị cha trong nguồn dữ liệu của field con.
+    /// Tên @-token trong Filter_Sql xác định theo 2 cách field con có thể được khai (thử lần lượt,
+    /// dùng cách nào ra kết quả trước — token không có trong Filter_Sql thì regex đơn giản không khớp,
+    /// không cần biết trước field con dùng cách nào):
+    ///   1) Param_Map (mẫu lookup, Migration 083) — canonical key có value = FieldCode field ảo.
+    ///   2) Trực tiếp (Reload_Trigger_Field cũ, hoặc admin tự gõ Filter_Sql không qua mẫu) —
+    ///      FieldCode field ảo dùng thẳng làm tên @param.
     /// Không cần khai thêm metadata — dùng lại Ui_Field_Lookup hiện có. Áp dụng cho mọi form
-    /// dùng MasterDataForm (không riêng Công ty), mọi field ảo cascade theo đúng pattern này.
+    /// dùng MasterDataForm (không riêng Công ty), mọi field ảo cascade theo 1 trong 2 cách trên.
     /// </summary>
     private async Task ResolveVirtualCascadeFieldsAsync(
         FormMetadata form, IDictionary<string, object?> record, CancellationToken ct)
@@ -55,7 +61,7 @@ public sealed class GetMasterDataRecordQueryHandler
             foreach (var child in form.Fields)
             {
                 var cfg = child.LookupConfig;
-                if (cfg is null || string.IsNullOrWhiteSpace(cfg.ParamMapRaw) || string.IsNullOrWhiteSpace(cfg.FilterSql))
+                if (cfg is null || string.IsNullOrWhiteSpace(cfg.FilterSql))
                     continue;
 
                 // Key-match case-insensitive: cột SELECT * trả về theo casing thật của DB, có thể
@@ -66,9 +72,7 @@ public sealed class GetMasterDataRecordQueryHandler
                     continue;
                 var childValue = childHit.Value;
 
-                var paramKey = FindCanonicalParamKey(cfg.ParamMapRaw, virtualField.FieldCode);
-                if (paramKey is null) continue;
-
+                var paramKey = FindCanonicalParamKey(cfg.ParamMapRaw, virtualField.FieldCode) ?? virtualField.FieldCode;
                 var column = ExtractFilterColumn(cfg.FilterSql, paramKey);
                 if (column is null) continue;
 
@@ -81,8 +85,9 @@ public sealed class GetMasterDataRecordQueryHandler
     }
 
     /// <summary>Tìm key canonical trong Param_Map (JSON) có value = FieldCode của field ảo cha.</summary>
-    private static string? FindCanonicalParamKey(string paramMapRaw, string fieldCode)
+    private static string? FindCanonicalParamKey(string? paramMapRaw, string fieldCode)
     {
+        if (string.IsNullOrWhiteSpace(paramMapRaw)) return null;
         try
         {
             var map = JsonSerializer.Deserialize<Dictionary<string, string>>(paramMapRaw);
