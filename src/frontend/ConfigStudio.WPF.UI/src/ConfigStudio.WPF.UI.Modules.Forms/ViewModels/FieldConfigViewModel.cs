@@ -524,180 +524,17 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
     // EditBox hiển thị (EditBoxMode/CodeField/ImportGlobalCode — Migration 014)
     // — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 2).
 
-    // ── Mẫu lookup dùng chung (Ui_Lookup_Template — db/083, PICKER-P4) ─────────
-    // Chọn mẫu → định nghĩa truy vấn (nguồn/cột/filter) lấy TỪ MẪU, phần "Nguồn dữ liệu FK"
-    // bên dưới bị bỏ qua ở runtime; admin chỉ còn map tham số canonical của mẫu.
+    // Mẫu lookup dùng chung (Ui_Lookup_Template — db/083, PICKER-P4): SelectedLookupTemplate +
+    // ParamRows + RebuildTemplateParamRows/BuildParamMapJson/LoadLookupTemplateStateAsync + CanonicalParamDef
+    // — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 4).
 
-    /// <summary>Sentinel "không dùng mẫu" — đứng đầu combo.</summary>
-    private static readonly LookupTemplateRecord NoTemplate =
-        new() { TemplateCode = "", Ten = "— Không dùng mẫu (tự cấu hình) —" };
+    // Cảnh báo cascade (CascadeWarnings/RecomputeCascadeWarnings + regex/token) — ĐÃ DỜI sang
+    // FkLookupConfigVm (B4.2 nhóm 4). GetSiblingFieldCodes GIỮ ở root (phụ thuộc Navigator + FieldId),
+    // VM con gọi qua _root.
 
-    /// <summary>Danh sách mẫu cho combo (phần tử đầu = không dùng mẫu).</summary>
-    public ObservableCollection<LookupTemplateRecord> LookupTemplates { get; } = [NoTemplate];
-
-    private bool _lookupTemplatesLoaded;
-
-    private LookupTemplateRecord _selectedLookupTemplate = NoTemplate;
-    /// <summary>Mẫu đang chọn. Đổi mẫu → dựng lại lưới map tham số từ Canonical_Params.</summary>
-    public LookupTemplateRecord SelectedLookupTemplate
-    {
-        get => _selectedLookupTemplate;
-        set
-        {
-            if (!SetProperty(ref _selectedLookupTemplate, value ?? NoTemplate)) return;
-            IsDirty = true;
-            RebuildTemplateParamRows(existingParamMapJson: null);
-            RaisePropertyChanged(nameof(IsLookupTemplateSelected));
-            RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));
-        }
-    }
-
-    /// <summary>Đang dùng mẫu (ẩn/hiện lưới map + ghi chú trên panel).</summary>
-    public bool IsLookupTemplateSelected => _selectedLookupTemplate.TemplateCode.Length > 0;
-
-    /// <summary>Diễn giải mẫu đang chọn (hiện dưới combo).</summary>
-    public string? SelectedLookupTemplateMoTa => _selectedLookupTemplate.MoTa;
-
-    /// <summary>Lưới map tham số canonical của mẫu (rỗng khi mẫu không cần map).</summary>
-    public ObservableCollection<LookupTemplateParamRowVm> LookupTemplateParamRows { get; } = [];
-
-    /// <summary>Mẫu đang chọn CÓ tham số cần map → hiện lưới.</summary>
-    public bool HasLookupTemplateParams => IsLookupTemplateSelected && LookupTemplateParamRows.Count > 0;
-
-    /// <summary>Mẫu đang chọn KHÔNG cần map (token tự resolve) → hiện ghi chú.</summary>
-    public bool HasNoLookupTemplateParams => IsLookupTemplateSelected && LookupTemplateParamRows.Count == 0;
-
-    /// <summary>
-    /// Dựng lưới map tham số từ Canonical_Params của mẫu đang chọn; điền sẵn giá trị từ
-    /// Param_Map đã lưu (nếu có). JSON hỏng → lưới rỗng (không chặn màn).
-    /// </summary>
-    private void RebuildTemplateParamRows(string? existingParamMapJson)
-    {
-        foreach (var old in LookupTemplateParamRows) old.PropertyChanged -= OnTemplateParamRowChanged;
-        LookupTemplateParamRows.Clear();
-        if (!IsLookupTemplateSelected) return;
-
-        Dictionary<string, string> existing = [];
-        if (!string.IsNullOrWhiteSpace(existingParamMapJson))
-        {
-            try
-            {
-                var map = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(existingParamMapJson);
-                foreach (var (k, v) in map ?? [])
-                    existing[k] = v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.GetRawText();
-            }
-            catch (JsonException) { /* Param_Map cũ hỏng → để trống, admin map lại */ }
-        }
-
-        if (!string.IsNullOrWhiteSpace(_selectedLookupTemplate.CanonicalParams))
-        {
-            try
-            {
-                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var defs = JsonSerializer.Deserialize<List<CanonicalParamDef>>(
-                    _selectedLookupTemplate.CanonicalParams, opts) ?? [];
-                foreach (var d in defs)
-                {
-                    if (string.IsNullOrWhiteSpace(d.Name)) continue;
-                    var row = new LookupTemplateParamRowVm
-                    {
-                        Name = d.Name,
-                        Type = d.Type,
-                        Required = d.Required,
-                        MoTa = d.MoTa,
-                        MappedValue = existing.TryGetValue(d.Name, out var mv) ? mv : ""
-                    };
-                    row.PropertyChanged += OnTemplateParamRowChanged;
-                    LookupTemplateParamRows.Add(row);
-                }
-            }
-            catch (JsonException) { /* Canonical_Params của mẫu hỏng → không có dòng map */ }
-        }
-
-        RaisePropertyChanged(nameof(HasLookupTemplateParams));
-        RaisePropertyChanged(nameof(HasNoLookupTemplateParams));
-    }
-
-    /// <summary>Admin sửa ô map → form dơ (bật nút Lưu).</summary>
-    private void OnTemplateParamRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        => IsDirty = true;
-
-    /// <summary>
-    /// Serialize lưới map → JSON Param_Map. Giá trị "@Token"/Field_Code giữ chuỗi; parse được
-    /// long/double/bool (không phải token) → ghi hằng số đúng kiểu JSON. Rỗng → null (không lưu).
-    /// </summary>
-    private string? BuildParamMapJson()
-    {
-        if (!IsLookupTemplateSelected) return null;
-        var map = new Dictionary<string, object?>();
-        foreach (var row in LookupTemplateParamRows)
-        {
-            var v = row.MappedValue?.Trim();
-            if (string.IsNullOrEmpty(v)) continue;
-            if (v.StartsWith('@'))                        map[row.Name] = v;
-            else if (bool.TryParse(v, out var b))         map[row.Name] = b;
-            else if (long.TryParse(v, out var l))         map[row.Name] = l;
-            else if (double.TryParse(v, System.Globalization.CultureInfo.InvariantCulture, out var d))
-                                                          map[row.Name] = d;
-            else                                          map[row.Name] = v; // Field_Code trên form
-        }
-        return map.Count == 0 ? null : JsonSerializer.Serialize(map);
-    }
-
-    /// <summary>Nạp danh sách mẫu (1 lần) + lựa chọn mẫu/Param_Map đã lưu của field — KHÔNG bật IsDirty.</summary>
-    private async Task LoadLookupTemplateStateAsync(int fieldId, CancellationToken ct)
-    {
-        if (_fieldService is null) return;
-
-        if (!_lookupTemplatesLoaded)
-        {
-            var templates = await _fieldService.GetLookupTemplatesAsync(ct);
-            foreach (var t in templates) LookupTemplates.Add(t);
-            _lookupTemplatesLoaded = true;
-        }
-
-        var (code, paramMap) = await _fieldService.GetFieldLookupTemplateAsync(fieldId, ct);
-        _selectedLookupTemplate = LookupTemplates.FirstOrDefault(
-            t => t.TemplateCode.Equals(code ?? "", StringComparison.OrdinalIgnoreCase)) ?? NoTemplate;
-        RaisePropertyChanged(nameof(SelectedLookupTemplate));
-        RaisePropertyChanged(nameof(IsLookupTemplateSelected));
-        RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));
-        RebuildTemplateParamRows(paramMap);
-    }
-
-    /// <summary>Schema 1 phần tử Canonical_Params của mẫu (JSON, case-insensitive).</summary>
-    private sealed class CanonicalParamDef
-    {
-        public string Name { get; set; } = "";
-        public string? Type { get; set; }
-        public bool Required { get; set; }
-        public string? MoTa { get; set; }
-    }
-
-    // DropDownWidth/Height + ReloadTriggerField — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 2).
-
-    // ── Cảnh báo cascade (P2/P3) — chống cấu hình sai field ảo + cascade ──────
-
-    /// <summary>Regex tách tham số @Name trong Filter SQL.</summary>
-    private static readonly System.Text.RegularExpressions.Regex SqlParamRegex =
-        new(@"@(\w+)", System.Text.RegularExpressions.RegexOptions.Compiled);
-
-    /// <summary>Token hệ thống server tự bơm — KHÔNG cần field trong form (spec 19 + WPF).</summary>
-    private static readonly HashSet<string> CascadeSystemTokens = new(StringComparer.OrdinalIgnoreCase)
-        { "TenantId", "Today", "CurrentUser", "NguoiDungID", "CongTyID_Active", "LangCode" };
-
-    /// <summary>
-    /// Cảnh báo cấu hình cascade sai (KHÔNG chặn Lưu — hiện banner + đưa vào Diễn giải):
-    /// (P2) @param không khớp Field Code field nào → danh sách con rỗng;
-    /// (P3) @param là field cha nhưng chưa đặt "Tự reload" → đổi cha không nạp lại con.
-    /// </summary>
-    public ObservableCollection<string> CascadeWarnings { get; } = [];
-
-    /// <summary>True khi có cảnh báo cascade → hiện banner cảnh báo ở panel LookupBox.</summary>
-    public bool HasCascadeWarnings => CascadeWarnings.Count > 0;
-
-    /// <summary>Tập FieldCode hiệu lực của các field KHÁC trong form (lấy từ navigator).</summary>
-    private List<string> GetSiblingFieldCodes() =>
+    /// <summary>Tập FieldCode hiệu lực của các field KHÁC trong form (lấy từ navigator).
+    /// Internal để VM con FkLookup soát cascade (B4.2 nhóm 4).</summary>
+    internal List<string> GetSiblingFieldCodes() =>
         Navigator.Groups
             .SelectMany(g => g.Fields)
             .Where(f => f.FieldId != FieldId)
@@ -705,49 +542,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             .Where(c => !string.IsNullOrWhiteSpace(c))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
-
-    /// <summary>
-    /// Tính lại cảnh báo cascade từ Filter SQL + field trong form.
-    /// Chỉ còn P2 (@param không khớp field cha nào → danh sách con rỗng). Cảnh báo P3 cũ
-    /// ("chưa đặt Tự reload") đã BỎ: renderer chế độ Bảng/View nay tự reload theo mọi @param
-    /// trong Filter SQL nên không cần khai reload thủ công.
-    /// Gọi khi đổi Filter SQL / sau khi nạp navigator; internal để VM con FkLookup gọi khi đổi
-    /// ReloadTriggerField (B4.2 nhóm 2).
-    /// </summary>
-    internal void RecomputeCascadeWarnings()
-    {
-        CascadeWarnings.Clear();
-
-        // Chỉ soát cascade cho lookup động chế độ Bảng/View có Filter SQL.
-        if (IsFkLookupEditor && FkLookup.QueryMode == "table" && !string.IsNullOrWhiteSpace(FkLookup.FkFilterSql))
-        {
-            var siblings = GetSiblingFieldCodes();
-            // Navigator chưa nạp field nào → không đủ dữ liệu để soát (tránh cảnh báo sai).
-            if (siblings.Count > 0)
-            {
-                var prms = SqlParamRegex.Matches(FkLookup.FkFilterSql)
-                    .Select(m => m.Groups[1].Value)
-                    .Distinct(StringComparer.OrdinalIgnoreCase);
-
-                foreach (var p in prms)
-                {
-                    if (CascadeSystemTokens.Contains(p)) continue;   // token hệ thống
-
-                    var isField = siblings.Any(c => string.Equals(c, p, StringComparison.OrdinalIgnoreCase));
-                    if (!isField)
-                    {
-                        // P2 — @param không khớp field cha nào → con rỗng.
-                        CascadeWarnings.Add(
-                            $"⚠ @{p}: không field nào trong form có Field Code = \"{p}\" → danh sách con sẽ RỖNG. " +
-                            $"Sửa: đặt Field Code field cha = \"{p}\", hoặc sửa lại tên @param.");
-                    }
-                    // isField = true → runtime tự reload theo @param, không cảnh báo.
-                }
-            }
-        }
-
-        RaisePropertyChanged(nameof(HasCascadeWarnings));
-    }
 
     // Thêm mới entity (AllowAddNew/AddFormCode/AvailableFormCodes/LoadFormCodesAsync — Migration 022)
     // + TreeLookupBox (ParentColumn/TreeSelectableLevel — Migration 021/069)
@@ -762,56 +556,10 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         if (!_isRebuildingProps) RebuildControlPropsJson();
     }
 
-    /// <summary>
-    /// Diễn giải cấu hình hiện tại bằng tiếng Việt — sinh tự động từ JSON.
-    /// Dùng để kiểm tra trước khi lưu.
-    /// </summary>
-    private string _configExplanation = "";
-    public string ConfigExplanation
-    {
-        get => _configExplanation;
-        private set
-        {
-            if (SetProperty(ref _configExplanation, value))
-            {
-                RaisePropertyChanged(nameof(HasConfigExplanation));
-                // Sinh diễn giải mới → tự mở rộng để user thấy ngay.
-                if (!string.IsNullOrEmpty(value)) _isExplanationExpanded = true;
-                RaisePropertyChanged(nameof(IsExplanationExpanded));
-                RaisePropertyChanged(nameof(ShowConfigExplanation));
-                RaisePropertyChanged(nameof(ExplanationToggleLabel));
-            }
-        }
-    }
+    // Diễn giải cấu hình (ConfigExplanation/IsExplanationExpanded/ExecuteExplainConfig + 2 command)
+    // — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 4).
 
-    /// <summary>True khi đã có nội dung diễn giải → hiện panel kết quả.</summary>
-    public bool HasConfigExplanation => !string.IsNullOrEmpty(_configExplanation);
-
-    private bool _isExplanationExpanded = true;
-    /// <summary>Thu gọn/mở rộng khối "Diễn giải cấu hình". Bấm nút Diễn giải sẽ tự mở lại.</summary>
-    public bool IsExplanationExpanded
-    {
-        get => _isExplanationExpanded;
-        set
-        {
-            if (SetProperty(ref _isExplanationExpanded, value))
-            {
-                RaisePropertyChanged(nameof(ShowConfigExplanation));
-                RaisePropertyChanged(nameof(ExplanationToggleLabel));
-            }
-        }
-    }
-
-    /// <summary>True khi có diễn giải VÀ đang mở → hiện khối nội dung (thu gọn = ẩn nội dung).</summary>
-    public bool ShowConfigExplanation => HasConfigExplanation && _isExplanationExpanded;
-
-    /// <summary>Nhãn nút thu gọn/mở rộng khối diễn giải.</summary>
-    public string ExplanationToggleLabel => _isExplanationExpanded ? "Thu gọn ▲" : "Mở rộng ▼";
-
-    // 13 command FK Lookup (Add/Remove/Move cột, filter param, query mode, function param,
-    // reload field, data-source condition) — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 3).
-    public DelegateCommand ExplainConfigCommand { get; private set; } = null!;
-    public DelegateCommand ToggleExplanationCommand { get; private set; } = null!;
+    // 13 command FK Lookup — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 3).
     public DelegateCommand CopyJsonCommand      { get; private set; } = null!;
 
     // Sys_Lookup tĩnh (LookupCode + AvailableLookupCodes + LookupPreviewItems + loader)
@@ -1199,7 +947,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         OpenI18nKeyCommand = new DelegateCommand<string>(ExecuteOpenI18nKey);
 
         // VM con Rules/Events (REFACTOR-B3): chụp ngữ cảnh root qua Func; markDirty → bật nút Lưu.
-        FkLookup = new FkLookupConfigVm(this, lookupService, formService, appConfig, logger, () => _cts.Token);
+        FkLookup = new FkLookupConfigVm(this, lookupService, formService, fieldService, appConfig, logger, () => _cts.Token);
 
         RulesEvents = new FieldRulesEventsVm(
             ruleService, eventService, logger, regionManager,
@@ -1214,12 +962,9 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
             () => new FieldNavigatorVm.Context(
                 FieldId, FormId, TableCode, FormCode, FormName, AvailableSections.ToList()),
             () => _cts.Token,
-            RecomputeCascadeWarnings);
+            FkLookup.RecomputeCascadeWarnings);
 
-        // FK Lookup commands
-        // 13 command FK Lookup — khởi tạo trong FkLookupConfigVm (B4.2 nhóm 3).
-        ExplainConfigCommand            = new DelegateCommand(ExecuteExplainConfig);
-        ToggleExplanationCommand        = new DelegateCommand(() => IsExplanationExpanded = !IsExplanationExpanded);
+        // 13 command FK Lookup + 2 command Diễn giải — khởi tạo trong FkLookupConfigVm (B4.2 nhóm 3/4).
         CopyJsonCommand                 = new DelegateCommand(() => System.Windows.Clipboard.SetText(ControlPropsJson));
     }
 
@@ -1343,8 +1088,6 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         _colSpan = 1;
         _controlPropsJson = "{}";
         ControlProps.Clear();
-        _configExplanation = "";
-        _isExplanationExpanded = true;
 
         // Sys_Lookup (RadioGroup / LookupComboBox) + ComboBox display props — state ở VM con (B4.2).
         FkLookup.ResetComboAndLookupState();
@@ -1355,7 +1098,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         // FK Lookup (LookupBox/TreeLookupBox/ComboBox dynamic) — tái dùng hàm clear sẵn có
         ClearFkLookupConfig();
         FkLookup.ReloadOnChangeInput = "";
-        CascadeWarnings.Clear();
+        // Diễn giải + cảnh báo cascade — state ở VM con (B4.2 nhóm 4)
+        FkLookup.ResetExplainAndCascadeState();
 
         // Raise toàn bộ property để UI cập nhật về trạng thái rỗng
         RaisePropertyChanged(nameof(SelectedColumn));
@@ -1390,12 +1134,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
         RaisePropertyChanged(nameof(HasUniqueErrorKeyPreview));
         RaisePropertyChanged(nameof(ColSpan));
         RaisePropertyChanged(nameof(ControlPropsJson));
-        RaisePropertyChanged(nameof(ConfigExplanation));
-        RaisePropertyChanged(nameof(HasConfigExplanation));
-        RaisePropertyChanged(nameof(ShowConfigExplanation));
-        RaisePropertyChanged(nameof(ExplanationToggleLabel));
-        RaisePropertyChanged(nameof(HasCascadeWarnings));
-        // ReloadOnChangeInput + LookupCode + Cb* — VM con tự raise (B4.2).
+        // ConfigExplanation/HasConfigExplanation/ShowConfigExplanation/ExplanationToggleLabel +
+        // HasCascadeWarnings + ReloadOnChangeInput + LookupCode + Cb* — VM con tự raise (B4.2).
 
         // Editor type về mặc định "TextBox" — ép _selectedEditorType = "" để SetProperty luôn detect
         // change → LoadControlPropSchema() rebuild ControlProps sạch (đang trong load, _isLoading=true
@@ -1545,7 +1285,8 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     FkLookup.RestoreImportGlobalCode(await _fieldService.GetFkImportGlobalAsync(field.FieldId, ct));
 
                     // Mẫu lookup dùng chung (db/083, PICKER-P4) — đọc phòng thủ; chưa migrate → không dùng mẫu.
-                    await LoadLookupTemplateStateAsync(field.FieldId, ct);
+                    // State ở VM con (B4.2 nhóm 4).
+                    await FkLookup.LoadLookupTemplateStateAsync(field.FieldId, ct);
                     // NOTE: Set _controlPropsJson (backing field) trước khi SelectedEditorType thay đổi
                     // để LoadControlPropSchema() có thể restore giá trị từ DB
                     _controlPropsJson      = field.ControlPropsJson ?? "{}";
@@ -1987,36 +1728,7 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
 
     // ── FK Lookup command handlers — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 3):
     //    13 command + WireFkColumnHandlers (handler đặt tên thay lambda +=) + helper caption-key.
-
-    /// <summary>
-    /// Sinh diễn giải tiếng Việt từ cấu hình LookupBox hiện tại — logic sinh text ở
-    /// <see cref="FieldConfigExplainService.BuildExplanation"/> (REFACTOR-B1); VM chụp snapshot.
-    /// </summary>
-    private void ExecuteExplainConfig()
-    {
-        if (!IsFkLookupEditor) { ConfigExplanation = ""; return; }
-
-        RecomputeCascadeWarnings();   // đảm bảo cảnh báo cascade khớp cấu hình mới nhất
-
-        ConfigExplanation = FieldConfigExplainService.BuildExplanation(new FieldConfigExplainService.ExplainInput
-        {
-            IsVirtual = IsVirtual,
-            QueryMode = FkLookup.QueryMode,
-            FkValueField = FkLookup.FkValueField,
-            FkDisplayField = FkLookup.FkDisplayField,
-            FkTableName = FkLookup.FkTableName,
-            FkFilterSql = FkLookup.FkFilterSql,
-            FkFunctionName = FkLookup.FkFunctionName,
-            FkSelectSql = FkLookup.FkSelectSql,
-            FkSearchEnabled = FkLookup.FkSearchEnabled,
-            FilterParams = FkLookup.FkFilterParams.ToList(),
-            FunctionParams = FkLookup.FkFunctionParams.ToList(),
-            ReloadOnChangeFields = FkLookup.ReloadOnChangeFields.ToList(),
-            DataSourceConditions = FkLookup.DataSourceConditions.ToList(),
-            PopupColumns = FkLookup.FkPopupColumns.ToList(),
-            CascadeWarnings = HasCascadeWarnings ? CascadeWarnings.ToList() : [],
-        });
-    }
+    // ── Diễn giải cấu hình (ExecuteExplainConfig) — ĐÃ DỜI sang FkLookupConfigVm (B4.2 nhóm 4).
 
     /// <summary>Ánh xạ EditorType → SQL DataType mặc định cho EnsureColumnExistsAsync.</summary>
     private static string MapEditorTypeToSqlType(string editorType) => editorType switch
@@ -2226,11 +1938,12 @@ public sealed class FieldConfigViewModel : ViewModelBase, INavigationAware
                     await _fieldService.SaveFkImportGlobalAsync(savedId, FkLookup.ImportGlobalCode, _cts.Token);
 
                 // Mẫu lookup dùng chung (db/083) → ghi Template_Code + Param_Map (phòng thủ — chưa migrate thì bỏ qua).
+                // State ở VM con (B4.2 nhóm 4).
                 if (IsFkLookupEditor && savedId > 0)
                     await _fieldService.SaveFieldLookupTemplateAsync(
                         savedId,
-                        IsLookupTemplateSelected ? _selectedLookupTemplate.TemplateCode : null,
-                        BuildParamMapJson(),
+                        FkLookup.SelectedTemplateCodeOrNull,
+                        FkLookup.BuildParamMapJson(),
                         _cts.Token);
 
                 // Đăng ký i18n keys vào Sys_Resource nếu chưa tồn tại
