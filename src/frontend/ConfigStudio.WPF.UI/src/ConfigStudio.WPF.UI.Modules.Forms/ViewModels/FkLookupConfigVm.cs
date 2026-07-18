@@ -44,6 +44,21 @@ public sealed class FkLookupConfigVm : BindableBase
         // Bridge notify: prop ủy quyền TRÙNG TÊN với root → re-raise nguyên PropertyName.
         // Tên không thuộc VM này (binding không tồn tại) chỉ tốn 1 lần so tên — vô hại.
         _root.PropertyChanged += (_, e) => RaisePropertyChanged(e.PropertyName);
+
+        // 13 command FK Lookup (B4.2 nhóm 3) — handler đặt tên, không lambda inline.
+        SetQueryModeCommand              = new DelegateCommand<string>(mode => QueryMode = mode);
+        AddFkColumnCommand               = new DelegateCommand(ExecuteAddFkColumn);
+        RemoveFkColumnCommand            = new DelegateCommand<FkColumnConfig>(ExecuteRemoveFkColumn);
+        MoveFkColumnUpCommand            = new DelegateCommand<FkColumnConfig>(ExecuteMoveFkColumnUp);
+        MoveFkColumnDownCommand          = new DelegateCommand<FkColumnConfig>(ExecuteMoveFkColumnDown);
+        AddFkFilterParamCommand          = new DelegateCommand(ExecuteAddFkFilterParam);
+        RemoveFkFilterParamCommand       = new DelegateCommand<FkFilterParam>(ExecuteRemoveFkFilterParam);
+        AddFunctionParamCommand          = new DelegateCommand(ExecuteAddFunctionParam);
+        RemoveFunctionParamCommand       = new DelegateCommand<FunctionParam>(ExecuteRemoveFunctionParam);
+        AddReloadFieldCommand            = new DelegateCommand(ExecuteAddReloadField);
+        RemoveReloadFieldCommand         = new DelegateCommand<string>(ExecuteRemoveReloadField);
+        AddDataSourceConditionCommand    = new DelegateCommand(ExecuteAddDataSourceCondition);
+        RemoveDataSourceConditionCommand = new DelegateCommand<DataSourceCondition>(ExecuteRemoveDataSourceCondition);
     }
 
     // ── Cờ editor type (root suy từ SelectedEditorType) ──────────────────────
@@ -53,37 +68,171 @@ public sealed class FkLookupConfigVm : BindableBase
     public bool IsTreeLookupEditor => _root.IsTreeLookupEditor;
     public bool IsComboBoxEditor => _root.IsComboBoxEditor;
 
-    // ── Chế độ truy vấn ──────────────────────────────────────────────────────
-    public bool IsTableMode => _root.IsTableMode;
-    public bool IsFunctionMode => _root.IsFunctionMode;
-    public bool IsSqlMode => _root.IsSqlMode;
-    public DelegateCommand<string> SetQueryModeCommand => _root.SetQueryModeCommand;
+    // ── Chế độ truy vấn — STATE Ở ĐÂY (B4.2 nhóm 3) ──────────────────────────
 
-    // ── Nguồn dữ liệu FK ─────────────────────────────────────────────────────
-    public string FkTableName    { get => _root.FkTableName;    set => _root.FkTableName = value; }
-    public string FkFunctionName { get => _root.FkFunctionName; set => _root.FkFunctionName = value; }
-    public string FkSelectSql    { get => _root.FkSelectSql;    set => _root.FkSelectSql = value; }
-    public string FkValueField   { get => _root.FkValueField;   set => _root.FkValueField = value; }
-    public string FkDisplayField { get => _root.FkDisplayField; set => _root.FkDisplayField = value; }
-    public string FkFilterSql    { get => _root.FkFilterSql;    set => _root.FkFilterSql = value; }
-    public string FkOrderBy      { get => _root.FkOrderBy;      set => _root.FkOrderBy = value; }
-    public bool FkSearchEnabled  { get => _root.FkSearchEnabled; set => _root.FkSearchEnabled = value; }
+    private string _queryMode = "table";
+    /// <summary>
+    /// Chế độ truy vấn dữ liệu lookup:
+    /// "table" = Bảng/View + WHERE; "function" = TVF; "sql" = Full SQL.
+    /// </summary>
+    public string QueryMode
+    {
+        get => _queryMode;
+        set
+        {
+            if (SetProperty(ref _queryMode, value))
+            {
+                RaisePropertyChanged(nameof(IsTableMode));
+                RaisePropertyChanged(nameof(IsFunctionMode));
+                RaisePropertyChanged(nameof(IsSqlMode));
+                if (!_root.IsRebuildingProps) _root.RebuildControlPropsJson();
+            }
+        }
+    }
 
-    public ObservableCollection<FkColumnConfig> FkPopupColumns => _root.FkPopupColumns;
-    public ObservableCollection<FunctionParam> FkFunctionParams => _root.FkFunctionParams;
+    public bool IsTableMode    => _queryMode == "table";
+    public bool IsFunctionMode => _queryMode == "function";
+    public bool IsSqlMode      => _queryMode == "sql";
 
-    public DelegateCommand AddFkColumnCommand => _root.AddFkColumnCommand;
-    public DelegateCommand<FkColumnConfig> RemoveFkColumnCommand => _root.RemoveFkColumnCommand;
-    public DelegateCommand<FkColumnConfig> MoveFkColumnUpCommand => _root.MoveFkColumnUpCommand;
-    public DelegateCommand<FkColumnConfig> MoveFkColumnDownCommand => _root.MoveFkColumnDownCommand;
-    public DelegateCommand AddFunctionParamCommand => _root.AddFunctionParamCommand;
-    public DelegateCommand<FunctionParam> RemoveFunctionParamCommand => _root.RemoveFunctionParamCommand;
+    public DelegateCommand<string> SetQueryModeCommand { get; }
 
-    // ── Danh sách option tĩnh ────────────────────────────────────────────────
-    public List<string> FunctionParamSourceTypes => _root.FunctionParamSourceTypes;
-    public List<string> SystemKeyOptions => _root.SystemKeyOptions;
-    public List<string> FkParamTypes => _root.FkParamTypes;
-    public List<string> WhenOpOptions => _root.WhenOpOptions;
+    // ── Nguồn dữ liệu FK — STATE Ở ĐÂY (B4.2 nhóm 3) ─────────────────────────
+    // Setter đổi giá trị → rebuild Control_Props_Json (bỏ qua khi root đang rebuild/restore).
+
+    private string _fkTableName = "";
+    /// <summary>Tên bảng DB nguồn. VD: "DM_PhongBan".</summary>
+    public string FkTableName
+    {
+        get => _fkTableName;
+        set { if (SetProperty(ref _fkTableName, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private string _fkFunctionName = "";
+    /// <summary>Tên TVF (Table-Valued Function). VD: "fnt_CongTyTheoQuyen".</summary>
+    public string FkFunctionName
+    {
+        get => _fkFunctionName;
+        set { if (SetProperty(ref _fkFunctionName, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private string _fkSelectSql = "";
+    /// <summary>
+    /// Full SELECT SQL (queryMode = "sql"). Phải có alias khớp ValueField + DisplayField.
+    /// VD: "SELECT p.Id, p.Ten FROM DM_PhongBan p JOIN ... WHERE ..."
+    /// </summary>
+    public string FkSelectSql
+    {
+        get => _fkSelectSql;
+        set { if (SetProperty(ref _fkSelectSql, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private string _fkValueField = "";
+    /// <summary>Cột lưu vào DB (FK — int). VD: "PhongBan_Id".</summary>
+    public string FkValueField
+    {
+        get => _fkValueField;
+        set { if (SetProperty(ref _fkValueField, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private string _fkDisplayField = "";
+    /// <summary>Cột hiển thị chính trong ô input. VD: "Ten_PhongBan".</summary>
+    public string FkDisplayField
+    {
+        get => _fkDisplayField;
+        set { if (SetProperty(ref _fkDisplayField, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private string _fkFilterSql = "";
+    /// <summary>
+    /// Điều kiện lọc bổ sung (parameterized). VD: "Is_Active = 1 AND Loai = @LoaiField".
+    /// KHÔNG lọc cột Tenant_Id — cột đã bỏ (ADR-035).
+    /// Các tham số hệ thống (@TenantId, @CurrentUser) được inject tự động lúc runtime.
+    /// </summary>
+    public string FkFilterSql
+    {
+        get => _fkFilterSql;
+        set
+        {
+            if (SetProperty(ref _fkFilterSql, value) && !_root.IsRebuildingProps)
+            {
+                _root.RebuildControlPropsJson();
+                _root.RecomputeCascadeWarnings();
+            }
+        }
+    }
+
+    private string _fkOrderBy = "";
+    /// <summary>Sắp xếp kết quả. VD: "Ten_PhongBan ASC".</summary>
+    public string FkOrderBy
+    {
+        get => _fkOrderBy;
+        set { if (SetProperty(ref _fkOrderBy, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    private bool _fkSearchEnabled = true;
+    /// <summary>Cho phép search trong popup (incremental search).</summary>
+    public bool FkSearchEnabled
+    {
+        get => _fkSearchEnabled;
+        set { if (SetProperty(ref _fkSearchEnabled, value) && !_root.IsRebuildingProps) _root.RebuildControlPropsJson(); }
+    }
+
+    /// <summary>Danh sách cột hiển thị trong popup dropdown của LookupBox.</summary>
+    public ObservableCollection<FkColumnConfig> FkPopupColumns { get; } = [];
+
+    /// <summary>
+    /// Danh sách tham số động trong filterSql — mỗi item ánh xạ @Param → FieldCode trong form.
+    /// Runtime engine resolve giá trị field rồi truyền vào SQL; khi field thay đổi → reload lookup.
+    /// </summary>
+    public ObservableCollection<FkFilterParam> FkFilterParams { get; } = [];
+
+    /// <summary>Danh sách tham số của TVF — thứ tự quan trọng (khớp với định nghĩa hàm).</summary>
+    public ObservableCollection<FunctionParam> FkFunctionParams { get; } = [];
+
+    /// <summary>
+    /// Danh sách FieldCode kích hoạt reload lookup khi giá trị thay đổi.
+    /// VD: ["CapToChuc", "LoaiNhanVien"] → bất kỳ field nào thay đổi thì reload.
+    /// </summary>
+    public ObservableCollection<string> ReloadOnChangeFields { get; } = [];
+
+    /// <summary>Input tạm để thêm FieldCode vào ReloadOnChangeFields.</summary>
+    private string _reloadOnChangeInput = "";
+    public string ReloadOnChangeInput
+    {
+        get => _reloadOnChangeInput;
+        set => SetProperty(ref _reloadOnChangeInput, value);
+    }
+
+    /// <summary>
+    /// Danh sách điều kiện đổi bảng nguồn dữ liệu.
+    /// Khi field trong form thoả điều kiện → runtime đổi sang tableName khác.
+    /// </summary>
+    public ObservableCollection<DataSourceCondition> DataSourceConditions { get; } = [];
+
+    // ── 13 command FK Lookup — Ở ĐÂY (B4.2 nhóm 3, khởi tạo trong ctor) ──────
+    public DelegateCommand AddFkColumnCommand { get; }
+    public DelegateCommand<FkColumnConfig> RemoveFkColumnCommand { get; }
+    public DelegateCommand<FkColumnConfig> MoveFkColumnUpCommand { get; }
+    public DelegateCommand<FkColumnConfig> MoveFkColumnDownCommand { get; }
+    public DelegateCommand AddFkFilterParamCommand { get; }
+    public DelegateCommand<FkFilterParam> RemoveFkFilterParamCommand { get; }
+    public DelegateCommand AddFunctionParamCommand { get; }
+    public DelegateCommand<FunctionParam> RemoveFunctionParamCommand { get; }
+    public DelegateCommand AddReloadFieldCommand { get; }
+    public DelegateCommand<string> RemoveReloadFieldCommand { get; }
+    public DelegateCommand AddDataSourceConditionCommand { get; }
+    public DelegateCommand<DataSourceCondition> RemoveDataSourceConditionCommand { get; }
+
+    // ── Danh sách option tĩnh — SỞ HỮU tại đây từ B4.2 nhóm 3 ────────────────
+    /// <summary>Nguồn tham số TVF.</summary>
+    public List<string> FunctionParamSourceTypes { get; } = ["field", "system"];
+    /// <summary>Tham số hệ thống có sẵn.</summary>
+    public List<string> SystemKeyOptions { get; } = ["@TenantId", "@Today", "@CurrentUser"];
+    /// <summary>Kiểu dữ liệu hợp lệ cho tham số filter.</summary>
+    public List<string> FkParamTypes { get; } = ["String", "DateTime", "Int", "Decimal"];
+    /// <summary>Các phép so sánh hợp lệ trong DataSourceCondition.WhenOp.</summary>
+    public List<string> WhenOpOptions { get; } =
+        ["eq", "neq", "gt", "gte", "lt", "lte", "contains", "startsWith"];
     // Option list nhóm 2 — SỞ HỮU tại đây từ B4.2 nhóm 2 (root đã xóa).
     public List<string> EditBoxModeOptions { get; } = ["TextOnly", "CodeAndName", "Custom"];
     public List<string> TreeSelectableLevelOptions { get; } = ["all", "leaf", "branch"];
@@ -496,5 +645,218 @@ public sealed class FkLookupConfigVm : BindableBase
         RaisePropertyChanged(nameof(CbClearButton));
         RaisePropertyChanged(nameof(CbGroupFieldName));
         RaisePropertyChanged(nameof(CbDisabledFieldName));
+    }
+
+    // ═════════════════════════ B4.2 nhóm 3 — nguồn FK ═══════════════════════
+
+    /// <summary>True khi đang có cấu hình FK Lookup (root dùng để confirm trước khi đổi type).</summary>
+    internal bool HasFkSourceConfig =>
+        !string.IsNullOrWhiteSpace(_fkTableName)
+        || !string.IsNullOrWhiteSpace(_fkValueField)
+        || !string.IsNullOrWhiteSpace(_fkFunctionName)
+        || !string.IsNullOrWhiteSpace(_fkSelectSql)
+        || FkPopupColumns.Count > 0;
+
+    /// <summary>
+    /// Reset nguồn FK về mặc định (root gọi từ ClearFkLookupConfig trong lúc cờ đang-rebuild bật) —
+    /// gán backing trực tiếp + clear 5 collection, KHÔNG raise; root raise sau qua
+    /// <see cref="RaiseFkSourceProps"/> (giữ đúng tập prop root cũ raise).
+    /// </summary>
+    internal void ResetFkSourceState()
+    {
+        _queryMode       = "table";
+        _fkTableName     = "";
+        _fkValueField    = "";
+        _fkDisplayField  = "";
+        _fkFilterSql     = "";
+        _fkOrderBy       = "";
+        _fkSearchEnabled = true;
+        _fkFunctionName  = "";
+        _fkSelectSql     = "";
+        FkPopupColumns.Clear();
+        FkFilterParams.Clear();
+        FkFunctionParams.Clear();
+        ReloadOnChangeFields.Clear();
+        DataSourceConditions.Clear();
+    }
+
+    /// <summary>Raise sau reset nguồn FK — đúng tập prop mà root cũ raise trong ClearFkLookupConfig.</summary>
+    internal void RaiseFkSourceProps()
+    {
+        RaisePropertyChanged(nameof(QueryMode));
+        RaisePropertyChanged(nameof(IsTableMode));
+        RaisePropertyChanged(nameof(IsFunctionMode));
+        RaisePropertyChanged(nameof(IsSqlMode));
+        RaisePropertyChanged(nameof(FkTableName));
+        RaisePropertyChanged(nameof(FkValueField));
+        RaisePropertyChanged(nameof(FkDisplayField));
+    }
+
+    // ── Command handlers (từ root, B4.2 nhóm 3) ──────────────────────────────
+
+    /// <summary>Thêm 1 cột mới vào danh sách popup columns của LookupBox.</summary>
+    private void ExecuteAddFkColumn()
+    {
+        var col = new FkColumnConfig { FieldName = "", CaptionKey = "", Width = 150 };
+        WireFkColumnHandlers(col);
+        FkPopupColumns.Add(col);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>
+    /// Đăng ký handler PropertyChanged cho 1 FkColumnConfig (handler đặt tên
+    /// <see cref="OnFkColumnPropertyChanged"/>) — root gọi lại khi restore từ DB.
+    /// </summary>
+    internal void WireFkColumnHandlers(FkColumnConfig col)
+        => col.PropertyChanged += OnFkColumnPropertyChanged;
+
+    /// <summary>
+    /// Handler cột popup: FieldName đổi → tự sinh CaptionKey nếu key đang rỗng hoặc là auto-gen cũ;
+    /// mọi thay đổi → rebuild ControlPropsJson + IsDirty.
+    /// </summary>
+    private void OnFkColumnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (sender is not FkColumnConfig c) return;
+
+        // Auto-gen captionKey khi FieldName thay đổi
+        if (e.PropertyName == nameof(FkColumnConfig.FieldName))
+        {
+            var generated = GenerateCaptionKey(FkTableName, c.FieldName);
+            // Chỉ ghi đè nếu key đang rỗng hoặc user chưa nhập tay
+            // (kiểm tra theo pattern: key cũ = auto-gen của fieldName cũ → cho phép overwrite)
+            if (string.IsNullOrWhiteSpace(c.CaptionKey)
+                || c.CaptionKey.StartsWith(GetTablePrefix() + ".col.", StringComparison.OrdinalIgnoreCase))
+            {
+                // Gán trực tiếp không qua setter để tránh vòng lặp (setter gọi PropertyChanged lại)
+                c.CaptionKey = generated;
+                return; // CaptionKey.set sẽ kích hoạt PropertyChanged → RebuildControlPropsJson được gọi
+            }
+        }
+
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>
+    /// Handler chung cho item filter-param / function-param / data-source-condition / cột popup
+    /// ComboBox: mọi thay đổi → rebuild ControlPropsJson (thay lambda inline cũ ở root).
+    /// </summary>
+    private void OnFkItemPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        => _root.RebuildControlPropsJson();
+
+    /// <summary>Gắn handler rebuild-only cho item (root dùng khi restore cột popup ComboBox).</summary>
+    internal void WireRebuildOnChange(System.ComponentModel.INotifyPropertyChanged item)
+        => item.PropertyChanged += OnFkItemPropertyChanged;
+
+    /// <summary>Sinh i18n key theo pattern: {table_lower}.col.{column_snake_case}.</summary>
+    private static string GenerateCaptionKey(string? tableName, string? fieldName)
+    {
+        var table = string.IsNullOrWhiteSpace(tableName) ? "lookup" : tableName.ToLowerInvariant();
+        var col   = ToSnakeCase(fieldName ?? "");
+        return $"{table}.col.{col}";
+    }
+
+    /// <summary>Prefix table hiện tại (dùng để nhận biết auto-gen key).</summary>
+    private string GetTablePrefix()
+        => string.IsNullOrWhiteSpace(FkTableName) ? "lookup" : FkTableName.ToLowerInvariant();
+
+    /// <summary>Chuyển PascalCase / camelCase sang snake_case. VD: MaPhongBan → ma_phong_ban.</summary>
+    private static string ToSnakeCase(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        // Chèn dấu _ trước chữ hoa đứng sau chữ thường/số: MaPhongBan → Ma_Phong_Ban
+        var snake = System.Text.RegularExpressions.Regex.Replace(s, @"(?<=[a-z0-9])([A-Z])", "_$1");
+        return snake.ToLowerInvariant();
+    }
+
+    /// <summary>Xóa 1 cột khỏi danh sách popup columns của LookupBox.</summary>
+    private void ExecuteRemoveFkColumn(FkColumnConfig col)
+    {
+        FkPopupColumns.Remove(col);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Di chuyển cột popup lên 1 vị trí (giảm index).</summary>
+    private void ExecuteMoveFkColumnUp(FkColumnConfig col)
+    {
+        var idx = FkPopupColumns.IndexOf(col);
+        if (idx <= 0) return;
+        FkPopupColumns.Move(idx, idx - 1);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Di chuyển cột popup xuống 1 vị trí (tăng index).</summary>
+    private void ExecuteMoveFkColumnDown(FkColumnConfig col)
+    {
+        var idx = FkPopupColumns.IndexOf(col);
+        if (idx < 0 || idx >= FkPopupColumns.Count - 1) return;
+        FkPopupColumns.Move(idx, idx + 1);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Thêm 1 tham số động mới vào filterParams của LookupBox.</summary>
+    private void ExecuteAddFkFilterParam()
+    {
+        var param = new FkFilterParam { Param = "", FieldRef = "", Type = "String" };
+        param.PropertyChanged += OnFkItemPropertyChanged;
+        FkFilterParams.Add(param);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Xóa 1 tham số khỏi filterParams của LookupBox.</summary>
+    private void ExecuteRemoveFkFilterParam(FkFilterParam param)
+    {
+        FkFilterParams.Remove(param);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Thêm 1 tham số mới vào danh sách FunctionParams của TVF.</summary>
+    private void ExecuteAddFunctionParam()
+    {
+        var p = new FunctionParam { Name = "", SourceType = "field", Type = "String" };
+        p.PropertyChanged += OnFkItemPropertyChanged;
+        FkFunctionParams.Add(p);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Xóa 1 tham số khỏi FunctionParams.</summary>
+    private void ExecuteRemoveFunctionParam(FunctionParam p)
+    {
+        FkFunctionParams.Remove(p);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Thêm FieldCode vào danh sách reloadOnChange.</summary>
+    private void ExecuteAddReloadField()
+    {
+        var code = ReloadOnChangeInput.Trim();
+        if (string.IsNullOrEmpty(code) || ReloadOnChangeFields.Contains(code)) return;
+        ReloadOnChangeFields.Add(code);
+        ReloadOnChangeInput = "";
+        _root.RebuildControlPropsJson();
+        _root.RecomputeCascadeWarnings();
+    }
+
+    /// <summary>Xóa 1 FieldCode khỏi danh sách reloadOnChange.</summary>
+    private void ExecuteRemoveReloadField(string fieldCode)
+    {
+        ReloadOnChangeFields.Remove(fieldCode);
+        _root.RebuildControlPropsJson();
+        _root.RecomputeCascadeWarnings();
+    }
+
+    /// <summary>Thêm 1 điều kiện đổi bảng nguồn mới (rỗng) vào DataSourceConditions.</summary>
+    private void ExecuteAddDataSourceCondition()
+    {
+        var cond = new DataSourceCondition { WhenOp = "eq" };
+        cond.PropertyChanged += OnFkItemPropertyChanged;
+        DataSourceConditions.Add(cond);
+        _root.RebuildControlPropsJson();
+    }
+
+    /// <summary>Xóa 1 điều kiện khỏi DataSourceConditions.</summary>
+    private void ExecuteRemoveDataSourceCondition(DataSourceCondition cond)
+    {
+        DataSourceConditions.Remove(cond);
+        _root.RebuildControlPropsJson();
     }
 }

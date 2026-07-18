@@ -1371,353 +1371,6 @@
                             DataContext="{Binding FkLookup}"
                             Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}" />
 
-                        <!-- ── FK Lookup Config (LEGACY — hidden, kept for reference) ── -->
-                        <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
-                            <StackPanel>
-                                <TextBlock Text="Cấu hình FK Lookup" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,14" />
-
-                                <!-- ── Mode selector ──────────────────────────── -->
-                                <TextBlock Text="Chế độ truy vấn" FontSize="11" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AppTextSecondaryBrush}" Margin="0,0,0,8"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                                    <RadioButton Content="Bảng / View"
-                                             IsChecked="{Binding IsTableMode, Mode=OneWay}"
-                                             GroupName="QueryMode" Margin="0,0,16,0"
-                                             Command="{Binding SetQueryModeCommand}"
-                                             CommandParameter="table"/>
-                                    <RadioButton Content="Function (TVF)"
-                                             IsChecked="{Binding IsFunctionMode, Mode=OneWay}"
-                                             GroupName="QueryMode" Margin="0,0,16,0"
-                                             Command="{Binding SetQueryModeCommand}"
-                                             CommandParameter="function"/>
-                                    <RadioButton Content="SQL tùy chỉnh"
-                                             IsChecked="{Binding IsSqlMode, Mode=OneWay}"
-                                             GroupName="QueryMode"
-                                             Command="{Binding SetQueryModeCommand}"
-                                             CommandParameter="sql"/>
-                                </StackPanel>
-
-                                <!-- Cột Value + Display — chung 3 mode -->
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Cột Value (lưu vào DB)" FontSize="11"
-                                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                        <dxe:TextEdit Text="{Binding FkValueField, UpdateSourceTrigger=PropertyChanged}"
-                                                      Height="32" NullText="VD: PhongBan_Id"/>
-                                        <TextBlock Text="Alias SELECT hoặc cột FK int." FontSize="10"
-                                                   Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Cột Display (hiển thị)" FontSize="11"
-                                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                        <dxe:TextEdit Text="{Binding FkDisplayField, UpdateSourceTrigger=PropertyChanged}"
-                                                      Height="32" NullText="VD: Ten_PhongBan"/>
-                                        <TextBlock Text="Alias SELECT hoặc cột text." FontSize="10"
-                                                   Foreground="{StaticResource MutedBrush}" Margin="0,3,0,0"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <!-- ════ Panel: Bảng / View ════════════════ -->
-                                <StackPanel Visibility="{Binding IsTableMode, Converter={StaticResource BoolToVis}}">
-                                    <TextBlock Text="Tên bảng hoặc View" FontSize="11"
-                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                    <dxe:TextEdit Text="{Binding FkTableName, UpdateSourceTrigger=PropertyChanged}"
-                                                  Height="32" Margin="0,0,0,2"
-                                                  NullText="VD: DM_PhongBan  hoặc  vw_PhongBan_Full"/>
-                                    <TextBlock Text="Bảng hoặc View — View có thể chứa JOIN sẵn." FontSize="10"
-                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10"/>
-                                    <TextBlock Text="Filter SQL / WHERE (tùy chọn)" FontSize="11"
-                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                    <dxe:TextEdit Text="{Binding FkFilterSql, UpdateSourceTrigger=PropertyChanged}"
-                                                  Height="32" Margin="0,0,0,2"
-                                                  NullText="VD: Is_Active = 1 AND Tenant_Id = @TenantId"/>
-                                    <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,2,0,8">
-                                        <Run Text="Tham số hệ thống tự động: "/>
-                                        <Run Text="@TenantId  @Today  @CurrentUser"
-                                             FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <!-- ════ Panel: Function (TVF) ════════════ -->
-                                <StackPanel Visibility="{Binding IsFunctionMode, Converter={StaticResource BoolToVis}}">
-                                    <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="6" Padding="10,6"
-                                            Margin="0,0,0,10" BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1">
-                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppWarningDarkBrush}" TextWrapping="Wrap">
-                                            <Run Text="⚡ TVF: "/>
-                                            <Run Text="SELECT ... FROM fn_Tên(@P1, @P2)" FontFamily="Consolas"/>
-                                            <LineBreak/>
-                                            <Run Text="Thứ tự tham số phải khớp định nghĩa hàm trong DB."/>
-                                        </TextBlock>
-                                    </Border>
-                                    <TextBlock Text="Tên Function (TVF)" FontSize="11"
-                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                    <dxe:TextEdit Text="{Binding FkFunctionName, UpdateSourceTrigger=PropertyChanged}"
-                                                  Height="32" Margin="0,0,0,12" FontFamily="Consolas"
-                                                  NullText="VD: fn_GetPhongBanHieuLuc"/>
-                                    <DockPanel Margin="0,0,0,8">
-                                        <TextBlock Text="Tham số hàm (theo thứ tự)" FontSize="11" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
-                                        <Button Content="+ Thêm" DockPanel.Dock="Right" HorizontalAlignment="Right"
-                                                Command="{Binding AddFunctionParamCommand}"
-                                                Style="{StaticResource SmallSecondaryButtonStyle}"/>
-                                    </DockPanel>
-                                    <ItemsControl ItemsSource="{Binding FkFunctionParams}"
-                                                  AlternationCount="{Binding FkFunctionParams.Count}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border Background="{DynamicResource AppWarningSoftBrush}" CornerRadius="4"
-                                                        BorderBrush="{DynamicResource AppWarningLightBrush}" BorderThickness="1"
-                                                        Padding="10,8" Margin="0,0,0,6">
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="8"/>
-                                                            <ColumnDefinition Width="120"/>
-                                                            <ColumnDefinition Width="8"/>
-                                                            <ColumnDefinition Width="*"/>
-                                                            <ColumnDefinition Width="28"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <!-- Tên param -->
-                                                        <StackPanel Grid.Column="0">
-                                                            <TextBlock Text="@Tên tham số" FontSize="10"
-                                                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                            <dxe:TextEdit Height="28" FontFamily="Consolas" FontSize="11"
-                                                                          Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
-                                                                          NullText="VD: NgayHieuLuc"/>
-                                                        </StackPanel>
-                                                        <!-- Nguồn -->
-                                                        <StackPanel Grid.Column="2">
-                                                            <TextBlock Text="Nguồn giá trị" FontSize="10"
-                                                                       Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                            <dxe:ComboBoxEdit Height="28"
-                                                                              EditValue="{Binding SourceType, UpdateSourceTrigger=PropertyChanged}"
-                                                                              ItemsSource="{Binding DataContext.FunctionParamSourceTypes,
-                                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                        </StackPanel>
-                                                        <!-- FieldRef hoặc SystemKey -->
-                                                        <StackPanel Grid.Column="4">
-                                                            <StackPanel Visibility="{Binding IsFieldSource,
-                                                                                    Converter={StaticResource BoolToVis}}">
-                                                                <TextBlock Text="FieldCode trong form" FontSize="10"
-                                                                           Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                                <dxe:TextEdit Height="28"
-                                                                              Text="{Binding FieldRef, UpdateSourceTrigger=PropertyChanged}"
-                                                                              NullText="VD: NgayVaoLam"/>
-                                                            </StackPanel>
-                                                            <StackPanel Visibility="{Binding IsSystemSource,
-                                                                                    Converter={StaticResource BoolToVis}}">
-                                                                <TextBlock Text="Tham số hệ thống" FontSize="10"
-                                                                           Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                                                                <dxe:ComboBoxEdit Height="28"
-                                                                                  EditValue="{Binding SystemKey, UpdateSourceTrigger=PropertyChanged}"
-                                                                                  ItemsSource="{Binding DataContext.SystemKeyOptions,
-                                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                            </StackPanel>
-                                                        </StackPanel>
-                                                        <!-- Xóa -->
-                                                        <Button Grid.Column="5" Content="×" FontSize="16" FontWeight="Bold"
-                                                                Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
-                                                                BorderThickness="0" Cursor="Hand" VerticalAlignment="Center"
-                                                                Command="{Binding DataContext.RemoveFunctionParamCommand,
-                                                                          RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                CommandParameter="{Binding}"/>
-                                                    </Grid>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </StackPanel>
-
-                                <!-- ════ Panel: SQL tùy chỉnh ════════════ -->
-                                <StackPanel Visibility="{Binding IsSqlMode, Converter={StaticResource BoolToVis}}">
-                                    <Border Background="{DynamicResource AppDangerSoftBrush}" CornerRadius="6" Padding="10,6"
-                                            Margin="0,0,0,10" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1">
-                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppDangerDarkBrush}" TextWrapping="Wrap">
-                                            <Run Text="⚠ Chỉ dùng @Param — tuyệt đối không string interpolation.  "/>
-                                            <Run Text="Alias trong SELECT phải khớp Cột Value và Cột Display."/>
-                                        </TextBlock>
-                                    </Border>
-                                    <TextBlock Text="Full SELECT SQL" FontSize="11"
-                                               Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                    <dxe:TextEdit Text="{Binding FkSelectSql, UpdateSourceTrigger=PropertyChanged}"
-                                                  Height="90" AcceptsReturn="True"
-                                                  FontFamily="Cascadia Code, Consolas" FontSize="11"
-                                                  NullText="SELECT p.PhongBan_Id, p.Ten FROM DM_PhongBan p JOIN ... WHERE ..."/>
-                                    <TextBlock FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,8">
-                                        <Run Text="Tham số hệ thống tự động: "/>
-                                        <Run Text="@TenantId  @Today  @CurrentUser"
-                                             FontFamily="Consolas" Foreground="{DynamicResource AppSuccessDarkBrush}"/>
-                                    </TextBlock>
-                                </StackPanel>
-
-                                <!-- Filter Params — Table mode + SQL mode -->
-                                <Border Background="{DynamicResource AppSuccessSoftBrush}" CornerRadius="6" Padding="12,10"
-                                        Margin="0,0,0,12"
-                                        BorderBrush="{DynamicResource AppSuccessLightBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <DockPanel Margin="0,0,0,8">
-                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AppSuccessDarkBrush}"
-                                                       DockPanel.Dock="Left" VerticalAlignment="Center">
-                                                <Run Text="⚡ "/>
-                                                <Run Text="Tham số từ field khác trong form"/>
-                                            </TextBlock>
-                                            <Button Content="+ Thêm" DockPanel.Dock="Right"
-                                                    HorizontalAlignment="Right"
-                                                    Command="{Binding AddFkFilterParamCommand}"
-                                                    Style="{StaticResource SmallSecondaryButtonStyle}"/>
-                                        </DockPanel>
-
-                                        <!-- Danh sách params — mỗi param 1 card -->
-                                        <ItemsControl ItemsSource="{Binding FkFilterParams}">
-                                            <ItemsControl.ItemTemplate>
-                                                <DataTemplate>
-                                                    <Border Background="White" CornerRadius="4"
-                                                            BorderBrush="{DynamicResource AppSuccessLightBrush}" BorderThickness="1"
-                                                            Padding="10,8" Margin="0,0,0,6">
-                                                        <Grid>
-                                                            <Grid.ColumnDefinitions>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="10"/>
-                                                                <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="10"/>
-                                                                <ColumnDefinition Width="100"/>
-                                                                <ColumnDefinition Width="28"/>
-                                                            </Grid.ColumnDefinitions>
-                                                            <!-- @Param alias -->
-                                                            <StackPanel Grid.Column="0">
-                                                                <TextBlock FontSize="10" Margin="0,0,0,3"
-                                                                           Foreground="{StaticResource MutedBrush}">
-                                                                    <Run Text="Alias " FontWeight="SemiBold"/>
-                                                                    <Run Text="(tên dùng sau @ trong SQL)"/>
-                                                                </TextBlock>
-                                                                <dxe:TextEdit Height="28"
-                                                                              Text="{Binding Param, UpdateSourceTrigger=PropertyChanged}"
-                                                                              NullText="VD: TuNgay"
-                                                                              FontFamily="Consolas" FontSize="11"/>
-                                                                <TextBlock FontSize="9" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0">
-                                                                    <Run Text="Dùng trong SQL: "/>
-                                                                    <Run Text="@TuNgay" FontFamily="Consolas" Foreground="{StaticResource AccentDarkBrush}"/>
-                                                                </TextBlock>
-                                                            </StackPanel>
-                                                            <!-- FieldRef -->
-                                                            <StackPanel Grid.Column="2">
-                                                                <TextBlock FontSize="10" Margin="0,0,0,3"
-                                                                           Foreground="{StaticResource MutedBrush}">
-                                                                    <Run Text="Lấy giá trị từ field " FontWeight="SemiBold"/>
-                                                                    <Run Text="(FieldCode trong form)"/>
-                                                                </TextBlock>
-                                                                <dxe:TextEdit Height="28"
-                                                                              Text="{Binding FieldRef, UpdateSourceTrigger=PropertyChanged}"
-                                                                              NullText="VD: NgayVaoLam"/>
-                                                                <TextBlock FontSize="9" Foreground="{DynamicResource AppTextMutedBrush}" Margin="0,2,0,0"
-                                                                           Text="Field trên form cung cấp giá trị lúc runtime"/>
-                                                            </StackPanel>
-                                                            <!-- Kiểu -->
-                                                            <StackPanel Grid.Column="4">
-                                                                <TextBlock Text="Kiểu dữ liệu" FontSize="10"
-                                                                           Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                                                <dxe:ComboBoxEdit Height="28"
-                                                                                  ItemsSource="{Binding DataContext.FkParamTypes,
-                                                                                    RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                                  EditValue="{Binding Type, UpdateSourceTrigger=PropertyChanged}"
-/>
-                                                            </StackPanel>
-                                                            <!-- Xóa -->
-                                                            <Button Grid.Column="5" Content="×"
-                                                                    FontSize="16" FontWeight="Bold"
-                                                                    Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
-                                                                    BorderThickness="0" Cursor="Hand"
-                                                                    VerticalAlignment="Bottom" Margin="4,0,0,2"
-                                                                    Command="{Binding DataContext.RemoveFkFilterParamCommand,
-                                                                              RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                                    CommandParameter="{Binding}"/>
-                                                        </Grid>
-                                                    </Border>
-                                                </DataTemplate>
-                                            </ItemsControl.ItemTemplate>
-                                        </ItemsControl>
-
-                                        <!-- Ghi chú -->
-                                        <TextBlock FontSize="10" Foreground="{DynamicResource AppSuccessDarkBrush}" Margin="0,6,0,0">
-                                            <Run Text="Dùng trong filterSql như: "/>
-                                            <Run Text="Ngay_Hieu_Luc &lt;= @NgayVaoLam" FontFamily="Consolas"/>
-                                            <LineBreak/>
-                                            <Run Text="Khi field nguồn thay đổi → lookup tự reload."/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Order By + Search enabled — 2 cột ngang -->
-                                <Grid Margin="0,0,0,16">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="12"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Sắp xếp (ORDER BY)" FontSize="11"
-                                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,0,3"/>
-                                        <dxe:TextEdit Text="{Binding FkOrderBy, UpdateSourceTrigger=PropertyChanged}"
-                                                      Height="32" NullText="VD: Ten_PhongBan ASC"/>
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
-                                        <dxe:CheckEdit Content="Cho phép tìm kiếm"
-                                                       IsChecked="{Binding FkSearchEnabled}"
-                                                       FontSize="12"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <!-- Cột popup -->
-                                <DockPanel Margin="0,0,0,8">
-                                    <TextBlock Text="Cột hiển thị trong popup" FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AppTextSecondaryBrush}" DockPanel.Dock="Left" VerticalAlignment="Center"/>
-                                    <Button Content="+ Thêm cột" DockPanel.Dock="Right"
-                                            Command="{Binding AddFkColumnCommand}"
-                                            HorizontalAlignment="Right"
-                                            Style="{StaticResource SmallSecondaryButtonStyle}"/>
-                                </DockPanel>
-
-                                <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                                        CornerRadius="6" Padding="0" Margin="0,0,0,4">
-                                    <dxg:GridControl ItemsSource="{Binding FkPopupColumns}"
-                                                     MaxHeight="200" AutoPopulateColumns="False">
-                                        <dxg:GridControl.View>
-                                            <dxg:TableView ShowGroupPanel="False"
-                                                           AllowEditing="True"
-                                                           NavigationStyle="Cell"
-                                                           ShowIndicator="False"
-                                                           RowMinHeight="30"/>
-                                        </dxg:GridControl.View>
-                                        <dxg:GridControl.Columns>
-                                            <dxg:GridColumn FieldName="FieldName" Header="Tên cột DB"    Width="150"/>
-                                            <dxg:GridColumn FieldName="Caption"   Header="Tiêu đề"       Width="*"/>
-                                            <dxg:GridColumn FieldName="Width"     Header="Rộng (px)"     Width="80"/>
-                                            <dxg:GridColumn Header=" " Width="36" AllowEditing="False"
-                                                            AllowSorting="False" AllowResizing="False">
-                                                <dxg:GridColumn.CellTemplate>
-                                                    <DataTemplate>
-                                                        <Button Content="×" FontSize="14" FontWeight="Bold"
-                                                                Foreground="{DynamicResource AppDangerBrush}" Background="Transparent"
-                                                                BorderThickness="0" Cursor="Hand"
-                                                                Command="{Binding DataContext.RemoveFkColumnCommand,
-                                                                          RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
-                                                                CommandParameter="{Binding Row}"/>
-                                                    </DataTemplate>
-                                                </dxg:GridColumn.CellTemplate>
-                                            </dxg:GridColumn>
-                                        </dxg:GridControl.Columns>
-                                    </dxg:GridControl>
-                                </Border>
-                                <TextBlock Text="Các cột này hiển thị trong popup dropdown khi user click chọn."
-                                           FontSize="10" Foreground="{StaticResource MutedBrush}"/>
-                            </StackPanel>
-                        </Border>
 
                         <!-- ── Multi-Trigger reload (Migration 068) ──────────────────────────
                              Danh sách field cha → runtime reload khi BẤT KỲ field nào đổi. Lưu ở cột
@@ -1725,7 +1378,8 @@
                              dùng cho TVF/Full SQL hoặc field cha KHÔNG có trong Filter SQL. -->
                         <Border Style="{StaticResource SectionCardStyle}"
                                 Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
-                            <StackPanel>
+                            <!-- State ReloadOnChange* ở VM con (B4.2 nhóm 3) → DataContext=FkLookup. -->
+                            <StackPanel DataContext="{Binding FkLookup}">
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
                                                Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
@@ -1754,7 +1408,7 @@
                                                     <Button Content="×" FontSize="12" FontWeight="Bold"
                                                             Foreground="{DynamicResource AppAccentDarkBrush}" Background="Transparent"
                                                             BorderThickness="0" Cursor="Hand" Margin="6,0,0,0"
-                                                            Command="{Binding DataContext.RemoveReloadFieldCommand,
+                                                            Command="{Binding DataContext.FkLookup.RemoveReloadFieldCommand,
                                                                       RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"/>
                                                 </StackPanel>
@@ -1787,7 +1441,8 @@
                         <!-- ── dataSourceConditions ───────────────────────── -->
                         <Border Style="{StaticResource SectionCardStyle}"
                                 Visibility="{Binding IsFkLookupEditor, Converter={StaticResource BoolToVis}}">
-                            <StackPanel>
+                            <!-- State DataSourceConditions ở VM con (B4.2 nhóm 3) → DataContext=FkLookup. -->
+                            <StackPanel DataContext="{Binding FkLookup}">
                                 <DockPanel Margin="0,0,0,10">
                                     <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
                                                Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
@@ -1818,7 +1473,7 @@
                                                                 FontSize="11" Foreground="{DynamicResource AppDangerBrush}"
                                                                 Background="Transparent" BorderThickness="0"
                                                                 Cursor="Hand"
-                                                                Command="{Binding DataContext.RemoveDataSourceConditionCommand,
+                                                                Command="{Binding DataContext.FkLookup.RemoveDataSourceConditionCommand,
                                                                           RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"/>
                                                     </DockPanel>
@@ -1843,7 +1498,7 @@
                                                             <TextBlock Text="Phép so sánh" FontSize="10"
                                                                        Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                                                             <dxe:ComboBoxEdit Height="28"
-                                                                              ItemsSource="{Binding DataContext.WhenOpOptions,
+                                                                              ItemsSource="{Binding DataContext.FkLookup.WhenOpOptions,
                                                                                 RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                               EditValue="{Binding WhenOp, UpdateSourceTrigger=PropertyChanged}"
 />
@@ -1896,40 +1551,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- ── Kiểm tra & Diễn giải (LEGACY — đã chuyển vào LookupBoxPropsPanel) ── -->
-                        <Border Style="{StaticResource SectionCardStyle}" Visibility="Collapsed">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,10">
-                                    <TextBlock DockPanel.Dock="Left" FontSize="13" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource AppTextSecondaryBrush}" VerticalAlignment="Center">
-                                        <Run Text="🔍 "/>
-                                        <Run Text="Kiểm tra &amp; Diễn giải cấu hình"/>
-                                    </TextBlock>
-                                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right"
-                                            Command="{Binding ExplainConfigCommand}"
-                                            Style="{StaticResource SmallSecondaryButtonStyle}">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="▶ " FontSize="10"/>
-                                            <TextBlock Text="Diễn giải"/>
-                                        </StackPanel>
-                                    </Button>
-                                </DockPanel>
-                                <TextBlock FontSize="11" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"
-                                           Text="Bấm Diễn giải để kiểm tra toàn bộ cấu hình bằng tiếng Việt trước khi lưu."/>
-
-                                <!-- Kết quả diễn giải -->
-                                <Border Visibility="{Binding HasConfigExplanation, Converter={StaticResource BoolToVis}}"
-                                        Background="{DynamicResource AppSurfaceMutedBrush}" CornerRadius="6" Padding="12"
-                                        BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
-                                    <TextBox Text="{Binding ConfigExplanation, Mode=OneWay}"
-                                             IsReadOnly="True"
-                                             FontFamily="Cascadia Code, Consolas" FontSize="11"
-                                             Foreground="{DynamicResource AppTextBrush}"
-                                             Background="Transparent" BorderThickness="0"
-                                             TextWrapping="Wrap" AcceptsReturn="True"/>
-                                </Border>
-                            </StackPanel>
-                        </Border>
 
                     </StackPanel>
                     </ScrollViewer>
