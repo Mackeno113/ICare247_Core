@@ -1,6 +1,18 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-16 (session 87 — switcher cây + màn Người dùng + phân quyền cây công ty + spec 31 + PICKER-P2). Lịch sử → [session_history.md](session_history.md).
+> Cập nhật: 2026-07-16 (session 87 — authz cây công ty + spec 31 P2/P3/P4 + refactor FieldConfigViewModel B1→B4.2). Lịch sử → [session_history.md](session_history.md).
+> **Task tiếp theo gợi ý:** ① REFACTOR B4.2 nhóm 2 (EditBox/Tree/AddNew → FkLookupConfigVm — xem TASKS.md khối REFACTOR có đủ lộ trình nhóm 2/3/4 + B5) · ② user chạy migration db/082+083+084 bằng SSMS · ③ màn Phòng ban (khách hàng đầu tiên của IcCompanyPicker + IcAddressBlock).
+
+## Session 87 (tiếp) — REFACTOR FieldConfigViewModel (WPF 4.030 dòng) — ĐANG DỞ B4.2
+
+**Kế hoạch 5 bước đã duyệt** (phân tích 8 nhóm trách nhiệm + code smell nằm trong chat; tóm tắt + trạng thái từng bước ở TASKS.md khối "REFACTOR FieldConfigViewModel"). Nguyên tắc: không đổi hành vi/XAML surface, mỗi bước 1 commit build 0W/0E.
+
+**ĐÃ XONG (commit theo thứ tự):** B1 3 service thuần (`a3d63fa`/`3313e69`/`904b3f8` — ControlPropsJsonService/FieldI18nKeyService/FieldConfigExplainService) · B2 FieldNavigatorVm (`59e372f`/`3c47dee` — XAML → Navigator.*) · B3 FieldRulesEventsVm (`d329b09` — fix async void DeleteEvent, XAML → RulesEvents.*) · B4.1 FkLookupConfigVm FACADE strangler (`534f467` — 2 panel DataContext=FkLookup, ~65 member ủy quyền + bridge notify re-raise) · B4.2 nhóm 1 (`84a4a97` — state Cb* + Sys_Lookup tĩnh SỞ HỮU trong con, hook internal NotifyLookupPropChanged giữ guard rebuild). Root VM 4.030 → **2.597 dòng**.
+
+**DỞ DANG — làm tiếp theo đúng công thức nhóm 1:** B4.2 nhóm 2 (EditBox/Tree/AddNew: EditBoxMode/CodeField/ImportGlobalCode/DropDownW-H/ReloadTriggerField/ParentColumn/TreeSelectableLevel/AllowAddNew/AddFormCode/AvailableFormCodes + LoadFormCodesAsync) → nhóm 3 (QueryMode + Fk* + 5 collection + 13 command + WireFkColumnHandlers → handler đặt tên diệt lambda +=; kèm xóa ~500 dòng XAML legacy Collapsed "FK Lookup Config" trong FieldConfigView) → nhóm 4 (template P4 + cascade + diễn giải) → B5 phân rã ResetFieldStateForNew theo VM con.
+**Công thức nhóm:** dời backing field + prop vào FkLookupConfigVm (side-effect qua hook root), root truy cập FkLookup.X, restore/reset gói thành method internal của con, XAML KHÔNG đụng (đã DataContext=FkLookup từ B4.1). Cờ `_isRebuildingProps` vẫn ở root.
+
+**Smoke chưa chạy** (user cần restart ConfigStudio bản mới): navigator (chuyển field/↑↓/bulk move), 2 tab Rules-Events (xóa có confirm), panel LookupBox đủ mục (3 radio mode, lưới popup, mẫu lookup P4, Diễn giải), panel ComboBox (search props + preview Sys_Lookup), sửa → Lưu → mở lại đối chiếu.
 
 ## Session 87 (tiếp) — Spec 31 Shared Pickers + PICKER-P2
 
