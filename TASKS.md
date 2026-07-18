@@ -25,8 +25,19 @@ Kế hoạch đầy đủ → `C:\Users\Mackeno_01\.claude\plans\inherited-float
   name". Đây là quy ước sẵn có của dự án (mọi ALTER Ui_View trước đây đều không try/catch phòng thủ),
   không phải rủi ro mới — nhưng PHẢI nhớ thứ tự: chạy db/085+086 TRƯỚC restart API.
   **CHƯA smoke runtime** (cần dữ liệu cây mẫu để test kéo-thả thật).
-- [ ] Feature A — Lọc TreeList/Grid theo công ty (declarative, `Ui_View.Scope_By_Company` + mở rộng
-  `GetDataAsync` bind `@NguoiDungID`/`@CongTyID_Active` qua `fnt_CongTyTheoQuyen`) — CHƯA làm.
+- [x] **Feature A — Lọc TreeList/Grid theo công ty (declarative)**: `db/087` `Ui_View.Scope_By_Company`
+  (Config DB) + fix `Sys_Context_Param.CongTyID_Active.Validate_Sql` dùng thẳng `fnt_CongTyTheoQuyen`
+  (khớp đúng nhánh vai trò, cùng lý do đã sửa ở nhóm B4.2 trước). Backend: mở rộng
+  `ViewRepository.GetDataAsync` — khi `ScopeByCompany=true` kiểm tra bảng nguồn có cột `CongTy_Id`
+  qua `sys.columns` (không có → bỏ qua, log warning, không chặn màn); có thì JOIN
+  `fnt_CongTyTheoQuyen(@NguoiDungID)` (quyền cứng) + lọc `@CongTyID_Active` (switcher, mềm), bind
+  qua `_contextResolver.ResolveAsync` (tái dùng service sẵn có). `ScopeByCompany` là cờ nội bộ
+  backend, KHÔNG lộ ra client DTO (khác `AllowReorder`) vì không ảnh hưởng render UI. WPF: checkbox
+  "Scope_By_Company" tab Cơ bản, chỉ hiện khi Source_Type=Table/View (`CanScopeByCompany`, ẩn với
+  Sp/Sql vì tự viết SQL được). GitNexus `impact GetDataAsync`: risk LOW (2 caller trực tiếp) —
+  `detect-changes` tổng vẫn "critical" nhưng CÙNG nguyên nhân đã cảnh báo ở Feature C (chung hub
+  `GetByCodeAsync`, `db/087` CŨNG phải chạy trước deploy cùng lý do). Build Application+Infrastructure
+  +WPF 0W/0E.
 - [ ] Feature B — Self-ref parent picker dùng chung (`Ui_Field_Lookup.Query_Mode='self_parent'`,
   loại chính nó + hậu duệ qua `@__SelfId`) — CHƯA làm.
 - [ ] Màn Phòng ban (no-code, dùng cả 3 control) — HOÃN tới khi A/B/C xong + verify.

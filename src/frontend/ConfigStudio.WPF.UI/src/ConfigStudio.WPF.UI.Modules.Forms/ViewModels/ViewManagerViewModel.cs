@@ -266,7 +266,27 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     }
 
     private string _editSourceType = "Table";
-    public string EditSourceType { get => _editSourceType; set => SetProperty(ref _editSourceType, value); }
+    public string EditSourceType
+    {
+        get => _editSourceType;
+        set
+        {
+            if (SetProperty(ref _editSourceType, value))
+                RaisePropertyChanged(nameof(CanScopeByCompany));
+        }
+    }
+
+    /// <summary>
+    /// Hiện checkbox "Lọc theo công ty" (Feature A) — chỉ khi nguồn đọc trực tiếp (Table/View);
+    /// Sp/Sql tự viết SQL nên không cần cờ này (đã có thể tự JOIN fnt_CongTyTheoQuyen tay).
+    /// </summary>
+    public bool CanScopeByCompany =>
+        string.Equals(EditSourceType, "Table", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(EditSourceType, "View", StringComparison.OrdinalIgnoreCase);
+
+    private bool _editScopeByCompany;
+    /// <summary>Ui_View.Scope_By_Company — tự JOIN fnt_CongTyTheoQuyen + lọc @CongTyID_Active.</summary>
+    public bool EditScopeByCompany { get => _editScopeByCompany; set => SetProperty(ref _editScopeByCompany, value); }
 
     private string _editSourceObject = "";
     public string EditSourceObject { get => _editSourceObject; set => SetProperty(ref _editSourceObject, value); }
@@ -682,6 +702,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditViewCodeSuffix = StripViewTypePrefix(h.ViewCode, h.ViewType);
         EditTable = Tables.FirstOrDefault(t => t.TableId == h.TableId);
         EditSourceType = h.SourceType;
+        EditScopeByCompany = h.ScopeByCompany;
         EditSourceObject = h.SourceObject ?? "";
         EditTitleKey = h.TitleKey ?? "";
         EditEditForm = h.EditFormId.HasValue ? Forms.FirstOrDefault(f => f.FormId == h.EditFormId.Value) : null;
@@ -784,6 +805,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditViewCodeSuffix = "";
         EditTable = null;
         EditSourceType = "Table";
+        EditScopeByCompany = false;
         EditSourceObject = "";
         EditTitleKey = "";
         EditEditForm = null;
@@ -985,6 +1007,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         ViewType = EditViewType,
         TableId = EditTable!.TableId,
         SourceType = EditSourceType,
+        ScopeByCompany = EditScopeByCompany,
         SourceObject = EditSourceObject,
         TitleKey = EditTitleKey,
         EditFormId = EditEditForm?.FormId,

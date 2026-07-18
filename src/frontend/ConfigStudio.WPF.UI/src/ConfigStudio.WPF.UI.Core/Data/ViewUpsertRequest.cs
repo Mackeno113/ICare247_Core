@@ -18,6 +18,7 @@ public sealed class ViewUpsertRequest
     public string ViewType { get; set; } = "Grid";
     public int TableId { get; set; }
     public string SourceType { get; set; } = "Table";
+    public bool ScopeByCompany { get; set; }
     public string? SourceObject { get; set; }
     public string? TitleKey { get; set; }
     public int? EditFormId { get; set; }

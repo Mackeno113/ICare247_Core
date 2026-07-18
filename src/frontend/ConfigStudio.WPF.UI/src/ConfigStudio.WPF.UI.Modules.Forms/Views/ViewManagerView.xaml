@@ -283,6 +283,12 @@
                                         </StackPanel>
                                     </Grid>
 
+                                    <!-- Feature A (bộ control TreeList/Lookup dùng chung): chỉ Table/View mới có cờ này —
+                                         Sp/Sql tự viết SQL, có thể tự JOIN fnt_CongTyTheoQuyen tay. -->
+                                    <dxe:CheckEdit Content="Scope_By_Company — tự lọc theo công ty (quyền + đang chọn)"
+                                                   IsChecked="{Binding EditScopeByCompany}" Margin="0,0,0,10"
+                                                   Visibility="{Binding CanScopeByCompany, Converter={StaticResource BoolToVis}}" />
+
                                     <TextBlock Text="Title_Key (i18n tiêu đề màn)" Style="{StaticResource EditorLabel}" />
                                     <DockPanel Margin="0,0,0,10">
                                         <dx:SimpleButton DockPanel.Dock="Right" Content="🌐 Dịch" Width="64" Margin="6,0,0,0"

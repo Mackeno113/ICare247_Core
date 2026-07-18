@@ -81,6 +81,14 @@ public sealed class ViewMetadata
     /// <summary>Cho phép kéo-thả sắp xếp (ADR-027) — chỉ hiệu lực khi <see cref="ViewType"/>=TreeList.</summary>
     public bool AllowReorder { get; init; }
 
+    /// <summary>
+    /// Tự lọc theo công ty (Feature A — bộ control TreeList/Lookup dùng chung): JOIN
+    /// <c>fnt_CongTyTheoQuyen(@NguoiDungID)</c> (ranh giới quyền cứng) + <c>@CongTyID_Active</c>
+    /// (company-switcher, mềm). Chỉ hiệu lực khi bảng/view nguồn có cột <c>CongTy_Id</c> — repository
+    /// tự kiểm tra qua sys.columns, không có thì bỏ qua (phòng thủ, không chặn màn).
+    /// </summary>
+    public bool ScopeByCompany { get; init; }
+
     // ── Panel lọc trái (lưới nâng cao) — chỉ hiệu lực khi SourceType ∈ {Sp, Sql} ──
     /// <summary>Bật panel lọc trái (Ui_View.Filter_Panel_Enabled).</summary>
     public bool FilterPanelEnabled { get; init; }

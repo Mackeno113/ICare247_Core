@@ -38,7 +38,7 @@ public sealed class ViewDataService : IViewDataService
         var sql =
             "SELECT v.View_Id AS ViewId, v.View_Code AS ViewCode, v.View_Type AS ViewType,\n" +
             "       v.Table_Id AS TableId, ISNULL(st.Table_Code, '') AS TableCode,\n" +
-            "       v.Source_Type AS SourceType, v.Source_Object AS SourceObject,\n" +
+            "       v.Source_Type AS SourceType, v.Scope_By_Company AS ScopeByCompany, v.Source_Object AS SourceObject,\n" +
             "       v.Title_Key AS TitleKey, v.Edit_Form_Id AS EditFormId,\n" +
             "       v.Page_Size AS PageSize, v.Allow_Paging AS AllowPaging, v.Virtual_Scroll AS VirtualScroll,\n" +
             "       v.Show_Filter_Row AS ShowFilterRow, v.Show_Group_Panel AS ShowGroupPanel,\n" +
@@ -76,7 +76,7 @@ public sealed class ViewDataService : IViewDataService
         var headerSql =
             "SELECT v.View_Id AS ViewId, v.View_Code AS ViewCode, v.View_Type AS ViewType,\n" +
             "       v.Table_Id AS TableId, ISNULL(st.Table_Code, '') AS TableCode,\n" +
-            "       v.Source_Type AS SourceType, v.Source_Object AS SourceObject,\n" +
+            "       v.Source_Type AS SourceType, v.Scope_By_Company AS ScopeByCompany, v.Source_Object AS SourceObject,\n" +
             "       v.Title_Key AS TitleKey, v.Edit_Form_Id AS EditFormId,\n" +
             "       v.Page_Size AS PageSize, v.Allow_Paging AS AllowPaging, v.Virtual_Scroll AS VirtualScroll,\n" +
             "       v.Show_Filter_Row AS ShowFilterRow, v.Show_Group_Panel AS ShowGroupPanel,\n" +
@@ -192,7 +192,7 @@ public sealed class ViewDataService : IViewDataService
             if (request.ViewId is null or 0)
             {
                 const string insertSql =
-                    "INSERT INTO dbo.Ui_View (View_Code, View_Type, Table_Id, Source_Type, Source_Object,\n" +
+                    "INSERT INTO dbo.Ui_View (View_Code, View_Type, Table_Id, Source_Type, Scope_By_Company, Source_Object,\n" +
                     "    Title_Key, Edit_Form_Id, Page_Size, Allow_Paging, Virtual_Scroll, Show_Filter_Row,\n" +
                     "    Show_Group_Panel, Show_Search_Box, Show_Column_Chooser, Selection_Mode, Allow_Add,\n" +
                     "    Allow_Edit, Allow_Delete, Allow_Export, Export_Formats, Export_File_Name_Key, Allow_Print,\n" +
@@ -200,7 +200,7 @@ public sealed class ViewDataService : IViewDataService
                     "    Filter_Collapsible, Auto_Search_On_Load, Search_Label_Key, Reset_Label_Key,\n" +
                     "    Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
                     "    Version, Is_Active, Created_At, Updated_At, Description)\n" +
-                    "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @SourceObject, @TitleKey, @EditFormId,\n" +
+                    "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @ScopeByCompany, @SourceObject, @TitleKey, @EditFormId,\n" +
                     "    @PageSize, @AllowPaging, @VirtualScroll, @ShowFilterRow, @ShowGroupPanel, @ShowSearchBox,\n" +
                     "    @ShowColumnChooser, @SelectionMode, @AllowAdd, @AllowEdit, @AllowDelete, @AllowExport,\n" +
                     "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel, @AllowReorder,\n" +
@@ -219,7 +219,7 @@ public sealed class ViewDataService : IViewDataService
                 p.Add("Version", request.Version);
                 const string updateSql =
                     "UPDATE dbo.Ui_View SET View_Code = @ViewCode, View_Type = @ViewType, Table_Id = @TableId,\n" +
-                    "    Source_Type = @SourceType, Source_Object = @SourceObject, Title_Key = @TitleKey,\n" +
+                    "    Source_Type = @SourceType, Scope_By_Company = @ScopeByCompany, Source_Object = @SourceObject, Title_Key = @TitleKey,\n" +
                     "    Edit_Form_Id = @EditFormId, Page_Size = @PageSize, Allow_Paging = @AllowPaging,\n" +
                     "    Virtual_Scroll = @VirtualScroll, Show_Filter_Row = @ShowFilterRow,\n" +
                     "    Show_Group_Panel = @ShowGroupPanel, Show_Search_Box = @ShowSearchBox,\n" +
@@ -322,6 +322,7 @@ public sealed class ViewDataService : IViewDataService
         p.Add("ViewType", string.IsNullOrWhiteSpace(r.ViewType) ? "Grid" : r.ViewType);
         p.Add("TableId", r.TableId);
         p.Add("SourceType", string.IsNullOrWhiteSpace(r.SourceType) ? "Table" : r.SourceType);
+        p.Add("ScopeByCompany", r.ScopeByCompany);
         p.Add("SourceObject", NullIfEmpty(r.SourceObject));
         p.Add("TitleKey", NullIfEmpty(r.TitleKey));
         p.Add("EditFormId", r.EditFormId);

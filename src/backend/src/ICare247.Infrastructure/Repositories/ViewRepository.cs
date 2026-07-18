@@ -88,6 +88,7 @@ public sealed partial class ViewRepository : IViewRepository
                    v.Parent_Field         AS ParentField,
                    v.Expand_Level         AS ExpandLevel,
                    v.Allow_Reorder        AS AllowReorder,
+                   v.Scope_By_Company     AS ScopeByCompany,
                    v.Filter_Panel_Enabled  AS FilterPanelEnabled,
                    v.Filter_Panel_Position AS FilterPanelPosition,
                    v.Filter_Collapsible    AS FilterCollapsible,
@@ -277,6 +278,7 @@ public sealed partial class ViewRepository : IViewRepository
             ParentField = header.ParentField,
             ExpandLevel = header.ExpandLevel,
             AllowReorder = header.AllowReorder,
+            ScopeByCompany = header.ScopeByCompany,
             FilterPanelEnabled = header.FilterPanelEnabled,
             FilterPanelPosition = header.FilterPanelPosition,
             FilterCollapsible = header.FilterCollapsible,
@@ -373,15 +375,45 @@ public sealed partial class ViewRepository : IViewRepository
 
         var fromSql = $"{table} AS b{string.Concat(joinSql)}";
 
+        using var data = _dataDb.CreateConnection();
+
         var dp = new DynamicParameters();
-        var whereSql = "";
+        var whereClauses = new List<string>();
         if (!string.IsNullOrWhiteSpace(search))
         {
             // CAST sang NVARCHAR để LIKE hoạt động trên mọi kiểu cột (không cần biết NetType).
-            whereSql = " WHERE (" + string.Join(" OR ",
-                searchExprs.Select(e => $"CAST({e} AS NVARCHAR(4000)) LIKE @Search")) + ")";
+            whereClauses.Add("(" + string.Join(" OR ",
+                searchExprs.Select(e => $"CAST({e} AS NVARCHAR(4000)) LIKE @Search")) + ")");
             dp.Add("Search", $"%{search.Trim()}%");
         }
+
+        // ── Feature A (bộ control dùng chung): tự lọc theo công ty — JOIN fnt_CongTyTheoQuyen
+        // (ranh giới quyền cứng) + @CongTyID_Active (company-switcher, mềm). Chỉ áp khi bảng/view
+        // nguồn CÓ cột CongTy_Id (kiểm qua sys.columns) — không có thì bỏ qua, không chặn màn. ──
+        if (view.ScopeByCompany)
+        {
+            var hasCongTyCol = await data.ExecuteScalarAsync<int?>(new CommandDefinition(
+                "SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@Table) AND name = 'CongTy_Id'",
+                new { Table = table }, cancellationToken: ct));
+
+            if (hasCongTyCol is not null)
+            {
+                whereClauses.Add(
+                    "b.[CongTy_Id] IN (SELECT Id FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID)) " +
+                    "AND (@CongTyID_Active = 0 OR b.[CongTy_Id] = @CongTyID_Active)");
+                var ctxValues = await _contextResolver.ResolveAsync(["NguoiDungID", "CongTyID_Active"], ct);
+                foreach (var (name, value) in ctxValues)
+                    dp.Add(name, value);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "View '{ViewCode}': Scope_By_Company bật nhưng bảng nguồn không có cột CongTy_Id — bỏ qua lọc.",
+                    view.ViewCode);
+            }
+        }
+
+        var whereSql = whereClauses.Count > 0 ? " WHERE " + string.Join(" AND ", whereClauses) : "";
 
         dp.Add("Skip", Math.Max(0, (page - 1) * pageSize));
         dp.Add("Take", pageSize < 1 ? 50 : pageSize);
@@ -392,7 +424,6 @@ public sealed partial class ViewRepository : IViewRepository
             $"ORDER BY {Bracket(orderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         var countSql = $"SELECT COUNT(*) FROM {fromSql}{whereSql}";
 
-        using var data = _dataDb.CreateConnection();
         var rows = await data.QueryAsync(new CommandDefinition(listSql, dp, cancellationToken: ct));
         var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, dp, cancellationToken: ct));
 

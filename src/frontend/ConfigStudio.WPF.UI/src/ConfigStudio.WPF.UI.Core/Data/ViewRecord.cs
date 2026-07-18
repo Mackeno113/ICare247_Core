@@ -17,6 +17,7 @@ public sealed class ViewRecord
     public int TableId { get; init; }
     public string TableCode { get; init; } = "";              // join Sys_Table để hiển thị
     public string SourceType { get; init; } = "Table";        // Table | View | Sp | Api
+    public bool ScopeByCompany { get; init; }                 // Feature A: tự lọc theo công ty (Table/View)
     public string? SourceObject { get; init; }
     public string? TitleKey { get; init; }
     public int? EditFormId { get; init; }
