@@ -3,12 +3,10 @@
 > Cập nhật: 2026-07-19 (session 90 — EditorType **AddressBox** cho form động: nối IcAddressBlock vào
 > engine no-code, cơ chế 2-field companion-ẩn; + fix SpinEdit ViewManager; session 89 fix bug ④
 > query-mode). Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái:** AddressBox build Web+WPF 0W/0E — **runtime user đang test trên màn Công ty** (đã
-> render khối; fix JsonElement để tỉnh/xã resolve khi Sửa — chờ user rebuild nghiệm thu).
-> **Task tiếp theo gợi ý:** ① user rebuild `ICare247_UI` + hard reload → smoke AddressBox (Sửa hiện
-> tỉnh/xã) · ② xóa field Tỉnh riêng trên form Công ty (trùng với tỉnh trong khối) · ③ trả lời câu hỏi
-> đang treo: TreeList TC_PhongBan chưa hiện dạng cây ở runtime (định dạng lưới/tree dùng chung?) —
-> CHƯA điều tra.
+> **Trạng thái:** AddressBox build Web+WPF 0W/0E, đã commit+push `fcf07c2`. **3 việc treo cuối phiên
+> (smoke AddressBox rebuild · xóa field Tỉnh riêng form Công ty · điều tra TreeList TC_PhongBan chưa
+> ra cây) — user chốt ĐÃ XONG / KHÔNG cần nữa (2026-07-19).**
+> **Task tiếp theo gợi ý:** chưa chốt — hỏi user đầu phiên sau.
 
 ## Session 90 (2026-07-19) — EditorType AddressBox (khối địa chỉ) cho form no-code + fix SpinEdit
 
@@ -43,8 +41,8 @@ Backend không đụng. **Runtime CHƯA nghiệm thu** (user cần rebuild Web +
 A/B/C vào màn Phòng ban). Giải thích cho user: "Lỗi lưu — thử lại" ở FormEditor = version-conflict
 auto-save cấu trúc (Ctrl+S/reload để đồng bộ), KHÔNG phải AddressBox.
 
-**Việc treo (chưa làm):** câu hỏi user — TreeList TC_PhongBan cấu hình rồi nhưng runtime chưa hiện
-dạng cây / "định dạng lưới treelist dùng chung?" — CHƯA điều tra, làm tiếp phiên sau.
+**Việc treo:** user chốt cuối phiên — 3 việc (smoke AddressBox rebuild · xóa field Tỉnh riêng form
+Công ty · điều tra TreeList TC_PhongBan chưa ra cây) **ĐÃ XONG / KHÔNG cần nữa** (2026-07-19).
 
 ## Session 89 (2026-07-18) — Fix bug ④ query-mode literal lệch canonical (ConfigStudio)
 
