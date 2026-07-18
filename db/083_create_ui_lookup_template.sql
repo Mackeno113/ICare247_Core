@@ -6,7 +6,7 @@
 --              khai tham số canonical qua Canonical_Params (JSON).
 --           2) ALTER Ui_Field_Lookup thêm Template_Code (chọn mẫu; NULL = tự cấu hình như cũ)
 --              + Param_Map (JSON map tham số canonical ← Field_Code trên form / @token / hằng số).
---           3) Seed 3 mẫu nền: TPL_CONG_TY (theo quyền — fn_CongTyTheoQuyen db/084, token
+--           3) Seed 3 mẫu nền: TPL_CONG_TY (theo quyền — fnt_CongTyTheoQuyen db/084, token
 --              @NguoiDungID tự resolve) · TPL_TINH_THANH · TPL_PHUONG_XA (tham số TinhId).
 --              TPL_NHAN_VIEN_TAI_THOI_DIEM để đợt NS_ (bảng NS_NhanVien chưa có).
 -- Note    : Idempotent (OBJECT_ID / COL_LENGTH / NOT EXISTS guard). Mẫu mang 4 cờ sync CFGSYNC-1
@@ -87,8 +87,15 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Lookup_Template WHERE Template_Code = N'TPL_
         (N'TPL_CONG_TY', N'Công ty (theo quyền)',
          N'Cây công ty user được truy cập: gán riêng (HT_NguoiDung_CongTy) hợp theo vai trò (HT_VaiTro_CongTy). Token @NguoiDungID engine tự resolve — không cần map. Cần Data DB đã chạy db/082 + db/084.',
          N'custom_sql',
-         N'SELECT Id, Ma, Ten FROM dbo.fn_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten',
+         N'SELECT Id, Ma, Ten FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten',
          N'Id', N'Ten', N'Ma', NULL, NULL, NULL, 1, 1);
+GO
+
+-- Tự vá dòng đã seed bản đầu (dùng tên cũ fn_ trước khi chốt quy tắc fnt_/fns_)
+UPDATE dbo.Ui_Lookup_Template
+SET Source_Name = REPLACE(Source_Name, N'dbo.fn_CongTyTheoQuyen', N'dbo.fnt_CongTyTheoQuyen')
+WHERE Template_Code = N'TPL_CONG_TY'
+  AND Source_Name LIKE N'%dbo.fn+_CongTyTheoQuyen%' ESCAPE '+';
 GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Lookup_Template WHERE Template_Code = N'TPL_TINH_THANH')

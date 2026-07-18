@@ -105,13 +105,13 @@ bộ `Query_Mode / Source_Name / Filter_Sql` (DynamicLookupRepository), KHÔNG p
   `IContextParamResolver` — spec 19) → mẫu dùng `@NguoiDungID` không cần map. ⚠️ Cache key hash SAU
   khi bind đủ tham số — token theo user phải vào key.
 - **⚠️ Chuỗi con DDL/DML bị chặn trong Filter_Sql/custom_sql** (kể cả `IsDeleted` chứa "DELETE") →
-  nguồn mẫu trỏ **view `vw_*`** (db/051/052) hoặc **inline TVF** (`fn_CongTyTheoQuyen` — db/084).
+  nguồn mẫu trỏ **view `vw_*`** (db/051/052) hoặc **inline TVF** (`fnt_CongTyTheoQuyen` — db/084).
 - **Reload:** field nguồn trong `Param_Map` tự merge vào `Reload_Trigger_Fields` (FormRepository) —
   không bắt admin khai 2 lần.
 - **ConfigStudio (đã làm):** LookupBoxPropsPanel section "Mẫu lookup dùng chung" — combo mẫu + lưới
   map tham số (GridControl); IO qua 3 method phòng thủ trên FieldDataService (pattern Import_Global_Code).
 - **ConfigSync (đã làm):** descriptor `Ui_Lookup_Template` (khóa `Template_Code`, trước Ui_Field_Lookup).
-- **Seed (db/083):** `TPL_CONG_TY` (theo quyền — fn db/084), `TPL_TINH_THANH`, `TPL_PHUONG_XA`.
+- **Seed (db/083):** `TPL_CONG_TY` (theo quyền — fnt_CongTyTheoQuyen db/084), `TPL_TINH_THANH`, `TPL_PHUONG_XA`.
   `TPL_NHAN_VIEN_TAI_THOI_DIEM` **để đợt NS_** (bảng chưa có — không seed SQL trỏ bảng ma).
 
 ## 6. Lộ trình đề xuất

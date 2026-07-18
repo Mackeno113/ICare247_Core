@@ -1,19 +1,26 @@
 -- =============================================================================
--- File    : 084_create_fn_congty_theoquyen.sql
+-- File    : 084_create_fnt_congty_theoquyen.sql
 -- Database: ICare247_Solution  (Data DB per-tenant — chạy SAU db/082)
--- Purpose : PICKER-P4 — inline TVF fn_CongTyTheoQuyen(@NguoiDungID): cây công ty user được
+-- Purpose : PICKER-P4 — inline TVF fnt_CongTyTheoQuyen(@NguoiDungID): cây công ty user được
 --           truy cập = gán riêng (HT_NguoiDung_CongTy) ∪ theo vai trò (HT_VaiTro_CongTy ⨝
 --           HT_NguoiDung_VaiTro); chưa được phân công gì → mọi công ty active (default-open,
 --           cùng semantics MeCompanyRepository). Dùng cho mẫu lookup TPL_CONG_TY (db/083):
 --           engine cấm chuỗi con DDL/DML trong custom_sql (kể cả "IsDeleted") nên logic lọc
---           phải nằm trong hàm này, câu SQL của mẫu chỉ còn SELECT ... FROM fn_...(@NguoiDungID).
--- Note    : CREATE OR ALTER — idempotent. Đọc-only.
+--           phải nằm trong hàm này, câu SQL của mẫu chỉ còn SELECT ... FROM fnt_...(@NguoiDungID).
+-- Naming  : TVF tiền tố fnt_, scalar function tiền tố fns_ (quy tắc 2026-07-18).
+-- Note    : CREATE OR ALTER — idempotent. Đọc-only. Có bước dọn tên cũ fn_CongTyTheoQuyen
+--           (bản đầu đã chạy trước khi chốt quy tắc fnt_/fns_).
 -- =============================================================================
 
 USE [ICare247_Solution];
 GO
 
-CREATE OR ALTER FUNCTION dbo.fn_CongTyTheoQuyen (@NguoiDungID BIGINT)
+-- Dọn tên cũ (bản đầu dùng fn_ — đổi sang fnt_ theo quy tắc đặt tên)
+IF OBJECT_ID('dbo.fn_CongTyTheoQuyen', 'IF') IS NOT NULL
+    DROP FUNCTION dbo.fn_CongTyTheoQuyen;
+GO
+
+CREATE OR ALTER FUNCTION dbo.fnt_CongTyTheoQuyen (@NguoiDungID BIGINT)
 RETURNS TABLE
 AS
 RETURN
@@ -41,5 +48,5 @@ RETURN
           );
 GO
 
-PRINT N'Migration 084 completed — fn_CongTyTheoQuyen (nguồn mẫu lookup TPL_CONG_TY).';
+PRINT N'Migration 084 completed — fnt_CongTyTheoQuyen (nguồn mẫu lookup TPL_CONG_TY).';
 GO

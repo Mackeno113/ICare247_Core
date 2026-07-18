@@ -145,6 +145,17 @@ TinhThanhPhoID, IdTinhThanh              -- sai dạng {Bang}_Id
 - UNIQUE trên bảng soft-delete phải là **filtered index**: `WHERE IsDeleted = 0`.
 - Query chậm / cần rewrite → gọi agent `sql-server-optimizer`.
 
+## 7b. Tiền tố object lập trình (chốt 2026-07-18)
+
+| Object | Tiền tố | Ví dụ |
+|---|---|---|
+| View | `vw_` | `vw_TC_CongTy`, `vw_DM_PhuongXa` |
+| **Function trả bảng (TVF)** | **`fnt_`** | `fnt_CongTyTheoQuyen` |
+| **Function scalar** | **`fns_`** | `fns_TinhTuoi` |
+| Stored procedure | `sp_` (`spc_` cho proc nguồn Grid) | `sp_AfterSave_Grid_DM_PhuongXa`, `spc_Grid_DM_PhuongXa` |
+
+> ⛔ KHÔNG dùng `fn_` chung chung — phải phân biệt `fnt_` (table) / `fns_` (scalar) ngay từ tên.
+
 ## 8. Audit-log (ADR-020)
 
 - Diff bắt ở **tầng Application** (handler CRUD generic), **KHÔNG dùng trigger** → chỉ thao tác qua UI mới
