@@ -339,6 +339,10 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private int? _editExpandLevel;
     public int? EditExpandLevel { get => _editExpandLevel; set => SetProperty(ref _editExpandLevel, value); }
 
+    /// <summary>Cho phép kéo-thả sắp xếp cây (ADR-027) — chỉ hiệu lực khi View_Type=TreeList.</summary>
+    private bool _editAllowReorder;
+    public bool EditAllowReorder { get => _editAllowReorder; set => SetProperty(ref _editAllowReorder, value); }
+
     // ── Panel lọc (lưới nâng cao) ──────────────────────────────
     private bool _editFilterPanelEnabled;
     public bool EditFilterPanelEnabled { get => _editFilterPanelEnabled; set => SetProperty(ref _editFilterPanelEnabled, value); }
@@ -699,6 +703,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditKeyField = h.KeyField ?? "";
         EditParentField = h.ParentField ?? "";
         EditExpandLevel = h.ExpandLevel;
+        EditAllowReorder = h.AllowReorder;
         EditFilterPanelEnabled = h.FilterPanelEnabled;
         EditFilterPanelPosition = string.IsNullOrWhiteSpace(h.FilterPanelPosition) ? "left" : h.FilterPanelPosition;
         EditFilterCollapsible = h.FilterCollapsible;
@@ -800,6 +805,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         EditKeyField = "";
         EditParentField = "";
         EditExpandLevel = null;
+        EditAllowReorder = false;
         EditFilterPanelEnabled = false;
         EditFilterPanelPosition = "left";
         EditFilterCollapsible = true;
@@ -1000,6 +1006,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         KeyField = EditKeyField,
         ParentField = EditParentField,
         ExpandLevel = EditExpandLevel,
+        AllowReorder = EditAllowReorder,
         FilterPanelEnabled = EditFilterPanelEnabled,
         FilterPanelPosition = EditFilterPanelPosition,
         FilterCollapsible = EditFilterCollapsible,

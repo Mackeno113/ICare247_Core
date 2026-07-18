@@ -87,6 +87,7 @@ public sealed partial class ViewRepository : IViewRepository
                    v.Key_Field            AS KeyField,
                    v.Parent_Field         AS ParentField,
                    v.Expand_Level         AS ExpandLevel,
+                   v.Allow_Reorder        AS AllowReorder,
                    v.Filter_Panel_Enabled  AS FilterPanelEnabled,
                    v.Filter_Panel_Position AS FilterPanelPosition,
                    v.Filter_Collapsible    AS FilterCollapsible,
@@ -275,6 +276,7 @@ public sealed partial class ViewRepository : IViewRepository
             KeyField = header.KeyField,
             ParentField = header.ParentField,
             ExpandLevel = header.ExpandLevel,
+            AllowReorder = header.AllowReorder,
             FilterPanelEnabled = header.FilterPanelEnabled,
             FilterPanelPosition = header.FilterPanelPosition,
             FilterCollapsible = header.FilterCollapsible,
@@ -843,6 +845,101 @@ public sealed partial class ViewRepository : IViewRepository
             new CommandDefinition(sqlCount, prm, cancellationToken: ct));
 
         return (items, total);
+    }
+
+    /// <inheritdoc />
+    public async Task<TreeReorderResult> ReorderAsync(
+        ViewMetadata view, long id, long? newParentId, long? targetId, string dropPosition,
+        CancellationToken ct = default)
+    {
+        if (!view.IsTreeList || !view.AllowReorder)
+            return new TreeReorderResult { Success = false, Error = "View không cho phép kéo-thả sắp xếp." };
+
+        if (string.IsNullOrWhiteSpace(view.ParentField) || string.IsNullOrWhiteSpace(view.KeyField))
+            return new TreeReorderResult { Success = false, Error = "View thiếu Parent_Field/Key_Field." };
+
+        if (!SafeIdentifierRegex().IsMatch(view.ParentField) || !SafeIdentifierRegex().IsMatch(view.KeyField))
+            return new TreeReorderResult { Success = false, Error = "Tên cột cha/khóa không hợp lệ." };
+
+        if (newParentId == id)
+            return new TreeReorderResult { Success = false, Error = "Không thể chọn chính nó làm cha." };
+
+        var table = await ResolveFromTargetAsync(view, ct);
+        var keyCol = Bracket(view.KeyField);
+        var parentCol = Bracket(view.ParentField);
+
+        using var data = _dataDb.CreateConnection();
+        if (data.State != System.Data.ConnectionState.Open) data.Open();
+
+        // ── Chặn cycle: newParentId không được là hậu duệ (hoặc chính nó — đã chặn ở trên) của node đang kéo ──
+        if (newParentId is not null)
+        {
+            var cycleSql = $"""
+                ;WITH cte AS (
+                    SELECT {keyCol} AS Id FROM {table} WHERE {keyCol} = @Id
+                    UNION ALL
+                    SELECT t.{keyCol} FROM {table} t JOIN cte c ON t.{parentCol} = c.Id
+                )
+                SELECT TOP 1 1 FROM cte WHERE Id = @NewParentId
+                """;
+            var isCycle = await data.QueryFirstOrDefaultAsync<int?>(new CommandDefinition(
+                cycleSql, new { Id = id, NewParentId = newParentId }, cancellationToken: ct));
+            if (isCycle is not null)
+                return new TreeReorderResult
+                {
+                    Success = false,
+                    Error = "Không thể chuyển vào chính nhánh con của nó (sẽ tạo vòng lặp)."
+                };
+        }
+
+        // ── Tập anh em MỚI (cùng newParentId, trừ chính node đang kéo), sắp theo ThuTu hiện tại ──
+        var siblingSql = $"""
+            SELECT {keyCol} AS Id FROM {table}
+            WHERE ({parentCol} = @NewParentId OR (@NewParentId IS NULL AND ({parentCol} IS NULL OR {parentCol} = 0)))
+              AND {keyCol} <> @Id
+            ORDER BY ThuTu
+            """;
+        var siblings = (await data.QueryAsync<long>(new CommandDefinition(
+            siblingSql, new { NewParentId = newParentId, Id = id }, cancellationToken: ct))).ToList();
+
+        // ── Chèn `id` vào đúng vị trí theo targetId + dropPosition (mặc định: cuối danh sách) ──
+        var insertAt = siblings.Count;
+        if (targetId is not null)
+        {
+            var targetIdx = siblings.IndexOf(targetId.Value);
+            if (targetIdx >= 0)
+            {
+                insertAt = dropPosition switch
+                {
+                    "Before" => targetIdx,
+                    "After" or "Inside" => targetIdx + 1,
+                    _ => siblings.Count
+                };
+            }
+        }
+        siblings.Insert(insertAt, id);
+
+        // ── Ghi: đổi cha (nếu có) + renumber ThuTu 10,20,30... + recompute cache cây ──
+        using var tx = data.BeginTransaction();
+
+        await data.ExecuteAsync(new CommandDefinition(
+            $"UPDATE {table} SET {parentCol} = @NewParentId WHERE {keyCol} = @Id",
+            new { NewParentId = newParentId, Id = id }, tx, cancellationToken: ct));
+
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            await data.ExecuteAsync(new CommandDefinition(
+                $"UPDATE {table} SET ThuTu = @ThuTu WHERE {keyCol} = @Id",
+                new { ThuTu = (i + 1) * 10, Id = siblings[i] }, tx, cancellationToken: ct));
+        }
+
+        await data.ExecuteAsync(new CommandDefinition(
+            "EXEC dbo.sp_RecomputeTreeOrder @TableName, @ParentColumn",
+            new { TableName = view.TableCode, ParentColumn = view.ParentField }, tx, cancellationToken: ct));
+
+        tx.Commit();
+
+        return new TreeReorderResult { Success = true };
     }
 
     /// <summary>Bọc identifier bằng [] (đã whitelist regex trước đó).</summary>

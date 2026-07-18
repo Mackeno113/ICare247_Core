@@ -400,6 +400,8 @@
                                     <TextBlock Text="Expand_Level — mở sẵn tới cấp" Style="{StaticResource EditorLabel}" />
                                     <dxe:SpinEdit Width="120" HorizontalAlignment="Left"
                                                   EditValue="{Binding EditExpandLevel, UpdateSourceTrigger=PropertyChanged}" MinValue="0" MaxValue="20" />
+                                    <dxe:CheckEdit Content="Allow_Reorder — cho phép kéo-thả sắp xếp (ADR-027)"
+                                                   IsChecked="{Binding EditAllowReorder}" Margin="0,10,0,2" />
                                 </StackPanel>
                             </ScrollViewer>
                         </dx:DXTabItem>

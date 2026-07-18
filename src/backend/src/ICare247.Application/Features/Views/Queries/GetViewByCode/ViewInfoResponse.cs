@@ -54,6 +54,7 @@ public sealed class ViewInfoResponse
     public string? KeyField { get; init; }
     public string? ParentField { get; init; }
     public int? ExpandLevel { get; init; }
+    public bool AllowReorder { get; init; }
 
     // ── Panel lọc trái ────────────────────────────────────────
     public bool FilterPanelEnabled { get; init; }
@@ -128,6 +129,7 @@ public sealed class ViewInfoResponse
         KeyField = view.KeyField,
         ParentField = view.ParentField,
         ExpandLevel = view.ExpandLevel,
+        AllowReorder = view.AllowReorder,
         FilterPanelEnabled = view.FilterPanelEnabled,
         FilterPanelPosition = view.FilterPanelPosition,
         FilterCollapsible = view.FilterCollapsible,

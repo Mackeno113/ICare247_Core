@@ -78,6 +78,30 @@ public interface IViewRepository
     Task<(IReadOnlyList<ViewListItem> Items, int TotalCount)> GetListAsync(
         int tenantId, string langCode = "vi", bool? isActive = null, string? search = null,
         int page = 1, int pageSize = 50, CancellationToken ct = default);
+
+    /// <summary>
+    /// Kéo-thả sắp xếp lại 1 node trong TreeList (ADR-027) — chuyển cha (nếu đổi) + renumber
+    /// <c>ThuTu</c> tập anh em mới theo vị trí thả, rồi gọi <c>sp_RecomputeTreeOrder</c> refresh
+    /// cache <c>Cap</c>/<c>ThuTuCay</c>/<c>DuongDanCay</c>. Chặn tạo vòng lặp (thả vào hậu duệ chính nó).
+    /// </summary>
+    /// <param name="view">Metadata View (TreeList, đã <c>AllowReorder</c>) — lấy TableCode/ParentField/KeyField.</param>
+    /// <param name="id">Id bản ghi đang kéo.</param>
+    /// <param name="newParentId">Cha mới sau khi thả (null = gốc).</param>
+    /// <param name="targetId">Id bản ghi làm mốc thả cạnh (null = thả cuối danh sách).</param>
+    /// <param name="dropPosition">"Before" | "After" | "Inside" | "Append".</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<TreeReorderResult> ReorderAsync(
+        ViewMetadata view, long id, long? newParentId, long? targetId, string dropPosition,
+        CancellationToken ct = default);
+}
+
+/// <summary>Kết quả thao tác kéo-thả sắp xếp cây.</summary>
+public sealed class TreeReorderResult
+{
+    public bool Success { get; init; }
+
+    /// <summary>Thông báo lỗi cho user (vd chặn vòng lặp) — null khi Success.</summary>
+    public string? Error { get; init; }
 }
 
 /// <summary>DTO tóm tắt một View cho danh sách chọn (không load đầy đủ aggregate).</summary>

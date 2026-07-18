@@ -48,7 +48,11 @@
                 ColumnResizeMode="TreeListColumnResizeMode.ColumnsContainer"
                 HighlightRowOnHover="true"
                 FocusedRowEnabled="true"
-                RowDoubleClick="OnTreeRowDoubleClick">
+                RowDoubleClick="OnTreeRowDoubleClick"
+                AllowDragRows="View.AllowReorder"
+                AllowedDropTarget="TreeListAllowedDropTarget.Internal"
+                DropTargetMode="TreeListDropTargetMode.BetweenRows"
+                ItemsDropped="OnTreeItemsDropped">
         <Columns>
             @if (View.SelectionMode.Equals("multiple", StringComparison.OrdinalIgnoreCase))
             {
@@ -192,6 +196,9 @@ else
     [Parameter] public EventCallback OnAdd { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
     [Parameter] public EventCallback<ViewActionDto> OnUnhandledAction { get; set; }
+
+    /// <summary>Kéo-thả sắp xếp TreeList (ADR-027) — trang gọi API reorder + reload.</summary>
+    [Parameter] public EventCallback<TreeReorderRequest> OnReorder { get; set; }
 
     /// <summary>Nút xuất tài liệu server-side theo mẫu (Export/Print + Engine=Server + Target=mã bộ mẫu).
     /// Payload gồm dòng đang chọn để trang gọi DocTemplateApiService.</summary>
@@ -394,6 +401,44 @@ else
         if (item is null) return;
         await OnEdit.InvokeAsync(AsRow(item));
     }
+
+    /// <summary>
+    /// Kéo-thả sắp xếp (ADR-027) — đọc node đang kéo + node mốc thả + vị trí, suy cha mới
+    /// (Inside → chính target; Before/After → cha hiện tại của target; Append không target → null =
+    /// gốc), phát <see cref="OnReorder"/> cho trang xử lý gọi API + reload.
+    /// </summary>
+    private async Task OnTreeItemsDropped(TreeListItemsDroppedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(View.KeyField) || e.DroppedItems.Count == 0) return;
+
+        var dragged = AsRow(e.DroppedItems[0]);
+        var id = GetCell(dragged, View.KeyField!);
+        if (id is null) return;
+
+        var targetRow = e.TargetItem is null ? null : AsRow(e.TargetItem);
+        var targetId = targetRow is null ? null : GetCell(targetRow, View.KeyField!);
+        var position = e.DropPosition.ToString(); // "Append" | "Before" | "After" | "Inside"
+
+        object? newParentId = position switch
+        {
+            "Inside" => targetId,
+            "Before" or "After" => targetRow is null ? null : GetCell(targetRow, ParentKeyAlias),
+            _ => null
+        };
+
+        await OnReorder.InvokeAsync(new TreeReorderRequest(
+            ToLong(id), ToLongOrNull(newParentId), ToLongOrNull(targetId), position));
+    }
+
+    private static long ToLong(object? v) => v switch
+    {
+        long l => l,
+        int i => i,
+        string s when long.TryParse(s, out var p) => p,
+        _ => Convert.ToInt64(v)
+    };
+
+    private static long? ToLongOrNull(object? v) => v is null ? null : ToLong(v);
 
     /// <summary>True khi node là lá hoặc cha không còn con → được phép Xóa (khóa không xuất hiện
     /// làm ParentField của bất kỳ dòng nào). Node đang có con → ẩn nút Xóa (tránh mồ côi + FK).</summary>

@@ -4,6 +4,7 @@
 // Purpose : REST endpoint cho cấu hình hiển thị danh sách (Ui_View) — metadata cho Blazor DataView.
 
 using ICare247.Api.Authorization;
+using ICare247.Application.Features.Views.Commands.ReorderTreeItem;
 using ICare247.Application.Features.Views.Queries.GetFilterOptions;
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
@@ -158,6 +159,31 @@ public sealed class ViewController : ControllerBase
     }
 
     /// <summary>
+    /// Kéo-thả sắp xếp 1 node trong TreeList (ADR-027) — đổi cha (nếu đổi) + renumber ThuTu tập anh
+    /// em mới theo vị trí thả, rồi recompute cache cây. Chặn tạo vòng lặp (thả vào hậu duệ chính nó).
+    /// </summary>
+    /// <param name="code">Ui_View.View_Code (phải TreeList + Allow_Reorder=1).</param>
+    /// <param name="body">Id bản ghi kéo + cha mới + mốc thả + vị trí thả.</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpPost("{code}/reorder")]
+    [RequirePermissionForTarget("View", PermissionOp.Sua, "code")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Reorder(
+        string code, [FromBody] ViewReorderRequest body, CancellationToken ct = default)
+    {
+        var command = new ReorderTreeItemCommand(
+            code, GetTenantId(), body.Id, body.NewParentId, body.TargetId, body.DropPosition);
+        var result = await _mediator.Send(command, ct);
+
+        if (result is null)
+            return NotFound(new { message = $"View '{code}' không tồn tại hoặc đã bị ẩn." });
+
+        return result.Success ? Ok(result) : BadRequest(new { message = result.Error });
+    }
+
+    /// <summary>
     /// Nạp options cho 1 control lọc cascade (Combo/MultiSelect/Radio) — ADR-030. Body chứa giá trị
     /// filter cha hiện tại (key = Filter_Code); engine bind whitelist (Depends_On) + token ngữ cảnh.
     /// </summary>
@@ -274,6 +300,17 @@ public sealed class ViewSearchRequest
 {
     /// <summary>Key = Ui_View_Filter.Filter_Code; value = giá trị thô (engine ép kiểu theo Param_Type).</summary>
     public Dictionary<string, string?> Filters { get; init; } = new();
+}
+
+/// <summary>Body cho endpoint reorder: node đang kéo + cha mới + mốc thả + vị trí thả.</summary>
+public sealed class ViewReorderRequest
+{
+    public long Id { get; init; }
+    public long? NewParentId { get; init; }
+    public long? TargetId { get; init; }
+
+    /// <summary>"Before" | "After" | "Inside" | "Append".</summary>
+    public string DropPosition { get; init; } = "Append";
 }
 
 /// <summary>Body cho endpoint filter-options: map Filter_Code cha → giá trị hiện tại (cascade).</summary>

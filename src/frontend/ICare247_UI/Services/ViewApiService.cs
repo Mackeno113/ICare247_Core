@@ -137,6 +137,30 @@ public sealed class ViewApiService
     }
 
     /// <summary>
+    /// Kéo-thả sắp xếp 1 node trong TreeList (ADR-027). Trả <c>(true, null)</c> khi thành công;
+    /// <c>(false, message)</c> khi bị chặn (vd tạo vòng lặp) — KHÔNG ném, để caller tự hiện thông báo.
+    /// </summary>
+    public async Task<(bool Success, string? Error)> ReorderAsync(
+        string viewCode, long id, long? newParentId, long? targetId, string dropPosition,
+        CancellationToken ct = default)
+    {
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/reorder";
+        var resp = await _http.PostAsJsonAsync(url,
+            new { id, newParentId, targetId, dropPosition }, JsonOpts, ct);
+
+        if (resp.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var problem = await resp.Content.ReadAsStringAsync(ct);
+            return (false, ExtractMessage(problem));
+        }
+        if (resp.StatusCode == HttpStatusCode.NotFound)
+            return (false, "View không tồn tại.");
+
+        await EnsureOkAsync(resp, "Reorder", viewCode);
+        return (true, null);
+    }
+
+    /// <summary>
     /// Nạp options cho 1 control lọc cascade (Combo/MultiSelect/Radio). <paramref name="parents"/> = giá trị
     /// filter cha hiện tại (key = Filter_Code). Trả rỗng nếu lỗi/không có nguồn (không ném — UX không vỡ).
     /// </summary>
@@ -278,6 +302,7 @@ public sealed class ViewMetadataDto
     public string? KeyField { get; set; }
     public string? ParentField { get; set; }
     public int? ExpandLevel { get; set; }
+    public bool AllowReorder { get; set; }
 
     // ── Panel lọc trái (lưới nâng cao) ────────────────────────
     public bool FilterPanelEnabled { get; set; }

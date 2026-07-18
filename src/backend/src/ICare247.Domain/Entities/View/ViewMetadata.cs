@@ -78,6 +78,9 @@ public sealed class ViewMetadata
     public string? ParentField { get; init; }
     public int? ExpandLevel { get; init; }
 
+    /// <summary>Cho phép kéo-thả sắp xếp (ADR-027) — chỉ hiệu lực khi <see cref="ViewType"/>=TreeList.</summary>
+    public bool AllowReorder { get; init; }
+
     // ── Panel lọc trái (lưới nâng cao) — chỉ hiệu lực khi SourceType ∈ {Sp, Sql} ──
     /// <summary>Bật panel lọc trái (Ui_View.Filter_Panel_Enabled).</summary>
     public bool FilterPanelEnabled { get; init; }

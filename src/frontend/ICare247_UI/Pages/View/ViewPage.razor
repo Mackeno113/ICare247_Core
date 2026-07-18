@@ -65,7 +65,7 @@
             <div class="dv-grid-area">
                 <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
                           OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction"
-                          OnServerRender="OnServerRenderAsync"
+                          OnServerRender="OnServerRenderAsync" OnReorder="OnTreeReorderAsync"
                           SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged" />
 
                 @if (_notice is not null)
@@ -325,6 +325,23 @@
     private async Task OnRecordDeleted()
     {
         _deleteId = null;
+        await ReloadDataAsync();
+    }
+
+    /// <summary>
+    /// Kéo-thả sắp xếp TreeList (ADR-027) — gọi API reorder rồi LUÔN nạp lại lưới (DxTreeList không
+    /// tự cập nhật <c>Data</c> theo thao tác kéo, nên phải reload để khớp DB dù thành công hay bị
+    /// chặn — tránh UI hiện sai vị trí). Bị chặn (vd tạo vòng lặp) → hiện thông báo lỗi.
+    /// </summary>
+    private async Task OnTreeReorderAsync(TreeReorderRequest req)
+    {
+        _notice = null;
+        var (success, error) = await ViewApi.ReorderAsync(
+            ViewCode, req.Id, req.NewParentId, req.TargetId, req.DropPosition);
+
+        if (!success)
+            _notice = error ?? Loc.L("view.reorder.failed", "Không thể sắp xếp lại — thao tác bị chặn.");
+
         await ReloadDataAsync();
     }
 

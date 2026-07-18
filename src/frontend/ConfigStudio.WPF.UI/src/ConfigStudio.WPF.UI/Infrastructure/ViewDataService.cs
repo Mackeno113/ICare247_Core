@@ -47,6 +47,7 @@ public sealed class ViewDataService : IViewDataService
             "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
             "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
             "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Allow_Reorder AS AllowReorder,\n" +
             "       v.Filter_Panel_Enabled AS FilterPanelEnabled, v.Filter_Panel_Position AS FilterPanelPosition,\n" +
             "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
             "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
@@ -84,6 +85,7 @@ public sealed class ViewDataService : IViewDataService
             "       v.Allow_Delete AS AllowDelete, v.Allow_Export AS AllowExport, v.Export_Formats AS ExportFormats,\n" +
             "       v.Export_File_Name_Key AS ExportFileNameKey, v.Allow_Print AS AllowPrint,\n" +
             "       v.Key_Field AS KeyField, v.Parent_Field AS ParentField, v.Expand_Level AS ExpandLevel,\n" +
+            "       v.Allow_Reorder AS AllowReorder,\n" +
             "       v.Filter_Panel_Enabled AS FilterPanelEnabled, v.Filter_Panel_Position AS FilterPanelPosition,\n" +
             "       v.Filter_Collapsible AS FilterCollapsible, v.Auto_Search_On_Load AS AutoSearchOnLoad,\n" +
             "       v.Search_Label_Key AS SearchLabelKey, v.Reset_Label_Key AS ResetLabelKey,\n" +
@@ -194,14 +196,14 @@ public sealed class ViewDataService : IViewDataService
                     "    Title_Key, Edit_Form_Id, Page_Size, Allow_Paging, Virtual_Scroll, Show_Filter_Row,\n" +
                     "    Show_Group_Panel, Show_Search_Box, Show_Column_Chooser, Selection_Mode, Allow_Add,\n" +
                     "    Allow_Edit, Allow_Delete, Allow_Export, Export_Formats, Export_File_Name_Key, Allow_Print,\n" +
-                    "    Key_Field, Parent_Field, Expand_Level, Filter_Panel_Enabled, Filter_Panel_Position,\n" +
+                    "    Key_Field, Parent_Field, Expand_Level, Allow_Reorder, Filter_Panel_Enabled, Filter_Panel_Position,\n" +
                     "    Filter_Collapsible, Auto_Search_On_Load, Search_Label_Key, Reset_Label_Key,\n" +
                     "    Detail_View_Id, Default_Filter_Json, Options_Json,\n" +
                     "    Version, Is_Active, Created_At, Updated_At, Description)\n" +
                     "VALUES (@ViewCode, @ViewType, @TableId, @SourceType, @SourceObject, @TitleKey, @EditFormId,\n" +
                     "    @PageSize, @AllowPaging, @VirtualScroll, @ShowFilterRow, @ShowGroupPanel, @ShowSearchBox,\n" +
                     "    @ShowColumnChooser, @SelectionMode, @AllowAdd, @AllowEdit, @AllowDelete, @AllowExport,\n" +
-                    "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel,\n" +
+                    "    @ExportFormats, @ExportFileNameKey, @AllowPrint, @KeyField, @ParentField, @ExpandLevel, @AllowReorder,\n" +
                     "    @FilterPanelEnabled, @FilterPanelPosition, @FilterCollapsible, @AutoSearchOnLoad,\n" +
                     "    @SearchLabelKey, @ResetLabelKey,\n" +
                     "    @DetailViewId, @DefaultFilterJson, @OptionsJson, 1, @IsActive, GETDATE(), GETDATE(),\n" +
@@ -225,7 +227,7 @@ public sealed class ViewDataService : IViewDataService
                     "    Allow_Add = @AllowAdd, Allow_Edit = @AllowEdit, Allow_Delete = @AllowDelete,\n" +
                     "    Allow_Export = @AllowExport, Export_Formats = @ExportFormats,\n" +
                     "    Export_File_Name_Key = @ExportFileNameKey, Allow_Print = @AllowPrint, Key_Field = @KeyField,\n" +
-                    "    Parent_Field = @ParentField, Expand_Level = @ExpandLevel,\n" +
+                    "    Parent_Field = @ParentField, Expand_Level = @ExpandLevel, Allow_Reorder = @AllowReorder,\n" +
                     "    Filter_Panel_Enabled = @FilterPanelEnabled, Filter_Panel_Position = @FilterPanelPosition,\n" +
                     "    Filter_Collapsible = @FilterCollapsible, Auto_Search_On_Load = @AutoSearchOnLoad,\n" +
                     "    Search_Label_Key = @SearchLabelKey, Reset_Label_Key = @ResetLabelKey,\n" +
@@ -341,6 +343,7 @@ public sealed class ViewDataService : IViewDataService
         p.Add("KeyField", NullIfEmpty(r.KeyField));
         p.Add("ParentField", NullIfEmpty(r.ParentField));
         p.Add("ExpandLevel", r.ExpandLevel);
+        p.Add("AllowReorder", r.AllowReorder);
         p.Add("FilterPanelEnabled", r.FilterPanelEnabled);
         p.Add("FilterPanelPosition", string.IsNullOrWhiteSpace(r.FilterPanelPosition) ? "left" : r.FilterPanelPosition);
         p.Add("FilterCollapsible", r.FilterCollapsible);

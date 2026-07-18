@@ -42,6 +42,7 @@ public sealed class ViewUpsertRequest
     public string? KeyField { get; set; }
     public string? ParentField { get; set; }
     public int? ExpandLevel { get; set; }
+    public bool AllowReorder { get; set; }
 
     // Panel lọc trái (lưới nâng cao)
     public bool FilterPanelEnabled { get; set; }

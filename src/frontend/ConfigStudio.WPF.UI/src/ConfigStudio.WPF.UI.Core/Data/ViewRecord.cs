@@ -44,6 +44,7 @@ public sealed class ViewRecord
     public string? KeyField { get; init; }
     public string? ParentField { get; init; }
     public int? ExpandLevel { get; init; }
+    public bool AllowReorder { get; init; }
 
     // Panel lọc trái (lưới nâng cao)
     public bool FilterPanelEnabled { get; init; }
