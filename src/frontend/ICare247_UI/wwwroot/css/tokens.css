@@ -57,9 +57,10 @@
   --gray-900: #111827;
 
   /* ── Typography ────────────────────────────────────────────────────────── */
-  /* Inter: trung tính, đọc tốt ở cỡ nhỏ và mật độ cao — hợp ERP.            */
-  /* (Bỏ Plus Jakarta Sans vì hơi "tròn", thiên app consumer.)               */
-  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Segoe UI: có sẵn trên Windows (admin dùng), không cần bundle → render đồng    */
+  /* nhất giữa máy. (Bỏ Inter vì chưa bundle @font-face → khác máy; skill admin-UI  */
+  /* chốt Segoe UI. Muốn dùng Inter phải thêm @font-face rồi mới đưa lên đầu.)      */
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Inter", sans-serif;
   --font-mono: "JetBrains Mono", "Cascadia Code", Consolas, monospace; /* số liệu, mã */
 
   --fs-xs:   12px;   /* caption, badge, nhãn grid phụ      */
@@ -127,12 +128,14 @@
 /* =============================================================================
    Theme DevExpress — KHÔNG map ở đây (chú thích quan trọng)
    -----------------------------------------------------------------------------
-   blazing-berry v25.2.3 KHÔNG đọc biến --dx-color-* / --dx-grid-* — đã đối chiếu
-   trực tiếp DLL theme: những tên đó không tồn tại. Màu accent thật do Bootstrap
-   --bs-primary (mặc định berry tím #5f368d) và các biến --dxbl-grid-* điều khiển;
-   chúng được đặt NGAY trên selector component (.dxbl-grid, .dxbl-text-edit…) nên
-   phải override đúng selector đó, KHÔNG override ở :root.
-   → Việc re-tint DevExpress sang navy ERP nằm ở app.css (file load SAU theme).
+   Theme hiện tại = Fluent Light (accent xanh #0F6CBD). DevExpress KHÔNG đọc biến
+   --dx-color-* / --dx-grid-* — đã đối chiếu trực tiếp DLL theme: những tên đó không
+   tồn tại. Màu/kích thước control DX do các biến --dxbl-* điều khiển; chúng được đặt
+   NGAY trên selector component (.dxbl-grid, .dxbl-text-edit…) nên nếu cần đồng bộ với
+   token app thì override ĐÚNG selector đó, KHÔNG override ở :root.
+   → Việc đồng bộ DevExpress với token ERP nằm ở app.css (file load SAU theme Fluent).
+   (Chính sách override --dxbl-* trên selector component đang chờ chốt — xem
+    docs/design-system/DESIGN_AUDIT.md finding P3.)
    ============================================================================= */
 
 /* Dark mode: để trống có chủ đích — ERP nội bộ ưu tiên hoàn thiện light mode

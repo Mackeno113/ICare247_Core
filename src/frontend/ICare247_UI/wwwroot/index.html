@@ -194,7 +194,24 @@
                     var w = popup.offsetWidth || r.width;
                     var left = Math.min(r.left, window.innerWidth - w - 8);  // không tràn mép phải
                     popup.style.left = Math.max(8, left) + 'px';
-                    popup.style.top  = (r.bottom + 2) + 'px';
+                    // Giới hạn chiều cao theo chỗ trống + LẬT LÊN TRÊN khi dưới ô quá hẹp → không tràn/che
+                    // dưới viewport (danh sách tự cuộn trong khung). Reset cả top/bottom mỗi lần place lại.
+                    var margin = 8;
+                    var cap = 320;   // trần chiều cao popup — dù còn nhiều chỗ cũng không kéo dài lê thê
+                    var spaceBelow = window.innerHeight - r.bottom - margin;
+                    var spaceAbove = r.top - margin;
+                    // max-height = min(trần, chỗ trống) nhưng tối thiểu 140 cho dùng được; danh sách tự cuộn.
+                    var fit = function (space) { return Math.max(140, Math.min(cap, space)); };
+                    if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+                        popup.style.top    = 'auto';
+                        popup.style.bottom = (window.innerHeight - r.top + 2) + 'px';
+                        popup.style.maxHeight = fit(spaceAbove) + 'px';
+                    } else {
+                        popup.style.bottom = 'auto';
+                        popup.style.top    = (r.bottom + 2) + 'px';
+                        popup.style.maxHeight = fit(spaceBelow) + 'px';
+                    }
+                    popup.style.overflowY = 'auto';   // khung cuộn nội bộ (áp cho cả popup outer-scroll lẫn inner)
                 };
                 place();
                 popup._icarePlace = place;
@@ -217,6 +234,7 @@
                 }
                 popup.style.position = popup.style.left = popup.style.top = '';
                 popup.style.margin = popup.style.minWidth = popup.style.zIndex = '';
+                popup.style.bottom = popup.style.maxHeight = popup.style.overflowY = '';
             }
         };
     </script>

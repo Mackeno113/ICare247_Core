@@ -1,0 +1,320 @@
+@* File    : IcSelectBox.razor
+   Purpose : Control select/lookup DÙNG CHUNG (chuẩn "Cấp công ty") — gõ-thẳng-trong-ô để lọc, popup
+             teleport ra body (tránh modal kéo-thả cắt), header + ✓ + highlight bàn phím, nút "Thêm mới".
+             2 chế độ dữ liệu:
+               · client  : truyền Items → lọc tại chỗ theo TextOf.
+               · server  : truyền SearchFunc (debounce) → gọi API theo từ khóa.
+             Tùy chọn: AllowFreeText (nhận giá trị gõ tay ngoài list), MaxRender (giới hạn số dòng render
+             cho list lớn — thay virtualization). Không phụ thuộc FieldState → mọi nơi dùng chung. *@
+
+@typeparam TItem
+@namespace ICare247.UI.Shared.Components.Pickers
+@inherits LocalizedComponentBase
+@inject IJSRuntime JS
+
+<div class="icsb">
+    <div class="icsb-editbox @(Disabled ? "icsb-editbox--disabled" : "") @(HasError ? "icsb-editbox--error" : "")" @ref="_editboxRef">
+        <input type="text" class="icsb-input"
+               placeholder="@Placeholder"
+               value="@_inputText"
+               disabled="@Disabled"
+               @oninput="OnInput"
+               @onfocus="OnFocus"
+               @onblur="OnBlur"
+               @onkeydown="OnKeyDown" />
+        @if (!Disabled && HasValue)
+        {
+            <button type="button" class="icsb-clear" tabindex="-1"
+                    @onmousedown="OnClearMouseDown" @onmousedown:preventDefault
+                    title="@Loc.L("common.action.clear", "Xóa")">✕</button>
+        }
+        <button type="button" class="icsb-caret" tabindex="-1" disabled="@Disabled"
+                @onmousedown="OnToggleMouseDown" @onmousedown:preventDefault
+                title="@Loc.L("common.lookup.openList", "Mở danh sách")">▾</button>
+    </div>
+
+    @if (_open)
+    {
+        <div class="icsb-popup" @ref="_popupRef">
+            @if (_loading)
+            {
+                <div class="icsb-msg">⏳ @Loc.L("common.app.loading", "Đang tải...")</div>
+            }
+            else if (_error is not null)
+            {
+                <div class="icsb-msg icsb-msg--error">⚠ @_error</div>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(HeaderText))
+                {
+                    <div class="icsb-header">@HeaderText</div>
+                }
+
+                @if (_rows.Count == 0)
+                {
+                    <div class="icsb-msg">@Loc.L("common.picker.noresult", "Không có kết quả")</div>
+                }
+                else
+                {
+                    var render = RenderRows;
+                    <div class="icsb-list" role="listbox">
+                        @{ var i = 0; }
+                        @foreach (var item in render)
+                        {
+                            var idx = i;
+                            var it  = item;
+                            <div class="icsb-item @(IsSelected is not null && IsSelected(it) ? "icsb-item--selected" : "") @(idx == _highlight ? "icsb-item--highlight" : "")"
+                                 role="option"
+                                 @onmousedown="() => SelectAsync(it)" @onmousedown:preventDefault>
+                                @if (ItemTemplate is not null) { @ItemTemplate(it) }
+                                else { @TextOf(it) }
+                            </div>
+                            i++;
+                        }
+                    </div>
+                    @if (_rows.Count > render.Count)
+                    {
+                        <div class="icsb-more">@Loc.L("common.picker.more", "Còn {0} kết quả — gõ để thu hẹp", _rows.Count - render.Count)</div>
+                    }
+                }
+
+                @if (AllowAddNew)
+                {
+                    <div class="icsb-addnew"
+                         @onmousedown="OnAddNewMouseDown" @onmousedown:preventDefault>
+                        ➕ @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_search) ? "" : $" \"{_search}\"")
+                    </div>
+                }
+            }
+        </div>
+        <div class="icsb-overlay" @onmousedown="() => CloseAsync(true)"></div>
+    }
+</div>
+
+@code {
+    // ── Dữ liệu: client (Items) HOẶC server (SearchFunc) ─────────────────────────
+    /// <summary>Danh sách nguồn cho chế độ CLIENT (lọc tại chỗ theo <see cref="TextOf"/>). Null nếu dùng server.</summary>
+    [Parameter] public IReadOnlyList<TItem>? Items { get; set; }
+    /// <summary>Hàm tìm SERVER theo từ khóa (debounce). Có giá trị ⇒ chế độ server (bỏ qua Items).</summary>
+    [Parameter] public Func<string, CancellationToken, Task<IReadOnlyList<TItem>>>? SearchFunc { get; set; }
+
+    /// <summary>Text hiển thị của 1 item (dùng để lọc client + hiển thị mặc định).</summary>
+    [Parameter, EditorRequired] public Func<TItem, string> TextOf { get; set; } = _ => "";
+    /// <summary>Template render mỗi dòng (tùy chọn — vd lookup đa cột). Null = dùng TextOf.</summary>
+    [Parameter] public RenderFragment<TItem>? ItemTemplate { get; set; }
+    /// <summary>Đánh dấu item đang được chọn (tô ✓ + soft-blue).</summary>
+    [Parameter] public Func<TItem, bool>? IsSelected { get; set; }
+
+    /// <summary>Text hiển thị khi đóng (giá trị đang chọn). Rỗng = chưa chọn.</summary>
+    [Parameter] public string? SelectedText { get; set; }
+    /// <summary>User chọn 1 item.</summary>
+    [Parameter] public EventCallback<TItem> OnSelect { get; set; }
+    /// <summary>User bấm nút xóa (✕). Không gán ⇒ không hiện nút xóa.</summary>
+    [Parameter] public EventCallback OnClear { get; set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HeaderText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    /// <summary>Field đang lỗi validation → viền đỏ (giữ báo lỗi trực quan như DxComboBox cũ).</summary>
+    [Parameter] public bool HasError { get; set; }
+
+    /// <summary>Hiện nút "Thêm mới" cuối popup.</summary>
+    [Parameter] public bool AllowAddNew { get; set; }
+    /// <summary>Bấm "Thêm mới" — tham số = từ khóa đang gõ (để prefill).</summary>
+    [Parameter] public EventCallback<string> OnAddNew { get; set; }
+
+    /// <summary>Cho phép nhận giá trị GÕ TAY ngoài danh sách (combo tự do). Enter/blur → phát <see cref="OnFreeText"/>.</summary>
+    [Parameter] public bool AllowFreeText { get; set; }
+    /// <summary>Phát chuỗi user gõ tay (khi <see cref="AllowFreeText"/> và không chọn item nào).</summary>
+    [Parameter] public EventCallback<string> OnFreeText { get; set; }
+
+    /// <summary>Số dòng tối đa render trong popup (list lớn → chỉ render N, gợi ý gõ thu hẹp). 0 = không giới hạn.</summary>
+    [Parameter] public int MaxRender { get; set; } = 100;
+
+    /// <summary>Teleport popup ra &lt;body&gt; (tránh modal kéo-thả/overflow cắt). Mặc định bật.</summary>
+    [Parameter] public bool Teleport { get; set; } = true;
+
+    private bool _open;
+    private bool _loading;
+    private string? _error;
+    private string _search = "";
+    private string _inputText = "";
+    private int _highlight = -1;
+    private bool _pickedInSession;   // đã chọn item trong lần mở này (để không commit free-text nhầm)
+    private List<TItem> _rows = [];
+
+    private ElementReference _editboxRef;
+    private ElementReference _popupRef;
+    private bool _teleported;
+    private CancellationTokenSource? _searchCts;
+
+    private bool HasValue => OnClear.HasDelegate && !string.IsNullOrEmpty(SelectedText);
+
+    /// <summary>Danh sách thực render (cắt theo MaxRender cho list lớn).</summary>
+    private List<TItem> RenderRows => MaxRender > 0 && _rows.Count > MaxRender ? _rows.GetRange(0, MaxRender) : _rows;
+
+    protected override void OnParametersSet()
+    {
+        // Popup đóng → ô hiển thị giá trị đang chọn (cha có thể đổi SelectedText từ ngoài).
+        if (!_open) _inputText = SelectedText ?? "";
+    }
+
+    /// <summary>Teleport popup ra body sau khi render (nếu bật) để không bị modal cắt.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_open && Teleport && !_teleported)
+        {
+            try { await JS.InvokeVoidAsync("icare.teleportPopup", _editboxRef, _popupRef); _teleported = true; }
+            catch { /* JS chưa sẵn → popup vẫn hiện tại chỗ */ }
+        }
+    }
+
+    // ── Mở/đóng ─────────────────────────────────────────────────────────────────
+
+    private async Task OnFocus()
+    {
+        if (Disabled) return;
+        _inputText = "";      // xóa display để gõ lọc
+        _search = "";
+        await OpenAsync();
+    }
+
+    private async Task OnToggleMouseDown()
+    {
+        if (Disabled) return;
+        if (_open) { await CloseAsync(false); return; }
+        _inputText = ""; _search = "";
+        await OpenAsync();
+    }
+
+    private async Task OpenAsync()
+    {
+        _open = true;
+        _highlight = -1;
+        _pickedInSession = false;
+        await ReloadRowsAsync();
+    }
+
+    /// <summary>Đóng popup. commit=true + AllowFreeText + chưa chọn item + có gõ → phát OnFreeText.</summary>
+    private async Task CloseAsync(bool commit = true)
+    {
+        if (commit && AllowFreeText && !_pickedInSession
+            && !string.IsNullOrWhiteSpace(_search) && _search != (SelectedText ?? ""))
+            await OnFreeText.InvokeAsync(_search);
+
+        if (_teleported)
+        {
+            try { await JS.InvokeVoidAsync("icare.restorePopup", _popupRef); } catch { }
+            _teleported = false;
+        }
+        _open = false;
+        _search = "";
+        _highlight = -1;
+        _inputText = SelectedText ?? "";
+    }
+
+    private async Task OnBlur() => await CloseAsync(true);
+
+    // ── Gõ lọc ──────────────────────────────────────────────────────────────────
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _inputText = e.Value?.ToString() ?? "";
+        _search = _inputText;
+        _open = true;
+        _highlight = -1;
+        await ReloadRowsAsync();
+    }
+
+    /// <summary>Nạp lại danh sách theo từ khóa: server → gọi SearchFunc (debounce); client → lọc Items tại chỗ.</summary>
+    private async Task ReloadRowsAsync()
+    {
+        _error = null;
+
+        if (SearchFunc is not null)
+        {
+            _searchCts?.Cancel();
+            var cts = _searchCts = new CancellationTokenSource();
+            _loading = true;
+            try
+            {
+                await Task.Delay(250, cts.Token);   // debounce
+                var res = await SearchFunc(_search, cts.Token);
+                if (cts.IsCancellationRequested) return;
+                _rows = res.ToList();
+            }
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex) { _error = ex.Message; _rows = []; }
+            finally { if (!cts.IsCancellationRequested) _loading = false; }
+            StateHasChanged();
+        }
+        else
+        {
+            var src = Items ?? (IReadOnlyList<TItem>)[];
+            _rows = string.IsNullOrWhiteSpace(_search)
+                ? src.ToList()
+                : src.Where(x => TextOf(x).Contains(_search, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+    }
+
+    // ── Chọn / xóa / thêm mới ────────────────────────────────────────────────────
+
+    private async Task SelectAsync(TItem item)
+    {
+        _pickedInSession = true;
+        await CloseAsync(false);
+        await OnSelect.InvokeAsync(item);
+    }
+
+    private async Task OnClearMouseDown()
+    {
+        _inputText = "";
+        _search = "";
+        if (OnClear.HasDelegate) await OnClear.InvokeAsync();
+    }
+
+    private async Task OnAddNewMouseDown()
+    {
+        var kw = _search;
+        await CloseAsync(false);
+        await OnAddNew.InvokeAsync(kw);
+    }
+
+    // ── Bàn phím: ↓/↑ di chuyển, Enter chọn/commit, Escape hủy ──────────────────
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (Disabled) return;
+        var render = RenderRows;
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (!_open) await OpenAsync();
+                if (render.Count > 0) _highlight = Math.Min(_highlight + 1, render.Count - 1);
+                break;
+            case "ArrowUp":
+                if (_open && render.Count > 0) _highlight = Math.Max(_highlight - 1, 0);
+                break;
+            case "Enter":
+                if (_open && render.Count > 0 && (_highlight >= 0 || !AllowFreeText))
+                    await SelectAsync(render[_highlight >= 0 && _highlight < render.Count ? _highlight : 0]);
+                else if (AllowFreeText && !string.IsNullOrWhiteSpace(_search))
+                {
+                    _pickedInSession = true;
+                    await OnFreeText.InvokeAsync(_search);
+                    await CloseAsync(false);
+                }
+                break;
+            case "Escape":
+                if (_open) await CloseAsync(false);
+                break;
+        }
+    }
+
+    public override void Dispose()
+    {
+        _searchCts?.Cancel();
+        base.Dispose();
+    }
+}

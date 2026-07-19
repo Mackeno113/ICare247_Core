@@ -1,0 +1,163 @@
+/* IcSelectBox — control select/lookup dùng chung (chuẩn "Cấp công ty"). Token theme Fluent Light.
+   Scoped CSS vẫn áp đúng sau khi popup teleport ra <body> (thuộc tính b-xxx đi theo node). */
+
+.icsb {
+    position: relative;
+    width: 100%;
+}
+
+/* ── Editbox (ô gõ + xóa + caret) ─────────────────────────────────────────── */
+.icsb-editbox {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-height: 42px;
+    padding: 0 4px 0 10px;
+    border: 1px solid var(--input-border);
+    border-radius: var(--input-radius, 6px);
+    background: var(--color-card);
+    transition: var(--input-transition);
+}
+
+.icsb-editbox:focus-within {
+    border-color: var(--input-border-focus);
+    box-shadow: var(--input-shadow-focus);
+}
+
+.icsb-editbox--disabled {
+    background: var(--gray-100);
+}
+
+.icsb-editbox--error {
+    border-color: var(--color-danger);
+}
+.icsb-editbox--error:focus-within {
+    box-shadow: var(--input-shadow-error);
+}
+
+.icsb-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: var(--input-font, 14px);
+    font-family: var(--font-body);
+    color: var(--color-text);
+    padding: 4px 0;
+}
+
+.icsb-input::placeholder { color: var(--color-text-muted); }
+
+.icsb-clear, .icsb-caret {
+    flex-shrink: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    line-height: 1;
+    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.icsb-clear { font-size: 12px; }
+.icsb-caret { font-size: 12px; }
+.icsb-clear:hover { color: var(--color-danger); }
+.icsb-caret:hover { color: var(--color-text); }
+.icsb-caret:disabled { opacity: .5; cursor: default; }
+
+/* ── Popup ───────────────────────────────────────────────────────────────── */
+.icsb-popup {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    /* KHÔNG đặt right:0 — khi teleport ra body (position:fixed), JS chỉ set left/top/minWidth; right:0 sẽ
+       căng popup full-width + phồng offsetWidth khiến JS tính left lệch. min-width:100% đủ khớp bề rộng ô. */
+    z-index: 1050;
+    max-height: 320px;
+    overflow: auto;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg, 8px);
+    box-shadow: var(--shadow-popup);
+    padding: var(--space-1, 4px) 0;
+    min-width: 100%;
+}
+
+.icsb-header {
+    padding: 8px 14px 6px;
+    font-size: 11px;
+    font-weight: var(--fw-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.icsb-list { padding: 4px 0; }
+
+.icsb-item {
+    padding: 9px 14px;
+    margin: 1px 6px;
+    font-size: var(--fs-sm);
+    color: var(--color-text);
+    border-radius: var(--radius-md, 6px);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.icsb-item--highlight,
+.icsb-item:hover {
+    background: var(--gray-50);
+    color: var(--color-primary);
+}
+
+.icsb-item--selected {
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    font-weight: var(--fw-medium);
+}
+
+.icsb-item--selected::before {
+    content: "✓ ";
+    font-size: 12px;
+    opacity: 0.85;
+}
+
+.icsb-msg {
+    padding: 14px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: var(--fs-sm);
+}
+.icsb-msg--error { color: var(--color-danger); }
+
+/* Gợi ý khi list lớn bị cắt render (MaxRender) — gõ để thu hẹp. */
+.icsb-more {
+    padding: 6px 14px;
+    font-size: var(--fs-xs);
+    color: var(--color-text-muted);
+    text-align: center;
+    border-top: 1px solid var(--color-border);
+}
+
+.icsb-addnew {
+    margin: 4px 6px 2px;
+    padding: 9px 14px;
+    border-top: 1px solid var(--color-border);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--color-primary);
+    cursor: pointer;
+    border-radius: var(--radius-md, 6px);
+}
+.icsb-addnew:hover { background: var(--gray-50); }
+
+.icsb-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1049;
+}

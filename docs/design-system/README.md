@@ -1,187 +1,48 @@
-# ICare247 Design System v1.0
+# ICare247 — Design System (Web)
 
-**Brand:** "I Care 24/7" | **Style:** Colorful · Playful · Approachable
-**Stack:** Blazor WASM + DevExpress | **Mode:** Light only
+> **Phong cách hiện tại: ERP Fluent Light** — nghiêm túc, mật độ cao, trung tính, ≤3 màu, accent **xanh
+> Fluent `#0F6CBD`**. Công cụ làm việc, KHÔNG phải landing-page.
+>
+> ⚠️ Bản "Colorful · Playful" (Coral/Violet/Teal, Plus Jakarta Sans) trước đây **đã bị thay thế hoàn toàn**
+> (ADR-012). Nếu bạn còn thấy màu tím/coral ở đâu → đó là tàn dư cần dọn (xem `DESIGN_AUDIT.md`).
 
----
+## Nguồn chuẩn (đừng duplicate)
 
-## Brand Story
+Tài liệu này **không** liệt kê lại từng token — README cũ drift chính vì chép token ra đây rồi lệch với code.
+Nguồn sự thật:
 
-> **"I Care 24/7"** = Tôi luôn ở đây, luôn quan tâm đến bạn
-
-| Yếu tố | Giá trị |
+| Nguồn | Là gì |
 |---|---|
-| Personality | Ấm áp · Tận tâm · Luôn sẵn sàng |
-| Style | Colorful · Playful · Approachable |
-| Color strategy | Multi-color brand, 3 màu chủ đạo |
-| Logo | Gradient 135deg: Coral → Violet → Teal |
-| UI | Discrete per-module · Light base |
+| **`../../src/frontend/ICare247_UI/wwwroot/css/tokens.css`** | **Nguồn chuẩn token runtime** — màu, spacing, radius, font, shadow, z-index. Đổi token = sửa ở đây. |
+| **`.claude/skills/icare247-admin-ui/`** | Chuẩn bố cục + component (form, bảng, nút, spacing, typography, anti-AI). Đọc khi dựng/review UI. |
+| `hrm-layout-principles.md` | Nguyên tắc bố cục HRM đa công ty (1:1 form / 1:N grid, nav dọc, TreeList). |
+| `auth-screens.md` | Bộ 4 màn Auth (vùng style riêng có chủ đích — `auth.css`). |
+| `DESIGN_AUDIT.md` | Audit WEB-UX-04: chỗ còn lệch token + bản đồ migrate. |
+| `WEB_UX_IMPROVEMENT_TASKS.md` | Backlog 7 task cải thiện UX Web + trạng thái. |
 
----
+## Tóm tắt bộ token (chi tiết ở `tokens.css`)
 
-## Brand Colors
+- **Màu (≤3 nhóm):** Neutral (gray 50–900, chiếm ~90% UI) · Accent xanh `--color-primary #0F6CBD` (CTA/link/
+  selection/focus) · Semantic chỉ cho trạng thái: `--color-success #2E7D32` · `--color-warning/accent #F59E0B` ·
+  `--color-danger #C62828` · `--color-info #1565C0` (mỗi màu có bản `-soft`). **Không màu thứ 4.**
+- **Font:** `--font-sans` (Segoe UI — xem finding P1 trong audit), `--font-mono` (JetBrains Mono cho số/mã).
+- **Cỡ chữ:** `--fs-xs 12` · `--fs-sm 13` (mặc định grid/form) · `--fs-base 14` · `--fs-md 16` · `--fs-lg 18` ·
+  `--fs-xl 22` · `--fs-2xl 28`. Tối đa ~4 cấp thực dụng; hierarchy bằng weight+màu, không phóng to size.
+- **Spacing:** thang 4px — `--space-1..8` = 4/8/12/16/20/24/32.
+- **Radius:** `--radius-sm 4` (input/nút/badge) · `--radius-md 6` (mặc định) · `--radius-lg 8` (popup/modal).
+  Bảng & section = 0 (vuông).
+- **Shadow:** phẳng — chỉ lớp nổi tạm thời (popup/modal/toast) dùng `--shadow-popup`; surface không đổ bóng.
 
-| Màu | Hex | Ý nghĩa |
-|---|---|---|
-| **Coral** | `#FF6B6B` | "I Care" — Warmth, humanity, energy |
-| **Violet** | `#845EF7` | Platform — Creative, innovative, bridge |
-| **Teal** | `#00C9A7` | "247" — Reliable, always fresh |
+## Ràng buộc bất biến
 
-### Logo Gradient
-```css
-background: linear-gradient(135deg, #FF6B6B 0%, #845EF7 50%, #00C9A7 100%);
-```
+- Theme = **Fluent Light**, token đã KHÓA. Đổi màu accent = qua accent API Fluent / file accent, **KHÔNG**
+  override `--dxbl-*` ở `:root`. (Chính sách override `--dxbl-*` trên selector component: xem finding P3 trong
+  `DESIGN_AUDIT.md` — đang chờ chốt.)
+- **1 CTA chính / màn.** Bảng chiếm 70–80% màn danh sách. Không card hóa mọi vùng.
+- **i18n bắt buộc** — mọi chuỗi qua `Loc.L(key, "fallback vi")` hoặc `Sys_Resource`. Không hardcode.
+- Mọi màu hiển thị phải qua `var(--color-*)` — không hex literal trong component (xem audit để dọn tàn dư).
 
----
+## Layout trang (WEB-UX-02)
 
-## Typography
-
-| Role | Font | Weight |
-|---|---|---|
-| Heading (H1–H3) | Plus Jakarta Sans | 700 |
-| Subheading (H4–H6) | Plus Jakarta Sans | 600 |
-| Label / Button | Plus Jakarta Sans | 500–600 |
-| Body text | Inter | 400 |
-| Caption / Helper | Inter | 400 |
-| Code | JetBrains Mono | 400 |
-
-### Type Scale
-| Token | Size | Dùng cho |
-|---|---|---|
-| `--text-xs` | 12px | Caption, helper text |
-| `--text-sm` | 14px | Body, label, button |
-| `--text-base` | 16px | Body dài |
-| `--text-lg` | 18px | Lead text |
-| `--text-xl` | 20px | H4–H5 |
-| `--text-2xl` | 24px | H3 |
-| `--text-3xl` | 30px | H2 |
-| `--text-4xl` | 36px | H1 |
-| `--text-5xl` | 48px | Display / Hero |
-
----
-
-## Spacing (8px base)
-
-| Token | Value | Dùng cho |
-|---|---|---|
-| `--space-1` | 4px | Micro gap |
-| `--space-2` | 8px | Icon gap, tight padding |
-| `--space-3` | 12px | Input padding vertical |
-| `--space-4` | 16px | Card padding, section gap |
-| `--space-6` | 24px | Card padding large |
-| `--space-8` | 32px | Section spacing |
-| `--space-12` | 48px | Page section |
-| `--space-16` | 64px | Large section |
-
----
-
-## Border Radius
-
-| Token | Value | Dùng cho |
-|---|---|---|
-| `--radius-sm` | 4px | Badge nhỏ, tag |
-| `--radius-md` | 8px | **Button, Input** ← default |
-| `--radius-lg` | 12px | **Card, Dropdown** |
-| `--radius-xl` | 16px | Panel, Sidebar items |
-| `--radius-2xl` | 24px | **Modal, Dialog** |
-| `--radius-full` | 9999px | Pill badge, Avatar |
-
----
-
-## Component Specs
-
-### Button
-
-| State | Visual |
-|---|---|
-| Default | bg: `--color-violet-500`, text: white |
-| Hover | bg: `--color-violet-600` |
-| Active | bg: `--color-violet-700` + scale 0.98 |
-| Focus | outline 2px `--color-violet-500` + offset 2px |
-| Disabled | bg: `--color-neutral-200`, text: `--color-neutral-400` |
-| Loading | Spinner + opacity 0.8 + pointer-events: none |
-
-**Sizes:** `sm` 32px · `md` 40px ← default · `lg` 48px
-
-### Input
-
-| State | Visual |
-|---|---|
-| Default | border: `--border-default` |
-| Hover | border: `--color-neutral-300` |
-| Focus | border: `--color-violet-500` + shadow brand |
-| Error | border: `--color-error` + shadow error |
-| Disabled | bg: `--color-neutral-100`, text: `--text-disabled` |
-
-### Card
-- bg: white, border: `--border-default`, radius: `--radius-lg`
-- shadow: `--shadow-sm` → hover: `--shadow-md`
-- padding: `--space-4` (sm) · `--space-6` (md) · `--space-8` (lg)
-
-### Table
-- Header: bg `--color-neutral-50`, text uppercase 12px semibold
-- Row height: 48px
-- Hover: `--color-neutral-50`
-- Selected: `--color-violet-50`
-
----
-
-## Module Color System
-
-Module colors được assign khi có danh sách module. Placeholder trong `tokens.css`:
-
-```css
---color-module-1: var(--color-coral-500);   /* TBD */
---color-module-2: var(--color-violet-500);  /* TBD */
---color-module-3: var(--color-teal-500);    /* TBD */
-```
-
-Khi thêm module mới (> 3), mở rộng palette với màu bổ sung:
-- Module 4: `#F59E0B` (Amber)
-- Module 5: `#3B82F6` (Sky Blue)
-
----
-
-## Accessibility
-
-- Text contrast: ≥ 4.5:1 (WCAG AA)
-- UI elements: ≥ 3:1
-- Focus indicator: 2px outline `--color-violet-500`
-- Touch target: tối thiểu 44×44px
-- Disabled: dùng `aria-disabled` thay `disabled` attribute
-
----
-
-## Cách dùng
-
-### 1. Import tokens
-```html
-<!-- wwwroot/index.html -->
-<link rel="stylesheet" href="css/tokens.css" />
-```
-
-### 2. Dùng trong component
-```css
-.my-button {
-  height: var(--btn-height-md);
-  background: var(--btn-primary-bg);
-  border-radius: var(--btn-radius);
-  font-family: var(--font-heading);
-}
-```
-
-### 3. Module accent
-```html
-<div class="accent-module-1">
-  <!-- UI dùng var(--module-color) cho accent elements -->
-</div>
-```
-
----
-
-## Files
-
-| File | Mục đích |
-|---|---|
-| `tokens.css` | Toàn bộ CSS custom properties |
-| `README.md` | Documentation này |
+- `.page-container` mặc định **rộng** (max-width 1680px) cho màn danh sách; trang form/đọc thêm `.page-narrow`
+  (1100px). Cuộn ngang chỉ trong vùng lưới (`.app-content { overflow-x: hidden }`). Filter panel stack-above ≤991px.

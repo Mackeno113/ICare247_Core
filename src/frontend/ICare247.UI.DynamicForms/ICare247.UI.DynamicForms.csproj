@@ -5,6 +5,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>ICare247.UI.DynamicForms</RootNamespace>
+    <!-- CS8669: chỉ nổ ở CODE RAZOR SINH RA khi khởi tạo generic component với kiểu chứa object?
+         (IcSelectBox<Dictionary<string,object?>> ở LookupBoxRenderer) — file generated không có #nullable
+         directive ta chèn được. Code tay đã <Nullable>enable</Nullable> nên không bao giờ nổ CS8669 →
+         chặn nhiễu này an toàn, không giấu lỗi thật. -->
+    <NoWarn>$(NoWarn);CS8669</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
