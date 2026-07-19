@@ -244,7 +244,10 @@
 .app-content {
     flex: 1 1 auto;
     padding: var(--content-padding);
-    overflow: auto;
+    /* WEB-UX-02: chỉ cuộn DỌC ở cấp trang; cuộn NGANG chỉ trong vùng lưới (DevExpress
+       ColumnsContainer tự lo). Chặn cuộn ngang toàn trang → không lòi thanh cuộn ngang cấp shell. */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 /* Backdrop — chỉ dùng trên mobile khi mở sidebar */

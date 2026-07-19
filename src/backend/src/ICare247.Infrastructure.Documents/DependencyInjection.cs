@@ -28,6 +28,9 @@ public static class DependencyInjection
         // Excel I/O import (DevExpress Spreadsheet) — cô lập cùng project DevExpress. Spec 25 §11, ADR-034 (rev).
         services.AddScoped<ISpreadsheetReader, SpreadsheetReader>();
         services.AddScoped<IImportTemplateBuilder, ImportTemplateBuilder>();
+
+        // Export lưới (.xlsx) — WEB-UX-01: xuất toàn bộ dữ liệu đã lọc, không chỉ 1 trang.
+        services.AddScoped<IViewExportBuilder, ViewExportBuilder>();
         return services;
     }
 }

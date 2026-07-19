@@ -40,6 +40,8 @@
                 LayoutAutoLoading="OnTreeLayoutLoading"
                 LayoutAutoSaving="OnTreeLayoutSaving"
                 ShowFilterRow="View.ShowFilterRow"
+                ShowSearchBox="false"
+                SearchText="@(GridSearchText ?? string.Empty)"
                 FilterMenuButtonDisplayMode="TreeListFilterMenuButtonDisplayMode.Always"
                 VirtualScrollingEnabled="true"
                 CssClass="dv-treelist"
@@ -113,6 +115,8 @@ else
             LayoutAutoSaving="OnLayoutSaving"
             ShowFilterRow="View.ShowFilterRow"
             ShowGroupPanel="View.ShowGroupPanel"
+            ShowSearchBox="false"
+            SearchText="@(GridSearchText ?? string.Empty)"
             VirtualScrollingEnabled="View.VirtualScroll"
             PageSize="@(View.PageSize < 1 ? 20 : View.PageSize)"
             PagerVisible="@(View.AllowPaging && !View.VirtualScroll)"
@@ -190,6 +194,11 @@ else
 @code {
     [Parameter] public ViewMetadataDto View { get; set; } = new();
     [Parameter] public List<Dictionary<string, object?>> Items { get; set; } = [];
+
+    /// <summary>Từ khóa tìm kiếm (WEB-UX-02): ô tìm đã dời lên thanh tiêu đề (ViewPage) để bỏ dải search
+    /// riêng của DevExpress. Cả DxGrid lẫn DxTreeList lọc client trên dữ liệu đã tải (SearchText).</summary>
+    [Parameter] public string? GridSearchText { get; set; }
+
     /// <summary>Double-click dòng → mở Sửa. Tham số = cả dòng (trang tự resolve khóa).</summary>
     [Parameter] public EventCallback<IDictionary<string, object?>> OnEdit { get; set; }
     [Parameter] public EventCallback<object?> OnDelete { get; set; }
@@ -367,6 +376,9 @@ else
             return;
         }
 
+        // Load hết lên client → DxGrid đang giữ toàn bộ dữ liệu, xuất qua nó là xuất đủ (và tôn trọng
+        // đúng sort/lọc/tìm hiện tại trên lưới). Endpoint export server-side vẫn giữ làm hạ tầng dự
+        // phòng (ViewApiService.ExportDataAsync) cho trường hợp sau này cần xuất tập rất lớn.
         if (fmt == "csv")
             await _grid.ExportToCsvAsync($"{name}.csv");
         else

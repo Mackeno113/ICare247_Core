@@ -296,11 +296,25 @@ public sealed partial class ViewRepository : IViewRepository
         };
     }
 
-    /// <inheritdoc />
-    public async Task<ViewDataResult> GetDataAsync(
-        ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default)
+    /// <summary>Trần số dòng 1 lượt xuất Excel/CSV toàn bộ (WEB-UX-01 export) — chặn yêu cầu bất thường
+    /// làm tràn bộ nhớ server; đủ lớn cho nhu cầu thực tế (xem GetAllDataAsync).</summary>
+    private const int MaxExportRows = 200_000;
+
+    /// <summary>Ngữ cảnh SELECT dùng chung giữa <see cref="GetDataAsync"/> (1 trang) và
+    /// <see cref="GetAllDataAsync"/> (toàn bộ, cho export) — cùng 1 bộ FROM/JOIN/WHERE/ORDER để
+    /// kết quả xuất khớp đúng kết quả đang xem trên lưới.</summary>
+    private sealed record QueryContext(
+        System.Data.IDbConnection Data, string FromSql, IReadOnlyList<string> SelectExprs,
+        string WhereSql, string OrderCol, DynamicParameters Dp);
+
+    /// <summary>
+    /// Dựng FROM (JOIN FK) + SELECT + WHERE (search + scope công ty) cho nguồn Table/View — dùng chung
+    /// bởi <see cref="GetDataAsync"/> (thêm OFFSET/FETCH) và <see cref="GetAllDataAsync"/> (thêm TOP).
+    /// Trả <c>null</c> nếu View không có cột Data hợp lệ nào (whitelist rỗng).
+    /// </summary>
+    private async Task<QueryContext?> BuildQueryContextAsync(
+        ViewMetadata view, string? search, CancellationToken ct)
     {
-        // Đọc trực tiếp chỉ áp cho Table/View (SELECT giống nhau). Sp/Sql đi qua GetFilteredDataAsync (panel lọc).
         if (!IsDirectReadSource(view.SourceType))
             throw new NotSupportedException(
                 $"View '{view.ViewCode}': Source_Type='{view.SourceType}' chưa hỗ trợ đọc trực tiếp " +
@@ -317,7 +331,7 @@ public sealed partial class ViewRepository : IViewRepository
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (dataCols.Count == 0)
-            return new ViewDataResult();
+            return null;
 
         // ── Auto-JOIN khóa ngoại (spec 25 §5a): cột khai Props_Json.fkLookup → JOIN bảng đích,
         //    đổi biểu thức SELECT của cột thành TÊN (in-place) ⇒ lọc/sort/xuất theo tên chạy tự nhiên. ──
@@ -325,7 +339,7 @@ public sealed partial class ViewRepository : IViewRepository
 
         var keyValid = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField);
 
-        // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET cần ORDER BY).
+        // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET/TOP cần ORDER BY).
         var orderCol = keyValid ? view.KeyField! : dataCols[0];
 
         // SELECT từng cột: cột FK → "[_fkN].[Display] AS [Field]"; cột thường → "b.[Field] AS [Field]".
@@ -375,7 +389,7 @@ public sealed partial class ViewRepository : IViewRepository
 
         var fromSql = $"{table} AS b{string.Concat(joinSql)}";
 
-        using var data = _dataDb.CreateConnection();
+        var data = _dataDb.CreateConnection();
 
         var dp = new DynamicParameters();
         var whereClauses = new List<string>();
@@ -414,18 +428,57 @@ public sealed partial class ViewRepository : IViewRepository
         }
 
         var whereSql = whereClauses.Count > 0 ? " WHERE " + string.Join(" AND ", whereClauses) : "";
+        return new QueryContext(data, fromSql, selectExprs, whereSql, orderCol, dp);
+    }
 
-        dp.Add("Skip", Math.Max(0, (page - 1) * pageSize));
-        dp.Add("Take", pageSize < 1 ? 50 : pageSize);
+    /// <inheritdoc />
+    public async Task<ViewDataResult> GetDataAsync(
+        ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default)
+    {
+        var ctx = await BuildQueryContextAsync(view, search, ct);
+        if (ctx is null) return new ViewDataResult();
+        using var data = ctx.Data;
+
+        ctx.Dp.Add("Skip", Math.Max(0, (page - 1) * pageSize));
+        ctx.Dp.Add("Take", pageSize < 1 ? 50 : pageSize);
 
         // ORDER BY tham chiếu alias đầu ra (cột FK đã alias về tên cột) → sắp theo tên hiển thị.
         var listSql =
-            $"SELECT {string.Join(", ", selectExprs)} FROM {fromSql}{whereSql} " +
-            $"ORDER BY {Bracket(orderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-        var countSql = $"SELECT COUNT(*) FROM {fromSql}{whereSql}";
+            $"SELECT {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
+            $"ORDER BY {Bracket(ctx.OrderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+        var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
 
-        var rows = await data.QueryAsync(new CommandDefinition(listSql, dp, cancellationToken: ct));
-        var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, dp, cancellationToken: ct));
+        var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
+        var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, ctx.Dp, cancellationToken: ct));
+
+        return new ViewDataResult
+        {
+            Items = rows.Select(r => (IDictionary<string, object?>)
+                            ((IDictionary<string, object>)r).ToDictionary(k => k.Key, v => (object?)v.Value))
+                        .ToList(),
+            TotalCount = total
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task<ViewDataResult> GetAllDataAsync(
+        ViewMetadata view, string? search, CancellationToken ct = default)
+    {
+        var ctx = await BuildQueryContextAsync(view, search, ct);
+        if (ctx is null) return new ViewDataResult();
+        using var data = ctx.Data;
+
+        // Cùng bộ lọc/JOIN với GetDataAsync — chỉ khác TOP thay vì OFFSET/FETCH (xuất toàn bộ kết quả
+        // lọc, không chỉ 1 trang). Trần MaxExportRows chặn yêu cầu bất thường, không giới hạn nhu cầu
+        // thực tế (xem hằng số).
+        ctx.Dp.Add("Cap", MaxExportRows);
+        var listSql =
+            $"SELECT TOP (@Cap) {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
+            $"ORDER BY {Bracket(ctx.OrderCol)}";
+        var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
+
+        var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
+        var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, ctx.Dp, cancellationToken: ct));
 
         return new ViewDataResult
         {

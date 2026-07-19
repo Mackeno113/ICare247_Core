@@ -39,6 +39,20 @@ public interface IViewRepository
         ViewMetadata view, string? search, int page, int pageSize, CancellationToken ct = default);
 
     /// <summary>
+    /// Lấy TOÀN BỘ dòng khớp <paramref name="search"/> cho View (Source_Type='Table'/'View') — dùng cho
+    /// export Excel/CSV: người dùng lọc ra bao nhiêu dòng thì xuất đúng bấy nhiêu, không chỉ 1 trang.
+    /// Cùng FROM/JOIN/WHERE với <see cref="GetDataAsync"/>; có trần số dòng (an toàn bộ nhớ server) —
+    /// xem hằng số trong <c>ViewRepository</c>.
+    /// </summary>
+    /// <param name="view">Metadata View đã nạp.</param>
+    /// <param name="search">Từ khóa LIKE trên các cột Data (null = không lọc) — phải khớp đúng ô tìm
+    /// kiếm người dùng đang dùng trên lưới để export ra đúng dữ liệu đang xem.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Toàn bộ dòng khớp (tối đa trần cấu hình) + tổng số dòng khớp thật (để báo nếu bị cắt bớt).</returns>
+    Task<ViewDataResult> GetAllDataAsync(
+        ViewMetadata view, string? search, CancellationToken ct = default);
+
+    /// <summary>
     /// Thực thi lưới nâng cao (Source_Type='Sp'/'Sql') với tham số từ panel lọc trái.
     /// Chỉ bind các <c>@param</c> khai báo trong <see cref="ViewMetadata.Filters"/> (whitelist) — ép kiểu
     /// theo Param_Type, bọc %...% khi Operator='LIKE', giá trị rỗng → NULL (SP nên xử lý NULL = bỏ lọc).

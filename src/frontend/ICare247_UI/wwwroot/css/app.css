@@ -12,7 +12,11 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .app-icon { display: inline-block; vertical-align: middle; flex: none; }
 
 /* ── Page layout ──────────────────────────────────────── */
-.page-container { max-width: 1100px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+/* WEB-UX-02: mặc định = workspace danh sách RỘNG (cap 1680px để màn 4K không kéo bảng
+   quá dài khó quét; ở 1440/1920 vẫn tận dụng tốt). Trang form/đọc thêm .page-narrow
+   để về bề rộng dễ đọc (1100px — bằng default cũ). */
+.page-container { max-width: 1680px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+.page-container.page-narrow { max-width: 1100px; }
 
 /* ── Page header ──────────────────────────────────────── */
 .page-header { margin-bottom: var(--space-5); }
@@ -288,6 +292,12 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .dv-with-filter { display: flex; gap: 16px; align-items: flex-start; }
 .dv-with-filter .dv-grid-area { flex: 1 1 auto; min-width: 0; }
 
+/* WEB-UX-02 — Tablet/mobile (≤991px): filter panel XẾP TRÊN lưới (stack-above), full-width;
+   panel tự về 100% bề rộng (xem FilterPanel.razor.css). Desktop giữ 2 cột cạnh nhau. */
+@media (max-width: 991px) {
+    .dv-with-filter { flex-direction: column; }
+}
+
 .md-grid-wrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
 .md-grid { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
 .md-grid thead th { text-align: left; padding: 10px 12px; background: var(--gray-50); border-bottom: 1px solid var(--color-border); font-weight: var(--fw-semibold); color: var(--gray-700); }
@@ -489,3 +499,105 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
    --color-* của app cũng đã khớp xanh Fluent (xem tokens.css) để đồng bộ.
    Muốn đổi sang navy/khác → dùng accent API của Fluent (1 nơi), đừng override.
    ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Toast (thông báo nổi, tự tắt) — ToastHost.razor ──────────────────────────
+   Phẳng theo chuẩn admin UI: nền surface, viền TRÁI 3px màu semantic + icon nhỏ,
+   1 lớp shadow khuếch tán thấp. KHÔNG khối màu loè. Màu chỉ từ token semantic. */
+.toast-host {
+    position: fixed;
+    right: var(--space-4);
+    bottom: var(--space-4);
+    z-index: 1100;               /* trên modal (backdrop ~1000) để báo được cả khi popup mở */
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-width: min(380px, calc(100vw - var(--space-8)));
+    pointer-events: none;        /* để trống vùng không có toast không chặn click nền */
+}
+.toast {
+    pointer-events: auto;        /* nhưng chính toast thì bấm được (nút ✕) */
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: 10px 12px;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-left-width: 3px;
+    border-radius: var(--radius-lg);   /* 8px — lớp nổi tạm thời */
+    box-shadow: var(--shadow-popup);
+    font-size: var(--fs-sm);
+    color: var(--color-text);
+    animation: toast-in 150ms ease-out;
+}
+.toast__icon {
+    flex: none;
+    width: 18px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 999px;
+    font-size: 11px; font-weight: var(--fw-bold);
+    line-height: 1;
+    color: var(--color-text-inverse);
+}
+.toast__body { flex: 1 1 auto; min-width: 0; line-height: 1.4; word-break: break-word; }
+.toast__close {
+    flex: none;
+    border: none; background: transparent; cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: var(--fs-sm); line-height: 1;
+    padding: 2px; margin: -2px -2px 0 0;
+}
+.toast__close:hover { color: var(--color-text); }
+
+/* Mỗi kiểu: màu viền trái + nền icon lấy từ token semantic đã khóa (≤3 màu app-level). */
+.toast--success { border-left-color: var(--color-success); }
+.toast--success .toast__icon { background: var(--color-success); }
+.toast--error   { border-left-color: var(--color-danger); }
+.toast--error   .toast__icon { background: var(--color-danger); }
+.toast--warning { border-left-color: var(--color-warning); }
+.toast--warning .toast__icon { background: var(--color-warning); }
+.toast--info    { border-left-color: var(--color-info); }
+.toast--info    .toast__icon { background: var(--color-info); }
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .toast { animation: none; }
+}
+
+/* ── ConfirmDialog (xác nhận Có/Không, vd "Bỏ thay đổi?") — ConfirmDialog.razor ──
+   Modal nhỏ căn giữa, nổi TRÊN modal form (z 1050) và toast (z 1100). Phẳng, 1 shadow. */
+.cd-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, .45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1200;
+    padding: var(--space-4);
+    outline: none;
+}
+.cd-dialog {
+    background: var(--color-card);
+    border-radius: var(--radius-lg);       /* 8px */
+    box-shadow: var(--shadow-popup);
+    width: min(420px, 100%);
+    padding: var(--space-5) var(--space-5) var(--space-4);
+}
+.cd-title { font-size: var(--fs-md); font-weight: var(--fw-semibold); color: var(--color-text); margin-bottom: var(--space-2); }
+.cd-message { font-size: var(--fs-sm); color: var(--color-text-secondary); line-height: 1.5; }
+.cd-actions { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+
+/* ── WEB-UX-02: thanh tiêu đề màn danh sách GỌN ─────────────────────────────
+   Gộp ô tìm lên thanh (bỏ dải search riêng của DxGrid) + nút tiện ích icon-only.
+   Đặt cuối file để thắng cascade (cùng specificity với .md-list-header ở trên). */
+.md-list-header { margin-bottom: 8px; }
+.md-list-header__actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ml-search-inline {
+    width: 220px; max-width: 40vw; height: 38px;
+    padding: 8px 12px;
+    border: 1px solid var(--input-border); border-radius: var(--radius-sm);
+    font-size: var(--fs-sm); color: var(--color-text);
+}
+.ml-search-inline:focus { outline: none; border-color: var(--color-info); box-shadow: 0 0 0 3px var(--color-info-soft); }
+/* Nút tiện ích icon-only (Xóa cache ↻ / Import ⬆): vuông, gọn ngang, cao bằng nút thường (38px). */
+.btn.btn-icon-text { padding: 9px 11px; min-width: 38px; }

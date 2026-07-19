@@ -5,6 +5,7 @@
 
 using ICare247.Api.Authorization;
 using ICare247.Application.Features.Views.Commands.ReorderTreeItem;
+using ICare247.Application.Features.Views.Queries.ExportViewData;
 using ICare247.Application.Features.Views.Queries.GetFilterOptions;
 using ICare247.Application.Features.Views.Queries.GetViewByCode;
 using ICare247.Application.Features.Views.Queries.GetViewData;
@@ -118,6 +119,36 @@ public sealed class ViewController : ControllerBase
             return NotFound(new { message = $"View '{code}' không tồn tại hoặc đã bị ẩn." });
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Xuất TOÀN BỘ dữ liệu khớp <paramref name="search"/> ra .xlsx/.csv (WEB-UX-01 export) — chỉ áp
+    /// nguồn Table/View (Source_Type='Sp'/'Sql' đã tải hết ở client, xuất qua DxGrid như cũ, không gọi
+    /// endpoint này). Người dùng lọc ra bao nhiêu dòng thì xuất đúng bấy nhiêu, không chỉ 1 trang.
+    /// </summary>
+    /// <param name="code">Ui_View.View_Code.</param>
+    /// <param name="search">Từ khóa đang lọc trên lưới (null = xuất toàn bộ).</param>
+    /// <param name="format">"xlsx" (mặc định) hoặc "csv".</param>
+    /// <param name="lang">Ngôn ngữ resolve metadata/caption cột (mặc định "vi").</param>
+    /// <param name="ct">Cancellation token.</param>
+    [HttpGet("{code}/export")]
+    [RequirePermissionForTarget("View", PermissionOp.Xem, "code")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportData(
+        string code,
+        [FromQuery] string? search = null,
+        [FromQuery] string format = "xlsx",
+        [FromQuery] string lang = "vi",
+        CancellationToken ct = default)
+    {
+        var query = new ExportViewDataQuery(code, GetTenantId(), lang, search, format);
+        var result = await _mediator.Send(query, ct);
+
+        if (result is null)
+            return NotFound(new { message = $"View '{code}' không tồn tại, đã bị ẩn, hoặc không cho phép xuất." });
+
+        return File(result.Bytes, result.ContentType, result.FileName);
     }
 
     /// <summary>

@@ -104,3 +104,19 @@
 
 .fp-search { flex: 1; }
 .fp-reset  { flex: 0 0 auto; }
+
+/* WEB-UX-02 — Tablet (≤991px): panel XẾP TRÊN lưới → full-width (bỏ cột cố định 280px);
+   body dàn 2 cột để không kéo input dài quá; span 3-4 chiếm cả 2 cột. */
+@media (max-width: 991px) {
+    .fp-panel,
+    .fp-panel.fp-collapsed { width: 100%; flex-basis: auto; }
+    .fp-body { grid-template-columns: repeat(2, 1fr); }
+    .fp-span-1, .fp-span-2 { grid-column: span 1; }
+    .fp-span-3, .fp-span-4 { grid-column: span 2; }
+}
+
+/* Mobile (≤767px): 1 control / hàng cho dễ thao tác một tay. */
+@media (max-width: 767px) {
+    .fp-body { grid-template-columns: 1fr; }
+    .fp-span-1, .fp-span-2, .fp-span-3, .fp-span-4 { grid-column: span 1; }
+}

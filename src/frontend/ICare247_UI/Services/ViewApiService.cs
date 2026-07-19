@@ -9,6 +9,7 @@ using System.Text.Json;
 using ICare247.UI.Shared.Services.Http;
 using ICare247.UI.Shared.Services.I18n;
 using Microsoft.Extensions.Logging;
+using Microsoft.JSInterop;
 
 namespace ICare247_UI.Services;
 
@@ -18,13 +19,15 @@ namespace ICare247_UI.Services;
 public sealed class ViewApiService
 {
     private readonly HttpClient _http;
+    private readonly IJSRuntime _js;
     private readonly ILogger<ViewApiService> _logger;
     private readonly LocalizationService _loc;
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
 
-    public ViewApiService(HttpClient http, ILogger<ViewApiService> logger, LocalizationService loc)
+    public ViewApiService(HttpClient http, IJSRuntime js, ILogger<ViewApiService> logger, LocalizationService loc)
     {
         _http = http;
+        _js = js;
         _logger = logger;
         _loc = loc;
     }
@@ -134,6 +137,27 @@ public sealed class ViewApiService
             foreach (var key in row.Keys.ToList())
                 row[key] = UnwrapJson(row[key]);
         return dto;
+    }
+
+    /// <summary>
+    /// Xuất TOÀN BỘ dữ liệu khớp <paramref name="search"/> (WEB-UX-01 export, nguồn Table/View) → tải
+    /// bytes rồi trigger download qua JS (icare.downloadBytes, cùng cơ chế tải template import).
+    /// </summary>
+    public async Task ExportDataAsync(
+        string viewCode, string? search, string format = "xlsx", string lang = "vi", CancellationToken ct = default)
+    {
+        var url = $"/api/v1/views/{Uri.EscapeDataString(viewCode)}/export?lang={Uri.EscapeDataString(lang)}&format={Uri.EscapeDataString(format)}";
+        if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
+
+        var resp = await _http.GetAsync(url, ct);
+        await EnsureOkAsync(resp, "ExportData", viewCode);
+
+        var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+        var fileName = resp.Content.Headers.ContentDisposition?.FileNameStar
+                       ?? resp.Content.Headers.ContentDisposition?.FileName?.Trim('"')
+                       ?? $"{viewCode}.{(format.Equals("csv", StringComparison.OrdinalIgnoreCase) ? "csv" : "xlsx")}";
+        var mime = resp.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        await _js.InvokeVoidAsync("icare.downloadBytes", ct, fileName, Convert.ToBase64String(bytes), mime);
     }
 
     /// <summary>

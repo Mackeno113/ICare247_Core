@@ -11,6 +11,7 @@
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject MasterDataApiService MasterApi
+@inject ToastService Toast
 @inherits LocalizedComponentBase
 
 <PageTitle>@(_view?.Title ?? _view?.ViewCode ?? ViewCode) — View</PageTitle>
@@ -30,13 +31,19 @@
             <div>
                 <h2>@(_view.Title ?? _view.ViewCode)</h2>
             </div>
-            <div class="md-list-header__actions" style="display:flex; gap:8px; align-items:center;">
+            <div class="md-list-header__actions">
+                @* WEB-UX-02: ô tìm gộp lên thanh (bỏ dải search riêng của DxGrid/DxTreeList) — lọc client. *@
+                @if (_view.ShowSearchBox)
+                {
+                    <input class="ml-search-inline" type="search" @bind="_gridSearch" @bind:event="oninput"
+                           placeholder="@Loc.L("common.search.placeholder", "Tìm kiếm…")"
+                           aria-label="@Loc.L("common.search.placeholder", "Tìm kiếm…")" />
+                }
                 @if (_isSuperAdmin)
                 {
-                    <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
-                            title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")">
-                        ↻ @Loc.L("view.cache.clear", "Xóa cache")
-                    </button>
+                    <button class="btn btn-secondary btn-icon-text" disabled="@_clearingCache" @onclick="ClearCacheAsync"
+                            title="@Loc.L("view.cache.clear.tip", "Xóa cache cấu hình màn + combobox, rồi tải lại")"
+                            aria-label="@Loc.L("view.cache.clear", "Xóa cache")">↻</button>
                 }
                 @if (_selected.Count > 0 && _view.AllowDelete && !string.IsNullOrWhiteSpace(_view.EditFormCode))
                 {
@@ -46,10 +53,9 @@
                 }
                 @if (_view.AllowAdd && !string.IsNullOrWhiteSpace(_view.EditFormCode))
                 {
-                    <button class="btn btn-secondary" @onclick="() => _showImport = true"
-                            title="@Loc.L("import.btn.tip", "Nhập dữ liệu từ file Excel theo template")">
-                        ⬆ @Loc.L("import.btn", "Import Excel")
-                    </button>
+                    <button class="btn btn-secondary btn-icon-text" @onclick="() => _showImport = true"
+                            title="@Loc.L("import.btn.tip", "Nhập dữ liệu từ file Excel theo template")"
+                            aria-label="@Loc.L("import.btn", "Import Excel")">⬆</button>
                     <button class="btn btn-primary" @onclick="OpenAdd">+ @Loc.L("common.action.create", "Thêm mới")</button>
                 }
             </div>
@@ -66,7 +72,8 @@
                 <DataView View="_view" Items="_items" OnEdit="OpenEdit" OnDelete="OpenDelete"
                           OnAdd="OpenAdd" OnRefresh="ReloadDataAsync" OnUnhandledAction="OnUnhandledAction"
                           OnServerRender="OnServerRenderAsync" OnReorder="OnTreeReorderAsync"
-                          SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged" />
+                          SelectedDataItems="_selected" SelectedDataItemsChanged="OnSelectionChanged"
+                          GridSearchText="_gridSearch" />
 
                 @if (_notice is not null)
                 {
@@ -82,13 +89,16 @@
 @* ── Popup Thêm/Sửa ngay trên màn lưới — đóng/Lưu xong ở nguyên màn này ── *@
 @if (_showForm && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
 {
-    <DraggableModal Title="@FormTitle" Width="@_formWidth" OnClose="CloseForm">
-        <MasterDataForm FormCode="@(_view.EditFormCode!)" Id="_editId" ShowTitle="false"
+    <DraggableModal Title="@FormTitle" Width="@_formWidth" OnClose="CloseForm" BeforeClose="ConfirmCloseIfDirtyAsync">
+        <MasterDataForm @ref="_form" FormCode="@(_view.EditFormCode!)" Id="_editId" ShowTitle="false"
                         InitialValues="_prefillValues" LockedFields="_prefillLocked"
-                        OnSaved="OnFormSaved" OnCancelled="CloseForm"
+                        OnSaved="OnFormSaved" OnCancelled="CancelFormAsync"
                         OnWidthResolved="(w) => _formWidth = w" />
     </DraggableModal>
 }
+
+@* Hộp thoại "Bỏ thay đổi?" khi đóng form còn thay đổi chưa lưu (WEB-UX-03). *@
+<ConfirmDialog @ref="_confirm" />
 
 @* ── Dialog xác nhận xóa (qua Edit_Form của View) ── *@
 @if (_deleteId is not null && _view is not null && !string.IsNullOrWhiteSpace(_view.EditFormCode))
@@ -133,6 +143,9 @@
     private int _total;
     private bool _loading = true;
     private bool _clearingCache;
+
+    /// <summary>Từ khóa ô tìm trên thanh tiêu đề (WEB-UX-02) → DxGrid lọc client trên dữ liệu đã tải.</summary>
+    private string? _gridSearch;
     private bool _isSuperAdmin;
     private string? _error;
     private string? _notice;
@@ -153,6 +166,8 @@
     private object? _editId;     // null = Thêm, có giá trị = Sửa
     private object? _deleteId;
     private string? _formWidth;  // bề rộng modal Thêm/Sửa theo số cột form (MasterDataForm phát ra)
+    private MasterDataForm? _form;      // ref form để hỏi IsDirty khi đóng
+    private ConfirmDialog?  _confirm;   // hộp thoại "Bỏ thay đổi?"
 
     // ── Chọn nhiều dòng (checkbox) + xóa hàng loạt ──
     private IReadOnlyList<object> _selected = [];
@@ -182,6 +197,8 @@
             _isSuperAdmin = await Perms.IsSuperAdminAsync();
             _view = await ViewApi.GetInfoAsync(ViewCode);
             if (_view is null) { _error = Loc.L("view.notfound", "Không tìm thấy View '{0}'.", ViewCode); return; }
+
+            _gridSearch = null;   // đổi View → xóa từ khóa tìm cũ (tránh mở màn mới đã bị lọc sẵn)
 
             // Nguồn SP/SQL có panel lọc: chỉ tải khi Auto_Search_On_Load (tránh SP nặng) — ngược lại chờ bấm Tìm.
             if (_view.HasFilterPanel && !_view.AutoSearchOnLoad)
@@ -213,7 +230,12 @@
             : (res.Error ?? Loc.L("view.cache.clear.err", "Xóa cache thất bại."));
     }
 
-    /// <summary>Tải lại dữ liệu: nguồn query → chạy lại bộ lọc gần nhất; nguồn Table → SELECT + search LIKE.</summary>
+    /// <summary>
+    /// Tải lại dữ liệu: nguồn Sp/Sql → chạy lại bộ lọc gần nhất; nguồn Table/View → tải TOÀN BỘ bản ghi
+    /// 1 lần rồi để DxGrid/DxTreeList tự phân trang/cuộn/sort/lọc phía client. Load hết có chủ đích: sort
+    /// cột, Filter Row và ô tìm kiếm của DxGrid phải chạy đúng trên toàn bộ tập — người dùng cần thấy đúng
+    /// cái họ lọc, không phải chỉ 1 trang. Bảng cực lớn → admin bật Virtual_Scroll (WPF) để cuộn mượt.
+    /// </summary>
     private async Task ReloadDataAsync()
     {
         if (_view!.IsQuerySource)
@@ -222,9 +244,6 @@
             return;
         }
 
-        // Tải TOÀN BỘ bản ghi 1 lần (pageSize tối đa) rồi để DxGrid tự phân trang/cuộn ảo phía
-        // client theo Page_Size cấu hình. Nếu chỉ lấy đúng Page_Size (vd 20) thì lưới chỉ có 1
-        // trang server trong bộ nhớ → không cuộn/sang trang xem hết được phần dữ liệu còn lại.
         var result = await ViewApi.GetDataAsync(ViewCode, search: null, page: 1, pageSize: int.MaxValue);
         _items = result?.Items ?? [];
         _total = result?.TotalCount ?? 0;
@@ -306,7 +325,7 @@
         _deleteId = id;
     }
 
-    /// <summary>Đóng popup Thêm/Sửa (Hủy hoặc nút ✕).</summary>
+    /// <summary>Đóng popup Thêm/Sửa (đã qua chốt chặn dirty ở BeforeClose/CancelFormAsync).</summary>
     private void CloseForm()
     {
         _showForm = false;
@@ -314,11 +333,45 @@
         _formWidth = null;   // reset để lần mở sau tính lại theo form tương ứng
     }
 
-    /// <summary>Lưu thành công → đóng popup + nạp lại dữ liệu lưới (ở nguyên màn này).</summary>
+    /// <summary>
+    /// Chốt chặn đóng modal (nút ✕/Escape): form còn thay đổi chưa lưu → hỏi "Bỏ thay đổi?".
+    /// Trả true = cho đóng (form sạch hoặc user đồng ý bỏ); false = giữ lại tiếp tục sửa.
+    /// </summary>
+    private async Task<bool> ConfirmCloseIfDirtyAsync()
+    {
+        if (_form is null || !_form.IsDirty) return true;
+        if (_confirm is null) return true;
+        return await _confirm.ShowAsync(
+            Loc.L("form.discard.title", "Bỏ thay đổi?"),
+            Loc.L("form.discard.msg", "Bạn có thay đổi chưa lưu. Đóng form sẽ mất các thay đổi này."),
+            Loc.L("form.discard.confirm", "Bỏ & đóng"),
+            Loc.L("form.discard.cancel", "Tiếp tục sửa"));
+    }
+
+    /// <summary>Nút Hủy trong form → đi qua cùng chốt chặn dirty như ✕/Escape rồi mới đóng.</summary>
+    private async Task CancelFormAsync()
+    {
+        if (await ConfirmCloseIfDirtyAsync())
+            CloseForm();
+    }
+
+    /// <summary>
+    /// Lưu thành công → đóng popup + báo toast + nạp lại lưới. Tách 2 trạng thái: nếu DB lưu xong nhưng
+    /// làm mới lưới lỗi → báo CẢNH BÁO (không phải "lưu thất bại") để user biết dữ liệu đã ghi.
+    /// </summary>
     private async Task OnFormSaved(object? _)
     {
         CloseForm();
-        await ReloadDataAsync();
+        try
+        {
+            await ReloadDataAsync();
+            Toast.Success(Loc.L("common.msg.saved", "Đã lưu."));
+        }
+        catch (Exception ex)
+        {
+            Toast.Warning(Loc.L("common.msg.savedButReloadFailed",
+                "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})", ex.Message));
+        }
     }
 
     /// <summary>Xóa thành công → đóng dialog + nạp lại dữ liệu lưới.</summary>

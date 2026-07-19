@@ -9,6 +9,7 @@
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject NavigationManager Nav
+@inject ToastService Toast
 @inherits LocalizedComponentBase
 
 <PageTitle>@(_info?.FormCode ?? FormCode) — @Loc.L("masterdata.list.pageTitle", "Danh mục")</PageTitle>
@@ -69,12 +70,15 @@
 @* ── Popup form (chỉ khi Display_Mode = Popup) — kéo được, chỉ đóng bằng nút ── *@
 @if (_showPopup && _info is not null)
 {
-    <DraggableModal Title="@PopupTitle" Width="@_formWidth" OnClose="CloseForm">
-        <MasterDataForm FormCode="@FormCode" Id="_editId" ShowTitle="false"
-                        OnSaved="OnFormSaved" OnCancelled="CloseForm"
+    <DraggableModal Title="@PopupTitle" Width="@_formWidth" OnClose="CloseForm" BeforeClose="ConfirmCloseIfDirtyAsync">
+        <MasterDataForm @ref="_form" FormCode="@FormCode" Id="_editId" ShowTitle="false"
+                        OnSaved="OnFormSaved" OnCancelled="CancelFormAsync"
                         OnWidthResolved="(w) => _formWidth = w" />
     </DraggableModal>
 }
+
+@* Hộp thoại "Bỏ thay đổi?" khi đóng form còn thay đổi chưa lưu (WEB-UX-03). *@
+<ConfirmDialog @ref="_confirm" />
 
 @* ── Confirm delete dialog ── *@
 @if (_deleteId is not null && _info is not null)
@@ -108,6 +112,8 @@
     private object? _editId;
     private object? _deleteId;
     private string? _formWidth;  // bề rộng modal theo số cột form (MasterDataForm phát ra)
+    private MasterDataForm? _form;      // ref form để hỏi IsDirty khi đóng
+    private ConfirmDialog?  _confirm;   // hộp thoại "Bỏ thay đổi?"
 
     /// <summary>Tiêu đề thanh popup: "Thêm mới / Cập nhật — {FormCode}".</summary>
     private string PopupTitle =>
@@ -190,10 +196,45 @@
 
     private void CloseForm() { _showPopup = false; _editId = null; _formWidth = null; }
 
+    /// <summary>
+    /// Chốt chặn đóng modal (✕/Escape): form còn thay đổi chưa lưu → hỏi "Bỏ thay đổi?".
+    /// Trả true = cho đóng (sạch hoặc user đồng ý bỏ); false = giữ lại tiếp tục sửa.
+    /// </summary>
+    private async Task<bool> ConfirmCloseIfDirtyAsync()
+    {
+        if (_form is null || !_form.IsDirty) return true;
+        if (_confirm is null) return true;
+        return await _confirm.ShowAsync(
+            Loc.L("form.discard.title", "Bỏ thay đổi?"),
+            Loc.L("form.discard.msg", "Bạn có thay đổi chưa lưu. Đóng form sẽ mất các thay đổi này."),
+            Loc.L("form.discard.confirm", "Bỏ & đóng"),
+            Loc.L("form.discard.cancel", "Tiếp tục sửa"));
+    }
+
+    /// <summary>Nút Hủy trong form → đi qua cùng chốt chặn dirty như ✕/Escape rồi mới đóng.</summary>
+    private async Task CancelFormAsync()
+    {
+        if (await ConfirmCloseIfDirtyAsync())
+            CloseForm();
+    }
+
+    /// <summary>
+    /// Lưu thành công → đóng popup + toast + nạp lại danh sách. Tách 2 trạng thái: DB lưu xong nhưng
+    /// làm mới danh sách lỗi → CẢNH BÁO (không phải "lưu thất bại").
+    /// </summary>
     private async Task OnFormSaved(object? _)
     {
         CloseForm();
-        await ReloadListAsync();
+        try
+        {
+            await ReloadListAsync();
+            Toast.Success(Loc.L("common.msg.saved", "Đã lưu."));
+        }
+        catch (Exception ex)
+        {
+            Toast.Warning(Loc.L("common.msg.savedButReloadFailed",
+                "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})", ex.Message));
+        }
     }
 
     private void OpenDelete(object? id) => _deleteId = id;
