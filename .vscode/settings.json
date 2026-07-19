@@ -13,9 +13,7 @@
   "editor.formatOnSave": true,
   "editor.tabSize": 4,
   "editor.insertSpaces": true,
-  "editor.rulers": [
-    120
-  ],
+  "editor.rulers": [120],
   "editor.wordWrap": "on",
   // ── C# / OmniSharp ───────────────────────────────────────
   "omnisharp.enableEditorConfigSupport": true,
@@ -53,5 +51,6 @@
     "editor.wordWrap": "on"
   },
   "dotnet.formatting.organizeImportsOnFormat": true,
-  "claudeCode.useTerminal": true
+  "claudeCode.useTerminal": true,
+  "dotnet.preferCSharpExtension": true
 }

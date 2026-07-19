@@ -1,12 +1,48 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-19 (session 90 — EditorType **AddressBox** cho form động: nối IcAddressBlock vào
-> engine no-code, cơ chế 2-field companion-ẩn; + fix SpinEdit ViewManager; session 89 fix bug ④
-> query-mode). Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái:** AddressBox build Web+WPF 0W/0E, đã commit+push `fcf07c2`. **3 việc treo cuối phiên
-> (smoke AddressBox rebuild · xóa field Tỉnh riêng form Công ty · điều tra TreeList TC_PhongBan chưa
-> ra cây) — user chốt ĐÃ XONG / KHÔNG cần nữa (2026-07-19).**
-> **Task tiếp theo gợi ý:** chưa chốt — hỏi user đầu phiên sau.
+> Cập nhật: 2026-07-20 (session 91 — loạt **WEB-UX** + hợp nhất dropdown về **IcSelectBox** + hạ tầng
+> Toast/dirty-guard + backend i18n-save & export builder; kết phiên soạn **prompt Codex** dựng module
+> WPF cho `Ui_Lookup_Template`). Lịch sử → [session_history.md](session_history.md).
+> **Trạng thái:** code UX/dropdown/backend CHƯA commit (diff lớn, đa tính năng — chờ user chốt cách
+> tách commit). Prompt Codex ở scratchpad (chưa đưa vào repo). **Build: user tự verify (quy tắc dự án).**
+> **Task tiếp theo gợi ý:** (1) Codex dựng module WPF Ui_Lookup_Template → (2) fix "Công ty cha" tree:
+> cập nhật TPL_CONG_TY (Source_Name + Parent_Column=CongTy_Cha_Id) + `BuildSafeSqlForTree` hỗ trợ custom_sql.
+
+## Session 91 (2026-07-20) — WEB-UX + hợp nhất dropdown IcSelectBox + prompt Codex Ui_Lookup_Template
+
+**Bối cảnh:** rà backlog `docs/design-system/WEB_UX_IMPROVEMENT_TASKS.md`, làm lần lượt WEB-UX-01..04,
+rồi hợp nhất mọi dropdown phẳng, kết phiên soạn prompt bàn giao cho Codex.
+
+**Đã làm (CHƯA commit — branch `master`):**
+- **WEB-UX-01 — ĐÓNG (không làm server paging):** lưới View **chủ đích load hết lên client** (pageSize
+  int.MaxValue là ĐÚNG, không phải bug) → sort/filter toàn bộ; giữ endpoint export. Đã thử server-paging
+  rồi **revert hoàn toàn**. Xem [[project-view-grid-load-all-client]]. (Có thêm `ExportViewData` query +
+  `IViewExportBuilder`/`ViewExportBuilder` cho xuất Excel toàn bộ/đã-lọc.)
+- **WEB-UX-02 — full-width + compaction:** `.page-container` default = RỘNG 1680px, trang form thêm
+  `.page-narrow` (1100px); filter stack ≤991px; nén toolbar lưới. Xem [[project-page-container-wide-default]].
+- **WEB-UX-03 — Toast + dirty-guard:** `ToastService` (4 kiểu Success/Error/Warning/Info) + `ToastHost` +
+  `ConfirmDialog` (ShowAsync→Task<bool>) + `DraggableModal.BeforeClose` + Escape. Lưu i18n theo key (backend
+  spc_Grid_ trả key → client resolve). Xem [[project-toast-and-dirty-guard]].
+- **WEB-UX-04 — audit design + hợp nhất dropdown:** `DESIGN_AUDIT.md`; fix P0 violet + P1 font (tokens.css
+  `--font-sans` Segoe UI trước Inter). **Tách control dùng chung `IcSelectBox`** (Shared/Pickers) + migrate
+  MỌI dropdown phẳng (LookupBox/ComboBox/LookupComboBox + IcAddressBlock Tỉnh/Xã). TreeLookupBox giữ riêng
+  (cây). Xem [[project-icselectbox-shared-dropdown]].
+- **Backend i18n-save plumbing:** `SaveMasterDataCommand(+LangCode)` → Handler dùng lang thay hardcode "vi";
+  Controller Create/Update nhận `[FromQuery] lang`; `MasterDataApiService.SaveAsync(...lang)`.
+- **Hạ tầng:** fix `.claude/settings.json` 2 hook dùng `$CLAUDE_PROJECT_DIR` (hết MODULE_NOT_FOUND từ subdir);
+  `DynamicForms.csproj` NoWarn CS8669 (code generated, an toàn).
+
+**Chẩn đoán (chưa fix — deferred, user chốt làm module WPF trước):** "Công ty cha" hiện ID (3) thay vì
+tên — FieldId=38 TreeLookupBox + Source `custom_sql` KHÔNG được `BuildSafeSqlForTree` hỗ trợ (chỉ nhận
+identifier); flat `BuildSafeSql` thì có. SQL đúng cần: `SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id
+FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten` + `Parent_Column=CongTy_Cha_Id`.
+
+**Kết phiên — prompt Codex:** ConfigStudio CHƯA có màn cấu hình `Ui_Lookup_Template` → soạn prompt (ở
+`scratchpad/PROMPT_codex_lookup_template_module.md`) hướng dẫn Codex dựng module WPF CRUD, mirror
+ViewDataService/ViewManager + wpf-configstudio.md + db/083; ngoài phạm vi = fix backend tree custom_sql +
+sửa dữ liệu TPL_CONG_TY.
+
+**Build:** user tự verify (quy tắc dự án — Claude chỉ edit code). Lượt soạn prompt KHÔNG đổi code repo.
 
 ## Session 90 (2026-07-19) — EditorType AddressBox (khối địa chỉ) cho form no-code + fix SpinEdit
 

@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/post_write_flag_memory.js",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post_write_flag_memory.js\"",
             "async": true
           }
         ]
@@ -39,7 +39,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/stop_remind_memory.js"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop_remind_memory.js\""
           }
         ]
       }
