@@ -55,9 +55,10 @@ public sealed class SaveMasterDataCommandHandler
         // Resource map lấy qua facade (ADR-014) → message validation resolve i18n đúng,
         // trước đây truyền null nên rule message hiện ra raw Error_Key.
         var context     = new EvaluationContext(r.Values);
-        var resourceMap = await _config.GetResourceMapAsync(r.FormCode, "vi", r.TenantId, ct);
+        var lang        = string.IsNullOrWhiteSpace(r.LangCode) ? "vi" : r.LangCode;
+        var resourceMap = await _config.GetResourceMapAsync(r.FormCode, lang, r.TenantId, ct);
         var vr = await _validation.ValidateFormAsync(
-            info.FormId, context, r.TenantId, langCode: "vi",
+            info.FormId, context, r.TenantId, langCode: lang,
             resourceMap: resourceMap, formCode: r.FormCode, ct: ct);
 
         var errors = vr.Where(kv => !kv.Value.IsValid)
@@ -84,8 +85,8 @@ public sealed class SaveMasterDataCommandHandler
                 var enteredValue = val.ToString() ?? "";
                 // 1. per-field key → 2. sys.val.unique template → 3. hardcoded.
                 // Token i18n: {0} = giá trị người dùng nhập · {1} = nhãn field (thay ở CẢ per-field lẫn template).
-                var template = await _config.ResolveKeyAsync(key, "vi", r.TenantId, ct)
-                    ?? await _config.ResolveKeyAsync("sys.val.unique", "vi", r.TenantId, ct);
+                var template = await _config.ResolveKeyAsync(key, lang, r.TenantId, ct)
+                    ?? await _config.ResolveKeyAsync("sys.val.unique", lang, r.TenantId, ct);
                 var msg = template is not null
                     ? template.Replace("{0}", enteredValue).Replace("{1}", label)
                     : $"{label} \"{enteredValue}\" đã tồn tại";
@@ -104,7 +105,7 @@ public sealed class SaveMasterDataCommandHandler
         // Store trả KEY → resolve text server-side ở đây.
         var hook = await _hookCatalog.GetAsync(info.TableName, r.TenantId, ct);
         var saved = await _repo.SaveWithHooksAsync(
-            info, r.TenantId, r.Id, r.Values, r.UserId, langCode: "vi",
+            info, r.TenantId, r.Id, r.Values, r.UserId, langCode: lang,
             hook.HasValidate, hook.HasAfterSave, ct,
             source: r.Source, importSessionId: r.ImportSessionId);
 
@@ -113,7 +114,7 @@ public sealed class SaveMasterDataCommandHandler
             var procErrors = new List<MasterDataFieldError>(saved.Errors.Count);
             foreach (var e in saved.Errors)
                 procErrors.Add(new MasterDataFieldError(
-                    e.FieldName ?? "", await ResolveProcMessageAsync(e, "vi", r.TenantId, ct)));
+                    e.FieldName ?? "", await ResolveProcMessageAsync(e, lang, r.TenantId, ct)));
             _logger.LogDebug("SaveMasterData '{Form}' store validation fail: {Count} lỗi.", r.FormCode, procErrors.Count);
             return new MasterDataSaveResult(Success: false, Id: null, Errors: procErrors);
         }

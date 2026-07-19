@@ -83,6 +83,7 @@ builder.Services.AddScoped<LookupApiService>();
 builder.Services.AddScoped<ILookupQueryService, LookupQueryService>();
 builder.Services.AddScoped<MasterDataApiService>();
 builder.Services.AddScoped<ViewApiService>();
+builder.Services.AddScoped<ToastService>();   // thông báo nổi dùng chung (ToastHost ở MainLayout)
 builder.Services.AddScoped<ImportApiService>();
 builder.Services.AddScoped<DocTemplateApiService>();
 builder.Services.AddScoped<NavigationApiService>();

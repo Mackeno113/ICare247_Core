@@ -1,0 +1,52 @@
+@* File    : ToastHost.razor
+   Purpose : Nơi render hàng đợi toast (đặt 1 lần ở MainLayout). Lắng nghe ToastService.OnChange,
+             vẽ chồng các toast ở góc màn; mỗi kiểu 1 phong cách (viền/icon màu semantic). *@
+
+@implements IDisposable
+@inject ToastService Toast
+@inject LocalizationService Loc
+
+<div class="toast-host" aria-live="polite" aria-atomic="false">
+    @foreach (var t in Toast.Items)
+    {
+        <div class="toast toast--@Kind(t.Type)" role="@RoleOf(t.Type)" @key="t.Id">
+            <span class="toast__icon" aria-hidden="true">@Glyph(t.Type)</span>
+            <div class="toast__body">@t.Message</div>
+            <button type="button" class="toast__close" @onclick="() => Toast.Dismiss(t.Id)"
+                    aria-label="@Loc.L("common.action.close", "Đóng")">✕</button>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>Đăng ký lắng nghe thay đổi hàng đợi toast để re-render.</summary>
+    protected override void OnInitialized() => Toast.OnChange += OnToastChanged;
+
+    /// <summary>ToastService phát OnChange (thêm/bớt) → render lại trên đúng luồng UI.</summary>
+    private void OnToastChanged() => InvokeAsync(StateHasChanged);
+
+    /// <summary>Class hậu tố theo kiểu → CSS chọn màu/viền (success/error/warning/info).</summary>
+    private static string Kind(ToastType type) => type switch
+    {
+        ToastType.Success => "success",
+        ToastType.Error   => "error",
+        ToastType.Warning => "warning",
+        _                 => "info"
+    };
+
+    /// <summary>Icon nhỏ theo kiểu (không tô khối màu — theo chuẩn admin UI phẳng).</summary>
+    private static string Glyph(ToastType type) => type switch
+    {
+        ToastType.Success => "✓",
+        ToastType.Error   => "✕",
+        ToastType.Warning => "!",
+        _                 => "i"
+    };
+
+    /// <summary>ARIA role: lỗi/cảnh báo = alert (đọc ngay); còn lại = status (đọc nhã nhặn).</summary>
+    private static string RoleOf(ToastType type) =>
+        type is ToastType.Error or ToastType.Warning ? "alert" : "status";
+
+    /// <summary>Hủy đăng ký khi component bị loại bỏ.</summary>
+    public void Dispose() => Toast.OnChange -= OnToastChanged;
+}

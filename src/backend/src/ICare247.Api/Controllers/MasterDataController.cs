@@ -87,13 +87,15 @@ public sealed class MasterDataController : ControllerBase
     [HttpPost("{formCode}")]
     [RequirePermissionForTarget("Form", PermissionOp.Them)]
     public async Task<IActionResult> Create(
-        string formCode, [FromBody] SaveMasterDataRequest body, CancellationToken ct = default)
+        string formCode, [FromBody] SaveMasterDataRequest body,
+        [FromQuery] string lang = "vi", CancellationToken ct = default)
     {
         if (body.Values is null || body.Values.Count == 0)
             return BadRequest(Problem400("Cần ít nhất một cột để thêm mới."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, NormalizeValues(body.Values), GetUserId()), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), Id: null, NormalizeValues(body.Values),
+                GetUserId(), LangCode: lang), ct);
 
         // Validation fail → 422 kèm danh sách lỗi field
         return result.Success ? Ok(result) : UnprocessableEntity(result);
@@ -104,13 +106,15 @@ public sealed class MasterDataController : ControllerBase
     [HttpPut("{formCode}/{id}")]
     [RequirePermissionForTarget("Form", PermissionOp.Sua)]
     public async Task<IActionResult> Update(
-        string formCode, string id, [FromBody] SaveMasterDataRequest body, CancellationToken ct = default)
+        string formCode, string id, [FromBody] SaveMasterDataRequest body,
+        [FromQuery] string lang = "vi", CancellationToken ct = default)
     {
         if (body.Values is null || body.Values.Count == 0)
             return BadRequest(Problem400("Cần ít nhất một cột để cập nhật."));
 
         var result = await _mediator.Send(
-            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), NormalizeValues(body.Values), GetUserId()), ct);
+            new SaveMasterDataCommand(formCode, GetTenantId(), CoerceId(id), NormalizeValues(body.Values),
+                GetUserId(), LangCode: lang), ct);
 
         return result.Success ? Ok(result) : UnprocessableEntity(result);
     }

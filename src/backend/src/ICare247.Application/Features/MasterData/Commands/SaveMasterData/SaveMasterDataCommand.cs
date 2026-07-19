@@ -17,6 +17,8 @@ namespace ICare247.Application.Features.MasterData.Commands.SaveMasterData;
 /// <param name="ImportSessionId">Phiên import (chỉ khi Source="IMPORT") → truyền vào hook <c>@ImportSessionId</c>. Null = nhập tay.</param>
 /// <param name="PartialValidate">true (import cập nhật một phần cột): CHỈ giữ lỗi validation của field CÓ trong
 /// <see cref="Values"/> — field vắng (không đưa vào payload) không bị bắt buộc/validate. Mặc định false (validate cả form).</param>
+/// <param name="LangCode">Ngôn ngữ resolve message i18n (validation + trùng + spc_Grid_) theo user hiện tại.
+/// Mặc định "vi" (import server-side / caller cũ). Client nhập tay truyền ngôn ngữ đang chọn.</param>
 public sealed record SaveMasterDataCommand(
     string FormCode,
     int    TenantId,
@@ -25,4 +27,5 @@ public sealed record SaveMasterDataCommand(
     long? UserId = null,
     string Source = "MANUAL",
     Guid? ImportSessionId = null,
-    bool PartialValidate = false) : IRequest<MasterDataSaveResult>;
+    bool PartialValidate = false,
+    string LangCode = "vi") : IRequest<MasterDataSaveResult>;

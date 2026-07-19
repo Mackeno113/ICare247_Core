@@ -96,16 +96,18 @@ public sealed class MasterDataApiService
 
     /// <summary>Thêm (id null) hoặc Sửa (id có giá trị). Trả kết quả gồm validation errors nếu fail.</summary>
     public async Task<MasterDataSaveResultDto> SaveAsync(
-        string formCode, object? id, Dictionary<string, object?> values, CancellationToken ct = default)
+        string formCode, object? id, Dictionary<string, object?> values,
+        string lang = "vi", CancellationToken ct = default)
     {
         var payload = new { values };
+        var q = $"?lang={Uri.EscapeDataString(lang)}";   // ngôn ngữ resolve message lỗi (spc_Grid_/validate)
         HttpResponseMessage resp;
         if (id is null)
             resp = await _http.PostAsJsonAsync(
-                $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}", payload, JsonOpts, ct);
+                $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}{q}", payload, JsonOpts, ct);
         else
             resp = await _http.PutAsJsonAsync(
-                $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}/{Uri.EscapeDataString(id.ToString() ?? "")}",
+                $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}/{Uri.EscapeDataString(id.ToString() ?? "")}{q}",
                 payload, JsonOpts, ct);
 
         // 200 (success) hoặc 422 (validation fail) đều trả MasterDataSaveResult body

@@ -1,14 +1,17 @@
 @* File    : DraggableModal.razor
    Purpose : Popup dùng chung theo quy tắc thiết kế ICare247:
              - Kéo di chuyển bằng cách giữ chuột/chạm trên THANH TIÊU ĐỀ.
-             - CHỈ đóng khi bấm nút (✕ hoặc nút trong nội dung) — KHÔNG đóng khi click nền.
-             Bọc nội dung qua ChildContent; phát OnClose khi bấm ✕. *@
+             - CHỈ đóng khi bấm nút (✕/Escape) — KHÔNG đóng khi click nền.
+             - BeforeClose (tùy chọn): parent chặn đóng khi form đang dirty (WEB-UX-03).
+             Bọc nội dung qua ChildContent; phát OnClose khi được phép đóng. *@
 
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 @inject LocalizationService Loc
 
-<div class="md-modal-backdrop">
+@* @onkeydown ở backdrop bắt Escape (keydown bubble từ input con). Dropdown teleport ra body
+   nằm ngoài cây này nên Escape của chúng không lọt vào đây. *@
+<div class="md-modal-backdrop" @onkeydown="OnKeyDown">
     <div class="md-modal dm-modal" @ref="_panel" style="@WidthStyle">
         <div class="md-modal-header dm-header" @ref="_handle">
             <span class="dm-title">@Title</span>
@@ -27,8 +30,15 @@
     [Parameter] public string? Width { get; set; }
     /// <summary>Nội dung trong popup (form, v.v.).</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
-    /// <summary>Phát khi người dùng bấm nút đóng ✕.</summary>
+    /// <summary>Phát khi popup THỰC SỰ đóng (sau khi qua <see cref="BeforeClose"/> nếu có).</summary>
     [Parameter] public EventCallback OnClose { get; set; }
+
+    /// <summary>
+    /// Chốt chặn trước khi đóng (tùy chọn). Parent trả false để HỦY đóng (vd form dirty → hỏi xác nhận,
+    /// user chọn tiếp tục sửa). Null = đóng luôn như cũ (không phá popup khác đang dùng DraggableModal).
+    /// Áp cho CẢ nút ✕ lẫn phím Escape.
+    /// </summary>
+    [Parameter] public Func<Task<bool>>? BeforeClose { get; set; }
 
     private ElementReference _panel;
     private ElementReference _handle;
@@ -45,7 +55,19 @@
         catch { /* no-op */ }
     }
 
-    private async Task CloseAsync() => await OnClose.InvokeAsync();
+    /// <summary>Escape → thử đóng (qua cùng chốt chặn BeforeClose như nút ✕).</summary>
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") await CloseAsync();
+    }
+
+    /// <summary>Đóng: nếu có BeforeClose thì hỏi trước; false → không đóng. Ngược lại phát OnClose.</summary>
+    private async Task CloseAsync()
+    {
+        if (BeforeClose is not null && !await BeforeClose())
+            return;
+        await OnClose.InvokeAsync();
+    }
 
     public async ValueTask DisposeAsync()
     {

@@ -8,6 +8,7 @@
 @inject MasterDataApiService  MasterApi
 @inject LookupApiService      LookupApi
 @inject AttachmentApiService  AttachmentApi
+@inject ToastService          Toast
 @inject IJSRuntime            JS
 @inherits LocalizedComponentBase
 
@@ -156,6 +157,20 @@ else
 
     private bool IsEditMode => Id is not null;
 
+    /// <summary>Ảnh chụp giá trị form ngay sau khi nạp/prefill xong — mốc so để biết form có dirty.</summary>
+    private string _baselineJson = "";
+    private bool _baselineCaptured;
+
+    /// <summary>
+    /// Form đã thay đổi so với lúc nạp (WEB-UX-03). Parent dùng để chặn đóng modal khi còn thay đổi
+    /// chưa lưu. So bằng JSON chuẩn hóa (không so tham chiếu object — tránh báo dirty sai với lookup/
+    /// list/ngày). Prefill/default chạy TRƯỚC khi chụp mốc nên KHÔNG tính dirty; user đổi field (kể cả
+    /// cascade cha→con) thì tính. Đang tải hoặc chưa chụp mốc → coi như không dirty.
+    /// </summary>
+    public bool IsDirty =>
+        _baselineCaptured && !_loading
+        && !string.Equals(_baselineJson, CurrentStateJson(), StringComparison.Ordinal);
+
     private List<FieldState> _fieldStates = [];
     /// <summary>Metadata form giữ lại để nhóm field theo section khi render (mirror FormRunner).</summary>
     private FormMetadataDto? _form;
@@ -245,9 +260,27 @@ else
                     }
                 }
             }
+
+            // Chụp mốc SAU khi prefill/default xong → những giá trị đổ sẵn không tính là "user sửa".
+            _baselineJson = CurrentStateJson();
+            _baselineCaptured = true;
         }
         catch (Exception ex) { _error = ApiErrorLocalizer.Describe(Loc, ex); }
         finally { _loading = false; }
+    }
+
+    /// <summary>Serialize giá trị mọi field (FieldCode→Value) để so mốc dirty; giá trị lạ → fallback chuỗi thô.</summary>
+    private string CurrentStateJson()
+    {
+        try
+        {
+            var map = _fieldStates.ToDictionary(f => f.FieldCode, f => f.Value);
+            return System.Text.Json.JsonSerializer.Serialize(map);
+        }
+        catch
+        {
+            return string.Join("|", _fieldStates.Select(f => $"{f.FieldCode}={f.Value}"));
+        }
     }
 
     private Task OnFieldChanged((string Code, object? Value) args)
@@ -273,12 +306,14 @@ else
                 .Where(fs => fs.IsVisible && !fs.IsVirtual)
                 .ToDictionary(fs => fs.FieldCode, fs => fs.Value);
 
-            var result = await MasterApi.SaveAsync(FormCode, Id, values);
+            var result = await MasterApi.SaveAsync(FormCode, Id, values, Loc.CurrentLanguage);
 
             if (result.Success)
             {
                 // Đa-tệp-khi-thêm-mới: gắn các tệp đã upload (treo) vào record vừa có Id.
                 await LinkPendingAttachmentsAsync(result.Id);
+                // Cập nhật mốc = trạng thái vừa lưu → form hết dirty, đóng sau đó không hỏi xác nhận nhầm.
+                _baselineJson = CurrentStateJson();
                 await OnSaved.InvokeAsync(result.Id);
                 return;
             }
@@ -299,14 +334,46 @@ else
                 ? Loc.L("masterdata.form.haserrors", "Có {0} lỗi cần sửa trước khi lưu.", fieldErrorCount)
                 : (_formMessages.Count == 0 ? Loc.L("common.msg.saveFailed", "Lưu thất bại.") : null);
 
+            // Hiển thị "1 lúc 2 nơi": ngoài inline (field đỏ + banner) còn bắn toast để nổi bật ngay
+            // (nhất là khi field lỗi bị cuộn khuất). Cùng thông báo từ spc_Grid_ đã resolve i18n.
+            ShowSaveErrorToasts();
+
             // Trỏ chuột + cuộn tới field lỗi ĐẦU TIÊN (theo thứ tự hiển thị) — icare.focusField
             // focus phần tử id="field_{FieldCode}" mà FieldRenderer đã bọc sẵn.
             var firstErr = _fieldStates.FirstOrDefault(f => f.Errors.Count > 0);
             if (firstErr is not null)
                 await JS.InvokeVoidAsync("icare.focusField", firstErr.FieldCode);
         }
-        catch (Exception ex) { _formError = ApiErrorLocalizer.Describe(Loc, ex); }
+        catch (Exception ex)
+        {
+            _formError = ApiErrorLocalizer.Describe(Loc, ex);
+            Toast.Error(_formError);   // lỗi API/ngoại lệ khi lưu → cũng bắn toast (song song banner)
+        }
         finally { _saving = false; }
+    }
+
+    /// <summary>
+    /// Bắn toast cho các lỗi lưu (song song hiển thị inline). Ít lỗi (≤3, thường là thông báo nghiệp vụ
+    /// từ spc_Grid_ như "không đủ tồn kho") → toast từng dòng đúng nội dung; nhiều lỗi (validate hàng loạt
+    /// field) → 1 toast tóm tắt để tránh spam. Tất cả kiểu Error (spc_Grid_ hiện chặn lưu = lỗi).
+    /// </summary>
+    private void ShowSaveErrorToasts()
+    {
+        var msgs = _formMessages
+            .Concat(_fieldStates.Where(f => f.Errors.Count > 0).SelectMany(f => f.Errors))
+            .Where(m => !string.IsNullOrWhiteSpace(m))
+            .Distinct()
+            .ToList();
+
+        if (msgs.Count == 0)
+        {
+            if (!string.IsNullOrWhiteSpace(_formError)) Toast.Error(_formError!);
+            return;
+        }
+        if (msgs.Count <= 3)
+            foreach (var m in msgs) Toast.Error(m);
+        else
+            Toast.Error(_formError ?? Loc.L("masterdata.form.haserrorsShort", "Có {0} lỗi cần sửa.", msgs.Count));
     }
 
     /// <summary>Đóng toast lỗi (giữ nguyên highlight đỏ ở từng field để user vẫn biết ô nào sai).</summary>

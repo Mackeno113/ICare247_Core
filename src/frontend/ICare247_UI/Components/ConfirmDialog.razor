@@ -1,0 +1,70 @@
+@* File    : ConfirmDialog.razor
+   Purpose : Hộp thoại xác nhận dùng chung, gọi kiểu mệnh lệnh: await _dlg.ShowAsync(...) → true/false.
+             Dùng cho "Bỏ thay đổi?" khi đóng form dirty (WEB-UX-03) và các xác nhận Có/Không khác. *@
+
+@inject LocalizationService Loc
+
+@if (_visible)
+{
+    <div class="cd-backdrop" @onkeydown="OnKeyDown" tabindex="-1" @ref="_backdrop">
+        <div class="cd-dialog" role="alertdialog" aria-modal="true">
+            <div class="cd-title">@_title</div>
+            <div class="cd-message">@_message</div>
+            <div class="cd-actions">
+                @* An toàn (giữ dữ liệu) = primary; hành động phá hủy = danger outline. 1 CTA chính. *@
+                <button type="button" class="btn btn-primary" @onclick="() => Close(false)">@_cancelText</button>
+                <button type="button" class="btn btn-outline-danger" @onclick="() => Close(true)">@_confirmText</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _visible;
+    private string _title = "";
+    private string _message = "";
+    private string _confirmText = "";
+    private string _cancelText = "";
+    private TaskCompletionSource<bool>? _tcs;
+    private ElementReference _backdrop;
+    private bool _focusPending;
+
+    /// <summary>
+    /// Hiện hộp thoại và CHỜ lựa chọn của user. Trả true nếu bấm nút xác nhận (phá hủy), false nếu hủy/Escape.
+    /// Sự kiện theo sau: dialog render; Task hoàn tất khi user bấm nút hoặc nhấn Escape.
+    /// </summary>
+    public Task<bool> ShowAsync(string title, string message, string confirmText, string cancelText)
+    {
+        _title = title;
+        _message = message;
+        _confirmText = confirmText;
+        _cancelText = cancelText;
+        _tcs = new TaskCompletionSource<bool>();
+        _visible = true;
+        _focusPending = true;
+        StateHasChanged();
+        return _tcs.Task;
+    }
+
+    /// <summary>Auto-focus backdrop 1 lần khi mở để bắt phím Escape ngay (không cần click trước).</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPending) return;
+        _focusPending = false;
+        try { await _backdrop.FocusAsync(); } catch { /* chưa render/không focus được → bỏ qua */ }
+    }
+
+    /// <summary>Escape = chọn an toàn (giữ dữ liệu) → trả false, không mất thay đổi.</summary>
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") Close(false);
+    }
+
+    /// <summary>Đóng dialog + trả kết quả cho ShowAsync đang chờ.</summary>
+    private void Close(bool result)
+    {
+        _visible = false;
+        _tcs?.TrySetResult(result);
+        _tcs = null;
+    }
+}
