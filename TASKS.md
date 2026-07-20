@@ -3,6 +3,27 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — TreeLookupBox hỗ trợ custom_sql + TPL_CONG_TY dạng cây (session 92 — 2026-07-20)
+
+Fix chẩn đoán treo từ session 91: field "Công ty cha" (FieldId=38, TreeLookupBox) hiện ID thay vì
+tên vì `BuildSafeSqlForTree` KHÔNG hỗ trợ `Query_Mode='custom_sql'` (chỉ nhận identifier; nhánh
+flat `BuildSafeSql` thì có từ trước).
+
+- [x] **Backend** `DynamicLookupRepository.BuildSafeSqlForTree`: thêm nhánh `custom_sql` mirror nhánh
+  flat (chặn DDL/DML keyword, dùng nguyên văn SQL, tham số vẫn bind qua `BuildParamsAsync` chung).
+  **Guard defense-in-depth**: câu SQL phải chứa cột cha (`Parent_Column`) hoặc `SELECT *` — thiếu thì
+  báo lỗi rõ thay vì trả cây phẳng im lặng (QueryTreeAsync đọc key cột cha từng dòng gắn `__parentId`).
+  GitNexus impact: LOW (chỉ QueryTreeAsync → QueryTreeLookupQueryHandler). Cache an toàn: key hash cả
+  câu SQL. `@NguoiDungID` xác nhận tự resolve qua token Sys_Context_Param (db/060, Claim `sub`).
+- [x] **db/083** seed TPL_CONG_TY: `Source_Name` thêm `TenVietTat, CongTy_Cha_Id` (khớp cột TVF db/084)
+  + `Parent_Column='CongTy_Cha_Id'`; kèm khối UPDATE idempotent vá dòng đã seed (guard `Parent_Column`
+  trống + `Is_Customized=0` — tôn trọng bản tenant tự sửa).
+- **Build verify /finish-task**: backend `ICare247.slnx` **0W/0E** + test **145/145 pass** ·
+  detect-changes risk LOW đúng phạm vi.
+- [ ] **Runtime CHƯA verify** — user: re-run `db/083` (Config DB) HOẶC sửa qua màn WPF "Mẫu Lookup"
+  (lưu ý UI set `Is_Customized=1` → khối vá 083 sẽ bỏ qua dòng đó, đúng thiết kế) → restart API →
+  smoke field "Công ty cha" hiện TÊN dạng cây; kiểm field trỏ `Template_Code=TPL_CONG_TY`.
+
 ## ✅ Đã xong — Bộ 3 control TreeList/Lookup dùng chung (nền tảng, trước màn Phòng ban — 2026-07-18)
 
 User chốt: xây 3 control tái dùng qua ConfigStudio (không SQL tay) TRƯỚC khi cấu hình màn Phòng ban.
@@ -420,7 +441,7 @@ Nợ sót session 79: `LookupBoxRenderer` ở RCL nhưng `LookupAddDialog` còn 
 - **ownerTable = FormCode** (không phải bảng vật lý) — frontend không có tên bảng thật; đủ nhất quán cho save/list/link.
 
 ### ⏳ Deploy để thấy kết quả
-- [ ] Chạy migration (file gộp `db/dev/create_tt_attachment_full.sql`) trên Data DB tenant (sửa lỗi "Invalid object name TT_TepDinhKem" khi thiếu 063).
+- [x] Chạy migration (file gộp `db/dev/create_tt_attachment_full.sql`) trên Data DB tenant — user xác nhận ĐÃ CHẠY 2026-07-20.
 - [ ] Rebuild + restart API + rebuild web (ICare247_UI) + hard reload. Rebuild ConfigStudio WPF.
 - [ ] Cấu hình `FileStorage` trong appsettings.local.json nếu dùng FileSystem/Object (mặc định Db chạy ngay).
 - [ ] Kiểm thử E2E trình duyệt (CHƯA chạy — mới verify compile).

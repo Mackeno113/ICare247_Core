@@ -82,13 +82,13 @@ GO
 IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Lookup_Template WHERE Template_Code = N'TPL_CONG_TY')
     INSERT INTO dbo.Ui_Lookup_Template
         (Template_Code, Ten, Mo_Ta, Query_Mode, Source_Name, Value_Column, Display_Column,
-         Code_Field, Filter_Sql, Order_By, Canonical_Params, Is_Active, Is_System)
+         Code_Field, Filter_Sql, Order_By, Parent_Column, Canonical_Params, Is_Active, Is_System)
     VALUES
         (N'TPL_CONG_TY', N'Công ty (theo quyền)',
          N'Cây công ty user được truy cập: gán riêng (HT_NguoiDung_CongTy) hợp theo vai trò (HT_VaiTro_CongTy). Token @NguoiDungID engine tự resolve — không cần map. Cần Data DB đã chạy db/082 + db/084.',
          N'custom_sql',
-         N'SELECT Id, Ma, Ten FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten',
-         N'Id', N'Ten', N'Ma', NULL, NULL, NULL, 1, 1);
+         N'SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten',
+         N'Id', N'Ten', N'Ma', NULL, NULL, N'CongTy_Cha_Id', NULL, 1, 1);
 GO
 
 -- Tự vá dòng đã seed bản đầu (dùng tên cũ fn_ trước khi chốt quy tắc fnt_/fns_)
@@ -96,6 +96,17 @@ UPDATE dbo.Ui_Lookup_Template
 SET Source_Name = REPLACE(Source_Name, N'dbo.fn_CongTyTheoQuyen', N'dbo.fnt_CongTyTheoQuyen')
 WHERE Template_Code = N'TPL_CONG_TY'
   AND Source_Name LIKE N'%dbo.fn+_CongTyTheoQuyen%' ESCAPE '+';
+GO
+
+-- Tự vá dòng đã seed bản đầu THIẾU cột cha (TreeLookupBox cần CongTy_Cha_Id trong SELECT
+-- + Parent_Column để BuildSafeSqlForTree dựng cây). Chỉ vá dòng chưa cấu hình cây,
+-- Is_Customized=0 — tôn trọng bản tenant đã tự sửa (CFGSYNC-1).
+UPDATE dbo.Ui_Lookup_Template
+SET Source_Name   = N'SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten',
+    Parent_Column = N'CongTy_Cha_Id'
+WHERE Template_Code = N'TPL_CONG_TY'
+  AND (Parent_Column IS NULL OR Parent_Column = N'')
+  AND Is_Customized = 0;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM dbo.Ui_Lookup_Template WHERE Template_Code = N'TPL_TINH_THANH')

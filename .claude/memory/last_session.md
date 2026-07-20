@@ -1,12 +1,37 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-20 (session 91 — loạt **WEB-UX** + hợp nhất dropdown về **IcSelectBox** + hạ tầng
-> Toast/dirty-guard + backend i18n-save & export builder; kết phiên soạn **prompt Codex** dựng module
-> WPF cho `Ui_Lookup_Template`). Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái:** code UX/dropdown/backend CHƯA commit (diff lớn, đa tính năng — chờ user chốt cách
-> tách commit). Prompt Codex ở scratchpad (chưa đưa vào repo). **Build: user tự verify (quy tắc dự án).**
-> **Task tiếp theo gợi ý:** (1) Codex dựng module WPF Ui_Lookup_Template → (2) fix "Công ty cha" tree:
-> cập nhật TPL_CONG_TY (Source_Name + Parent_Column=CongTy_Cha_Id) + `BuildSafeSqlForTree` hỗ trợ custom_sql.
+> Cập nhật: 2026-07-20 (session 92 — fix **TreeLookupBox custom_sql** + seed TPL_CONG_TY dạng cây;
+> ghi nhận migration đính kèm session 77 ĐÃ CHẠY). Lịch sử → [session_history.md](session_history.md).
+> **Trạng thái:** backend + db/083 build 0W/0E, test 145/145; **runtime chưa verify** (user re-run 083
+> + restart API + smoke). Module WPF-15 (Ui_Lookup_Template, Codex làm xong) VẪN CHƯA commit trong
+> working tree — chờ nghiệm thu trực quan màn "Mẫu Lookup".
+> **Task tiếp theo gợi ý:** (1) user smoke "Công ty cha" hiện tên dạng cây → (2) nghiệm thu + commit
+> WPF-15 → (3) màn Phòng ban no-code (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY).
+
+## Session 92 (2026-07-20) — TreeLookupBox custom_sql + TPL_CONG_TY dạng cây + attachment migration đã chạy
+
+**Bối cảnh:** làm task treo từ session 91 — "Công ty cha" (FieldId=38, TreeLookupBox) hiện ID (3)
+thay vì tên: `BuildSafeSqlForTree` không hỗ trợ `custom_sql` (nhánh flat có từ trước).
+
+**Đã làm:**
+- **`DynamicLookupRepository.BuildSafeSqlForTree`**: thêm nhánh `custom_sql` mirror flat (chặn keyword,
+  SQL nguyên văn) + **guard**: SQL phải chứa cột cha hoặc `SELECT *` — thiếu thì lỗi rõ, không trả cây
+  phẳng im lặng. Impact LOW (1 caller QueryTreeAsync). Cache key hash cả SQL → không stale.
+- **db/083**: seed TPL_CONG_TY → `SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id FROM
+  dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten` + `Parent_Column='CongTy_Cha_Id'`; khối UPDATE
+  idempotent vá dòng đã seed (guard Parent_Column trống + Is_Customized=0).
+- **Verify chuỗi @NguoiDungID cho user**: QueryTreeAsync → BuildParamsAsync (regex quét @param thiếu)
+  → IContextParamResolver → Sys_Context_Param seed db/060 (Claim `sub`) → `_request.UserId`; giá trị
+  vào cache key (chống share cache giữa user). Nhánh flat đã chạy thật với đúng SQL này.
+- **Tracking**: hệ đính kèm session 77 — migration `db/dev/create_tt_attachment_full.sql` user xác
+  nhận ĐÃ CHẠY (2026-07-20); còn E2E trình duyệt. Đã cập nhật TASKS.md + project_current_phase.md.
+
+**Build /finish-task:** backend 0W/0E · test 145/145 · detect-changes LOW đúng phạm vi.
+**Runtime CHƯA verify** — user: re-run db/083 (hoặc sửa qua màn WPF Mẫu Lookup — UI set Is_Customized=1,
+khối vá 083 sẽ bỏ qua, đúng thiết kế) → restart API → smoke; kiểm field 38 trỏ Template_Code=TPL_CONG_TY.
+
+**Ghi chú working tree:** module WPF-15 của Codex (màn Mẫu Lookup + ConfirmDialog + DataService + DI)
+vẫn uncommitted, tách khỏi commit session này. 5 file i18n bỏ qua như thường lệ.
 
 ## Session 91 (2026-07-20) — WEB-UX + hợp nhất dropdown IcSelectBox + prompt Codex Ui_Lookup_Template
 

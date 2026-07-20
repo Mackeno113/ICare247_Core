@@ -736,10 +736,36 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 
     /// <summary>
     /// Tương tự BuildSafeSql nhưng bổ sung ParentColumn vào danh sách SELECT.
+    /// Hỗ trợ Query_Mode='custom_sql' (vd mẫu TPL_CONG_TY nguồn TVF fnt_CongTyTheoQuyen):
+    /// câu SQL dùng nguyên văn như nhánh flat, nhưng phải TỰ SELECT kèm cột cha — vì
+    /// QueryTreeAsync đọc key ParentColumn trên từng dòng kết quả để gắn __parentId;
+    /// thiếu cột này mọi node thành gốc (cây phẳng) mà KHÔNG có lỗi nào báo ra.
+    /// <para>Sự kiện theo sau: QueryTreeAsync bind tham số (BuildParamsAsync) rồi thực thi câu SQL trả về.</para>
     /// </summary>
     private static string? BuildSafeSqlForTree(LookupCfgRow cfg, out string? error)
     {
         error = null;
+
+        var mode = (cfg.QueryMode ?? "table").ToLower();
+
+        if (mode == "custom_sql")
+        {
+            // SQL tùy chỉnh từ admin — chỉ block DDL/DML keyword (đồng nhất nhánh flat BuildSafeSql)
+            if (ContainsDangerousKeyword(cfg.SourceName))
+            {
+                error = "custom_sql chứa keyword DDL/DML không được phép.";
+                return null;
+            }
+            // Guard defense-in-depth: cột cha phải xuất hiện trong câu SQL (hoặc SELECT *) —
+            // bắt misconfig ngay tại đây thay vì trả cây phẳng im lặng.
+            if (!(cfg.SourceName ?? "").Contains(cfg.ParentColumn ?? "", StringComparison.OrdinalIgnoreCase)
+                && !(cfg.SourceName ?? "").Contains('*'))
+            {
+                error = $"custom_sql phải SELECT kèm cột cha '{cfg.ParentColumn}' (Parent_Column) để dựng cây.";
+                return null;
+            }
+            return cfg.SourceName;
+        }
 
         if (!SafeIdentifierRegex().IsMatch(cfg.SourceName ?? ""))
         {
