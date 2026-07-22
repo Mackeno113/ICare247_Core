@@ -71,6 +71,7 @@ public partial class App : PrismApplication
         // tránh N+1 query khi mở form (mỗi section/field resolve 1 round-trip).
         containerRegistry.RegisterSingleton<II18nDataService, I18nDataService>();
         containerRegistry.Register<ISysLookupDataService, SysLookupDataService>();
+        containerRegistry.Register<ILookupTemplateDataService, LookupTemplateDataService>();
         containerRegistry.Register<IViewDataService, ViewDataService>();
         containerRegistry.Register<IRelationDataService, RelationDataService>();
         containerRegistry.Register<IPublishCheckService, PublishCheckService>();

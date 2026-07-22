@@ -1,6 +1,6 @@
 version: 2
 project: ICare247_Core
-last_updated: "2026-04-26"
+last_updated: "2026-07-20"
 owners:
   - claude   # Claude Code: backend .NET 9 + Blazor WASM + docs/spec
   - codex    # Codex: ConfigStudio WPF + tests + DB migrations
@@ -160,6 +160,27 @@ tasks:
       - "Chọn item → value binding đúng"
     dependencies: []
     notes: ""
+
+  - id: WPF-15
+    title: "ConfigStudio CRUD Ui_Lookup_Template"
+    agent: codex
+    status: done
+    priority: P0
+    goal: "Dựng màn danh sách + editor cùng View để quản lý mẫu lookup dùng lại."
+    files_allowed:
+      - "src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Core/**"
+      - "src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI.Modules.Forms/**"
+      - "src/frontend/ConfigStudio.WPF.UI/src/ConfigStudio.WPF.UI/**"
+      - "docs/ICare247 Config Studio/TASKS_WPF.md"
+      - "AI_HANDOFF.md"
+    acceptance_criteria:
+      - "Sidebar có Mẫu Lookup và đọc 3 seed từ Config DB"
+      - "CRUD đủ cột Ui_Lookup_Template; SQL parameterized"
+      - "Update đặt Is_Customized=1; khóa Template_Code khi sửa"
+      - "Chặn xóa mẫu hệ thống hoặc mẫu đang được field tham chiếu"
+      - "Build ConfigStudio 0 error, 0 warning"
+    dependencies: []
+    notes: "Done 2026-07-20: fix binding read-only IsSystem/IsCustomized sang OneWay; UI automation click sidebar và thấy đủ TPL_CONG_TY/TPL_PHUONG_XA/TPL_TINH_THANH; build 0/0."
 
 # ──────────────────────────────────────────
 # DONE (để tham khảo)

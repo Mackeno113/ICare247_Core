@@ -160,3 +160,7 @@ docker-compose.override.yml
 
 # Source legacy tham khảo (WPF Ngọc Chương) — chỉ dùng làm spec nghiệp vụ (spec 29), KHÔNG track
 src/frontend/source_can_update/
+
+# Thư mục copy build output ConfigStudio để debug navigation (~110 MB DLL/exe/pdb)
+# Là artifact tạm của phiên debug, build lại được — KHÔNG commit
+.codex/debug-nav/

@@ -253,6 +253,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = LookupTemplateUiText.ScreenTitle,
+                    Icon = "⌕",
+                    NavigateTo = ViewNames.LookupTemplateManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "Form List",
                     Icon = "≡",
                     NavigateTo = ViewNames.FormManager,

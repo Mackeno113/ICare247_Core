@@ -1,7 +1,23 @@
 # ConfigStudio WPF — Task Tracking
 
-> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-15
+> Project: `ConfigStudio.WPF.UI` | Cập nhật: 2026-07-20
 > Session trước (Wave C + ControlProps/I18n/Impact/SysLookup): tất cả done — xem Done log bên dưới
+
+---
+
+## ✅ Done (2026-07-20) — Quản lý mẫu Lookup dùng lại
+
+- **WPF-15** — thêm màn `Mẫu Lookup` trong module Forms, list + editor trên cùng View, đọc/ghi trực tiếp
+  `dbo.Ui_Lookup_Template` qua Dapper parameterized.
+- CRUD đủ cột schema `db/083`: SQL/JSON multiline, `Parent_Column`, `Canonical_Params`, trạng thái sync.
+  `Query_Mode` là enum tĩnh nên dùng `ComboBoxEdit`; grid kế thừa implicit style lọc/nhớ format.
+- An toàn CFGSYNC: khóa `Template_Code` khi sửa; insert local có `Is_System=0/Is_Customized=1`;
+  update luôn set `Is_Customized=1`. Chặn xóa mẫu hệ thống và mẫu đang được `Ui_Field_Lookup` tham chiếu;
+  mẫu hợp lệ xóa qua Prism `ConfirmDialog`.
+- Verify: reflection DevExpress xác nhận API multiline; Config DB thật trả đủ
+  `TPL_CONG_TY`, `TPL_PHUONG_XA`, `TPL_TINH_THANH`; build **0 warning / 0 error**; UI automation
+  bấm sidebar và xác nhận View + 3 dòng render thật. Đã sửa lỗi runtime XAML: hai `CheckEdit`
+  read-only (`Is_System`, `Is_Customized`) bắt buộc binding `Mode=OneWay`.
 
 ---
 

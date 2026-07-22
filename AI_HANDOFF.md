@@ -19,6 +19,22 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-07-20] WPF-15 (CRUD Ui_Lookup_Template) — codex → claude
+
+- Status: done; chưa commit/push.
+- Files: Core `LookupTemplateRecord`, `LookupTemplateUpsertRequest`, `ILookupTemplateDataService`,
+  `LookupTemplateUiText`, `ViewNames`; Infrastructure `LookupTemplateDataService`; Forms
+  `LookupTemplateManagerView(Model)`, `ConfirmDialog(ViewModel)`, `FormsModule`; shell/DI
+  `ShellViewModel`, `App.xaml.cs`; task tracking.
+- Cần biết: màn nằm dưới nhóm Forms với tên **Mẫu Lookup**. `Template_Code` chỉ nhập khi tạo mới.
+  Mọi update đặt `Is_Customized=1`; mẫu hệ thống được sửa nhưng không xóa. Mẫu đang có
+  `Ui_Field_Lookup.Template_Code` bị chặn xóa và báo số field tham chiếu.
+- Verify: Config DB thật trả 3 seed; build WPF 0 warning/0 error; UI automation bấm sidebar và thấy
+  View + 3 dòng thật. Fix runtime: `EditIsSystem`/`EditIsCustomized` là property chỉ đọc nên
+  `CheckEdit.IsChecked` phải dùng `Mode=OneWay` (nếu không Prism nuốt XamlParseException và màn trắng).
+- Bước tiếp theo: mở màn bằng desktop để nghiệm thu trực quan và dùng màn sửa `TPL_CONG_TY`
+  khi triển khai task TreeLookupBox custom_sql riêng.
+
 ### [2026-06-19] VIEW-POPUP-UNIFY (Thêm/Sửa popup trên ViewPage + đồng bộ giao diện) — claude
 
 - Status: FE+BE done (build 0 error). **Không còn việc Codex bắt buộc** (Codex không tham gia giai đoạn này).

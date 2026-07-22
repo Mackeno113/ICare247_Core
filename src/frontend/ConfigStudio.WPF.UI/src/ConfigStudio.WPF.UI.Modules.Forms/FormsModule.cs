@@ -20,6 +20,7 @@ public sealed class FormsModule : IModule
         containerRegistry.RegisterForNavigation<FormEditorView,     FormEditorViewModel>     (ViewNames.FormEditor);
         containerRegistry.RegisterForNavigation<SysTableManagerView,  SysTableManagerViewModel>  (ViewNames.SysTableManager);
         containerRegistry.RegisterForNavigation<SysLookupManagerView, SysLookupManagerViewModel> (ViewNames.SysLookupManager);
+        containerRegistry.RegisterForNavigation<LookupTemplateManagerView, LookupTemplateManagerViewModel>(ViewNames.LookupTemplateManager);
         containerRegistry.RegisterForNavigation<ViewManagerView,    ViewManagerViewModel>    (ViewNames.ViewManager);
         containerRegistry.RegisterForNavigation<RelationManagerView,RelationManagerViewModel>(ViewNames.RelationManager);
         containerRegistry.RegisterForNavigation<FieldConfigView,    FieldConfigViewModel>    (ViewNames.FieldConfig);
@@ -42,6 +43,9 @@ public sealed class FormsModule : IModule
 
         // NOTE: Đăng ký dialog xem trước form (section/field card view, read-only)
         containerRegistry.RegisterDialog<FormPreviewDialog, FormPreviewDialogViewModel>(ViewNames.FormPreviewDialog);
+
+        // NOTE: Dialog xác nhận dùng cho thao tác xóa mẫu lookup.
+        containerRegistry.RegisterDialog<ConfirmDialog, ConfirmDialogViewModel>(ViewNames.ConfirmDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

@@ -13,6 +13,7 @@ public static class ViewNames
     public const string FormEditor     = nameof(FormEditor);
     public const string SysTableManager      = nameof(SysTableManager);
     public const string SysLookupManager     = nameof(SysLookupManager);
+    public const string LookupTemplateManager = nameof(LookupTemplateManager);
     public const string ViewManager          = nameof(ViewManager);
     public const string RelationManager      = nameof(RelationManager);
     public const string FieldConfig = nameof(FieldConfig);
@@ -31,5 +32,6 @@ public static class ViewNames
     public const string SyncSchemaDialog             = nameof(SyncSchemaDialog);
     public const string ColumnPickerDialog           = nameof(ColumnPickerDialog);
     public const string FormPreviewDialog            = nameof(FormPreviewDialog);
+    public const string ConfirmDialog                = nameof(ConfirmDialog);
     public const string I18nEditorDialog             = nameof(I18nEditorDialog);
 }
