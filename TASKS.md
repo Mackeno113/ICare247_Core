@@ -3,6 +3,45 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Lookup chỉ bind @param SQL thực dùng + bỏ @TenantId (session 93 — 2026-07-22)
+
+User soi câu `sp_executesql` khi mở form Công ty: **24 tham số khai báo cho câu chỉ dùng 1**
+(`SELECT ... FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten`). Nguồn: client gửi snapshot
+TOÀN form (`MasterDataForm.BuildContext`) và engine bind hết, cộng `@TenantId` bơm vô điều kiện.
+
+- [x] **Backend** `DynamicLookupRepository.BuildParamsAsync`: thêm cổng lọc `wanted` (tập `@param`
+  câu SQL đã build thực sự tham chiếu); mọi nguồn giá trị (form, `Param_Map`, token) đi qua hàm
+  `Bind` chung → chỉ bind khi SQL có dùng. Lợi: hết nhân bản plan cache theo chuỗi khai báo tham số
+  của từng form; hết bẫy số/ngày qua JSON bị suy `nvarchar(4000)` gây implicit convert mất index seek;
+  câu lệnh đọc được khi debug. SQL không có tham số nào → chạy thẳng text, không bọc `sp_executesql`.
+- [x] **Bỏ `dp.Add("TenantId", tenantId)`** vô điều kiện — cô lập tenant đã ở tầng connection (ADR-035),
+  và `HashContext` vốn đã loại `@TenantId` khỏi cache key vì biết thừa. SQL cũ còn tham chiếu
+  `@TenantId` vẫn chạy: rơi xuống nhánh token → resolve từ claim `tenant` (seed db/060, JWT có claim).
+  Vẫn giữ chặn client tự đặt `TenantId`. Bỏ luôn tham số `tenantId` đã thành dead param (2 caller).
+- **Verify**: GitNexus impact LOW (2 caller nội bộ `QueryAsync`/`QueryTreeAsync`, 0 process) ·
+  detect-changes LOW đúng phạm vi · user build + smoke runtime: câu lệnh còn đúng `@NguoiDungID`.
+- [x] **`Validate_Sql` của `CongTyID_Active`** — nghi lệch với `fnt_CongTyTheoQuyen` (thiếu nhánh vai
+  trò + default-open) hoá ra **db/087 đã vá sẵn**; user query live Config DB xác nhận đã áp dụng.
+  Không cần làm gì. (Ghi lại để khỏi truy lại: bản seed db/060 là bản CŨ, db/087 mới là bản đúng.)
+
+### Còn mở từ session này
+
+- [ ] **BẢO MẬT — client ghi đè được `@NguoiDungID`**: trong `BuildParamsAsync`, giá trị từ
+  `contextValues` bind TRƯỚC, token `Sys_Context_Param` chỉ điền chỗ còn trống. POST
+  `/api/v1/lookups/query-tree` với `contextValues: {"NguoiDungID": 999}` → bind 999, claim bị bỏ qua
+  (`LookupController` không lọc `body.ContextValues`). Vì `fnt_CongTyTheoQuyen(@NguoiDungID)` là ranh
+  giới phân quyền ⇒ đọc được cây công ty user khác. Cách vá: đảo thứ tự — resolve token server **sau
+  cùng và ghi đè** (`DynamicParameters.Add` trùng tên là overwrite); ghép gọn vào cổng `wanted` vừa làm.
+  Cần chốt: (1) bảo vệ mọi token active trong `Sys_Context_Param` hay danh sách cứng; (2) Field_Code
+  trùng tên token → server thắng + log warning?; (3) có vá `ViewRepository.BindContextParamsAsync`
+  luôn không (cùng thứ tự sai, comment ghi rõ "filter/cha thắng khi trùng" — nhưng mức thấp hơn vì
+  tên param do admin cấu hình ở `Ui_View_Filter`, client không tự chọn được).
+  **User: "để lại, đề xuất phương án tối ưu sau".**
+- [ ] **`@__SelfId` vô hiệu → tạo được cây vòng**: cơ chế loại chính-nó-và-hậu-duệ chỉ chạy ở
+  `Query_Mode='self_parent'`, nhưng `TPL_CONG_TY` là `custom_sql` (db/083) ⇒ không chạy. Sửa công ty
+  Id=5 vẫn chọn được cha = chính 5 hoặc công ty con của 5. Client vẫn gửi `@__SelfId` nhưng SQL không
+  dùng. Vá nhẹ nhất: thêm điều kiện loại trừ ngay trong `custom_sql` của mẫu TPL_CONG_TY.
+
 ## ✅ Đã xong — TreeLookupBox hỗ trợ custom_sql + TPL_CONG_TY dạng cây (session 92 — 2026-07-20)
 
 Fix chẩn đoán treo từ session 91: field "Công ty cha" (FieldId=38, TreeLookupBox) hiện ID thay vì

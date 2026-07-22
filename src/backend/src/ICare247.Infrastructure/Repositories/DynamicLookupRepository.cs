@@ -128,22 +128,42 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// (field / hằng số / @token) + fallback token Sys_Context_Param cho @param còn thiếu.
     /// Trả kèm map "tham số → giá trị đã bind" để hash cache key — token theo user (vd
     /// @NguoiDungID) PHẢI vào key, không thì user này đọc trúng cache của user khác.
+    /// <para>
+    /// CHỈ bind đúng những @param câu SQL thực sự tham chiếu. Client gửi snapshot TOÀN form
+    /// (~20-30 field) nên nếu bind hết thì <c>sp_executesql</c> khai báo hàng chục tham số cho
+    /// câu chỉ dùng 1: mỗi form sinh một chuỗi khai báo khác nhau ⇒ nhân bản plan cache, và
+    /// giá trị số/ngày đi qua JSON bị suy thành <c>nvarchar(4000)</c> ⇒ implicit convert làm
+    /// mất index seek khi admin viết Filter_Sql so sánh với cột số/ngày. Tham số không xuất
+    /// hiện trong SQL thì SQL cũng không đọc được — loại đi không mất gì.
+    /// </para>
+    /// <para>Sự kiện theo sau: caller dùng Dp để execute và Effective để tính cache key.</para>
     /// </summary>
     private async Task<(DynamicParameters Dp, Dictionary<string, object?> Effective)> BuildParamsAsync(
-        LookupCfgRow cfg, Dictionary<string, object?> contextValues, int tenantId, string querySql,
+        LookupCfgRow cfg, Dictionary<string, object?> contextValues, string querySql,
         int fieldId, CancellationToken ct)
     {
         var dp = new DynamicParameters();
         var effective = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
-        dp.Add("TenantId", tenantId);
 
+        // Tập @param câu SQL tham chiếu — cổng lọc duy nhất cho mọi nguồn giá trị bên dưới.
+        var wanted = SqlParamRegex().Matches(querySql)
+            .Select(m => m.Groups[1].Value)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Bind 1 tham số nếu SQL có dùng; ghi vào effective để cùng vào cache key.
+        void Bind(string name, object? value)
+        {
+            if (!wanted.Contains(name)) return;
+            dp.Add(name, value);
+            effective[name] = value;
+        }
+
+        // @TenantId KHÔNG bơm vô điều kiện nữa — cô lập tenant đã ở tầng connection (ADR-035).
+        // SQL cũ còn tham chiếu @TenantId vẫn chạy: rơi xuống nhánh token bên dưới, resolve từ
+        // claim 'tenant' (Sys_Context_Param seed db/060). Vẫn chặn client tự đặt TenantId.
         foreach (var (key, val) in contextValues)
             if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-            {
-                var v = UnwrapParamValue(val);
-                dp.Add(key, v);
-                effective[key] = v;
-            }
+                Bind(key, UnwrapParamValue(val));
 
         // ── Param_Map: {"Canonical": "FieldCode" | "@TokenName" | hằng số} ──
         var mappedTokens = new List<(string Canonical, string TokenName)>();
@@ -155,6 +175,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 foreach (var (canonical, src) in map ?? [])
                 {
                     if (!SafeIdentifierRegex().IsMatch(canonical)) continue;
+                    if (!wanted.Contains(canonical)) continue;   // SQL không dùng → khỏi resolve
                     if (src.ValueKind == JsonValueKind.String)
                     {
                         var s = src.GetString() ?? "";
@@ -166,17 +187,13 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                         {
                             // Map từ field trên form — field chưa có giá trị → bind NULL (filter tự rỗng)
                             contextValues.TryGetValue(s, out var fv);
-                            var v = UnwrapParamValue(fv);
-                            dp.Add(canonical, v);
-                            effective[canonical] = v;
+                            Bind(canonical, UnwrapParamValue(fv));
                         }
                     }
                     else
                     {
                         // Hằng số (number/bool) — spec 31 §7 câu 2: cho phép
-                        var v = UnwrapParamValue(src);
-                        dp.Add(canonical, v);
-                        effective[canonical] = v;
+                        Bind(canonical, UnwrapParamValue(src));
                     }
                 }
             }
@@ -192,25 +209,19 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             foreach (var (canonical, tokenName) in mappedTokens)
             {
                 resolved.TryGetValue(tokenName, out var v);
-                dp.Add(canonical, v);
-                effective[canonical] = v;
+                Bind(canonical, v);
             }
         }
 
         // ── @param còn thiếu → thử resolve như token đăng ký (spec 19) trước khi báo lỗi ──
         var bound = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
-        var missing = SqlParamRegex().Matches(querySql)
-            .Select(m => m.Groups[1].Value)
-            .Where(p => !bound.Contains(p))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var missing = wanted.Where(p => !bound.Contains(p)).ToList();
         if (missing.Count > 0)
         {
             var resolved = await _ctxResolver.ResolveAsync(missing, ct);
             foreach (var (name, v) in resolved)
             {
-                dp.Add(name, v);
-                effective[name] = v;
+                Bind(name, v);
                 bound.Add(name);
             }
             missing = missing.Where(p => !bound.Contains(p)).ToList();
@@ -290,7 +301,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             throw new InvalidOperationException(
                 $"DynamicLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
 
-        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, tenantId, querySql, fieldId, ct);
+        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, querySql, fieldId, ct);
 
         // ── Bước 3: Cache-aside theo (version bảng nguồn) + hash tham số hiệu lực ──
         var cacheKey = CacheKeys.DynamicLookup(
@@ -707,7 +718,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 $"TreeLookup FieldId={fieldId}: cấu hình không hợp lệ — {error}");
 
         // Bind đủ tham số TRƯỚC khi tính cache key (như QueryAsync — token theo user phải vào key)
-        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, tenantId, querySql, fieldId, ct);
+        var (dp, effectiveCtx) = await BuildParamsAsync(cfg, contextValues, querySql, fieldId, ct);
 
         var cacheKey = CacheKeys.DynamicLookup(
             fieldId, tenantId, _lookupVer.Get(tenantId, cfg.SourceName!),
