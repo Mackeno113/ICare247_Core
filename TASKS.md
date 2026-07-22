@@ -24,19 +24,57 @@ TOÀN form (`MasterDataForm.BuildContext`) và engine bind hết, cộng `@Tenan
   trò + default-open) hoá ra **db/087 đã vá sẵn**; user query live Config DB xác nhận đã áp dụng.
   Không cần làm gì. (Ghi lại để khỏi truy lại: bản seed db/060 là bản CŨ, db/087 mới là bản đúng.)
 
+- [x] **BẢO MẬT — client ghi đè được `@NguoiDungID` (lookup)**: `BuildParamsAsync` bind `contextValues`
+  TRƯỚC, token chỉ điền chỗ trống ⇒ POST `/api/v1/lookups/query-tree` với
+  `contextValues: {"NguoiDungID": 999}` thay được ranh giới phân quyền `fnt_CongTyTheoQuyen(@NguoiDungID)`
+  và đọc cây công ty user khác (`LookupController` không lọc `body.ContextValues`). **Đã vá**: đảo thứ tự
+  thành **token server → Param_Map (admin) → form (client)**; token bind TRƯỚC rồi KHOÁ, các nguồn sau bỏ
+  qua tên đã khoá + `LogWarning` nêu đích danh. Tập khoá = `serverValues.Keys` (resolver chỉ trả tên có
+  trong `Sys_Context_Param`) ⇒ **tự phủ mọi token, thêm token mới không phải sửa code**. Cố tình KHÔNG dựa
+  vào hành vi ghi-đè của `DynamicParameters.Add` — không đặt chốt bảo mật lên chi tiết cài đặt của Dapper.
+  Token trả `null` VẪN vào khoá (không thì client điền vào chỗ trống đó). Gộp 2 lượt `ResolveAsync` còn 1
+  (bớt 1 round-trip Config DB/lookup); bỏ được case đặc biệt `!key.Equals("TenantId")`. Thêm `ILogger` vào
+  ctor (DI thuần, verify không nơi nào `new` thủ công). Impact LOW, 0 process.
+
+### Kiểm kê điểm vào client → SQL (làm 2026-07-22 — ĐỪNG quét lại từ đầu)
+
+Soát 9 điểm mà giá trị từ request body chảy vào SQL. **An toàn**: `MasterDataRepository.BuildColumnParams`
+(whitelist `info.Columns` lọc `!IsReadOnly` + bỏ PK) · `MasterDataRepository` → `spc_Check` (client đi dạng
+`@PayloadJson` một khối, `NguoiDungID`/`TenantId`/`LangCode` do server bind — **mẫu tốt nhất repo**) ·
+`FkLookupResolver.BindTokensAsync` (mọi `@name` qua resolver, client không chạm tên) ·
+`RuntimeController.BuildContext` (chỉ vào AST engine in-memory, không dựng SQL) · `FileAttachmentRepository`
+/ `TepBlobRepository` (param cứng).
+
+**Luật chuẩn hoá rút ra:** (1) client quyết định **TÊN** cột/tham số → BẮT BUỘC whitelist theo metadata
+server (`Sys_Column` / `info.Columns` / `Sys_Context_Param`); (2) client chỉ gửi **GIÁ TRỊ** → đẩy nguyên
+khối vào 1 tham số duy nhất, không cho tên client chạm vào không gian tên tham số. Mọi lỗ hổng tìm được
+đều là chỗ trộn 2 kiểu mà thiếu chốt.
+
 ### Còn mở từ session này
 
-- [ ] **BẢO MẬT — client ghi đè được `@NguoiDungID`**: trong `BuildParamsAsync`, giá trị từ
-  `contextValues` bind TRƯỚC, token `Sys_Context_Param` chỉ điền chỗ còn trống. POST
-  `/api/v1/lookups/query-tree` với `contextValues: {"NguoiDungID": 999}` → bind 999, claim bị bỏ qua
-  (`LookupController` không lọc `body.ContextValues`). Vì `fnt_CongTyTheoQuyen(@NguoiDungID)` là ranh
-  giới phân quyền ⇒ đọc được cây công ty user khác. Cách vá: đảo thứ tự — resolve token server **sau
-  cùng và ghi đè** (`DynamicParameters.Add` trùng tên là overwrite); ghép gọn vào cổng `wanted` vừa làm.
-  Cần chốt: (1) bảo vệ mọi token active trong `Sys_Context_Param` hay danh sách cứng; (2) Field_Code
-  trùng tên token → server thắng + log warning?; (3) có vá `ViewRepository.BindContextParamsAsync`
-  luôn không (cùng thứ tự sai, comment ghi rõ "filter/cha thắng khi trùng" — nhưng mức thấp hơn vì
-  tên param do admin cấu hình ở `Ui_View_Filter`, client không tự chọn được).
-  **User: "để lại, đề xuất phương án tối ưu sau".**
+- [ ] 🔴 **BẢO MẬT — mass assignment ở `DynamicLookupRepository.InsertAsync`** (nút "➕ Thêm mới" trên
+  LookupBox, `POST /api/v1/lookups/insert`). Bộ lọc cột chỉ có 3 chốt: `SafeIdentifierRegex`, bỏ PK
+  (`valueCol`), bỏ `AuditColumns` — **KHÔNG đối chiếu metadata form**. Client set được **bất kỳ cột nào
+  của bảng đích**, kể cả cột không có trên form: vd thêm "Phòng ban" và tự đặt `CongTy_Id` sang công ty
+  khác, hoặc set cột cờ/trạng thái mà UI không cho sửa. **Cách vá: bê nguyên mẫu đã đúng ở
+  `MasterDataRepository.BuildColumnParams`** — whitelist theo cột field của form, lọc `!IsReadOnly`, bỏ PK.
+  Cùng bài toán, hai lời giải, một cái hở.
+- [ ] 🟡 **`ViewRepository.BindContextParamsAsync` — filter đè được token**. Comment ghi rõ là cố ý
+  ("filter/cha thắng khi trùng"). Mức thấp hơn lookup vì tên param do admin đặt ở `Ui_View_Filter.Param_Name`,
+  client không tự chọn được ⇒ là bẫy misconfig, không phải client tấn công trực tiếp. **KHÔNG siết hết như
+  lookup**: bộ lọc tên `CongTyID_Active` cho user tự chọn công ty trên thanh filter là cấu hình HỢP LỆ,
+  siết hết sẽ giết tính năng. Chỉ khoá token `Source_Kind='Claim'` (định danh, bất biến — không bao giờ có
+  lý do chính đáng để filter ghi đè). Cần thêm 1 method vào `IContextParamResolver` để hỏi kind (hiện
+  `ResolveAsync` chỉ trả tên→giá trị); chỉ 1 implementor nên rẻ.
+- [ ] 🟡 **`DocTemplateRenderer.BuildParams` — `Nguon="context"` chỉ hỗ trợ `Tenant_Id`**, KHÔNG có
+  `NguoiDungID`. Proc xuất tài liệu muốn biết người gọi buộc phải nhận qua `Nguon="key"` = lấy từ client
+  ⇒ giả mạo được. Chưa có mẫu nào làm vậy nên chưa khai thác được, nhưng là bẫy chờ mẫu tiếp theo.
+  Vá đúng: cho `Nguon="context"` đi qua `IContextParamResolver` như mọi chỗ khác. **Tách task riêng** —
+  nằm ở project `ICare247.Infrastructure.Documents`, cần thêm quy ước cho `Doc_Template_Param.Nguon`,
+  đụng cả DB lẫn WPF.
+- [ ] ⚪ **Cache registry `Sys_Context_Param`** — `ContextParamRepository.GetActiveAsync` query Config DB
+  MỖI lần resolve; bảng bé và gần như không đổi. Cache qua `ICacheService` là bớt 1 round-trip cho mọi
+  lookup lẫn View. Thuần hiệu năng, không phải bug.
 - [ ] **`@__SelfId` vô hiệu → tạo được cây vòng**: cơ chế loại chính-nó-và-hậu-duệ chỉ chạy ở
   `Query_Mode='self_parent'`, nhưng `TPL_CONG_TY` là `custom_sql` (db/083) ⇒ không chạy. Sửa công ty
   Id=5 vẫn chọn được cha = chính 5 hoặc công ty con của 5. Client vẫn gửi `@__SelfId` nhưng SQL không

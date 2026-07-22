@@ -11,6 +11,7 @@ using Dapper;
 using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 
 namespace ICare247.Infrastructure.Repositories;
 
@@ -49,16 +50,19 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     private readonly ICacheService _cache;
     private readonly ILookupCacheVersion _lookupVer;
     private readonly IContextParamResolver _ctxResolver;
+    private readonly ILogger<DynamicLookupRepository> _logger;
 
     public DynamicLookupRepository(
         IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb,
-        ICacheService cache, ILookupCacheVersion lookupVer, IContextParamResolver ctxResolver)
+        ICacheService cache, ILookupCacheVersion lookupVer, IContextParamResolver ctxResolver,
+        ILogger<DynamicLookupRepository> logger)
     {
         _configDb    = configDb;
         _dataDb      = dataDb;
         _cache       = cache;
         _lookupVer   = lookupVer;
         _ctxResolver = ctxResolver;
+        _logger      = logger;
     }
 
     // ── Đọc cấu hình lookup (PICKER-P4, spec 31 §5) ──────────────────────────
@@ -124,10 +128,17 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     }
 
     /// <summary>
-    /// Build tham số Dapper cho câu lookup: giá trị form (client) + Param_Map của template
-    /// (field / hằng số / @token) + fallback token Sys_Context_Param cho @param còn thiếu.
+    /// Build tham số Dapper cho câu lookup từ 3 nguồn, theo thứ tự ưu tiên GIẢM DẦN:
+    /// token <c>Sys_Context_Param</c> (server) → Param_Map của mẫu (admin) → giá trị form (client).
     /// Trả kèm map "tham số → giá trị đã bind" để hash cache key — token theo user (vd
     /// @NguoiDungID) PHẢI vào key, không thì user này đọc trúng cache của user khác.
+    /// <para>
+    /// Token bind TRƯỚC và khoá lại, không nguồn nào ghi đè. Trước đây client bind trước còn token
+    /// chỉ điền chỗ trống ⇒ POST <c>{"NguoiDungID": &lt;id người khác&gt;}</c> thay được luôn ranh
+    /// giới phân quyền của câu SQL (<c>fnt_CongTyTheoQuyen(@NguoiDungID)</c>) và đọc dữ liệu người
+    /// khác. Tập khoá suy ra từ chính tên mà resolver trả về nên phủ mọi token registry — thêm
+    /// token mới không phải sửa code ở đây.
+    /// </para>
     /// <para>
     /// CHỈ bind đúng những @param câu SQL thực sự tham chiếu. Client gửi snapshot TOÀN form
     /// (~20-30 field) nên nếu bind hết thì <c>sp_executesql</c> khai báo hàng chục tham số cho
@@ -158,15 +169,10 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             effective[name] = value;
         }
 
-        // @TenantId KHÔNG bơm vô điều kiện nữa — cô lập tenant đã ở tầng connection (ADR-035).
-        // SQL cũ còn tham chiếu @TenantId vẫn chạy: rơi xuống nhánh token bên dưới, resolve từ
-        // claim 'tenant' (Sys_Context_Param seed db/060). Vẫn chặn client tự đặt TenantId.
-        foreach (var (key, val) in contextValues)
-            if (SafeIdentifierRegex().IsMatch(key) && !key.Equals("TenantId", StringComparison.OrdinalIgnoreCase))
-                Bind(key, UnwrapParamValue(val));
-
-        // ── Param_Map: {"Canonical": "FieldCode" | "@TokenName" | hằng số} ──
-        var mappedTokens = new List<(string Canonical, string TokenName)>();
+        // ── Bước 1: đọc Param_Map (thuần CPU, chưa chạm DB) ──────────────────────
+        // {"Canonical": "FieldCode" | "@TokenName" | hằng số}
+        var mapAliases = new List<(string Canonical, string TokenName)>();   // canonical ← @Token
+        var mapValues  = new List<(string Canonical, object? Value)>();      // canonical ← field / hằng số
         if (!string.IsNullOrWhiteSpace(cfg.ParamMap))
         {
             try
@@ -180,20 +186,18 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                     {
                         var s = src.GetString() ?? "";
                         if (s.StartsWith('@'))
-                        {
-                            mappedTokens.Add((canonical, s.TrimStart('@')));
-                        }
+                            mapAliases.Add((canonical, s.TrimStart('@')));
                         else
                         {
                             // Map từ field trên form — field chưa có giá trị → bind NULL (filter tự rỗng)
                             contextValues.TryGetValue(s, out var fv);
-                            Bind(canonical, UnwrapParamValue(fv));
+                            mapValues.Add((canonical, UnwrapParamValue(fv)));
                         }
                     }
                     else
                     {
                         // Hằng số (number/bool) — spec 31 §7 câu 2: cho phép
-                        Bind(canonical, UnwrapParamValue(src));
+                        mapValues.Add((canonical, UnwrapParamValue(src)));
                     }
                 }
             }
@@ -203,29 +207,59 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             }
         }
 
-        if (mappedTokens.Count > 0)
+        // ── Bước 2: token server chốt TRƯỚC — không nguồn nào ghi đè được ────────
+        // ResolveAsync chỉ trả về tên CÓ trong Sys_Context_Param, nên tập khoá tự suy ra từ
+        // registry: admin thêm token mới là được bảo vệ ngay, không phải sửa code. Token trả
+        // giá trị null (header rỗng…) VẪN vào khoá — nếu không thì client điền vào chỗ trống đó.
+        var tokenNames = wanted.Concat(mapAliases.Select(a => a.TokenName))
+                               .Distinct(StringComparer.OrdinalIgnoreCase);
+        var serverValues = await _ctxResolver.ResolveAsync(tokenNames, ct);
+        var locked = new HashSet<string>(serverValues.Keys, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (name, v) in serverValues)
+            Bind(name, v);
+
+        // ── Bước 3: giá trị form do CLIENT gửi — cấm đè token ────────────────────
+        // contextValues là body request, tên key do client tự đặt. Không chặn thì POST
+        // {"NguoiDungID": <id user khác>} sẽ thay luôn ranh giới phân quyền của câu SQL
+        // (vd fnt_CongTyTheoQuyen(@NguoiDungID)) ⇒ đọc được dữ liệu của người khác.
+        foreach (var (key, val) in contextValues)
         {
-            var resolved = await _ctxResolver.ResolveAsync(mappedTokens.Select(t => t.TokenName).Distinct(), ct);
-            foreach (var (canonical, tokenName) in mappedTokens)
+            if (!SafeIdentifierRegex().IsMatch(key)) continue;
+            if (locked.Contains(key))
             {
-                resolved.TryGetValue(tokenName, out var v);
-                Bind(canonical, v);
+                if (wanted.Contains(key))
+                    _logger.LogWarning(
+                        "DynamicLookup FieldId={FieldId}: bỏ qua '{Key}' từ client — trùng token " +
+                        "Sys_Context_Param nên dùng giá trị server. Đổi tên Field_Code nếu đây là field thật.",
+                        fieldId, key);
+                continue;
             }
+            Bind(key, UnwrapParamValue(val));
         }
 
-        // ── @param còn thiếu → thử resolve như token đăng ký (spec 19) trước khi báo lỗi ──
+        // ── Bước 4: Param_Map (cấu hình admin) — cũng không đè được token ────────
+        foreach (var (canonical, value) in mapValues)
+        {
+            if (locked.Contains(canonical))
+            {
+                _logger.LogWarning(
+                    "DynamicLookup FieldId={FieldId}: Param_Map map '{Canonical}' sang field/hằng số " +
+                    "nhưng đó là token Sys_Context_Param — giữ giá trị server.", fieldId, canonical);
+                continue;
+            }
+            Bind(canonical, value);
+        }
+        foreach (var (canonical, tokenName) in mapAliases)
+        {
+            if (locked.Contains(canonical)) continue;   // canonical tự là token — bước 2 đã bind
+            serverValues.TryGetValue(tokenName, out var v);
+            Bind(canonical, v);
+        }
+
+        // ── Bước 5: @param nào vẫn chưa có giá trị → báo lỗi cấu hình rõ ràng ────
         var bound = new HashSet<string>(dp.ParameterNames, StringComparer.OrdinalIgnoreCase);
         var missing = wanted.Where(p => !bound.Contains(p)).ToList();
-        if (missing.Count > 0)
-        {
-            var resolved = await _ctxResolver.ResolveAsync(missing, ct);
-            foreach (var (name, v) in resolved)
-            {
-                Bind(name, v);
-                bound.Add(name);
-            }
-            missing = missing.Where(p => !bound.Contains(p)).ToList();
-        }
         if (missing.Count > 0)
         {
             var ctxKeys = contextValues.Count > 0
