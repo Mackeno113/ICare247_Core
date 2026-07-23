@@ -18,6 +18,14 @@
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
     <link href="ICare247_UI.styles.css" rel="stylesheet" />
+    <!-- CSS scoped của 2 RCL. Đúng lý thuyết chúng đã nằm sẵn trong ICare247_UI.styles.css, nhưng bundle
+         host sinh ra CHỈ gộp component của chính host (78 file, không có mục _content/…) ⇒ mọi component
+         trong RCL chạy TRẦN, không style. Hậu quả từng gặp: .treelookup-wrapper mất position:relative nên
+         popup cây neo vào .dm-modal rồi bị overflow:hidden cắt — nhìn như "lookup không có dữ liệu".
+         Link thẳng bundle RCL (đã phục vụ sẵn ở _content/…) là vô hại kể cả khi khâu gộp được sửa: rule
+         trùng nhau, cùng scope-id. Đừng bỏ nếu chưa xác nhận `curl .../ICare247_UI.styles.css | grep treelookup` ra kết quả. -->
+    <link href="_content/ICare247.UI.Shared/ICare247.UI.Shared.bundle.scp.css" rel="stylesheet" />
+    <link href="_content/ICare247.UI.DynamicForms/ICare247.UI.DynamicForms.bundle.scp.css" rel="stylesheet" />
 </head>
 
 <body>

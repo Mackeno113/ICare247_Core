@@ -1,3 +1,8 @@
 /* WEB-UX-04: LookupBoxRenderer đã chuyển UI sang control dùng chung <IcSelectBox>
    (ICare247.UI.Shared/Components/Pickers/IcSelectBox.razor + .razor.css).
-   Toàn bộ style .lookupbox-*/.popup-* cũ đã bỏ — style dropdown giờ ở IcSelectBox (1 nơi). */
+   Toàn bộ style .lookupbox-* và .popup-* cũ đã bỏ — style dropdown giờ ở IcSelectBox (1 nơi).
+   ⚠ Trong comment CSS, tuyệt đối không để dấu sao đứng liền dấu gạch chéo: nó đóng sớm comment,
+   phần chữ còn lại thành rác và parser nuốt luôn rule ĐẦU TIÊN của file kế tiếp trong bundle scoped.
+   Đã dính một lần ở chính dòng này: mất .treelookup-wrapper (position:relative) ⇒ popup cây neo nhầm
+   vào .dm-modal rồi bị overflow:hidden cắt ⇒ lookup trông như "không có dữ liệu" dù API trả đủ.
+   Muốn liệt kê nhiều nhóm class thì viết ".lookupbox-* và .popup-*", đừng ngăn bằng gạch chéo. */

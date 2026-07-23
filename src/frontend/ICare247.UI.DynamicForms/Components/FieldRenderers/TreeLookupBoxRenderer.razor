@@ -2,14 +2,22 @@
    Purpose : Render TreeLookupBox — dropdown popup dạng cây expand/collapse.
              Dùng cho Editor_Type = TreeLookupBox.
              Bảng nguồn phải có cột Parent_Column để build hierarchy.
-             Hỗ trợ filter cascading khi ReloadTriggerField thay đổi. *@
+             Hỗ trợ filter cascading khi ReloadTriggerField thay đổi.
+   Lưu ý   : Popup TELEPORT ra <body> (icare.teleportPopup) như IcSelectBox — trong DraggableModal,
+             popup neo theo dòng chảy DOM sẽ bị .dm-modal{overflow:hidden} cắt mất (bug đã gặp: nhìn
+             như lookup rỗng dù API trả đủ dữ liệu). Mở popup bám mousedown trên CẢ ô nhập, không chỉ
+             @onfocus — user bấm vào ô là phải bung cây, không bắt bấm đúng nút nhỏ bên phải. *@
 
 @inject ILookupQueryService LookupQuerySvc
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 @inherits LocalizedComponentBase
 
 <div class="treelookup-wrapper">
     @* ── EditBox — gõ trực tiếp để lọc (giống LookupBox) ── *@
-    <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")">
+    <div class="lookupbox-editbox @(State?.EffectiveReadOnly == true ? "readonly" : "")"
+         @ref="_editboxRef"
+         @onmousedown="OnEditboxMouseDown">
         <input type="text"
                class="lookupbox-search-input"
                placeholder="@Loc.L("common.lookup.choose", "-- Chọn --")"
@@ -21,9 +29,16 @@
                @onkeydown="OnKeyDown" />
         @if (State?.EffectiveReadOnly != true && !string.IsNullOrEmpty(State?.ValueString))
         {
-            <button class="lookupbox-clear" @onclick="ClearValue" @onclick:stopPropagation title="@Loc.L("common.action.clear", "Xóa")">✕</button>
+            <button class="lookupbox-clear" type="button" tabindex="-1"
+                    @onmousedown="ClearValue"
+                    @onmousedown:preventDefault @onmousedown:stopPropagation
+                    title="@Loc.L("common.action.clear", "Xóa")">✕</button>
         }
-        <button class="lookupbox-btn" @onclick="TogglePopup"
+        @* preventDefault để ô nhập không mất focus (blur sẽ đóng popup vừa mở); stopPropagation để
+           không kích hoạt luôn OnEditboxMouseDown của ô bao ngoài ⇒ mở rồi đóng ngay. *@
+        <button class="lookupbox-btn" type="button" tabindex="-1"
+                @onmousedown="OnToggleMouseDown"
+                @onmousedown:preventDefault @onmousedown:stopPropagation
                 disabled="@(State?.EffectiveReadOnly == true)"
                 title="@Loc.L("common.lookup.openTree", "Mở cây")">
             <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
@@ -36,6 +51,7 @@
     @if (_popupVisible)
     {
         <div class="lookupbox-popup treelookup-popup"
+             @ref="_popupRef"
              style="width:@(State?.LookupConfig?.DropDownWidth ?? 500)px">
 
             @* Tree content *@
@@ -83,7 +99,7 @@
                 </div>
             }
         </div>
-        <div class="lookupbox-overlay" @onclick="ClosePopup"></div>
+        <div class="lookupbox-overlay" @onmousedown="() => ClosePopupAsync()"></div>
     }
 </div>
 
@@ -100,6 +116,11 @@
     private string  _inputText  = "";   // text trong ô input: display value hoặc search term đang gõ
     private object? _lastTriggerValue;
     private int     _highlightIndex = -1; // index node đang highlight để chọn bằng Enter / phím ↑↓
+
+    // Teleport popup ra <body>: giữ ref ô neo + popup để JS định vị fixed theo ô (xem đầu file).
+    private ElementReference _editboxRef;
+    private ElementReference _popupRef;
+    private bool             _teleported;
 
     // ── Tree state ────────────────────────────────────────────────────────────
 
@@ -155,12 +176,31 @@
 
     // ── Build tree từ flat list ────────────────────────────────────────────────
 
+    /// <summary>
+    /// Dựng cây từ danh sách phẳng. Tên cột lấy từ <paramref name="cfg"/>; thiếu cấu hình thì BÁO LỖI
+    /// thay vì dựng cây rỗng — trước đây Value_Column rỗng làm mọi node cùng khóa "" rồi ToDictionary
+    /// ném "same key", user chỉ thấy lookup trống mà không biết vì sao.
+    /// <para>
+    /// Ba lớp phòng thủ để KHÔNG BAO GIỜ nuốt mất dữ liệu đã tải: khóa trùng thì bỏ qua bản sau, node
+    /// tự trỏ chính mình / tạo vòng lặp thì coi như gốc, và nếu vẫn không tìm ra gốc nào (dữ liệu vòng
+    /// tròn) thì trả phẳng toàn bộ. Có dữ liệu mà hiện "không có dữ liệu" là kiểu lỗi tốn nhiều giờ
+    /// nhất để truy — thà cây phẳng còn hơn màn hình trống.
+    /// </para>
+    /// <para>Sự kiện theo sau: caller gán <c>_rootNodes</c>; <c>_loadError</c> (nếu có) hiện trong popup.</para>
+    /// </summary>
     private List<TreeNode> BuildTree(
         IReadOnlyList<Dictionary<string, object?>> rows,
         FieldLookupConfigDto? cfg)
     {
         var valueCol   = cfg?.ValueColumn   ?? "";
         var displayCol = ExtractColumnKey(cfg?.DisplayColumn ?? "");
+
+        if (rows.Count > 0 && string.IsNullOrWhiteSpace(valueCol))
+        {
+            _loadError = Loc.L("common.lookup.missingConfig",
+                "Thiếu cấu hình cột lookup (Value_Column/Display_Column). Kiểm tra Ui_Field.Lookup_Source = 'dynamic' và Ui_Field_Lookup của field này.");
+            return [];
+        }
 
         var allNodes = rows.Select(r => new TreeNode
         {
@@ -169,21 +209,50 @@
             ParentId = r.TryGetValue("__parentId", out var pid) ? pid?.ToString() : null,
         }).ToList();
 
-        var byId = allNodes.ToDictionary(n => n.Value, StringComparer.OrdinalIgnoreCase);
+        // TryAdd thay ToDictionary: dữ liệu trùng khóa là lỗi cấu hình, không phải cớ để cả control chết.
+        var byId = new Dictionary<string, TreeNode>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in allNodes)
+            if (!string.IsNullOrEmpty(node.Value)) byId.TryAdd(node.Value, node);
 
-        // Build cha/con
+        // Build cha/con — bỏ qua node tự trỏ chính mình (Cha_Id = Id) để nó không tự loại mình khỏi gốc.
         foreach (var node in allNodes)
         {
-            if (!string.IsNullOrEmpty(node.ParentId)
-                && byId.TryGetValue(node.ParentId, out var parent))
+            if (string.IsNullOrEmpty(node.ParentId)
+                || string.Equals(node.ParentId, node.Value, StringComparison.OrdinalIgnoreCase)
+                || !byId.TryGetValue(node.ParentId, out var parent))
+                continue;
+
+            parent.Children.Add(node);
+            node.Parent = parent;
+        }
+
+        // Vòng lặp cha-con (A→B→A): cắt liên kết của node nào leo lên gặp lại chính nó → thành gốc.
+        foreach (var node in allNodes)
+        {
+            var seen = new HashSet<TreeNode>();
+            for (var p = node.Parent; p is not null; p = p.Parent)
             {
-                parent.Children.Add(node);
-                node.Parent = parent;
+                if (!seen.Add(p) || ReferenceEquals(p, node))
+                {
+                    node.Parent?.Children.Remove(node);
+                    node.Parent = null;
+                    break;
+                }
             }
         }
 
         // Root = node không có cha hợp lệ
-        return allNodes.Where(n => n.Parent is null).ToList();
+        var roots = allNodes.Where(n => n.Parent is null).ToList();
+
+        // Không ra gốc nào mà vẫn có dữ liệu ⇒ quan hệ cha-con hỏng: hiện phẳng, đừng hiện rỗng.
+        // Phải cắt sạch liên kết trước khi trả, không thì mỗi node vừa là gốc vừa là con ⇒ render trùng.
+        if (roots.Count == 0 && allNodes.Count > 0)
+        {
+            foreach (var n in allNodes) { n.Parent = null; n.Children.Clear(); }
+            return allNodes;
+        }
+
+        return roots;
     }
 
     // ── Hiển thị tree (flatten + filter + collapse) ───────────────────────────
@@ -258,32 +327,43 @@
 
     // ── UI interactions ────────────────────────────────────────────────────────
 
-    private async Task TogglePopup()
+    /// <summary>
+    /// Bấm chuột vào ô nhập (vùng nào cũng được): mở cây. KHÔNG dựa mỗi <c>@onfocus</c> — ô đã giữ focus
+    /// sẵn thì trình duyệt không phát focus lần nữa, user bấm lại thấy "không lên gì".
+    /// Sự kiện theo sau: OpenPopupAsync (nếu đang đóng); đang mở thì để nguyên cho user gõ lọc tiếp.
+    /// </summary>
+    private async Task OnEditboxMouseDown()
     {
         if (State?.EffectiveReadOnly == true) return;
-        _popupVisible = !_popupVisible;
+        if (_popupVisible) return;
+        await OpenPopupAsync();
+    }
 
-        if (_popupVisible)
-        {
-            _searchText = "";
-            if (_rootNodes.Count == 0 && !_loading)
-                await LoadDataAsync();
-        }
-        else
-        {
-            // Đóng → khôi phục display text của node đang chọn
-            _inputText  = GetSelectedDisplay();
-            _searchText = "";
-        }
+    /// <summary>Nút biểu tượng cây: đang mở thì đóng, đang đóng thì mở.</summary>
+    private async Task OnToggleMouseDown()
+    {
+        if (State?.EffectiveReadOnly == true) return;
+        if (_popupVisible) await ClosePopupAsync();
+        else               await OpenPopupAsync();
     }
 
     /// <summary>
-    /// Input được focus: xóa display để user gõ tìm kiếm, mở popup, load data nếu chưa có.
-    /// Sự kiện theo sau: _popupVisible = true, _inputText rỗng để gõ filter.
+    /// Input được focus (Tab tới, hoặc click đầu tiên): mở cây — cùng đường với OnEditboxMouseDown.
+    /// Sự kiện theo sau: OpenPopupAsync.
     /// </summary>
     private async Task OnFocus()
     {
         if (State?.EffectiveReadOnly == true) return;
+        if (_popupVisible) return;
+        await OpenPopupAsync();
+    }
+
+    /// <summary>
+    /// Mở popup: xóa display để user gõ lọc, nạp dữ liệu nếu chưa có.
+    /// Sự kiện theo sau: OnAfterRenderAsync teleport popup ra body rồi định vị theo ô neo.
+    /// </summary>
+    private async Task OpenPopupAsync()
+    {
         _inputText    = "";
         _searchText   = "";
         _popupVisible = true;
@@ -295,20 +375,51 @@
     /// Input mất focus: đóng popup, khôi phục display text của node đang chọn.
     /// Node/Toggle dùng onmousedown + preventDefault để chạy trước blur này.
     /// </summary>
-    private void OnInputBlur()
+    private async Task OnInputBlur() => await ClosePopupAsync();
+
+    /// <summary>
+    /// Đóng popup. Trả popup về đúng chỗ cũ trong DOM TRƯỚC khi ẩn — Blazor xóa node ở vị trí gốc,
+    /// bỏ bước này thì diff trượt và popup thành rác nằm lại trong body.
+    /// Sự kiện theo sau: _popupVisible = false, ô hiển thị lại tên node đang chọn.
+    /// </summary>
+    private async Task ClosePopupAsync()
     {
+        await RestorePopupAsync();
         _popupVisible   = false;
         _searchText     = "";
         _inputText      = GetSelectedDisplay();
         _highlightIndex = -1;
     }
 
-    private void ClosePopup()
+    /// <summary>Gỡ teleport (idempotent, nuốt lỗi JS vì có thể gọi lúc circuit/JS đã đóng).</summary>
+    private async Task RestorePopupAsync()
     {
-        _popupVisible   = false;
-        _searchText     = "";
-        _inputText      = GetSelectedDisplay();
-        _highlightIndex = -1;
+        if (!_teleported) return;
+        _teleported = false;
+        try { await JS.InvokeVoidAsync("icare.restorePopup", _popupRef); } catch { /* no-op */ }
+    }
+
+    /// <summary>
+    /// Teleport popup ra &lt;body&gt; + định vị fixed theo ô neo, ngay sau khi popup được render.
+    /// Bắt buộc trong DraggableModal: modal có overflow:hidden + kéo bằng transform nên popup nằm
+    /// trong dòng chảy DOM sẽ bị cắt cụt hoặc mất hẳn.
+    /// </summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_popupVisible || _teleported) return;
+        try
+        {
+            await JS.InvokeVoidAsync("icare.teleportPopup", _editboxRef, _popupRef);
+            _teleported = true;
+        }
+        catch { /* JS chưa sẵn → popup vẫn hiện tại chỗ, chỉ có nguy cơ bị cắt */ }
+    }
+
+    /// <summary>Component bị gỡ khi popup còn teleport → trả node về, tránh popup mồ côi dính lại trên body.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        await RestorePopupAsync();
+        Dispose();
     }
 
     /// <summary>
@@ -347,7 +458,7 @@
         }
 
         State.Value = node.Value;
-        ClosePopup();
+        await ClosePopupAsync();
         await OnChange.InvokeAsync((State.FieldCode, (object?)node.Value));
         await OnBlur.InvokeAsync(State.FieldCode);
     }
@@ -374,7 +485,7 @@
     /// <summary>
     /// Điều hướng cây bằng bàn phím trên danh sách node đang hiển thị:
     /// ↓/↑ di chuyển highlight, Enter chọn node đang highlight, Escape đóng popup.
-    /// Sự kiện theo sau: SelectNode (Enter) hoặc ClosePopup (Escape) hoặc cập nhật _highlightIndex.
+    /// Sự kiện theo sau: SelectNode (Enter) hoặc ClosePopupAsync (Escape) hoặc cập nhật _highlightIndex.
     /// </summary>
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
@@ -400,7 +511,7 @@
                 break;
 
             case "Escape":
-                ClosePopup();
+                await ClosePopupAsync();
                 break;
         }
     }
