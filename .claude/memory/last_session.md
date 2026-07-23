@@ -1,12 +1,16 @@
 # Last Session Summary
 
 > Cập nhật: 2026-07-20 (session 92 — fix **TreeLookupBox custom_sql** + seed TPL_CONG_TY dạng cây;
-> ghi nhận migration đính kèm session 77 ĐÃ CHẠY). Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái:** backend + db/083 build 0W/0E, test 145/145; **runtime chưa verify** (user re-run 083
-> + restart API + smoke). Module WPF-15 (Ui_Lookup_Template, Codex làm xong) VẪN CHƯA commit trong
-> working tree — chờ nghiệm thu trực quan màn "Mẫu Lookup".
-> **Task tiếp theo gợi ý:** (1) user smoke "Công ty cha" hiện tên dạng cây → (2) nghiệm thu + commit
-> WPF-15 → (3) màn Phòng ban no-code (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY).
+> tiếp: **perf bind @param** + **fix bảo mật token Sys_Context_Param** + **màn WPF Mẫu Lookup (WPF-15)**).
+> Lịch sử → [session_history.md](session_history.md).
+> **Trạng thái git: SẠCH — mọi thứ đã commit + push, `master` = `origin/master`** (8 commit:
+> `62914c4`/`de771bd`/`e64a2a5`/`0c0ead0` session 91 · `1f3e9fb`/`daf0d5f`/`f9c6cef`/`0545517` session 92).
+> Working tree chỉ còn 5 file i18n (bỏ qua theo quy tắc).
+> **Runtime CHƯA verify:** "Công ty cha" dạng cây — cần re-run `db/083` (hoặc sửa qua màn WPF Mẫu Lookup)
+> → restart API → smoke.
+> **Task tiếp theo gợi ý:** (1) smoke "Công ty cha" hiện tên dạng cây → (2) **4 task bảo mật còn mở
+> trong TASKS.md** (nặng nhất: mass assignment ở `InsertAsync`) → (3) màn Phòng ban no-code
+> (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY + màn Mẫu Lookup).
 
 ## Session 92 (2026-07-20) — TreeLookupBox custom_sql + TPL_CONG_TY dạng cây + attachment migration đã chạy
 
@@ -30,15 +34,47 @@ thay vì tên: `BuildSafeSqlForTree` không hỗ trợ `custom_sql` (nhánh flat
 **Runtime CHƯA verify** — user: re-run db/083 (hoặc sửa qua màn WPF Mẫu Lookup — UI set Is_Customized=1,
 khối vá 083 sẽ bỏ qua, đúng thiết kế) → restart API → smoke; kiểm field 38 trỏ Template_Code=TPL_CONG_TY.
 
-**Ghi chú working tree:** module WPF-15 của Codex (màn Mẫu Lookup + ConfirmDialog + DataService + DI)
-vẫn uncommitted, tách khỏi commit session này. 5 file i18n bỏ qua như thường lệ.
+## Session 92 (tiếp) — perf bind @param + fix bảo mật token + màn WPF Mẫu Lookup (WPF-15)
+
+**`daf0d5f` perf(lookup) — chỉ bind @param SQL thực dùng:** client gửi snapshot toàn form → engine bind
+cả ~24 tham số cho câu lookup chỉ dùng 1 (`@NguoiDungID`). Thêm cổng lọc `wanted` = tập @param câu SQL
+đã build thực tham chiếu; form/Param_Map/token đều qua hàm `Bind` chung. Lợi: hết nhân bản plan cache
+theo chuỗi khai báo tham số của từng form · hết bẫy số/ngày qua JSON bị suy `nvarchar(4000)` gây implicit
+convert **mất index seek** khi Filter_Sql so cột số/ngày · SQL không tham số chạy thẳng text (không bọc
+`sp_executesql`). **Bỏ `dp.Add("TenantId", tenantId)`** — cô lập tenant đã ở tầng connection (ADR-035),
+`HashContext` vốn đã loại `@TenantId` khỏi cache key; SQL cũ còn dùng `@TenantId` vẫn chạy qua nhánh token
+(claim tenant, seed db/060). Impact LOW (2 caller QueryAsync/QueryTreeAsync). User build + smoke OK.
+
+**`f9c6cef` fix(security) — token `Sys_Context_Param` chốt trước, client không ghi đè được:**
+⚠️ lỗ hổng thật — `BuildParamsAsync` bind `contextValues` TRƯỚC, token chỉ điền chỗ trống ⇒
+`POST /api/v1/lookups/query-tree` với `{"NguoiDungID": <id người khác>}` **thay được ranh giới phân quyền**
+của `fnt_CongTyTheoQuyen(@NguoiDungID)` → đọc cây công ty của user khác. Fix: đảo ưu tiên
+**token server → Param_Map (admin) → form (client)**; token bind trước rồi **khoá**, nguồn sau bỏ qua tên
+đã khoá kèm `LogWarning` nêu đích danh field (misconfig không hỏng âm thầm). Tập khoá = `serverValues.Keys`;
+resolver chỉ trả tên có trong registry ⇒ tự phủ mọi token, thêm token mới không phải sửa code. **Token trả
+null VẪN vào khoá.** Không dựa vào hành vi ghi-đè của `DynamicParameters.Add` (không đặt chốt bảo mật lên
+chi tiết cài đặt Dapper). Gộp 2 lượt `ResolveAsync` còn 1 (bớt 1 round-trip Config DB mỗi lookup).
+TASKS.md: kiểm kê **9 điểm vào client→SQL** + **4 task còn mở** (nặng nhất: mass assignment ở `InsertAsync`).
+
+**`0545517` feat(wpf) WPF-15 — màn "Mẫu Lookup" (CRUD `Ui_Lookup_Template`), Codex dựng theo prompt session 91:**
+danh sách + editor trên CÙNG một View (không dialog), Dapper parameterized thẳng Config DB. CRUD đủ cột
+db/083 (SQL/JSON multiline, `Parent_Column`, `Canonical_Params`, trạng thái sync); `Query_Mode` enum tĩnh →
+`ComboBoxEdit`; grid kế thừa implicit style lọc/nhớ format. **An toàn CFGSYNC:** khoá `Template_Code` khi sửa ·
+insert local `Is_System=0`/`Is_Customized=1` · update luôn set `Is_Customized=1` · chặn xóa mẫu hệ thống và
+mẫu đang được `Ui_Field_Lookup` tham chiếu (báo số field) · xóa hợp lệ qua Prism `ConfirmDialog`.
+**Gotcha đắt:** `CheckEdit` read-only (`Is_System`/`Is_Customized`) **bắt buộc `Mode=OneWay`** — không thì
+Prism nuốt `XamlParseException` và **màn trắng**. `.gitignore` loại `.codex/debug-nav/` (110 MB build output).
+Verify: Config DB thật trả đủ TPL_CONG_TY/TPL_PHUONG_XA/TPL_TINH_THANH · build ConfigStudio 0W/0E ·
+UI automation bấm sidebar thấy View + 3 dòng thật.
+
+> ⇒ Việc treo cuối session 91 ("dựng module WPF Ui_Lookup_Template" + "fix Công ty cha tree") **ĐÃ ĐÓNG CẢ HAI.**
 
 ## Session 91 (2026-07-20) — WEB-UX + hợp nhất dropdown IcSelectBox + prompt Codex Ui_Lookup_Template
 
 **Bối cảnh:** rà backlog `docs/design-system/WEB_UX_IMPROVEMENT_TASKS.md`, làm lần lượt WEB-UX-01..04,
 rồi hợp nhất mọi dropdown phẳng, kết phiên soạn prompt bàn giao cho Codex.
 
-**Đã làm (CHƯA commit — branch `master`):**
+**Đã làm (4 commit: `62914c4` WEB-UX-01/02 · `de771bd` WEB-UX-03 · `e64a2a5` WEB-UX-04 · `0c0ead0` chore):**
 - **WEB-UX-01 — ĐÓNG (không làm server paging):** lưới View **chủ đích load hết lên client** (pageSize
   int.MaxValue là ĐÚNG, không phải bug) → sort/filter toàn bộ; giữ endpoint export. Đã thử server-paging
   rồi **revert hoàn toàn**. Xem [[project-view-grid-load-all-client]]. (Có thêm `ExportViewData` query +
@@ -57,15 +93,16 @@ rồi hợp nhất mọi dropdown phẳng, kết phiên soạn prompt bàn giao 
 - **Hạ tầng:** fix `.claude/settings.json` 2 hook dùng `$CLAUDE_PROJECT_DIR` (hết MODULE_NOT_FOUND từ subdir);
   `DynamicForms.csproj` NoWarn CS8669 (code generated, an toàn).
 
-**Chẩn đoán (chưa fix — deferred, user chốt làm module WPF trước):** "Công ty cha" hiện ID (3) thay vì
-tên — FieldId=38 TreeLookupBox + Source `custom_sql` KHÔNG được `BuildSafeSqlForTree` hỗ trợ (chỉ nhận
-identifier); flat `BuildSafeSql` thì có. SQL đúng cần: `SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id
+**Chẩn đoán (→ ĐÃ FIX ở session 92 `1f3e9fb`):** "Công ty cha" hiện ID (3) thay vì tên — FieldId=38
+TreeLookupBox + Source `custom_sql` KHÔNG được `BuildSafeSqlForTree` hỗ trợ (chỉ nhận identifier);
+flat `BuildSafeSql` thì có. SQL đúng cần: `SELECT Id, Ma, Ten, TenVietTat, CongTy_Cha_Id
 FROM dbo.fnt_CongTyTheoQuyen(@NguoiDungID) ORDER BY Ten` + `Parent_Column=CongTy_Cha_Id`.
 
-**Kết phiên — prompt Codex:** ConfigStudio CHƯA có màn cấu hình `Ui_Lookup_Template` → soạn prompt (ở
-`scratchpad/PROMPT_codex_lookup_template_module.md`) hướng dẫn Codex dựng module WPF CRUD, mirror
-ViewDataService/ViewManager + wpf-configstudio.md + db/083; ngoài phạm vi = fix backend tree custom_sql +
-sửa dữ liệu TPL_CONG_TY.
+**Kết phiên — prompt Codex (→ ĐÃ GIAO XONG, session 92 `0545517`):** ConfigStudio chưa có màn cấu hình
+`Ui_Lookup_Template` → soạn prompt (ở `scratchpad/PROMPT_codex_lookup_template_module.md`, **cố ý KHÔNG
+đưa vào repo** — user chốt) hướng dẫn Codex dựng module WPF CRUD, mirror ViewDataService/ViewManager +
+wpf-configstudio.md + db/083; ngoài phạm vi = fix backend tree custom_sql + sửa dữ liệu TPL_CONG_TY
+(cả hai sau đó cũng đã làm ở session 92).
 
 **Build:** user tự verify (quy tắc dự án — Claude chỉ edit code). Lượt soạn prompt KHÔNG đổi code repo.
 
