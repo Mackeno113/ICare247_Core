@@ -1,16 +1,59 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-20 (session 92 — fix **TreeLookupBox custom_sql** + seed TPL_CONG_TY dạng cây;
-> tiếp: **perf bind @param** + **fix bảo mật token Sys_Context_Param** + **màn WPF Mẫu Lookup (WPF-15)**).
+> Cập nhật: 2026-07-24 (session 94 — **hạ tầng sinh mã tự động cột `Ma`** (spec 32 / ADR-036),
+> MA-1…MA-8: DB + 2 proc + engine C# (2 đường ghi) + endpoint peek + màn WPF + Blazor + ConfigSync + docs).
 > Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái git: SẠCH — mọi thứ đã commit + push, `master` = `origin/master`** (8 commit:
-> `62914c4`/`de771bd`/`e64a2a5`/`0c0ead0` session 91 · `1f3e9fb`/`daf0d5f`/`f9c6cef`/`0545517` session 92).
+> **Trạng thái git: SẠCH — đã commit + push, `master` = `origin/master`** (commit `e1650b3` session 94,
+> trên nền `7cbccc0` session 93).
 > Working tree chỉ còn 5 file i18n (bỏ qua theo quy tắc).
-> **Runtime CHƯA verify:** "Công ty cha" dạng cây — cần re-run `db/083` (hoặc sửa qua màn WPF Mẫu Lookup)
-> → restart API → smoke.
-> **Task tiếp theo gợi ý:** (1) smoke "Công ty cha" hiện tên dạng cây → (2) **4 task bảo mật còn mở
-> trong TASKS.md** (nặng nhất: mass assignment ở `InsertAsync`) → (3) màn Phòng ban no-code
-> (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY + màn Mẫu Lookup).
+> **Build session 94: backend + Web + ConfigStudio WPF 0W/0E cả 3, test 145/145 pass.**
+> **SQL đã chạy** (`db/089` + `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, user xác nhận).
+> **Runtime CHƯA verify** — chưa bật quy tắc cho bảng nào (cố ý, đợt này chỉ dựng hạ tầng).
+> **Task tiếp theo gợi ý:** (1) smoke sinh mã — tạo 1 quy tắc test (`LITERAL`+`SEQ`) qua màn WPF, mở
+> form Thêm mới kiểm mã dự kiến + Lưu kiểm mã nhảy số (bằng chứng peek≠consume, không phải mã dự kiến
+> bị ghi thẳng) → (2) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở `InsertAsync`)
+> → (3) màn Phòng ban no-code (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY + màn Mẫu Lookup).
+
+## Session 94 (2026-07-24) — Sinh mã tự động cột `Ma` (spec 32 / ADR-036) — MA-1…MA-8, commit `e1650b3`
+
+**Bối cảnh:** nhiều danh mục có cột `Ma` phải tự gõ, không có cơ chế sinh mã nào. Yêu cầu ban đầu tưởng
+đơn giản (1 bảng bộ đếm + 1 chuỗi "mẫu mã") nhưng user bẻ 2 lần giữa chừng, cả hai đều đổi thiết kế gốc:
+
+1. **"Có bảng cần chọn 3 bộ thông tin mới ra mã, hệ thống có đáp ứng được không?"** → chuyển từ 1 chuỗi
+   `Pattern` sang **quy tắc = 1 dòng cha + N ĐOẠN** (`Sys_Ma_Rule` + `Sys_Ma_Rule_Segment`), thêm loại đoạn
+   `LOOKUP` (field → tra sang bảng khác lấy cột khác, vd `CongTy_Id` → `TC_CongTy.Ma`).
+2. **"Mã lớn nhất TUYỆT ĐỐI không được lưu ở đâu — phải dò lại mỗi lần sinh."** → bỏ hẳn bảng bộ đếm
+   `HT_BoDemMa` đã thiết kế xong (giữa session, chưa commit nên xóa sạch không để lại vết), thay bằng
+   `sp_SinhMa` dò `MAX` trực tiếp trên bảng đích + `sp_getapplock` khóa theo tiền tố. Hệ quả đẹp: **phạm
+   vi đánh số = tiền tố của mã** → không cần `Reset_Scope`/`Scope_Column`, không cần job cuối năm.
+
+**Đã làm (MA-1…MA-8, chi tiết đầy đủ ở `docs/spec/32_SINH_MA_TU_DONG_SPEC.md` + `TASKS.md`):**
+- **DB:** `db/089` (`Sys_Ma_Rule`+`Sys_Ma_Rule_Segment`, Config DB) + `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`
+  (Data DB). `sp_SinhMa` bắt buộc chạy trong transaction (`@@TRANCOUNT=0`→RAISERROR) + `SET XACT_ABORT OFF`
+  (khác mọi proc khác của dự án — proc chạy trong transaction của engine, `ON` sẽ đẩy transaction ngoài
+  sang uncommittable). Dò MAX kiểu "lấy hết đuôi + TRY_CONVERT" (không dùng mặt nạ cố định số chữ số —
+  bỏ sót mã đã tràn độ rộng). Không lọc `IsDeleted` khi dò MAX (không tái dùng mã bản ghi đã xóa mềm).
+- **Backend:** `ICodeRuleCatalog`+`CodeRuleCatalog` (cache khuôn `IHookStoreCatalog`) + `MaCodeGenerator`
+  (service DÙNG CHUNG). **Phát hiện khi code:** "Thêm nhanh" từ dropdown lookup (`DynamicLookupRepository`)
+  là **đường ghi RIÊNG**, không qua `SaveMasterDataCommandHandler` như spec ban đầu ghi sai — đã nối
+  (MA-3b): bọc transaction (trước đó ghi không transaction) + gọi cùng generator.
+  Endpoint `POST /master-data/{formCode}/ma-du-kien` (POST không GET — field values vào query string là
+  rò rỉ log).
+- **WPF:** màn "Quy tắc sinh mã" (list+editor+lưới đoạn ▲▼+panel theo loại đoạn+preview), bám khuôn màn
+  Mẫu Lookup (WPF-15).
+- **Blazor:** ô `Ma` tự điền/khóa; tính lại khi field NGUỒN đổi giá trị (không phải "event đã chạy" — user
+  gõ hay event `SET_VALUE` gán đều kích hoạt như nhau). **Bug tự chặn khi code:** form sẽ gửi mã dự kiến
+  lúc Lưu → server áp luật nhường sẽ ghi thẳng mã đó thay vì cấp mã thật (2 người cùng thấy 1 mã dự kiến
+  sẽ cùng ghi 1 mã) → đã thêm bước **gỡ mã dự kiến khỏi payload** trước khi gửi.
+- **ConfigSync:** descriptor `Sys_Ma_Rule`(khóa ghép, không re-link FK)+`Sys_Ma_Rule_Segment`(con theo
+  `Order_No`, cần `Is_Active` để tombstone — thiếu sẽ để đoạn thừa nằm lại tenant và âm thầm sinh mã sai).
+- **Tương tác Event Engine** (user hỏi thêm giữa chừng): đã thêm spec §10 — event thuần UI-delta không
+  ghi DB nên không xung đột ghi; 3 giao thoa (luật nhường `SET_VALUE→Ma`, preview tính lại khi field nguồn
+  đổi, thứ tự `OnLoad`→peek lúc mở form) đã map vào MA-5/MA-6.
+
+**Build /finish-task (2026-07-24):** backend 0W/0E · Web 0W/0E · ConfigStudio WPF 0W/0E · test 145/145 pass.
+**SQL đã chạy** (user xác nhận). **CHƯA smoke runtime** — chưa bật quy tắc cho bảng nào (cố ý, đợt này
+chỉ dựng hạ tầng; bảng ứng viên: `TC_CongTy`/`TC_PhongBan`/`HT_NguoiDung`).
 
 ## Session 92 (2026-07-20) — TreeLookupBox custom_sql + TPL_CONG_TY dạng cây + attachment migration đã chạy
 

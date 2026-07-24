@@ -3,7 +3,15 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
-## 📋 Roadmap — Sinh mã tự động cho cột `Ma` (spec 32 / ADR-036 — 2026-07-23, SPEC CHỐT, DB+proc xong)
+## ✅ Đã xong — Sinh mã tự động cho cột `Ma` (spec 32 / ADR-036 — session 94, 2026-07-24)
+
+**Trạng thái cuối:** MA-1…MA-8 code xong. Build 0W/0E cả 3 solution (backend/Web/ConfigStudio) +
+test 145/145 pass (2026-07-24). **User đã chạy 4 script SQL lên DB** (`db/089` + 3 file `db/procs/*`).
+⏳ **Còn lại duy nhất: smoke runtime** — chưa bật quy tắc cho bảng nào (cố ý, user chốt), nên chưa có
+gì để thấy chạy thật. Gợi ý test tối thiểu: tạo 1 quy tắc đơn giản (`LITERAL` + `SEQ`) cho 1 bảng, mở
+form Thêm mới → kiểm mã dự kiến hiện đúng + khóa; Lưu → mở form mới → kiểm mã nhảy số (không lặp lại
+mã cũ — đây là bằng chứng peek≠consume hoạt động đúng, không phải mã dự kiến bị ghi thẳng).
+
 
 Quy tắc sinh mã dùng chung mọi danh mục — chi tiết `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`.
 Chốt với user: proc generic `sp_SinhMa` · quy tắc dạng **ĐOẠN** ở Config DB cấu hình bằng WPF (sync xuống
@@ -501,7 +509,7 @@ Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không ph�
 | 033 | View-based grid | ✅ Pha 1 xong (live Tenant 1) | Pha 2 → ADR-034; **Pha 3 (template) chưa làm** |
 | 034 | Import Excel | ✅ code xong (session 78) + addendum DevExpress (session 80) | ⏳ `db/071–073` + `db/procs/*` CHƯA chạy DB; E2E ⏳; v1 = Grid phẳng, TreeGrid sau |
 | 035 | Bỏ hẳn `Tenant_Id` | ✅ **HOÀN TẤT** (session 81) | `db/078` đã chạy. Còn lại → mục "🔜 CÒN LẠI sau ADR-035" |
-| 036 | Sinh mã tự động cột `Ma` | 📋 spec CHỐT + DB/proc viết xong (2026-07-23), **chưa chạy DB, chưa có C#/UI** | `db/089`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`; việc → roadmap MA-1…MA-8 đầu file |
+| 036 | Sinh mã tự động cột `Ma` | ✅ MA-1…MA-8 code xong, build 0/0 cả 3 solution + test 145/145 (2026-07-24); **4 script SQL đã chạy DB** (user xác nhận) | `db/089`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `ICodeRuleCatalog`/`MaCodeGenerator`, endpoint `ma-du-kien`, màn WPF "Quy tắc sinh mã", `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`. ⏳ **Chưa smoke runtime** (chưa bật quy tắc cho bảng nào — user chốt cố ý) |
 | Sec | CORS + JWT SecretKey | ✅ #2/#3 code xong (Program.cs) | #1 (tenant từ claim) đã đóng bằng ADR-018 |
 
 > **Quy tắc từ nay:** khi một thay đổi làm ADR nào đó "bắt kịp", cập nhật **bảng này**, không sửa ADR.

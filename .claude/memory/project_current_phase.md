@@ -27,6 +27,9 @@ last_session.md session 88.
 
 ## Đang mở / ad-hoc gần đây (đầy đủ ở TASKS.md)
 
+- **Sinh mã tự động cột `Ma`** (spec 32 / ADR-036, session 94, commit `e1650b3`) — MA-1…MA-8 CODE XONG,
+  build 0W/0E + test 145/145, **SQL đã chạy**. Chưa bật quy tắc cho bảng nào (cố ý) → còn E2E khi có
+  nghiệp vụ thật cần bật.
 - **FK lookup auto-JOIN** (session 72, CHƯA commit) — cột lưới hiện TÊN cha; cần build+restart API + commit.
 - **Save hook store** (ADR-029, SVHOOK) · **Bộ lọc cascade + context param** (ADR-030, VFILTER).
 - **Hệ đính kèm / Upload file tổng quát** (session 77) — P1–P6 CODE XONG; migration `db/dev/create_tt_attachment_full.sql` ĐÃ CHẠY (user xác nhận 2026-07-20); còn E2E trình duyệt. Spec 26 + hướng dẫn WPF `cau-hinh-attachment.md`.
