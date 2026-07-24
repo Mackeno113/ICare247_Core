@@ -189,6 +189,27 @@
     <Style x:Key="AppTestButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource TestButtonStyle}" />
     <Style x:Key="AppTargetTestButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource TargetTestButtonStyle}" />
 
+    <!-- Banner trạng thái (OK/lỗi) dùng chung cho các màn danh sách + dialog editor CRUD -->
+    <Style x:Key="AppStatusBannerStyle" TargetType="{x:Type Border}">
+        <Setter Property="Background" Value="{DynamicResource AppAccentSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AppAccentLightBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource AppDangerLightBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+    <Style x:Key="AppStatusTextStyle" TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource AppAccentDarkBrush}" />
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsStatusError}" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource AppDangerDarkBrush}" />
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
     <Style x:Key="IconBtnStyle" TargetType="{x:Type Button}">
         <Setter Property="Width" Value="32" />
         <Setter Property="Height" Value="32" />

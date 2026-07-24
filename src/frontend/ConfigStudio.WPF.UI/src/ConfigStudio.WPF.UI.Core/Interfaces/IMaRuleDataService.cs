@@ -12,6 +12,9 @@ public interface IMaRuleDataService
 {
     Task<IReadOnlyList<MaRuleRecord>> GetRulesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<MaRuleSegmentRecord>> GetSegmentsAsync(int ruleId, CancellationToken ct = default);
+
+    /// <summary>Toàn bộ đoạn của TẤT CẢ quy tắc (1 lần) — dùng tính cột "Mã dự kiến" ở lưới danh sách, tránh N+1.</summary>
+    Task<IReadOnlyList<MaRuleSegmentRecord>> GetAllSegmentsAsync(CancellationToken ct = default);
     Task<int> SaveRuleAsync(MaRuleUpsertRequest request, CancellationToken ct = default);
     Task DeleteRuleAsync(int ruleId, CancellationToken ct = default);
 

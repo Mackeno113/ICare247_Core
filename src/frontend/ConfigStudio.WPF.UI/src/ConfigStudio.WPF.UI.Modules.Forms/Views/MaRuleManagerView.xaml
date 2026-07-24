@@ -3,42 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:prism="http://prismlibrary.com/"
              xmlns:text="clr-namespace:ConfigStudio.WPF.UI.Core.Constants;assembly=ConfigStudio.WPF.UI.Core"
-             xmlns:coreconv="clr-namespace:ConfigStudio.WPF.UI.Core.Converters;assembly=ConfigStudio.WPF.UI.Core"
              prism:ViewModelLocator.AutoWireViewModel="True"
              d:DesignHeight="780"
              d:DesignWidth="1320"
              mc:Ignorable="d">
     <UserControl.InputBindings>
         <KeyBinding Modifiers="Control" Key="N" Command="{Binding NewCommand}" />
-        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveCommand}" />
         <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
     </UserControl.InputBindings>
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis" />
-        <coreconv:InverseBoolToVisConverter x:Key="InvBoolToVis" />
-        <Style x:Key="StatusBanner" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource AppAccentSoftBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource AppAccentLightBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AppDangerSoftBrush}" />
-                    <Setter Property="BorderBrush" Value="{DynamicResource AppDangerLightBrush}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="StatusText" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{DynamicResource AppAccentDarkBrush}" />
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsStatusError}" Value="True">
-                    <Setter Property="Foreground" Value="{DynamicResource AppDangerDarkBrush}" />
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
     </UserControl.Resources>
 
     <Grid Background="{DynamicResource ShellContentBackgroundBrush}">
@@ -61,378 +38,75 @@
                     <Button Content="{x:Static text:MaRuleUiText.Refresh}"
                             Command="{Binding RefreshCommand}"
                             Style="{DynamicResource AppOutlineButtonStyle}"
-                            Width="42" Margin="0,0,8,0" />
+                            ToolTip="{x:Static text:MaRuleUiText.TipRefresh}"
+                            Margin="0,0,8,0" />
                     <Button Content="{x:Static text:MaRuleUiText.New}"
                             Command="{Binding NewCommand}"
-                            Style="{DynamicResource AppActionButtonStyle}" />
+                            Style="{DynamicResource AppActionButtonStyle}"
+                            ToolTip="{x:Static text:MaRuleUiText.TipNew}" />
                 </StackPanel>
             </DockPanel>
         </Border>
 
         <Grid Grid.Row="1" Margin="16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="0.8*" MinWidth="300" />
-                <ColumnDefinition Width="8" />
-                <ColumnDefinition Width="1.9*" MinWidth="640" />
-            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <!-- Danh sách quy tắc -->
-            <Grid Grid.Column="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{x:Static text:MaRuleUiText.ListTitle}"
-                           FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8"
+            <DockPanel Grid.Row="0" Margin="0,0,0,8">
+                <TextBlock DockPanel.Dock="Left" Text="{x:Static text:MaRuleUiText.ListTitle}"
+                           FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center"
                            Foreground="{DynamicResource AppTextBrush}" />
-                <dxg:GridControl Grid.Row="1" ItemsSource="{Binding Rules}"
-                                 SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
-                                 AutoGenerateColumns="None">
-                    <dxg:GridControl.View>
-                        <dxg:TableView NavigationStyle="Row" AllowEditing="False" />
-                    </dxg:GridControl.View>
-                    <dxg:GridControl.Columns>
-                        <dxg:GridColumn Header="{x:Static text:MaRuleUiText.TargetTable}"
-                                        FieldName="TableCode" Width="*" />
-                        <dxg:GridColumn Header="{x:Static text:MaRuleUiText.TargetColumn}"
-                                        FieldName="ColumnCode" Width="80" />
-                        <dxg:GridColumn Header="{x:Static text:MaRuleUiText.Active}"
-                                        FieldName="IsActive" Width="70" />
-                        <dxg:GridColumn Header="{x:Static text:MaRuleUiText.System}"
-                                        FieldName="IsSystem" Width="80" />
-                    </dxg:GridControl.Columns>
-                </dxg:GridControl>
-            </Grid>
-
-            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch"
-                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
-                          Background="Transparent" />
-
-            <!-- Editor -->
-            <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <TextBlock Text="{Binding EditorTitle}" FontSize="18" FontWeight="SemiBold"
-                           Margin="0,0,0,10" Foreground="{DynamicResource AppTextBrush}" />
-
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
-                              HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel Margin="0,0,8,0">
-                        <Border Padding="12,10" Margin="0,0,0,16"
-                                Background="{DynamicResource AppAccentSoftBrush}"
-                                BorderBrush="{DynamicResource AppAccentLightBrush}"
-                                BorderThickness="1" CornerRadius="4">
-                            <TextBlock Text="{x:Static text:MaRuleUiText.EditorHelp}"
-                                       TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource AppAccentDarkBrush}" />
-                        </Border>
-
-                        <!-- Đích áp dụng -->
-                        <TextBlock Text="{x:Static text:MaRuleUiText.BasicSection}"
-                                   Style="{DynamicResource AppSectionTitleStyle}" />
-                        <Grid Margin="0,0,0,20">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="110" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="{x:Static text:MaRuleUiText.TargetTable}"
-                                           Style="{DynamicResource AppFieldLabelStyle}" />
-                                <dxe:ComboBoxEdit ItemsSource="{Binding Tables}"
-                                                  DisplayMember="TableCode" ValueMember="TableCode"
-                                                  EditValue="{Binding EditTableCode, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsTextEditable="True" ImmediatePopup="True"
-                                                  IncrementalFiltering="True" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="{x:Static text:MaRuleUiText.TargetColumn}"
-                                           Style="{DynamicResource AppFieldLabelStyle}" />
-                                <dxe:ComboBoxEdit ItemsSource="{Binding TargetColumns}"
-                                                  EditValue="{Binding EditColumnCode, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsTextEditable="True" ImmediatePopup="True"
-                                                  IncrementalFiltering="True" NullText="Ma" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="4">
-                                <TextBlock Text="{x:Static text:MaRuleUiText.Step}"
-                                           Style="{DynamicResource AppFieldLabelStyle}" />
-                                <dxe:SpinEdit EditValue="{Binding EditStep, UpdateSourceTrigger=PropertyChanged}"
-                                              IsFloatValue="False" MinValue="1" MaxValue="1000" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="6" VerticalAlignment="Bottom">
-                                <dxe:CheckEdit Content="{x:Static text:MaRuleUiText.AllowManual}"
-                                               IsChecked="{Binding EditAllowManual}" Margin="0,0,0,6" />
-                                <dxe:CheckEdit Content="{x:Static text:MaRuleUiText.Active}"
-                                               IsChecked="{Binding EditIsActive}" />
-                            </StackPanel>
-                        </Grid>
-
-                        <StackPanel Margin="0,0,0,16">
-                            <TextBlock Text="{x:Static text:MaRuleUiText.Description}"
-                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                            <dxe:TextEdit EditValue="{Binding EditDescription, UpdateSourceTrigger=PropertyChanged}"
-                                          AcceptsReturn="True" TextWrapping="Wrap"
-                                          VerticalScrollBarVisibility="Auto" MinHeight="48" />
-                        </StackPanel>
-
-                        <!-- Cảnh báo chồng event (spec §10.1) -->
-                        <Border Padding="10,8" Margin="0,0,0,12" CornerRadius="4"
-                                Background="{DynamicResource AppDangerSoftBrush}"
-                                BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1"
-                                Visibility="{Binding HasOverlapWarning, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="{Binding OverlapWarning}" TextWrapping="Wrap" FontSize="12"
-                                       Foreground="{DynamicResource AppDangerDarkBrush}" />
-                        </Border>
-
-                        <!-- Các đoạn ghép mã -->
-                        <DockPanel Margin="0,0,0,6">
-                            <TextBlock DockPanel.Dock="Left" Text="{x:Static text:MaRuleUiText.SegmentSection}"
-                                       Style="{DynamicResource AppSectionTitleStyle}" />
-                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="{x:Static text:MaRuleUiText.MoveUp}"
-                                        Command="{Binding MoveUpCommand}"
-                                        Style="{DynamicResource AppOutlineButtonStyle}" Width="34" Margin="0,0,6,0" />
-                                <Button Content="{x:Static text:MaRuleUiText.MoveDown}"
-                                        Command="{Binding MoveDownCommand}"
-                                        Style="{DynamicResource AppOutlineButtonStyle}" Width="34" Margin="0,0,6,0" />
-                                <Button Content="{x:Static text:MaRuleUiText.RemoveSegment}"
-                                        Command="{Binding RemoveSegmentCommand}"
-                                        Style="{DynamicResource AppOutlineButtonStyle}" Margin="0,0,6,0"
-                                        Foreground="{DynamicResource AppDangerBrush}" />
-                                <Button Content="{x:Static text:MaRuleUiText.AddSegment}"
-                                        Command="{Binding AddSegmentCommand}"
-                                        Style="{DynamicResource AppActionButtonStyle}" />
-                            </StackPanel>
-                        </DockPanel>
-
-                        <dxg:GridControl ItemsSource="{Binding Segments}"
-                                         SelectedItem="{Binding SelectedSegment, Mode=TwoWay}"
-                                         AutoGenerateColumns="None" MinHeight="150" MaxHeight="230">
-                            <dxg:GridControl.View>
-                                <dxg:TableView NavigationStyle="Row" AllowEditing="False"
-                                               ShowGroupPanel="False" />
-                            </dxg:GridControl.View>
-                            <dxg:GridControl.Columns>
-                                <dxg:GridColumn Header="{x:Static text:MaRuleUiText.ColOrder}"
-                                                FieldName="OrderNo" Width="40" />
-                                <dxg:GridColumn Header="{x:Static text:MaRuleUiText.ColType}"
-                                                FieldName="SegmentType" Width="90" />
-                                <dxg:GridColumn Header="{x:Static text:MaRuleUiText.ColContent}"
-                                                FieldName="ContentSummary" Width="*" />
-                                <dxg:GridColumn Header="{x:Static text:MaRuleUiText.ColWidth}"
-                                                FieldName="Length" Width="70" />
-                                <dxg:GridColumn Header="{x:Static text:MaRuleUiText.ColSample}"
-                                                FieldName="Sample" Width="110" />
-                            </dxg:GridControl.Columns>
-                        </dxg:GridControl>
-
-                        <!-- Panel thuộc tính đoạn đang chọn -->
-                        <Border Margin="0,12,0,0" Padding="12" CornerRadius="4"
-                                Background="{DynamicResource AppSurfaceBrush}"
-                                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1">
-                            <StackPanel>
-                                <TextBlock Text="{x:Static text:MaRuleUiText.SegPropTitle}"
-                                           FontWeight="SemiBold" Margin="0,0,0,8"
-                                           Foreground="{DynamicResource AppTextBrush}" />
-
-                                <TextBlock Text="{x:Static text:MaRuleUiText.SegPropNoSelection}"
-                                           Foreground="{DynamicResource AppTextMutedBrush}" FontSize="12"
-                                           Visibility="{Binding HasSelectedSegment, Converter={StaticResource InvBoolToVis}}" />
-
-                                <StackPanel DataContext="{Binding SelectedSegment}"
-                                            Visibility="{Binding DataContext.HasSelectedSegment,
-                                                RelativeSource={RelativeSource AncestorType=UserControl},
-                                                Converter={StaticResource BoolToVis}}">
-                                    <Grid Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="140" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.ColType}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.SegmentTypeOptions,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding SegmentType, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <!-- LITERAL -->
-                                        <StackPanel Grid.Column="2" Visibility="{Binding IsLiteral, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.LiteralText}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:TextEdit EditValue="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}"
-                                                          NullText="CT-" />
-                                        </StackPanel>
-                                        <!-- DATE -->
-                                        <StackPanel Grid.Column="2" Visibility="{Binding IsDate, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.DateFormat}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.DateFormatOptions,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}"
-                                                              IsTextEditable="True" />
-                                        </StackPanel>
-                                        <!-- FIELD -->
-                                        <StackPanel Grid.Column="2" Visibility="{Binding IsField, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.SourceField}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.TargetColumns,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding FieldCode, UpdateSourceTrigger=PropertyChanged}"
-                                                              IsTextEditable="True" IncrementalFiltering="True" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <!-- LOOKUP: 4 ô -->
-                                    <Grid Visibility="{Binding IsLookup, Converter={StaticResource BoolToVis}}" Margin="0,0,0,10">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.SourceField}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.TargetColumns,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding FieldCode, UpdateSourceTrigger=PropertyChanged}"
-                                                              IsTextEditable="True" IncrementalFiltering="True" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.LookupTable}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.Tables,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              DisplayMember="TableCode" ValueMember="TableCode"
-                                                              EditValue="{Binding LookupTable, UpdateSourceTrigger=PropertyChanged}"
-                                                              IsTextEditable="True" IncrementalFiltering="True" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.LookupKeyCol}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:TextEdit EditValue="{Binding LookupKeyCol, UpdateSourceTrigger=PropertyChanged}"
-                                                          NullText="Id" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="6">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.LookupValCol}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:TextEdit EditValue="{Binding LookupValCol, UpdateSourceTrigger=PropertyChanged}"
-                                                          NullText="Ma" />
-                                        </StackPanel>
-                                    </Grid>
-
-                                    <!-- Chuẩn hóa: dùng cho DATE/FIELD/LOOKUP/SEQ (LITERAL không cần) -->
-                                    <Grid Visibility="{Binding IsLiteral, Converter={StaticResource InvBoolToVis}}">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="12" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0"
-                                                    Visibility="{Binding IsSeq, Converter={StaticResource InvBoolToVis}}">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.SubstringStart}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:SpinEdit EditValue="{Binding SubstringStart, UpdateSourceTrigger=PropertyChanged}"
-                                                          IsFloatValue="False" MinValue="1" MaxValue="100" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="2">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.Width}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:SpinEdit EditValue="{Binding Length, UpdateSourceTrigger=PropertyChanged}"
-                                                          IsFloatValue="False" MinValue="0" MaxValue="100" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="4">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.PadChar}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:TextEdit EditValue="{Binding PadChar, UpdateSourceTrigger=PropertyChanged}"
-                                                          MaxLength="1" NullText="0" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="6">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.PadSide}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.PadSideOptions,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding PadSide, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="8"
-                                                    Visibility="{Binding IsSeq, Converter={StaticResource InvBoolToVis}}">
-                                            <TextBlock Text="{x:Static text:MaRuleUiText.TextTransform}"
-                                                       Style="{DynamicResource AppFieldLabelStyle}" />
-                                            <dxe:ComboBoxEdit ItemsSource="{Binding DataContext.TransformOptions,
-                                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                              EditValue="{Binding TextTransform, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                    </Grid>
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Preview + phạm vi -->
-                        <Border Margin="0,14,0,0" Padding="12,10" CornerRadius="4"
-                                Background="{DynamicResource AppAccentSoftBrush}"
-                                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1">
-                            <StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                    <TextBlock Text="{x:Static text:MaRuleUiText.PreviewLabel}"
-                                               FontWeight="SemiBold" Foreground="{DynamicResource AppAccentDarkBrush}" />
-                                    <TextBlock Text="{Binding Preview}" Margin="8,0,0,0"
-                                               FontFamily="Cascadia Code, Consolas" FontSize="15"
-                                               Foreground="{DynamicResource AppTextBrush}" />
-                                </StackPanel>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{x:Static text:MaRuleUiText.ScopeLabel}"
-                                               Foreground="{DynamicResource AppTextMutedBrush}" FontSize="12" />
-                                    <TextBlock Text="{Binding ScopePrefix}" Margin="8,0,0,0"
-                                               FontFamily="Cascadia Code, Consolas" FontSize="12"
-                                               Foreground="{DynamicResource AppTextMutedBrush}" />
-                                </StackPanel>
-                                <TextBlock Text="{x:Static text:MaRuleUiText.ScopeHelp}" Margin="0,4,0,0"
-                                           TextWrapping="Wrap" FontSize="11"
-                                           Foreground="{DynamicResource AppTextMutedBrush}" />
-                            </StackPanel>
-                        </Border>
-
-                        <TextBlock Text="{x:Static text:MaRuleUiText.IndexAdvisory}" Margin="0,12,0,0"
-                                   TextWrapping="Wrap" FontSize="11"
-                                   Foreground="{DynamicResource AppTextMutedBrush}" />
-                    </StackPanel>
-                </ScrollViewer>
-
-                <Border Grid.Row="2" Margin="0,10,0,0" Padding="10,8"
-                        Style="{StaticResource StatusBanner}"
-                        Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
-                               Style="{StaticResource StatusText}" />
-                </Border>
-
-                <DockPanel Grid.Row="3" Margin="0,12,0,0">
-                    <Button DockPanel.Dock="Left" Content="{x:Static text:MaRuleUiText.Delete}"
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="{x:Static text:MaRuleUiText.Edit}"
+                            Command="{Binding EditCommand}"
+                            Style="{DynamicResource AppOutlineButtonStyle}"
+                            ToolTip="{x:Static text:MaRuleUiText.TipEdit}" Margin="0,0,8,0" />
+                    <Button Content="{x:Static text:MaRuleUiText.Delete}"
                             Command="{Binding DeleteCommand}"
                             Style="{DynamicResource AppOutlineButtonStyle}"
-                            Foreground="{DynamicResource AppDangerBrush}" />
-                    <Button DockPanel.Dock="Right" Content="{x:Static text:MaRuleUiText.Save}"
-                            Command="{Binding SaveCommand}"
-                            Style="{DynamicResource AppActionButtonStyle}" />
-                </DockPanel>
-            </Grid>
+                            Foreground="{DynamicResource AppDangerBrush}"
+                            ToolTip="{x:Static text:MaRuleUiText.TipDeleteList}" />
+                </StackPanel>
+            </DockPanel>
+
+            <dxg:GridControl Grid.Row="1" ItemsSource="{Binding Rules}"
+                             SelectedItem="{Binding SelectedRule, Mode=TwoWay}"
+                             AutoGenerateColumns="None">
+                <dxg:GridControl.View>
+                    <dxg:TableView NavigationStyle="Row" AllowEditing="False"
+                                   ShowAutoFilterRow="True"
+                                   RowDoubleClick="OnRowDoubleClick" />
+                </dxg:GridControl.View>
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn Header="{x:Static text:MaRuleUiText.TargetTable}"
+                                    FieldName="TableCode" Width="*" AutoFilterCondition="Contains" />
+                    <dxg:GridColumn Header="{x:Static text:MaRuleUiText.TargetColumn}"
+                                    FieldName="ColumnCode" Width="120" AutoFilterCondition="Contains" />
+                    <dxg:GridColumn Header="{x:Static text:MaRuleUiText.PreviewCodeColumn}"
+                                    FieldName="PreviewCode" Width="160" AutoFilterCondition="Contains"
+                                    ToolTip="{x:Static text:MaRuleUiText.TipPreviewCodeColumn}">
+                        <dxg:GridColumn.CellStyle>
+                            <Style TargetType="dxg:LightweightCellEditor">
+                                <Setter Property="FontFamily" Value="Cascadia Code, Consolas" />
+                            </Style>
+                        </dxg:GridColumn.CellStyle>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn Header="{x:Static text:MaRuleUiText.Active}"
+                                    FieldName="IsActive" Width="90" />
+                    <dxg:GridColumn Header="{x:Static text:MaRuleUiText.System}"
+                                    FieldName="IsSystem" Width="110" />
+                </dxg:GridControl.Columns>
+            </dxg:GridControl>
+
+            <Border Grid.Row="2" Margin="0,10,0,0" Padding="10,8"
+                    Style="{DynamicResource AppStatusBannerStyle}"
+                    Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap"
+                           Style="{DynamicResource AppStatusTextStyle}" />
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

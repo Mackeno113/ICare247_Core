@@ -80,6 +80,36 @@ public sealed class MaRuleDataService : IMaRuleDataService
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<MaRuleSegmentRecord>> GetAllSegmentsAsync(CancellationToken ct = default)
+    {
+        if (!_config.IsConfigured) return [];
+
+        const string sql = """
+            SELECT Segment_Id      AS SegmentId,
+                   Rule_Id         AS RuleId,
+                   Order_No        AS OrderNo,
+                   Segment_Type    AS SegmentType,
+                   Text_Value      AS TextValue,
+                   Field_Code      AS FieldCode,
+                   Lookup_Table    AS LookupTable,
+                   Lookup_Key_Col  AS LookupKeyCol,
+                   Lookup_Val_Col  AS LookupValCol,
+                   Substring_Start AS SubstringStart,
+                   Length          AS Length,
+                   Pad_Char        AS PadChar,
+                   Pad_Side        AS PadSide,
+                   Text_Transform  AS TextTransform
+            FROM dbo.Sys_Ma_Rule_Segment
+            WHERE Is_Active = 1
+            ORDER BY Rule_Id, Order_No
+            """;
+
+        await using var conn = new SqlConnection(_config.ConnectionString);
+        var rows = await conn.QueryAsync<MaRuleSegmentRecord>(new CommandDefinition(sql, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <inheritdoc />
     public async Task<int> SaveRuleAsync(MaRuleUpsertRequest request, CancellationToken ct = default)
     {
         EnsureConfigured();

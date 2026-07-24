@@ -31,4 +31,10 @@ public sealed class MaRuleRecord
     public bool IsCustomized { get; init; }
     public DateTime? SyncedAt { get; init; }
     public int? SourceVer { get; init; }
+
+    /// <summary>
+    /// Mã dự kiến ghép từ các đoạn — KHÔNG phải cột DB, tính ở client sau khi nạp danh sách.
+    /// Đoạn FIELD/LOOKUP hiện placeholder vì ConfigStudio không đọc giá trị thật ở Data DB.
+    /// </summary>
+    public string PreviewCode { get; set; } = "";
 }

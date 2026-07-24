@@ -10,6 +10,7 @@
 - [cau-hinh-man-cong-ty.md](cau-hinh-man-cong-ty.md) — Màn Công ty (lưới cây + popup, master-detail tổ chức).
 - [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md) — Màn Quản lý View (Grid / Tree Grid).
 - [cau-hinh-menu.md](cau-hinh-menu.md) — Màn Quản lý menu (HT_ChucNang).
+- [cau-hinh-quy-tac-sinh-ma.md](cau-hinh-quy-tac-sinh-ma.md) — Màn Quy tắc sinh mã (tự ghép cột `Ma` từ chữ cố định/ngày/field/tra bảng/số thứ tự).
 
 ## Cấu hình field / control
 - [cau-hinh-lookupbox.md](cau-hinh-lookupbox.md) — Tham chiếu đầy đủ **từng ô** của panel LookupBox/TreeLookupBox.

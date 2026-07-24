@@ -3,6 +3,62 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Tách List/Popup màn WPF "Quy tắc sinh mã" + "Mẫu Lookup" + fix schema drift `Sys_Ma_Rule` (session 95, 2026-07-25, CHƯA commit)
+
+**Bối cảnh:** tiếp nối MA-6 (session 94) — user thử màn "Quy tắc sinh mã" trên ConfigStudio thật, phát hiện
+UI khó dùng (list+editor chung 1 màn, không double-click, không lọc) và 1 bug DB chặn Lưu hoàn toàn.
+
+- [x] **Tách List/Popup (2 màn)** — `MaRuleManagerView`/`LookupTemplateManagerView` rút gọn thành **list-only**
+  (lưới full-width, filter-row per-cột `AutoFilterCondition="Contains"` — verify API qua reflection
+  `DevExpress.Xpf.Grid.v25.2.dll` trước khi dùng, `TableView.ShowAutoFilterRow`/`GridColumn.AutoFilterCondition`
+  đúng theo `.claude-rules` — đúng quy tắc dự án, không đoán API). Toàn bộ editor (field cơ bản + lưới đoạn +
+  panel thuộc tính) chuyển vào popup mới `MaRuleEditDialog`/`LookupTemplateEditDialog`
+  (`MaRuleEditDialogViewModel`/`LookupTemplateEditDialogViewModel`, Prism `IDialogAware`, đăng ký qua
+  `RegisterDialog` — khuôn `ConfirmDialog`/`SyncSchemaDialog` sẵn có, không phát minh cơ chế mới). Double-click
+  dòng → mở popup Sửa (khuôn code-behind `RowDoubleClick` của `FormManagerView.xaml.cs`). Xóa vẫn hỏi xác nhận
+  qua `ConfirmDialog` nhưng đọc thẳng từ dòng đang chọn (không cần nạp editor trước). Style dùng chung
+  `AppStatusBannerStyle`/`AppStatusTextStyle` gom lên `Controls.xaml` (ADR-031) thay vì copy-paste per-view.
+- [x] **Fix bug DB thật: `dbo.Sys_Ma_Rule` lệch schema** — Lưu quy tắc luôn báo lỗi
+  `Cannot insert the value NULL into column 'Pattern'`. Nguyên nhân: bảng sống trên `ICare247_Config` mang
+  schema của **bản thiết kế cũ đã bỏ** (`Pattern` chuỗi token `{SEQ}` NOT NULL + `Reset_Scope`
+  NGAY/THANG/NAM/KHONG + `Scope_Column`) — đúng thứ spec 32 §2.1/§3 đã chốt bỏ tường minh trước khi viết
+  `089_create_sys_ma_rule.sql`; vì `089` dùng guard `IF OBJECT_ID(...) IS NULL` nên không tạo lại bảng đã tồn
+  tại từ bản nháp cũ, 3 cột rác kẹt lại. Xin DDL sống qua user (đúng feedback `verify-live-db-schema`, không
+  đoán) rồi viết `db/090_drop_ma_rule_legacy_columns.sql` (idempotent, dò CHECK constraint theo nội dung định
+  nghĩa để chạy được cả khi tên constraint khác môi trường, drop DEFAULT constraint trước khi drop cột).
+  **User đã chạy `db/090`** — suy từ dòng `DM_CapPhongBan.Ma` xuất hiện lưu thành công ở màn danh sách ngay sau
+  đó (chưa có xác nhận bằng lời tường minh).
+- [x] **Cột "Mã dự kiến" ở lưới danh sách** — ghép mã mẫu từ các đoạn ngay trong lưới (không cần mở popup).
+  Tách thuật toán ghép mẫu ra `MaRulePreviewCalculator` (static, dùng chung cho panel Preview trong popup lẫn
+  cột này — `MaRuleSegmentRowVm.Sample` nay delegate qua đây, không còn trùng logic). Thêm
+  `IMaRuleDataService.GetAllSegmentsAsync()` (1 query lấy đoạn của TẤT CẢ quy tắc, group theo `RuleId`) thay vì
+  gọi lặp theo từng dòng — tránh N+1 khi tải lưới. `MaRuleRecord.PreviewCode` là property tính ở client, không
+  phải cột DB.
+- [x] **Tooltip + hướng dẫn nhập liệu** — ~30 hằng `Tip*`/`DetailGuide*` trong `MaRuleUiText.cs` (nội dung bám
+  spec 32 §3, không tự bịa), gắn `ToolTip` vào mọi ô/nút trong `MaRuleManagerView`/`MaRuleEditDialog`. Thêm
+  `Expander` "📖 Hướng dẫn chi tiết" trong popup (5 loại đoạn + 2 ràng buộc bắt buộc + ví dụ `CT01-PHONG-007`).
+  File hướng dẫn riêng `docs/huong-dan-wpf/cau-hinh-quy-tac-sinh-ma.md` + mục lục `README.md`.
+- [x] **Fix icon nút hiện ô trống** (`MaRuleManagerView`/`LookupTemplateManagerView`/`FormManagerView`) — ký tự
+  Unicode `↻`/`▲`/`▼` không render trong môi trường này (tofu box) → đổi sang text "Làm mới"/"Lên"/"Xuống".
+  *(Chưa đụng 6 icon emoji hành động trong `FormManagerView` — user chốt để nguyên lần này, cùng lớp rủi ro,
+  chưa sửa.)*
+- [x] **UI `FormManagerView` theo chuẩn `icare247-admin-ui`** — bỏ 3 khối card viền/bo góc riêng (tiêu đề, lưới,
+  thanh tổng kết) → toolbar mỏng nằm thẳng trên nền + lưới bo góc `0` (đúng bảng radius "Bảng & section = 0")
+  + border trung tính `AppBorderBrush` thay accent xanh (accent chỉ dành CTA/link/selection) + thanh tổng kết
+  đổi nền màu đặc → divider mảnh phía trên. Cột lưới (Table/Platform/Ver/Sections/Fields/Events/Active) **giữ
+  nguyên tiếng Anh** — verify qua grep thấy đây là quy ước nhất quán ở ~6 màn chị em cùng module
+  (`FieldConfigView`/`FormEditorView`/`ViewManagerView`/`SysTableManagerView`/`RelationManagerView`), dịch
+  riêng màn này sẽ tạo inconsistency mới.
+
+Build `ConfigStudio.WPF.UI.slnx`: **0 Warning / 0 Error** (2026-07-25). Chưa build lại backend/Web (không đụng).
+
+**Decisions Log (session 95):**
+- Popup sửa dùng Prism `IDialogService` (không `DXWindow`) — khuôn `ConfirmDialog` đã có, tránh 2 cơ chế popup
+  song song trong cùng app.
+- `AutoFilterCondition="Contains"` verify bằng reflection DLL trước khi viết XAML, không đoán theo docs cũ.
+- Bug `Pattern NOT NULL` là DB thật lệch migration script (không phải bug code C#) — fix bằng migration mới
+  `db/090`, KHÔNG vá bằng cách bơm giá trị giả vào `Pattern` từ C# (đúng feedback `fix-root-logic-not-cache`).
+
 ## ✅ Đã xong — Sinh mã tự động cho cột `Ma` (spec 32 / ADR-036 — session 94, 2026-07-24)
 
 **Trạng thái cuối:** MA-1…MA-8 code xong. Build 0W/0E cả 3 solution (backend/Web/ConfigStudio) +
@@ -509,7 +565,7 @@ Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không ph�
 | 033 | View-based grid | ✅ Pha 1 xong (live Tenant 1) | Pha 2 → ADR-034; **Pha 3 (template) chưa làm** |
 | 034 | Import Excel | ✅ code xong (session 78) + addendum DevExpress (session 80) | ⏳ `db/071–073` + `db/procs/*` CHƯA chạy DB; E2E ⏳; v1 = Grid phẳng, TreeGrid sau |
 | 035 | Bỏ hẳn `Tenant_Id` | ✅ **HOÀN TẤT** (session 81) | `db/078` đã chạy. Còn lại → mục "🔜 CÒN LẠI sau ADR-035" |
-| 036 | Sinh mã tự động cột `Ma` | ✅ MA-1…MA-8 code xong, build 0/0 cả 3 solution + test 145/145 (2026-07-24); **4 script SQL đã chạy DB** (user xác nhận) | `db/089`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `ICodeRuleCatalog`/`MaCodeGenerator`, endpoint `ma-du-kien`, màn WPF "Quy tắc sinh mã", `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`. ⏳ **Chưa smoke runtime** (chưa bật quy tắc cho bảng nào — user chốt cố ý) |
+| 036 | Sinh mã tự động cột `Ma` | ✅ MA-1…MA-8 code xong, build 0/0 cả 3 solution + test 145/145 (2026-07-24). **DB sống lệch schema cũ** (`Pattern`/`Reset_Scope`/`Scope_Column` từ bản thiết kế đã bỏ, chặn mọi Lưu) → `db/090` (2026-07-25) dọn lại đúng schema 089, user đã chạy. Màn WPF "Quy tắc sinh mã"+"Mẫu Lookup" tách list/popup Sửa (Prism dialog), filter-row Contains, double-click, cột "Mã dự kiến" client-side (`MaRulePreviewCalculator`, 1 query tránh N+1), tooltip + hướng dẫn chi tiết trong popup + `docs/huong-dan-wpf/cau-hinh-quy-tac-sinh-ma.md` (session 95) | `db/089`, `db/090`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `ICodeRuleCatalog`/`MaCodeGenerator`, endpoint `ma-du-kien`, `MaRuleEditDialog(ViewModel)`, `LookupTemplateEditDialog(ViewModel)`, `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`. ⏳ **Chưa smoke runtime** (chưa bật quy tắc cho bảng nào — user chốt cố ý) |
 | Sec | CORS + JWT SecretKey | ✅ #2/#3 code xong (Program.cs) | #1 (tenant từ claim) đã đóng bằng ADR-018 |
 
 > **Quy tắc từ nay:** khi một thay đổi làm ADR nào đó "bắt kịp", cập nhật **bảng này**, không sửa ADR.

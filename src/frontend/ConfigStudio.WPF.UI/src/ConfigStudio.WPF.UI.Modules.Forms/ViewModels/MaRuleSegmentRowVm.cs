@@ -5,7 +5,6 @@
 
 using System;
 using System.Runtime.CompilerServices;
-using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using Prism.Mvvm;
 
@@ -107,68 +106,8 @@ public sealed class MaRuleSegmentRowVm : BindableBase
         _ => "",
     };
 
-    /// <summary>Chuỗi mẫu của riêng đoạn này — client-side, chỉ để xem trước.</summary>
-    public string Sample => BuildSample();
-
-    /// <summary>Ghép mẫu: dùng giá trị thật cho LITERAL/DATE/SEQ; placeholder cho FIELD/LOOKUP.</summary>
-    private string BuildSample()
-    {
-        var raw = SegmentType switch
-        {
-            "LITERAL" => TextValue,
-            "DATE" => SampleDate(TextValue),
-            "SEQ" => "1",
-            "FIELD" => SampleFixed(FieldCode),
-            "LOOKUP" => SampleFixed(LookupValCol),
-            _ => "",
-        };
-        return ApplyFormat(raw);
-    }
-
-    /// <summary>DATE mẫu theo hôm nay (đúng ý các token yyyy/yy/MM/dd và ghép).</summary>
-    private static string SampleDate(string? fmt)
-    {
-        if (string.IsNullOrWhiteSpace(fmt)) return "";
-        var now = DateTime.Now;
-        return fmt
-            .Replace("yyyy", now.ToString("yyyy"))
-            .Replace("yy", now.ToString("yy"))
-            .Replace("MM", now.ToString("MM"))
-            .Replace("dd", now.ToString("dd"));
-    }
-
-    /// <summary>
-    /// FIELD/LOOKUP: không có giá trị thật (Config DB) → nếu đặt Độ rộng thì hiện chuỗi 'XXXX' đúng
-    /// độ rộng (để thấy hình dạng/tiền tố cố định); ngược lại hiện ‹tên› gợi ý.
-    /// </summary>
-    private string SampleFixed(string? name)
-    {
-        if (Length is > 0)
-            return new string(MaRuleUiText.SamplePlaceholderChar[0], Length.Value);
-        return string.IsNullOrWhiteSpace(name) ? "‹?›" : $"‹{name}›";
-    }
-
-    /// <summary>Áp cắt / độ rộng / đệm / biến đổi chữ cho phần thô (SEQ chỉ dùng độ rộng + đệm).</summary>
-    private string ApplyFormat(string value)
-    {
-        var v = value ?? "";
-
-        if (SubstringStart is > 1 && v.Length >= SubstringStart.Value)
-            v = v[(SubstringStart.Value - 1)..];
-
-        if (TextTransform == "UPPER") v = v.ToUpperInvariant();
-        else if (TextTransform == "LOWER") v = v.ToLowerInvariant();
-
-        if (Length is > 0)
-        {
-            var pad = string.IsNullOrEmpty(PadChar) ? ' ' : PadChar[0];
-            if (v.Length < Length.Value)
-                v = PadSide == "R" ? v.PadRight(Length.Value, pad) : v.PadLeft(Length.Value, pad);
-            else if (SegmentType is "FIELD" or "LOOKUP" or "LITERAL" or "DATE" && v.Length > Length.Value)
-                v = v[..Length.Value];   // đoạn phi-SEQ có độ rộng cố định thì cắt; SEQ KHÔNG cắt (tràn)
-        }
-        return v;
-    }
+    /// <summary>Chuỗi mẫu của riêng đoạn này — client-side, chỉ để xem trước (thuật toán dùng chung ở <see cref="MaRulePreviewCalculator"/>).</summary>
+    public string Sample => MaRulePreviewCalculator.BuildSegmentSample(ToRecord());
 
     public MaRuleSegmentRecord ToRecord() => new()
     {

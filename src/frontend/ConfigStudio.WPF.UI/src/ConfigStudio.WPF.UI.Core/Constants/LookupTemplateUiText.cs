@@ -11,10 +11,16 @@ public static class LookupTemplateUiText
     public const string ScreenTitle = "Mẫu Lookup";
     public const string ScreenSubtitle = "Quản lý mẫu nguồn dữ liệu dùng lại cho LookupBox và TreeLookupBox.";
     public const string New = "+ Tạo mới";
-    public const string Refresh = "↻";
+    public const string Refresh = "Làm mới";
     public const string Save = "Lưu";
+    public const string Edit = "Sửa";
     public const string Delete = "Xóa";
     public const string Cancel = "Hủy";
+
+    public const string TipNew = "Tạo mẫu lookup mới.";
+    public const string TipRefresh = "Tải lại danh sách mẫu từ Config DB.";
+    public const string TipEdit = "Mở mẫu đang chọn để sửa.";
+    public const string TipDeleteList = "Xóa vĩnh viễn mẫu đang chọn (có hỏi xác nhận trước khi xóa). Không xóa được nếu đang có field tham chiếu hoặc là mẫu hệ thống.";
     public const string CreateTitle = "Tạo mẫu lookup";
     public const string EditTitle = "Chỉnh sửa mẫu lookup";
     public const string ListTitle = "Danh sách mẫu";

@@ -112,91 +112,87 @@
         </Grid.RowDefinitions>
 
         <!-- ═══════════════════════════════════════════════════════════
-             ROW 0: Header + Filter bar
+             ROW 0: Header + Filter bar — toolbar mỏng, không bọc card
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
-                Background="{DynamicResource ShellContentBackgroundBrush}"
-                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
+        <Grid Grid.Row="0" Margin="16,16,16,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                <!-- Title + Create button -->
-                <DockPanel Grid.Row="0">
-                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
-                        <TextBlock Text="Quản Lý Form"
-                                   FontSize="20" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                        <TextBlock Text="Danh sách tất cả form trong hệ thống"
-                                   FontSize="12" Opacity="0.6" Margin="0,2,0,0"
-                                   Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
-                    </StackPanel>
+            <!-- Title + Create button -->
+            <DockPanel Grid.Row="0">
+                <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="Quản Lý Form"
+                               FontSize="20" FontWeight="SemiBold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    <TextBlock Text="Danh sách tất cả form trong hệ thống"
+                               FontSize="12" Opacity="0.6" Margin="0,2,0,0"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                </StackPanel>
 
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
-                                HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <dx:SimpleButton Command="{Binding RefreshCommand}"
-                                         ToolTip="Làm mới danh sách"
-                                         Margin="0,0,8,0" Width="32" Height="32"
-                                         Content="↻" FontSize="16" />
-                        <dx:SimpleButton Command="{Binding CreateFormCommand}" Content="+ Tạo Form Mới" />
-                    </StackPanel>
-                </DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <dx:SimpleButton Command="{Binding RefreshCommand}"
+                                     ToolTip="Làm mới danh sách"
+                                     Margin="0,0,8,0"
+                                     Content="Làm mới" />
+                    <dx:SimpleButton Command="{Binding CreateFormCommand}" Content="+ Tạo Form Mới" />
+                </StackPanel>
+            </DockPanel>
 
-                <!-- Filter bar -->
-                <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-                    <!-- Search box -->
-                    <dxe:TextEdit x:Name="SearchBox"
-                                  Width="260"
-                                  NullText="Tìm theo mã hoặc tên form... (Ctrl+F)"
-                                  EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+            <!-- Filter bar -->
+            <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+                <!-- Search box -->
+                <dxe:TextEdit x:Name="SearchBox"
+                              Width="260"
+                              NullText="Tìm theo mã hoặc tên form... (Ctrl+F)"
+                              EditValue="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                              Margin="0,0,10,0" />
+
+                <!-- Filter Platform -->
+                <dxe:ComboBoxEdit Width="130"
+                                  NullText="Platform"
+                                  ItemsSource="{Binding PlatformOptions}"
+                                  EditValue="{Binding PlatformFilter}"
                                   Margin="0,0,10,0" />
 
-                    <!-- Filter Platform -->
-                    <dxe:ComboBoxEdit Width="130"
-                                      NullText="Platform"
-                                      ItemsSource="{Binding PlatformOptions}"
-                                      EditValue="{Binding PlatformFilter}"
-                                      Margin="0,0,10,0" />
+                <!-- Filter Table -->
+                <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
+                                Width="160"
+                                NullText="Business Table"
+                                ItemsSource="{Binding TableOptions}"
+                                EditValue="{Binding TableFilter}"
+                                Margin="0,0,10,0" />
 
-                    <!-- Filter Table -->
-                    <dxg:LookUpEdit Style="{StaticResource ScalarLookUpEditStyle}"
-                                    Width="160"
-                                    NullText="Business Table"
-                                    ItemsSource="{Binding TableOptions}"
-                                    EditValue="{Binding TableFilter}"
-                                    Margin="0,0,10,0" />
+                <!-- Show inactive toggle -->
+                <dxe:CheckEdit Content="Hiện form đã ẩn"
+                               IsChecked="{Binding ShowInactive}"
+                               VerticalAlignment="Center" />
+            </WrapPanel>
 
-                    <!-- Show inactive toggle -->
-                    <dxe:CheckEdit Content="Hiện form đã ẩn"
-                                   IsChecked="{Binding ShowInactive}"
-                                   VerticalAlignment="Center" />
-                </WrapPanel>
-
-                <!-- Error banner -->
-                <Border Grid.Row="2"
-                        Margin="0,10,0,0"
-                        Padding="10,8"
-                        Background="{DynamicResource AppDangerSoftBrush}"
-                        BorderBrush="{DynamicResource AppDangerLightBrush}"
-                        BorderThickness="1"
-                        CornerRadius="6"
-                        Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{Binding LoadErrorMessage}"
-                               Foreground="{DynamicResource AppDangerDarkBrush}"
-                               FontSize="12"
-                               TextWrapping="Wrap" />
-                </Border>
-            </Grid>
-        </Border>
+            <!-- Error banner -->
+            <Border Grid.Row="2"
+                    Margin="0,10,0,0"
+                    Padding="10,8"
+                    Background="{DynamicResource AppDangerSoftBrush}"
+                    BorderBrush="{DynamicResource AppDangerLightBrush}"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding LoadErrorMessage}"
+                           Foreground="{DynamicResource AppDangerDarkBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+            </Border>
+        </Grid>
 
         <!-- ═══════════════════════════════════════════════════════════
              ROW 1: GridControl
              ═══════════════════════════════════════════════════════════ -->
         <Border Grid.Row="1" Margin="16,8,16,0"
-                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="1" CornerRadius="0">
 
             <dxg:GridControl ItemsSource="{Binding FormsView}"
                              SelectedItem="{Binding SelectedForm, Mode=TwoWay}"
@@ -439,8 +435,8 @@
         <!-- ═══════════════════════════════════════════════════════════
              ROW 2: Summary bar
              ═══════════════════════════════════════════════════════════ -->
-        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,7"
-                Background="{DynamicResource AppAccentSoftBrush}" CornerRadius="4">
+        <Border Grid.Row="2" Margin="16,0,16,16" Padding="0,10,0,0"
+                BorderBrush="{DynamicResource AppBorderBrush}" BorderThickness="0,1,0,0">
             <DockPanel>
                 <!-- Số liệu thống kê -->
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">

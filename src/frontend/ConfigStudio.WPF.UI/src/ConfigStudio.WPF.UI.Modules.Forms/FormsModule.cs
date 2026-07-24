@@ -47,6 +47,12 @@ public sealed class FormsModule : IModule
 
         // NOTE: Dialog xác nhận dùng cho thao tác xóa mẫu lookup.
         containerRegistry.RegisterDialog<ConfirmDialog, ConfirmDialogViewModel>(ViewNames.ConfirmDialog);
+
+        // NOTE: Dialog sửa 1 quy tắc sinh mã (tách khỏi lưới danh sách MaRuleManager).
+        containerRegistry.RegisterDialog<MaRuleEditDialog, MaRuleEditDialogViewModel>(ViewNames.MaRuleEditDialog);
+
+        // NOTE: Dialog sửa 1 mẫu lookup (tách khỏi lưới danh sách LookupTemplateManager).
+        containerRegistry.RegisterDialog<LookupTemplateEditDialog, LookupTemplateEditDialogViewModel>(ViewNames.LookupTemplateEditDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

@@ -1,18 +1,53 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-24 (session 94 — **hạ tầng sinh mã tự động cột `Ma`** (spec 32 / ADR-036),
-> MA-1…MA-8: DB + 2 proc + engine C# (2 đường ghi) + endpoint peek + màn WPF + Blazor + ConfigSync + docs).
+> Cập nhật: 2026-07-25 (session 95 — **tách List/Popup màn WPF "Quy tắc sinh mã" + "Mẫu Lookup"** + fix
+> bug schema drift `Sys_Ma_Rule` (chặn mọi Lưu) + cột "Mã dự kiến" + tooltip/hướng dẫn + UI `FormManagerView`).
 > Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái git: SẠCH — đã commit + push, `master` = `origin/master`** (commit `e1650b3` session 94,
-> trên nền `7cbccc0` session 93).
-> Working tree chỉ còn 5 file i18n (bỏ qua theo quy tắc).
-> **Build session 94: backend + Web + ConfigStudio WPF 0W/0E cả 3, test 145/145 pass.**
-> **SQL đã chạy** (`db/089` + `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, user xác nhận).
-> **Runtime CHƯA verify** — chưa bật quy tắc cho bảng nào (cố ý, đợt này chỉ dựng hạ tầng).
-> **Task tiếp theo gợi ý:** (1) smoke sinh mã — tạo 1 quy tắc test (`LITERAL`+`SEQ`) qua màn WPF, mở
-> form Thêm mới kiểm mã dự kiến + Lưu kiểm mã nhảy số (bằng chứng peek≠consume, không phải mã dự kiến
-> bị ghi thẳng) → (2) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở `InsertAsync`)
-> → (3) màn Phòng ban no-code (đủ nền: bộ 3 control + AddressBox + TPL_CONG_TY + màn Mẫu Lookup).
+> **Trạng thái git: CHƯA commit** (session 95 — chờ user xác nhận message).
+> Trước đó: `master` = `origin/master` tại commit `e1650b3` (session 94, nền `7cbccc0` session 93).
+> **Build session 95: ConfigStudio WPF 0W/0E** (không đụng backend/Web, không build lại).
+> **Task tiếp theo gợi ý:** (1) user tự build ConfigStudio + smoke UI mới (list-only + popup Sửa/Tạo,
+> filter Contains từng cột, double-click, xóa có xác nhận, cột "Mã dự kiến") cho cả 2 màn → (2) smoke
+> sinh mã thật — tạo 1 quy tắc test (`LITERAL`+`SEQ`) qua màn WPF, mở form Thêm mới kiểm mã dự kiến +
+> Lưu kiểm mã nhảy số (bằng chứng peek≠consume) → (3) 4 task bảo mật còn mở trong TASKS.md (nặng nhất:
+> mass assignment ở `InsertAsync`) → (4) màn Phòng ban no-code.
+
+## Session 95 (2026-07-25) — Tách List/Popup "Quy tắc sinh mã"/"Mẫu Lookup" + fix schema drift `Sys_Ma_Rule`
+
+**Bối cảnh:** user thử màn "Quy tắc sinh mã" (dựng session 94) trên ConfigStudio thật — 2 vấn đề lộ ra:
+UI list+editor-chung-1-màn khó dùng (không double-click, không lọc, xem/nhập lẫn lộn), và Lưu luôn lỗi.
+
+**Đã làm:**
+- **Tách List/Popup cho cả 2 màn giống nhau** (`MaRuleManagerView`+`LookupTemplateManagerView`, đã hỏi
+  user xác nhận áp cho cả 2 vì đang cùng 1 pattern cũ): list-only + filter-row per-cột (`ShowAutoFilterRow`/
+  `AutoFilterCondition="Contains"` — verify qua reflection `DevExpress.Xpf.Grid.v25.2.dll` trước khi dùng,
+  không đoán API) + double-click/nút Sửa mở popup (`MaRuleEditDialog`/`LookupTemplateEditDialog`, Prism
+  `IDialogAware`, khuôn `ConfirmDialog`/`SyncSchemaDialog` có sẵn) + Xóa hỏi xác nhận đọc thẳng từ dòng chọn.
+  Style `AppStatusBannerStyle`/`AppStatusTextStyle` gom lên `Controls.xaml` dùng chung (ADR-031).
+- **Fix bug DB thật chặn mọi Lưu:** `dbo.Sys_Ma_Rule` trên `ICare247_Config` mang schema **bản thiết kế cũ
+  đã bỏ** (cột `Pattern` NOT NULL kiểu token `{SEQ}` + `Reset_Scope` + `Scope_Column` — đúng thứ spec 32
+  §2.1/§3 đã chốt bỏ trước khi viết `089`; vì `089` dùng guard `IF OBJECT_ID IS NULL` nên không tạo lại bảng
+  cũ, 3 cột rác kẹt lại). Xin DDL sống qua user rồi viết `db/090_drop_ma_rule_legacy_columns.sql` (drop CHECK
+  constraint dò theo nội dung định nghĩa + DEFAULT constraint trước khi drop cột, idempotent). **User đã
+  chạy** — suy từ `DM_CapPhongBan.Ma` lưu thành công trong ảnh chụp sau đó (chưa xác nhận bằng lời).
+- **Cột "Mã dự kiến"** ở lưới danh sách — tách thuật toán ghép mẫu ra `MaRulePreviewCalculator` (dùng chung
+  panel Preview popup + cột này, hết trùng logic với `MaRuleSegmentRowVm`); `IMaRuleDataService.GetAllSegmentsAsync()`
+  1 query lấy đoạn mọi quy tắc (tránh N+1 khi tải lưới).
+- **Tooltip + hướng dẫn:** ~30 hằng `Tip*`/`DetailGuide*` (nội dung bám spec 32, không bịa) gắn khắp
+  `MaRuleManagerView`/`MaRuleEditDialog`; `Expander` "Hướng dẫn chi tiết" trong popup; file riêng
+  `docs/huong-dan-wpf/cau-hinh-quy-tac-sinh-ma.md`.
+- **Fix icon nút hiện ô trống** (`↻`/`▲`/`▼` không render ở môi trường này) — 3 màn: `MaRuleManagerView`,
+  `LookupTemplateManagerView`, `FormManagerView` → đổi text "Làm mới"/"Lên"/"Xuống". *(6 icon emoji hành
+  động trong `FormManagerView` cùng lớp rủi ro nhưng user chốt CHƯA sửa lần này.)*
+- **UI `FormManagerView` theo chuẩn `icare247-admin-ui`** (đã đọc skill trước khi đề xuất, KHÔNG tự quyết —
+  hỏi user chọn mục nào trong 4 đề xuất): bỏ 3 khối card viền/bo góc riêng → toolbar mỏng trên nền + lưới
+  bo góc `0` (đúng bảng radius "Bảng & section = 0") + border trung tính thay accent + thanh tổng kết bỏ
+  nền màu → divider mảnh. **Cột lưới (Table/Platform/Ver/Sections/Fields/Events/Active) GIỮ tiếng Anh** —
+  verify qua grep thấy đây là quy ước nhất quán ~6 màn chị em cùng module Forms, dịch riêng màn này sẽ
+  tạo inconsistency mới (đã hỏi lại user sau khi phát hiện, user chọn giữ nguyên).
+
+**Build `/finish-task` (2026-07-25):** `ConfigStudio.WPF.UI.slnx` **0 Warning / 0 Error**. Không đụng
+backend/Web nên không build lại 2 solution kia. **Runtime CHƯA verify** — user cần tự build + mở app.
 
 ## Session 94 (2026-07-24) — Sinh mã tự động cột `Ma` (spec 32 / ADR-036) — MA-1…MA-8, commit `e1650b3`
 

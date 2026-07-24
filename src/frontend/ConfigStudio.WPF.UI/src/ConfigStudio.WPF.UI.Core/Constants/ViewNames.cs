@@ -35,4 +35,6 @@ public static class ViewNames
     public const string FormPreviewDialog            = nameof(FormPreviewDialog);
     public const string ConfirmDialog                = nameof(ConfirmDialog);
     public const string I18nEditorDialog             = nameof(I18nEditorDialog);
+    public const string MaRuleEditDialog             = nameof(MaRuleEditDialog);
+    public const string LookupTemplateEditDialog     = nameof(LookupTemplateEditDialog);
 }
