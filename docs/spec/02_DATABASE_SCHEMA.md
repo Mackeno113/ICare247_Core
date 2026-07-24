@@ -588,6 +588,62 @@ tra Catalog DB (`dbo.Tenant`) để chọn connection string — đó là **ranh
 
 ---
 
+## Module: Sinh mã tự động (`Sys_Ma_Rule*`)
+
+> Quy tắc tự sinh mã cho cột `Ma` của bảng dữ liệu. **Spec 32 / ADR-036.**
+> Migration `db/089_create_sys_ma_rule.sql`. DEV cấu hình qua ConfigStudio WPF → ConfigSync đẩy xuống tenant.
+> ⛔ **KHÔNG có bảng bộ đếm** — số kế tiếp suy trực tiếp từ dữ liệu bảng đích (`MAX` theo tiền tố), vì bộ đếm
+> lưu sẵn sẽ lệch thực tế ngay khi có import / sửa mã tay / xóa / restore ⇒ cấp trùng mã.
+
+### Sys_Ma_Rule
+> Một dòng = một cặp (bảng, cột) cần sinh mã. Không có `Reset_Scope`/`Scope_Column`:
+> **phạm vi đánh số = tiền tố của mã**, tự suy từ các đoạn đứng trước `SEQ`.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Rule_Id | int | PK IDENTITY | |
+| Table_Code | nvarchar(128) | NOT NULL | bảng đích — khớp `Sys_Table.Table_Code` (chuỗi, **không** FK Id) |
+| Column_Code | nvarchar(128) | NOT NULL | cột mã, thường `Ma` |
+| Step | int | NOT NULL DEFAULT 1, CHK ≥ 1 | bước nhảy số thứ tự |
+| Allow_Manual | bit | NOT NULL DEFAULT 0 | 1 = user được gõ đè mã trên form |
+| Is_Active / Description | | | |
+| Is_System / Is_Customized / Synced_At / Source_Ver | | | 4 cờ ConfigSync (db/050) |
+
+**Indexes:** `UQ_Sys_Ma_Rule_Target (Table_Code, Column_Code)` — mỗi cặp bảng+cột đúng 1 quy tắc.
+
+### Sys_Ma_Rule_Segment
+> Các **đoạn** ghép nên mã, xếp theo `Order_No`. VD `CT01-PHONG-007` = LOOKUP + LITERAL + LOOKUP + LITERAL + SEQ.
+> Dạng đoạn (thay vì một chuỗi "mẫu mã") vì mã thực tế ghép từ ≥3 nguồn và nguồn thường phải **tra sang bảng khác**.
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Segment_Id | int | PK IDENTITY | |
+| Rule_Id | int | NOT NULL FK→Sys_Ma_Rule | |
+| Order_No | int | NOT NULL | thứ tự ghép 1..n; là **khóa nghiệp vụ trong quy tắc** khi ConfigSync |
+| Segment_Type | nvarchar(20) | NOT NULL, CHK | LITERAL \| DATE \| FIELD \| LOOKUP \| SEQ |
+| Text_Value | nvarchar(100) | NULL | LITERAL: chữ cố định · DATE: định dạng (`yyyy`,`yy`,`MM`,`dd`,`yyyyMM`) |
+| Field_Code | nvarchar(128) | NULL | FIELD/LOOKUP: cột nguồn trong payload đang lưu |
+| Lookup_Table / Lookup_Key_Col / Lookup_Val_Col | nvarchar(128) | NULL | LOOKUP: `SELECT [Val] FROM [Table] WHERE [Key] = <giá trị field>` |
+| Substring_Start / Length / Pad_Char / Pad_Side / Text_Transform | | NULL | chuẩn hóa: cắt · độ rộng cố định · đệm (L/R) · NONE\|UPPER\|LOWER |
+| Is_Active | bit | NOT NULL DEFAULT 1 | **bắt buộc** để ConfigSync tombstone được đoạn bị gỡ ở master |
+| Is_System / Is_Customized / Synced_At / Source_Ver | | | 4 cờ ConfigSync |
+
+**Constraints:** `CHK Segment_Type IN (...)`; `CHK Pad_Side IN (L,R)`; `CHK Text_Transform IN (NONE,UPPER,LOWER)`;
+`CHK` đủ dữ liệu theo từng loại đoạn (LITERAL cần Text_Value, LOOKUP cần đủ 4 cột…).
+**Indexes:** `UQ_Sys_Ma_Rule_Segment_Order (Rule_Id, Order_No)`;
+`UQ_Sys_Ma_Rule_Segment_Seq (Rule_Id) WHERE Segment_Type='SEQ' AND Is_Active=1` — **đúng 1 đoạn SEQ** mỗi quy tắc.
+
+> **Hai ràng buộc engine (không diễn tả được bằng constraint, do WPF + C# chặn):**
+> ① phải có **ít nhất** 1 đoạn `SEQ`; ② mọi đoạn **đứng trước** `SEQ` phải có độ dài xác định
+> (LITERAL, DATE, hoặc `Length > 0`) — nếu không, vị trí chữ số đầu tiên xê dịch giữa các bản ghi và
+> proc cắt sai phần số khi dò MAX.
+
+> **Đối tượng DB kèm theo** (Data DB, `db/procs/`): `fn_GhepMa` (ghép tiền tố + số + hậu tố) ·
+> `sp_SinhMa` (cấp thật — khóa phạm vi `sp_getapplock`, dò MAX, chốt EXISTS; **bắt buộc chạy trong
+> transaction**) · `sp_XemTruocMa` (xem trước, chỉ đọc, không giữ chỗ số).
+
+---
+
 ## Module: Validation (`Val_*`)
 
 ### Val_Rule_Type

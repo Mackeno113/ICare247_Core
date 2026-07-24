@@ -21,8 +21,17 @@
 6. Ui_Form → 7. Ui_Tab → 8. Ui_Section → 9. Ui_Field → 10. Ui_Field_Lookup
 11. Ui_Field rules (validation)
 12. Ui_View → 13. Ui_View_Column → 14. Ui_View_Action
+15. Sys_Ma_Rule → 16. Sys_Ma_Rule_Segment          (quy tắc sinh mã — spec 32 / ADR-036)
 ```
 Sync **đúng thứ tự** để FK cha luôn có trước con.
+
+> **`Sys_Ma_Rule` (15/16, db/089):** khóa nghiệp vụ **ghép** `Table_Code + Column_Code`; **không có FK Id
+> nào cần re-link** (trỏ bảng đích bằng *chuỗi* `Table_Code`, không phải `Table_Id`) ⇒ vị trí trong danh
+> sách không ràng buộc, đặt cuối cho gọn. Đoạn con khóa theo `Order_No` **trong** quy tắc cha, nên phải
+> đứng ngay sau cha. Đoạn con mang `Is_Active` để **tombstone**: master gỡ một đoạn thì tenant đặt
+> `Is_Active = 0` — không có cột này thì đoạn thừa nằm lại và **âm thầm sinh mã sai**.
+> **Không có gì "số đã cấp" để đồng bộ** — thiết kế cố ý không lưu bộ đếm, số suy trực tiếp từ dữ liệu
+> bảng đích (ADR-036).
 
 ## 3. Khóa đồng bộ — UPSERT theo MÃ, re-link FK theo MÃ
 

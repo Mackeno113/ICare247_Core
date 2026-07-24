@@ -260,6 +260,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = MaRuleUiText.ScreenTitle,
+                    Icon = "#",
+                    NavigateTo = ViewNames.MaRuleManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "Form List",
                     Icon = "≡",
                     NavigateTo = ViewNames.FormManager,

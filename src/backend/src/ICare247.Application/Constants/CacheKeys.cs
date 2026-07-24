@@ -116,6 +116,14 @@ public static class CacheKeys
         => $"icare:hookstore:{tenantId}:v{version}:{tableName.ToLowerInvariant()}";
 
     /// <summary>
+    /// Quy tắc sinh mã của 1 bảng — Sys_Ma_Rule + đoạn con (spec 32 / ADR-036).
+    /// Gắn <c>:v{version}</c> để sửa quy tắc trên ConfigStudio + flush cache là có hiệu lực ngay.
+    /// Prefix: icare:marule:{tenantId}:v{version}:{tableCode}
+    /// </summary>
+    public static string CodeRule(string tableCode, int tenantId, int version)
+        => $"icare:marule:{tenantId}:v{version}:{tableCode.ToLowerInvariant()}";
+
+    /// <summary>
     /// Layout lưới per-user (DxGrid GridPersistentLayout). KEY-SPACE RIÊNG, KHÔNG version-stamp config
     /// (vòng đời khác hẳn): single-writer + write-through. tenantId tách cache giữa các tenant.
     /// Prefix: icare:gridlayout:{tenantId}:{userId}:{viewCode}:{platform}

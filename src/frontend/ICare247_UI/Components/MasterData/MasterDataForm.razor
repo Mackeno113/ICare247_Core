@@ -179,6 +179,20 @@ else
     private int _formColumns = 4;
     private bool   _loading  = true;
     private bool   _saving;
+
+    // ── Sinh mã tự động (spec 32 §7/§10.3) ────────────────────────────────────
+    /// <summary>Cột được sinh mã; null = bảng KHÔNG có quy tắc → form giữ hành vi gõ tay như cũ.</summary>
+    private string? _maColumn;
+    /// <summary>Field mà mã phụ thuộc (đoạn FIELD/LOOKUP) — đổi giá trị thì phải xin lại mã.</summary>
+    private HashSet<string> _maSourceFields = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Mã dự kiến gần nhất do HỆ THỐNG điền. Dùng để phân biệt "ô đang giữ mã hệ thống" (được phép
+    /// ghi đè khi tính lại) với "user đã gõ tay / event SET_VALUE đã đặt" (KHÔNG đè — luật nhường §10.1).
+    /// </summary>
+    private string? _maLastPreview;
+    /// <summary>Đã gắn chú thích vào nhãn ô mã chưa — hàm xin mã chạy LẠI mỗi lần field nguồn đổi,
+    /// không có cờ này thì nhãn bị nối chú thích chồng chất.</summary>
+    private bool _maLabelDecorated;
     private string? _error;       // lỗi load
     private string? _formError;   // dòng tóm tắt lỗi hiển thị đầu form (vd "Có N lỗi cần sửa")
     private List<string> _formMessages = [];  // lỗi CẤP FORM (field_name rỗng / không khớp field) — banner
@@ -261,6 +275,10 @@ else
                 }
             }
 
+            // Mã dự kiến — chạy SAU prefill (đọc field nguồn ở giá trị đã prefill, spec §10.4)
+            // và TRƯỚC khi chụp mốc dirty (mã do hệ thống điền KHÔNG được tính là "user sửa").
+            await RefreshMaPreviewAsync();
+
             // Chụp mốc SAU khi prefill/default xong → những giá trị đổ sẵn không tính là "user sửa".
             _baselineJson = CurrentStateJson();
             _baselineCaptured = true;
@@ -283,12 +301,73 @@ else
         }
     }
 
-    private Task OnFieldChanged((string Code, object? Value) args)
+    private async Task OnFieldChanged((string Code, object? Value) args)
     {
         var fs = _fieldStates.FirstOrDefault(f => f.FieldCode == args.Code);
         if (fs is not null) { fs.Value = args.Value; fs.Errors.Clear(); }
+
+        // Field NGUỒN của mã vừa đổi giá trị → xin lại mã dự kiến (spec §10.3).
+        // Hook vào ĐỔI GIÁ TRỊ field, không vào "event nào đã chạy" ⇒ user gõ tay, cascade, hay
+        // event SET_VALUE gán đều kích hoạt như nhau, không phải liệt kê từng loại trigger.
+        if (_maColumn is not null && _maSourceFields.Contains(args.Code))
+            await RefreshMaPreviewAsync();
+
         StateHasChanged();
-        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Xin mã DỰ KIẾN từ server và điền vào ô mã (chỉ ở chế độ Thêm mới).
+    /// Mã này là *dự kiến*, không phải cam kết: mã chính thức được cấp lúc Lưu, trong transaction ghi —
+    /// hai người mở form cùng lúc sẽ thấy cùng một mã, người lưu sau nhận mã kế tiếp (spec §2).
+    /// Sự kiện theo sau: ô mã hiện giá trị + bị khóa (nếu quy tắc không cho gõ tay).
+    /// </summary>
+    private async Task RefreshMaPreviewAsync()
+    {
+        // Sửa bản ghi: mã đã cố định, tuyệt đối không đụng (đổi mã bản ghi đã phát sinh giao dịch là sai nghiệp vụ).
+        if (IsEditMode) return;
+
+        var preview = await MasterApi.GetMaPreviewAsync(FormCode, BuildContext());
+        if (preview is null || string.IsNullOrWhiteSpace(preview.ColumnCode))
+        {
+            _maColumn = null;      // bảng không có quy tắc → không đụng gì tới form
+            return;
+        }
+
+        _maColumn = preview.ColumnCode;
+        _maSourceFields = new HashSet<string>(
+            preview.SourceFields ?? [], StringComparer.OrdinalIgnoreCase);
+
+        var fs = _fieldStates.FirstOrDefault(
+            f => f.FieldCode.Equals(preview.ColumnCode, StringComparison.OrdinalIgnoreCase));
+        if (fs is null) return;    // quy tắc trỏ cột không có trên form → bỏ qua, server vẫn tự sinh khi lưu
+
+        // Ghim theo mã field THẬT của form: payload lưu dùng key = FieldCode (so sánh phân biệt hoa/thường),
+        // còn ColumnCode từ server chỉ khớp không-phân-biệt-hoa-thường → lệch hoa/thường là bước gỡ mã
+        // dự kiến ở SaveAsync trượt âm thầm, và mã dự kiến bị ghi thẳng vào DB.
+        _maColumn = fs.FieldCode;
+
+        // Quy tắc không cho gõ tay → khóa ô. KHÔNG mở khóa ngược lại: field có thể đang read-only
+        // vì lý do khác (prefill LockedFields của ADR-030), mở ra là phá ràng buộc của người khác.
+        if (!preview.AllowManual) fs.IsReadOnly = true;
+
+        // Chú thích trên nhãn: mã hiển thị là DỰ KIẾN, không phải cam kết (spec §7).
+        if (!_maLabelDecorated)
+        {
+            fs.Label = preview.AllowManual
+                ? $"{fs.Label} {Loc.L("masterdata.ma.autoOptional", "(để trống = tự sinh)")}"
+                : $"{fs.Label} {Loc.L("masterdata.ma.auto", "(mã dự kiến — cấp khi lưu)")}";
+            _maLabelDecorated = true;
+        }
+
+        // Chỉ ghi đè khi ô đang trống HOẶC đang giữ đúng mã hệ thống điền lần trước.
+        // User đã gõ tay (AllowManual) / event SET_VALUE đã đặt → GIỮ NGUYÊN (luật nhường §10.1).
+        var current = fs.Value?.ToString();
+        var systemOwned = string.IsNullOrWhiteSpace(current)
+                          || string.Equals(current, _maLastPreview, StringComparison.Ordinal);
+        if (!systemOwned) return;
+
+        fs.Value = preview.Code;   // null = chưa đủ field nguồn → để TRỐNG, không hiện mã sai
+        _maLastPreview = preview.Code;
     }
 
     private Task OnFieldBlur(string fieldCode) => Task.CompletedTask;
@@ -305,6 +384,16 @@ else
             var values = _fieldStates
                 .Where(fs => fs.IsVisible && !fs.IsVirtual)
                 .ToDictionary(fs => fs.FieldCode, fs => fs.Value);
+
+            // ⚠️ Mã DỰ KIẾN không được gửi đi. Server áp luật nhường "ô có giá trị → tôn trọng"
+            // (spec §10.1), nên nếu gửi mã dự kiến thì server ghi luôn mã đó thay vì cấp mã thật:
+            // hai người cùng thấy một mã dự kiến sẽ cùng ghi một mã → vỡ unique index.
+            // Gỡ giá trị ⇒ server cấp mã CHÍNH THỨC trong transaction ghi (spec §2).
+            // Chỉ gỡ khi ô đang giữ ĐÚNG mã hệ thống điền — user gõ tay thì tôn trọng.
+            if (Id is null && _maColumn is not null
+                && values.TryGetValue(_maColumn, out var maVal)
+                && string.Equals(maVal?.ToString(), _maLastPreview, StringComparison.Ordinal))
+                values[_maColumn] = null;
 
             var result = await MasterApi.SaveAsync(FormCode, Id, values, Loc.CurrentLanguage);
 

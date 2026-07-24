@@ -14,6 +14,7 @@ public static class ViewNames
     public const string SysTableManager      = nameof(SysTableManager);
     public const string SysLookupManager     = nameof(SysLookupManager);
     public const string LookupTemplateManager = nameof(LookupTemplateManager);
+    public const string MaRuleManager         = nameof(MaRuleManager);
     public const string ViewManager          = nameof(ViewManager);
     public const string RelationManager      = nameof(RelationManager);
     public const string FieldConfig = nameof(FieldConfig);

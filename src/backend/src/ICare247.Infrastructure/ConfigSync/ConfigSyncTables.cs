@@ -13,6 +13,9 @@
 //   • Ui_Field_Lookup là bảng mở rộng 1-1 với Ui_Field (UNIQUE Field_Id), không có cột mã riêng →
 //     khóa CHỈ theo cha (KeyColumns rỗng). Cờ sync cấp ở db/062 (cùng Ui_View_Filter).
 //   • Sys_Relation chưa có cờ sync → ngoài phạm vi (chưa engine-hóa master-detail).
+//   • Sys_Ma_Rule / Sys_Ma_Rule_Segment (db/089): quy tắc sinh mã. Rule khóa GHÉP Table_Code+Column_Code,
+//     KHÔNG re-link FK (trỏ bảng đích bằng chuỗi Table_Code). Segment khóa theo Order_No trong quy tắc cha.
+//     BỘ ĐẾM không tồn tại (số suy từ dữ liệu bảng đích — ADR-036) nên không có gì "số đã cấp" để sync.
 
 namespace ICare247.Infrastructure.ConfigSync;
 
@@ -196,6 +199,33 @@ internal static class ConfigSyncTables
             LocalKeyColumn = "Filter_Code",
             ContextParent = new ParentLink("View_Id", "Ui_View"),
             RelinkParents = [new ParentLink("View_Id", "Ui_View")],
+            VersionColumn = null,
+        },
+
+        // 15) Sys_Ma_Rule — quy tắc sinh mã (db/089, spec 32 / ADR-036). Khóa nghiệp vụ GHÉP
+        //     (Table_Code + Column_Code) — 1 cặp bảng+cột chỉ 1 quy tắc. KHÔNG có FK Id nào cần
+        //     re-link: bảng đích tham chiếu bằng CHUỖI Table_Code, không phải Table_Id ⇒ vị trí trong
+        //     danh sách không ràng buộc (đặt cuối cho gọn). Không có cột Version.
+        new ConfigTableDescriptor
+        {
+            TableName = "Sys_Ma_Rule",
+            IdColumn = "Rule_Id",
+            LocalKeyColumns = ["Table_Code", "Column_Code"],
+            VersionColumn = null,
+        },
+
+        // 16) Sys_Ma_Rule_Segment — các đoạn ghép mã, con của Sys_Ma_Rule. Định danh trong quy tắc =
+        //     Order_No (thứ tự ghép; engine so khóa bằng ToString nên cột int dùng được).
+        //     PHẢI đứng SAU Sys_Ma_Rule để map khóa cha → Id tenant sẵn sàng.
+        //     Có Is_Active để tombstone: master gỡ 1 đoạn → tenant đặt Is_Active = 0 thay vì để lại
+        //     đoạn thừa (đoạn thừa nằm lại sẽ âm thầm sinh mã SAI). Engine sinh mã chỉ đọc Is_Active = 1.
+        new ConfigTableDescriptor
+        {
+            TableName = "Sys_Ma_Rule_Segment",
+            IdColumn = "Segment_Id",
+            LocalKeyColumn = "Order_No",
+            ContextParent = new ParentLink("Rule_Id", "Sys_Ma_Rule"),
+            RelinkParents = [new ParentLink("Rule_Id", "Sys_Ma_Rule")],
             VersionColumn = null,
         },
     ];

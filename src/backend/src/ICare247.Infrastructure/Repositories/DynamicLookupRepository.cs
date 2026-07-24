@@ -52,10 +52,16 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     private readonly IContextParamResolver _ctxResolver;
     private readonly ILogger<DynamicLookupRepository> _logger;
 
+    // Sinh mã tự động (spec 32 / ADR-036). Nullable + optional: đây là đường ghi phụ, không được
+    // vỡ nếu container chưa đăng ký (test dựng repo thủ công vẫn chạy).
+    private readonly ICodeRuleCatalog? _codeRules;
+    private readonly Services.MaCodeGenerator? _codeGen;
+
     public DynamicLookupRepository(
         IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb,
         ICacheService cache, ILookupCacheVersion lookupVer, IContextParamResolver ctxResolver,
-        ILogger<DynamicLookupRepository> logger)
+        ILogger<DynamicLookupRepository> logger,
+        ICodeRuleCatalog? codeRules = null, Services.MaCodeGenerator? codeGen = null)
     {
         _configDb    = configDb;
         _dataDb      = dataDb;
@@ -63,6 +69,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         _lookupVer   = lookupVer;
         _ctxResolver = ctxResolver;
         _logger      = logger;
+        _codeRules   = codeRules;
+        _codeGen     = codeGen;
     }
 
     // ── Đọc cấu hình lookup (PICKER-P4, spec 31 §5) ──────────────────────────
@@ -639,6 +647,21 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: Value_Column '{valueCol}' không hợp lệ.");
 
+        using var dataConn = _dataDb.CreateConnection();
+
+        // ── Transaction BẮT BUỘC (MA-3b, spec 32 §5.2) ───────────────────────────
+        // Trước đây đường này ghi không transaction. Sinh mã khóa phạm vi bằng sp_getapplock
+        // @LockOwner='Transaction' — không có transaction thì khóa nhả ngay khi proc kết thúc,
+        // hai phiên cùng dò MAX ⇒ CẤP TRÙNG MÃ (proc chủ động RAISERROR khi @@TRANCOUNT = 0).
+        // Bọc luôn cả check-trùng + INSERT ⇒ check và ghi thành một khối không chen ngang được.
+        if (dataConn.State != ConnectionState.Open) dataConn.Open();
+        using var tx = dataConn.BeginTransaction();
+
+        // ── Sinh mã TRƯỚC khi dựng danh sách cột ─────────────────────────────────
+        // Bắt buộc đúng thứ tự này: cols/dp dựng từ `values`, nên mã phải nằm trong `values`
+        // trước đó, nếu không cột mã sẽ không lọt vào câu INSERT.
+        await ApplyGeneratedCodeAsync(dataConn, tx, cfg.SourceName, values, tenantId, ct);
+
         // ── Build INSERT parameterized — chỉ nhận cột có tên identifier hợp lệ ──
         var cols = new List<string>();
         var dp   = new DynamicParameters();
@@ -657,11 +680,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: không có cột hợp lệ để insert.");
 
-        using var dataConn = _dataDb.CreateConnection();
-
         // ── Bơm cột audit (ADR-022 §0.1): CreatedBy NOT NULL và KHÔNG có DEFAULT (db/061),
         //    nên phải set tường minh. Chỉ bơm cột bảng đích THỰC SỰ có — bảng cũ/opt-out không vỡ.
-        var audit = await GetAuditColumnsAsync(dataConn, cfg.SourceName, ct);
+        var audit = await GetAuditColumnsAsync(dataConn, cfg.SourceName, ct, tx);
 
         var insCols = cols.Select(c => $"[{c}]").ToList();
         var insVals = cols.Select(c => "@" + c).ToList();
@@ -704,13 +725,15 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 
             var dupCount = await dataConn.ExecuteScalarAsync<int>(new CommandDefinition(
                 $"SELECT COUNT(*) FROM {cfg.SourceName} WHERE [{ucol}] = @Val",
-                new { Val = uval }, cancellationToken: ct));
+                new { Val = uval }, transaction: tx, cancellationToken: ct));
             if (dupCount > 0)
                 throw new ICare247.Domain.Exceptions.DuplicateValueException(cfg.SourceName, ucol);
         }
 
         var newValue = await dataConn.ExecuteScalarAsync<object>(
-            new CommandDefinition(insertSql, dp, cancellationToken: ct));
+            new CommandDefinition(insertSql, dp, transaction: tx, cancellationToken: ct));
+
+        tx.Commit();
 
         // Display lấy từ chính giá trị vừa nhập (cột Display, theo alias key)
         var displayKey = ExtractAliasKey(cfg.DisplayColumn ?? "");
@@ -721,6 +744,39 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             ["value"]   = newValue,
             ["display"] = display
         };
+    }
+
+    /// <summary>
+    /// Sinh mã cho bảng đích của lookup nếu có quy tắc VÀ payload chưa có giá trị (spec 32 §9, MA-3b).
+    /// Cùng luật nhường như đường lưu chính: ô đã có giá trị thì TÔN TRỌNG, không đè.
+    /// Dùng chung <see cref="Services.MaCodeGenerator"/> với <c>MasterDataRepository</c> — hai đường ghi
+    /// KHÔNG được ghép mã theo hai kiểu khác nhau.
+    /// Sự kiện theo sau: <c>values[Cot]</c> mang mã, lọt vào cols/dp rồi được INSERT trong transaction này.
+    /// </summary>
+    private async Task ApplyGeneratedCodeAsync(
+        IDbConnection data, IDbTransaction tx, string sourceName,
+        Dictionary<string, object?> values, int tenantId, CancellationToken ct)
+    {
+        if (_codeRules is null || _codeGen is null) return;
+
+        // Source_Name có thể qualify schema ('dbo.TC_CongTy') vì regex ở đường này cho phép dấu chấm,
+        // trong khi Sys_Ma_Rule.Table_Code lưu tên TRẦN. Không tách thì tra quy tắc trượt âm thầm
+        // → không sinh mã → vi phạm NOT NULL ở cột Ma. Tách giống GetAuditColumnsAsync.
+        var dot = sourceName.LastIndexOf('.');
+        var schema = dot > 0 ? sourceName[..dot] : "dbo";
+        var table = dot > 0 ? sourceName[(dot + 1)..] : sourceName;
+
+        var rule = await _codeRules.GetAsync(table, tenantId, ct);
+        if (rule is null) return;
+
+        if (values.TryGetValue(rule.ColumnCode, out var existing)
+            && existing is not null and not DBNull
+            && !string.IsNullOrWhiteSpace(existing.ToString()))
+            return;
+
+        var code = await _codeGen.GenerateAsync(rule, data, tx, values, schema, ct);
+        if (!string.IsNullOrWhiteSpace(code))
+            values[rule.ColumnCode] = code;
     }
 
     // ── QueryTreeAsync ────────────────────────────────────────────────────────
@@ -897,7 +953,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// <para>Sự kiện theo sau: caller chỉ bơm những cột nằm trong tập trả về.</para>
     /// </summary>
     private static async Task<HashSet<string>> GetAuditColumnsAsync(
-        IDbConnection data, string sourceName, CancellationToken ct)
+        IDbConnection data, string sourceName, CancellationToken ct, IDbTransaction? tx = null)
     {
         var dot    = sourceName.LastIndexOf('.');
         var schema = dot > 0 ? sourceName[..dot] : "dbo";
@@ -910,7 +966,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
               AND  COLUMN_NAME IN ('CreatedBy','CreatedAt','UpdatedBy','UpdatedAt')
             """;
         var rows = await data.QueryAsync<string>(
-            new CommandDefinition(sql, new { Schema = schema, Table = table }, cancellationToken: ct));
+            new CommandDefinition(sql, new { Schema = schema, Table = table },
+                transaction: tx, cancellationToken: ct));
         return new HashSet<string>(rows, StringComparer.OrdinalIgnoreCase);
     }
 }

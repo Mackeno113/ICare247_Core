@@ -8,6 +8,7 @@ using ICare247.Application.Interfaces;
 using ICare247.Application.Features.MasterData.Commands.DeleteMasterData;
 using ICare247.Application.Features.MasterData.Commands.SaveMasterData;
 using ICare247.Application.Features.MasterData.Queries.CheckMasterDataUsage;
+using ICare247.Application.Features.MasterData.Queries.GetMaDuKien;
 using ICare247.Application.Features.MasterData.Queries.GetMasterDataFormInfo;
 using ICare247.Application.Features.MasterData.Queries.GetMasterDataList;
 using ICare247.Application.Features.MasterData.Queries.GetMasterDataRecord;
@@ -80,6 +81,26 @@ public sealed class MasterDataController : ControllerBase
         var usages = await _mediator.Send(
             new CheckMasterDataUsageQuery(formCode, GetTenantId(), CoerceId(id)), ct);
         return Ok(new { used = usages.Count > 0, usages });
+    }
+
+    /// <summary>
+    /// Mã DỰ KIẾN cho form Thêm mới (spec 32 §2) — chỉ đọc, KHÔNG giữ chỗ số.
+    /// Bảng không có quy tắc sinh mã → 204 No Content (client giữ hành vi gõ tay như cũ).
+    /// </summary>
+    /// <remarks>
+    /// POST /api/v1/master-data/{formCode}/ma-du-kien — Body: { "values": { ... } }.
+    /// Dùng POST (không phải GET) vì cần giá trị field hiện có trên form cho đoạn FIELD/LOOKUP:
+    /// nhét dữ liệu người dùng vào query string là rò rỉ qua log/lịch sử trình duyệt.
+    /// Endpoint RIÊNG, không gộp vào /info: /info là config được cache, mã dự kiến là giá trị động.
+    /// </remarks>
+    [HttpPost("{formCode}/ma-du-kien")]
+    [RequirePermissionForTarget("Form", PermissionOp.Them)]
+    public async Task<IActionResult> GetMaDuKien(
+        string formCode, [FromBody] SaveMasterDataRequest? body, CancellationToken ct = default)
+    {
+        var values = NormalizeValues(body?.Values ?? new Dictionary<string, object?>());
+        var result = await _mediator.Send(new GetMaDuKienQuery(formCode, GetTenantId(), values), ct);
+        return result is null ? NoContent() : Ok(result);
     }
 
     /// <summary>Thêm mới 1 bản ghi danh mục.</summary>

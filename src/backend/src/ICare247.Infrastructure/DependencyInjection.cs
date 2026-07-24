@@ -99,6 +99,9 @@ public static class DependencyInjection
         services.AddScoped<IMasterDataRepository, MasterDataRepository>();
         // Catalog tồn tại hook store (cache-aside) — save path đọc cache thay vì query OBJECT_ID (ADR-029).
         services.AddScoped<IHookStoreCatalog, Services.HookStoreCatalog>();
+        // Sinh mã tự động (spec 32 / ADR-036): catalog quy tắc (cache) + bộ sinh dùng chung mọi đường ghi.
+        services.AddScoped<ICodeRuleCatalog, Services.CodeRuleCatalog>();
+        services.AddScoped<Services.MaCodeGenerator>();
         services.AddScoped<IUserGridLayoutRepository, UserGridLayoutRepository>();
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
         services.AddScoped<IViewRepository, ViewRepository>();

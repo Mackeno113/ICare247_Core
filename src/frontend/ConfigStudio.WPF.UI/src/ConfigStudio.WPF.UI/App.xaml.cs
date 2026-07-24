@@ -72,6 +72,7 @@ public partial class App : PrismApplication
         containerRegistry.RegisterSingleton<II18nDataService, I18nDataService>();
         containerRegistry.Register<ISysLookupDataService, SysLookupDataService>();
         containerRegistry.Register<ILookupTemplateDataService, LookupTemplateDataService>();
+        containerRegistry.Register<IMaRuleDataService, MaRuleDataService>();
         containerRegistry.Register<IViewDataService, ViewDataService>();
         containerRegistry.Register<IRelationDataService, RelationDataService>();
         containerRegistry.Register<IPublishCheckService, PublishCheckService>();

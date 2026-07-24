@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using Dapper;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Exceptions;
+using ICare247.Infrastructure.Services;
 
 namespace ICare247.Infrastructure.Repositories;
 
@@ -25,14 +26,22 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 {
     private readonly IDbConnectionFactory     _configDb;
     private readonly IDataDbConnectionFactory _dataDb;
+    private readonly ICodeRuleCatalog?        _codeRules;
+    private readonly MaCodeGenerator?         _codeGen;
 
     [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
     private static partial Regex SafeIdentifierRegex();
 
-    public MasterDataRepository(IDbConnectionFactory configDb, IDataDbConnectionFactory dataDb)
+    public MasterDataRepository(
+        IDbConnectionFactory configDb,
+        IDataDbConnectionFactory dataDb,
+        ICodeRuleCatalog? codeRules = null,
+        MaCodeGenerator? codeGen = null)
     {
-        _configDb = configDb;
-        _dataDb   = dataDb;
+        _configDb  = configDb;
+        _dataDb    = dataDb;
+        _codeRules = codeRules;
+        _codeGen   = codeGen;
     }
 
     // ── Form info (bảng đích + cột) ─────────────────────────────────────────────
@@ -330,7 +339,15 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
         using var data = _dataDb.CreateConnection();
-        return await InsertCoreAsync(data, tx: null, info, values, userId, ct);
+
+        // Transaction BẮT BUỘC dù chỉ 1 câu INSERT: sinh mã khóa phạm vi bằng sp_getapplock
+        // @LockOwner='Transaction' — không có transaction thì khóa nhả ngay khi proc kết thúc,
+        // hai phiên cùng dò MAX ⇒ CẤP TRÙNG MÃ (proc chủ động RAISERROR khi @@TRANCOUNT = 0).
+        if (data.State != ConnectionState.Open) data.Open();
+        using var tx = data.BeginTransaction();
+        var newId = await InsertCoreAsync(data, tx, info, values, userId, ct, tenantId);
+        tx.Commit();
+        return newId;
     }
 
     /// <summary>
@@ -339,10 +356,15 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     /// </summary>
     private async Task<object?> InsertCoreAsync(
         IDbConnection data, IDbTransaction? tx,
-        MasterDataFormInfo info, Dictionary<string, object?> values, long? userId, CancellationToken ct)
+        MasterDataFormInfo info, Dictionary<string, object?> values, long? userId, CancellationToken ct,
+        int tenantId = 0)
     {
         var table = QualifiedTable(info);
         var pk    = SafeCol(info.PkColumn, "PK");
+
+        // Sinh mã tự động (spec 32 / ADR-036) — TRƯỚC khi dựng tham số cột, để mã vừa cấp
+        // được ghi như một cột bình thường trong CÙNG câu INSERT / CÙNG transaction.
+        await ApplyGeneratedCodeAsync(data, tx, info, values, tenantId, ct);
 
         var (cols, dp) = BuildColumnParams(info, values, excludeCol: pk);
         if (cols.Count == 0)
@@ -364,6 +386,61 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         return await data.ExecuteScalarAsync<object>(
             new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
+    }
+
+    /// <summary>
+    /// Sinh mã cho cột đích nếu bảng có quy tắc VÀ payload chưa có giá trị (spec 32 §6).
+    /// Luật nhường: ô đã có giá trị (user gõ tay, import mang mã cũ, event SET_VALUE đặt sẵn — §10.1)
+    /// thì TÔN TRỌNG, không đè. Mọi sự cố sinh mã → ném ra ngoài để transaction rollback: ghi bản ghi
+    /// thiếu mã (hoặc mã sai quy tắc) tệ hơn là báo lỗi cho người dùng.
+    /// Sự kiện theo sau: <c>values[Cot]</c> mang mã chính thức, INSERT ghi luôn trong transaction này.
+    /// </summary>
+    private async Task ApplyGeneratedCodeAsync(
+        IDbConnection data, IDbTransaction? tx, MasterDataFormInfo info,
+        Dictionary<string, object?> values, int tenantId, CancellationToken ct)
+    {
+        if (_codeRules is null || _codeGen is null) return;
+
+        var rule = await _codeRules.GetAsync(info.TableName, tenantId, ct);
+        if (rule is null) return;
+
+        // Đã có giá trị → nhường (xem luật nhường ở doc trên).
+        if (values.TryGetValue(rule.ColumnCode, out var existing)
+            && existing is not null and not DBNull
+            && !string.IsNullOrWhiteSpace(existing.ToString()))
+            return;
+
+        var code = await _codeGen.GenerateAsync(rule, data, tx, values, info.SchemaName, ct);
+        if (!string.IsNullOrWhiteSpace(code))
+            values[rule.ColumnCode] = code;
+    }
+
+    // ── Xem trước mã (peek — KHÔNG giữ chỗ) ─────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<MaPreviewResult?> GetPreviewCodeAsync(
+        string formCode, int tenantId, Dictionary<string, object?> values,
+        CancellationToken ct = default)
+    {
+        if (_codeRules is null || _codeGen is null) return null;
+
+        var info = await GetFormInfoAsync(formCode, tenantId, ct);
+        if (info is null) return null;
+
+        var rule = await _codeRules.GetAsync(info.TableName, tenantId, ct);
+        if (rule is null) return null;      // bảng không có quy tắc → client giữ hành vi gõ tay như cũ
+
+        // KHÔNG transaction, KHÔNG khóa: đây là đường chỉ-xem, không được chặn ai (spec §2).
+        using var data = _dataDb.CreateConnection();
+        var code = await _codeGen.PreviewAsync(rule, data, values, info.SchemaName, ct);
+
+        return new MaPreviewResult
+        {
+            ColumnCode   = rule.ColumnCode,
+            Code         = code,
+            AllowManual  = rule.AllowManual,
+            SourceFields = rule.SourceFields,
+        };
     }
 
     // ── Update ──────────────────────────────────────────────────────────────────
@@ -439,7 +516,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         // 2) Ghi DB trong CÙNG transaction.
         object? resultId;
         if (id is null)
-            resultId = await InsertCoreAsync(data, tx, info, values, userId, ct);
+            resultId = await InsertCoreAsync(data, tx, info, values, userId, ct, tenantId);
         else
         {
             await UpdateCoreAsync(data, tx, info, id, values, userId, ct);

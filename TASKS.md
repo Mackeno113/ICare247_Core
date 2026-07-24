@@ -3,6 +3,71 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## 📋 Roadmap — Sinh mã tự động cho cột `Ma` (spec 32 / ADR-036 — 2026-07-23, SPEC CHỐT, DB+proc xong)
+
+Quy tắc sinh mã dùng chung mọi danh mục — chi tiết `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`.
+Chốt với user: proc generic `sp_SinhMa` · quy tắc dạng **ĐOẠN** ở Config DB cấu hình bằng WPF (sync xuống
+tenant) · ⛔ **KHÔNG lưu số lớn nhất ở đâu — mỗi lần sinh quét MAX từ chính bảng đích** · peek lúc mở form
+(không giữ chỗ) + consume lúc Lưu trong transaction · đợt này **chỉ dựng hạ tầng, KHÔNG bật cho bảng nào**.
+
+- [x] **MA-1 (DB)** (2026-07-23) — `db/089_create_sys_ma_rule.sql`: `Sys_Ma_Rule` (Table_Code/Column_Code/Step/
+  Allow_Manual + 4 cờ ConfigSync; **không** khối audit ADR-022 — bảng Config DB không mang, đúng như
+  `Sys_Context_Param`/`Ui_Lookup_Template`) + `Sys_Ma_Rule_Segment` (LITERAL/DATE/FIELD/**LOOKUP**/SEQ, thứ tự,
+  cắt/độ rộng/đệm/HOA-thường; filtered unique chặn 2 đoạn SEQ; CHECK đủ dữ liệu theo từng loại đoạn).
+  **KHÔNG có bảng bộ đếm** (từng thiết kế `HT_BoDemMa` rồi bỏ theo yêu cầu user). Chưa seed quy tắc nào.
+  ⏳ **CHƯA chạy lên DB**
+- [x] **MA-2 (proc)** (2026-07-23) — `db/procs/fn_GhepMa.sql` (ghép tiền tố+số đệm+hậu tố, dùng chung 2 proc nên
+  peek/consume không lệch; tràn độ rộng **không cắt**) + `db/procs/sp_SinhMa.sql` (`sp_getapplock` khóa theo
+  **tiền tố** → quét `MAX(TRY_CONVERT(...))` trên bảng đích qua dynamic SQL đã validate identifier + escape LIKE
+  → chốt `EXISTS` nhảy số, chặn 100 vòng; **bắt buộc `@@TRANCOUNT > 0`**; **`SET XACT_ABORT OFF`**; **không lọc
+  IsDeleted** — không tái dùng mã bản ghi đã xóa) + `db/procs/sp_XemTruocMa.sql` (cùng cách tính, không khóa,
+  không ghi). ⏳ **CHƯA chạy lên DB**
+- [x] **MA-3 (BE)** (2026-07-24) — `ICodeRuleCatalog` + `MaCodeRule`/`MaCodeSegment` (Application) · `CacheKeys.CodeRule`
+  · `CodeRuleCatalog` (Infra, cache-aside L1/L2 khuôn `HookStoreCatalog`; **nuốt lỗi thiếu bảng db/089 → null**
+  = "không có quy tắc", không chặn đường lưu của tenant chưa migrate; cache cả sentinel "không có quy tắc")
+  · **`MaCodeGenerator`** = service DÙNG CHUNG (không nhét vào repo — có >1 đường ghi, xem MA-3b): dựng
+  tiền tố/hậu tố từ đoạn (LITERAL/DATE/**giờ địa phương**/FIELD/LOOKUP tra Data DB cùng conn+tx) → EXEC
+  `sp_SinhMa`/`sp_XemTruocMa`; thiếu field nguồn → trả null (KHÔNG sinh mã sai) · điểm chạm
+  `MasterDataRepository.InsertCoreAsync` qua `ApplyGeneratedCodeAsync` (luật nhường: ô đã có giá trị thì
+  TÔN TRỌNG) · **`InsertAsync` nay tự mở transaction** (trước là `tx: null` → proc sẽ RAISERROR; đường này
+  hiện 0 caller nhưng vá luôn) · DI Infrastructure. ⏳ CHƯA build/chạy
+- [x] **MA-4 (BE)** (2026-07-24) — `POST /api/v1/master-data/{formCode}/ma-du-kien` (`GetMaDuKienQuery` +
+  handler + `MasterDataRepository.GetPreviewCodeAsync` + `MaPreviewResult`). **POST chứ không GET** như spec
+  ban đầu: cần giá trị field trên form cho đoạn FIELD/LOOKUP, đưa dữ liệu người dùng vào query string là rò
+  rỉ qua log/lịch sử. Trả **204** khi bảng không có quy tắc (client giữ hành vi cũ). Trả gộp
+  `Code`+`AllowManual`+**`SourceFields`** để MA-5 biết field nào cần theo dõi mà xin lại mã — 1 lần gọi, không 2 API
+- [x] **MA-3b (BE)** (2026-07-24) — nối sinh mã cho đường ghi thứ hai: "Thêm nhanh" từ dropdown lookup
+  (`DynamicLookupRepository.InsertAsync`) — **KHÔNG** qua `SaveMasterDataCommandHandler` (spec §9 trước ghi SAI,
+  đã sửa). Việc đã làm: **bọc transaction** (trước đó đường này ghi KHÔNG transaction) bao cả check-trùng + INSERT
+  · gọi **cùng** `MaCodeGenerator` (không chép logic) · **sinh mã TRƯỚC khi dựng cols/dp** (cols dựng từ `values`,
+  sinh sau thì cột mã không lọt vào câu INSERT) · `GetAuditColumnsAsync` nhận thêm `tx`.
+  **Gotcha đã xử lý:** `Source_Name` có thể qualify schema (`dbo.TC_CongTy`) trong khi `Sys_Ma_Rule.Table_Code`
+  lưu tên TRẦN → không tách thì tra quy tắc trượt âm thầm ⇒ không sinh mã ⇒ vi phạm NOT NULL cột `Ma`. ⏳ CHƯA build
+- [x] **MA-5 (Web)** (2026-07-24) — `MasterDataApiService.GetMaPreviewAsync` + `MaPreviewDto` (204 → null =
+  bảng không có quy tắc; lỗi HTTP/mạng **nuốt + log**, không được chặn mở form) · `MasterDataForm.razor`:
+  gọi peek SAU prefill và TRƯỚC khi chụp mốc dirty (mã hệ thống điền không tính là "user sửa", spec §10.4) ·
+  `OnFieldChanged` → async, field NGUỒN đổi giá trị thì xin lại mã (§10.3) · ô mã read-only khi
+  `AllowManual=false` (**chỉ khóa thêm, không mở khóa ngược** — field có thể đang khóa vì LockedFields ADR-030) ·
+  nhãn gắn chú thích "(mã dự kiến — cấp khi lưu)" / "(để trống = tự sinh)", có cờ chống nối chồng chất.
+  **2 bug đã chặn khi code:** (a) form sẽ GỬI mã dự kiến lúc Lưu → server áp luật nhường và ghi luôn mã đó thay vì
+  cấp mã thật ⇒ 2 người cùng thấy 1 mã dự kiến sẽ cùng ghi 1 mã, vỡ unique → nay **gỡ giá trị khỏi payload** khi ô
+  còn giữ đúng mã hệ thống điền (`_maLastPreview`); (b) `ColumnCode` từ server khớp field không-phân-biệt-hoa-thường
+  còn payload dùng key phân biệt hoa/thường → ghim `_maColumn` theo `fs.FieldCode` thật, nếu không bước gỡ (a)
+  trượt âm thầm. `FormRunner.razor` KHÔNG cần đụng (chỉ validate, không lưu master data). ⏳ CHƯA build/smoke
+- [x] **MA-7 (sync)** (2026-07-24) — descriptor ConfigSync: `Sys_Ma_Rule` (khóa nghiệp vụ **ghép**
+  `Table_Code + Column_Code`; KHÔNG re-link FK vì trỏ bảng đích bằng *chuỗi* Table_Code ⇒ vị trí trong Order
+  không ràng buộc) + `Sys_Ma_Rule_Segment` (con theo `Order_No`, ContextParent+Relink `Rule_Id`).
+  **Kéo theo sửa db/089:** engine `EnsureSyncFlags` NÉM nếu bảng đồng bộ thiếu 1 trong 4 cờ → thêm
+  `Is_System/Is_Customized/Synced_At/Source_Ver` cho bảng đoạn; thêm `Is_Active` cho đoạn để **tombstone**
+  được (master gỡ 1 đoạn mà tenant không tombstone → đoạn thừa nằm lại, **âm thầm sinh mã SAI**) + filtered
+  index SEQ kèm `AND Is_Active = 1`; `CodeRuleCatalog` và `MaRuleDataService` lọc `Is_Active = 1`
+- [x] **MA-8 (docs)** (2026-07-24) — spec 02: thêm module `Sys_Ma_Rule*` (2 bảng + constraint/index + 3 đối
+  tượng DB kèm theo) · spec 16 §2: thứ tự sync 15/16 + ghi chú khóa ghép/tombstone/"không có bộ đếm để sync"
+- Chưa quyết: bảng thí điểm đầu tiên (ứng viên `TC_CongTy` / `TC_PhongBan` / `HT_NguoiDung`);
+  mã chuẩn (`DM_QuocGia`, `DM_DonViTinh`, `DM_NganHang`, mã hành chính, `TC_Cap*`) **không bật** — spec §10
+- Khi bật cho 1 bảng: **bắt buộc** bảng đó có index thường trên cột mã (filtered unique `WHERE IsDeleted=0`
+  không đủ vì engine quét cả bản ghi đã xóa)
+
 ## ✅ Đã xong — Lookup chỉ bind @param SQL thực dùng + bỏ @TenantId (session 93 — 2026-07-22)
 
 User soi câu `sp_executesql` khi mở form Công ty: **24 tham số khai báo cho câu chỉ dùng 1**
@@ -436,6 +501,7 @@ Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không ph�
 | 033 | View-based grid | ✅ Pha 1 xong (live Tenant 1) | Pha 2 → ADR-034; **Pha 3 (template) chưa làm** |
 | 034 | Import Excel | ✅ code xong (session 78) + addendum DevExpress (session 80) | ⏳ `db/071–073` + `db/procs/*` CHƯA chạy DB; E2E ⏳; v1 = Grid phẳng, TreeGrid sau |
 | 035 | Bỏ hẳn `Tenant_Id` | ✅ **HOÀN TẤT** (session 81) | `db/078` đã chạy. Còn lại → mục "🔜 CÒN LẠI sau ADR-035" |
+| 036 | Sinh mã tự động cột `Ma` | 📋 spec CHỐT + DB/proc viết xong (2026-07-23), **chưa chạy DB, chưa có C#/UI** | `db/089`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`; việc → roadmap MA-1…MA-8 đầu file |
 | Sec | CORS + JWT SecretKey | ✅ #2/#3 code xong (Program.cs) | #1 (tenant từ claim) đã đóng bằng ADR-018 |
 
 > **Quy tắc từ nay:** khi một thay đổi làm ADR nào đó "bắt kịp", cập nhật **bảng này**, không sửa ADR.

@@ -72,6 +72,15 @@ public interface IMasterDataRepository
         string formCode, int tenantId, Dictionary<string, object?> values,
         long? userId = null, CancellationToken ct = default);
 
+    /// <summary>
+    /// Mã DỰ KIẾN cho form Thêm mới (spec 32 §2) — CHỈ ĐỌC: không tăng, không giữ chỗ, không ghi gì.
+    /// Trả <c>null</c> khi bảng không có quy tắc sinh mã. <paramref name="values"/> = giá trị hiện tại
+    /// trên form (cần cho đoạn FIELD/LOOKUP); thiếu field nguồn → <c>Code</c> null (để ô trống, không đoán bừa).
+    /// </summary>
+    Task<MaPreviewResult?> GetPreviewCodeAsync(
+        string formCode, int tenantId, Dictionary<string, object?> values,
+        CancellationToken ct = default);
+
     /// <summary>Update 1 bản ghi theo PK. Trả số dòng bị ảnh hưởng.</summary>
     Task<int> UpdateAsync(
         string formCode, int tenantId, object id, Dictionary<string, object?> values,
@@ -172,4 +181,29 @@ public sealed class MasterDataListResult
 {
     public IReadOnlyList<IDictionary<string, object?>> Items { get; init; } = [];
     public int TotalCount { get; init; }
+}
+
+/// <summary>
+/// Mã dự kiến + metadata quy tắc cho form Thêm mới (spec 32 §7). Trả gộp trong 1 lần gọi để client
+/// vừa hiện được mã, vừa biết field nào phải theo dõi mà xin lại mã (§10.3) — không phải gọi 2 API.
+/// </summary>
+public sealed class MaPreviewResult
+{
+    /// <summary>Cột được sinh mã (thường <c>Ma</c>).</summary>
+    public string ColumnCode { get; init; } = "";
+
+    /// <summary>
+    /// Mã dự kiến. <c>null</c> = chưa đủ field nguồn ⇒ UI để ô TRỐNG kèm chú thích, KHÔNG hiện mã sai.
+    /// </summary>
+    public string? Code { get; init; }
+
+    /// <summary>true = người dùng được gõ đè (ô mở khóa); false = ô read-only.</summary>
+    public bool AllowManual { get; init; }
+
+    /// <summary>
+    /// Field mà mã phụ thuộc. Client theo dõi THAY ĐỔI GIÁ TRỊ của các field này để xin lại mã —
+    /// hook vào đổi-giá-trị chứ không vào "event đã chạy", nên người dùng gõ hay event SET_VALUE gán
+    /// đều kích hoạt như nhau (spec §10.3).
+    /// </summary>
+    public IReadOnlyList<string> SourceFields { get; init; } = [];
 }

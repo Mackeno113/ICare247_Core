@@ -589,3 +589,54 @@
   `Sys_Language.Is_Active` (bảng không có cột đó). Query thứ 2 nằm trong **`catch` trần** → im lặng báo
   "Sys_Dependency chưa được build" ⇒ **check vòng lặp phụ thuộc CHƯA BAO GIỜ chạy**. Đã thu hẹp `catch`
   về `SqlException.Number == 208`. **Bài học: `catch` trần biến lỗi schema thành thông điệp sai lệch.**
+
+## ADR-036: Sinh mã tự động (`Ma`) — quy tắc dạng ĐOẠN ở Config DB, số suy từ DỮ LIỆU (không bộ đếm), peek/consume tách đôi (2026-07-23)
+- **Context:** hầu hết danh mục có `Ma` NOT NULL + filtered unique index, nhưng **không có cơ chế sinh mã nào**
+  (kiểm chứng: `SinhMa|AutoCode|Sequence|NextCode` = 0 hit code) → user tự gõ mã, không nhất quán.
+- **Decision (5 trục, user chốt):**
+  1. **Engine = 1 stored proc generic** `sp_SinhMa`, không hardcode mỗi bảng, **không** SQL `SEQUENCE` object.
+  2. ⛔ **KHÔNG lưu số lớn nhất ở bất cứ đâu.** Mỗi lần sinh **quét chính bảng đích** lấy MAX theo tiền tố.
+     Bộ đếm lưu sẵn LỆCH thực tế ngay khi có import / sửa mã tay / xóa / restore từng phần → cấp trùng mã, và
+     không cách nào tự phát hiện. **Sự thật duy nhất về "mã lớn nhất" là dữ liệu trong bảng.**
+     *(Bảng bộ đếm `HT_BoDemMa` đã thiết kế rồi BỎ trong cùng session — user bác.)*
+  3. **Quy tắc = 1 dòng cha + N ĐOẠN** (`Sys_Ma_Rule` + `Sys_Ma_Rule_Segment`, Config DB), **không** phải một
+     chuỗi "mẫu mã". Lý do: mã thực tế ghép từ ≥3 nguồn và nguồn thường phải **tra sang bảng khác**
+     (payload `CongTy_Id=5` → mã cần `CT01`) — loại đoạn `LOOKUP`. Chuỗi token không diễn tả nổi và không
+     dựng được UI cấu hình. DEV khai bằng ConfigStudio WPF → ConfigSync đẩy xuống tenant.
+  4. **Peek ≠ consume:** mở form gọi `sp_XemTruocMa` (đọc MAX, không khóa, không ghi gì — "mã dự kiến");
+     Lưu gọi `sp_SinhMa` **trong cùng transaction ghi**.
+  5. Đợt đầu **chỉ dựng hạ tầng**, không bật quy tắc cho bảng nào.
+- **Hệ quả then chốt của (2): PHẠM VI ĐÁNH SỐ = TIỀN TỐ CỦA MÃ.** Mã chứa `{yy}` → tự đánh lại theo năm; chứa
+  mã công ty → tự đánh riêng từng công ty. ⇒ **không có** cột `Reset_Scope`/`Scope_Column`, không job cuối năm.
+  Giới hạn kèm theo: phạm vi chỉ theo được thứ **xuất hiện trong mã** — muốn đánh số riêng mỗi công ty thì mã
+  bắt buộc chứa mã công ty (nếu không cũng vỡ unique toàn bảng — tức ràng buộc này vốn đã đúng).
+- **Chống trùng 4 lớp:** `sp_getapplock` khóa theo tiền tố (thay vai trò "atomic" của bộ đếm, nhả khi commit) ·
+  quét MAX trên dữ liệu thật **gồm cả bản ghi đã xóa mềm** (không tái dùng mã) · chốt `EXISTS` trước khi trả mã
+  (dữ liệu tay đệm số khác quy tắc: `CT-7` vs `CT-007`) · **giữ nguyên** filtered unique index.
+- **Ràng buộc kỹ thuật phát hiện khi viết proc:**
+  - `sp_SinhMa` **bắt buộc** chạy trong transaction (`@@TRANCOUNT = 0` → RAISERROR): khóa `@LockOwner='Transaction'`
+    nhả ngay khi proc kết thúc ⇒ không transaction là cấp trùng. **`InsertAsync` hiện gọi `InsertCoreAsync(tx: null)`
+    — MA-3 phải xử lý.**
+  - **`SET XACT_ABORT OFF`** trong `sp_SinhMa` (khác mọi proc khác của dự án): proc chạy trong transaction của
+    engine, `ON` sẽ đẩy transaction ngoài sang uncommittable (`XACT_STATE = -1`).
+  - Quét MAX kiểu **"lấy hết đuôi rồi TRY_CONVERT"** (khi số nằm cuối mã) thay vì mặt nạ cố định số chữ số —
+    mặt nạ cố định **bỏ sót mã đã tràn độ rộng** (`{SEQ:3}` tới `1000`) ⇒ cấp trùng.
+  - Đoạn `DATE` dùng **giờ địa phương**, không phải UTC: VN=UTC+7 ⇒ 7 tiếng đầu mỗi năm sẽ cấp mã mang năm cũ.
+- **Proc nhận tiền tố/hậu tố từ C#, KHÔNG tự đọc Config DB:** proc ở Data DB, quy tắc ở Config DB — truy vấn
+  3 phần tên sẽ đóng cứng tên database vào proc, vỡ mô hình 1-DB-1-tenant (ADR-018/025); ngoài ra đoạn
+  `FIELD`/`LOOKUP`/`DATE` cần payload + giờ địa phương, proc không có.
+- **Tương tác Event Engine (spec §10):** Event Engine thuần UI-delta client-side, KHÔNG ghi DB → không xung
+  đột GHI với sinh mã (ở save-path). CHÍNH VÌ event chỉ trả delta mà **không gộp** sinh mã thành một action:
+  mã thật cần cấp trong transaction có khóa. Ba giao thoa: (a) event `SET_VALUE→Ma` thắng nhờ luật "trống→sinh,
+  có→tôn trọng" (WPF cảnh báo chồng cơ chế); (b) preview tính lại khi field NGUỒN đổi giá trị — hook vào đổi
+  giá trị field, KHÔNG vào "event đã chạy", nên người dùng gõ hay event gán đều kích hoạt như nhau, gọi
+  `ma-du-kien` độc lập (không nhét vào round-trip EventEngine); (c) mở form: chạy `OnLoad` trước rồi mới peek.
+- **Preview đi endpoint riêng**, không nhét vào `GetMasterDataFormInfo`: form-info là config được cache, mã dự
+  kiến là giá trị động — trộn vào sẽ đóng băng mã theo cache.
+- **Bắt buộc khi bật cho 1 bảng:** bảng đó phải có **index thường trên cột mã** (filtered unique
+  `WHERE IsDeleted=0` không đủ vì ta quét cả bản ghi đã xóa).
+- **Không tự sinh cho mã chuẩn** (`DM_QuocGia` ISO, `DM_DonViTinh`, `DM_NganHang`, mã hành chính,
+  `TC_CapCongTy`/`TC_CapPhongBan`) — sinh mã ở đó phá liên thông dữ liệu.
+- **Liên quan:** `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`; ADR-029 (hook proc + catalog cache), ADR-027 (khuôn
+  "cấu hình + proc generic", validate identifier cho dynamic SQL), spec 16 (ConfigSync), spec 12 (cascade —
+  mã dự kiến tính lại khi đổi field nguồn).

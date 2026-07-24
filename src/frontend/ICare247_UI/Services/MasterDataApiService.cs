@@ -119,6 +119,36 @@ public sealed class MasterDataApiService
         return new MasterDataSaveResultDto(false, null, []);
     }
 
+    /// <summary>
+    /// Mã DỰ KIẾN cho form Thêm mới (spec 32 §2). Trả <c>null</c> khi bảng KHÔNG có quy tắc sinh mã
+    /// (API 204) — form giữ nguyên hành vi gõ tay như cũ.
+    /// POST (không phải GET) vì phải gửi giá trị field hiện có trên form cho đoạn FIELD/LOOKUP.
+    /// Lỗi mạng/HTTP ở đây KHÔNG được chặn mở form: nuốt lỗi, log, trả null.
+    /// </summary>
+    public async Task<MaPreviewDto?> GetMaPreviewAsync(
+        string formCode, Dictionary<string, object?> values, CancellationToken ct = default)
+    {
+        try
+        {
+            var resp = await _http.PostAsJsonAsync(
+                $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}/ma-du-kien",
+                new { values }, JsonOpts, ct);
+
+            if (resp.StatusCode == HttpStatusCode.NoContent) return null;   // bảng không có quy tắc
+            if (!resp.IsSuccessStatusCode)
+            {
+                _logger.LogWarning("GetMaPreview {Form} → HTTP {Status}", formCode, (int)resp.StatusCode);
+                return null;
+            }
+            return await resp.Content.ReadFromJsonAsync<MaPreviewDto>(JsonOpts, ct);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GetMaPreview {Form} lỗi — bỏ qua mã dự kiến.", formCode);
+            return null;
+        }
+    }
+
     /// <summary>Xóa cứng. Trả kết quả; nếu bị tham chiếu (409) → Success=false + BlockedBy.</summary>
     public async Task<MasterDataDeleteResultDto> DeleteAsync(
         string formCode, object id, CancellationToken ct = default)
@@ -195,6 +225,25 @@ public sealed class MasterDataApiService
 }
 
 // ── DTOs ──────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Mã dự kiến + metadata quy tắc sinh mã (spec 32 §7). Server trả gộp trong 1 lần gọi để form vừa
+/// hiện được mã, vừa biết field nào phải theo dõi mà xin lại mã (§10.3).
+/// </summary>
+public sealed class MaPreviewDto
+{
+    /// <summary>Cột được sinh mã (thường <c>Ma</c>).</summary>
+    public string ColumnCode { get; set; } = "";
+
+    /// <summary>Mã dự kiến; <c>null</c> = chưa đủ field nguồn ⇒ để ô TRỐNG, KHÔNG hiện mã sai.</summary>
+    public string? Code { get; set; }
+
+    /// <summary>true = user được gõ đè (ô mở khóa); false = ô read-only.</summary>
+    public bool AllowManual { get; set; }
+
+    /// <summary>Field mà mã phụ thuộc — đổi giá trị các field này thì phải xin lại mã.</summary>
+    public List<string> SourceFields { get; set; } = [];
+}
 
 public sealed class MasterDataFormInfoDto
 {
