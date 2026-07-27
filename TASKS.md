@@ -1146,7 +1146,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **AUTHZ-UI-2 (Vai trò)** — Engine MasterData **tự bơm audit** (CreatedBy/At insert · UpdatedBy/At update theo cột tồn tại; userId luồn qua `SaveMasterDataCommand`←claim). `db/047` seed `Sys_Table`/`Sys_Column`/`Ui_Form`/`Ui_Field` cho `HT_VaiTro`; `db/048` nối menu `administration.roles` → `/master/HT_VaiTro` + `DoiTuong`. Build BE xanh. ⏳ chạy db/047 (Config) + db/048 (Data) + restart API.
   - [ ] **AUTHZ-UI-2b (Người dùng)** — `HT_NguoiDung` field nhạy cảm (MatKhauHash/2FA) → màn **bespoke** (đặt mật khẩu đúng cách), KHÔNG form generic. _(sau)_
 
-### Giai đoạn 5 — Mở rộng trục dữ liệu: phạm vi phòng ban (thiết kế 2026-07-25 — CHƯA CODE)
+### Giai đoạn 5 — Mở rộng trục dữ liệu: phạm vi phòng ban (thiết kế 2026-07-25, code + build-verify session 96 2026-07-27, commit `a2fa94e`)
 
 > Mirror 1:1 cơ chế phạm vi công ty (session 87, `e6bc0b8`) nhưng **độc lập hoàn toàn** với trục công ty
 > (không thu hẹp lồng nhau) — chốt với user. Đúng node được gán, **không** tự gộp phòng ban con (khác
@@ -1168,13 +1168,15 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       + `AdminUserController` thêm `GET/PUT users/{id}/departments` — mở rộng `IPermissionAdminRepository`/
       `PermissionAdminRepository` + `IUserAdminRepository`/`UserAdminRepository` hiện có (không tạo repo
       mới); 4 CQRS mới (`GetRoleDepartments`/`SaveRoleDepartments`/`GetUserDepartments`/`SaveUserDepartments`);
-      DTO `RoleDepartmentNodeDto`/`UserDepartmentNodeDto`. Compile chưa verify (user tự build).
+      DTO `RoleDepartmentNodeDto`/`UserDepartmentNodeDto`. Build backend **0W/0E** (session 96, xác nhận).
 - [x] **AUTHZ-PB-5 (FE)** — `IcCompanyPicker` (Shared/Pickers) thêm tham số **`CascadeToChildren`**
       (mặc định `true` — không đổi hành vi 2 màn công ty hiện có) — `false` cho phòng ban để KHÔNG lan
       tick xuống con. `UserManagementPage.razor` thêm tab **"Phòng ban truy cập"** (không radio mặc định
       vì bỏ `LaMacDinh`) cạnh tab "Công ty truy cập"; `PermissionMatrixPage` thêm view **"Phạm vi phòng
       ban"`. Model mới `RoleDepartmentNodeVm`/`UserDepartmentNodeVm` + `AdminPermissionApiService`/
-      `AdminUserApiService` mở rộng. Compile chưa verify (user tự build).
+      `AdminUserApiService` mở rộng. Build Web **0W/0E** (session 96, xác nhận). Đã kèm fix nhỏ đi cùng:
+      route `AppNav.cs` "Cấp phòng ban" trỏ sai `Grid_TC_CapPhongBan` → `Grid_DM_CapPhongBan`, popup
+      `TreeLookupBox` trong modal đo sai vị trí lần mở đầu (đo lại sau `requestAnimationFrame`).
 - [ ] **AUTHZ-PB-6 (sau)** — `Ui_View.Scope_By_PhongBan` + lọc lưới qua `fnt_PhongBanTheoQuyen` khi bảng
       nguồn có cột `PhongBan_Id` — mirror `db/087`. Hoãn tới khi có bảng nghiệp vụ cần.
 

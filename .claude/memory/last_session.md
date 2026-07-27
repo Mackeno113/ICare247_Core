@@ -1,21 +1,22 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-27 (session 96 — **màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web** (ADR-037):
-> bảng `NK_LoiHeThong` (Audit DB) + pipeline ghi non-blocking đơn giản (Channel→BackgroundService→INSERT
-> trực tiếp) + `AdminErrorLogController` + `ErrorLogPage.razor`).
+> Cập nhật: 2026-07-27 (session 96 — 2 commit: ① **màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web**
+> (ADR-037) ② **gom + build-verify AUTHZ-PB (phạm vi phòng ban) + dọn nợ ConfigStudio session 95** đang
+> nằm sẵn trong working tree từ trước).
 > Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái git: CHƯA commit** (session 96 — chờ user xác nhận message; session 95 cũng CHƯA commit,
-> gộp chung lần commit tới trừ khi user muốn tách).
-> Trước đó: `master` = `origin/master` tại commit `e1650b3` (session 94, nền `7cbccc0` session 93).
+> **Trạng thái git: ĐÃ commit + ĐÃ push cả 2.** `master` = `origin/master` tại commit `a2fa94e`
+> (commit trước `35fe2ba` — Nhật ký lỗi; nền `e1650b3` session 94, `7cbccc0` session 93).
 > **Build session 96:** backend `ICare247.slnx` 0W/0E · Web `ICare247_UI.slnx` 0W/0E (fix 1 lỗi Razor thật:
-> `""` lồng trong attribute `@onclick` → `string.Empty`) · test `ICare247.Application.Tests` 145/145 Passed.
-> ConfigStudio KHÔNG đụng, không build lại.
+> `""` lồng trong attribute `@onclick` → `string.Empty`) · ConfigStudio `ConfigStudio.WPF.UI.slnx` 0W/0E ·
+> test `ICare247.Application.Tests` 145/145 Passed (build lại lần 2 khi gom AUTHZ-PB, vẫn xanh).
 > **Task tiếp theo gợi ý:** (1) user chạy `db/095_create_nk_loihethong.sql` (Audit DB) +
-> `db/096_seed_ht_chucnang_menu_errorlogs.sql` (Data DB) rồi build lại API+Web, trigger 1 lỗi 500 thật →
-> xác nhận row lên `NK_LoiHeThong` + hiện đúng trên `/m/administration/error-logs` → (2) user tự build
-> ConfigStudio + smoke UI "Quy tắc sinh mã"/"Mẫu Lookup" (session 95, vẫn CHƯA smoke) → (3) smoke sinh mã
-> thật (session 94, ADR-036) → (4) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở
-> `InsertAsync`) → (5) màn Phòng ban no-code.
+> `db/096_seed_ht_chucnang_menu_errorlogs.sql` (Data DB) → trigger 1 lỗi 500 thật → xác nhận row lên
+> `NK_LoiHeThong` + hiện đúng trên `/m/administration/error-logs` → (2) user chạy `db/091→092→093→094`
+> (Data DB, ĐÚNG THỨ TỰ) rồi smoke tab "Phòng ban truy cập" (UserManagementPage) + view "Phạm vi phòng
+> ban" (PermissionMatrixPage) — AUTHZ-PB-APPLY vẫn còn ⏳ → (3) user tự smoke UI ConfigStudio "Quy tắc
+> sinh mã"/"Mẫu Lookup" (session 95, vẫn CHƯA smoke) → (4) smoke sinh mã thật (session 94, ADR-036) →
+> (5) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở `InsertAsync`) → (6) màn Phòng
+> ban no-code (AUTHZ-PB-6, chờ bảng nghiệp vụ có cột `PhongBan_Id`).
 
 ## Session 96 (2026-07-27) — Màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web (ADR-037)
 
@@ -48,6 +49,40 @@ lồng trong attribute Razor làm parser đóng quote sớm (`CS1525`/`CS1026`).
 **Build `/finish-task` (2026-07-27):** backend 0W/0E · Web 0W/0E · test 145/145 pass. ConfigStudio không
 đụng. **CHƯA chạy `db/095`/`db/096`, CHƯA smoke runtime** — user cần chạy 2 migration rồi trigger 1 lỗi
 500 thật để xác nhận end-to-end.
+
+**Commit `35fe2ba`** — chỉ 24 file thuộc tính năng này (stage chọn lọc, KHÔNG gộp AUTHZ-PB/session 95
+đang nằm sẵn trong working tree). **Đã push** lên `origin/master`.
+
+## Session 96 (tiếp) — Gom + build-verify AUTHZ-PB (phạm vi phòng ban) + dọn nợ ConfigStudio session 95
+
+User yêu cầu "gom hết những thứ khác commit luôn" — 34 file còn lại trong working tree từ trước
+(AUTHZ-PB đã code từ 2026-07-25 nhưng chưa build/commit + vài sửa nhỏ ConfigStudio session 95 chưa gộp).
+
+**Trước khi commit — build-verify cả 3 solution** (chưa ai build lần nào từ lúc code AUTHZ-PB): backend
+`ICare247.slnx` 0W/0E · Web `ICare247_UI.slnx` 0W/0E · ConfigStudio `ConfigStudio.WPF.UI.slnx` 0W/0E ·
+test `ICare247.Application.Tests` 145/145 Passed. Toàn bộ xanh ngay lần đầu.
+
+**Nội dung gộp (chi tiết đầy đủ → TASKS.md mục AUTHZ-PB-1…6 + [[project-authz-navigation-model]]):**
+- AUTHZ-PB: trục phạm vi phòng ban độc lập hoàn toàn trục công ty, đúng node được gán (KHÔNG cascade
+  xuống con — khác trục công ty). `db/091` (bỏ cột `HT_NguoiDung.PhongBan_Id` thừa) + `db/092`
+  (`HT_VaiTro_PhongBan`) + `db/093` (`HT_NguoiDung_PhongBan`) + `db/094` (`fnt_PhongBanTheoQuyen`) — cả 4
+  migration CHƯA chạy DB thật. BE: `GetRoleDepartments`/`SaveRoleDepartments`/`GetUserDepartments`/
+  `SaveUserDepartments` mở rộng `AdminPermissionController`/`AdminUserController` + repo hiện có (không
+  tạo repo mới). FE: tab "Phòng ban truy cập" (`UserManagementPage`) + view "Phạm vi phòng ban"
+  (`PermissionMatrixPage`); `IcCompanyPicker` thêm `CascadeToChildren` (mặc định `true` giữ nguyên hành
+  vi công ty, `false` cho phòng ban).
+- 2 fix nhỏ đi kèm AUTHZ-PB: route `AppNav.cs` "Cấp phòng ban" trỏ nhầm `Grid_TC_CapPhongBan` → sửa
+  `Grid_DM_CapPhongBan`; popup `TreeLookupBox` trong `DraggableModal` đo sai vị trí/bề rộng lần mở đầu
+  tiên (anchor chưa layout xong khi modal vừa mount) → đo lại qua `requestAnimationFrame` + cap width
+  300px cho popup 1 cột.
+- Dọn nợ session 95 (ConfigStudio) chưa gộp vào commit trước: sửa nhỏ `MaRuleUiText`/`FkLookupConfigVm`/
+  `LookupBoxPropsPanel.xaml` + cập nhật doc `docs/spec/32_SINH_MA_TU_DONG_SPEC.md` + 2 file `huong-dan-wpf`.
+
+**Loại trừ khi stage:** 3 file i18n luôn bị bỏ qua ([[feedback-ignore-i18n-files]]) — dùng
+`git add -A -- . ':!...'` pathspec exclude, không đụng `git add -A` trần.
+
+**Commit `a2fa94e`** — 35 file. **Đã push** lên `origin/master` cùng lượt với `35fe2ba`. **CHƯA chạy**
+`db/091→092→093→094`, **CHƯA smoke runtime** tab/view Phòng ban (AUTHZ-PB-APPLY vẫn ⏳).
 
 ## Session 95 (2026-07-25) — Tách List/Popup "Quy tắc sinh mã"/"Mẫu Lookup" + fix schema drift `Sys_Ma_Rule`
 
