@@ -1,0 +1,167 @@
+@page "/m/administration/error-logs"
+@inject AdminErrorLogApiService Api
+@inject LocalizationService Loc
+@inject IJSRuntime Js
+
+@*
+    ErrorLogPage — màn Nhật ký lỗi (bespoke, administration.errorlogs, CHỈ ĐỌC).
+    Tra lỗi 500 theo "Mã lỗi" hiện trên toast (fd7af169...) thay vì phải mở file
+    logs/icare247-*.log. Mặc định lọc 7 ngày gần nhất (bảng log tăng vô hạn theo thời gian,
+    KHÔNG load-all như lưới View/MasterData) — trong khoảng đã lọc, lưới tự sort/filter client.
+    Click dòng → modal xem message + stack trace đầy đủ (copy-able).
+*@
+
+<PageTitle>@Loc.L("admin.errorlogs.title", "Nhật ký lỗi") — ICare247</PageTitle>
+
+<div class="elog-toolbar">
+    <span class="elog-title">@Loc.L("admin.errorlogs.title", "Nhật ký lỗi")</span>
+</div>
+
+<div class="elog-filter">
+    <label class="elog-field elog-field--sm">
+        <span>@Loc.L("admin.errorlogs.f.tu", "Từ ngày")</span>
+        <input type="date" @bind="_tu" />
+    </label>
+    <label class="elog-field elog-field--sm">
+        <span>@Loc.L("admin.errorlogs.f.den", "Đến ngày")</span>
+        <input type="date" @bind="_den" />
+    </label>
+    <label class="elog-field elog-field--sm">
+        <span>@Loc.L("admin.errorlogs.f.maloi", "Mã lỗi")</span>
+        <input @bind="_maLoi" @bind:event="oninput" maxlength="64"
+               placeholder="@Loc.L("admin.errorlogs.f.maloi.hint", "vd: fd7af169")" />
+    </label>
+    <label class="elog-field">
+        <span>@Loc.L("admin.errorlogs.f.nguon", "Nguồn")</span>
+        <input @bind="_nguon" @bind:event="oninput" maxlength="200"
+               placeholder="@Loc.L("admin.errorlogs.f.nguon.hint", "vd: SqlException")" />
+    </label>
+    <button class="elog-btn-primary" disabled="@_loading" @onclick="LoadAsync">
+        @(_loading ? Loc.L("common.btn.loading", "Đang tải…") : Loc.L("admin.errorlogs.btn.filter", "Lọc"))
+    </button>
+    <span class="elog-spacer"></span>
+    <span class="elog-count">@Loc.L("admin.errorlogs.count", "{0} lỗi", _logs.Count)</span>
+</div>
+
+<div class="elog-body">
+    @if (_loading)
+    {
+        <div class="elog-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+    }
+    else if (_logs.Count == 0)
+    {
+        <div class="elog-empty">@Loc.L("admin.errorlogs.empty", "Không có lỗi nào trong khoảng thời gian đã lọc.")</div>
+    }
+    else
+    {
+        <DxGrid Data="_logs" KeyFieldName="Id" CssClass="elog-grid"
+                TextWrapEnabled="true" AllowColumnReorder="true"
+                ColumnResizeMode="GridColumnResizeMode.ColumnsContainer"
+                HighlightRowOnHover="true" FocusedRowEnabled="true"
+                VirtualScrollingEnabled="true"
+                FocusedRowChanged="OnRowFocused">
+            <Columns>
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.thoigian", "Thời gian")" FieldName="ThoiGian" Width="150px">
+                    <CellDisplayTemplate>
+                        @{ var l = (ErrorLogListVm)context.DataItem; }
+                        @l.ThoiGian.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+                    </CellDisplayTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.maloi", "Mã lỗi")" FieldName="MaLoi" Width="110px">
+                    <CellDisplayTemplate>
+                        @{ var l = (ErrorLogListVm)context.DataItem; }
+                        <code class="elog-code">@l.MaLoi</code>
+                    </CellDisplayTemplate>
+                </DxGridDataColumn>
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.nguon", "Nguồn")" FieldName="Nguon" Width="220px" />
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.thongdiep", "Thông điệp")" FieldName="ThongDiep" />
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.duongdan", "Đường dẫn")" FieldName="DuongDan" Width="220px" />
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.phuongthuc", "PT")" FieldName="PhuongThuc" Width="70px" />
+                <DxGridDataColumn Caption="@Loc.L("admin.errorlogs.col.nguoidung", "Người dùng")" FieldName="TenDangNhap" Width="150px" />
+            </Columns>
+        </DxGrid>
+    }
+</div>
+
+@if (_detail is not null)
+{
+    <DraggableModal Title="@Loc.L("admin.errorlogs.detail.title", "Chi tiết lỗi")" Width="720px" OnClose="() => _detail = null">
+        <div class="elog-detail">
+            <div class="elog-detail__row">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.col.maloi", "Mã lỗi")</span>
+                <code class="elog-code">@_detail.CorrelationId</code>
+                <button class="elog-btn-ghost" @onclick="() => CopyAsync(_detail.CorrelationId)">
+                    @Loc.L("admin.errorlogs.btn.copy", "Sao chép")
+                </button>
+            </div>
+            <div class="elog-detail__row">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.col.thoigian", "Thời gian")</span>
+                @_detail.ThoiGian.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+            </div>
+            <div class="elog-detail__row">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.col.duongdan", "Đường dẫn")</span>
+                @_detail.PhuongThuc @_detail.DuongDan
+            </div>
+            @if (!string.IsNullOrWhiteSpace(_detail.TenDangNhap))
+            {
+                <div class="elog-detail__row">
+                    <span class="elog-detail__label">@Loc.L("admin.errorlogs.col.nguoidung", "Người dùng")</span>
+                    @_detail.TenDangNhap (@_detail.DiaChiIp)
+                </div>
+            }
+            <div class="elog-detail__row">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.col.nguon", "Nguồn")</span>
+                @_detail.Nguon
+            </div>
+            <div class="elog-detail__row elog-detail__row--block">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.detail.message", "Thông điệp")</span>
+                <div class="elog-message">@_detail.ThongDiep</div>
+            </div>
+            <div class="elog-detail__row elog-detail__row--block">
+                <span class="elog-detail__label">@Loc.L("admin.errorlogs.detail.stack", "Stack trace")</span>
+                <button class="elog-btn-ghost" @onclick="() => CopyAsync(_detail.ChiTiet ?? string.Empty)">
+                    @Loc.L("admin.errorlogs.btn.copy", "Sao chép")
+                </button>
+                <pre class="elog-stack">@_detail.ChiTiet</pre>
+            </div>
+        </div>
+    </DraggableModal>
+}
+
+@code {
+    private List<ErrorLogListVm> _logs = [];
+    private ErrorLogDetailVm? _detail;
+    private DateTime? _tu;
+    private DateTime? _den;
+    private string _maLoi = "";
+    private string _nguon = "";
+    private bool _loading;
+
+    /// <summary>Khởi tạo: mặc định 7 ngày gần nhất (khớp default server nếu Tu/Den để trống).</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _den = DateTime.Today.AddDays(1).AddSeconds(-1);
+        _tu = DateTime.Today.AddDays(-7);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _logs = await Api.GetErrorLogsAsync(_tu, _den, _maLoi, _nguon);
+        _loading = false;
+    }
+
+    /// <summary>Chọn dòng trên lưới → nạp chi tiết (message + stack trace). Sự kiện theo sau: mở modal.</summary>
+    private async Task OnRowFocused(GridFocusedRowChangedEventArgs e)
+    {
+        if (e.DataItem is not ErrorLogListVm row) return;
+        _detail = await Api.GetErrorLogDetailAsync(row.Id);
+    }
+
+    private async Task CopyAsync(string text)
+    {
+        try { await Js.InvokeVoidAsync("navigator.clipboard.writeText", text); }
+        catch { /* clipboard có thể bị chặn — bỏ qua */ }
+    }
+}

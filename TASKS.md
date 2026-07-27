@@ -3,6 +3,44 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web (ADR-037, session 96, 2026-07-27, CHƯA commit)
+
+**Bối cảnh:** user báo toast lỗi 500 chỉ hiện "Đã xảy ra lỗi không mong đợi... (Mã lỗi: fd7af169)" —
+không có cách nào tra chi tiết (message/stack trace) từ web, phải nhờ dev mở file `logs/icare247-*.log`
+trên server. `Sys_Error_Log` có sẵn trong spec/schema nhưng **chưa bao giờ được ghi** bởi backend.
+
+- [x] **Bảng `NK_LoiHeThong`** (`db/095_create_nk_loihethong.sql`) — chuyển sang **Audit DB per-tenant**
+  (cùng chỗ `NK_NhatKyHoatDong`), archetype Kỹ thuật/Log (không `Ma`/`Ten`/soft-delete/`Ver`).
+- [x] **Pipeline ghi non-blocking, ĐƠN GIẢN** (quyết định user: không tái dùng Redis Stream của Audit) —
+  `IErrorLogQueue`/`ErrorLogQueue` (Channel bounded 2.000, drop khi đầy) → `ErrorLogBackgroundService` →
+  `ErrorLogNkWriter` INSERT trực tiếp từng dòng (KHÔNG SqlBulkCopy — lỗi hiếm hơn audit trail nhiều).
+  `ExceptionHandlingMiddleware` enqueue ở đúng nhánh `catch(Exception ex)` (500 thật, không phải 400/403/404
+  nghiệp vụ) — `ITenantContext` nhận qua method injection (middleware singleton, context scoped).
+- [x] **`IAuditDbConnectionFactory`/`AuditDbConnectionFactory`** mới (đọc-side, mirror
+  `IDataDbConnectionFactory`) + `TenantContext.AuditConnectionString` (set ở `TenantMiddleware`, fallback
+  Data DB khi tenant chưa tách Audit DB riêng).
+- [x] **CQRS + Repository** — `GetErrorLogsQuery` (lọc Từ/Đến ngày + Mã lỗi prefix + Nguồn, mặc định 7 ngày
+  gần nhất, KHÔNG phân trang server — nhất quán quy ước lưới hiện có, DxGrid tự sort/filter trong khoảng đã
+  lọc) + `GetErrorLogDetailQuery` (message + stack trace đầy đủ).
+- [x] **`AdminErrorLogController`** (`/api/v1/admin/error-logs`) + seed `HT_ChucNang` mã
+  `administration.errorlogs` (`db/096_seed_ht_chucnang_menu_errorlogs.sql`, grant SUPERADMIN Xem — màn chỉ đọc).
+- [x] **`ErrorLogPage.razor`** (`/m/administration/error-logs`) — lưới DxGrid (giờ/Mã lỗi/Nguồn/Thông
+  điệp/Đường dẫn/Người dùng) + modal `DraggableModal` xem chi tiết stack trace (nút Sao chép clipboard).
+  Theo chuẩn `icare247-admin-ui` (toolbar mỏng, bảng ~75% cao, header ghim qua CSS global `.elog-grid`).
+
+Build `src/backend/ICare247.slnx`: **0 Warning / 0 Error**. Build `src/frontend/ICare247_UI.slnx`: **0 Warning /
+0 Error** (fix 1 lỗi Razor thật — `@onclick="() => CopyAsync(_detail.ChiTiet ?? "")"` chuỗi rỗng `""` lồng
+trong attribute làm Razor đóng quote sớm → đổi `string.Empty`). Test `ICare247.Application.Tests`: **145/145
+Passed**. ConfigStudio KHÔNG đụng — không build lại (thay đổi trước đó của session 95 vẫn CHƯA commit, không
+liên quan session này).
+
+**Decisions Log (session 96):** xem ADR-037 (kiến trúc bất biến — bảng/pipeline/DI mới) trong
+`.claude/memory/architecture_decisions.md`.
+
+**⏳ User cần làm:** chạy `db/095` + `db/096` trên Audit DB / Data DB của tenant, rồi build lại
+`ICare247.Api`/`ICare247_UI` để smoke-test thật (trigger 1 lỗi 500 → xem có lên `NK_LoiHeThong` + hiện trên
+màn Nhật ký lỗi không) — theo quy tắc `feedback-only-edit-code-user-builds`, Claude không tự chạy SQL.
+
 ## ✅ Đã xong — Tách List/Popup màn WPF "Quy tắc sinh mã" + "Mẫu Lookup" + fix schema drift `Sys_Ma_Rule` (session 95, 2026-07-25, CHƯA commit)
 
 **Bối cảnh:** tiếp nối MA-6 (session 94) — user thử màn "Quy tắc sinh mã" trên ConfigStudio thật, phát hiện
@@ -291,6 +329,15 @@ từng Feature bên dưới — `ViewRepository.GetByCodeAsync` là hub chung).
   risk LOW, 0 affected processes. Build Infrastructure+Web+WPF 0W/0E.
 - [ ] Màn Phòng ban (no-code, dùng cả 3 control) — bây giờ có thể bắt đầu, A/B/C đã xong + build sạch
   (CHƯA smoke runtime cả 3 — cần verify tay trước khi coi hoàn tất).
+- [x] **DROP `TC_CapPhongBan`** (2026-07-26, user tự chạy SQL trực tiếp trên Data DB) — bảng gốc db/037
+  đã bị xóa; `DM_CapPhongBan` (thêm cột `MauSac` — db/080) là bảng thật đang dùng cho "Cấp phòng ban".
+  Đã cập nhật `docs/spec/11_DATA_DB_SCHEMA.md`, `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`,
+  `docs/huong-dan-wpf/cau-hinh-quy-tac-sinh-ma.md`, `docs/huong-dan-wpf/cau-hinh-man-danh-muc.md`.
+  Đã sửa 2 chỗ code còn trỏ tên cũ: `Navigation/AppNav.cs` (route → `/view/Grid_DM_CapPhongBan`) và
+  `MaRuleUiText.cs` (dòng ví dụ → `DM_CapPhongBan.Ma`). ⚠️ **CHƯA kiểm tra Config DB** — nếu
+  `Sys_Table`/`Ui_View` vẫn đăng ký base table `TC_CapPhongBan` cho màn danh mục "Cấp phòng ban"
+  (`View_Code=Grid_TC_CapPhongBan`), cần đổi sang `DM_CapPhongBan`/`Grid_DM_CapPhongBan` + config-sync,
+  nếu không màn đó sẽ lỗi "Invalid object name" khi mở.
 
 ## 📋 Roadmap — Shared Data Picker Controls (spec 31, session 87 — 2026-07-16, SPEC DRAFT chờ duyệt)
 
@@ -567,6 +614,7 @@ Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không ph�
 | 035 | Bỏ hẳn `Tenant_Id` | ✅ **HOÀN TẤT** (session 81) | `db/078` đã chạy. Còn lại → mục "🔜 CÒN LẠI sau ADR-035" |
 | 036 | Sinh mã tự động cột `Ma` | ✅ MA-1…MA-8 code xong, build 0/0 cả 3 solution + test 145/145 (2026-07-24). **DB sống lệch schema cũ** (`Pattern`/`Reset_Scope`/`Scope_Column` từ bản thiết kế đã bỏ, chặn mọi Lưu) → `db/090` (2026-07-25) dọn lại đúng schema 089, user đã chạy. Màn WPF "Quy tắc sinh mã"+"Mẫu Lookup" tách list/popup Sửa (Prism dialog), filter-row Contains, double-click, cột "Mã dự kiến" client-side (`MaRulePreviewCalculator`, 1 query tránh N+1), tooltip + hướng dẫn chi tiết trong popup + `docs/huong-dan-wpf/cau-hinh-quy-tac-sinh-ma.md` (session 95) | `db/089`, `db/090`, `db/procs/{fn_GhepMa,sp_SinhMa,sp_XemTruocMa}`, `ICodeRuleCatalog`/`MaCodeGenerator`, endpoint `ma-du-kien`, `MaRuleEditDialog(ViewModel)`, `LookupTemplateEditDialog(ViewModel)`, `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`. ⏳ **Chưa smoke runtime** (chưa bật quy tắc cho bảng nào — user chốt cố ý) |
 | Sec | CORS + JWT SecretKey | ✅ #2/#3 code xong (Program.cs) | #1 (tenant từ claim) đã đóng bằng ADR-018 |
+| 037 | Nhật ký lỗi 500 (`NK_LoiHeThong`) | ✅ code xong, build 0/0 cả 2 solution (BE+Web) + test 145/145 (2026-07-27) | `db/095`, `db/096` **CHƯA chạy DB**; `Infrastructure/Errors/*`, `AdminErrorLogController`, `ErrorLogPage.razor`. ⏳ Chưa smoke runtime (cần chạy 2 migration + trigger 1 lỗi 500 thật) |
 
 > **Quy tắc từ nay:** khi một thay đổi làm ADR nào đó "bắt kịp", cập nhật **bảng này**, không sửa ADR.
 > `/finish-task` có bước nhắc. Nếu buộc phải nhắc tới code trong ADR, **trỏ vào symbol/file cụ thể**
@@ -1097,6 +1145,38 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **AUTHZ-UI-1 (FE)** — Màn Phân quyền `/m/administration/permissions` (route literal ưu tiên hơn ScreenView): chọn vai trò → `DxTreeList` cây + 5 `DxCheckBox` (Xem/Thêm/Sửa/Xóa/In) → PUT lưu. `AdminPermissionApiService` + models + DI + CSS. Build xanh. _(Cascade tick + invalidate cache: TODO)_
 - [x] **AUTHZ-UI-2 (Vai trò)** — Engine MasterData **tự bơm audit** (CreatedBy/At insert · UpdatedBy/At update theo cột tồn tại; userId luồn qua `SaveMasterDataCommand`←claim). `db/047` seed `Sys_Table`/`Sys_Column`/`Ui_Form`/`Ui_Field` cho `HT_VaiTro`; `db/048` nối menu `administration.roles` → `/master/HT_VaiTro` + `DoiTuong`. Build BE xanh. ⏳ chạy db/047 (Config) + db/048 (Data) + restart API.
   - [ ] **AUTHZ-UI-2b (Người dùng)** — `HT_NguoiDung` field nhạy cảm (MatKhauHash/2FA) → màn **bespoke** (đặt mật khẩu đúng cách), KHÔNG form generic. _(sau)_
+
+### Giai đoạn 5 — Mở rộng trục dữ liệu: phạm vi phòng ban (thiết kế 2026-07-25 — CHƯA CODE)
+
+> Mirror 1:1 cơ chế phạm vi công ty (session 87, `e6bc0b8`) nhưng **độc lập hoàn toàn** với trục công ty
+> (không thu hẹp lồng nhau) — chốt với user. Đúng node được gán, **không** tự gộp phòng ban con (khác
+> quy tắc không có sẵn, phải làm rõ vì cây phòng ban là cây thật đa cấp còn cây công ty đa tenant ngang
+> hàng). Không thêm cờ mặc định (`LaMacDinh`) — không cần switcher phòng ban đợt này. **Chưa** đụng
+> `Ui_View.Scope_By_PhongBan` (lọc lưới nghiệp vụ theo `PhongBan_Id`) — để đợt sau khi bảng nghiệp vụ có
+> cột đó; đợt này chỉ hạ tầng bảng + hàm + màn gán quyền.
+
+- [x] **AUTHZ-PB-1** — `db/092_create_ht_vaitro_phongban.sql`: bảng `HT_VaiTro_PhongBan`
+      (`Id, VaiTro_Id→HT_VaiTro, PhongBan_Id→TC_PhongBan` + audit; UNIQUE(VaiTro_Id,PhongBan_Id) WHERE IsDeleted=0;
+      INDEX PhongBan_Id) — mirror `db/082`. Script viết xong, **CHƯA áp vào DB thật**.
+- [x] **AUTHZ-PB-2** — `db/093_create_ht_nguoidung_phongban.sql`: bảng `HT_NguoiDung_PhongBan`
+      (`Id, NguoiDung_Id→HT_NguoiDung, PhongBan_Id→TC_PhongBan` + audit; UNIQUE(NguoiDung_Id,PhongBan_Id)
+      WHERE IsDeleted=0) — mirror `db/037` §HT_NguoiDung_CongTy, **không** cột `LaMacDinh`. **CHƯA áp vào DB thật**.
+- [x] **AUTHZ-PB-3** — `db/094_create_fnt_phongban_theoquyen.sql`: `fnt_PhongBanTheoQuyen(@NguoiDungID)` —
+      union gán riêng ∪ kế thừa vai trò, default-open nếu chưa phân công gì — mirror `db/084`. **CHƯA áp vào DB thật**.
+- [ ] **AUTHZ-PB-APPLY** — ⏳ Chạy 092→093→094 trên Data DB từng tenant (thứ tự bắt buộc: 092/093 trước 094 vì hàm tham chiếu 2 bảng).
+- [x] **AUTHZ-PB-4 (BE)** — `AdminPermissionController` thêm `GET/PUT roles/{roleId}/departments`
+      + `AdminUserController` thêm `GET/PUT users/{id}/departments` — mở rộng `IPermissionAdminRepository`/
+      `PermissionAdminRepository` + `IUserAdminRepository`/`UserAdminRepository` hiện có (không tạo repo
+      mới); 4 CQRS mới (`GetRoleDepartments`/`SaveRoleDepartments`/`GetUserDepartments`/`SaveUserDepartments`);
+      DTO `RoleDepartmentNodeDto`/`UserDepartmentNodeDto`. Compile chưa verify (user tự build).
+- [x] **AUTHZ-PB-5 (FE)** — `IcCompanyPicker` (Shared/Pickers) thêm tham số **`CascadeToChildren`**
+      (mặc định `true` — không đổi hành vi 2 màn công ty hiện có) — `false` cho phòng ban để KHÔNG lan
+      tick xuống con. `UserManagementPage.razor` thêm tab **"Phòng ban truy cập"** (không radio mặc định
+      vì bỏ `LaMacDinh`) cạnh tab "Công ty truy cập"; `PermissionMatrixPage` thêm view **"Phạm vi phòng
+      ban"`. Model mới `RoleDepartmentNodeVm`/`UserDepartmentNodeVm` + `AdminPermissionApiService`/
+      `AdminUserApiService` mở rộng. Compile chưa verify (user tự build).
+- [ ] **AUTHZ-PB-6 (sau)** — `Ui_View.Scope_By_PhongBan` + lọc lưới qua `fnt_PhongBanTheoQuyen` khi bảng
+      nguồn có cột `PhongBan_Id` — mirror `db/087`. Hoãn tới khi có bảng nghiệp vụ cần.
 
 ### Pha sau
 - [ ] `ChucNangCon` (quyền cấp nút) · `Sys_Menu` nhiều bộ menu (Top/Mobile) · `Duyet` cho workflow engine.

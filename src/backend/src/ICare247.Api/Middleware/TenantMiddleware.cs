@@ -88,6 +88,9 @@ public sealed class TenantMiddleware
             ctx.TenantId = tenant.TenantId;
             ctx.ConfigConnectionString = tenant.ConfigConnectionString;
             ctx.DataConnectionString = tenant.DataConnectionString;
+            ctx.AuditConnectionString = string.IsNullOrWhiteSpace(tenant.AuditConnectionString)
+                ? tenant.DataConnectionString
+                : tenant.AuditConnectionString;
         }
 
         _logger.LogDebug("Tenant resolved — TenantId={TenantId}, Path={Path}", tenant.TenantId, path);

@@ -96,6 +96,7 @@ builder.Services.AddScoped<ICare247.UI.Shared.Components.Pickers.IDiaBanPickerSo
 builder.Services.AddScoped<PermissionState>();
 builder.Services.AddScoped<AdminPermissionApiService>();
 builder.Services.AddScoped<AdminUserApiService>();
+builder.Services.AddScoped<AdminErrorLogApiService>();
 builder.Services.AddScoped<MenuAdminApiService>();
 builder.Services.AddScoped<ConfigSyncApiService>();
 builder.Services.AddScoped<CacheAdminApiService>();

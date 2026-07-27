@@ -640,3 +640,34 @@
 - **Liên quan:** `docs/spec/32_SINH_MA_TU_DONG_SPEC.md`; ADR-029 (hook proc + catalog cache), ADR-027 (khuôn
   "cấu hình + proc generic", validate identifier cho dynamic SQL), spec 16 (ConfigSync), spec 12 (cascade —
   mã dự kiến tính lại khi đổi field nguồn).
+
+## ADR-037: Nhật ký lỗi 500 — `NK_LoiHeThong` (Audit DB per-tenant), pipeline ghi ĐƠN GIẢN riêng khỏi audit-trail (2026-07-27)
+- **Context:** toast lỗi 500 chỉ hiện "Đã xảy ra lỗi không mong đợi... (Mã lỗi: fd7af169)" — không có cách nào
+  tra chi tiết (message/stack trace) từ web, phải nhờ dev mở `logs/icare247-*.log` trên server.
+  `Sys_Error_Log` (Config DB) có sẵn trong `docs/spec/02_DATABASE_SCHEMA.md` nhưng **chưa bao giờ được ghi**
+  bởi backend (kiểm chứng: 0 hit `Sys_Error_Log` ngoài spec/schema SQL).
+- **Decision (user chốt qua 3 vòng hỏi):**
+  1. **Bảng mới `NK_LoiHeThong` ở Audit DB per-tenant** (cùng chỗ `NK_NhatKyHoatDong`, `db/095`) — KHÔNG dùng
+     `Sys_Error_Log` (Config DB, sẽ lộ chéo tenant). Archetype "Kỹ thuật/Log" (spec 11 §0.2): không `Ma`/`Ten`/
+     soft-delete/`Ver`.
+  2. **Pipeline ghi CỐ Ý đơn giản hơn audit-trail**, KHÔNG tái dùng Redis Stream/SqlBulkCopy của
+     `AuditQueue`/`AuditBackgroundService`/`AuditNkWriter`: `IErrorLogQueue`/`ErrorLogQueue` (Channel bounded
+     2.000, drop-khi-đầy) → `ErrorLogBackgroundService` → `ErrorLogNkWriter` INSERT trực tiếp từng dòng. Lý do:
+     lỗi 500 hiếm hơn audit event nhiều bậc — tối ưu throughput của audit-trail (Redis Stream, batch
+     SqlBulkCopy) chỉ thêm điểm hỏng cần debug mà không đổi lại gì.
+  3. **Enqueue đúng 1 điểm — nhánh `catch (Exception ex)` chung của `ExceptionHandlingMiddleware`** (500 thật
+     sự không lường trước), KHÔNG ở các nhánh `ValidationException`/`KeyNotFoundException`/
+     `UnauthorizedAccessException`/`MetadataConfigurationException` (đều là luồng nghiệp vụ đã biết, không cần
+     tra "mã lỗi").
+  4. **Không phân trang server cho lưới** — bắt buộc khoảng ngày lọc (mặc định 7 ngày gần nhất) thay vì
+     load-all như lưới View/MasterData ([[project-view-grid-load-all-client]]): bảng log tăng vô hạn theo thời
+     gian, khác danh mục hữu hạn.
+- **Hạ tầng mới kéo theo:** `IAuditDbConnectionFactory`/`AuditDbConnectionFactory` (đọc-side, mirror
+  `IDataDbConnectionFactory`) + `ITenantContext.AuditConnectionString` (set ở `TenantMiddleware`, fallback Data
+  DB khi tenant chưa tách Audit DB riêng) — trước ADR này `ITenantContext` chỉ có Config/Data connection string.
+- **`ITenantContext` vào middleware qua method injection** (`InvokeAsync(HttpContext, ITenantContext)`), không
+  qua constructor: `ExceptionHandlingMiddleware` là singleton (đăng ký 1 lần lúc app khởi động), còn
+  `ITenantContext` là scoped (per-request) — constructor injection sẽ capture instance sai/lỗi runtime.
+- **Neo code:** `db/095_create_nk_loihethong.sql`, `db/096_seed_ht_chucnang_menu_errorlogs.sql`,
+  `IErrorLogQueue`/`ErrorLogQueue`/`ErrorLogBackgroundService`/`ErrorLogNkWriter`
+  (`Infrastructure/Errors/`), `AdminErrorLogController`, `ErrorLogPage.razor`.

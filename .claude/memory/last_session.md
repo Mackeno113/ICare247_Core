@@ -1,16 +1,53 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-25 (session 95 — **tách List/Popup màn WPF "Quy tắc sinh mã" + "Mẫu Lookup"** + fix
-> bug schema drift `Sys_Ma_Rule` (chặn mọi Lưu) + cột "Mã dự kiến" + tooltip/hướng dẫn + UI `FormManagerView`).
+> Cập nhật: 2026-07-27 (session 96 — **màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web** (ADR-037):
+> bảng `NK_LoiHeThong` (Audit DB) + pipeline ghi non-blocking đơn giản (Channel→BackgroundService→INSERT
+> trực tiếp) + `AdminErrorLogController` + `ErrorLogPage.razor`).
 > Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái git: CHƯA commit** (session 95 — chờ user xác nhận message).
+> **Trạng thái git: CHƯA commit** (session 96 — chờ user xác nhận message; session 95 cũng CHƯA commit,
+> gộp chung lần commit tới trừ khi user muốn tách).
 > Trước đó: `master` = `origin/master` tại commit `e1650b3` (session 94, nền `7cbccc0` session 93).
-> **Build session 95: ConfigStudio WPF 0W/0E** (không đụng backend/Web, không build lại).
-> **Task tiếp theo gợi ý:** (1) user tự build ConfigStudio + smoke UI mới (list-only + popup Sửa/Tạo,
-> filter Contains từng cột, double-click, xóa có xác nhận, cột "Mã dự kiến") cho cả 2 màn → (2) smoke
-> sinh mã thật — tạo 1 quy tắc test (`LITERAL`+`SEQ`) qua màn WPF, mở form Thêm mới kiểm mã dự kiến +
-> Lưu kiểm mã nhảy số (bằng chứng peek≠consume) → (3) 4 task bảo mật còn mở trong TASKS.md (nặng nhất:
-> mass assignment ở `InsertAsync`) → (4) màn Phòng ban no-code.
+> **Build session 96:** backend `ICare247.slnx` 0W/0E · Web `ICare247_UI.slnx` 0W/0E (fix 1 lỗi Razor thật:
+> `""` lồng trong attribute `@onclick` → `string.Empty`) · test `ICare247.Application.Tests` 145/145 Passed.
+> ConfigStudio KHÔNG đụng, không build lại.
+> **Task tiếp theo gợi ý:** (1) user chạy `db/095_create_nk_loihethong.sql` (Audit DB) +
+> `db/096_seed_ht_chucnang_menu_errorlogs.sql` (Data DB) rồi build lại API+Web, trigger 1 lỗi 500 thật →
+> xác nhận row lên `NK_LoiHeThong` + hiện đúng trên `/m/administration/error-logs` → (2) user tự build
+> ConfigStudio + smoke UI "Quy tắc sinh mã"/"Mẫu Lookup" (session 95, vẫn CHƯA smoke) → (3) smoke sinh mã
+> thật (session 94, ADR-036) → (4) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở
+> `InsertAsync`) → (5) màn Phòng ban no-code.
+
+## Session 96 (2026-07-27) — Màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web (ADR-037)
+
+**Bối cảnh:** user gửi ảnh chụp toast lỗi 500 chỉ hiện "Đã xảy ra lỗi không mong đợi... (Mã lỗi:
+fd7af169)" — không cách nào tra chi tiết từ web ("thông báo như này không kiểm tra lỗi được"). Điều tra
+thấy `Sys_Error_Log` (Config DB) có sẵn trong spec/schema nhưng **0 hit code ghi vào** — lỗi chỉ nằm ở
+file log server.
+
+**3 vòng hỏi-chốt trước khi code (đúng luật "luôn hỏi trước"):**
+1. Nguồn dữ liệu → **ghi vào DB** (không đọc trực tiếp file log — tránh lộ filesystem qua API).
+2. Vị trí bảng → **Audit DB per-tenant** (không phải Config DB như `Sys_Error_Log` cũ — tránh lộ chéo tenant).
+3. Cơ chế ghi → **đơn giản** (Channel+BackgroundService+INSERT trực tiếp), KHÔNG tái dùng toàn bộ pipeline
+   Redis Stream + SqlBulkCopy của `AuditQueue`/`AuditBackgroundService` — lỗi hiếm hơn audit event nhiều.
+
+**Đã làm — xem chi tiết đầy đủ ở ADR-037 (`architecture_decisions.md`) + TASKS.md:**
+- `db/095_create_nk_loihethong.sql` (bảng `NK_LoiHeThong`, Audit DB) + `db/096_seed_ht_chucnang_menu_errorlogs.sql`
+  (menu `administration.errorlogs`, Data DB, grant SUPERADMIN Xem-only).
+- `IErrorLogQueue`/`ErrorLogQueue`/`ErrorLogBackgroundService`/`ErrorLogNkWriter` (`Infrastructure/Errors/`)
+  + `ExceptionHandlingMiddleware` enqueue ở đúng nhánh `catch(Exception ex)` (500 thật) — `ITenantContext`
+  qua method injection vì middleware là singleton.
+- `IAuditDbConnectionFactory`/`AuditDbConnectionFactory` mới (đọc-side) + `ITenantContext.AuditConnectionString`.
+- `GetErrorLogsQuery`/`GetErrorLogDetailQuery` + `IErrorLogRepository`/`ErrorLogRepository` (Dapper,
+  KHÔNG phân trang server — bắt buộc khoảng ngày lọc mặc định 7 ngày, khác lưới View/MasterData load-all).
+- `AdminErrorLogController` (`/api/v1/admin/error-logs`) + `ErrorLogPage.razor`
+  (`/m/administration/error-logs`, DxGrid + `DraggableModal` chi tiết stack trace, theo skill `icare247-admin-ui`).
+
+**Bug tự bắt lúc build-verify:** `@onclick="() => CopyAsync(_detail.ChiTiet ?? "")"` — `""` (chuỗi rỗng)
+lồng trong attribute Razor làm parser đóng quote sớm (`CS1525`/`CS1026`). Fix: đổi sang `string.Empty`.
+
+**Build `/finish-task` (2026-07-27):** backend 0W/0E · Web 0W/0E · test 145/145 pass. ConfigStudio không
+đụng. **CHƯA chạy `db/095`/`db/096`, CHƯA smoke runtime** — user cần chạy 2 migration rồi trigger 1 lỗi
+500 thật để xác nhận end-to-end.
 
 ## Session 95 (2026-07-25) — Tách List/Popup "Quy tắc sinh mã"/"Mẫu Lookup" + fix schema drift `Sys_Ma_Rule`
 

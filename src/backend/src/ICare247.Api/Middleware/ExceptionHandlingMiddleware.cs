@@ -3,8 +3,10 @@
 // Layer   : Api
 // Purpose : Global exception handler — catch unhandled exceptions → RFC 7807 ProblemDetails.
 
+using System.Security.Claims;
 using System.Text.Json;
 using FluentValidation;
+using ICare247.Application.Interfaces;
 using ICare247.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,6 +20,7 @@ public sealed class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IErrorLogQueue _errorLogQueue;
 
     /// <summary>JSON options cho ProblemDetails response.</summary>
     private static readonly JsonSerializerOptions JsonOpts = new()
@@ -25,13 +28,16 @@ public sealed class ExceptionHandlingMiddleware
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(
+        RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger, IErrorLogQueue errorLogQueue)
     {
         _next = next;
         _logger = logger;
+        _errorLogQueue = errorLogQueue;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    /// <param name="tenant">Method injection (Scoped) — middleware là singleton nên không nhận qua constructor.</param>
+    public async Task InvokeAsync(HttpContext context, ITenantContext tenant)
     {
         try
         {
@@ -103,6 +109,7 @@ public sealed class ExceptionHandlingMiddleware
             // ToDetail(): tóm tắt ngắn gọn — loại lỗi + message + dòng code, không có stack trace dài
             _logger.LogError("Lỗi không xử lý được — Path={Path}\n{Detail}",
                 context.Request.Path, ex.ToDetail());
+            EnqueueErrorLog(context, tenant, ex);
             await WriteProblemDetailsAsync(context, new ProblemDetails
             {
                 Type = "https://icare247.vn/errors/internal",
@@ -113,6 +120,42 @@ public sealed class ExceptionHandlingMiddleware
             });
         }
     }
+
+    /// <summary>
+    /// Enqueue chi tiết lỗi (message + stack trace đầy đủ) vào <see cref="IErrorLogQueue"/> — non-blocking,
+    /// tiến trình nền ghi xuống NK_LoiHeThong để màn Admin tra theo Mã lỗi. KHÔNG ném lỗi.
+    /// </summary>
+    private void EnqueueErrorLog(HttpContext context, ITenantContext tenant, Exception ex)
+    {
+        try
+        {
+            var user = context.User;
+            _errorLogQueue.TryWrite(new ErrorLogEvent
+            {
+                TenantId = tenant.TenantId,
+                CorrelationId = GetCorrelationId(context) ?? "",
+                Source = ex.GetType().FullName,
+                Message = ex.Message,
+                StackDetail = ex.ToString(),
+                Path = context.Request.Path,
+                HttpMethod = context.Request.Method,
+                UserId = ParseUserId(user),
+                Username = user?.FindFirst("unique_name")?.Value ?? user?.Identity?.Name,
+                IpAddress = context.Connection.RemoteIpAddress?.ToString(),
+                Device = Trim(context.Request.Headers.UserAgent.ToString(), 300)
+            });
+        }
+        catch { /* enqueue không bao giờ được làm hỏng response lỗi gốc */ }
+    }
+
+    private static long? ParseUserId(ClaimsPrincipal? user)
+    {
+        var s = user?.FindFirst("sub")?.Value ?? user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return long.TryParse(s, out var id) ? id : null;
+    }
+
+    private static string? Trim(string? s, int max)
+        => string.IsNullOrWhiteSpace(s) ? null : (s.Length > max ? s[..max] : s);
 
     /// <summary>Ghi ProblemDetails JSON vào response.</summary>
     private static async Task WriteProblemDetailsAsync(HttpContext context, ProblemDetails problem)

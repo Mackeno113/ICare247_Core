@@ -1,6 +1,6 @@
 # Project Current Phase
 
-> Cập nhật: 2026-07-18. Lịch sử tiến độ per-session (61→5) + bảng phase đã xong → [project_phase_history.md](project_phase_history.md).
+> Cập nhật: 2026-07-27. Lịch sử tiến độ per-session (61→5) + bảng phase đã xong → [project_phase_history.md](project_phase_history.md).
 > Trạng thái phiên gần nhất → [last_session.md](last_session.md). Việc đang mở đầy đủ → [../../TASKS.md](../../TASKS.md).
 
 ## Roadmap chính (đường tới hạn)
@@ -27,6 +27,9 @@ last_session.md session 88.
 
 ## Đang mở / ad-hoc gần đây (đầy đủ ở TASKS.md)
 
+- **Nhật ký lỗi 500** (ADR-037, session 96 2026-07-27, CHƯA commit) — bảng `NK_LoiHeThong` (Audit DB) +
+  màn Admin `/m/administration/error-logs` tra "Mã lỗi" trên web thay vì mở file log server. Build backend+Web
+  0W/0E, test 145/145. **CHƯA chạy `db/095`/`db/096`, CHƯA smoke runtime.**
 - **Sinh mã tự động cột `Ma`** (spec 32 / ADR-036, session 94 commit `e1650b3` + session 95 2026-07-25
   CHƯA commit) — MA-1…MA-8 code xong; **DB sống lệch schema cũ chặn mọi Lưu → đã fix `db/090`, user đã
   chạy**; màn WPF "Quy tắc sinh mã"/"Mẫu Lookup" tách list/popup + cột "Mã dự kiến" + tooltip/hướng dẫn.

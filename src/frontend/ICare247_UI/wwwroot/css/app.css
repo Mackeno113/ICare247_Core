@@ -355,6 +355,8 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
 .perm-tree { height: calc(100vh - 230px); min-height: 320px; }
 /* Lưới màn Người dùng: GHIM tiêu đề — height global vì CSS isolation không áp root DxGrid. */
 .usr-grid { height: calc(100vh - 230px); min-height: 320px; }
+/* Lưới màn Nhật ký lỗi: GHIM tiêu đề — height global vì CSS isolation không áp root DxGrid. */
+.elog-grid { height: calc(100vh - 280px); min-height: 320px; }
 .cfg-grid { max-height: calc(100vh - 320px); min-height: 160px; }
 .md-list-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
 .md-list-footer { margin-top: 12px; }

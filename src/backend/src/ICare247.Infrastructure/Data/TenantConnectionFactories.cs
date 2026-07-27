@@ -54,3 +54,25 @@ public sealed class DataDbConnectionFactory : IDataDbConnectionFactory
         return new SqlConnection(_tenant.DataConnectionString);
     }
 }
+
+/// <summary>
+/// Factory Audit DB (NK_*) theo tenant của request hiện tại. Connection chưa mở.
+/// </summary>
+public sealed class AuditDbConnectionFactory : IAuditDbConnectionFactory
+{
+    private readonly TenantContext _tenant;
+
+    /// <summary>Khởi tạo với TenantContext scoped của request.</summary>
+    /// <param name="tenant">Context chứa connection string đã phân giải.</param>
+    public AuditDbConnectionFactory(TenantContext tenant) => _tenant = tenant;
+
+    /// <inheritdoc />
+    public IDbConnection CreateConnection()
+    {
+        if (string.IsNullOrWhiteSpace(_tenant.AuditConnectionString))
+            throw new InvalidOperationException(
+                "Audit connection string chưa được phân giải cho request " +
+                "(TenantMiddleware chưa chạy hoặc tenant chưa xác định).");
+        return new SqlConnection(_tenant.AuditConnectionString);
+    }
+}

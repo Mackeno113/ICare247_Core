@@ -5,6 +5,7 @@
 
 using ICare247.Application.Interfaces;
 using ICare247.Infrastructure.Audit;
+using ICare247.Infrastructure.Errors;
 using ICare247.Infrastructure.Auth;
 using ICare247.Application.Files;
 using ICare247.Infrastructure.Caching;
@@ -42,6 +43,7 @@ public static class DependencyInjection
         //   Config DB → IDbConnectionFactory ; Data DB → IDataDbConnectionFactory.
         services.AddScoped<IDbConnectionFactory, ConfigDbConnectionFactory>();
         services.AddScoped<IDataDbConnectionFactory, DataDbConnectionFactory>();
+        services.AddScoped<IAuditDbConnectionFactory, AuditDbConnectionFactory>();
 
         // ── Multi-tenant connection resolver (ADR-018) ───────────────────────
         // Phân giải tenant → cặp connection string từ Catalog DB (cache in-memory).
@@ -165,6 +167,14 @@ public static class DependencyInjection
         services.AddSingleton<IAuditQueue>(_ => new AuditQueue(capacity: 20_000));
         services.AddSingleton<AuditNkWriter>();
         services.AddHostedService<AuditBackgroundService>();
+
+        // ── Error log (nhật ký lỗi 500 — non-blocking) ───────────────────────
+        // Hàng đợi + bộ ghi singleton; tiến trình nền INSERT thẳng NK_LoiHeThong (không Redis —
+        // lỗi hiếm hơn audit trail nhiều). Enqueue trực tiếp từ ExceptionHandlingMiddleware.
+        services.AddSingleton<IErrorLogQueue>(_ => new ErrorLogQueue(capacity: 2_000));
+        services.AddSingleton<ErrorLogNkWriter>();
+        services.AddHostedService<ErrorLogBackgroundService>();
+        services.AddScoped<IErrorLogRepository, ErrorLogRepository>();
 
         // ── OpenTelemetry ─────────────────────────────────────────────────────
         services.AddOpenTelemetry()

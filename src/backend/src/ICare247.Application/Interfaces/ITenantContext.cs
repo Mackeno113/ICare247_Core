@@ -33,4 +33,7 @@ public sealed class TenantContext : ITenantContext
 
     /// <summary>Connection string Data DB của tenant — tương tự ConfigConnectionString.</summary>
     public string DataConnectionString { get; set; } = "";
+
+    /// <summary>Connection string Audit DB của tenant (NK_*) — rỗng thì factory fallback Data DB.</summary>
+    public string AuditConnectionString { get; set; } = "";
 }
