@@ -127,6 +127,30 @@ public sealed class AdminUserApiService
         return resp.IsSuccessStatusCode ? null : await ReadErrorAsync(resp, ct);
     }
 
+    /// <summary>Cây phòng ban + trạng thái quyền của user; lỗi → rỗng.</summary>
+    public async Task<List<UserDepartmentNodeVm>> GetDepartmentsAsync(long id, CancellationToken ct = default)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<UserDepartmentNodeVm>>(
+                $"/api/v1/admin/users/{id}/departments", JsonOpts, ct) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không lấy được cây phòng ban của người dùng {Id}.", id);
+            return [];
+        }
+    }
+
+    /// <summary>Ghi tập phòng ban gán riêng. Null = thành công; khác = thông báo lỗi.</summary>
+    public async Task<string?> SaveDepartmentsAsync(
+        long id, IReadOnlyList<long> phongBanIds, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/v1/admin/users/{id}/departments",
+            new { phongBanIds }, JsonOpts, ct);
+        return resp.IsSuccessStatusCode ? null : await ReadErrorAsync(resp, ct);
+    }
+
     /// <summary>Đọc Detail/Title từ ProblemDetails (RFC 7807) để hiển thị cho admin.</summary>
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage resp, CancellationToken ct)
     {

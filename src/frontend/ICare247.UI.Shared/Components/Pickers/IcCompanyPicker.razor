@@ -6,8 +6,10 @@
     IcCompanyPicker — control cây công ty dùng chung (spec 31 §4.1). 2 chế độ:
     · Single     — dropdown chọn 1 công ty (field form, switcher). AllowAll thêm option
                    "Tất cả công ty" (Value null — semantics @CongTyID_Active = 0).
-    · MultiCheck — cây checkbox WYSIWYG (gán quyền): tick 1 node → áp cùng giá trị xuống
-                   TOÀN NHÁNH con, bỏ tick từng con tùy ý, cha không đổi khi con đổi.
+    · MultiCheck — cây checkbox WYSIWYG (gán quyền): mặc định tick 1 node → áp cùng giá trị xuống
+                   TOÀN NHÁNH con (CascadeToChildren=true, hành vi trục công ty), bỏ tick từng con
+                   tùy ý, cha không đổi khi con đổi. CascadeToChildren=false → chỉ đổi ĐÚNG node
+                   được tick, không đụng con (trục phòng ban — cây thật đa cấp, không tự gộp nhánh).
                    Slot NodeExtra cắm nội dung per-node (radio mặc định, badge…).
     Items null (Single) → tự nạp qua ICompanyPickerSource (host đăng ký DI, /me/companies).
     Node CanAccess=false = tổ tiên giữ cấu trúc cây — mờ, không tương tác.
@@ -108,6 +110,11 @@ else
     /// <summary>MultiCheck: nội dung thêm per-node (radio mặc định, badge…), render sau tên node.</summary>
     [Parameter] public RenderFragment<IcPickerItem>? NodeExtra { get; set; }
 
+    /// <summary>MultiCheck: tick 1 node có lan xuống toàn nhánh con không. Mặc định true (trục công ty
+    /// — nhiều tenant ngang hàng). Đặt false cho cây tổ chức thật đa cấp (phòng ban) — chỉ đúng node
+    /// được tick, không tự gộp con.</summary>
+    [Parameter] public bool CascadeToChildren { get; set; } = true;
+
     [Parameter] public bool Disabled { get; set; }
 
     /// <summary>Class thêm: Single → gắn lên nút toggle (kế thừa style ngoài); MultiCheck → gắn lên root.</summary>
@@ -180,8 +187,9 @@ else
     }
 
     /// <summary>
-    /// MultiCheck WYSIWYG: tick/bỏ tick 1 node → áp cùng giá trị xuống TOÀN NHÁNH con
-    /// (chỉ node CanAccess). Cha không đổi khi con đổi. Bắn SelectedIdsChanged với tập mới.
+    /// MultiCheck WYSIWYG: tick/bỏ tick 1 node. CascadeToChildren=true (mặc định) → áp cùng giá trị
+    /// xuống TOÀN NHÁNH con (chỉ node CanAccess), cha không đổi khi con đổi. CascadeToChildren=false
+    /// → chỉ đổi đúng node này. Bắn SelectedIdsChanged với tập mới.
     /// </summary>
     private async Task ToggleCheckAsync(IcPickerItem node, bool value)
     {
@@ -192,7 +200,7 @@ else
             {
                 if (value) next.Add(n.Id); else next.Remove(n.Id);
             }
-            if (_children.TryGetValue(n.Id, out var kids))
+            if (CascadeToChildren && _children.TryGetValue(n.Id, out var kids))
                 foreach (var k in kids) Apply(k);
         }
         Apply(node);

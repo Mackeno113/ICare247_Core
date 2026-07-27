@@ -3,6 +3,7 @@
   "auth.error.invalidcredentials": "",
   "auth.error.loginfailed": "",
   "auth.error.noserver": "",
+  "common.action.create": "",
   "common.address.detail": "",
   "common.address.detail.hint": "",
   "common.address.province": "",
@@ -11,8 +12,10 @@
   "common.address.ward.placeholder": "",
   "common.company.all": "",
   "common.lang.choose": "",
+  "common.lookup.openList": "",
   "common.picker.company.choose": "",
   "common.picker.company.placeholder": "",
+  "common.picker.more": "",
   "common.picker.noresult": "",
   "common.picker.search": "",
   "error.metadata.noPrimaryKey": ""

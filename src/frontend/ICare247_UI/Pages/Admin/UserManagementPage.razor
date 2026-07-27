@@ -10,6 +10,8 @@
                      lẫn phạm vi công ty kế thừa ĐỘNG (HT_VaiTro_CongTy).
       · Công ty    — cây TC_CongTy checkbox WYSIWYG (tick cha auto-tick nhánh, bỏ tick tự do,
                      lưu đúng những gì đang tick) + radio công ty mặc định + badge "Theo vai trò".
+      · Phòng ban  — cây TC_PhongBan checkbox, trục ĐỘC LẬP với công ty: đúng node được tick,
+                     KHÔNG cascade con (khác tab Công ty) + badge "Theo vai trò". Không có mặc định.
     1 CTA primary hiển thị tại 1 thời điểm (nút Lưu của tab đang mở).
 *@
 
@@ -74,6 +76,8 @@
                         disabled="@IsNew" @onclick="() => _tab = Tab.Roles">@Loc.L("admin.users.tab.roles", "Vai trò")</button>
                 <button class="usr-tab @(_tab == Tab.Companies ? "usr-tab--active" : null)"
                         disabled="@IsNew" @onclick="OpenCompaniesTab">@Loc.L("admin.users.tab.companies", "Công ty truy cập")</button>
+                <button class="usr-tab @(_tab == Tab.Departments ? "usr-tab--active" : null)"
+                        disabled="@IsNew" @onclick="OpenDepartmentsTab">@Loc.L("admin.users.tab.departments", "Phòng ban truy cập")</button>
             </div>
 
             @if (_error is not null)
@@ -254,12 +258,50 @@
                     </button>
                 </div>
             }
+            else if (_tab == Tab.Departments)
+            {
+                <div class="usr-section">
+                    <div class="usr-section__title">@Loc.L("admin.users.section.departments", "Phòng ban được truy cập (gán riêng)")</div>
+                    <div class="usr-hint">@Loc.L("admin.users.departments.hint", "Đúng phòng ban được tick — KHÔNG tự gộp phòng ban con (khác tab Công ty), cần cấp thêm thì tick riêng.")</div>
+                    @if (_departmentItems.Count == 0)
+                    {
+                        <div class="usr-empty">@Loc.L("common.app.loading", "Đang tải...")</div>
+                    }
+                    else
+                    {
+                        <div class="usr-cotree">
+                            <IcCompanyPicker Mode="IcPickerMode.MultiCheck" Items="_departmentItems" CascadeToChildren="false"
+                                             SelectedIds="_selectedDepartmentIds" SelectedIdsChanged="OnDepartmentsChanged">
+                                <NodeExtra Context="node">
+                                    @if (_departmentById.TryGetValue(node.Id, out var vm) && vm.TheoVaiTro)
+                                    {
+                                        <span class="usr-badge usr-badge--role"
+                                              title="@Loc.L("admin.users.companies.byrole.tip", "Kế thừa từ vai trò — sửa ở màn Phân quyền")">
+                                            @Loc.L("admin.users.companies.byrole", "Theo vai trò")
+                                        </span>
+                                    }
+                                </NodeExtra>
+                            </IcCompanyPicker>
+                        </div>
+                    }
+                </div>
+                <div class="usr-footer">
+                    <button class="usr-btn-ghost" disabled="@_saving" @onclick="ClearAllDepartments"
+                            title="@Loc.L("admin.users.companies.clear.tip", "Bỏ toàn bộ gán riêng — quyền theo vai trò vẫn giữ")">
+                        @Loc.L("admin.users.companies.clear", "Bỏ hết gán riêng")
+                    </button>
+                    <span class="usr-spacer"></span>
+                    <button class="usr-btn-primary" disabled="@_saving" @onclick="SaveDepartmentsAsync">
+                        @(_saving ? Loc.L("common.btn.saving", "Đang lưu…") : Loc.L("common.btn.save", "Lưu"))
+                    </button>
+                </div>
+            }
         }
     </div>
 </div>
 
 @code {
-    private enum Tab { Info, Roles, Companies }
+    private enum Tab { Info, Roles, Companies, Departments }
 
     private List<UserListVm> _users = [];
     private UserDetailVm? _detail;
@@ -267,6 +309,9 @@
     private Dictionary<long, UserCompanyNodeVm> _companyById = [];
     private HashSet<long> _selectedCompanyIds = [];
     private long? _macDinhId;
+    private List<IcPickerItem> _departmentItems = [];
+    private Dictionary<long, UserDepartmentNodeVm> _departmentById = [];
+    private HashSet<long> _selectedDepartmentIds = [];
 
     private Tab _tab = Tab.Info;
     private string _search = "";
@@ -321,16 +366,18 @@
         _tab = Tab.Info;
         _newPassword = "";
         _companyItems = [];
+        _departmentItems = [];
         _detail = await Api.GetUserAsync(id);
     }
 
-    /// <summary>Bắt đầu tạo user mới (tab Vai trò/Công ty mở sau khi lưu lần đầu).</summary>
+    /// <summary>Bắt đầu tạo user mới (tab Vai trò/Công ty/Phòng ban mở sau khi lưu lần đầu).</summary>
     private void NewUser()
     {
         ResetMessages();
         _tab = Tab.Info;
         _newPassword = "";
         _companyItems = [];
+        _departmentItems = [];
         _detail = new UserDetailVm();
     }
 
@@ -406,8 +453,9 @@
         if (_error is null)
         {
             await LoadUsersAsync();
-            // Vai trò đổi → quyền công ty kế thừa đổi theo → nạp lại cây nếu đã mở.
+            // Vai trò đổi → quyền công ty/phòng ban kế thừa đổi theo → nạp lại cây nếu đã mở.
             if (_companyItems.Count > 0) await LoadCompaniesAsync();
+            if (_departmentItems.Count > 0) await LoadDepartmentsAsync();
             _saved = true;
         }
         _saving = false;
@@ -458,6 +506,49 @@
         var ids = _selectedCompanyIds.ToList();
         var macDinh = _macDinhId is { } d && ids.Contains(d) ? _macDinhId : null;
         _error = await Api.SaveCompaniesAsync(_detail.Id, ids, macDinh);
+        if (_error is null) _saved = true;
+        _saving = false;
+    }
+
+    /// <summary>Mở tab Phòng ban truy cập — nạp cây lần đầu.</summary>
+    private async Task OpenDepartmentsTab()
+    {
+        _tab = Tab.Departments;
+        ResetMessages();
+        if (_departmentItems.Count == 0) await LoadDepartmentsAsync();
+    }
+
+    /// <summary>Nạp cây phòng ban của user → map sang node picker (KHÔNG cascade — trục độc lập).</summary>
+    private async Task LoadDepartmentsAsync()
+    {
+        if (_detail is null || IsNew) return;
+        var departments = await Api.GetDepartmentsAsync(_detail.Id);
+        _departmentById = departments.ToDictionary(d => d.Id);
+        _departmentItems = departments.Select(d => new IcPickerItem(d.Id, d.Ma, d.Ten, d.ParentId)).ToList();
+        _selectedDepartmentIds = departments.Where(d => d.GanRieng).Select(d => d.Id).ToHashSet();
+    }
+
+    /// <summary>Nhận tập tick mới từ picker (KHÔNG cascade — đúng node được gán).</summary>
+    private void OnDepartmentsChanged(IReadOnlyCollection<long> ids)
+    {
+        _saved = false;
+        _selectedDepartmentIds = [.. ids];
+    }
+
+    /// <summary>Bỏ toàn bộ gán riêng phòng ban (quyền kế thừa theo vai trò không bị đụng).</summary>
+    private void ClearAllDepartments()
+    {
+        _saved = false;
+        _selectedDepartmentIds = [];
+    }
+
+    /// <summary>Lưu tab Phòng ban: gửi đúng tập node đang tick.</summary>
+    private async Task SaveDepartmentsAsync()
+    {
+        if (_detail is null || IsNew) return;
+        ResetMessages();
+        _saving = true;
+        _error = await Api.SaveDepartmentsAsync(_detail.Id, _selectedDepartmentIds.ToList());
         if (_error is null) _saved = true;
         _saving = false;
     }

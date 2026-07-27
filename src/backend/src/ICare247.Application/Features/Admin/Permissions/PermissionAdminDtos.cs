@@ -37,3 +37,12 @@ public sealed record SavePermItem(long ChucNangId, bool Xem, bool Them, bool Sua
 /// <param name="ParentId">CongTy_Cha_Id (null = gốc) — client dựng cây.</param>
 /// <param name="DaGan">Công ty đang thuộc phạm vi của vai trò.</param>
 public sealed record RoleCompanyNodeDto(long Id, string? Ma, string Ten, long? ParentId, bool DaGan);
+
+/// <summary>
+/// Một node cây phòng ban ở phần "Phạm vi phòng ban" của màn Phân quyền: toàn bộ cây TC_PhongBan
+/// + cờ đã gán vào vai trò (HT_VaiTro_PhongBan). Trục ĐỘC LẬP với phạm vi công ty ở trên — không
+/// thu hẹp lồng nhau dù mỗi phòng ban thuộc đúng 1 công ty. Đúng node được gán, KHÔNG tự gộp con.
+/// </summary>
+/// <param name="ParentId">PhongBan_Cha_Id (null = gốc trong công ty) — client dựng cây.</param>
+/// <param name="DaGan">Phòng ban đang thuộc phạm vi của vai trò.</param>
+public sealed record RoleDepartmentNodeDto(long Id, string? Ma, string Ten, long? ParentId, bool DaGan);

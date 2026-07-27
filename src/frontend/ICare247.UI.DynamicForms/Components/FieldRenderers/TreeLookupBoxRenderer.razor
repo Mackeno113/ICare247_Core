@@ -52,7 +52,7 @@
     {
         <div class="lookupbox-popup treelookup-popup"
              @ref="_popupRef"
-             style="width:@(State?.LookupConfig?.DropDownWidth ?? 500)px">
+             data-cap-width="true">
 
             @* Tree content *@
             @if (_loading)

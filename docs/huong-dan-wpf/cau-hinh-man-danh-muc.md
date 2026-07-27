@@ -82,7 +82,7 @@
 
 | Loại | Khác biệt |
 |---|---|
-| **ĐVT / Ngân hàng / Cấp phòng ban / Quốc gia** (phẳng) | Y hệt ví dụ. Đổi tên bảng + `View_Code` = `Grid_DM_DonViTinh` / `Grid_DM_NganHang` / `Grid_TC_CapPhongBan` / `Grid_DM_QuocGia`. |
+| **ĐVT / Ngân hàng / Cấp phòng ban / Quốc gia** (phẳng) | Y hệt ví dụ. Đổi tên bảng + `View_Code` = `Grid_DM_DonViTinh` / `Grid_DM_NganHang` / `Grid_DM_CapPhongBan` / `Grid_DM_QuocGia`. |
 | **Tỉnh/TP, Phường/Xã** (có FK) | Lưới dạng **tham chiếu** — hướng dẫn riêng đầy đủ: [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md). Tóm tắt: Bước 1 đăng ký **VIEW** (`vw_DM_TinhThanhPho` / `vw_DM_PhuongXa`) làm **nguồn lưới** + **TABLE** làm nguồn form; Bước 2 form thêm **LookupBox** (Tỉnh→Quốc gia; Phường/Xã→Tỉnh, cascade). Cần chạy `db/052` trước. |
 | **Công ty** (cây) | Hướng dẫn riêng đầy đủ: [cau-hinh-man-cong-ty.md](cau-hinh-man-cong-ty.md). Tóm tắt: đăng ký `vw_TC_CongTy` (lưới) + `TC_CongTy` (form); **View_Type = TreeList**, `View_Code = Tree_TC_CongTy`, **Key = Id**, **Parent = CongTy_Cha_Id**; 4 LookupBox Cấp/Phường-Xã/Ngân hàng/Công ty cha. |
 

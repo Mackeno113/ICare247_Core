@@ -141,7 +141,7 @@ public static class MaRuleUiText
     public const string DetailGuideExampleBody =
         "1) LOOKUP: CongTy_Id → TC_CongTy.Ma → 'CT01'\n"
         + "2) LITERAL: '-'\n"
-        + "3) LOOKUP: Cap_Id → TC_CapPhongBan.Ma → 'PHONG'\n"
+        + "3) LOOKUP: Cap_Id → DM_CapPhongBan.Ma → 'PHONG'\n"
         + "4) LITERAL: '-'\n"
         + "5) SEQ: Độ rộng=3, đệm '0' → '007'";
     public const string DetailGuideScope =

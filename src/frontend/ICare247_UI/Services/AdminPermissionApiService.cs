@@ -89,4 +89,28 @@ public sealed class AdminPermissionApiService
             new { congTyIds }, JsonOpts, ct);
         return resp.IsSuccessStatusCode;
     }
+
+    /// <summary>Cây phòng ban + cờ đã gán của vai trò (trục độc lập với công ty); lỗi → rỗng.</summary>
+    public async Task<List<RoleDepartmentNodeVm>> GetRoleDepartmentsAsync(long roleId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await _http.GetFromJsonAsync<List<RoleDepartmentNodeVm>>(
+                $"/api/v1/admin/roles/{roleId}/departments", JsonOpts, ct) ?? [];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không lấy được phạm vi phòng ban của vai trò {RoleId}.", roleId);
+            return [];
+        }
+    }
+
+    /// <summary>Lưu tập phòng ban của vai trò (kế thừa động — user thuộc vai trò áp ngay).</summary>
+    public async Task<bool> SaveRoleDepartmentsAsync(
+        long roleId, IReadOnlyList<long> phongBanIds, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync($"/api/v1/admin/roles/{roleId}/departments",
+            new { phongBanIds }, JsonOpts, ct);
+        return resp.IsSuccessStatusCode;
+    }
 }

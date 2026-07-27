@@ -153,7 +153,7 @@ public static class AppNav
             new("don-vi-tinh",   "Đơn vị tính",     Route: "/view/Grid_DM_DonViTinh"),
             new("ngan-hang",     "Ngân hàng",       Route: "/view/Grid_DM_NganHang"),
             new("cap-cong-ty",   "Cấp công ty",     Route: "/view/Grid_TC_CapCongTy"),
-            new("cap-phong-ban", "Cấp phòng ban",   Route: "/view/Grid_TC_CapPhongBan"),
+            new("cap-phong-ban", "Cấp phòng ban",   Route: "/view/Grid_DM_CapPhongBan"),
         }),
         new("administration", "Quản trị hệ thống", "system", "sliders", new List<NavScreen>
         {

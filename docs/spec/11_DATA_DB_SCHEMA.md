@@ -166,14 +166,17 @@ qua **chuỗi code** (vd `TrangThai='HoatDong'`) + resolve ở tầng app.
 | Ten | nvarchar(100) | NOT NULL | Tên cấp |
 | ThuTu | int | NOT NULL DEFAULT 0 | Thứ tự/độ sâu gợi ý |
 
-### TC_CapPhongBan
-> Danh mục **cấp phòng ban** (vd: Khối / Phòng / Tổ / Nhóm).
+### DM_CapPhongBan
+> Danh mục **cấp phòng ban** (vd: Khối / Phòng / Tổ / Nhóm). Chuyển từ tiền tố `TC_` sang `DM_`
+> (danh mục dùng chung, không đặc thù tổ chức) — bảng `TC_CapPhongBan` gốc (db/037) đã **DROP** khỏi
+> Data DB, `DM_CapPhongBan` là bảng thật đang dùng (thêm cột `MauSac` — db/080).
 
 | Column | Type | Constraint | Mô tả |
 |---|---|---|---|
 | Ma | nvarchar(20) | UNIQUE NOT NULL | 'KHOI', 'PHONG', 'TO', 'NHOM' |
 | Ten | nvarchar(100) | NOT NULL | Tên cấp |
 | ThuTu | int | NOT NULL DEFAULT 0 | |
+| MauSac | int | NULL | Màu hiển thị (ARGB) dùng chung cho mọi phòng ban cùng cấp — db/080 |
 
 ### TC_CongTy  🌳 *(cây 1)*
 > Cây công ty đa cấp. `CongTy_Cha_Id` = NULL → gốc (tập đoàn/tổng công ty).
@@ -211,7 +214,7 @@ qua **chuỗi code** (vd `TrangThai='HoatDong'`) + resolve ở tầng app.
 | TenVietTat | nvarchar(100) | NULL | |
 | PhongBan_Cha_Id | bigint | NULL FK→TC_PhongBan (self) | NULL = gốc |
 | CongTy_Id | bigint | NOT NULL FK→TC_CongTy | Thuộc công ty nào |
-| CapPhongBan_Id | bigint | NOT NULL FK→TC_CapPhongBan | Cấp phòng ban |
+| CapPhongBan_Id | bigint | NOT NULL FK→DM_CapPhongBan | Cấp phòng ban |
 | TruongDonVi_Id | bigint | NULL FK→HT_NguoiDung | Trưởng phòng/đơn vị |
 | DienThoai | nvarchar(50) | NULL | |
 | Email | nvarchar(150) | NULL | |
@@ -238,9 +241,8 @@ qua **chuỗi code** (vd `TrangThai='HoatDong'`) + resolve ở tầng app.
 | TenDangNhap | nvarchar(100) | UNIQUE NOT NULL | Username đăng nhập |
 | LoaiTaiKhoan | nvarchar(20) | NOT NULL DEFAULT 'Local' | Enum HT: 'Local'/'AD'/'SSO'/'Portal' (label qua i18n shell) |
 | MatKhauHash | nvarchar(256) | NULL | Hash PBKDF2 (`PasswordHasher<T>`, gồm salt+version). **NULL khi AD/SSO** (xác thực ngoài) |
-| NhanVien_Id | bigint | NULL* | → `NS_NhanVien` — **mỗi tài khoản gắn đúng 1 nhân viên**; `HoTen`/`Email`/`DienThoai`/ảnh lấy qua đây (KHÔNG lưu trùng ở tài khoản). `*` nullable tạm ở đợt nền tảng → siết **NOT NULL + FK + UNIQUE** ở đợt `NS_` (trừ tài khoản hệ thống bootstrap, xem §6.7) |
+| NhanVien_Id | bigint | NULL* | → `NS_NhanVien` — **mỗi tài khoản gắn đúng 1 nhân viên**; `HoTen`/`Email`/`DienThoai`/ảnh/**PhongBan** lấy qua đây (KHÔNG lưu trùng ở tài khoản — `PhongBan_Id` đã bỏ khỏi bảng này, xem migration 091). `*` nullable tạm ở đợt nền tảng → siết **NOT NULL + FK + UNIQUE** ở đợt `NS_` (trừ tài khoản hệ thống bootstrap, xem §6.7) |
 | CongTyMacDinh_Id | bigint | NULL FK→TC_CongTy | Công ty mặc định khi đăng nhập |
-| PhongBan_Id | bigint | NULL FK→TC_PhongBan | Phòng ban trực thuộc (có thể suy từ NhanVien) |
 | TrangThai | nvarchar(20) | NOT NULL DEFAULT 'HoatDong' | Enum HT: HoatDong/TamKhoa/NgungHoatDong (label qua i18n shell) |
 | LaQuanTri | bit | NOT NULL DEFAULT 0 | Super-admin tenant (bỏ qua check quyền) |
 | KichHoatMobile | bit | NOT NULL DEFAULT 0 | Cho phép đăng nhập app mobile |
@@ -361,15 +363,14 @@ DM_QuocGia ──< DM_TinhThanhPho ──< DM_PhuongXa
 TC_CapCongTy ──< TC_CongTy >── PhuongXa / DM_NganHang   (Tỉnh suy qua PhuongXa)
                   │  └─(self) CongTy_Cha
                   │
-TC_CapPhongBan ─< TC_PhongBan >── CongTy_Id
-                     └─(self) PhongBan_Cha   └── TruongDonVi ──> HT_NguoiDung
+DM_CapPhongBan ─< TC_PhongBan >── CongTy_Id
+                     └─(self) PhongBan_Cha
 
 HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quyen >── HT_ChucNang (self tree)
      ├──< HT_NguoiDung_CongTy >── TC_CongTy
      ├──< HT_RefreshToken
-     ├── NhanVien ──> NS_NhanVien  (đợt NS_; bắt buộc — HoTen/Email/ĐT/ảnh lấy qua đây)
-     ├── CongTyMacDinh ──> TC_CongTy
-     └── PhongBan ──> TC_PhongBan
+     ├── NhanVien ──> NS_NhanVien  (đợt NS_; bắt buộc — HoTen/Email/ĐT/ảnh/PhongBan lấy qua đây)
+     └── CongTyMacDinh ──> TC_CongTy
 ```
 
 ---
@@ -378,8 +379,8 @@ HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quy
 
 | Nhóm | Số bảng | Bảng |
 |---|---|---|
-| `DM_` | 5 | QuocGia, TinhThanhPho, PhuongXa, DonViTinh, NganHang |
-| `TC_` | 4 | CapCongTy, CapPhongBan, CongTy, PhongBan |
+| `DM_` | 6 | QuocGia, TinhThanhPho, PhuongXa, DonViTinh, NganHang, CapPhongBan |
+| `TC_` | 3 | CapCongTy, CongTy, PhongBan |
 | `HT_` | 7 | NguoiDung, VaiTro, NguoiDung_VaiTro, ChucNang, VaiTro_Quyen, NguoiDung_CongTy, RefreshToken |
 | **Tổng** | **16** | |
 

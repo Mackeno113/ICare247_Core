@@ -350,15 +350,28 @@ public sealed class FkLookupConfigVm : BindableBase
     private bool _lookupTemplatesLoaded;
 
     private LookupTemplateRecord _selectedLookupTemplate = NoTemplate;
-    /// <summary>Mẫu đang chọn. Đổi mẫu → dựng lại lưới map tham số từ Canonical_Params.</summary>
-    public LookupTemplateRecord SelectedLookupTemplate
+    /// <summary>Mẫu đang chọn (đọc) — ghi qua <see cref="SelectedTemplateCode"/>.</summary>
+    public LookupTemplateRecord SelectedLookupTemplate => _selectedLookupTemplate;
+
+    /// <summary>
+    /// Template_Code đang chọn — target binding EditValue của ComboBoxEdit (kèm ValueMember="TemplateCode").
+    /// DevExpress ComboBoxEdit khi IsTextEditable=True (ADR-031) cần EditValue kiểu scalar khớp
+    /// ValueMember; bind thẳng EditValue vào object phức tạp (LookupTemplateRecord) không commit
+    /// được lúc chọn item (hiện icon lỗi đỏ) — cùng lý do SelectedItem trước đó cũng không ăn.
+    /// </summary>
+    public string SelectedTemplateCode
     {
-        get => _selectedLookupTemplate;
+        get => _selectedLookupTemplate.TemplateCode;
         set
         {
-            if (!SetProperty(ref _selectedLookupTemplate, value ?? NoTemplate)) return;
+            var match = LookupTemplates.FirstOrDefault(
+                t => t.TemplateCode.Equals(value ?? "", StringComparison.OrdinalIgnoreCase)) ?? NoTemplate;
+            if (ReferenceEquals(_selectedLookupTemplate, match)) return;
+            _selectedLookupTemplate = match;
             _root.IsDirty = true;
             RebuildTemplateParamRows(existingParamMapJson: null);
+            RaisePropertyChanged(nameof(SelectedTemplateCode));
+            RaisePropertyChanged(nameof(SelectedLookupTemplate));
             RaisePropertyChanged(nameof(IsLookupTemplateSelected));
             RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));
         }
@@ -476,6 +489,7 @@ public sealed class FkLookupConfigVm : BindableBase
         var (code, paramMap) = await _fieldService.GetFieldLookupTemplateAsync(fieldId, ct);
         _selectedLookupTemplate = LookupTemplates.FirstOrDefault(
             t => t.TemplateCode.Equals(code ?? "", StringComparison.OrdinalIgnoreCase)) ?? NoTemplate;
+        RaisePropertyChanged(nameof(SelectedTemplateCode));
         RaisePropertyChanged(nameof(SelectedLookupTemplate));
         RaisePropertyChanged(nameof(IsLookupTemplateSelected));
         RaisePropertyChanged(nameof(SelectedLookupTemplateMoTa));

@@ -41,3 +41,14 @@ public sealed record UserRoleItemDto(long Id, string Ma, string Ten, string? MoT
 public sealed record UserCompanyNodeDto(
     long Id, string? Ma, string Ten, long? ParentId,
     bool GanRieng, bool TheoVaiTro, bool LaMacDinh);
+
+/// <summary>
+/// Một node cây phòng ban ở tab "Phòng ban truy cập": toàn bộ cây TC_PhongBan + trạng thái quyền
+/// hiện tại của user. Quyền hiệu lực = GanRieng ∪ TheoVaiTro (kế thừa động, chỉ hiển thị). Trục
+/// ĐỘC LẬP với "Công ty truy cập" — không có khái niệm mặc định (không LaMacDinh).
+/// </summary>
+/// <param name="GanRieng">Có dòng gán trực tiếp HT_NguoiDung_PhongBan (admin tick/bỏ tick được).</param>
+/// <param name="TheoVaiTro">Được kế thừa từ ít nhất 1 vai trò (readonly — sửa ở màn vai trò).</param>
+public sealed record UserDepartmentNodeDto(
+    long Id, string? Ma, string Ten, long? ParentId,
+    bool GanRieng, bool TheoVaiTro);

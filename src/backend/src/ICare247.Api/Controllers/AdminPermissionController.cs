@@ -7,9 +7,11 @@
 using ICare247.Api.Authorization;
 using ICare247.Application.Features.Admin.Permissions;
 using ICare247.Application.Features.Admin.Permissions.GetRoleCompanies;
+using ICare247.Application.Features.Admin.Permissions.GetRoleDepartments;
 using ICare247.Application.Features.Admin.Permissions.GetRolePermissions;
 using ICare247.Application.Features.Admin.Permissions.GetRoles;
 using ICare247.Application.Features.Admin.Permissions.SaveRoleCompanies;
+using ICare247.Application.Features.Admin.Permissions.SaveRoleDepartments;
 using ICare247.Application.Features.Admin.Permissions.SaveRolePermissions;
 using ICare247.Application.Interfaces;
 using MediatR;
@@ -78,6 +80,27 @@ public sealed class AdminPermissionController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Cây phòng ban + cờ đã gán của 1 vai trò (trục độc lập với công ty).</summary>
+    /// <remarks>GET /api/v1/admin/roles/{roleId}/departments</remarks>
+    [HttpGet("roles/{roleId:long}/departments")]
+    [RequirePermission("administration.permissions", PermissionOp.Xem)]
+    public async Task<IActionResult> GetRoleDepartments(long roleId, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new GetRoleDepartmentsQuery(roleId), ct));
+
+    /// <summary>Ghi lại tập phòng ban của vai trò (WYSIWYG từ cây checkbox, không cascade con).</summary>
+    /// <remarks>PUT /api/v1/admin/roles/{roleId}/departments</remarks>
+    [HttpPut("roles/{roleId:long}/departments")]
+    [RequirePermission("administration.permissions", PermissionOp.Sua)]
+    public async Task<IActionResult> SaveRoleDepartments(
+        long roleId, [FromBody] SaveRoleDepartmentsRequest body, CancellationToken ct = default)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        await _mediator.Send(new SaveRoleDepartmentsCommand(roleId, body.PhongBanIds ?? [], userId.Value), ct);
+        return NoContent();
+    }
+
     private long? GetUserId()
     {
         var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
@@ -97,4 +120,11 @@ public sealed class SaveRoleCompaniesRequest
 {
     /// <summary>Toàn bộ CongTy_Id thuộc vai trò sau khi lưu.</summary>
     public List<long>? CongTyIds { get; set; }
+}
+
+/// <summary>Body PUT lưu phạm vi phòng ban của vai trò.</summary>
+public sealed class SaveRoleDepartmentsRequest
+{
+    /// <summary>Toàn bộ PhongBan_Id thuộc vai trò sau khi lưu.</summary>
+    public List<long>? PhongBanIds { get; set; }
 }

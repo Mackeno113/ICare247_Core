@@ -76,7 +76,7 @@ Mã hoàn chỉnh = ghép các **đoạn** trong lưới theo đúng thứ tự 
 |---|---|---|---|
 | 1 | `LOOKUP` | `CongTy_Id` → tra `TC_CongTy.Ma` | `CT01` |
 | 2 | `LITERAL` | `'-'` | `-` |
-| 3 | `LOOKUP` | `Cap_Id` → tra `TC_CapPhongBan.Ma` | `PHONG` |
+| 3 | `LOOKUP` | `Cap_Id` → tra `DM_CapPhongBan.Ma` | `PHONG` |
 | 4 | `LITERAL` | `'-'` | `-` |
 | 5 | `SEQ` | Độ rộng = 3, đệm `'0'` | `007` |
 

@@ -53,4 +53,14 @@ public interface IUserAdminRepository
     Task SaveUserCompaniesAsync(
         long id, IReadOnlyList<long> congTyIds, long? macDinhCongTyId, long actorId,
         CancellationToken ct = default);
+
+    /// <summary>Toàn bộ cây phòng ban + trạng thái quyền (gán riêng / theo vai trò) của user.</summary>
+    Task<IReadOnlyList<UserDepartmentNodeDto>> GetUserDepartmentsAsync(long id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Ghi lại tập phòng ban GÁN RIÊNG của user (thêm thiếu, xóa mềm thừa), 1 transaction.
+    /// Không có khái niệm mặc định (khác công ty) — không đụng quyền kế thừa theo vai trò.
+    /// </summary>
+    Task SaveUserDepartmentsAsync(
+        long id, IReadOnlyList<long> phongBanIds, long actorId, CancellationToken ct = default);
 }

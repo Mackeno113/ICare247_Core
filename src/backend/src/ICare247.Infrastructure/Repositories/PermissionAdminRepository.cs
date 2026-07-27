@@ -157,4 +157,69 @@ public sealed class PermissionAdminRepository : IPermissionAdminRepository
         }, tx, cancellationToken: ct));
         tx.Commit();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RoleDepartmentNodeDto>> GetRoleDepartmentsAsync(
+        long roleId, CancellationToken ct = default)
+    {
+        // Toàn bộ cây phòng ban active + cờ đã gán. OBJECT_ID guard — tenant chưa chạy db/092
+        // thì mọi node DaGan=0 (màn vẫn mở được, lưu sẽ tạo dòng mới sau khi migrate).
+        const string sql = """
+            IF OBJECT_ID('dbo.HT_VaiTro_PhongBan', 'U') IS NOT NULL
+            BEGIN
+                SELECT p.Id, p.Ma, p.Ten, p.PhongBan_Cha_Id AS ParentId,
+                       CAST(CASE WHEN vp.Id IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS DaGan
+                FROM dbo.TC_PhongBan p
+                LEFT JOIN dbo.HT_VaiTro_PhongBan vp
+                     ON vp.PhongBan_Id = p.Id AND vp.VaiTro_Id = @RoleId AND vp.IsDeleted = 0
+                WHERE p.IsDeleted = 0
+                ORDER BY p.Ten;
+            END
+            ELSE
+            BEGIN
+                SELECT p.Id, p.Ma, p.Ten, p.PhongBan_Cha_Id AS ParentId, CAST(0 AS BIT) AS DaGan
+                FROM dbo.TC_PhongBan p
+                WHERE p.IsDeleted = 0
+                ORDER BY p.Ten;
+            END
+            """;
+        using var conn = _db.CreateConnection();
+        var rows = await conn.QueryAsync<RoleDepartmentNodeDto>(
+            new CommandDefinition(sql, new { RoleId = roleId }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task SaveRoleDepartmentsAsync(
+        long roleId, IReadOnlyList<long> phongBanIds, long userId, CancellationToken ct = default)
+    {
+        // Diff tập phòng ban của vai trò: xóa mềm dòng thừa, insert dòng thiếu — 1 transaction.
+        const string sql = """
+            DECLARE @ids TABLE (Id BIGINT PRIMARY KEY);
+            INSERT INTO @ids (Id)
+            SELECT DISTINCT value FROM OPENJSON(@PhongBanIdsJson) WITH (value BIGINT '$');
+
+            UPDATE vp
+            SET vp.IsDeleted = 1, vp.UpdatedBy = @UserId, vp.UpdatedAt = SYSUTCDATETIME(), vp.Ver = vp.Ver + 1
+            FROM dbo.HT_VaiTro_PhongBan vp
+            WHERE vp.VaiTro_Id = @RoleId AND vp.IsDeleted = 0
+              AND NOT EXISTS (SELECT 1 FROM @ids i WHERE i.Id = vp.PhongBan_Id);
+
+            INSERT INTO dbo.HT_VaiTro_PhongBan (VaiTro_Id, PhongBan_Id, CreatedBy, CreatedAt)
+            SELECT @RoleId, i.Id, @UserId, SYSUTCDATETIME()
+            FROM @ids i
+            WHERE NOT EXISTS (SELECT 1 FROM dbo.HT_VaiTro_PhongBan vp
+                              WHERE vp.VaiTro_Id = @RoleId AND vp.PhongBan_Id = i.Id AND vp.IsDeleted = 0);
+            """;
+        using var conn = _db.CreateConnection();
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        await conn.ExecuteAsync(new CommandDefinition(sql, new
+        {
+            RoleId = roleId,
+            PhongBanIdsJson = System.Text.Json.JsonSerializer.Serialize(phongBanIds),
+            UserId = userId
+        }, tx, cancellationToken: ct));
+        tx.Commit();
+    }
 }

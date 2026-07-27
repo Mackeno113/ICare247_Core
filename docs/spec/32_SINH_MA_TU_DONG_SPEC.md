@@ -106,7 +106,7 @@ Bảng Config DB → cột **tiếng Anh**, tiền tố `Sys_`, **không** khố
 |---|---|---|---|
 | 1 | `LOOKUP` | `CongTy_Id` → `TC_CongTy.Ma` | `CT01` |
 | 2 | `LITERAL` | `-` | `-` |
-| 3 | `LOOKUP` | `Cap_Id` → `TC_CapPhongBan.Ma` | `PHONG` |
+| 3 | `LOOKUP` | `Cap_Id` → `DM_CapPhongBan.Ma` | `PHONG` |
 | 4 | `LITERAL` | `-` | `-` |
 | 5 | `SEQ` | `Length = 3`, `Pad = '0'` | `007` |
 
@@ -372,7 +372,7 @@ Khi mở form mới: vừa gọi `ma-du-kien` để điền `Ma`, vừa có th�
 | `DM_DonViTinh` | `KG`, `CAI`, `THUNG` | ❌ không bật |
 | `DM_NganHang` | `VCB`, `BIDV` | ❌ không bật |
 | `DM_TinhThanhPho` / `DM_PhuongXa` | mã hành chính nhà nước | ❌ không bật |
-| `TC_CapCongTy` / `TC_CapPhongBan` | `TONGCT`, `KHOI`, `PHONG` — mã ngữ nghĩa cố định | ❌ không bật |
+| `TC_CapCongTy` / `DM_CapPhongBan` | `TONGCT`, `KHOI`, `PHONG` — mã ngữ nghĩa cố định | ❌ không bật |
 | `TC_CongTy`, `TC_PhongBan`, `HT_NguoiDung` | mã nội bộ do khách tự đặt | ✅ **ứng viên** (chưa bật đợt này) |
 
 ---

@@ -197,8 +197,18 @@
                 popup.style.zIndex   = '3000';   // nổi trên modal
                 var place = function () {
                     var r = anchor.getBoundingClientRect();
-                    // Mặc định bề rộng popup = bề rộng control (huỷ min-width:100% vốn = bề rộng body khi ở body).
-                    popup.style.minWidth = r.width + 'px';
+                    if (popup.dataset.capWidth === 'true') {
+                        // Popup 1 cột (vd TreeLookupBox): rộng KHÔNG vượt control, sàn 300px cho tên dài
+                        // (label tự wrap xuống dòng thay vì đẩy popup rộng ra — xem .tree-label CSS).
+                        // minWidth PHẢI set hẳn giá trị nhỏ (không phải '') — CSS class .treelookup-popup
+                        // có min-width:100%, xoá inline chỉ rơi về rule đó; sau teleport position:fixed,
+                        // 100% tính theo VIEWPORT (không còn ancestor làm containing block) → đè mất width.
+                        popup.style.width    = Math.max(r.width, 300) + 'px';
+                        popup.style.minWidth = '0';
+                    } else {
+                        // Mặc định bề rộng popup = bề rộng control (huỷ min-width:100% vốn = bề rộng body khi ở body).
+                        popup.style.minWidth = r.width + 'px';
+                    }
                     var w = popup.offsetWidth || r.width;
                     var left = Math.min(r.left, window.innerWidth - w - 8);  // không tràn mép phải
                     popup.style.left = Math.max(8, left) + 'px';
@@ -222,6 +232,10 @@
                     popup.style.overflowY = 'auto';   // khung cuộn nội bộ (áp cho cả popup outer-scroll lẫn inner)
                 };
                 place();
+                // Lần mở ĐẦU TIÊN của 1 popup: anchor có thể vừa mount trong modal (DraggableModal
+                // định vị bằng transform) nên getBoundingClientRect() đọc lúc layout chưa chốt xong
+                // (rộng đo sai). Đo lại 1 lần sau khi trình duyệt hoàn tất layout/paint frame kế tiếp.
+                requestAnimationFrame(place);
                 popup._icarePlace = place;
                 window.addEventListener('scroll', place, true);
                 window.addEventListener('resize', place);

@@ -68,3 +68,27 @@ public sealed class RoleCompanyNodeVm
     public long? ParentId { get; set; }
     public bool DaGan { get; set; }
 }
+
+/// <summary>
+/// 1 node cây phòng ban ở tab "Phòng ban truy cập" (GET /api/v1/admin/users/{id}/departments).
+/// GanRieng = tick được (WYSIWYG, không cascade con); TheoVaiTro = kế thừa động, chỉ hiển thị badge.
+/// </summary>
+public sealed class UserDepartmentNodeVm
+{
+    public long Id { get; set; }
+    public string? Ma { get; set; }
+    public string Ten { get; set; } = "";
+    public long? ParentId { get; set; }
+    public bool GanRieng { get; set; }
+    public bool TheoVaiTro { get; set; }
+}
+
+/// <summary>1 node cây phòng ban ở phần "Phạm vi phòng ban" màn Phân quyền (theo vai trò).</summary>
+public sealed class RoleDepartmentNodeVm
+{
+    public long Id { get; set; }
+    public string? Ma { get; set; }
+    public string Ten { get; set; } = "";
+    public long? ParentId { get; set; }
+    public bool DaGan { get; set; }
+}

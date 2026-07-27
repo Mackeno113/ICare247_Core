@@ -24,4 +24,10 @@ public interface IPermissionAdminRepository
 
     /// <summary>Ghi lại tập công ty của vai trò: thêm thiếu, xóa mềm thừa (1 transaction, WYSIWYG).</summary>
     Task SaveRoleCompaniesAsync(long roleId, IReadOnlyList<long> congTyIds, long userId, CancellationToken ct = default);
+
+    /// <summary>Toàn bộ cây phòng ban + cờ đã gán vào vai trò (HT_VaiTro_PhongBan — trục độc lập với công ty).</summary>
+    Task<IReadOnlyList<RoleDepartmentNodeDto>> GetRoleDepartmentsAsync(long roleId, CancellationToken ct = default);
+
+    /// <summary>Ghi lại tập phòng ban của vai trò: thêm thiếu, xóa mềm thừa (1 transaction, WYSIWYG).</summary>
+    Task SaveRoleDepartmentsAsync(long roleId, IReadOnlyList<long> phongBanIds, long userId, CancellationToken ct = default);
 }

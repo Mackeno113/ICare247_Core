@@ -303,6 +303,80 @@ public sealed class UserAdminRepository : IUserAdminRepository
         tx.Commit();
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<UserDepartmentNodeDto>> GetUserDepartmentsAsync(
+        long id, CancellationToken ct = default)
+    {
+        // Toàn bộ cây phòng ban active + cờ: gán riêng (sửa được), theo vai trò (readonly).
+        // OBJECT_ID guard cho HT_VaiTro_PhongBan — tenant chưa chạy db/092 thì TheoVaiTro luôn 0.
+        const string sql = """
+            IF OBJECT_ID('dbo.HT_VaiTro_PhongBan', 'U') IS NOT NULL
+            BEGIN
+                SELECT p.Id, p.Ma, p.Ten, p.PhongBan_Cha_Id AS ParentId,
+                       CAST(CASE WHEN up.Id IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS GanRieng,
+                       CAST(CASE WHEN EXISTS (
+                           SELECT 1 FROM dbo.HT_VaiTro_PhongBan vp
+                           JOIN dbo.HT_NguoiDung_VaiTro uv
+                                ON uv.VaiTro_Id = vp.VaiTro_Id AND uv.NguoiDung_Id = @Id AND uv.IsDeleted = 0
+                           WHERE vp.PhongBan_Id = p.Id AND vp.IsDeleted = 0) THEN 1 ELSE 0 END AS BIT) AS TheoVaiTro
+                FROM dbo.TC_PhongBan p
+                LEFT JOIN dbo.HT_NguoiDung_PhongBan up
+                     ON up.PhongBan_Id = p.Id AND up.NguoiDung_Id = @Id AND up.IsDeleted = 0
+                WHERE p.IsDeleted = 0
+                ORDER BY p.Ten;
+            END
+            ELSE
+            BEGIN
+                SELECT p.Id, p.Ma, p.Ten, p.PhongBan_Cha_Id AS ParentId,
+                       CAST(CASE WHEN up.Id IS NOT NULL THEN 1 ELSE 0 END AS BIT) AS GanRieng,
+                       CAST(0 AS BIT) AS TheoVaiTro
+                FROM dbo.TC_PhongBan p
+                LEFT JOIN dbo.HT_NguoiDung_PhongBan up
+                     ON up.PhongBan_Id = p.Id AND up.NguoiDung_Id = @Id AND up.IsDeleted = 0
+                WHERE p.IsDeleted = 0
+                ORDER BY p.Ten;
+            END
+            """;
+        using var conn = _db.CreateConnection();
+        var rows = await conn.QueryAsync<UserDepartmentNodeDto>(
+            new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task SaveUserDepartmentsAsync(
+        long id, IReadOnlyList<long> phongBanIds, long actorId, CancellationToken ct = default)
+    {
+        // Diff tập gán riêng — 1 transaction. WYSIWYG từ cây checkbox. Không LaMacDinh (khác công ty).
+        const string sql = """
+            DECLARE @ids TABLE (Id BIGINT PRIMARY KEY);
+            INSERT INTO @ids (Id)
+            SELECT DISTINCT value FROM OPENJSON(@PhongBanIdsJson) WITH (value BIGINT '$');
+
+            UPDATE up
+            SET up.IsDeleted = 1, up.UpdatedBy = @ActorId, up.UpdatedAt = SYSUTCDATETIME(), up.Ver = up.Ver + 1
+            FROM dbo.HT_NguoiDung_PhongBan up
+            WHERE up.NguoiDung_Id = @Id AND up.IsDeleted = 0
+              AND NOT EXISTS (SELECT 1 FROM @ids i WHERE i.Id = up.PhongBan_Id);
+
+            INSERT INTO dbo.HT_NguoiDung_PhongBan (NguoiDung_Id, PhongBan_Id, CreatedBy, CreatedAt)
+            SELECT @Id, i.Id, @ActorId, SYSUTCDATETIME()
+            FROM @ids i
+            WHERE NOT EXISTS (SELECT 1 FROM dbo.HT_NguoiDung_PhongBan up
+                              WHERE up.NguoiDung_Id = @Id AND up.PhongBan_Id = i.Id AND up.IsDeleted = 0);
+            """;
+        using var conn = _db.CreateConnection();
+        conn.Open();
+        using var tx = conn.BeginTransaction();
+        await conn.ExecuteAsync(new CommandDefinition(sql, new
+        {
+            Id = id,
+            PhongBanIdsJson = System.Text.Json.JsonSerializer.Serialize(phongBanIds),
+            ActorId = actorId
+        }, tx, cancellationToken: ct));
+        tx.Commit();
+    }
+
     /// <summary>Row nội bộ đọc result set 1 của GetUserDetailAsync (Dapper map).</summary>
     private sealed record UserInfoRow(
         long Id, string Ma, string TenDangNhap, string LoaiTaiKhoan, string TrangThai,

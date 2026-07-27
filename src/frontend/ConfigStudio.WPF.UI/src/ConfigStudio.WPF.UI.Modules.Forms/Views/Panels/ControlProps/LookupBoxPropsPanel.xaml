@@ -40,10 +40,12 @@
                 <TextBlock Text="Mẫu lookup dùng chung" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource AppTextBrush}" Margin="0,0,0,10" />
 
-                <!-- KHÔNG ép IsTextEditable=False — theme Controls.xaml bật gõ-để-lọc toàn cục (ADR-031). -->
+                <!-- KHÔNG ép IsTextEditable=False — theme Controls.xaml bật gõ-để-lọc toàn cục (ADR-031).
+                     EditValue phải là kiểu scalar (string) khớp ValueMember — bind thẳng vào object
+                     phức tạp không commit được khi IsTextEditable=True (khớp pattern MaRuleEditDialog). -->
                 <dxe:ComboBoxEdit ItemsSource="{Binding LookupTemplates}"
-                                  SelectedItem="{Binding SelectedLookupTemplate, Mode=TwoWay}"
-                                  DisplayMember="Ten"
+                                  EditValue="{Binding SelectedTemplateCode, UpdateSourceTrigger=PropertyChanged}"
+                                  DisplayMember="Ten" ValueMember="TemplateCode"
                                   Height="32" Margin="0,0,0,8" />
 
                 <TextBlock Text="{Binding SelectedLookupTemplateMoTa}"

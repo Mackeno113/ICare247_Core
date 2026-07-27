@@ -8,11 +8,13 @@
 using ICare247.Api.Authorization;
 using ICare247.Application.Features.Admin.Users.DeleteUser;
 using ICare247.Application.Features.Admin.Users.GetUserCompanies;
+using ICare247.Application.Features.Admin.Users.GetUserDepartments;
 using ICare247.Application.Features.Admin.Users.GetUserDetail;
 using ICare247.Application.Features.Admin.Users.GetUsers;
 using ICare247.Application.Features.Admin.Users.ResetUserPassword;
 using ICare247.Application.Features.Admin.Users.SaveUser;
 using ICare247.Application.Features.Admin.Users.SaveUserCompanies;
+using ICare247.Application.Features.Admin.Users.SaveUserDepartments;
 using ICare247.Application.Features.Admin.Users.SaveUserRoles;
 using ICare247.Application.Interfaces;
 using MediatR;
@@ -143,6 +145,27 @@ public sealed class AdminUserController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Cây phòng ban + trạng thái quyền (gán riêng / theo vai trò) của user.</summary>
+    /// <remarks>GET /api/v1/admin/users/{id}/departments</remarks>
+    [HttpGet("{id:long}/departments")]
+    [RequirePermission("administration.users", PermissionOp.Xem)]
+    public async Task<IActionResult> GetUserDepartments(long id, CancellationToken ct = default)
+        => Ok(await _mediator.Send(new GetUserDepartmentsQuery(id), ct));
+
+    /// <summary>Ghi lại tập phòng ban gán riêng của user (tab Phòng ban truy cập).</summary>
+    /// <remarks>PUT /api/v1/admin/users/{id}/departments</remarks>
+    [HttpPut("{id:long}/departments")]
+    [RequirePermission("administration.users", PermissionOp.Sua)]
+    public async Task<IActionResult> SaveUserDepartments(
+        long id, [FromBody] SaveUserDepartmentsRequest body, CancellationToken ct = default)
+    {
+        var actorId = GetUserId();
+        if (actorId is null) return Unauthorized();
+
+        await _mediator.Send(new SaveUserDepartmentsCommand(id, body.PhongBanIds ?? [], actorId.Value), ct);
+        return NoContent();
+    }
+
     private long? GetUserId()
     {
         var raw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
@@ -181,4 +204,10 @@ public sealed class SaveUserCompaniesRequest
 {
     public List<long>? CongTyIds { get; set; }
     public long? MacDinhCongTyId { get; set; }
+}
+
+/// <summary>Body ghi tập phòng ban gán riêng của user.</summary>
+public sealed class SaveUserDepartmentsRequest
+{
+    public List<long>? PhongBanIds { get; set; }
 }
