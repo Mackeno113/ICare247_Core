@@ -37,4 +37,5 @@ public static class ViewNames
     public const string I18nEditorDialog             = nameof(I18nEditorDialog);
     public const string MaRuleEditDialog             = nameof(MaRuleEditDialog);
     public const string LookupTemplateEditDialog     = nameof(LookupTemplateEditDialog);
+    public const string FieldDetailDialog            = nameof(FieldDetailDialog);
 }

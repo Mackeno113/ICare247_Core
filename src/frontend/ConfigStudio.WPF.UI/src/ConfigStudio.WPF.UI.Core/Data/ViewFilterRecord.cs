@@ -28,6 +28,11 @@ public sealed class ViewFilterRecord : BindableBase
     /// <summary>Key i18n nhãn control (bắt buộc khi lưu).</summary>
     public string? LabelKey { get => _labelKey; set => SetProperty(ref _labelKey, value); }
 
+    private bool _hasLabel;
+    /// <summary>True khi LabelKey đã có bản dịch (ngôn ngữ mặc định) trong Sys_Resource — UI-only,
+    /// ViewManagerViewModel tự tính lại khi nạp lưới/khi dịch xong, KHÔNG map cột DB.</summary>
+    public bool HasLabel { get => _hasLabel; set => SetProperty(ref _hasLabel, value); }
+
     private string? _placeholderKey;
     public string? PlaceholderKey { get => _placeholderKey; set => SetProperty(ref _placeholderKey, value); }
 

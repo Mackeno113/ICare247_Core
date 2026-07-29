@@ -6,7 +6,7 @@
 | ------------- | ---------------------- | -------------------------------- |
 | WPF Framework | .NET 9 / `net9.0-windows` | `<UseWPF>true</UseWPF>`      |
 | DI + Nav      | `Prism.Unity` 9.x     | `PrismApplication`, `IRegionManager` |
-| UI Toolkit    | `DevExpress.Wpf.*` 25.x + pure WPF | Khong dung MaterialDesignThemes / PackIcon |
+| UI Toolkit    | `DevExpress.Wpf.*` 25.x + pure WPF | DevExpress editor bắt buộc; WPF thuần chỉ layout/hiển thị |
 | MVVM          | Prism `BindableBase` + `DelegateCommand` | KHÔNG dùng CommunityToolkit |
 
 ## Naming
@@ -30,6 +30,23 @@ Converter: [Name]Converter.cs    → Converters/BoolToVisibilityConverter.cs
 
 - Không có code-behind logic (chỉ `InitializeComponent()`)
 - DataContext qua `prism:ViewModelLocator.AutoWireViewModel="True"`
+
+## Editor Rules — DevExpress bắt buộc
+
+- Mọi control nhận/chọn dữ liệu người dùng trong WPF **BẮT BUỘC** dùng DevExpress WPF editor.
+- Mapping chuẩn:
+  - Text → `dxe:TextEdit`
+  - Số → `dxe:SpinEdit`
+  - Chọn một giá trị → `dxe:ComboBoxEdit`
+  - Boolean → `dxe:CheckEdit`
+  - Ngày/giờ → `dxe:DateEdit`
+  - Memo nhiều dòng → `dxe:MemoEdit`
+- **CẤM** dùng `TextBox`, `ComboBox`, `CheckBox`, `DatePicker` WPF thuần làm editor, kể cả trong
+  dialog nhỏ hoặc `DataTemplate` sinh động. Không tạo exception cục bộ để làm nhanh.
+- WPF thuần chỉ dùng cho layout/hiển thị và hạ tầng (`Grid`, `Border`, `TextBlock`, `ItemsControl`,
+  `ScrollViewer`, `Button`, ...). Nếu DevExpress không có editor tương ứng, phải ghi rõ lý do trong
+  code review trước khi dùng control WPF thuần.
+- Editor phải bind theo MVVM, dùng theme/resource chung và giữ validation/keyboard behavior nhất quán.
 
 ## Navigation
 

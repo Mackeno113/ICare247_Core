@@ -8,6 +8,7 @@ using System.ComponentModel;
 using System.Windows.Data;
 using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
+using ConfigStudio.WPF.UI.Core.Helpers;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using ConfigStudio.WPF.UI.Core.Services;
 using ConfigStudio.WPF.UI.Core.ViewModels;
@@ -33,6 +34,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     private readonly INavigationHistoryService? _history;
     private readonly IAppLogger? _logger;
     private readonly IDocTemplateDataService? _docTemplateData;
+    private readonly II18nDataService? _i18nService;
     private bool _isProgrammaticSelect;
 
     /// <summary>Tạm ngưng rekey i18n khi đang nạp dữ liệu / reset editor (set key theo lô).</summary>
@@ -458,6 +460,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
     public DelegateCommand<ViewColumnRecord> OpenColumnCaptionI18nRowCommand { get; }
     public DelegateCommand<ViewActionRecord> OpenActionLabelI18nRowCommand { get; }
 
+    // Popup cấu hình nhanh — hiển thị theo nhóm + hướng dẫn vì lưới có nhiều cột phải cuộn ngang.
+    // "Áp dụng" chỉ ghi về record trên lưới; màn Quản lý View vẫn chịu trách nhiệm lưu xuống DB.
+    public DelegateCommand<ViewColumnRecord> ViewColumnDetailCommand { get; }
+    public DelegateCommand<ViewActionRecord> ViewActionDetailCommand { get; }
+    public DelegateCommand<ViewFilterRecord> ViewFilterDetailCommand { get; }
+
     /// <summary>
     /// Khởi tạo ViewModel + thiết lập CollectionView (filter) và command.
     /// </summary>
@@ -478,7 +486,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         IAppConfigService? appConfig = null,
         INavigationHistoryService? history = null,
         IAppLogger? logger = null,
-        IDocTemplateDataService? docTemplateData = null)
+        IDocTemplateDataService? docTemplateData = null,
+        II18nDataService? i18nService = null)
     {
         _viewData = viewData;
         _formData = formData;
@@ -489,6 +498,7 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         _history = history;
         _logger = logger;
         _docTemplateData = docTemplateData;
+        _i18nService = i18nService;
 
         ViewsView = CollectionViewSource.GetDefaultView(Views);
         ViewsView.Filter = ApplyFilter;
@@ -516,6 +526,9 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         OpenActionLabelI18nCommand = new DelegateCommand(ExecuteOpenActionLabelI18n, () => SelectedAction is not null);
         OpenColumnCaptionI18nRowCommand = new DelegateCommand<ViewColumnRecord>(OpenColumnCaptionI18nForRow);
         OpenActionLabelI18nRowCommand = new DelegateCommand<ViewActionRecord>(OpenActionLabelI18nForRow);
+        ViewColumnDetailCommand = new DelegateCommand<ViewColumnRecord>(ExecuteViewColumnDetail);
+        ViewActionDetailCommand = new DelegateCommand<ViewActionRecord>(ExecuteViewActionDetail);
+        ViewFilterDetailCommand = new DelegateCommand<ViewFilterRecord>(ExecuteViewFilterDetail);
 
         ResetEditor();
     }
@@ -744,6 +757,37 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
         RaiseEditorState();
         }
         finally { _suppressRekey = false; }
+
+        // Dấu hiệu đã dịch/chưa dịch (nút 🌐 đổi màu) — đọc cache i18n (RAM, không round-trip mới).
+        _ = RefreshTranslationStatusAsync();
+    }
+
+    /// <summary>
+    /// Tính lại HasCaption/HasLabel cho mọi dòng Cột/Action/Filter đang mở — dấu hiệu "đã dịch hay
+    /// chưa" cho nút 🌐 (đổi màu, xem ExecuteViewColumnDetail... không, xem cell template).
+    /// ResolveKeyAsync đọc cache RAM của I18nDataService (nạp 1 lần/phiên) nên gọi N lần ở đây
+    /// không tạo round-trip DB mới — an toàn với vài chục field.
+    /// Cột Caption seed hàng loạt từ Field_Name (SplitCamelCase, ví dụ "Dien Thoai") — giá trị này
+    /// KHÔNG phải bản dịch thật nên phải loại qua <see cref="I18nDefaults.IsUntranslated"/>, nếu
+    /// không nút 🌐 báo "đã dịch" (✓ xanh) trong khi thực chất còn nguyên placeholder chưa dịch.
+    /// </summary>
+    private async Task RefreshTranslationStatusAsync()
+    {
+        if (_i18nService is null) return;
+
+        foreach (var c in EditColumns)
+        {
+            var value = string.IsNullOrWhiteSpace(c.CaptionKey) ? null : await _i18nService.ResolveKeyAsync(c.CaptionKey!, "vi");
+            var markers = I18nDefaults.BuildColumnMarkers(c.FieldName);
+            c.HasCaption = !I18nDefaults.IsUntranslated(value, markers);
+            c.CaptionPreview = value;
+        }
+        foreach (var a in EditActions)
+            a.HasLabel = !string.IsNullOrWhiteSpace(
+                string.IsNullOrWhiteSpace(a.LabelKey) ? null : await _i18nService.ResolveKeyAsync(a.LabelKey!, "vi"));
+        foreach (var f in EditFilters)
+            f.HasLabel = !string.IsNullOrWhiteSpace(
+                string.IsNullOrWhiteSpace(f.LabelKey) ? null : await _i18nService.ResolveKeyAsync(f.LabelKey!, "vi"));
     }
 
     /// <summary>Lọc danh sách View theo ShowInactive + SearchText.</summary>
@@ -947,7 +991,8 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
             flt.LabelKey = key;
         }
-        OpenI18nDialog(flt.LabelKey!, $"Nhãn filter {flt.FilterCode}");
+        OpenI18nDialog(flt.LabelKey!, $"Nhãn filter {flt.FilterCode}",
+            onSaved: value => flt.HasLabel = !string.IsNullOrWhiteSpace(value));
     }
 
     /// <summary>
@@ -1201,7 +1246,12 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
             col.CaptionKey = key;
         }
-        OpenI18nDialog(col.CaptionKey!, $"Caption cột {col.FieldName}");
+        OpenI18nDialog(col.CaptionKey!, $"Caption cột {col.FieldName}",
+            onSaved: value =>
+            {
+                col.HasCaption = !I18nDefaults.IsUntranslated(value, I18nDefaults.BuildColumnMarkers(col.FieldName));
+                col.CaptionPreview = value;
+            });
     }
 
     /// <summary>Dịch Label_Key của một action — tự sinh key từ Action_Code nếu đang trống (như màn Form).</summary>
@@ -1217,7 +1267,344 @@ public sealed class ViewManagerViewModel : ViewModelBase, INavigationAware, IReg
             if (key is null) { SetSaveError("Cần View_Code và bảng nguồn trước khi tạo key i18n."); return; }
             act.LabelKey = key;
         }
-        OpenI18nDialog(act.LabelKey!, $"Nhãn action {act.ActionCode}");
+        OpenI18nDialog(act.LabelKey!, $"Nhãn action {act.ActionCode}",
+            onSaved: value => act.HasLabel = !string.IsNullOrWhiteSpace(value));
+    }
+
+    // ── Popup "Chi tiết cấu hình" (sửa được + hướng dẫn dạng tooltip) ─────────
+    // Lưới Cột/Actions/Bộ lọc có quá nhiều cột phải cuộn ngang; popup này hiển thị LẠI theo cột
+    // dọc dễ đọc + sửa trực tiếp, kèm icon ⓘ tooltip hướng dẫn từng field (ViewManagerUiText).
+    // Field có luồng sửa riêng trên lưới (🌐 dịch key / ↑↓ đổi thứ tự / combo lookup phức tạp)
+    // giữ ReadOnly trong popup để không tạo 2 đường sửa khác nhau cho cùng 1 field.
+
+    // Dùng lại các *Options đã có ở đầu class (ColumnKindOptions/RenderModeOptions/TextAlignOptions/
+    // ActionTypeOptions/ActionScopeOptions/ExportEngineOptions/FilterControlTypeOptions/
+    // FilterParamTypeOptions/FilterOperatorOptions) — chỉ khai thêm 3 danh sách chưa có ở đó
+    // (lưới chỉ dùng x:Array literal trong XAML, chưa có property tương ứng).
+    /// <summary>Combo popup chọn "(mặc định)" (<see cref="ViewManagerUiText.ComboNone"/>) → coi như null khi Commit.</summary>
+    private static bool IsComboNone(string? text) => string.IsNullOrWhiteSpace(text) || text == ViewManagerUiText.ComboNone;
+
+    private static readonly string[] FixedPositionOptions = ["none", "left", "right"];
+    private static readonly string[] SortOrderOptions = [ViewManagerUiText.ComboNone, "asc", "desc"];
+    private static readonly string[] SummaryTypeOptions = [ViewManagerUiText.ComboNone, "count", "sum", "avg", "min", "max"];
+
+    /// <summary>Mở popup chi tiết cho 1 dòng cột (Ui_View_Column).</summary>
+    private void ExecuteViewColumnDetail(ViewColumnRecord? col)
+    {
+        if (col is null || _dialogService is null) return;
+
+        var rows = new List<FieldDetailRowVm>
+        {
+            new() { Label = ViewManagerUiText.ColFieldName, Guide = ViewManagerUiText.TipColFieldName,
+                    Section = ViewManagerUiText.SectionColSource,
+                    FieldKey = "FieldName", Kind = FieldEditorKind.Text, TextValue = col.FieldName,
+                    Commit = r => col.FieldName = r.TextValue ?? "" },
+            new() { Label = ViewManagerUiText.ColCaptionKey, Guide = ViewManagerUiText.TipColCaptionKey + " Sửa qua nút 🌐 Dịch caption trên toolbar.",
+                    Section = ViewManagerUiText.SectionColSource,
+                    FieldKey = "CaptionKey", Kind = FieldEditorKind.ReadOnly, DisplayValue = Fmt(col.CaptionKey) },
+            new() { Label = ViewManagerUiText.ColKind, Guide = ViewManagerUiText.TipColKind,
+                    Section = ViewManagerUiText.SectionColSource,
+                    FieldKey = "Kind", Kind = FieldEditorKind.Combo, Options = ColumnKindOptions, TextValue = col.ColumnKind,
+                    Commit = r => col.ColumnKind = r.TextValue ?? "Data" },
+            new() { Label = ViewManagerUiText.ColRenderMode, Guide = ViewManagerUiText.TipColRenderMode,
+                    Section = ViewManagerUiText.SectionColSource,
+                    FieldKey = "RenderMode", Kind = FieldEditorKind.Combo, Options = RenderModeOptions, TextValue = col.RenderMode,
+                    Commit = r => col.RenderMode = r.TextValue ?? "Text" },
+            new() { Label = ViewManagerUiText.ColFkLookupFieldId, Guide = ViewManagerUiText.TipColFkLookupFieldId + " Sửa trong lưới (combo chọn field cha).",
+                    Section = ViewManagerUiText.SectionColSource,
+                    FieldKey = "FkLookupFieldId", Kind = FieldEditorKind.ReadOnly, DisplayValue = Fmt(col.FkLookupFieldId) },
+
+            new() { Label = ViewManagerUiText.ColWidth, Guide = ViewManagerUiText.TipColWidth,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "Width", Kind = FieldEditorKind.Text, TextValue = col.Width,
+                    Commit = r => col.Width = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColMinWidth, Guide = ViewManagerUiText.TipColMinWidth,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "MinWidth", Kind = FieldEditorKind.Number, NumberValue = col.MinWidth,
+                    MinNumber = 0, MaxNumber = 10000,
+                    Commit = r => col.MinWidth = r.NumberValue },
+            new() { Label = ViewManagerUiText.ColTextAlign, Guide = ViewManagerUiText.TipColTextAlign,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "TextAlign", Kind = FieldEditorKind.Combo, Options = TextAlignOptions, TextValue = col.TextAlign,
+                    Commit = r => col.TextAlign = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColFixedPosition, Guide = ViewManagerUiText.TipColFixedPosition,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "FixedPosition", Kind = FieldEditorKind.Combo, Options = FixedPositionOptions, TextValue = col.FixedPosition ?? "none",
+                    Commit = r => col.FixedPosition = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColDisplayFormat, Guide = ViewManagerUiText.TipColDisplayFormat,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "DisplayFormat", Kind = FieldEditorKind.Text, TextValue = col.DisplayFormat,
+                    EnabledWhen = rows => IsDataColumn(rows) && !IsCustomRender(rows),
+                    Commit = r => col.DisplayFormat = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColIsVisible, Guide = ViewManagerUiText.TipColIsVisible,
+                    Section = ViewManagerUiText.SectionColDisplay,
+                    FieldKey = "IsVisible", Kind = FieldEditorKind.Checkbox, BoolValue = col.IsVisible,
+                    Commit = r => col.IsVisible = r.BoolValue },
+
+            new() { Label = ViewManagerUiText.ColAllowSort, Guide = ViewManagerUiText.TipColAllowSort,
+                    Section = ViewManagerUiText.SectionColSortFilter,
+                    FieldKey = "AllowSort", Kind = FieldEditorKind.Checkbox, BoolValue = col.AllowSort,
+                    EnabledWhen = IsDataColumn,
+                    Commit = r => col.AllowSort = r.BoolValue },
+            new() { Label = ViewManagerUiText.ColSortOrder, Guide = ViewManagerUiText.TipColSortOrder,
+                    Section = ViewManagerUiText.SectionColSortFilter,
+                    FieldKey = "SortOrder", Kind = FieldEditorKind.Combo, Options = SortOrderOptions, TextValue = col.SortOrder ?? ViewManagerUiText.ComboNone,
+                    EnabledWhen = rows => IsDataColumn(rows) && GetBool(rows, "AllowSort"),
+                    Commit = r => col.SortOrder = IsComboNone(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColSortIndex, Guide = ViewManagerUiText.TipColSortIndex,
+                    Section = ViewManagerUiText.SectionColSortFilter,
+                    FieldKey = "SortIndex", Kind = FieldEditorKind.Number, NumberValue = col.SortIndex,
+                    MinNumber = 0, MaxNumber = 99,
+                    EnabledWhen = rows => IsDataColumn(rows) && GetBool(rows, "AllowSort"),
+                    Commit = r => col.SortIndex = r.NumberValue },
+            new() { Label = ViewManagerUiText.ColAllowFilter, Guide = ViewManagerUiText.TipColAllowFilter,
+                    Section = ViewManagerUiText.SectionColSortFilter,
+                    FieldKey = "AllowFilter", Kind = FieldEditorKind.Checkbox, BoolValue = col.AllowFilter,
+                    EnabledWhen = IsDataColumn,
+                    Commit = r => col.AllowFilter = r.BoolValue },
+            new() { Label = ViewManagerUiText.ColAllowGroup, Guide = ViewManagerUiText.TipColAllowGroup,
+                    Section = ViewManagerUiText.SectionColSortFilter,
+                    FieldKey = "AllowGroup", Kind = FieldEditorKind.Checkbox, BoolValue = col.AllowGroup,
+                    EnabledWhen = IsDataColumn,
+                    Commit = r => col.AllowGroup = r.BoolValue },
+
+            new() { Label = ViewManagerUiText.ColSummaryType, Guide = ViewManagerUiText.TipColSummaryType,
+                    Section = ViewManagerUiText.SectionColSummaryExport,
+                    FieldKey = "SummaryType", Kind = FieldEditorKind.Combo, Options = SummaryTypeOptions, TextValue = col.SummaryType ?? ViewManagerUiText.ComboNone,
+                    EnabledWhen = IsDataColumn,
+                    Commit = r => col.SummaryType = IsComboNone(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ColAllowExport, Guide = ViewManagerUiText.TipColAllowExport,
+                    Section = ViewManagerUiText.SectionColSummaryExport,
+                    FieldKey = "AllowExport", Kind = FieldEditorKind.Checkbox, BoolValue = col.AllowExport,
+                    Commit = r => col.AllowExport = r.BoolValue },
+            new() { Label = ViewManagerUiText.ColIsImportKey, Guide = ViewManagerUiText.TipColIsImportKey,
+                    Section = ViewManagerUiText.SectionColSummaryExport,
+                    FieldKey = "IsImportKey", Kind = FieldEditorKind.Checkbox, BoolValue = col.IsImportKey,
+                    EnabledWhen = IsDataColumn,
+                    Commit = r => col.IsImportKey = r.BoolValue },
+            new() { Label = ViewManagerUiText.ColOrderNo, Guide = ViewManagerUiText.TipColOrderNo + " Đổi bằng nút ↑↓ trên toolbar.",
+                    Section = ViewManagerUiText.SectionColSummaryExport,
+                    FieldKey = "OrderNo", Kind = FieldEditorKind.ReadOnly, DisplayValue = col.OrderNo.ToString() },
+        };
+        OpenFieldDetailDialog($"{ViewManagerUiText.ColumnDetailTitlePrefix}: {col.FieldName}", rows, ComputeColumnHint);
+    }
+
+    /// <summary>Mở popup chi tiết cho 1 dòng action (Ui_View_Action).</summary>
+    private void ExecuteViewActionDetail(ViewActionRecord? act)
+    {
+        if (act is null || _dialogService is null) return;
+
+        var rows = new List<FieldDetailRowVm>
+        {
+            new() { Label = ViewManagerUiText.ActActionCode, Guide = ViewManagerUiText.TipActActionCode,
+                    Section = ViewManagerUiText.SectionActIdentity,
+                    FieldKey = "ActionCode", Kind = FieldEditorKind.Text, TextValue = act.ActionCode,
+                    Commit = r => act.ActionCode = r.TextValue ?? "" },
+            new() { Label = ViewManagerUiText.ActActionType, Guide = ViewManagerUiText.TipActActionType,
+                    Section = ViewManagerUiText.SectionActIdentity,
+                    FieldKey = "ActionType", Kind = FieldEditorKind.Combo, Options = ActionTypeOptions, TextValue = act.ActionType,
+                    Commit = r => act.ActionType = r.TextValue ?? "BuiltIn" },
+            new() { Label = ViewManagerUiText.ActScope, Guide = ViewManagerUiText.TipActScope,
+                    Section = ViewManagerUiText.SectionActIdentity,
+                    FieldKey = "Scope", Kind = FieldEditorKind.Combo, Options = ActionScopeOptions, TextValue = act.Scope,
+                    Commit = r => act.Scope = r.TextValue ?? "Toolbar" },
+            new() { Label = ViewManagerUiText.ActLabelKey, Guide = ViewManagerUiText.TipActLabelKey + " Sửa qua nút 🌐 Dịch nhãn trên toolbar.",
+                    Section = ViewManagerUiText.SectionActIdentity,
+                    FieldKey = "LabelKey", Kind = FieldEditorKind.ReadOnly, DisplayValue = Fmt(act.LabelKey) },
+            new() { Label = ViewManagerUiText.ActIcon, Guide = ViewManagerUiText.TipActIcon,
+                    Section = ViewManagerUiText.SectionActIdentity,
+                    FieldKey = "Icon", Kind = FieldEditorKind.Text, TextValue = act.Icon,
+                    Commit = r => act.Icon = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+
+            new() { Label = ViewManagerUiText.ActExportFormat, Guide = ViewManagerUiText.TipActExportFormat,
+                    Section = ViewManagerUiText.SectionActTarget,
+                    FieldKey = "ExportFormat", Kind = FieldEditorKind.Text, TextValue = act.ExportFormat,
+                    Commit = r => act.ExportFormat = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ActExportEngine, Guide = ViewManagerUiText.TipActExportEngine,
+                    Section = ViewManagerUiText.SectionActTarget,
+                    FieldKey = "ExportEngine", Kind = FieldEditorKind.Combo, Options = ExportEngineOptions, TextValue = act.ExportEngine ?? "",
+                    Commit = r => act.ExportEngine = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.ActTarget, Guide = ViewManagerUiText.TipActTarget,
+                    Section = ViewManagerUiText.SectionActTarget,
+                    FieldKey = "Target", Kind = FieldEditorKind.Text, TextValue = act.Target,
+                    Commit = r => act.Target = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+
+            new() { Label = ViewManagerUiText.ActRequireSelection, Guide = ViewManagerUiText.TipActRequireSelection,
+                    Section = ViewManagerUiText.SectionActCondition,
+                    FieldKey = "RequireSelection", Kind = FieldEditorKind.Checkbox, BoolValue = act.RequireSelection,
+                    Commit = r => act.RequireSelection = r.BoolValue },
+        };
+        OpenFieldDetailDialog($"{ViewManagerUiText.ActionDetailTitlePrefix}: {act.ActionCode}", rows, ComputeActionHint);
+    }
+
+    /// <summary>Mở popup chi tiết cho 1 dòng control lọc (Ui_View_Filter).</summary>
+    private void ExecuteViewFilterDetail(ViewFilterRecord? flt)
+    {
+        if (flt is null || _dialogService is null) return;
+
+        var rows = new List<FieldDetailRowVm>
+        {
+            new() { Label = ViewManagerUiText.FilFilterCode, Guide = ViewManagerUiText.TipFilFilterCode,
+                    Section = ViewManagerUiText.SectionFilIdentity,
+                    FieldKey = "FilterCode", Kind = FieldEditorKind.Text, TextValue = flt.FilterCode,
+                    Commit = r => flt.FilterCode = r.TextValue ?? "" },
+            new() { Label = ViewManagerUiText.FilControlType, Guide = ViewManagerUiText.TipFilControlType,
+                    Section = ViewManagerUiText.SectionFilIdentity,
+                    FieldKey = "ControlType", Kind = FieldEditorKind.Combo, Options = FilterControlTypeOptions, TextValue = flt.ControlType,
+                    Commit = r => flt.ControlType = r.TextValue ?? "Text" },
+            new() { Label = ViewManagerUiText.FilLabelKey, Guide = ViewManagerUiText.TipFilLabelKey + " Sửa qua nút 🌐 Dịch nhãn trên toolbar.",
+                    Section = ViewManagerUiText.SectionFilIdentity,
+                    FieldKey = "LabelKey", Kind = FieldEditorKind.ReadOnly, DisplayValue = Fmt(flt.LabelKey) },
+            new() { Label = ViewManagerUiText.FilParamName, Guide = ViewManagerUiText.TipFilParamName,
+                    Section = ViewManagerUiText.SectionFilIdentity,
+                    FieldKey = "ParamName", Kind = FieldEditorKind.Text, TextValue = flt.ParamName,
+                    Commit = r => flt.ParamName = r.TextValue ?? "" },
+            new() { Label = ViewManagerUiText.FilParamType, Guide = ViewManagerUiText.TipFilParamType,
+                    Section = ViewManagerUiText.SectionFilIdentity,
+                    FieldKey = "ParamType", Kind = FieldEditorKind.Combo, Options = FilterParamTypeOptions, TextValue = flt.ParamType,
+                    Commit = r => flt.ParamType = r.TextValue ?? "string" },
+
+            new() { Label = ViewManagerUiText.FilOperator, Guide = ViewManagerUiText.TipFilOperator,
+                    Section = ViewManagerUiText.SectionFilCondition,
+                    FieldKey = "Operator", Kind = FieldEditorKind.Combo, Options = FilterOperatorOptions, TextValue = flt.Operator,
+                    Commit = r => flt.Operator = r.TextValue ?? "=" },
+            new() { Label = ViewManagerUiText.FilDefaultValue, Guide = ViewManagerUiText.TipFilDefaultValue,
+                    Section = ViewManagerUiText.SectionFilCondition,
+                    FieldKey = "DefaultValue", Kind = FieldEditorKind.Text, TextValue = flt.DefaultValue,
+                    Commit = r => flt.DefaultValue = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.FilIsRequired, Guide = ViewManagerUiText.TipFilIsRequired,
+                    Section = ViewManagerUiText.SectionFilCondition,
+                    FieldKey = "IsRequired", Kind = FieldEditorKind.Checkbox, BoolValue = flt.IsRequired,
+                    Commit = r => flt.IsRequired = r.BoolValue },
+            new() { Label = ViewManagerUiText.FilIsVisible, Guide = ViewManagerUiText.TipFilIsVisible,
+                    Section = ViewManagerUiText.SectionFilCondition,
+                    FieldKey = "IsVisible", Kind = FieldEditorKind.Checkbox, BoolValue = flt.IsVisible,
+                    Commit = r => flt.IsVisible = r.BoolValue },
+
+            new() { Label = ViewManagerUiText.FilColSpan, Guide = ViewManagerUiText.TipFilColSpan,
+                    Section = ViewManagerUiText.SectionFilLayout,
+                    FieldKey = "ColSpan", Kind = FieldEditorKind.Number, NumberValue = flt.ColSpan,
+                    MinNumber = 1, MaxNumber = 4,
+                    Commit = r => flt.ColSpan = (byte)(r.NumberValue ?? 1) },
+            new() { Label = ViewManagerUiText.FilLookupCode, Guide = ViewManagerUiText.TipFilLookupCode,
+                    Section = ViewManagerUiText.SectionFilLayout,
+                    FieldKey = "LookupCode", Kind = FieldEditorKind.Text, TextValue = flt.LookupCode,
+                    Commit = r => flt.LookupCode = string.IsNullOrWhiteSpace(r.TextValue) ? null : r.TextValue },
+            new() { Label = ViewManagerUiText.FilOrderNo, Guide = ViewManagerUiText.TipFilOrderNo + " Đổi bằng nút ↑↓ trên toolbar.",
+                    Section = ViewManagerUiText.SectionFilLayout,
+                    FieldKey = "OrderNo", Kind = FieldEditorKind.ReadOnly, DisplayValue = flt.OrderNo.ToString() },
+        };
+        OpenFieldDetailDialog($"{ViewManagerUiText.FilterDetailTitlePrefix}: {flt.FilterCode}", rows, ComputeFilterHint);
+    }
+
+    /// <summary>Mở popup <see cref="ViewNames.FieldDetailDialog"/>. Áp dụng ghi thẳng vào record
+    /// gốc (cùng instance) — không cần callback đọc lại.</summary>
+    private void OpenFieldDetailDialog(
+        string title, IReadOnlyList<FieldDetailRowVm> rows,
+        Func<IReadOnlyList<FieldDetailRowVm>, string> hintCalculator)
+    {
+        if (_dialogService is null) return;
+        var p = new DialogParameters { { "title", title }, { "rows", rows }, { "hintCalculator", hintCalculator } };
+        _dialogService.ShowDialog(ViewNames.FieldDetailDialog, p, _ => { });
+    }
+
+    /// <summary>Định dạng giá trị hiển thị cho field ReadOnly trong popup chi tiết: null/rỗng → "(trống)".</summary>
+    private static string Fmt(object? value) => value switch
+    {
+        null => "(trống)",
+        string s => string.IsNullOrWhiteSpace(s) ? "(trống)" : s,
+        _ => value.ToString() ?? "(trống)"
+    };
+
+    // ── Tính gợi ý bước cấu hình tiếp theo (theo FieldKey, xem RecomputeHint bên FieldDetailDialogViewModel) ──
+
+    private static string? GetText(IReadOnlyList<FieldDetailRowVm> rows, string key)
+        => rows.FirstOrDefault(r => r.FieldKey == key)?.TextValue;
+
+    private static bool GetBool(IReadOnlyList<FieldDetailRowVm> rows, string key)
+        => rows.FirstOrDefault(r => r.FieldKey == key)?.BoolValue ?? false;
+
+    private static bool IsDataColumn(IReadOnlyList<FieldDetailRowVm> rows)
+        => string.Equals(GetText(rows, "Kind"), "Data", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsCustomRender(IReadOnlyList<FieldDetailRowVm> rows)
+        => GetText(rows, "RenderMode") is "Html" or "Template";
+
+    /// <summary>Chuỗi bước gợi ý cho popup chi tiết CỘT — ưu tiên: FieldName → Kind đặc biệt → Width/Align → Sort → Export.</summary>
+    private static string ComputeColumnHint(IReadOnlyList<FieldDetailRowVm> rows)
+    {
+        if (string.IsNullOrWhiteSpace(GetText(rows, "FieldName")))
+            return "Bắt đầu: nhập Field_Name khớp đúng tên cột dữ liệu trả về từ nguồn.";
+
+        var kind = GetText(rows, "Kind") ?? "Data";
+        if (!string.Equals(kind, "Data", StringComparison.OrdinalIgnoreCase))
+            return $"Loại cột = {kind}: đây là cột đặc biệt — thường chỉ cần độ rộng/canh lề; có thể bỏ qua sắp xếp, lọc, nhóm, tổng hợp và định dạng.";
+
+        var render = GetText(rows, "RenderMode") ?? "Text";
+        if (render is "Html" or "Template")
+            return $"Kiểu hiển thị = {render}: định dạng thường không áp dụng; hãy kiểm tra ở màn chạy trước khi cho phép xuất.";
+
+        if (string.IsNullOrWhiteSpace(GetText(rows, "Width")) && string.IsNullOrWhiteSpace(GetText(rows, "TextAlign")))
+            return "Tiếp theo: đặt Độ rộng (hoặc để trống để tự co giãn) và Canh lề phù hợp kiểu dữ liệu (số → phải, chữ → trái).";
+
+        if (GetBool(rows, "AllowSort") && string.IsNullOrWhiteSpace(GetText(rows, "SortOrder")))
+            return "Cột cho phép sắp xếp — nếu muốn sắp sẵn khi mở lưới, hãy chọn thêm Sắp xếp mặc định (tăng/giảm).";
+
+        if (!GetBool(rows, "AllowExport"))
+            return "Cho phép xuất đang tắt: cột này sẽ không có trong file xuất. Đây là lựa chọn phù hợp với cột trang trí.";
+
+        return "Đã đủ cấu hình cơ bản — kiểm tra thêm Nhóm, Tổng hợp và Khóa trùng khi nhập nếu nghiệp vụ cần.";
+    }
+
+    /// <summary>Chuỗi bước gợi ý cho popup chi tiết ACTION — theo Action_Type đang chọn.</summary>
+    private static string ComputeActionHint(IReadOnlyList<FieldDetailRowVm> rows)
+    {
+        if (string.IsNullOrWhiteSpace(GetText(rows, "ActionCode")))
+            return "Bắt đầu: nhập Action_Code (add/edit/delete/export/print/refresh hoặc mã tùy biến riêng).";
+
+        var type = GetText(rows, "ActionType") ?? "BuiltIn";
+        return type switch
+        {
+            "Export" when string.IsNullOrWhiteSpace(GetText(rows, "ExportFormat"))
+                => "Type = Export: tiếp theo chọn Export_Format (xlsx/csv/pdf/docx) rồi Engine (Grid cho xlsx/csv, Server cho pdf/docx).",
+            "Export" or "Print" when string.Equals(GetText(rows, "ExportEngine"), "Server", StringComparison.OrdinalIgnoreCase)
+                                       && string.IsNullOrWhiteSpace(GetText(rows, "Target"))
+                => "Engine = Server: Target phải là mã bộ mẫu tài liệu (soạn ở màn 'Mẫu tài liệu' trước).",
+            "Navigate" when string.IsNullOrWhiteSpace(GetText(rows, "Target"))
+                => "Type = Navigate: Target phải là URL đích cần điều hướng tới.",
+            "Event" when string.IsNullOrWhiteSpace(GetText(rows, "Target"))
+                => "Type = Event: Target phải là event_code sẽ bắn ra khi bấm nút.",
+            "Api" when string.IsNullOrWhiteSpace(GetText(rows, "Target"))
+                => "Type = Api: Target phải là endpoint sẽ gọi khi bấm nút.",
+            _ when string.IsNullOrWhiteSpace(GetText(rows, "LabelKey")) || GetText(rows, "LabelKey") == "(trống)"
+                => "Tiếp theo: dịch nhãn nút qua nút 🌐 Dịch nhãn trên toolbar (chưa có bản dịch thì nút không có chữ).",
+            "Row" or "Both" when !GetBool(rows, "RequireSelection")
+                => "Nút hiện ở Row/Both — nếu hành động cần đúng 1 dòng đang chọn, bật Req_Sel để chặn bấm nhầm khi chưa chọn.",
+            _ => "Đã đủ cấu hình cơ bản cho action này."
+        };
+    }
+
+    /// <summary>Chuỗi bước gợi ý cho popup chi tiết FILTER (Ui_View_Filter) — theo Control đang chọn.</summary>
+    private static string ComputeFilterHint(IReadOnlyList<FieldDetailRowVm> rows)
+    {
+        if (string.IsNullOrWhiteSpace(GetText(rows, "FilterCode")) || string.IsNullOrWhiteSpace(GetText(rows, "ParamName")))
+            return "Bắt đầu: nhập Filter_Code (định danh control) và Param_Name (tham số SP/SQL, vd @TuNgay).";
+
+        var control = GetText(rows, "ControlType") ?? "Text";
+        if ((control is "Combo" or "MultiSelect" or "Radio") && string.IsNullOrWhiteSpace(GetText(rows, "LookupCode")))
+            return $"Control = {control}: cần chọn LookupCode (Sys_Lookup.Lookup_Code) để có danh sách lựa chọn hiển thị.";
+
+        var op = GetText(rows, "Operator") ?? "=";
+        if (op is ">=" or "<=")
+            return "Op = >= hoặc <=: đây là 1 nửa khoảng giá trị (từ–đến) — nhớ thêm 1 dòng filter khác cho nửa còn lại (vd cặp tu_ngay/den_ngay).";
+
+        if (string.IsNullOrWhiteSpace(GetText(rows, "LabelKey")) || GetText(rows, "LabelKey") == "(trống)")
+            return "Tiếp theo: dịch nhãn control qua nút 🌐 Dịch nhãn trên toolbar — bắt buộc phải có khi lưu.";
+
+        if (GetBool(rows, "IsRequired"))
+            return "Bắt buộc đang bật: người dùng phải nhập control này thì nút Tìm mới chạy được.";
+
+        return "Đã đủ cấu hình cơ bản — kiểm tra ColSpan cho vừa panel (chia lưới 4 cột) nếu layout bị lệch.";
     }
 
     /// <summary>

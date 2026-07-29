@@ -30,6 +30,11 @@ public sealed class ViewActionRecord : BindableBase
     private string? _labelKey;
     public string? LabelKey { get => _labelKey; set => SetProperty(ref _labelKey, value); }
 
+    private bool _hasLabel;
+    /// <summary>True khi LabelKey đã có bản dịch (ngôn ngữ mặc định) trong Sys_Resource — UI-only,
+    /// ViewManagerViewModel tự tính lại khi nạp lưới/khi dịch xong, KHÔNG map cột DB.</summary>
+    public bool HasLabel { get => _hasLabel; set => SetProperty(ref _hasLabel, value); }
+
     private string? _tooltipKey;
     public string? TooltipKey { get => _tooltipKey; set => SetProperty(ref _tooltipKey, value); }
 

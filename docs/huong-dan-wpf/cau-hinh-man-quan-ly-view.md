@@ -116,16 +116,25 @@ Lưới sửa trực tiếp (inline). Toolbar: **+ Thêm cột** · **− Xóa c
 | **Caption (i18n)** | Tiêu đề cột. Nút 🌐 mỗi dòng để dịch. **Trống = fallback** label field → `Field_Name`. | |
 | **Kind** | Loại cột. | `Data` \| `Selection` \| `Command` \| `TreeSpin` |
 | **Render** | Cách render ô. | `Text` \| `Html` \| `Image` \| `Link` \| `Badge` \| `Boolean` \| `Template` |
-| **Width / MinWidth** | Độ rộng. | |
+| **FK lookup (cha)** | Ô thân thiện cấu hình FK auto-JOIN: chọn `Field_Id` của LookupBox FK bên **form sửa** → engine tự JOIN bảng cha để hiện **TÊN** thay vì Id trên lưới. Ghi vào `Props_Json.fkLookup.fieldId` (giữ nguyên khóa khác trong Props_Json); trống/0 = gỡ cấu hình. | |
+| **Width / MinWidth** | Độ rộng / độ rộng tối thiểu. | |
 | **Align** | Canh chỉnh. | `left` \| `center` \| `right` |
-| **Ghim** | Đóng băng cột. | `none` \| `left` \| `right` |
+| **Ghim** | Đóng băng cột (frozen). | `none` \| `left` \| `right` |
 | **Format** | Display format. | VD `n0`, `dd/MM/yyyy` |
 | **Visible** | Hiện cột. | |
-| **Sort / SortMặc định / SortIdx** | Cho sắp xếp; sort mặc định khi mở (`asc`/`desc`); thứ tự khi sort nhiều cột. | |
-| **Filter / Group** | Cho lọc / cho nhóm. | |
+| **Sort / SortMặc định / SortIdx** | Cho sắp xếp; sort mặc định khi mở (`asc`/`desc`); thứ tự ưu tiên khi sort nhiều cột. | |
+| **Filter / Group** | Cho lọc / cho nhóm theo cột này. | |
 | **Summary** | Dòng tổng. | `count` \| `sum` \| `avg` \| `min` \| `max` |
 | **Export** | Cho xuất cột. Cột HTML trang trí / command / selection → **bỏ tick**. | |
-| **Order** | Thứ tự (đọc-only, đổi bằng ↑↓). | |
+| **Khóa trùng (import)** | Tick = cột này là 1 phần **khóa ghép** kiểm trùng khi import dữ liệu (`Is_Import_Key`). Tick nhiều cột = khóa ghép nhiều field. | |
+| **Order** | Thứ tự cột trên lưới (đọc-only, đổi bằng ↑↓ hoặc kéo-thả). | |
+
+> **Nút ⓘ đầu mỗi dòng** (cột Cột / Actions / Bộ lọc): mở popup **"Chi tiết cấu hình"** — sửa được
+> trực tiếp từng field theo nhóm nghiệp vụ (không phải chỉ xem), kèm gợi ý bước tiếp theo tự cập nhật
+> theo giá trị đang nhập. Bấm Lưu trong popup ghi thẳng vào dòng đang chọn trên lưới.
+>
+> **Dấu ✓ xanh cạnh nút 🌐** (cột Caption/Label): key đã có bản dịch (ngôn ngữ mặc định) trong
+> Sys_Resource. Không có dấu ✓ = key rỗng hoặc chưa dịch — bấm 🌐 để dịch.
 
 ---
 

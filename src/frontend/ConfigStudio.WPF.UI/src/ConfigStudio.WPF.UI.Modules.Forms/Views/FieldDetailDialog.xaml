@@ -1,0 +1,164 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.FieldDetailDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:prism="http://prismlibrary.com/"
+             xmlns:text="clr-namespace:ConfigStudio.WPF.UI.Core.Constants;assembly=ConfigStudio.WPF.UI.Core"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             MinWidth="720">
+    <prism:Dialog.WindowStyle>
+        <Style TargetType="Window">
+            <Setter Property="Width" Value="800" />
+            <Setter Property="Height" Value="780" />
+            <Setter Property="MinWidth" Value="740" />
+            <Setter Property="MinHeight" Value="620" />
+            <Setter Property="ResizeMode" Value="CanResize" />
+        </Style>
+    </prism:Dialog.WindowStyle>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- Mỗi field 1 "ô" trong WrapPanel — độ rộng co theo Kind (checkbox hẹp, text/combo rộng
+             hơn) thay vì ép mọi ô bằng nhau (icare247-admin-ui §5.3 "field co theo bản chất data"). -->
+        <Style x:Key="FieldCellStyle" TargetType="StackPanel">
+            <Setter Property="Margin" Value="0,0,16,16" />
+            <Setter Property="Width" Value="228" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Kind}" Value="Checkbox">
+                    <Setter Property="Width" Value="212" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Kind}" Value="Number">
+                    <Setter Property="Width" Value="144" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+    <Border Background="{DynamicResource AppSurfaceBrush}"
+            BorderBrush="{DynamicResource AppBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <Border Padding="24,16"
+                    Background="{DynamicResource AppSurfaceMutedBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppTextStrongBrush}" />
+            </Border>
+
+            <!-- Gợi ý bước cấu hình tiếp theo — dải màu tối giản (viền trái accent, nền phẳng),
+                 tính lại mỗi lần 1 field đổi giá trị; ẩn khi chưa có gợi ý -->
+            <Border Grid.Row="1" Padding="12,10" Margin="24,16,24,0"
+                    Background="{DynamicResource AppSurfaceMutedBrush}"
+                    BorderBrush="{DynamicResource AppAccentBrush}" BorderThickness="3,0,0,0"
+                    Visibility="{Binding HasNextStepHint, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="{Binding NextStepHint}" FontSize="12.5" TextWrapping="Wrap"
+                           Foreground="{DynamicResource AppTextBrush}" />
+            </Border>
+
+            <!-- Field theo nhóm nghiệp vụ (hierarchy §5.1) — mỗi nhóm 1 WrapPanel, field co theo Kind -->
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding RowsView}" Margin="24,8,24,16">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppTextStrongBrush}"
+                                               Margin="0,16,0,8" />
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                            <GroupStyle.Panel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal" />
+                                </ItemsPanelTemplate>
+                            </GroupStyle.Panel>
+                        </GroupStyle>
+                    </ItemsControl.GroupStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Style="{StaticResource FieldCellStyle}">
+                                <DockPanel LastChildFill="True" Margin="0,0,0,4"
+                                           Visibility="{Binding ShowTopLabel, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock DockPanel.Dock="Right" Text="ⓘ" FontSize="13" Cursor="Help"
+                                               Opacity="0.75" Margin="8,0,0,0"
+                                               Foreground="{DynamicResource AppInfoBrush}"
+                                               ToolTipService.ShowDuration="60000" ToolTip="{Binding Guide}" />
+                                    <TextBlock Text="{Binding Label}" FontWeight="Medium" FontSize="13"
+                                               Foreground="{DynamicResource AppTextMutedBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                </DockPanel>
+
+                                <!-- Text: editor DevExpress bắt buộc theo rule WPF -->
+                                <dxe:TextEdit FontSize="13"
+                                              EditValue="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}"
+                                              IsEnabled="{Binding IsEnabled}"
+                                              ToolTip="{Binding Guide}"
+                                              Visibility="{Binding IsText, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+
+                                <!-- Number: SpinEdit ngăn dữ liệu chữ và giữ giới hạn theo từng field -->
+                                <dxe:SpinEdit FontSize="13" IsFloatValue="False" AllowNullInput="True"
+                                              EditValue="{Binding NumberValue, UpdateSourceTrigger=PropertyChanged}"
+                                              MinValue="{Binding MinNumber}" MaxValue="{Binding MaxNumber}"
+                                              IsEnabled="{Binding IsEnabled}"
+                                              ToolTip="{Binding Guide}"
+                                              Visibility="{Binding IsNumber, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+
+                                <!-- Checkbox -->
+                                <dxe:CheckEdit Content="{Binding Label}" FontSize="13"
+                                               VerticalAlignment="Center" Margin="0,4,0,0"
+                                               IsChecked="{Binding BoolValue}"
+                                               IsEnabled="{Binding IsEnabled}"
+                                               ToolTip="{Binding Guide}"
+                                               Visibility="{Binding IsCheckbox, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+
+                                <!-- Combo: chọn 1 trong Options -->
+                                <dxe:ComboBoxEdit FontSize="13" IsTextEditable="False"
+                                                  ItemsSource="{Binding Options}"
+                                                  EditValue="{Binding TextValue, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsEnabled="{Binding IsEnabled}"
+                                                  ToolTip="{Binding Guide}"
+                                                  Visibility="{Binding IsCombo, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+
+                                <!-- ReadOnly: field có luồng sửa riêng (🌐 dịch key / ↑↓ thứ tự / lookup phức tạp) -->
+                                <dxe:TextEdit FontSize="13" IsReadOnly="True"
+                                              EditValue="{Binding DisplayValue}"
+                                              ToolTip="{Binding Guide}"
+                                              Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Footer -->
+            <Border Grid.Row="3" Padding="24,12"
+                    Background="{DynamicResource AppSurfaceMutedBrush}"
+                    BorderBrush="{DynamicResource AppBorderBrush}"
+                    BorderThickness="0,1,0,0">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="{x:Static text:ViewManagerUiText.DetailDialogCancel}"
+                            Command="{Binding CancelCommand}" IsCancel="True"
+                            Style="{DynamicResource AppOutlineButtonStyle}" Margin="0,0,8,0" />
+                    <Button Content="{x:Static text:ViewManagerUiText.DetailDialogApply}"
+                            Command="{Binding SaveCommand}" IsDefault="True"
+                            Style="{DynamicResource AppActionButtonStyle}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

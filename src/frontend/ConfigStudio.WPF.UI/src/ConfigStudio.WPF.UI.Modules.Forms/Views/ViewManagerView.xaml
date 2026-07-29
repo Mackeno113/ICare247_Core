@@ -107,6 +107,33 @@
             <sys:String>top</sys:String>
         </x:Array>
 
+        <!-- Dấu ✓ xanh cạnh nút 🌐 khi key ĐÃ có bản dịch (ngôn ngữ mặc định) — không dùng màu
+             chữ trên nút 🌐 vì đó là emoji màu cố định (Segoe UI Emoji), Foreground không đổi được.
+             Dùng ký tự ✓ thường (không phải emoji màu) nên tô màu được bình thường. -->
+        <Style x:Key="TranslatedCheckStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="✓" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Margin" Value="0,0,3,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource AppSuccessBrush}" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="ToolTip" Value="Đã có bản dịch (ngôn ngữ mặc định)" />
+        </Style>
+        <Style x:Key="CaptionTranslatedCheckStyle" TargetType="TextBlock" BasedOn="{StaticResource TranslatedCheckStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RowData.Row.HasCaption}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="LabelTranslatedCheckStyle" TargetType="TextBlock" BasedOn="{StaticResource TranslatedCheckStyle}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RowData.Row.HasLabel}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="EditorLabel" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -438,6 +465,19 @@
                                                        NewItemRowPosition="None" />
                                     </dxg:GridControl.View>
                                     <dxg:GridControl.Columns>
+                                        <dxg:GridColumn Header="" FieldName="ViewColumnId" Width="34" AllowEditing="False"
+                                                        AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False"
+                                                        FixedWidth="True" ReadOnly="True">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <dx:SimpleButton Content="ⓘ" Width="26" Padding="0"
+                                                                     ToolTip="Xem chi tiết cột + hướng dẫn cấu hình"
+                                                                     Command="{Binding DataContext.ViewColumnDetailCommand,
+                                                                               RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                     CommandParameter="{Binding RowData.Row}" />
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Field_Name *" FieldName="FieldName" Width="130" />
                                         <dxg:GridColumn Header="Caption (i18n)" FieldName="CaptionKey" Width="170" AllowEditing="False">
                                             <dxg:GridColumn.CellTemplate>
@@ -448,9 +488,20 @@
                                                                          Command="{Binding DataContext.OpenColumnCaptionI18nRowCommand,
                                                                                    RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                                          CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource CaptionTranslatedCheckStyle}" />
                                                         <TextBlock Text="{Binding RowData.Row.CaptionKey}" VerticalAlignment="Center"
-                                                                   TextTrimming="CharacterEllipsis" Margin="2,0"
-                                                                   ToolTip="{Binding RowData.Row.CaptionKey}" />
+                                                                   TextTrimming="CharacterEllipsis" Margin="2,0">
+                                                            <TextBlock.ToolTip>
+                                                                <TextBlock>
+                                                                    <TextBlock.Text>
+                                                                        <MultiBinding StringFormat="Key: {0}&#10;Bản dịch (vi): {1}">
+                                                                            <Binding Path="RowData.Row.CaptionKey" />
+                                                                            <Binding Path="RowData.Row.CaptionPreview" TargetNullValue="(chưa dịch)" />
+                                                                        </MultiBinding>
+                                                                    </TextBlock.Text>
+                                                                </TextBlock>
+                                                            </TextBlock.ToolTip>
+                                                        </TextBlock>
                                                     </DockPanel>
                                                 </DataTemplate>
                                             </dxg:GridColumn.CellTemplate>
@@ -547,6 +598,19 @@
                                                        NewItemRowPosition="None" />
                                     </dxg:GridControl.View>
                                     <dxg:GridControl.Columns>
+                                        <dxg:GridColumn Header="" FieldName="ActionId" Width="34" AllowEditing="False"
+                                                        AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False"
+                                                        FixedWidth="True" ReadOnly="True">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <dx:SimpleButton Content="ⓘ" Width="26" Padding="0"
+                                                                     ToolTip="Xem chi tiết action + hướng dẫn cấu hình"
+                                                                     Command="{Binding DataContext.ViewActionDetailCommand,
+                                                                               RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                     CommandParameter="{Binding RowData.Row}" />
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Action_Code *" FieldName="ActionCode" Width="110" />
                                         <dxg:GridColumn Header="Type" FieldName="ActionType" Width="90">
                                             <dxg:GridColumn.EditSettings>
@@ -567,6 +631,7 @@
                                                                          Command="{Binding DataContext.OpenActionLabelI18nRowCommand,
                                                                                    RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                                          CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource LabelTranslatedCheckStyle}" />
                                                         <TextBlock Text="{Binding RowData.Row.LabelKey}" VerticalAlignment="Center"
                                                                    TextTrimming="CharacterEllipsis" Margin="2,0"
                                                                    ToolTip="{Binding RowData.Row.LabelKey}" />
@@ -653,6 +718,19 @@
                                                        NewItemRowPosition="None" />
                                     </dxg:GridControl.View>
                                     <dxg:GridControl.Columns>
+                                        <dxg:GridColumn Header="" FieldName="FilterId" Width="34" AllowEditing="False"
+                                                        AllowSorting="False" AllowGrouping="False" AllowColumnFiltering="False"
+                                                        FixedWidth="True" ReadOnly="True">
+                                            <dxg:GridColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <dx:SimpleButton Content="ⓘ" Width="26" Padding="0"
+                                                                     ToolTip="Xem chi tiết filter + hướng dẫn cấu hình"
+                                                                     Command="{Binding DataContext.ViewFilterDetailCommand,
+                                                                               RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
+                                                                     CommandParameter="{Binding RowData.Row}" />
+                                                </DataTemplate>
+                                            </dxg:GridColumn.CellTemplate>
+                                        </dxg:GridColumn>
                                         <dxg:GridColumn Header="Filter_Code *" FieldName="FilterCode" Width="120" />
                                         <dxg:GridColumn Header="Control" FieldName="ControlType" Width="100">
                                             <dxg:GridColumn.EditSettings>
@@ -668,6 +746,7 @@
                                                                          Command="{Binding DataContext.OpenFilterLabelI18nRowCommand,
                                                                                    RelativeSource={RelativeSource AncestorType=dxg:GridControl}}"
                                                                          CommandParameter="{Binding RowData.Row}" />
+                                                        <TextBlock DockPanel.Dock="Right" Style="{StaticResource LabelTranslatedCheckStyle}" />
                                                         <TextBlock Text="{Binding RowData.Row.LabelKey}" VerticalAlignment="Center"
                                                                    TextTrimming="CharacterEllipsis" Margin="2,0"
                                                                    ToolTip="{Binding RowData.Row.LabelKey}" />

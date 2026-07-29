@@ -364,9 +364,13 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         // Sinh mã tự động (spec 32 / ADR-036) — TRƯỚC khi dựng tham số cột, để mã vừa cấp
         // được ghi như một cột bình thường trong CÙNG câu INSERT / CÙNG transaction.
-        await ApplyGeneratedCodeAsync(data, tx, info, values, tenantId, ct);
+        var maColumn = await ApplyGeneratedCodeAsync(data, tx, info, values, tenantId, ct);
 
-        var (cols, dp) = BuildColumnParams(info, values, excludeCol: pk);
+        // Cột mã (Ma) thường bị khóa IsReadOnly trong Ui_Field vì user không được gõ tay
+        // (AllowManual=false) — nhưng giá trị vừa được HỆ THỐNG cấp ở trên vẫn phải ghi được,
+        // nếu không BuildColumnParams lọc theo !IsReadOnly sẽ âm thầm bỏ cột này khỏi câu INSERT
+        // → cột NOT NULL nhận NULL → lỗi SQL.
+        var (cols, dp) = BuildColumnParams(info, values, excludeCol: pk, forceAllowedCol: maColumn);
         if (cols.Count == 0)
             throw new InvalidOperationException("MasterData Insert: không có cột hợp lệ để thêm.");
 
@@ -395,24 +399,28 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     /// thiếu mã (hoặc mã sai quy tắc) tệ hơn là báo lỗi cho người dùng.
     /// Sự kiện theo sau: <c>values[Cot]</c> mang mã chính thức, INSERT ghi luôn trong transaction này.
     /// </summary>
-    private async Task ApplyGeneratedCodeAsync(
+    /// <returns>Cột vừa được hệ thống cấp mã, để caller ép BuildColumnParams cho phép ghi dù
+    /// cột đang IsReadOnly; <c>null</c> nếu bảng không có quy tắc hoặc đã nhường giá trị có sẵn.</returns>
+    private async Task<string?> ApplyGeneratedCodeAsync(
         IDbConnection data, IDbTransaction? tx, MasterDataFormInfo info,
         Dictionary<string, object?> values, int tenantId, CancellationToken ct)
     {
-        if (_codeRules is null || _codeGen is null) return;
+        if (_codeRules is null || _codeGen is null) return null;
 
         var rule = await _codeRules.GetAsync(info.TableName, tenantId, ct);
-        if (rule is null) return;
+        if (rule is null) return null;
 
         // Đã có giá trị → nhường (xem luật nhường ở doc trên).
         if (values.TryGetValue(rule.ColumnCode, out var existing)
             && existing is not null and not DBNull
             && !string.IsNullOrWhiteSpace(existing.ToString()))
-            return;
+            return null;
 
         var code = await _codeGen.GenerateAsync(rule, data, tx, values, info.SchemaName, ct);
-        if (!string.IsNullOrWhiteSpace(code))
-            values[rule.ColumnCode] = code;
+        if (string.IsNullOrWhiteSpace(code)) return null;
+
+        values[rule.ColumnCode] = code;
+        return rule.ColumnCode;
     }
 
     // ── Xem trước mã (peek — KHÔNG giữ chỗ) ─────────────────────────────────────
@@ -627,7 +635,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
     /// <summary>Lọc values theo các cột field của form (chống cột lạ) + build Dapper params.</summary>
     private static (List<string> Cols, DynamicParameters Dp) BuildColumnParams(
-        MasterDataFormInfo info, Dictionary<string, object?> values, string excludeCol)
+        MasterDataFormInfo info, Dictionary<string, object?> values, string excludeCol,
+        string? forceAllowedCol = null)
     {
         // Tập cột cho phép ghi = field của form, không readonly, không phải PK
         var allowed = info.Columns
@@ -635,6 +644,10 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
             .Select(c => c.ColumnCode)
             .Where(c => SafeIdentifierRegex().IsMatch(c))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Cột mã tự sinh: hệ thống vừa ghi giá trị dù cột đang IsReadOnly (khóa với USER,
+        // không khóa với engine sinh mã) — ép cho phép, không thì bị lọc mất ở dưới.
+        if (forceAllowedCol is not null) allowed.Add(forceAllowedCol);
 
         var cols = new List<string>();
         var dp   = new DynamicParameters();

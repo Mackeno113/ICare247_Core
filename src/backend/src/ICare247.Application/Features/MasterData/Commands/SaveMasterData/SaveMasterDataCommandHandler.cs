@@ -20,6 +20,7 @@ public sealed class SaveMasterDataCommandHandler
     private readonly IValidationEngine     _validation;
     private readonly IConfigCache          _config;
     private readonly IHookStoreCatalog     _hookCatalog;
+    private readonly ICodeRuleCatalog      _codeRules;
     private readonly IAuditWriter          _audit;
     private readonly ILookupCacheVersion   _lookupVer;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
@@ -29,6 +30,7 @@ public sealed class SaveMasterDataCommandHandler
         IValidationEngine validation,
         IConfigCache config,
         IHookStoreCatalog hookCatalog,
+        ICodeRuleCatalog codeRules,
         IAuditWriter audit,
         ILookupCacheVersion lookupVer,
         ILogger<SaveMasterDataCommandHandler> logger)
@@ -37,6 +39,7 @@ public sealed class SaveMasterDataCommandHandler
         _validation  = validation;
         _config      = config;
         _hookCatalog = hookCatalog;
+        _codeRules   = codeRules;
         _audit       = audit;
         _lookupVer   = lookupVer;
         _logger      = logger;
@@ -61,10 +64,20 @@ public sealed class SaveMasterDataCommandHandler
             info.FormId, context, r.TenantId, langCode: lang,
             resourceMap: resourceMap, formCode: r.FormCode, ct: ct);
 
+        // Cột sinh mã tự động (spec 32 / ADR-036): lúc Thêm mới, client CỐ Ý gỡ mã dự kiến khỏi
+        // payload (chống đua mã trùng — MasterDataForm.razor SaveAsync) nên cột này tới đây đang
+        // rỗng. Server sẽ tự cấp mã ngay sau bước validate này (ApplyGeneratedCodeAsync trong
+        // InsertCoreAsync), nên KHÔNG được coi rỗng ở đây là lỗi required.
+        var maColumn = r.Id is null
+            ? (await _codeRules.GetAsync(info.TableName, r.TenantId, ct))?.ColumnCode
+            : null;
+
         var errors = vr.Where(kv => !kv.Value.IsValid)
                        // Import cập nhật một phần cột (PartialValidate): chỉ giữ lỗi của field CÓ trong payload —
                        // field vắng (không đưa vào Values) không bị bắt buộc (bản ghi đã có sẵn giá trị cũ).
                        .Where(kv => !r.PartialValidate || r.Values.ContainsKey(kv.Key))
+                       .Where(kv => maColumn is null
+                                    || !kv.Key.Equals(maColumn, StringComparison.OrdinalIgnoreCase))
                        .Select(kv => new MasterDataFieldError(
                            kv.Key,
                            kv.Value.Results.FirstOrDefault()?.Message ?? "Giá trị không hợp lệ."))

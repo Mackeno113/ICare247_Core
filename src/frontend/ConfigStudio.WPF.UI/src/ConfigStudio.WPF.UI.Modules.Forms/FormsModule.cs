@@ -53,6 +53,10 @@ public sealed class FormsModule : IModule
 
         // NOTE: Dialog sửa 1 mẫu lookup (tách khỏi lưới danh sách LookupTemplateManager).
         containerRegistry.RegisterDialog<LookupTemplateEditDialog, LookupTemplateEditDialogViewModel>(ViewNames.LookupTemplateEditDialog);
+
+        // NOTE: Popup cấu hình nhanh một dòng Cột/Action/Bộ lọc; "Áp dụng" ghi về record trên lưới,
+        // màn Quản lý View vẫn là nơi lưu dữ liệu xuống DB.
+        containerRegistry.RegisterDialog<FieldDetailDialog, FieldDetailDialogViewModel>(ViewNames.FieldDetailDialog);
     }
 
     public void OnInitialized(IContainerProvider containerProvider)

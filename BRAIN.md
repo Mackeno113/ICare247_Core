@@ -135,6 +135,10 @@ var key = $"form_{formCode}";
 
 ### WPF/XAML (Codex)
 - UI library: DevExpress (`dx:`, `dxe:`, `dxg:`) + pure WPF — KHÔNG có MaterialDesign
+- Mọi control nhập/chọn dữ liệu trong WPF **BẮT BUỘC dùng DevExpress editor** (`dxe:TextEdit`,
+  `dxe:ComboBoxEdit`, `dxe:SpinEdit`, `dxe:CheckEdit`, `dxe:DateEdit`, ...). Không dùng
+  `TextBox`, `ComboBox`, `CheckBox`, `DatePicker` WPF thuần làm editor; WPF thuần chỉ dùng cho
+  layout/hiển thị (`Grid`, `Border`, `TextBlock`, `ItemsControl`, ...).
 - Icon: Unicode text (⚙ ✎ 👁 ⧉) — không dùng PackIcon
 - `<Run Text="{Binding Prop, Mode=OneWay}" />` — bắt buộc Mode=OneWay
 - Đọc ít nhất 1 view hiện có trong module trước khi viết XAML mới

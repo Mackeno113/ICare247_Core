@@ -25,6 +25,16 @@ public sealed class ViewColumnRecord : BindableBase
     /// <summary>Key i18n tiêu đề cột (null = fallback Label_Key field → Field_Name).</summary>
     public string? CaptionKey { get => _captionKey; set => SetProperty(ref _captionKey, value); }
 
+    private bool _hasCaption;
+    /// <summary>True khi CaptionKey đã có bản dịch (ngôn ngữ mặc định) trong Sys_Resource — UI-only,
+    /// ViewManagerViewModel tự tính lại khi nạp lưới/khi dịch xong, KHÔNG map cột DB.</summary>
+    public bool HasCaption { get => _hasCaption; set => SetProperty(ref _hasCaption, value); }
+
+    private string? _captionPreview;
+    /// <summary>Nội dung bản dịch (vi) hiện tại của CaptionKey, để hiện tooltip xem nhanh trên lưới —
+    /// UI-only, ViewManagerViewModel tự nạp lại cùng lúc với HasCaption, KHÔNG map cột DB.</summary>
+    public string? CaptionPreview { get => _captionPreview; set => SetProperty(ref _captionPreview, value); }
+
     private string _columnKind = "Data";
     /// <summary>Data | Selection | Command | TreeSpin.</summary>
     public string ColumnKind { get => _columnKind; set => SetProperty(ref _columnKind, value); }

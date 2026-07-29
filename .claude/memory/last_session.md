@@ -1,22 +1,66 @@
 # Last Session Summary
 
-> Cập nhật: 2026-07-27 (session 96 — 2 commit: ① **màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web**
-> (ADR-037) ② **gom + build-verify AUTHZ-PB (phạm vi phòng ban) + dọn nợ ConfigStudio session 95** đang
-> nằm sẵn trong working tree từ trước).
+> Cập nhật: 2026-07-29 (session 97 — **gom 1 commit**: ① fix bug dấu ✓ "đã dịch" sai + tooltip xem nhanh
+> bản dịch (tab Cột, ViewManager WPF) ② bundle việc dang dở nằm sẵn trong working tree từ trước: task
+> Codex **WPF-16** (chuẩn hóa DevExpress editor + popup "Chi tiết cấu hình" — xem `AI_HANDOFF.md`/
+> `AI_TASKS.yaml`) + bug fix backend cột `Ma` tự sinh bị lọc khỏi INSERT khi `IsReadOnly` (MA-3) + vài
+> file docs/rules linh tinh khác đang mở).
 > Lịch sử → [session_history.md](session_history.md).
-> **Trạng thái git: ĐÃ commit + ĐÃ push cả 2.** `master` = `origin/master` tại commit `a2fa94e`
-> (commit trước `35fe2ba` — Nhật ký lỗi; nền `e1650b3` session 94, `7cbccc0` session 93).
-> **Build session 96:** backend `ICare247.slnx` 0W/0E · Web `ICare247_UI.slnx` 0W/0E (fix 1 lỗi Razor thật:
-> `""` lồng trong attribute `@onclick` → `string.Empty`) · ConfigStudio `ConfigStudio.WPF.UI.slnx` 0W/0E ·
-> test `ICare247.Application.Tests` 145/145 Passed (build lại lần 2 khi gom AUTHZ-PB, vẫn xanh).
-> **Task tiếp theo gợi ý:** (1) user chạy `db/095_create_nk_loihethong.sql` (Audit DB) +
-> `db/096_seed_ht_chucnang_menu_errorlogs.sql` (Data DB) → trigger 1 lỗi 500 thật → xác nhận row lên
-> `NK_LoiHeThong` + hiện đúng trên `/m/administration/error-logs` → (2) user chạy `db/091→092→093→094`
-> (Data DB, ĐÚNG THỨ TỰ) rồi smoke tab "Phòng ban truy cập" (UserManagementPage) + view "Phạm vi phòng
-> ban" (PermissionMatrixPage) — AUTHZ-PB-APPLY vẫn còn ⏳ → (3) user tự smoke UI ConfigStudio "Quy tắc
-> sinh mã"/"Mẫu Lookup" (session 95, vẫn CHƯA smoke) → (4) smoke sinh mã thật (session 94, ADR-036) →
-> (5) 4 task bảo mật còn mở trong TASKS.md (nặng nhất: mass assignment ở `InsertAsync`) → (6) màn Phòng
-> ban no-code (AUTHZ-PB-6, chờ bảng nghiệp vụ có cột `PhongBan_Id`).
+> **Trạng thái git: user cần tự commit + push** (xem hướng dẫn cuối phiên).
+> **Build session 97:** backend `ICare247.slnx` 0W/0E · test `ICare247.Application.Tests` 145/145 Passed ·
+> Web `ICare247_UI.slnx` 0W/0E · ConfigStudio `ConfigStudio.WPF.UI.slnx` 0W/0E.
+> **Task tiếp theo gợi ý:** (1) user tự build ConfigStudio + mở màn "Quản lý View" tab Cột → hover tên key
+> Caption để xác nhận tooltip hiện đúng bản dịch, và các cột trước đây có ✓ giả (DienThoai/Email/ThuTu/
+> TrangThai/MoTa/Cap/ThuTuCay/DuongDanCay/NgayHieuLuc...) nay mất ✓ đúng thực trạng chưa dịch → (2) user
+> smoke popup "Chi tiết cấu hình" (⓪ nút đầu dòng, WPF-16 Codex) — theo `AI_HANDOFF.md` mới build module
+> Forms riêng, CHƯA build full solution vì app đang chạy khóa DLL → (3) smoke lại luồng Thêm mới cho bảng
+> đã bật quy tắc sinh mã (nếu có) để xác nhận fix `IsReadOnly` cột `Ma` không còn lỗi NOT NULL → (4) các
+> việc treo từ session 96 vẫn còn nguyên: `db/095`+`db/096` (Nhật ký lỗi), `db/091→092→093→094` (AUTHZ-PB,
+> ĐÚNG THỨ TỰ) + smoke tab "Phòng ban truy cập"/view "Phạm vi phòng ban", smoke UI "Quy tắc sinh mã"/"Mẫu
+> Lookup" (session 95), 4 task bảo mật mở trong TASKS.md (nặng nhất: mass assignment ở `InsertAsync`),
+> màn Phòng ban no-code (AUTHZ-PB-6).
+
+## Session 97 (2026-07-29) — Fix dấu ✓ "đã dịch" sai + tooltip xem nhanh bản dịch (ViewManager WPF)
+
+**Bối cảnh:** user hỏi ý nghĩa từng cột lưới tab "Cột" (ViewManagerView), sau đó nhờ tra bản dịch hiện có
+của `tc_phongban.field.*`. Đọc trực tiếp `Sys_Resource` (SELECT do user tự chạy — Claude không tự chạy
+SQL) phát hiện **8/14 key mang ✓ xanh "đã dịch" nhưng thực ra là text auto-seed** (SplitCamelCase từ
+`Field_Name`, kiểu `Dien Thoai`/`Mo Ta`/`Trang Thai`...), không phải bản dịch thật.
+
+**Root cause:** `RefreshTranslationStatusAsync` (`ViewManagerViewModel.cs`) tính `HasCaption` chỉ bằng
+"Resource_Value không rỗng" — không dùng `I18nDefaults.IsUntranslated`, cơ chế đã có sẵn và đang dùng
+đúng ở màn Form field (`FieldConfigViewModel.ApplyLabelDefaultToEmptyDisplays`) nhưng bị bỏ sót ở màn View.
+
+**Đã fix (2 file):**
+- `ViewManagerViewModel.cs` — `RefreshTranslationStatusAsync` và callback `onSaved` sau dịch (nút 🌐)
+  đều đổi sang `I18nDefaults.BuildColumnMarkers(FieldName)` + `IsUntranslated()` trước khi bật ✓.
+- `ViewColumnRecord.cs` — thêm `CaptionPreview` (UI-only) lưu nội dung đã dịch, nạp cùng lúc `HasCaption`.
+- `ViewManagerView.xaml` — tooltip cột Caption đổi từ chỉ hiện Key sang `MultiBinding` hiện cả Key + bản
+  dịch (vi), key chưa dịch hiện `(chưa dịch)` — user xem nhanh ngay trên lưới, không cần mở popup 🌐.
+- Cập nhật `docs/huong-dan-wpf/cau-hinh-man-quan-ly-view.md`: bảng cột tab Cột trước đó thiếu **FK lookup
+  (cha)** và **Khóa trùng (import)** — bổ sung đủ 14 cột đúng thứ tự XAML thật.
+
+**Quyết định khi hỏi user:** không sửa dữ liệu `Sys_Resource` bằng SQL (dù đã soạn sẵn script UPDATE) —
+user chốt "cần điều chỉnh giao diện WPF" → chuyển hướng sửa gốc rễ ở code thay vì vá data.
+
+**Gom vào cùng 1 commit (user chốt "gom hết working tree"):** working tree lúc bắt đầu phiên đã có sẵn
+nhiều việc dang dở KHÔNG phải do phiên này tạo ra:
+- **WPF-16 (Codex, xem `AI_HANDOFF.md`/`AI_TASKS.yaml`)** — chuẩn hóa bắt buộc dùng DevExpress editor
+  trong WPF + hoàn thiện popup "Chi tiết cấu hình" (`FieldDetailDialog`, nút ⓘ đầu mỗi dòng lưới
+  Cột/Actions/Bộ lọc). Status Codex ghi "done, chưa commit/push"; build riêng module Forms 0W/0E, **CHƯA
+  build full solution** (app đang chạy khóa DLL host). Đã fix 1 `XamlParseException` (`WindowStartupLocation`
+  không phải DependencyProperty, không đặt trong `Style.Setter`).
+- **Bug fix backend cột `Ma` tự sinh (MA-3, spec 32/ADR-036)** — `BuildColumnParams` lọc `!IsReadOnly` nên
+  cột `Ma` (khóa readonly với user) bị loại khỏi INSERT dù vừa được hệ thống cấp mã → NOT NULL nhận NULL.
+  Fix: `ApplyGeneratedCodeAsync` trả `ColumnCode` → `forceAllowedCol` ép cho ghi; `SaveMasterDataCommandHandler`
+  bỏ qua lỗi validate required cho cột này lúc Thêm mới. Chi tiết → TASKS.md mục MA-3.
+- Vài file docs/rules khác đang mở từ trước (`.claude-rules/wpf-configstudio.md`, gitnexus skills,
+  `AGENTS.md`/`BRAIN.md`/`CLAUDE.md` — không đọc kỹ nội dung, chỉ gộp theo yêu cầu user).
+
+**Build `/finish-task` (2026-07-29):** backend `ICare247.slnx` 0W/0E · test 145/145 Passed · Web
+`ICare247_UI.slnx` 0W/0E · ConfigStudio `ConfigStudio.WPF.UI.slnx` 0W/0E (full solution, khác build riêng
+module Forms của Codex). **CHƯA smoke runtime** phần WPF-16 (popup Chi tiết cấu hình) và phần fix cột `Ma`
+(cần bảng đã bật quy tắc sinh mã để test).
 
 ## Session 96 (2026-07-27) — Màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web (ADR-037)
 

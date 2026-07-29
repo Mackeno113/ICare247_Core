@@ -133,6 +133,12 @@ tenant) · ⛔ **KHÔNG lưu số lớn nhất ở đâu — mỗi lần sinh qu
   `MasterDataRepository.InsertCoreAsync` qua `ApplyGeneratedCodeAsync` (luật nhường: ô đã có giá trị thì
   TÔN TRỌNG) · **`InsertAsync` nay tự mở transaction** (trước là `tx: null` → proc sẽ RAISERROR; đường này
   hiện 0 caller nhưng vá luôn) · DI Infrastructure. ⏳ CHƯA build/chạy
+  **Bug fix (session 97, 2026-07-29):** cột `Ma` thường khóa `IsReadOnly` trong `Ui_Field` (user không gõ
+  tay) nhưng `BuildColumnParams` lọc `!IsReadOnly` nên mã vừa hệ thống cấp bị loại khỏi câu INSERT → cột
+  NOT NULL nhận NULL, lỗi SQL. Fix: `ApplyGeneratedCodeAsync` trả về `ColumnCode` vừa cấp → truyền
+  `forceAllowedCol` ép `BuildColumnParams` cho phép ghi cột đó dù đang readonly (khóa với USER, không khóa
+  với engine sinh mã). `SaveMasterDataCommandHandler` cũng bỏ qua lỗi validate "required" cho cột này lúc
+  Thêm mới (payload cố ý rỗng vì client đã gỡ mã dự kiến — xem MA-5). Build backend 0/0, test 145/145.
 - [x] **MA-4 (BE)** (2026-07-24) — `POST /api/v1/master-data/{formCode}/ma-du-kien` (`GetMaDuKienQuery` +
   handler + `MasterDataRepository.GetPreviewCodeAsync` + `MaPreviewResult`). **POST chứ không GET** như spec
   ban đầu: cần giá trị field trên form cho đoạn FIELD/LOOKUP, đưa dữ liệu người dùng vào query string là rò
@@ -1292,6 +1298,7 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **VIEW-4e** (polish UX, session 43) — (1) View_Code = `{View_Type}_` + hậu tố user nhập (badge tiền tố + preview); đổi View_Type giữ hậu tố; **đổi View_Code tự rekey** mọi i18n key đã sinh (`.view.{cũ}.`→`.view.{mới}.`). (2) Nút lưu đổi nhãn "Lưu"; "Tạo mới" có MessageBox cảnh báo. (3) Tab Cơ bản sắp lại thứ tự ①View_Type→②View_Code→③Bảng nguồn→④Source. (4) Caption_Key/Label_Key trong 2 grid đổi thành cột i18n khóa-gõ-tay + nút 🌐 mỗi dòng. (5) `ColumnPickerDialog` thêm **multi-select** (checkbox + "Chọn (N)") + khóa cột đã có (badge "đã thêm") — giữ tương thích single-select màn FieldConfig. (6) `GridSplitter` kéo co giãn 2 panel master-detail. Build WPF slnx 0/0.
 
 - [x] **VIEW-4f** — Tab "Cột" (`ViewManagerView.xaml`) bổ sung 4 cột chỉnh: **MinWidth**, **Ghim** (`FixedPosition` combo none/left/right), **SortMặc định** (`SortOrder` combo asc/desc), **SortIdx** (`SortIndex`) — để admin cấu hình tính năng grid mới (đồng bộ Blazor VIEW-3f). Model/`ViewDataService` đã lưu sẵn, chỉ thiếu UI. Build WPF 0/0.
+- [x] **VIEW-4g** (session 97, 2026-07-29) — Fix bug dấu ✓ "đã dịch" (cột Caption tab Cột) báo sai: `RefreshTranslationStatusAsync` (`ViewManagerViewModel.cs`) trước đây chỉ kiểm `Resource_Value` không rỗng, không loại giá trị auto-seed kiểu SplitCamelCase (`Dien Thoai`, `Mo Ta`...) như `I18nDefaults.IsUntranslated` đã làm ở màn Form field → nay dùng chung `I18nDefaults.BuildColumnMarkers`/`IsUntranslated`. Thêm `ViewColumnRecord.CaptionPreview` (UI-only) + tooltip 2 dòng (Key + bản dịch vi) trên cột Caption để xem nhanh nội dung đã dịch không cần mở popup 🌐. Cập nhật `docs/huong-dan-wpf/cau-hinh-man-quan-ly-view.md` (bảng cột tab Cột đầy đủ 14 cột, trước thiếu FK lookup (cha) + Khóa trùng (import)). Build WPF 0/0.
 
 ### Nguyên tắc cứng (review checklist)
 - Mọi text hiển thị = `_Key` (i18n, scope `table_code`); không literal caption.

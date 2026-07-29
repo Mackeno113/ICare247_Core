@@ -19,6 +19,22 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-07-29] WPF-16 (DevExpress editor + popup cấu hình View) — codex → claude
+
+- Status: done; chưa commit/push.
+- Files: `BRAIN.md`, `.claude-rules/wpf-configstudio.md`, `ViewManagerUiText.cs`,
+  `FieldDetailRowVm.cs`, `FieldDetailDialog.xaml(.cs)`, `FieldDetailDialogViewModel.cs`,
+  `ViewManagerViewModel.cs`, `FormsModule.cs`, `AI_TASKS.yaml`.
+- Cần biết: editor nhập/chọn dữ liệu WPF giờ bắt buộc dùng DevExpress; popup dùng TextEdit/SpinEdit/
+  ComboBoxEdit/CheckEdit, CTA "Áp dụng" chỉ ghi về record trên lưới, màn Quản lý View vẫn lưu DB.
+  Các editor phụ thuộc Kind/Render/Sort chỉ disable và giữ nguyên giá trị cũ, không tự xóa cấu hình.
+- Verify: build riêng `ConfigStudio.WPF.UI.Modules.Forms.csproj` **0 warning / 0 error**. Full solution
+  đã compile qua module Forms nhưng app đang chạy PID 7788 khóa DLL host nên bước copy cuối thất bại.
+- Runtime fix: log cho thấy Prism registration đúng; lỗi resolve chỉ là wrapper của `XamlParseException`
+  tại `FieldDetailDialog.xaml`. Đã bỏ `WindowStartupLocation` khỏi `Style.Setter` vì đây không phải
+  DependencyProperty.
+- Bước tiếp theo: đóng/restart ConfigStudio rồi chạy full build hoặc visual smoke popup trên màn Quản lý View.
+
 ### [2026-07-20] WPF-15 (CRUD Ui_Lookup_Template) — codex → claude
 
 - Status: done; chưa commit/push.
