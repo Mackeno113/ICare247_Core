@@ -16,9 +16,10 @@ RestoreForm/JWT keyring. Chi tiết → `docs/reviews/2026-08-03-backend-code-au
 - `.claude-rules/architecture.md` — thêm mục "Exception Policy trong Engine" + 2 dòng checklist (làm rõ mâu thuẫn #4).
 - `CLAUDE.md` — thêm dòng bảng rule cho `sql-safety.md`.
 - `.claude/memory/project_current_phase.md` — thêm mục "Soát chất lượng backend (2026-08-03)".
+- `TASKS.md` — thêm backlog "Nợ chất lượng backend (audit … 2026-08-03)" gồm **AUDIT-1…AUDIT-6** (🔴 1-3 / 🟠 4-6).
 
-**Task tiếp theo gợi ý:** khi user duyệt → ưu tiên #1 gom guard SQL về `SqlIdentifier` chung (chạy impact
-analysis trước). Chưa build (không đổi code sản phẩm).
+**Task tiếp theo gợi ý:** ưu tiên **AUDIT-2** (gom guard SQL về `SqlIdentifier` chung) rồi **AUDIT-1** (test
+repo dynamic-SQL + tenant). Chạy impact analysis (GitNexus) trước khi sửa symbol. Chưa build (audit chưa đổi code sản phẩm).
 
 ---
 
