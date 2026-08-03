@@ -1,5 +1,27 @@
 # Last Session Summary
 
+## Session 98 (2026-08-03) — Soát chất lượng backend (SOLID + vấn đề cốt lõi), ghi rule/memory/docs
+
+**Bối cảnh:** user hỏi nguyên tắc SOLID → yêu cầu soát backend → soát sâu "vấn đề cốt lõi" → yêu cầu ghi
+vào rule/memory/tài liệu. **Read-only audit — KHÔNG sửa code sản phẩm.**
+
+**Phát hiện (6 vấn đề cốt lõi):** ① test gần như 0 (5/358 file, Infrastructure không test) ② guard SQL
+copy-paste lệch nhau (`SafeIdentifierRegex` ≥5 bản, 2 pattern) ③ cô lập tenant 1 lớp (ADR-035) ④ engine
+nuốt exception (mâu thuẫn architecture.md) ⑤ god-class + switch dispatch (OCP) ⑥ nợ TODO(SEC1-4)/CC-3/
+RestoreForm/JWT keyring. Chi tiết → `docs/reviews/2026-08-03-backend-code-audit.md`.
+
+**Đã ghi (docs + rule + memory, không đụng code sản phẩm):**
+- `docs/reviews/2026-08-03-backend-code-audit.md` — báo cáo audit đầy đủ (MỚI).
+- `.claude-rules/sql-safety.md` — quy tắc chống injection: guard identifier CHUNG, whitelist, cô lập tenant, test injection bắt buộc (MỚI).
+- `.claude-rules/architecture.md` — thêm mục "Exception Policy trong Engine" + 2 dòng checklist (làm rõ mâu thuẫn #4).
+- `CLAUDE.md` — thêm dòng bảng rule cho `sql-safety.md`.
+- `.claude/memory/project_current_phase.md` — thêm mục "Soát chất lượng backend (2026-08-03)".
+
+**Task tiếp theo gợi ý:** khi user duyệt → ưu tiên #1 gom guard SQL về `SqlIdentifier` chung (chạy impact
+analysis trước). Chưa build (không đổi code sản phẩm).
+
+---
+
 > Cập nhật: 2026-07-29 (session 97 — **gom 1 commit**: ① fix bug dấu ✓ "đã dịch" sai + tooltip xem nhanh
 > bản dịch (tab Cột, ViewManager WPF) ② bundle việc dang dở nằm sẵn trong working tree từ trước: task
 > Codex **WPF-16** (chuẩn hóa DevExpress editor + popup "Chi tiết cấu hình" — xem `AI_HANDOFF.md`/
