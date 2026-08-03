@@ -7,6 +7,7 @@
 using System.Data;
 using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -21,9 +22,6 @@ public sealed partial class FkLookupResolver : IFkLookupResolver
     private readonly IDataDbConnectionFactory _dataDb;       // Data DB tenant — bảng nguồn FK
     private readonly IContextParamResolver _contextResolver; // token ngữ cảnh cho Filter_Sql
     private readonly ILogger<FkLookupResolver> _logger;
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     /// <summary>Trích tên tham số <c>@name</c> tham chiếu trong Filter_Sql (whitelist token cần bind).</summary>
     [GeneratedRegex(@"@([a-zA-Z_][a-zA-Z0-9_]*)", RegexOptions.Compiled)]
@@ -46,16 +44,16 @@ public sealed partial class FkLookupResolver : IFkLookupResolver
     public async Task<FkCodeMap> BuildCodeMapAsync(FkLookupDefinition def, CancellationToken ct = default)
     {
         // Không có cầu Mã↔Id → không import/template được cột này (caller surface lỗi cấu hình).
-        if (string.IsNullOrWhiteSpace(def.CodeField) || !SafeIdentifierRegex().IsMatch(def.CodeField))
+        if (string.IsNullOrWhiteSpace(def.CodeField) || !SqlIdentifier.IsSafe(def.CodeField))
             return new FkCodeMap([], hasCodeField: false);
         if (string.IsNullOrWhiteSpace(def.SourceName)
-            || !SafeIdentifierRegex().IsMatch(def.ValueColumn) || !SafeIdentifierRegex().IsMatch(def.DisplayColumn))
+            || !SqlIdentifier.IsSafe(def.ValueColumn) || !SqlIdentifier.IsSafe(def.DisplayColumn))
             return new FkCodeMap([], hasCodeField: false);
 
         var source = ParseQualifiedName(def.SourceName);
-        var codeCol = Bracket(def.CodeField);
-        var valueCol = Bracket(def.ValueColumn);
-        var displayCol = Bracket(def.DisplayColumn);
+        var codeCol = SqlIdentifier.Bracket(def.CodeField);
+        var valueCol = SqlIdentifier.Bracket(def.ValueColumn);
+        var displayCol = SqlIdentifier.Bracket(def.DisplayColumn);
 
         // ── WHERE Filter_Sql + bind token ngữ cảnh (server-side, lọc đúng phạm vi quyền) ──
         //    ImportGlobalCode = bỏ Filter_Sql (lọc cha cascade) → tra Mã trên TOÀN bảng (§B). Trùng Mã sẽ
@@ -118,13 +116,11 @@ public sealed partial class FkLookupResolver : IFkLookupResolver
     private static string ParseQualifiedName(string name)
     {
         var parts = name.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SqlIdentifier.IsSafe(p)))
             throw new InvalidOperationException($"FK lookup: tên nguồn '{name}' không hợp lệ.");
         return parts.Length == 2
-            ? $"{Bracket(parts[0])}.{Bracket(parts[1])}"
-            : $"[dbo].{Bracket(parts[0])}";
+            ? $"{SqlIdentifier.Bracket(parts[0])}.{SqlIdentifier.Bracket(parts[1])}"
+            : $"[dbo].{SqlIdentifier.Bracket(parts[0])}";
     }
 
-    /// <summary>Bọc identifier trong <c>[]</c>, escape <c>]</c> → <c>]]</c>.</summary>
-    private static string Bracket(string ident) => "[" + ident.Replace("]", "]]") + "]";
 }

@@ -7,6 +7,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Entities.View;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ namespace ICare247.Infrastructure.Repositories;
 /// </summary>
 /// <remarks>
 /// Metadata đọc ở Config DB; dữ liệu (<see cref="GetDataAsync"/>) đọc ở Data DB. An toàn injection:
-/// mọi identifier (schema/table/column) validate qua <see cref="SafeIdentifierRegex"/>, giá trị qua Dapper params.
+/// mọi identifier (schema/table/column) validate qua <see cref="SqlIdentifier.IsSafe"/>, giá trị qua Dapper params.
 /// </remarks>
 public sealed partial class ViewRepository : IViewRepository
 {
@@ -30,8 +31,6 @@ public sealed partial class ViewRepository : IViewRepository
     private readonly ITenantContext _tenant;
     private readonly ILogger<ViewRepository> _logger;
 
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     /// <summary>Trích các tên tham số <c>@name</c> tham chiếu trong một đoạn SQL (cho whitelist context).</summary>
     [GeneratedRegex(@"@([a-zA-Z_][a-zA-Z0-9_]*)", RegexOptions.Compiled)]
@@ -327,7 +326,7 @@ public sealed partial class ViewRepository : IViewRepository
         var dataCols = view.Columns
             .Where(c => string.Equals(c.ColumnKind, "Data", StringComparison.OrdinalIgnoreCase))
             .Select(c => c.FieldName)
-            .Where(n => !string.IsNullOrWhiteSpace(n) && SafeIdentifierRegex().IsMatch(n))
+            .Where(n => !string.IsNullOrWhiteSpace(n) && SqlIdentifier.IsSafe(n))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
         if (dataCols.Count == 0)
@@ -337,7 +336,7 @@ public sealed partial class ViewRepository : IViewRepository
         //    đổi biểu thức SELECT của cột thành TÊN (in-place) ⇒ lọc/sort/xuất theo tên chạy tự nhiên. ──
         var fkJoins = await ResolveFkJoinsAsync(view, ct);
 
-        var keyValid = !string.IsNullOrWhiteSpace(view.KeyField) && SafeIdentifierRegex().IsMatch(view.KeyField);
+        var keyValid = !string.IsNullOrWhiteSpace(view.KeyField) && SqlIdentifier.IsSafe(view.KeyField);
 
         // Order: Key_Field nếu hợp lệ, ngược lại cột Data đầu tiên (OFFSET/TOP cần ORDER BY).
         var orderCol = keyValid ? view.KeyField! : dataCols[0];
@@ -353,7 +352,7 @@ public sealed partial class ViewRepository : IViewRepository
         // Key_Field (PK) luôn có trong SELECT → client có khóa để Sửa/Xóa theo dòng.
         if (keyValid)
         {
-            selectExprs.Add($"b.{Bracket(view.KeyField!)} AS {Bracket(view.KeyField!)}");
+            selectExprs.Add($"b.{SqlIdentifier.Bracket(view.KeyField!)} AS {SqlIdentifier.Bracket(view.KeyField!)}");
             emitted.Add(view.KeyField!);
         }
 
@@ -364,16 +363,16 @@ public sealed partial class ViewRepository : IViewRepository
             {
                 var a = $"_fk{fkAlias++}";
                 // JOIN theo cột FK GỐC (fk.BaseColumn) — không phải tên cột hiển thị (có thể là cột tên riêng).
-                joinSql.Add($" LEFT JOIN {fk.TargetObject} AS {Bracket(a)} " +
-                            $"ON {Bracket(a)}.{Bracket(fk.ValueColumn)} = b.{Bracket(fk.BaseColumn)}");
-                var disp = $"{Bracket(a)}.{Bracket(fk.DisplayColumn)}";
-                selectExprs.Add($"{disp} AS {Bracket(col)}");
+                joinSql.Add($" LEFT JOIN {fk.TargetObject} AS {SqlIdentifier.Bracket(a)} " +
+                            $"ON {SqlIdentifier.Bracket(a)}.{SqlIdentifier.Bracket(fk.ValueColumn)} = b.{SqlIdentifier.Bracket(fk.BaseColumn)}");
+                var disp = $"{SqlIdentifier.Bracket(a)}.{SqlIdentifier.Bracket(fk.DisplayColumn)}";
+                selectExprs.Add($"{disp} AS {SqlIdentifier.Bracket(col)}");
                 searchExprs.Add(disp);
             }
             else
             {
-                selectExprs.Add($"b.{Bracket(col)} AS {Bracket(col)}");
-                searchExprs.Add($"b.{Bracket(col)}");
+                selectExprs.Add($"b.{SqlIdentifier.Bracket(col)} AS {SqlIdentifier.Bracket(col)}");
+                searchExprs.Add($"b.{SqlIdentifier.Bracket(col)}");
             }
         }
 
@@ -382,9 +381,9 @@ public sealed partial class ViewRepository : IViewRepository
         // vẫn giữ cột tên cho người xem. Client set ParentKeyFieldName="__parentKey".
         if (string.Equals(view.ViewType, "TreeList", StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(view.ParentField)
-            && SafeIdentifierRegex().IsMatch(view.ParentField))
+            && SqlIdentifier.IsSafe(view.ParentField))
         {
-            selectExprs.Add($"b.{Bracket(view.ParentField!)} AS [__parentKey]");
+            selectExprs.Add($"b.{SqlIdentifier.Bracket(view.ParentField!)} AS [__parentKey]");
         }
 
         var fromSql = $"{table} AS b{string.Concat(joinSql)}";
@@ -445,7 +444,7 @@ public sealed partial class ViewRepository : IViewRepository
         // ORDER BY tham chiếu alias đầu ra (cột FK đã alias về tên cột) → sắp theo tên hiển thị.
         var listSql =
             $"SELECT {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
-            $"ORDER BY {Bracket(ctx.OrderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            $"ORDER BY {SqlIdentifier.Bracket(ctx.OrderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
 
         var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
@@ -474,7 +473,7 @@ public sealed partial class ViewRepository : IViewRepository
         ctx.Dp.Add("Cap", MaxExportRows);
         var listSql =
             $"SELECT TOP (@Cap) {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
-            $"ORDER BY {Bracket(ctx.OrderCol)}";
+            $"ORDER BY {SqlIdentifier.Bracket(ctx.OrderCol)}";
         var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
 
         var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
@@ -515,7 +514,7 @@ public sealed partial class ViewRepository : IViewRepository
         var fieldToFieldId = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in colRows)
         {
-            if (string.IsNullOrWhiteSpace(r.FieldName) || !SafeIdentifierRegex().IsMatch(r.FieldName)) continue;
+            if (string.IsNullOrWhiteSpace(r.FieldName) || !SqlIdentifier.IsSafe(r.FieldName)) continue;
             if (ParseFkLookupFieldId(r.PropsJson) is int id && id > 0)
                 fieldToFieldId[r.FieldName] = id;
         }
@@ -549,10 +548,10 @@ public sealed partial class ViewRepository : IViewRepository
             if (!string.Equals(c.QueryMode ?? "table", "table", StringComparison.OrdinalIgnoreCase)) continue;
             if (string.IsNullOrWhiteSpace(c.SourceName)
                 || string.IsNullOrWhiteSpace(c.ValueColumn) || string.IsNullOrWhiteSpace(c.DisplayColumn)) continue;
-            if (!SafeIdentifierRegex().IsMatch(c.ValueColumn) || !SafeIdentifierRegex().IsMatch(c.DisplayColumn)) continue;
+            if (!SqlIdentifier.IsSafe(c.ValueColumn) || !SqlIdentifier.IsSafe(c.DisplayColumn)) continue;
             // Cột FK gốc để JOIN: ưu tiên Column_Code của field (cột tên riêng); fallback = chính tên cột View
             // (khi cột FK chính nó mang fkLookup — hiển thị in-place).
-            var baseCol = !string.IsNullOrWhiteSpace(c.BaseColumn) && SafeIdentifierRegex().IsMatch(c.BaseColumn!)
+            var baseCol = !string.IsNullOrWhiteSpace(c.BaseColumn) && SqlIdentifier.IsSafe(c.BaseColumn!)
                 ? c.BaseColumn!
                 : field;
             string targetObj;
@@ -613,7 +612,7 @@ public sealed partial class ViewRepository : IViewRepository
     /// <summary>
     /// Phân giải đối tượng FROM cho SELECT trực tiếp: <c>Source_Type='View'</c> kèm <c>Source_Object</c>
     /// → đọc thẳng view đó (cho phép 'schema.object'); ngược lại lấy bảng vật lý từ <c>Sys_Table</c> theo Table_Id.
-    /// Mọi identifier whitelist qua <see cref="SafeIdentifierRegex"/> (chống injection).
+    /// Mọi identifier whitelist qua <see cref="SqlIdentifier.IsSafe"/> (chống injection).
     /// </summary>
     private async Task<string> ResolveFromTargetAsync(ViewMetadata view, CancellationToken ct)
     {
@@ -634,21 +633,21 @@ public sealed partial class ViewRepository : IViewRepository
             throw new InvalidOperationException(
                 $"View '{view.ViewCode}': bảng nguồn Table_Id={view.TableId} không tồn tại.");
 
-        var schema = SafeIdentifierRegex().IsMatch(tbl.SchemaName ?? "") ? tbl.SchemaName! : "dbo";
-        if (string.IsNullOrWhiteSpace(tbl.TableName) || !SafeIdentifierRegex().IsMatch(tbl.TableName))
+        var schema = SqlIdentifier.IsSafe(tbl.SchemaName ?? "") ? tbl.SchemaName! : "dbo";
+        if (string.IsNullOrWhiteSpace(tbl.TableName) || !SqlIdentifier.IsSafe(tbl.TableName))
             throw new InvalidOperationException($"View '{view.ViewCode}': tên bảng không hợp lệ.");
-        return $"{Bracket(schema)}.{Bracket(tbl.TableName)}";
+        return $"{SqlIdentifier.Bracket(schema)}.{SqlIdentifier.Bracket(tbl.TableName)}";
     }
 
     /// <summary>Tách 'schema.object' hoặc 'object' → '[schema].[object]' (mặc định schema dbo); mỗi phần whitelist.</summary>
     private static string ParseQualifiedName(string name, string viewCode)
     {
         var parts = name.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SqlIdentifier.IsSafe(p)))
             throw new InvalidOperationException($"View '{viewCode}': tên nguồn '{name}' không hợp lệ.");
         return parts.Length == 2
-            ? $"{Bracket(parts[0])}.{Bracket(parts[1])}"
-            : $"[dbo].{Bracket(parts[0])}";
+            ? $"{SqlIdentifier.Bracket(parts[0])}.{SqlIdentifier.Bracket(parts[1])}"
+            : $"[dbo].{SqlIdentifier.Bracket(parts[0])}";
     }
 
     /// <inheritdoc />
@@ -825,7 +824,7 @@ public sealed partial class ViewRepository : IViewRepository
     private static string NormalizeParamName(string name)
     {
         var n = name.TrimStart('@');
-        if (!SafeIdentifierRegex().IsMatch(n))
+        if (!SqlIdentifier.IsSafe(n))
             throw new InvalidOperationException($"Tên tham số không hợp lệ: '{name}'.");
         return n;
     }
@@ -834,7 +833,7 @@ public sealed partial class ViewRepository : IViewRepository
     private static string ValidateSpName(string spName, string viewCode)
     {
         var parts = spName.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SqlIdentifier.IsSafe(p)))
             throw new InvalidOperationException(
                 $"View '{viewCode}': tên Stored Procedure '{spName}' không hợp lệ.");
         return string.Join('.', parts.Select(Bracket));
@@ -942,15 +941,15 @@ public sealed partial class ViewRepository : IViewRepository
         if (string.IsNullOrWhiteSpace(view.ParentField) || string.IsNullOrWhiteSpace(view.KeyField))
             return new TreeReorderResult { Success = false, Error = "View thiếu Parent_Field/Key_Field." };
 
-        if (!SafeIdentifierRegex().IsMatch(view.ParentField) || !SafeIdentifierRegex().IsMatch(view.KeyField))
+        if (!SqlIdentifier.IsSafe(view.ParentField) || !SqlIdentifier.IsSafe(view.KeyField))
             return new TreeReorderResult { Success = false, Error = "Tên cột cha/khóa không hợp lệ." };
 
         if (newParentId == id)
             return new TreeReorderResult { Success = false, Error = "Không thể chọn chính nó làm cha." };
 
         var table = await ResolveFromTargetAsync(view, ct);
-        var keyCol = Bracket(view.KeyField);
-        var parentCol = Bracket(view.ParentField);
+        var keyCol = SqlIdentifier.Bracket(view.KeyField);
+        var parentCol = SqlIdentifier.Bracket(view.ParentField);
 
         using var data = _dataDb.CreateConnection();
         if (data.State != System.Data.ConnectionState.Open) data.Open();
@@ -1026,8 +1025,6 @@ public sealed partial class ViewRepository : IViewRepository
         return new TreeReorderResult { Success = true };
     }
 
-    /// <summary>Bọc identifier bằng [] (đã whitelist regex trước đó).</summary>
-    private static string Bracket(string ident) => "[" + ident.Replace("]", "]]") + "]";
 
     /// <summary>Row tra cứu schema + tên bảng vật lý từ Sys_Table.</summary>
     private sealed class TableRow

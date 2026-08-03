@@ -943,9 +943,12 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 ### 🔴 Ngay
 - [ ] **AUDIT-1** — Test gần như 0 (5 file test / 358 production; Infrastructure dynamic-SQL không test).
       Fix: thêm test project Infrastructure + ca injection cho repo dựng SQL động + test cô lập tenant resolver.
-- [ ] **AUDIT-2** — Guard SQL copy-paste, lệch pattern: `SafeIdentifierRegex` ≥5 bản, 2 pattern (`[a-zA-Z0-9_]`
-      vs `[a-zA-Z0-9_.]`); `Bracket()` viết lại mỗi file. Fix: gom về 1 lớp `SqlIdentifier` chung, thay mọi bản copy.
-      Files: `MaCodeGenerator.cs:26`, `CodeRuleCatalog.cs:30`, `HookStoreCatalog.cs:26`, `FkLookupResolver.cs:25`, `DynamicLookupRepository.cs:35`.
+- [~] **AUDIT-2** — 🔴 CODE XONG, **CHƯA BUILD** (môi trường remote thiếu .NET SDK → cần build local verify).
+      Guard SQL copy-paste, lệch pattern: gom về 1 lớp chung `ICare247.Application/Common/Sql/SqlIdentifier.cs`
+      (`IsSafe` / `IsSafeQualified` / `Bracket` escape `]` / `ContainsDangerousKeyword`). Thay **11 file** / ~102 call site;
+      xóa 11 bản `SafeIdentifierRegex`, 4 bản `Bracket` (1 bản `MasterData` cũ thiếu escape `]` → nay có), 1 blocklist.
+      Bảo toàn hành vi 1:1 (`DynamicLookupRepository` giữ pattern có dấu chấm qua `IsSafeQualified`).
+      **Việc còn lại:** `dotnet build src/backend/ICare247.slnx` + `dotnet test …Application.Tests` → sửa lỗi nếu có.
 - [ ] **AUDIT-3** — Cô lập tenant chỉ 1 lớp (ADR-035, `tenantId` không lọc SQL). Fix: guard/log tại tầng
       connection resolver + test cô lập không lẫn connection giữa tenant. Files: `IViewRepository.cs:21,84`, `IDynamicLookupRepository.cs:62`.
 

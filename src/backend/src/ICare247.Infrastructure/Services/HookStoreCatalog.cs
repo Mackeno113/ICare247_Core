@@ -5,8 +5,8 @@
 //           (L1/L2). Cold-miss → 1 query gộp 2 OBJECT_ID trên Data DB rồi cache. Save path đọc
 //           cache → 0 query khi lưu (ADR-029).
 
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
 
@@ -23,9 +23,6 @@ public sealed partial class HookStoreCatalog : IHookStoreCatalog
     private static readonly TimeSpan MemTtl   = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan RedisTtl = TimeSpan.FromMinutes(60);
 
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
-
     public HookStoreCatalog(IDataDbConnectionFactory dataDb, ICacheService cache, ICacheVersion version)
     {
         _dataDb  = dataDb;
@@ -36,7 +33,7 @@ public sealed partial class HookStoreCatalog : IHookStoreCatalog
     /// <inheritdoc />
     public async Task<HookStoreFlags> GetAsync(string tableName, int tenantId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(tableName) || !SafeIdentifierRegex().IsMatch(tableName))
+        if (string.IsNullOrWhiteSpace(tableName) || !SqlIdentifier.IsSafe(tableName))
             return HookStoreFlags.None;
 
         var key = CacheKeys.HookStore(tableName, tenantId, _version.Get(tenantId));

@@ -8,6 +8,7 @@ using System.Data;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
 using Microsoft.Data.SqlClient;
@@ -31,17 +32,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     private readonly IDbConnectionFactory     _configDb;
     private readonly IDataDbConnectionFactory _dataDb;
 
-    // Regex kiểm tra tên identifier an toàn: a-z, A-Z, 0-9, _, dấu chấm (schema.table)
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_.]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
-
     // Tách @param trong SQL (bỏ @@global). Dùng để chẩn đoán tham số chưa bind.
     [GeneratedRegex(@"(?<!@)@(\w+)", RegexOptions.Compiled)]
     private static partial Regex SqlParamRegex();
-
-    // Các keyword DDL/DML nguy hiểm — không cho phép trong FilterSql / OrderBy
-    private static readonly string[] DangerousKeywords =
-        ["DROP", "DELETE", "INSERT", "UPDATE", "EXEC", "EXECUTE", "TRUNCATE", "ALTER", "CREATE", "MERGE", "--", ";"];
 
     // Cột audit do SERVER bơm khi insert — client gửi lên thì bỏ qua (chống giả mạo CreatedBy).
     private static readonly HashSet<string> AuditColumns =
@@ -188,7 +181,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                 var map = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(cfg.ParamMap);
                 foreach (var (canonical, src) in map ?? [])
                 {
-                    if (!SafeIdentifierRegex().IsMatch(canonical)) continue;
+                    if (!SqlIdentifier.IsSafeQualified(canonical)) continue;
                     if (!wanted.Contains(canonical)) continue;   // SQL không dùng → khỏi resolve
                     if (src.ValueKind == JsonValueKind.String)
                     {
@@ -233,7 +226,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         // (vd fnt_CongTyTheoQuyen(@NguoiDungID)) ⇒ đọc được dữ liệu của người khác.
         foreach (var (key, val) in contextValues)
         {
-            if (!SafeIdentifierRegex().IsMatch(key)) continue;
+            if (!SqlIdentifier.IsSafeQualified(key)) continue;
             if (locked.Contains(key))
             {
                 if (wanted.Contains(key))
@@ -381,7 +374,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (mode == "custom_sql")
         {
             // SQL tùy chỉnh từ admin — chỉ block DDL/DML keyword
-            if (ContainsDangerousKeyword(cfg.SourceName))
+            if (SqlIdentifier.ContainsDangerousKeyword(cfg.SourceName))
             {
                 error = "custom_sql chứa keyword DDL/DML không được phép.";
                 return null;
@@ -390,7 +383,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         }
 
         // table / tvf: validate tên nguồn
-        if (!SafeIdentifierRegex().IsMatch(cfg.SourceName ?? ""))
+        if (!SqlIdentifier.IsSafeQualified(cfg.SourceName ?? ""))
         {
             error = $"SourceName '{cfg.SourceName}' chứa ký tự không hợp lệ.";
             return null;
@@ -410,14 +403,14 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         }
 
         // Validate FilterSql (nếu có)
-        if (!string.IsNullOrWhiteSpace(cfg.FilterSql) && ContainsDangerousKeyword(cfg.FilterSql))
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql) && SqlIdentifier.ContainsDangerousKeyword(cfg.FilterSql))
         {
             error = "FilterSql chứa keyword DDL/DML không được phép.";
             return null;
         }
 
         // Validate OrderBy (nếu có)
-        if (!string.IsNullOrWhiteSpace(cfg.OrderBy) && ContainsDangerousKeyword(cfg.OrderBy))
+        if (!string.IsNullOrWhiteSpace(cfg.OrderBy) && SqlIdentifier.ContainsDangerousKeyword(cfg.OrderBy))
         {
             error = "OrderBy chứa keyword DDL/DML không được phép.";
             return null;
@@ -435,7 +428,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 
         if (mode == "self_parent")
         {
-            if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn ?? ""))
+            if (!SqlIdentifier.IsSafeQualified(cfg.ParentColumn ?? ""))
             {
                 error = "Query_Mode='self_parent' cần Parent_Column hợp lệ (cột cha tự tham chiếu).";
                 return null;
@@ -473,12 +466,12 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         var cols = new List<string>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Cột đơn giản — phải pass SafeIdentifierRegex
+        // Cột đơn giản — phải pass SqlIdentifier.IsSafeQualified
         void AddSimpleCol(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) return;
             var col = name.Trim();
-            if (SafeIdentifierRegex().IsMatch(col) && seen.Add(col))
+            if (SqlIdentifier.IsSafeQualified(col) && seen.Add(col))
                 cols.Add(col);
         }
 
@@ -494,7 +487,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             // Expression: chứa '(' hoặc space → thêm thẳng (đã validate không có DDL/DML)
             if (col.Contains('(') || col.Contains(' ') || col.Contains('\''))
                 cols.Add(col);
-            else if (SafeIdentifierRegex().IsMatch(col))
+            else if (SqlIdentifier.IsSafeQualified(col))
                 cols.Add(col);
         }
 
@@ -539,7 +532,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             return false;
         }
 
-        if (ContainsDangerousKeyword(expr))
+        if (SqlIdentifier.ContainsDangerousKeyword(expr))
         {
             err = $"'{expr}' chứa keyword DDL/DML không được phép.";
             return false;
@@ -551,7 +544,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             foreach (var part in expr.Split(','))
             {
                 var col = part.Trim();
-                if (!SafeIdentifierRegex().IsMatch(col))
+                if (!SqlIdentifier.IsSafeQualified(col))
                 {
                     err = $"Tên cột '{col}' chứa ký tự không hợp lệ.";
                     return false;
@@ -580,13 +573,6 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             if (lastSpace >= 0) return t[(lastSpace + 1)..].Trim();
         }
         return t;
-    }
-
-    private static bool ContainsDangerousKeyword(string? sql)
-    {
-        if (string.IsNullOrWhiteSpace(sql)) return false;
-        var upper = sql.ToUpperInvariant();
-        return DangerousKeywords.Any(kw => upper.Contains(kw));
     }
 
     /// <summary>
@@ -638,12 +624,12 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: chỉ hỗ trợ Query_Mode='table' (hiện: {cfg.QueryMode}).");
 
-        if (!SafeIdentifierRegex().IsMatch(cfg.SourceName))
+        if (!SqlIdentifier.IsSafeQualified(cfg.SourceName))
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: Source_Name '{cfg.SourceName}' chứa ký tự không hợp lệ.");
 
         var valueCol = (cfg.ValueColumn ?? "").Trim();
-        if (!SafeIdentifierRegex().IsMatch(valueCol))
+        if (!SqlIdentifier.IsSafeQualified(valueCol))
             throw new InvalidOperationException(
                 $"LookupInsert FieldId={fieldId}: Value_Column '{valueCol}' không hợp lệ.");
 
@@ -668,7 +654,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         foreach (var (key, val) in values)
         {
             // Bỏ qua cột khóa (ValueColumn thường là identity) + tên không an toàn
-            if (!SafeIdentifierRegex().IsMatch(key)) continue;
+            if (!SqlIdentifier.IsSafeQualified(key)) continue;
             if (key.Equals(valueCol, StringComparison.OrdinalIgnoreCase)) continue;
             // Cột audit do server bơm — KHÔNG cho client tự đặt (chống giả mạo CreatedBy).
             if (AuditColumns.Contains(key)) continue;
@@ -718,7 +704,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
 
         foreach (var ucol in uniqueCols)
         {
-            if (!SafeIdentifierRegex().IsMatch(ucol)) continue;
+            if (!SqlIdentifier.IsSafeQualified(ucol)) continue;
             var hit  = values.FirstOrDefault(kv => kv.Key.Equals(ucol, StringComparison.OrdinalIgnoreCase));
             var uval = UnwrapParamValue(hit.Value);
             if (uval is null || string.IsNullOrWhiteSpace(uval.ToString())) continue;
@@ -798,7 +784,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (string.IsNullOrWhiteSpace(cfg.ParentColumn))
             throw new InvalidOperationException(
                 $"TreeLookup FieldId={fieldId}: Parent_Column chưa được cấu hình.");
-        if (!SafeIdentifierRegex().IsMatch(cfg.ParentColumn))
+        if (!SqlIdentifier.IsSafeQualified(cfg.ParentColumn))
             throw new InvalidOperationException(
                 $"TreeLookup FieldId={fieldId}: Parent_Column '{cfg.ParentColumn}' chứa ký tự không hợp lệ.");
 
@@ -852,7 +838,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         if (mode == "custom_sql")
         {
             // SQL tùy chỉnh từ admin — chỉ block DDL/DML keyword (đồng nhất nhánh flat BuildSafeSql)
-            if (ContainsDangerousKeyword(cfg.SourceName))
+            if (SqlIdentifier.ContainsDangerousKeyword(cfg.SourceName))
             {
                 error = "custom_sql chứa keyword DDL/DML không được phép.";
                 return null;
@@ -868,7 +854,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             return cfg.SourceName;
         }
 
-        if (!SafeIdentifierRegex().IsMatch(cfg.SourceName ?? ""))
+        if (!SqlIdentifier.IsSafeQualified(cfg.SourceName ?? ""))
         {
             error = $"SourceName '{cfg.SourceName}' chứa ký tự không hợp lệ.";
             return null;
@@ -877,9 +863,9 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         { error = $"ValueColumn: {colErr}"; return null; }
         if (!IsValidColumnExpr(cfg.DisplayColumn, strict: false, out colErr))
         { error = $"DisplayColumn: {colErr}"; return null; }
-        if (!string.IsNullOrWhiteSpace(cfg.FilterSql) && ContainsDangerousKeyword(cfg.FilterSql))
+        if (!string.IsNullOrWhiteSpace(cfg.FilterSql) && SqlIdentifier.ContainsDangerousKeyword(cfg.FilterSql))
         { error = "FilterSql chứa keyword DDL/DML không được phép."; return null; }
-        if (!string.IsNullOrWhiteSpace(cfg.OrderBy) && ContainsDangerousKeyword(cfg.OrderBy))
+        if (!string.IsNullOrWhiteSpace(cfg.OrderBy) && SqlIdentifier.ContainsDangerousKeyword(cfg.OrderBy))
         { error = "OrderBy chứa keyword DDL/DML không được phép."; return null; }
 
         // Build SELECT — thêm ParentColumn vào danh sách cột
@@ -889,7 +875,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         {
             if (string.IsNullOrWhiteSpace(name)) return;
             var c = name.Trim();
-            if (SafeIdentifierRegex().IsMatch(c) && seen.Add(c.ToUpperInvariant())) cols.Add(c);
+            if (SqlIdentifier.IsSafeQualified(c) && seen.Add(c.ToUpperInvariant())) cols.Add(c);
         }
         AddCol(cfg.ValueColumn);
         if (!string.IsNullOrWhiteSpace(cfg.DisplayColumn))
@@ -946,7 +932,7 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// Cột audit (CreatedBy/CreatedAt/UpdatedBy/UpdatedAt) THỰC SỰ có trên bảng đích của Data DB.
     /// Bảng cũ / bảng opt-out (vd <c>HT_NguoiDung_LuoiLayout</c>) không có → engine bỏ qua, không vỡ.
     /// <para>
-    /// <paramref name="sourceName"/> có thể là <c>Bang</c> hoặc <c>schema.Bang</c> — <c>SafeIdentifierRegex</c>
+    /// <paramref name="sourceName"/> có thể là <c>Bang</c> hoặc <c>schema.Bang</c> — <c>SqlIdentifier.IsSafeQualified</c>
     /// cho phép dấu chấm. Không tách schema thì <c>TABLE_NAME</c> không khớp ⇒ trả rỗng ⇒ KHÔNG bơm CreatedBy
     /// ⇒ SQL lại báo "Cannot insert NULL into CreatedBy". Đã dính một lần, đừng bỏ nhánh này.
     /// </para>

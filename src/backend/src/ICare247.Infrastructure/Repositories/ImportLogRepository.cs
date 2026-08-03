@@ -5,8 +5,8 @@
 //           Spec 25 §12.2/§13, ADR-034.
 
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -17,9 +17,6 @@ public sealed partial class ImportLogRepository : IImportLogRepository
 {
     private readonly IDataDbConnectionFactory _dataDb;
     private readonly ILogger<ImportLogRepository> _logger;
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     public ImportLogRepository(IDataDbConnectionFactory dataDb, ILogger<ImportLogRepository> logger)
     {
@@ -92,7 +89,7 @@ public sealed partial class ImportLogRepository : IImportLogRepository
     /// <inheritdoc />
     public async Task<bool> RunAfterImportAsync(ImportAfterHookArgs a, CancellationToken ct = default)
     {
-        if (!SafeIdentifierRegex().IsMatch(a.TableName))
+        if (!SqlIdentifier.IsSafe(a.TableName))
             return false;
 
         var procName = $"dbo.sp_AfterImport_{a.TableName}";

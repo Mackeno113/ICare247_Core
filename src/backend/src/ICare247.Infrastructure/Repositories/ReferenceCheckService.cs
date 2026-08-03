@@ -8,8 +8,8 @@
 //           Bảng không khai ở nguồn nào ⇒ không có tham chiếu ⇒ cho xóa.
 //           Nhánh "dò theo quy ước tên PK" ĐÃ GỠ 2026-07-10 (chặn nhầm — xem CheckUsageAsync).
 
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -29,9 +29,6 @@ public sealed partial class ReferenceCheckService : IReferenceCheckService
     private readonly IDbConnectionFactory     _configDb;
     private readonly IDataDbConnectionFactory _dataDb;
     private readonly ILogger<ReferenceCheckService> _logger;
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     public ReferenceCheckService(
         IDbConnectionFactory configDb,
@@ -214,9 +211,9 @@ public sealed partial class ReferenceCheckService : IReferenceCheckService
 
         foreach (var c in candidates)
         {
-            if (!SafeIdentifierRegex().IsMatch(c.SchemaName)
-                || !SafeIdentifierRegex().IsMatch(c.TableName)
-                || !SafeIdentifierRegex().IsMatch(c.ColumnName))
+            if (!SqlIdentifier.IsSafe(c.SchemaName)
+                || !SqlIdentifier.IsSafe(c.TableName)
+                || !SqlIdentifier.IsSafe(c.ColumnName))
                 continue;
 
             var sql = $"SELECT COUNT(*) FROM [{c.SchemaName}].[{c.TableName}] WHERE [{c.ColumnName}] = @V";

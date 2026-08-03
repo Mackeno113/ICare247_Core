@@ -1,5 +1,27 @@
 # Last Session Summary
 
+## Session 99 (2026-08-03) — AUDIT-2: gom guard SQL về lớp chung `SqlIdentifier` (⚠️ CHƯA BUILD)
+
+**Việc:** thực thi AUDIT-2 — gom mọi bản copy guard SQL về **1 lớp chung**
+`src/backend/src/ICare247.Application/Common/Sql/SqlIdentifier.cs` (`IsSafe` / `IsSafeQualified` /
+`Bracket` có escape `]` / `ContainsDangerousKeyword`).
+
+**Đã sửa 11 file / ~102 call site:** xóa 11 bản `SafeIdentifierRegex` (2 pattern lệch nhau), 4 bản `Bracket`
+(bản `MasterDataRepository` cũ `$"[{id}]"` **thiếu escape `]`** → nay dùng bản chung có escape), gom blocklist
+`DangerousKeywords`/`ContainsDangerousKeyword` từ `DynamicLookupRepository`. Bảo toàn hành vi 1:1 —
+`DynamicLookupRepository` giữ pattern có dấu chấm (schema.table) qua `IsSafeQualified`. Bỏ `using
+System.Text.RegularExpressions` ở 7 file không còn Regex; sửa 3 `<see cref>` tránh CS1574.
+Files: MaCodeGenerator, CodeRuleCatalog, HookStoreCatalog, FkLookupResolver, DynamicLookupRepository,
+MasterDataRepository, ImportLogRepository, ViewRepository, ReferenceCheckService, ImportEngine (Infra) +
+GetMasterDataRecordQueryHandler (Application).
+
+**⚠️ CHƯA BUILD/TEST:** môi trường remote **thiếu .NET SDK** (`dotnet: command not found`). Đã tự soát tĩnh
+kỹ (mọi `SqlIdentifier.*` phân giải được, 0 orphan, using đúng, ImplicitUsings cấp System.Linq) nhưng
+**CHƯA compile verify**. Đã commit theo yêu cầu user (nhánh feature).
+**Việc tiếp theo (user/máy có SDK):** `dotnet build src/backend/ICare247.slnx` +
+`dotnet test src/backend/tests/ICare247.Application.Tests/…csproj` → báo lỗi (nếu có) để sửa; cập nhật
+TASKS.md AUDIT-2 `[~]`→`[x]` khi build xanh. Sau AUDIT-2 → AUDIT-1 (viết test cho lớp `SqlIdentifier` + repo).
+
 ## Session 98 (2026-08-03) — Soát chất lượng backend (SOLID + vấn đề cốt lõi), ghi rule/memory/docs
 
 **Bối cảnh:** user hỏi nguyên tắc SOLID → yêu cầu soát backend → soát sâu "vấn đề cốt lõi" → yêu cầu ghi
