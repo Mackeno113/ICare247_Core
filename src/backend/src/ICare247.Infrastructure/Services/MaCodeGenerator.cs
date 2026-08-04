@@ -11,8 +11,8 @@
 
 using System.Data;
 using System.Text;
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -22,9 +22,6 @@ namespace ICare247.Infrastructure.Services;
 public sealed partial class MaCodeGenerator
 {
     private readonly ILogger<MaCodeGenerator> _logger;
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     public MaCodeGenerator(ILogger<MaCodeGenerator> logger) => _logger = logger;
 
@@ -223,5 +220,5 @@ public sealed partial class MaCodeGenerator
     }
 
     private static bool IsSafe(string? identifier)
-        => !string.IsNullOrWhiteSpace(identifier) && SafeIdentifierRegex().IsMatch(identifier);
+        => !string.IsNullOrWhiteSpace(identifier) && SqlIdentifier.IsSafe(identifier);
 }

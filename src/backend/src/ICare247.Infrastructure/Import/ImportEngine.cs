@@ -10,8 +10,8 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -30,9 +30,6 @@ public sealed partial class ImportEngine : IImportEngine
     private readonly ILogger<ImportEngine> _logger;
 
     private const char KeySeparator = '';   // ngăn cách phần khoá ghép (như ConfigSync)
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     public ImportEngine(
         IFkLookupResolver fk, IDataDbConnectionFactory dataDb,
@@ -354,14 +351,14 @@ public sealed partial class ImportEngine : IImportEngine
     {
         var result = new Dictionary<string, long>(StringComparer.Ordinal);
 
-        if (!SafeIdentifierRegex().IsMatch(req.TargetTable) || !SafeIdentifierRegex().IsMatch(req.PkColumn)
-            || !SafeIdentifierRegex().IsMatch(req.Schema)
-            || keyFields.Any(k => !SafeIdentifierRegex().IsMatch(k)))
+        if (!SqlIdentifier.IsSafe(req.TargetTable) || !SqlIdentifier.IsSafe(req.PkColumn)
+            || !SqlIdentifier.IsSafe(req.Schema)
+            || keyFields.Any(k => !SqlIdentifier.IsSafe(k)))
             return result;
 
         var cols = string.Join(", ", keyFields.Select(Bracket));
-        var sql = $"SELECT {Bracket(req.PkColumn)} AS __id, {cols} " +
-                  $"FROM {Bracket(req.Schema)}.{Bracket(req.TargetTable)}";
+        var sql = $"SELECT {SqlIdentifier.Bracket(req.PkColumn)} AS __id, {cols} " +
+                  $"FROM {SqlIdentifier.Bracket(req.Schema)}.{SqlIdentifier.Bracket(req.TargetTable)}";
 
         using var conn = _dataDb.CreateConnection();
         var dbRows = await conn.QueryAsync(new CommandDefinition(sql, cancellationToken: ct));
@@ -413,8 +410,6 @@ public sealed partial class ImportEngine : IImportEngine
         };
     }
 
-    /// <summary>Bọc identifier trong <c>[]</c>, escape <c>]</c>.</summary>
-    private static string Bracket(string ident) => "[" + ident.Replace("]", "]]") + "]";
 
     /// <summary>Dòng đã phân tích (trước phân loại NEW/UPDATE/ERROR).</summary>
     private sealed record ParsedRow(

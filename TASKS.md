@@ -934,6 +934,33 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 
 ---
 
+## 📋 Backlog — Nợ chất lượng backend (audit SOLID + vấn đề cốt lõi, 2026-08-03)
+
+> Báo cáo đầy đủ: `docs/reviews/2026-08-03-backend-code-audit.md`. Rule phái sinh: `.claude-rules/sql-safety.md`
+> + mục "Exception Policy trong Engine" trong `.claude-rules/architecture.md`. Read-only audit — chưa sửa code.
+> Ưu tiên: 🔴 Ngay / 🟠 Sau. Chạy impact analysis (GitNexus) trước khi sửa symbol.
+
+### 🔴 Ngay
+- [ ] **AUDIT-1** — Test gần như 0 (5 file test / 358 production; Infrastructure dynamic-SQL không test).
+      Fix: thêm test project Infrastructure + ca injection cho repo dựng SQL động + test cô lập tenant resolver.
+- [x] **AUDIT-2** — ✅ DONE, **BUILD XANH** (build local 2026-08-03: backend 6/6 project 0E, test 145/145 pass).
+      Guard SQL copy-paste, lệch pattern: gom về 1 lớp chung `ICare247.Application/Common/Sql/SqlIdentifier.cs`
+      (`IsSafe` / `IsSafeQualified` / `Bracket` escape `]` / `ContainsDangerousKeyword`). Thay **11 file** / ~102 call site;
+      xóa 11 bản `SafeIdentifierRegex`, 4 bản `Bracket` (1 bản `MasterData` cũ thiếu escape `]` → nay có), 1 blocklist.
+      Bảo toàn hành vi 1:1 (`DynamicLookupRepository` giữ pattern có dấu chấm qua `IsSafeQualified`).
+- [ ] **AUDIT-3** — Cô lập tenant chỉ 1 lớp (ADR-035, `tenantId` không lọc SQL). Fix: guard/log tại tầng
+      connection resolver + test cô lập không lẫn connection giữa tenant. Files: `IViewRepository.cs:21,84`, `IDynamicLookupRepository.cs:62`.
+
+### 🟠 Sau
+- [ ] **AUDIT-4** — Engine nuốt exception im lặng (mâu thuẫn rule — đã làm rõ chính sách). Fix code theo policy mới:
+      log lỗi config, bỏ `catch {}` rỗng. Files: `EventEngine.cs:180`, `ValidationEngine.cs:222,248`, `MetadataEngine.cs:168,207`.
+- [ ] **AUDIT-5** — God-class + switch dispatch (OCP/SRP). Tách action handler EventEngine → Strategy + registry;
+      tách `ViewSqlBuilder` khỏi `ViewRepository` (1038 dòng). Files: `EventEngine.cs:165`, `ViewRepository.cs`, `ImportEngine.cs:188,299`, `ContextParamResolver.cs:61`.
+- [ ] **AUDIT-6** — Đóng nợ đã đánh dấu: `TODO(SEC1-4)` hạ quyền `LookupController.cs:141`; `CC-3` permission cache
+      trả null `ConfigCache.cs:156`; workaround Restore `RestoreFormCommandHandler.cs:39-41`; JWT keyring in-memory `Program.cs:164`.
+
+---
+
 ## 📋 Roadmap — Save hook store per màn (validate trước + hậu xử lý) — ADR-029
 
 > Mỗi màn engine-driven (vd Xã/Phường) thêm 2 store TÙY CHỌN ở pipeline `SaveMasterData`:

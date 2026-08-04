@@ -40,6 +40,18 @@ Application/Features/{Module}/Queries/{QueryName}/
 └── {QueryName}QueryValidator.cs
 ```
 
+## Exception Policy trong Engine (làm rõ 2026-08-03)
+
+> Audit backend (`docs/reviews/2026-08-03-backend-code-audit.md` #4) phát hiện engine nuốt exception
+> im lặng ở nhiều chỗ (EventEngine/ValidationEngine/MetadataEngine), mâu thuẫn quy tắc "không swallow".
+> Quy tắc dưới đây là chuẩn hiện hành:
+
+- **Lỗi cấu hình** (AST/JSON hỏng, expression sai, param không parse được) → **KHÔNG nuốt im lặng**:
+  tối thiểu `LogWarning`/`LogError` có `Id` cấu hình + context; ưu tiên để nổi lên nếu là lỗi lập trình.
+- **Giá trị an toàn có chủ đích** (VD condition eval fail → skip rule an toàn hơn throw) → được phép trả
+  mặc định, NHƯNG **phải log** và ghi rõ lý do trong comment. `catch { }` rỗng là CẤM.
+- Không dùng `catch (Exception)` để che bug logic — chỉ bắt đúng loại lường trước được.
+
 ## Coding Checklist (Architecture)
 
 ```
@@ -48,5 +60,6 @@ Application/Features/{Module}/Queries/{QueryName}/
 ✅ Query = IRequest<TResponse>, Command = IRequest<TResponse>
 ✅ Handler = IRequestHandler<TRequest, TResponse>
 ✅ KHÔNG new Infrastructure class trong Api layer
-✅ Exception bubble lên — không swallow trong engine
+✅ Engine: lỗi config phải log/nổi lên; chỉ trả mặc định khi an toàn CÓ CHỦ ĐÍCH + có log (KHÔNG catch rỗng)
+✅ SQL động: theo .claude-rules/sql-safety.md (guard chung, whitelist, có test injection)
 ```

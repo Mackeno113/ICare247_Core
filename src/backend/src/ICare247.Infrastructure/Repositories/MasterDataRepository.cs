@@ -6,8 +6,8 @@
 
 using System.Data;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Exceptions;
 using ICare247.Infrastructure.Services;
@@ -19,7 +19,7 @@ namespace ICare247.Infrastructure.Repositories;
 /// </summary>
 /// <remarks>
 /// An toàn injection: mọi identifier (schema, table, column) validate qua
-/// <see cref="SafeIdentifierRegex"/>; mọi giá trị truyền qua Dapper params.
+/// <see cref="SqlIdentifier.IsSafe"/>; mọi giá trị truyền qua Dapper params.
 /// Bảng vật lý = <c>[Schema_Name].[Table_Code]</c> (Table_Code là tên bảng thật, theo convention WPF).
 /// </remarks>
 public sealed partial class MasterDataRepository : IMasterDataRepository
@@ -28,9 +28,6 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     private readonly IDataDbConnectionFactory _dataDb;
     private readonly ICodeRuleCatalog?        _codeRules;
     private readonly MaCodeGenerator?         _codeGen;
-
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     public MasterDataRepository(
         IDbConnectionFactory configDb,
@@ -149,10 +146,10 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         var dp = new DynamicParameters();
         dp.Add("Val", value);
-        var sql = $"SELECT COUNT(*) FROM {table} WHERE {Bracket(col)} = @Val";
+        var sql = $"SELECT COUNT(*) FROM {table} WHERE {SqlIdentifier.Bracket(col)} = @Val";
         if (excludeId is not null)
         {
-            sql += $" AND {Bracket(pk)} <> @ExcludeId";
+            sql += $" AND {SqlIdentifier.Bracket(pk)} <> @ExcludeId";
             dp.Add("ExcludeId", excludeId);
         }
 
@@ -181,7 +178,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var shown = info.Columns.Where(c => c.ShowInList).ToList();
         if (shown.Count == 0) shown = info.Columns.ToList();
         var listCols = shown.Select(c => c.ColumnCode)
-                            .Where(c => SafeIdentifierRegex().IsMatch(c))
+                            .Where(c => SqlIdentifier.IsSafe(c))
                             .ToList();
         var selectSet = new List<string> { pk };
         selectSet.AddRange(listCols.Where(c => !c.Equals(pk, StringComparison.OrdinalIgnoreCase)));
@@ -196,11 +193,11 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
             var textCols = shown
                 .Where(c => c.NetType.Equals("string", StringComparison.OrdinalIgnoreCase))
                 .Select(c => c.ColumnCode)
-                .Where(c => SafeIdentifierRegex().IsMatch(c))
+                .Where(c => SqlIdentifier.IsSafe(c))
                 .ToList();
             if (textCols.Count > 0)
             {
-                where.Add("(" + string.Join(" OR ", textCols.Select(c => $"{Bracket(c)} LIKE @Search")) + ")");
+                where.Add("(" + string.Join(" OR ", textCols.Select(c => $"{SqlIdentifier.Bracket(c)} LIKE @Search")) + ")");
                 dp.Add("Search", $"%{search.Trim()}%");
             }
         }
@@ -216,7 +213,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         var listSql =
             $"SELECT {selectCols} FROM {table}{whereSql} " +
-            $"ORDER BY {Bracket(pk)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
+            $"ORDER BY {SqlIdentifier.Bracket(pk)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
         var countSql = $"SELECT COUNT(*) FROM {table}{whereSql}";
 
         using var data = _dataDb.CreateConnection();
@@ -243,7 +240,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var table = QualifiedTable(info);
         var pk    = SafeCol(info.PkColumn, "PK");
 
-        var sql = $"SELECT * FROM {table} WHERE {Bracket(pk)} = @Id";
+        var sql = $"SELECT * FROM {table} WHERE {SqlIdentifier.Bracket(pk)} = @Id";
         using var data = _dataDb.CreateConnection();
         var row = await data.QueryFirstOrDefaultAsync(
             new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
@@ -285,11 +282,11 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         var source = TryParseQualified(src.SourceObject);
         if (source is null || string.IsNullOrWhiteSpace(src.KeyField)
-            || !SafeIdentifierRegex().IsMatch(src.KeyField))
+            || !SqlIdentifier.IsSafe(src.KeyField))
             return empty;
 
         // 2) Đọc 1 dòng theo khóa chính (SELECT * — chỉ 1 dòng, rẻ; tránh phải kiểm cột view tồn tại).
-        var sql = $"SELECT * FROM {source} WHERE {Bracket(src.KeyField)} = @Id";
+        var sql = $"SELECT * FROM {source} WHERE {SqlIdentifier.Bracket(src.KeyField)} = @Id";
         using var data = _dataDb.CreateConnection();
         var row = await data.QueryFirstOrDefaultAsync(
             new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
@@ -317,13 +314,13 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         if (childValue is null or DBNull) return null;
         // Identifier không an toàn → bỏ qua (không suy còn hơn dựng SQL sai/nguy hiểm).
-        if (!SafeIdentifierRegex().IsMatch(selectColumn) || !SafeIdentifierRegex().IsMatch(valueColumn))
+        if (!SqlIdentifier.IsSafe(selectColumn) || !SqlIdentifier.IsSafe(valueColumn))
             return null;
         var source = TryParseQualified(sourceName);
         if (source is null) return null;
 
-        var sql = $"SELECT TOP 1 {Bracket(selectColumn)} FROM {source} " +
-                  $"WHERE {Bracket(valueColumn)} = @Val";
+        var sql = $"SELECT TOP 1 {SqlIdentifier.Bracket(selectColumn)} FROM {source} " +
+                  $"WHERE {SqlIdentifier.Bracket(valueColumn)} = @Val";
         using var data = _dataDb.CreateConnection();
         return await data.ExecuteScalarAsync<object?>(
             new CommandDefinition(sql, new { Val = childValue }, cancellationToken: ct));
@@ -381,12 +378,12 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var insVals = cols.Select(c => "@" + c).ToList();
         if (audit.Contains("CreatedBy") && userId is not null)
         {
-            insCols.Add(Bracket("CreatedBy")); insVals.Add("@__CreatedBy"); dp.Add("__CreatedBy", userId.Value);
+            insCols.Add(SqlIdentifier.Bracket("CreatedBy")); insVals.Add("@__CreatedBy"); dp.Add("__CreatedBy", userId.Value);
         }
-        if (audit.Contains("CreatedAt")) { insCols.Add(Bracket("CreatedAt")); insVals.Add("SYSUTCDATETIME()"); }
+        if (audit.Contains("CreatedAt")) { insCols.Add(SqlIdentifier.Bracket("CreatedAt")); insVals.Add("SYSUTCDATETIME()"); }
 
         var sql = $"INSERT INTO {table} ({string.Join(", ", insCols)}) " +
-                  $"OUTPUT INSERTED.{Bracket(pk)} AS NewId VALUES ({string.Join(", ", insVals)})";
+                  $"OUTPUT INSERTED.{SqlIdentifier.Bracket(pk)} AS NewId VALUES ({string.Join(", ", insVals)})";
 
         return await data.ExecuteScalarAsync<object>(
             new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
@@ -480,15 +477,15 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct, tx);
 
-        var setParts = cols.Select(c => $"{Bracket(c)} = @{c}").ToList();
+        var setParts = cols.Select(c => $"{SqlIdentifier.Bracket(c)} = @{c}").ToList();
         if (audit.Contains("UpdatedBy") && userId is not null)
         {
-            setParts.Add($"{Bracket("UpdatedBy")} = @__UpdatedBy"); dp.Add("__UpdatedBy", userId.Value);
+            setParts.Add($"{SqlIdentifier.Bracket("UpdatedBy")} = @__UpdatedBy"); dp.Add("__UpdatedBy", userId.Value);
         }
-        if (audit.Contains("UpdatedAt")) { setParts.Add($"{Bracket("UpdatedAt")} = SYSUTCDATETIME()"); }
+        if (audit.Contains("UpdatedAt")) { setParts.Add($"{SqlIdentifier.Bracket("UpdatedAt")} = SYSUTCDATETIME()"); }
 
         dp.Add("__Id", id);
-        var sql = $"UPDATE {table} SET {string.Join(", ", setParts)} WHERE {Bracket(pk)} = @__Id";
+        var sql = $"UPDATE {table} SET {string.Join(", ", setParts)} WHERE {SqlIdentifier.Bracket(pk)} = @__Id";
 
         return await data.ExecuteAsync(new CommandDefinition(sql, dp, transaction: tx, cancellationToken: ct));
     }
@@ -563,7 +560,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         dp.Add("LangCode", string.IsNullOrWhiteSpace(langCode) ? "vi" : langCode);
         dp.Add("PayloadJson", JsonSerializer.Serialize(values));
 
-        var sql = $"EXEC dbo.{Bracket(procName)} " +
+        var sql = $"EXEC dbo.{SqlIdentifier.Bracket(procName)} " +
                   "@Id=@Id, @TenantId=@TenantId, @NguoiDungID=@NguoiDungID, " +
                   "@LangCode=@LangCode, @PayloadJson=@PayloadJson";
 
@@ -626,7 +623,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var table = QualifiedTable(info);
         var pk    = SafeCol(info.PkColumn, "PK");
 
-        var sql = $"DELETE FROM {table} WHERE {Bracket(pk)} = @Id";
+        var sql = $"DELETE FROM {table} WHERE {SqlIdentifier.Bracket(pk)} = @Id";
         using var data = _dataDb.CreateConnection();
         return await data.ExecuteAsync(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
     }
@@ -642,7 +639,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var allowed = info.Columns
             .Where(c => !c.IsReadOnly)
             .Select(c => c.ColumnCode)
-            .Where(c => SafeIdentifierRegex().IsMatch(c))
+            .Where(c => SqlIdentifier.IsSafe(c))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Cột mã tự sinh: hệ thống vừa ghi giá trị dù cột đang IsReadOnly (khóa với USER,
@@ -653,7 +650,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var dp   = new DynamicParameters();
         foreach (var (key, val) in values)
         {
-            if (!SafeIdentifierRegex().IsMatch(key)) continue;
+            if (!SqlIdentifier.IsSafe(key)) continue;
             if (key.Equals(excludeCol, StringComparison.OrdinalIgnoreCase)) continue;
             if (!allowed.Contains(key)) continue;
             cols.Add(key);
@@ -685,7 +682,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         var schema = SafeCol(info.SchemaName, "Schema");
         var table  = SafeCol(info.TableName,  "Table");
-        return $"{Bracket(schema)}.{Bracket(table)}";
+        return $"{SqlIdentifier.Bracket(schema)}.{SqlIdentifier.Bracket(table)}";
     }
 
     private static bool HasColumn(MasterDataFormInfo info, string col) =>
@@ -694,12 +691,11 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     private static string SafeCol(string name, string label)
     {
         var v = (name ?? "").Trim();
-        if (!SafeIdentifierRegex().IsMatch(v))
+        if (!SqlIdentifier.IsSafe(v))
             throw new InvalidOperationException($"MasterData: {label} '{name}' chứa ký tự không hợp lệ.");
         return v;
     }
 
-    private static string Bracket(string identifier) => $"[{identifier}]";
 
     /// <summary>
     /// Tách tên nguồn 'schema.object' hoặc 'object' → '[schema].[object]' (mặc định dbo);
@@ -710,11 +706,11 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     {
         if (string.IsNullOrWhiteSpace(name)) return null;
         var parts = name.Trim().Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length is < 1 or > 2 || parts.Any(p => !SafeIdentifierRegex().IsMatch(p)))
+        if (parts.Length is < 1 or > 2 || parts.Any(p => !SqlIdentifier.IsSafe(p)))
             return null;
         return parts.Length == 2
-            ? $"{Bracket(parts[0])}.{Bracket(parts[1])}"
-            : $"[dbo].{Bracket(parts[0])}";
+            ? $"{SqlIdentifier.Bracket(parts[0])}.{SqlIdentifier.Bracket(parts[1])}"
+            : $"[dbo].{SqlIdentifier.Bracket(parts[0])}";
     }
 
     /// <summary>Dapper row: nguồn view denormalized + cột khóa của một Ui_View gắn Edit_Form.</summary>

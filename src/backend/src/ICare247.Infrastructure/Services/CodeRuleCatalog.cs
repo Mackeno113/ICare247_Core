@@ -4,8 +4,8 @@
 // Purpose : Impl ICodeRuleCatalog — đọc Sys_Ma_Rule + Sys_Ma_Rule_Segment (Config DB) QUA CACHE
 //           (L1/L2). Save path đọc cache → 0 query khi lưu (cùng khuôn HookStoreCatalog, ADR-029).
 
-using System.Text.RegularExpressions;
 using Dapper;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Constants;
 using ICare247.Application.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -27,9 +27,6 @@ public sealed partial class CodeRuleCatalog : ICodeRuleCatalog
     /// <summary>Sentinel "bảng này KHÔNG có quy tắc" — cache cả trường hợp rỗng để khỏi query lại mỗi lần lưu.</summary>
     private static readonly MaCodeRule NoRule = new() { TableCode = "", ColumnCode = "" };
 
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
-
     public CodeRuleCatalog(
         IDbConnectionFactory configDb,
         ICacheService cache,
@@ -45,7 +42,7 @@ public sealed partial class CodeRuleCatalog : ICodeRuleCatalog
     /// <inheritdoc />
     public async Task<MaCodeRule?> GetAsync(string tableCode, int tenantId, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(tableCode) || !SafeIdentifierRegex().IsMatch(tableCode))
+        if (string.IsNullOrWhiteSpace(tableCode) || !SqlIdentifier.IsSafe(tableCode))
             return null;
 
         var key = CacheKeys.CodeRule(tableCode, tenantId, _version.Get(tenantId));

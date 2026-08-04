@@ -10,6 +10,7 @@
 
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using ICare247.Application.Common.Sql;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using ICare247.Domain.Entities.Form;
@@ -28,10 +29,6 @@ public sealed partial class GetMasterDataRecordQueryHandler
         _repo     = repo;
         _metadata = metadata;
     }
-
-    /// <summary>Whitelist identifier (cột trái của "{Cột} = @Param" trong Filter_Sql — fallback).</summary>
-    [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled)]
-    private static partial Regex SafeIdentifierRegex();
 
     /// <summary>Tách tên tham số @name tham chiếu trong Filter_Sql (fallback).</summary>
     [GeneratedRegex(@"@([a-zA-Z_][a-zA-Z0-9_]*)", RegexOptions.Compiled)]
@@ -156,7 +153,7 @@ public sealed partial class GetMasterDataRecordQueryHandler
             RegexOptions.IgnoreCase);
         if (!m.Success) return null;
         var col = m.Groups[1].Value;
-        return SafeIdentifierRegex().IsMatch(col) ? col : null;
+        return SqlIdentifier.IsSafe(col) ? col : null;
     }
 
     /// <summary>Parse Param_Map JSON ({"param":"FieldCode"}); rỗng/lỗi → map rỗng.</summary>

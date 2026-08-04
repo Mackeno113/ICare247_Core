@@ -1,5 +1,50 @@
 # Last Session Summary
 
+## Session 99 (2026-08-03) — AUDIT-2: gom guard SQL về lớp chung `SqlIdentifier` (⚠️ CHƯA BUILD)
+
+**Việc:** thực thi AUDIT-2 — gom mọi bản copy guard SQL về **1 lớp chung**
+`src/backend/src/ICare247.Application/Common/Sql/SqlIdentifier.cs` (`IsSafe` / `IsSafeQualified` /
+`Bracket` có escape `]` / `ContainsDangerousKeyword`).
+
+**Đã sửa 11 file / ~102 call site:** xóa 11 bản `SafeIdentifierRegex` (2 pattern lệch nhau), 4 bản `Bracket`
+(bản `MasterDataRepository` cũ `$"[{id}]"` **thiếu escape `]`** → nay dùng bản chung có escape), gom blocklist
+`DangerousKeywords`/`ContainsDangerousKeyword` từ `DynamicLookupRepository`. Bảo toàn hành vi 1:1 —
+`DynamicLookupRepository` giữ pattern có dấu chấm (schema.table) qua `IsSafeQualified`. Bỏ `using
+System.Text.RegularExpressions` ở 7 file không còn Regex; sửa 3 `<see cref>` tránh CS1574.
+Files: MaCodeGenerator, CodeRuleCatalog, HookStoreCatalog, FkLookupResolver, DynamicLookupRepository,
+MasterDataRepository, ImportLogRepository, ViewRepository, ReferenceCheckService, ImportEngine (Infra) +
+GetMasterDataRecordQueryHandler (Application).
+
+**✅ BUILD XANH (user build local 2026-08-03):** backend `ICare247.slnx` 6/6 project **0 error**, test
+`ICare247.Application.Tests` **145/145 pass**. AUDIT-2 verify xong, TASKS.md đổi `[~]`→`[x]`.
+(Môi trường remote thiếu .NET SDK nên tôi không build được — user build trên máy Windows D:\ICare247_Core.)
+**Việc tiếp theo:** gom nhánh vào master khi user muốn (`solid-principles` giờ đã xanh) — LƯU Ý nhánh
+`company-edit-province-display-4t55yl` xung đột với AUDIT-2 (thêm code dùng `SafeIdentifierRegex()`/`Bracket()`
+đã bị xóa) → khi gom phải viết lại call đó sang `SqlIdentifier`. Sau đó → AUDIT-1 (viết test cho `SqlIdentifier` + repo dynamic-SQL).
+
+## Session 98 (2026-08-03) — Soát chất lượng backend (SOLID + vấn đề cốt lõi), ghi rule/memory/docs
+
+**Bối cảnh:** user hỏi nguyên tắc SOLID → yêu cầu soát backend → soát sâu "vấn đề cốt lõi" → yêu cầu ghi
+vào rule/memory/tài liệu. **Read-only audit — KHÔNG sửa code sản phẩm.**
+
+**Phát hiện (6 vấn đề cốt lõi):** ① test gần như 0 (5/358 file, Infrastructure không test) ② guard SQL
+copy-paste lệch nhau (`SafeIdentifierRegex` ≥5 bản, 2 pattern) ③ cô lập tenant 1 lớp (ADR-035) ④ engine
+nuốt exception (mâu thuẫn architecture.md) ⑤ god-class + switch dispatch (OCP) ⑥ nợ TODO(SEC1-4)/CC-3/
+RestoreForm/JWT keyring. Chi tiết → `docs/reviews/2026-08-03-backend-code-audit.md`.
+
+**Đã ghi (docs + rule + memory, không đụng code sản phẩm):**
+- `docs/reviews/2026-08-03-backend-code-audit.md` — báo cáo audit đầy đủ (MỚI).
+- `.claude-rules/sql-safety.md` — quy tắc chống injection: guard identifier CHUNG, whitelist, cô lập tenant, test injection bắt buộc (MỚI).
+- `.claude-rules/architecture.md` — thêm mục "Exception Policy trong Engine" + 2 dòng checklist (làm rõ mâu thuẫn #4).
+- `CLAUDE.md` — thêm dòng bảng rule cho `sql-safety.md`.
+- `.claude/memory/project_current_phase.md` — thêm mục "Soát chất lượng backend (2026-08-03)".
+- `TASKS.md` — thêm backlog "Nợ chất lượng backend (audit … 2026-08-03)" gồm **AUDIT-1…AUDIT-6** (🔴 1-3 / 🟠 4-6).
+
+**Task tiếp theo gợi ý:** ưu tiên **AUDIT-2** (gom guard SQL về `SqlIdentifier` chung) rồi **AUDIT-1** (test
+repo dynamic-SQL + tenant). Chạy impact analysis (GitNexus) trước khi sửa symbol. Chưa build (audit chưa đổi code sản phẩm).
+
+---
+
 > Cập nhật: 2026-07-29 (session 97 — **gom 1 commit**: ① fix bug dấu ✓ "đã dịch" sai + tooltip xem nhanh
 > bản dịch (tab Cột, ViewManager WPF) ② bundle việc dang dở nằm sẵn trong working tree từ trước: task
 > Codex **WPF-16** (chuẩn hóa DevExpress editor + popup "Chi tiết cấu hình" — xem `AI_HANDOFF.md`/

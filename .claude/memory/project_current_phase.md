@@ -47,6 +47,21 @@ last_session.md session 88.
 - **Kiến trúc dữ liệu:** Config DB (metadata, có cache) + Data DB per-tenant (HT_/DM_/TC_…, tiếng Việt). DB-per-tenant, không `Tenant_Id` ở Data DB. (ADR-022/025)
 - **Backend Phase 1-6 + ConfigStudio 11 màn + Blazor runtime**: đã hoàn thành nền (chi tiết bảng trạng thái → project_phase_history.md).
 
+## Soát chất lượng backend (2026-08-03) — vấn đề cốt lõi
+
+> Báo cáo đầy đủ: [`docs/reviews/2026-08-03-backend-code-audit.md`](../../docs/reviews/2026-08-03-backend-code-audit.md).
+> Kiến trúc tốt (Clean Arch/CQRS/DI), nhưng vùng nguy hiểm nhất (dynamic SQL + cô lập tenant) vừa dựa
+> kỷ luật thủ công vừa không có test. 6 vấn đề cốt lõi (chưa sửa code):
+
+1. 🔴 **Test gần như bằng 0** — 5 file test / 358 file production; Infrastructure (dynamic SQL) không test.
+2. 🔴 **Guard SQL copy-paste, lệch nhau** — `SafeIdentifierRegex` ≥5 bản, 2 pattern khác nhau → quy tắc mới `.claude-rules/sql-safety.md`.
+3. 🔴 **Cô lập tenant 1 lớp** — `tenantId` không lọc SQL (ADR-035), sai resolver = rò rỉ chéo im lặng.
+4. 🟠 **Engine nuốt exception** — mâu thuẫn architecture.md (đã sửa rule, làm rõ chính sách).
+5. 🟠 **God-class + switch dispatch** — ViewRepository 1038 dòng; EventEngine/ImportEngine switch (OCP).
+6. 🟡 **Nợ đã đánh dấu** — TODO(SEC1-4) hạ quyền LookupController, CC-3 permission null, RestoreForm workaround, JWT keyring in-memory.
+
+**Ưu tiên sửa:** (1) gom guard SQL → `SqlIdentifier` chung · (2) test repo dynamic-SQL + tenant · (3) chuẩn hóa exception engine · (4) đóng nợ SEC/CC-3.
+
 ## Việc nền còn treo
 
 - Integration tests (BE-002) · E2E Master Data với DB thật (BE-003) · WPF-14 LookupBox manual test — xem `TASKS.md`.
