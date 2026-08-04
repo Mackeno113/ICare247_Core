@@ -945,10 +945,13 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       **① ✅ DONE + VERIFIED:** `SqlIdentifierTests.cs` (64 ca) — whitelist identifier + injection + Bracket
       escape `]` + BracketQualified + blocklist, khóa hành vi guard AUDIT-2. Test **210/210 pass** (SDK 10 +
       roll-forward, xem last_session.md công thức build trong môi trường remote).
-      **② ĐANG LÀM (hướng a — tách hàm thuần, verify SDK 10 remote):** thêm `Common/Sql/SqlClause.cs`
-      (`BracketedColumnList` + `LikeOrGroup` có/không CAST) + `SqlClauseTests.cs` (10 ca) — rewire
-      `MasterDataRepository.GetListAsync` + `ViewRepository.BuildQueryContextAsync` (chuỗi xuất giữ 1:1).
-      Infra build 0/0, test 220/220. **Còn tách tiếp:** JOIN/ORDER builder, `DynamicLookupRepository`.
+      **② ĐANG LÀM (hướng a — tách hàm thuần, verify SDK 10 remote):**
+        · `Common/Sql/SqlClause.cs` (`BracketedColumnList` + `LikeOrGroup`) + test 10 ca — rewire search/cột.
+        · `Common/Sql/SqlPaging.cs` (`OffsetFetch`/`TopWithOrder`/`Count`) + test 7 ca — rewire phân trang
+          `MasterData.GetListAsync` + `ViewRepository.GetDataAsync`/`GetAllDataAsync` (chuỗi xuất 1:1).
+        Infra build 0/0, **test 227/227**. ✅ **CHỐT NỀN** — đã phủ 2 pattern lặp nhiều & giá trị nhất
+        (cột/search + phân trang). Hoãn có chủ đích (lợi ích giảm dần / rủi ro cao): FK JOIN builder
+        (đan xen sinh alias `_fkN`), các đoạn dựng SELECT của `DynamicLookupRepository` (gắn DB nhiều).
       **③ CÒN LẠI:** test cô lập tenant resolver (chồng AUDIT-3).
 - [x] **AUDIT-2** — ✅ DONE, **BUILD XANH** (build local 2026-08-03: backend 6/6 project 0E, test 145/145 pass).
       Guard SQL copy-paste, lệch pattern: gom về 1 lớp chung `ICare247.Application/Common/Sql/SqlIdentifier.cs`

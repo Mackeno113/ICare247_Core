@@ -441,10 +441,8 @@ public sealed partial class ViewRepository : IViewRepository
         ctx.Dp.Add("Take", pageSize < 1 ? 50 : pageSize);
 
         // ORDER BY tham chiếu alias đầu ra (cột FK đã alias về tên cột) → sắp theo tên hiển thị.
-        var listSql =
-            $"SELECT {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
-            $"ORDER BY {SqlIdentifier.Bracket(ctx.OrderCol)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-        var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
+        var listSql  = SqlPaging.OffsetFetch(string.Join(", ", ctx.SelectExprs), ctx.FromSql, ctx.WhereSql, ctx.OrderCol);
+        var countSql = SqlPaging.Count(ctx.FromSql, ctx.WhereSql);
 
         var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
         var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, ctx.Dp, cancellationToken: ct));
@@ -470,10 +468,8 @@ public sealed partial class ViewRepository : IViewRepository
         // lọc, không chỉ 1 trang). Trần MaxExportRows chặn yêu cầu bất thường, không giới hạn nhu cầu
         // thực tế (xem hằng số).
         ctx.Dp.Add("Cap", MaxExportRows);
-        var listSql =
-            $"SELECT TOP (@Cap) {string.Join(", ", ctx.SelectExprs)} FROM {ctx.FromSql}{ctx.WhereSql} " +
-            $"ORDER BY {SqlIdentifier.Bracket(ctx.OrderCol)}";
-        var countSql = $"SELECT COUNT(*) FROM {ctx.FromSql}{ctx.WhereSql}";
+        var listSql  = SqlPaging.TopWithOrder(string.Join(", ", ctx.SelectExprs), ctx.FromSql, ctx.WhereSql, ctx.OrderCol);
+        var countSql = SqlPaging.Count(ctx.FromSql, ctx.WhereSql);
 
         var rows = await data.QueryAsync(new CommandDefinition(listSql, ctx.Dp, cancellationToken: ct));
         var total = await data.ExecuteScalarAsync<int>(new CommandDefinition(countSql, ctx.Dp, cancellationToken: ct));

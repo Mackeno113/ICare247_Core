@@ -211,10 +211,8 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         dp.Add("Skip", skip);
         dp.Add("Take", pageSize);
 
-        var listSql =
-            $"SELECT {selectCols} FROM {table}{whereSql} " +
-            $"ORDER BY {SqlIdentifier.Bracket(pk)} OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY";
-        var countSql = $"SELECT COUNT(*) FROM {table}{whereSql}";
+        var listSql  = SqlPaging.OffsetFetch(selectCols, table, whereSql, pk);
+        var countSql = SqlPaging.Count(table, whereSql);
 
         using var data = _dataDb.CreateConnection();
         var rows = await data.QueryAsync(new CommandDefinition(listSql, dp, cancellationToken: ct));
