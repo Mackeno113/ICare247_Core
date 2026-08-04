@@ -941,8 +941,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 > Ưu tiên: 🔴 Ngay / 🟠 Sau. Chạy impact analysis (GitNexus) trước khi sửa symbol.
 
 ### 🔴 Ngay
-- [ ] **AUDIT-1** — Test gần như 0 (5 file test / 358 production; Infrastructure dynamic-SQL không test).
-      Fix: thêm test project Infrastructure + ca injection cho repo dựng SQL động + test cô lập tenant resolver.
+- [~] **AUDIT-1** — Test gần như 0 (5 file test / 358 production; Infrastructure dynamic-SQL không test).
+      **① XONG (chờ build verify):** `SqlIdentifierTests.cs` (~30 ca) — whitelist identifier + injection + Bracket
+      escape `]` + BracketQualified + blocklist, khóa hành vi guard AUDIT-2. Trong `ICare247.Application.Tests`.
+      **② CÒN LẠI:** test repo dynamic-SQL (`MasterDataRepository`/`ViewRepository` — cần DB test hoặc tách
+      hàm dựng-SQL thuần) · **③ CÒN LẠI:** test cô lập tenant resolver (chồng AUDIT-3).
 - [x] **AUDIT-2** — ✅ DONE, **BUILD XANH** (build local 2026-08-03: backend 6/6 project 0E, test 145/145 pass).
       Guard SQL copy-paste, lệch pattern: gom về 1 lớp chung `ICare247.Application/Common/Sql/SqlIdentifier.cs`
       (`IsSafe` / `IsSafeQualified` / `Bracket` escape `]` / `ContainsDangerousKeyword`). Thay **11 file** / ~102 call site;
