@@ -182,7 +182,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
                             .ToList();
         var selectSet = new List<string> { pk };
         selectSet.AddRange(listCols.Where(c => !c.Equals(pk, StringComparison.OrdinalIgnoreCase)));
-        var selectCols = string.Join(", ", selectSet.Select(Bracket));
+        var selectCols = string.Join(", ", selectSet.Select(SqlIdentifier.Bracket));
 
         // WHERE: search (LIKE trên các cột text Show_In_List) + active filter
         var where = new List<string>();
@@ -374,7 +374,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
         var audit = await GetAuditColumnsAsync(data, info.SchemaName, info.TableName, ct, tx);
 
         // (cột, biểu thức giá trị) — field = @param; audit = bơm tự động (CreatedBy/At nếu bảng có).
-        var insCols = cols.Select(Bracket).ToList();
+        var insCols = cols.Select(SqlIdentifier.Bracket).ToList();
         var insVals = cols.Select(c => "@" + c).ToList();
         if (audit.Contains("CreatedBy") && userId is not null)
         {
