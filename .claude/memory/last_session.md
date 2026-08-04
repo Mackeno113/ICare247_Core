@@ -15,12 +15,12 @@ Files: MaCodeGenerator, CodeRuleCatalog, HookStoreCatalog, FkLookupResolver, Dyn
 MasterDataRepository, ImportLogRepository, ViewRepository, ReferenceCheckService, ImportEngine (Infra) +
 GetMasterDataRecordQueryHandler (Application).
 
-**⚠️ CHƯA BUILD/TEST:** môi trường remote **thiếu .NET SDK** (`dotnet: command not found`). Đã tự soát tĩnh
-kỹ (mọi `SqlIdentifier.*` phân giải được, 0 orphan, using đúng, ImplicitUsings cấp System.Linq) nhưng
-**CHƯA compile verify**. Đã commit theo yêu cầu user (nhánh feature).
-**Việc tiếp theo (user/máy có SDK):** `dotnet build src/backend/ICare247.slnx` +
-`dotnet test src/backend/tests/ICare247.Application.Tests/…csproj` → báo lỗi (nếu có) để sửa; cập nhật
-TASKS.md AUDIT-2 `[~]`→`[x]` khi build xanh. Sau AUDIT-2 → AUDIT-1 (viết test cho lớp `SqlIdentifier` + repo).
+**✅ BUILD XANH (user build local 2026-08-03):** backend `ICare247.slnx` 6/6 project **0 error**, test
+`ICare247.Application.Tests` **145/145 pass**. AUDIT-2 verify xong, TASKS.md đổi `[~]`→`[x]`.
+(Môi trường remote thiếu .NET SDK nên tôi không build được — user build trên máy Windows D:\ICare247_Core.)
+**Việc tiếp theo:** gom nhánh vào master khi user muốn (`solid-principles` giờ đã xanh) — LƯU Ý nhánh
+`company-edit-province-display-4t55yl` xung đột với AUDIT-2 (thêm code dùng `SafeIdentifierRegex()`/`Bracket()`
+đã bị xóa) → khi gom phải viết lại call đó sang `SqlIdentifier`. Sau đó → AUDIT-1 (viết test cho `SqlIdentifier` + repo dynamic-SQL).
 
 ## Session 98 (2026-08-03) — Soát chất lượng backend (SOLID + vấn đề cốt lõi), ghi rule/memory/docs
 
