@@ -182,7 +182,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
                             .ToList();
         var selectSet = new List<string> { pk };
         selectSet.AddRange(listCols.Where(c => !c.Equals(pk, StringComparison.OrdinalIgnoreCase)));
-        var selectCols = string.Join(", ", selectSet.Select(SqlIdentifier.Bracket));
+        var selectCols = SqlClause.BracketedColumnList(selectSet);
 
         // WHERE: search (LIKE trên các cột text Show_In_List) + active filter
         var where = new List<string>();
@@ -197,7 +197,7 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
                 .ToList();
             if (textCols.Count > 0)
             {
-                where.Add("(" + string.Join(" OR ", textCols.Select(c => $"{SqlIdentifier.Bracket(c)} LIKE @Search")) + ")");
+                where.Add(SqlClause.LikeOrGroup(textCols.Select(SqlIdentifier.Bracket).ToList(), "Search")!);
                 dp.Add("Search", $"%{search.Trim()}%");
             }
         }

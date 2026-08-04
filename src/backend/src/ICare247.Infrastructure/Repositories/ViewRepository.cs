@@ -395,8 +395,7 @@ public sealed partial class ViewRepository : IViewRepository
         if (!string.IsNullOrWhiteSpace(search))
         {
             // CAST sang NVARCHAR để LIKE hoạt động trên mọi kiểu cột (không cần biết NetType).
-            whereClauses.Add("(" + string.Join(" OR ",
-                searchExprs.Select(e => $"CAST({e} AS NVARCHAR(4000)) LIKE @Search")) + ")");
+            whereClauses.Add(SqlClause.LikeOrGroup(searchExprs, "Search", castLength: 4000)!);
             dp.Add("Search", $"%{search.Trim()}%");
         }
 
