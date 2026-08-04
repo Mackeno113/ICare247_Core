@@ -942,8 +942,9 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 
 ### 🔴 Ngay
 - [~] **AUDIT-1** — Test gần như 0 (5 file test / 358 production; Infrastructure dynamic-SQL không test).
-      **① XONG (chờ build verify):** `SqlIdentifierTests.cs` (~30 ca) — whitelist identifier + injection + Bracket
-      escape `]` + BracketQualified + blocklist, khóa hành vi guard AUDIT-2. Trong `ICare247.Application.Tests`.
+      **① ✅ DONE + VERIFIED:** `SqlIdentifierTests.cs` (64 ca) — whitelist identifier + injection + Bracket
+      escape `]` + BracketQualified + blocklist, khóa hành vi guard AUDIT-2. Test **210/210 pass** (SDK 10 +
+      roll-forward, xem last_session.md công thức build trong môi trường remote).
       **② CÒN LẠI:** test repo dynamic-SQL (`MasterDataRepository`/`ViewRepository` — cần DB test hoặc tách
       hàm dựng-SQL thuần) · **③ CÒN LẠI:** test cô lập tenant resolver (chồng AUDIT-3).
 - [x] **AUDIT-2** — ✅ DONE, **BUILD XANH** (build local 2026-08-03: backend 6/6 project 0E, test 145/145 pass).
