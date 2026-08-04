@@ -945,8 +945,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       **① ✅ DONE + VERIFIED:** `SqlIdentifierTests.cs` (64 ca) — whitelist identifier + injection + Bracket
       escape `]` + BracketQualified + blocklist, khóa hành vi guard AUDIT-2. Test **210/210 pass** (SDK 10 +
       roll-forward, xem last_session.md công thức build trong môi trường remote).
-      **② CÒN LẠI:** test repo dynamic-SQL (`MasterDataRepository`/`ViewRepository` — cần DB test hoặc tách
-      hàm dựng-SQL thuần) · **③ CÒN LẠI:** test cô lập tenant resolver (chồng AUDIT-3).
+      **② ĐANG LÀM (hướng a — tách hàm thuần, verify SDK 10 remote):** thêm `Common/Sql/SqlClause.cs`
+      (`BracketedColumnList` + `LikeOrGroup` có/không CAST) + `SqlClauseTests.cs` (10 ca) — rewire
+      `MasterDataRepository.GetListAsync` + `ViewRepository.BuildQueryContextAsync` (chuỗi xuất giữ 1:1).
+      Infra build 0/0, test 220/220. **Còn tách tiếp:** JOIN/ORDER builder, `DynamicLookupRepository`.
+      **③ CÒN LẠI:** test cô lập tenant resolver (chồng AUDIT-3).
 - [x] **AUDIT-2** — ✅ DONE, **BUILD XANH** (build local 2026-08-03: backend 6/6 project 0E, test 145/145 pass).
       Guard SQL copy-paste, lệch pattern: gom về 1 lớp chung `ICare247.Application/Common/Sql/SqlIdentifier.cs`
       (`IsSafe` / `IsSafeQualified` / `Bracket` escape `]` / `ContainsDangerousKeyword`). Thay **11 file** / ~102 call site;
