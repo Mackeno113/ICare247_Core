@@ -356,7 +356,7 @@ public sealed partial class ImportEngine : IImportEngine
             || keyFields.Any(k => !SqlIdentifier.IsSafe(k)))
             return result;
 
-        var cols = string.Join(", ", keyFields.Select(Bracket));
+        var cols = string.Join(", ", keyFields.Select(SqlIdentifier.Bracket));
         var sql = $"SELECT {SqlIdentifier.Bracket(req.PkColumn)} AS __id, {cols} " +
                   $"FROM {SqlIdentifier.Bracket(req.Schema)}.{SqlIdentifier.Bracket(req.TargetTable)}";
 

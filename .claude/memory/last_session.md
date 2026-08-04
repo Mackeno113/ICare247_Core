@@ -1,5 +1,30 @@
 # Last Session Summary
 
+## ⚙️ Công thức BUILD/TEST trong môi trường REMOTE (Claude Code web — không có .NET SDK sẵn)
+
+> Môi trường remote KHÔNG cài .NET SDK; .NET 9 bị egress-block (CDN `builds.dotnet.microsoft.com`,
+> `dotnetcli.azureedge.net` → 403; README cấm lách). Cách tự build+test **unit test** (không cần bạn):
+
+```bash
+# 1. Cài SDK 10 (Ubuntu repo — host được phép; .NET 9 KHÔNG có ở repo nào được phép)
+export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y dotnet-sdk-10.0
+# 2. Config nuget tạm CHỈ nuget.org (nuget.config gốc trỏ DevExpress path Windows → NU1301 trên Linux)
+cat > /tmp/nuget-nodx.config <<'XML'
+<configuration><packageSources><clear/>
+<add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3"/>
+</packageSources><fallbackPackageFolders><clear/></fallbackPackageFolders></configuration>
+XML
+# 3. Build/test target net9.0 trên runtime 10 qua roll-forward Major
+export DOTNET_ROLL_FORWARD=Major
+dotnet restore src/backend/tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj --configfile /tmp/nuget-nodx.config
+dotnet test src/backend/tests/ICare247.Application.Tests/ICare247.Application.Tests.csproj --no-restore
+```
+
+**GIỚI HẠN:** full solution (`Infrastructure.Documents`/`Api`) cần **DevExpress** (gói license, chỉ máy
+Windows) → KHÔNG build được trên remote. Chỉ tự verify được **Application/Domain/Tests** (unit test thuần).
+SDK cài rồi sẽ mất khi container bị thu hồi → session sau chạy lại bước 1.
+
+
 ## Session 99 (2026-08-03) — AUDIT-2: gom guard SQL về lớp chung `SqlIdentifier` (⚠️ CHƯA BUILD)
 
 **Việc:** thực thi AUDIT-2 — gom mọi bản copy guard SQL về **1 lớp chung**

@@ -836,7 +836,7 @@ public sealed partial class ViewRepository : IViewRepository
         if (parts.Length is < 1 or > 2 || parts.Any(p => !SqlIdentifier.IsSafe(p)))
             throw new InvalidOperationException(
                 $"View '{viewCode}': tên Stored Procedure '{spName}' không hợp lệ.");
-        return string.Join('.', parts.Select(Bracket));
+        return string.Join('.', parts.Select(SqlIdentifier.Bracket));
     }
 
     /// <summary>Ép giá trị thô (string) sang kiểu tham số; bọc %...% khi LIKE; tách mảng khi IN.</summary>
