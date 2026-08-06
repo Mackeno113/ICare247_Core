@@ -970,8 +970,12 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       · `MetadataEngine` — 2 `catch {}` rỗng → `catch (JsonException)` + log field code (bắt đúng loại lường trước).
       · `EventEngine` — đã log sẵn (không đổi). ValidationEngineTests thêm logger.
       Verify (SDK 10 remote): Infra 0/0, test 235/235. Chỉ chạm Application (không cần build Api).
-- [ ] **AUDIT-5** — God-class + switch dispatch (OCP/SRP). Tách action handler EventEngine → Strategy + registry;
-      tách `ViewSqlBuilder` khỏi `ViewRepository` (1038 dòng). Files: `EventEngine.cs:165`, `ViewRepository.cs`, `ImportEngine.cs:188,299`, `ContextParamResolver.cs:61`.
+- [~] **AUDIT-5** — God-class + switch dispatch (OCP/SRP).
+      **✅ Phase B (SRP):** tách helper JSON thuần EventEngine → `EventActionParam` (Parse/GetString/GetElement/
+      GetStringArray/ResolvePlaceholders) + `EventActionParamTests` (15 ca). Test 250/250, Application 0/0.
+      **⏳ Phase A+C (OCP — còn lại, rủi ro cao):** switch `ExecuteActionAsync` (`EventEngine.cs:165`) → Strategy
+      (`IEventActionHandler` + 9 handler + registry + DI). CẦN characterization test trước (EventEngine chưa có test).
+      **Hoãn:** tách `ViewSqlBuilder`/`ViewRepository`, `ImportEngine`/`ContextParamResolver` switch.
 - [ ] **AUDIT-6** — Đóng nợ đã đánh dấu: `TODO(SEC1-4)` hạ quyền `LookupController.cs:141`; `CC-3` permission cache
       trả null `ConfigCache.cs:156`; workaround Restore `RestoreFormCommandHandler.cs:39-41`; JWT keyring in-memory `Program.cs:164`.
 

@@ -198,11 +198,11 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return [];
 
-        var targetField = GetString(param, "targetField");
+        var targetField = EventActionParam.GetString(param, "targetField");
         if (targetField is null) return [];
 
         // Evaluate AST expression để lấy value mới
-        var valueExprElement = GetElement(param, "valueExpression");
+        var valueExprElement = EventActionParam.GetElement(param, "valueExpression");
         if (valueExprElement is null) return [];
 
         var valueExprJson = valueExprElement.Value.GetRawText();
@@ -303,7 +303,7 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return [];
 
-        var targetField = GetString(param, "targetField");
+        var targetField = EventActionParam.GetString(param, "targetField");
         if (targetField is null) return [];
 
         return
@@ -326,14 +326,14 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return [];
 
-        var targetField = GetString(param, "targetField");
-        var messageKey  = GetString(param, "messageKey");
-        var severity    = GetString(param, "severity") ?? "Info";
+        var targetField = EventActionParam.GetString(param, "targetField");
+        var messageKey  = EventActionParam.GetString(param, "messageKey");
+        var severity    = EventActionParam.GetString(param, "severity") ?? "Info";
 
         if (targetField is null || messageKey is null) return [];
 
         // conditionExpression là optional — nếu có thì evaluate; false → không tạo delta
-        var condExprElement = GetElement(param, "conditionExpression");
+        var condExprElement = EventActionParam.GetElement(param, "conditionExpression");
         if (condExprElement is not null)
         {
             var condExprJson = condExprElement.Value.GetRawText();
@@ -366,15 +366,15 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return [];
 
-        var targetField = GetString(param, "targetField");
-        var apiEndpoint = GetString(param, "apiEndpoint");
+        var targetField = EventActionParam.GetString(param, "targetField");
+        var apiEndpoint = EventActionParam.GetString(param, "apiEndpoint");
         if (targetField is null || apiEndpoint is null) return [];
 
         // Resolve placeholders trong apiEndpoint: {Province} → giá trị thực
-        var resolvedEndpoint = ResolvePlaceholders(apiEndpoint, context);
+        var resolvedEndpoint = EventActionParam.ResolvePlaceholders(apiEndpoint, context);
 
         // Lấy dependsOn nếu có
-        var dependsOn = GetStringArray(param, "dependsOn");
+        var dependsOn = EventActionParam.GetStringArray(param, "dependsOn");
 
         var data = new Dictionary<string, object?>
         {
@@ -403,7 +403,7 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return [];
 
-        var targetFields = GetStringArray(param, "targetFields");
+        var targetFields = EventActionParam.GetStringArray(param, "targetFields");
         if (targetFields is null || targetFields.Count == 0) return [];
 
         var deltas = new List<UiDelta>();
@@ -466,19 +466,10 @@ public sealed class EventEngine : IEventEngine
         if (string.IsNullOrWhiteSpace(action.ActionParamJson))
             return null;
 
-        try
-        {
-            using var doc = JsonDocument.Parse(action.ActionParamJson);
-            // Clone để dùng sau khi dispose — tránh ObjectDisposedException
-            return doc.RootElement.Clone();
-        }
-        catch (JsonException ex)
-        {
-            _logger.LogWarning(ex,
-                "Action_Param_Json không hợp lệ: ActionId={ActionId}",
-                action.ActionId);
-            return null;
-        }
+        var parsed = EventActionParam.Parse(action.ActionParamJson);
+        if (parsed is null)
+            _logger.LogWarning("Action_Param_Json không hợp lệ: ActionId={ActionId}", action.ActionId);
+        return parsed;
     }
 
     /// <summary>
@@ -491,10 +482,10 @@ public sealed class EventEngine : IEventEngine
         var param = ParseParam(action);
         if (param is null) return (null, false);
 
-        var targetField = GetString(param, "targetField");
+        var targetField = EventActionParam.GetString(param, "targetField");
         if (targetField is null) return (null, false);
 
-        var condExprElement = GetElement(param, "conditionExpression");
+        var condExprElement = EventActionParam.GetElement(param, "conditionExpression");
         if (condExprElement is null) return (null, false);
 
         var condExprJson = condExprElement.Value.GetRawText();
@@ -502,72 +493,6 @@ public sealed class EventEngine : IEventEngine
         var boolResult = BuiltinFunctions.ToBool(result) ?? false;
 
         return (targetField, boolResult);
-    }
-
-    /// <summary>
-    /// Lấy string property từ JsonElement. Trả null nếu không tồn tại.
-    /// </summary>
-    private static string? GetString(JsonElement? element, string propertyName)
-    {
-        if (element is null) return null;
-        return element.Value.TryGetProperty(propertyName, out var prop)
-            ? prop.GetString()
-            : null;
-    }
-
-    /// <summary>
-    /// Lấy nested JsonElement property. Trả null nếu không tồn tại.
-    /// </summary>
-    private static JsonElement? GetElement(JsonElement? element, string propertyName)
-    {
-        if (element is null) return null;
-        return element.Value.TryGetProperty(propertyName, out var prop)
-            ? prop
-            : null;
-    }
-
-    /// <summary>
-    /// Lấy string array từ JsonElement. Trả null nếu không tồn tại hoặc không phải array.
-    /// </summary>
-    private static IReadOnlyList<string>? GetStringArray(JsonElement? element, string propertyName)
-    {
-        if (element is null) return null;
-        if (!element.Value.TryGetProperty(propertyName, out var prop)) return null;
-        if (prop.ValueKind != JsonValueKind.Array) return null;
-
-        return prop.EnumerateArray()
-            .Where(e => e.ValueKind == JsonValueKind.String)
-            .Select(e => e.GetString()!)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Resolve placeholders {FieldCode} trong string bằng giá trị từ context.
-    /// Ví dụ: "/api/options?province={Province}" → "/api/options?province=HN"
-    /// </summary>
-    private static string ResolvePlaceholders(string template, EvaluationContext context)
-    {
-        // Pattern đơn giản: tìm {word} → replace bằng context value
-        var result = template;
-        var startIdx = 0;
-
-        while (startIdx < result.Length)
-        {
-            var openBrace = result.IndexOf('{', startIdx);
-            if (openBrace < 0) break;
-
-            var closeBrace = result.IndexOf('}', openBrace + 1);
-            if (closeBrace < 0) break;
-
-            var fieldCode = result[(openBrace + 1)..closeBrace];
-            var value = context.GetValue(fieldCode);
-            var valueStr = value?.ToString() ?? string.Empty;
-
-            result = string.Concat(result.AsSpan(0, openBrace), valueStr, result.AsSpan(closeBrace + 1));
-            startIdx = openBrace + valueStr.Length;
-        }
-
-        return result;
     }
 
     /// <summary>
