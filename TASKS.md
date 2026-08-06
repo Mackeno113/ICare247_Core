@@ -981,9 +981,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [~] **AUDIT-6** — Đóng nợ đã đánh dấu (rời rạc).
       **✅ Restore Form:** thêm `IFormRepository.GetIdByCodeAsync` (không lọc Is_Active) → `RestoreFormCommandHandler`
       dùng để lấy Form_Id thật, audit không còn `ObjectId=0`; gộp luôn check tồn tại. Infra 0/0, test 260/260.
-      **⛔ 3 món CÒN LẠI — KHÔNG tự đóng (cần quyết định, không phải cleanup):**
-      · `TODO(SEC1-4)` `LookupController.cs` — **cần quyết định nghiệp vụ** (bảng 0/nhiều Ui_Form lấy form nào; "thêm 1
-        option" có buộc quyền Thêm cả form không) → hỏi user, không tự chốt.
+      **✅ SEC1-4 (2026-08-03, user chốt nghiệp vụ):** enforce quyền Thêm trong `InsertLookupCommandHandler` —
+        `IDynamicLookupRepository.GetLookupTargetFormCodesAsync` resolve bảng đích (Source_Name↔Sys_Table.Table_Code)
+        → Form_Code(s); **pass nếu có quyền Thêm ở ≥1 form** (biến thể web/wpf), **không form → cho qua** (enforce-if-mapped),
+        thiếu userId/không quyền → `UnauthorizedAccessException`(403). Infra 0/0, test 260/260. **Cần build Api + smoke** (auth).
+      **⛔ 2 món CÒN LẠI — KHÔNG tự đóng (cần quyết định):**
       · `CC-3` `ConfigCache.GetFormPermissionsAsync` trả null — **auth-critical**; wiring permission repo sai = mở quyền
         ngoài ý muốn → cần chốt mô hình quyền trước.
       · JWT keyring → Redis `Program.cs` — **infra scale-out**, hiện KHÔNG hỏng (đã có file-share UNC); cần package
