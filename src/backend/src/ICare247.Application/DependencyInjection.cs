@@ -7,6 +7,7 @@ using System.Reflection;
 using FluentValidation;
 using ICare247.Application.Behaviors;
 using ICare247.Application.Engines;
+using ICare247.Application.Engines.EventActions;
 using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using MediatR;
@@ -47,7 +48,19 @@ public static class DependencyInjection
         // ── Validation Engine — scoped vì phụ thuộc scoped repositories ────────
         services.AddScoped<IValidationEngine, ValidationEngine>();
 
-        // ── Event Engine — scoped vì phụ thuộc scoped repositories + ValidationEngine ──
+        // ── Event action handlers (Strategy + registry, AUDIT-5) — EventEngine dispatch qua IEnumerable.
+        //    Thêm action mới = thêm 1 handler + 1 dòng đăng ký ở đây, KHÔNG sửa EventEngine (OCP). ──
+        services.AddScoped<IEventActionHandler, SetValueActionHandler>();
+        services.AddScoped<IEventActionHandler, SetVisibleActionHandler>();
+        services.AddScoped<IEventActionHandler, SetRequiredActionHandler>();
+        services.AddScoped<IEventActionHandler, SetReadOnlyActionHandler>();
+        services.AddScoped<IEventActionHandler, SetEnabledActionHandler>();
+        services.AddScoped<IEventActionHandler, ClearValueActionHandler>();
+        services.AddScoped<IEventActionHandler, ShowMessageActionHandler>();
+        services.AddScoped<IEventActionHandler, ReloadOptionsActionHandler>();
+        services.AddScoped<IEventActionHandler, TriggerValidationActionHandler>();
+
+        // ── Event Engine — scoped vì phụ thuộc scoped repositories + action handlers ──
         services.AddScoped<IEventEngine, EventEngine>();
 
         // ── Metadata Engine — scoped vì phụ thuộc scoped repositories ──────────

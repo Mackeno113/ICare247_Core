@@ -970,12 +970,14 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       · `MetadataEngine` — 2 `catch {}` rỗng → `catch (JsonException)` + log field code (bắt đúng loại lường trước).
       · `EventEngine` — đã log sẵn (không đổi). ValidationEngineTests thêm logger.
       Verify (SDK 10 remote): Infra 0/0, test 235/235. Chỉ chạm Application (không cần build Api).
-- [~] **AUDIT-5** — God-class + switch dispatch (OCP/SRP).
-      **✅ Phase B (SRP):** tách helper JSON thuần EventEngine → `EventActionParam` (Parse/GetString/GetElement/
-      GetStringArray/ResolvePlaceholders) + `EventActionParamTests` (15 ca). Test 250/250, Application 0/0.
-      **⏳ Phase A+C (OCP — còn lại, rủi ro cao):** switch `ExecuteActionAsync` (`EventEngine.cs:165`) → Strategy
-      (`IEventActionHandler` + 9 handler + registry + DI). CẦN characterization test trước (EventEngine chưa có test).
-      **Hoãn:** tách `ViewSqlBuilder`/`ViewRepository`, `ImportEngine`/`ContextParamResolver` switch.
+- [x] **AUDIT-5** — ✅ DONE (EventEngine OCP/SRP).
+      **Phase B (SRP):** tách helper JSON thuần → `EventActionParam` + test (15 ca).
+      **Phase A (an toàn):** `EventEngineTests` characterization (10 ca) — khóa hành vi dispatch trước refactor.
+      **Phase C (OCP):** switch `ExecuteActionAsync` → **Strategy + registry** — `IEventActionHandler` +
+      `EventActionContext` + base `ConditionToggleActionHandler` + 9 handler (Engines/EventActions/) + đăng ký DI.
+      Thêm action mới = thêm 1 handler + 1 dòng DI, KHÔNG sửa EventEngine. Characterization test giữ nguyên → xanh
+      = hành vi bảo toàn 1:1. Verify (SDK 10 remote): Application+Infrastructure 0/0, **test 260/260**.
+      **Hoãn có chủ đích (khác EventEngine):** tách `ViewSqlBuilder`/`ViewRepository`, switch `ImportEngine`/`ContextParamResolver`.
 - [ ] **AUDIT-6** — Đóng nợ đã đánh dấu: `TODO(SEC1-4)` hạ quyền `LookupController.cs:141`; `CC-3` permission cache
       trả null `ConfigCache.cs:156`; workaround Restore `RestoreFormCommandHandler.cs:39-41`; JWT keyring in-memory `Program.cs:164`.
 
