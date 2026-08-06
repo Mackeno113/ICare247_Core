@@ -1,15 +1,15 @@
 # Last Session Summary
 
-## Tiến độ AUDIT (2026-08-03, master `e34c0ac`) — 5/6 xong + AUDIT-6 2/4
+## Tiến độ AUDIT (2026-08-03, master `650df93`) — 5/6 xong + AUDIT-6 3/4 (chỉ còn JWT keyring infra)
 - **AUDIT-1 ✅** — `SqlIdentifierTests` (64) + ② nền `SqlClause`/`SqlPaging` (17). Hoãn FK JOIN/DynamicLookup.
 - **AUDIT-2 ✅** — gom guard SQL `SqlIdentifier` (+ hotfix 4 method-group `Bracket` từng làm master hỏng).
 - **AUDIT-3 ✅** — `TenantContext.Assign` nguyên tử (chống lệch id↔connection) + 8 test.
 - **AUDIT-4 ✅** — engine hết nuốt exception im lặng (ValidationEngine +ILogger, MetadataEngine catch JsonException + log).
 - **AUDIT-5 ✅** — EventEngine switch → Strategy + registry (9 `IEventActionHandler` + `EventActionParam`) +
   10 characterization + 15 param test. ⚠️ **user nên smoke event actions trên app thật** (UI-critical, tôi không chạy app được).
-- **AUDIT-6 🟡 2/4** — ✅ RestoreForm (audit Form_Id + GetIdByCodeAsync) · ✅ SEC1-4 (enforce quyền Thêm lookup).
-  **Còn:** CC-3 (`ConfigCache.GetFormPermissionsAsync` trả null — auth-critical, cần chốt mô hình quyền) ·
-  JWT keyring → Redis (infra scale-out, chưa hỏng vì có file-share).
+- **AUDIT-6 🟡 3/4** — ✅ RestoreForm (audit Form_Id + GetIdByCodeAsync) · ✅ SEC1-4 (enforce quyền Thêm lookup) ·
+  ✅ CC-3 (XÓA API chết `GetFormPermissionsAsync`+`FormPermission` — mâu thuẫn RBAC per-user thật; user chốt xóa).
+  **Còn 1 (infra, chưa hỏng):** JWT keyring → Redis (scale-out, đã có file-share UNC nên không hỏng).
 - **Test tổng: 260/260 pass** (Infra 0/0 verify remote; full solution build 0 error trên máy user).
 
 ## ⚙️ Công thức BUILD/TEST trong môi trường REMOTE (Claude Code web — không có .NET SDK sẵn)
