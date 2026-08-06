@@ -1,5 +1,13 @@
 # Last Session Summary
 
+## Tiến độ AUDIT (2026-08-03, master `dfb4a53`)
+- **AUDIT-2 ✅** — gom guard SQL về `SqlIdentifier` (+ hotfix 4 method-group `Bracket` từng làm master hỏng).
+- **AUDIT-1 ① ✅** — `SqlIdentifierTests` (64 ca).
+- **AUDIT-1 ② ✅ (chốt nền)** — tách `SqlClause` + `SqlPaging` (hàm thuần) + 17 test; hoãn FK JOIN/DynamicLookup.
+- **AUDIT-3 ✅ (lớp 2)** — `TenantContext.Assign` nguyên tử (chống lệch id↔connection) + 8 test.
+- Test tổng: **235/235 pass** (Infra 0/0 verify remote; full solution build 0 error trên máy user).
+- **Còn:** AUDIT-4 (engine nuốt exception — code chưa sửa), AUDIT-5 (god-class/switch OCP), AUDIT-6 (nợ TODO).
+
 ## ⚙️ Công thức BUILD/TEST trong môi trường REMOTE (Claude Code web — không có .NET SDK sẵn)
 
 > Môi trường remote KHÔNG cài .NET SDK; .NET 9 bị egress-block (CDN `builds.dotnet.microsoft.com`,
