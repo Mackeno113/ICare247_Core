@@ -8,6 +8,7 @@ using ICare247.Domain.Engine;
 using ICare247.Domain.Engine.Models;
 using ICare247.Domain.Entities.Rule;
 using ICare247.Domain.ValueObjects;
+using Microsoft.Extensions.Logging;
 
 namespace ICare247.Application.Engines;
 
@@ -26,17 +27,20 @@ public sealed class ValidationEngine : IValidationEngine
     private readonly IRuleRepository       _ruleRepo;
     private readonly IDependencyRepository _dependencyRepo;
     private readonly IFieldRepository      _fieldRepo;
+    private readonly ILogger<ValidationEngine> _logger;
 
     public ValidationEngine(
         IAstEngine            astEngine,
         IRuleRepository       ruleRepo,
         IDependencyRepository dependencyRepo,
-        IFieldRepository      fieldRepo)
+        IFieldRepository      fieldRepo,
+        ILogger<ValidationEngine> logger)
     {
         _astEngine      = astEngine;
         _ruleRepo       = ruleRepo;
         _dependencyRepo = dependencyRepo;
         _fieldRepo      = fieldRepo;
+        _logger         = logger;
     }
 
     /// <inheritdoc />
@@ -219,9 +223,11 @@ public sealed class ValidationEngine : IValidationEngine
             var result = _astEngine.Evaluate(rule.ConditionExpr, context);
             return BuiltinFunctions.ToBool(result) ?? false;
         }
-        catch
+        catch (Exception ex)
         {
-            // Condition eval fail → skip rule (an toàn hơn là throw)
+            // Condition eval fail → skip rule (an toàn hơn là throw) — NHƯNG phải log để lộ config hỏng.
+            _logger.LogWarning(ex,
+                "Condition_Expr lỗi cho RuleId={RuleId} — skip rule (mặc định an toàn).", rule.RuleId);
             return false;
         }
     }
@@ -245,9 +251,12 @@ public sealed class ValidationEngine : IValidationEngine
             var result = _astEngine.Evaluate(rule.ExpressionJson, context);
             return BuiltinFunctions.ToBool(result) ?? false;
         }
-        catch
+        catch (Exception ex)
         {
-            // Eval fail → treat as fail (conservative — hiện lỗi cho user)
+            // Eval fail → treat as fail (conservative — hiện lỗi cho user) — kèm log để chẩn config/AST hỏng.
+            _logger.LogWarning(ex,
+                "Expression_Json lỗi cho RuleId={RuleId} (RuleType={RuleType}) — coi như FAIL.",
+                rule.RuleId, rule.RuleType);
             return false;
         }
     }

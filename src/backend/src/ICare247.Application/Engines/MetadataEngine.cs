@@ -165,7 +165,13 @@ public sealed class MetadataEngine : IMetadataEngine
                     if (!string.IsNullOrWhiteSpace(col.CaptionKey))
                         allKeys.Add(col.CaptionKey);
             }
-            catch { /* JSON không hợp lệ — bỏ qua field này */ }
+            catch (JsonException ex)
+            {
+                // JSON không hợp lệ — bỏ qua field này, nhưng log để lộ config hỏng.
+                _logger.LogWarning(ex,
+                    "PopupColumnsJson không hợp lệ ở field {FieldCode} — bỏ qua thu thập captionKey.",
+                    field.FieldCode);
+            }
         }
 
         if (allKeys.Count == 0) return;
@@ -204,7 +210,13 @@ public sealed class MetadataEngine : IMetadataEngine
 
                 field.LookupConfig!.PopupColumnsJson = JsonSerializer.Serialize(output);
             }
-            catch { /* bỏ qua — Blazor sẽ fallback vào DisplayColumn */ }
+            catch (JsonException ex)
+            {
+                // Bỏ qua — Blazor fallback vào DisplayColumn; log để chẩn config PopupColumnsJson hỏng.
+                _logger.LogWarning(ex,
+                    "PopupColumnsJson không hợp lệ ở field {FieldCode} — giữ nguyên, Blazor fallback DisplayColumn.",
+                    field.FieldCode);
+            }
         }
     }
 

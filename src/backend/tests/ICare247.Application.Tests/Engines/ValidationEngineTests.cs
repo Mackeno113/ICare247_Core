@@ -9,6 +9,7 @@ using ICare247.Domain.Engine.Models;
 using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Rule;
 using ICare247.Domain.ValueObjects;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ICare247.Application.Tests.Engines;
 
@@ -30,7 +31,7 @@ public sealed class ValidationEngineTests
         _ruleRepo  = new StubRuleRepository();
         _depRepo   = new StubDependencyRepository();
         _fieldRepo = new StubFieldRepository();
-        _engine = new ValidationEngine(astEngine, _ruleRepo, _depRepo, _fieldRepo);
+        _engine = new ValidationEngine(astEngine, _ruleRepo, _depRepo, _fieldRepo, NullLogger<ValidationEngine>.Instance);
     }
 
     // ── ValidateFieldAsync ──────────────────────────────────────
