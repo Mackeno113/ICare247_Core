@@ -11,7 +11,6 @@ using ICare247.Application.Interfaces;
 using ICare247.Domain.Engine;
 using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Lookup;
-using ICare247.Domain.Entities.Permission;
 using ICare247.Domain.Entities.View;
 using Microsoft.Extensions.Logging;
 
@@ -147,15 +146,6 @@ public sealed class ConfigCache : IConfigCache
         _logger.LogInformation(
             "ConfigCache invalidated (lookup) — Code={Code}, TenantId={TenantId}",
             lookupCode, tenantId);
-    }
-
-    /// <inheritdoc />
-    public Task<FormPermission?> GetFormPermissionsAsync(
-        int formId, int tenantId, CancellationToken ct = default)
-    {
-        // TODO (CC-3): inject permission repo + cache theo ConfigPermission key.
-        // Hiện chưa có repo Sys_Permission → trả null; caller xử lý deny-by-default.
-        return Task.FromResult<FormPermission?>(null);
     }
 
     /// <inheritdoc />

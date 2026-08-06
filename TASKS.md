@@ -985,9 +985,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
         `IDynamicLookupRepository.GetLookupTargetFormCodesAsync` resolve bảng đích (Source_Name↔Sys_Table.Table_Code)
         → Form_Code(s); **pass nếu có quyền Thêm ở ≥1 form** (biến thể web/wpf), **không form → cho qua** (enforce-if-mapped),
         thiếu userId/không quyền → `UnauthorizedAccessException`(403). Infra 0/0, test 260/260. **Cần build Api + smoke** (auth).
-      **⛔ 2 món CÒN LẠI — KHÔNG tự đóng (cần quyết định):**
-      · `CC-3` `ConfigCache.GetFormPermissionsAsync` trả null — **auth-critical**; wiring permission repo sai = mở quyền
-        ngoài ý muốn → cần chốt mô hình quyền trước.
+      **✅ CC-3 (2026-08-03, user chốt XÓA):** `GetFormPermissionsAsync`/Domain `FormPermission` là **API CHẾT** —
+        0 caller backend, mô hình form+tenant (không user) mâu thuẫn RBAC per-user thật đang chạy (`IPermissionService`/
+        HT_VaiTro_Quyen). Đã XÓA method khỏi `IConfigCache`+`ConfigCache` + entity `FormPermission.cs` + 2 using thừa.
+        (WPF `FormPermissionRecord/Row` là type riêng, không đụng.) Infra 0/0, test 260/260.
+      **⛔ 1 món CÒN LẠI (infra, chưa hỏng):**
       · JWT keyring → Redis `Program.cs` — **infra scale-out**, hiện KHÔNG hỏng (đã có file-share UNC); cần package
         `Microsoft.AspNetCore.DataProtection.StackExchangeRedis` + config khi vận hành nhiều node.
 

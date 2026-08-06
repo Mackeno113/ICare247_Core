@@ -5,7 +5,6 @@
 
 using ICare247.Domain.Entities.Form;
 using ICare247.Domain.Entities.Lookup;
-using ICare247.Domain.Entities.Permission;
 using ICare247.Domain.Entities.View;
 
 namespace ICare247.Application.Interfaces;
@@ -100,21 +99,6 @@ public interface IConfigCache
     /// <param name="lookupCode">Sys_Lookup.Lookup_Code cần invalidate.</param>
     /// <param name="tenantId">Tenant sở hữu danh mục.</param>
     Task InvalidateLookupAsync(string lookupCode, int tenantId);
-
-    /// <summary>
-    /// Lấy quyền của một form theo tenant để runtime enforce (xem/thêm/sửa/xóa) — CC-3.
-    /// </summary>
-    /// <param name="formId">Ui_Form.Form_Id.</param>
-    /// <param name="tenantId">Tenant hiện tại.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>
-    /// <see cref="FormPermission"/> nếu có cấu hình; <c>null</c> nếu chưa cấu hình
-    /// (caller xử lý deny-by-default).
-    /// </returns>
-    Task<FormPermission?> GetFormPermissionsAsync(
-        int formId,
-        int tenantId,
-        CancellationToken ct = default);
 
     /// <summary>
     /// Lấy <see cref="ViewMetadata"/> đầy đủ (header + cột + action) của một View theo code,
