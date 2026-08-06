@@ -965,8 +965,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       resolver trả đúng Tenant_Id yêu cầu; ⚠️ **cần build Api** (dính DevExpress → user build, thay đổi là 1 dòng `ctx.Assign`).
 
 ### 🟠 Sau
-- [ ] **AUDIT-4** — Engine nuốt exception im lặng (mâu thuẫn rule — đã làm rõ chính sách). Fix code theo policy mới:
-      log lỗi config, bỏ `catch {}` rỗng. Files: `EventEngine.cs:180`, `ValidationEngine.cs:222,248`, `MetadataEngine.cs:168,207`.
+- [x] **AUDIT-4** — ✅ DONE. Engine hết nuốt exception im lặng (theo policy `architecture.md`):
+      · `ValidationEngine` — thêm `ILogger` + log 2 catch (Condition/Expression eval lỗi) → vẫn trả mặc định an toàn NHƯNG có log.
+      · `MetadataEngine` — 2 `catch {}` rỗng → `catch (JsonException)` + log field code (bắt đúng loại lường trước).
+      · `EventEngine` — đã log sẵn (không đổi). ValidationEngineTests thêm logger.
+      Verify (SDK 10 remote): Infra 0/0, test 235/235. Chỉ chạm Application (không cần build Api).
 - [ ] **AUDIT-5** — God-class + switch dispatch (OCP/SRP). Tách action handler EventEngine → Strategy + registry;
       tách `ViewSqlBuilder` khỏi `ViewRepository` (1038 dòng). Files: `EventEngine.cs:165`, `ViewRepository.cs`, `ImportEngine.cs:188,299`, `ContextParamResolver.cs:61`.
 - [ ] **AUDIT-6** — Đóng nợ đã đánh dấu: `TODO(SEC1-4)` hạ quyền `LookupController.cs:141`; `CC-3` permission cache
