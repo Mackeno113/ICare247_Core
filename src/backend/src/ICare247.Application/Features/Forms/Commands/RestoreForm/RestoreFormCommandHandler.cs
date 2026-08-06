@@ -27,18 +27,11 @@ public sealed class RestoreFormCommandHandler : IRequestHandler<RestoreFormComma
 
     public async Task Handle(RestoreFormCommand request, CancellationToken ct)
     {
-        // Restore cần tìm cả form inactive → không dùng GetByCodeAsync (chỉ tìm active)
-        // Tạm dùng ExistsCodeAsync để verify tồn tại, sau đó gọi SetActive
-        var exists = await _formRepo.ExistsCodeAsync(request.FormCode, request.TenantId, ct);
-        if (!exists)
-        {
-            throw new KeyNotFoundException(
+        // Restore cần tìm cả form inactive → GetIdByCodeAsync (KHÔNG lọc Is_Active).
+        // Trả về Form_Id để ghi audit đúng đối tượng (không còn ObjectId=0 như trước).
+        var formId = await _formRepo.GetIdByCodeAsync(request.FormCode, request.TenantId, ct)
+            ?? throw new KeyNotFoundException(
                 $"Form '{request.FormCode}' không tồn tại trong tenant {request.TenantId}.");
-        }
-
-        // Cần lấy FormId — mở rộng repository nếu cần, tạm dùng GetByCode không filter active
-        // TODO: Thêm GetByCodeIncludeInactiveAsync nếu cần
-        // Hiện tại dùng workaround: GetByCodeAsync chỉ lấy active → cần sửa SetActive nhận FormCode
 
         await _formRepo.SetActiveByCodeAsync(request.FormCode, true, request.TenantId, ct);
 
@@ -46,7 +39,7 @@ public sealed class RestoreFormCommandHandler : IRequestHandler<RestoreFormComma
         await _auditRepo.InsertAsync(new AuditLogEntry
         {
             ObjectType = "Form",
-            ObjectId = 0, // Sẽ cập nhật khi có method lấy FormId từ inactive form
+            ObjectId = formId,
             Action = "RESTORE",
             ChangedBy = request.ChangedBy
         }, ct);

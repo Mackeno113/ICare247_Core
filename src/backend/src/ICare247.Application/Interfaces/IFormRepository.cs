@@ -54,6 +54,12 @@ public interface IFormRepository
     Task<bool> ExistsCodeAsync(string formCode, int tenantId, CancellationToken ct = default);
 
     /// <summary>
+    /// Lấy Form_Id theo Form_Code — KHÔNG lọc Is_Active (tìm cả form đã ngừng hoạt động).
+    /// Dùng cho Restore (cần id của form inactive để ghi audit). Trả <c>null</c> nếu không tồn tại.
+    /// </summary>
+    Task<int?> GetIdByCodeAsync(string formCode, int tenantId, CancellationToken ct = default);
+
+    /// <summary>
     /// Tạo form mới. Trả về Form_Id vừa tạo.
     /// </summary>
     Task<int> CreateAsync(FormCreateParams form, int tenantId, CancellationToken ct = default);
