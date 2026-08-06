@@ -82,16 +82,10 @@ public sealed class TenantMiddleware
             return;
         }
 
-        // Set vào scoped context — factory sẽ đọc connection string từ đây.
+        // Set vào scoped context TỪ MỘT NGUỒN (Assign — nguyên tử, chống lệch id↔connection).
+        // Factory sẽ đọc connection string từ đây.
         if (context.RequestServices.GetRequiredService<ITenantContext>() is TenantContext ctx)
-        {
-            ctx.TenantId = tenant.TenantId;
-            ctx.ConfigConnectionString = tenant.ConfigConnectionString;
-            ctx.DataConnectionString = tenant.DataConnectionString;
-            ctx.AuditConnectionString = string.IsNullOrWhiteSpace(tenant.AuditConnectionString)
-                ? tenant.DataConnectionString
-                : tenant.AuditConnectionString;
-        }
+            ctx.Assign(tenant);
 
         _logger.LogDebug("Tenant resolved — TenantId={TenantId}, Path={Path}", tenant.TenantId, path);
         await _next(context);

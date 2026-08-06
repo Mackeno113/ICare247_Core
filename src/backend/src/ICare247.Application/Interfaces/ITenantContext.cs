@@ -18,22 +18,49 @@ public interface ITenantContext
 }
 
 /// <summary>
-/// Mutable implementation — TenantMiddleware set giá trị, các layer sau chỉ đọc qua <see cref="ITenantContext"/>.
+/// Implementation cho request scope. Chỉ populate qua <see cref="Assign"/> (setter private) —
+/// TenantMiddleware gọi, các layer sau chỉ đọc. Các factory kết nối đọc connection string ở đây.
 /// </summary>
 public sealed class TenantContext : ITenantContext
 {
     /// <inheritdoc />
-    public int TenantId { get; set; }
+    public int TenantId { get; private set; }
 
     /// <summary>
-    /// Connection string Config DB của tenant — set bởi TenantMiddleware sau khi phân giải
-    /// (qua <see cref="ITenantConnectionResolver"/>). Factory đọc giá trị này để mở kết nối.
+    /// Connection string Config DB của tenant — phân giải qua <see cref="ITenantConnectionResolver"/>.
+    /// Factory đọc giá trị này để mở kết nối.
     /// </summary>
-    public string ConfigConnectionString { get; set; } = "";
+    public string ConfigConnectionString { get; private set; } = "";
 
     /// <summary>Connection string Data DB của tenant — tương tự ConfigConnectionString.</summary>
-    public string DataConnectionString { get; set; } = "";
+    public string DataConnectionString { get; private set; } = "";
 
-    /// <summary>Connection string Audit DB của tenant (NK_*) — rỗng thì factory fallback Data DB.</summary>
-    public string AuditConnectionString { get; set; } = "";
+    /// <summary>Connection string Audit DB của tenant (NK_*) — rỗng thì fallback Data DB.</summary>
+    public string AuditConnectionString { get; private set; } = "";
+
+    /// <summary>
+    /// Gán context cho request TỪ MỘT NGUỒN DUY NHẤT (defense-in-depth cô lập tenant, AUDIT-3):
+    /// <c>Tenant_Id</c> + cả 3 connection string luôn đến từ cùng một <see cref="TenantConnections"/>
+    /// đã phân giải — không thể lệch (id tenant A + connection tenant B = rò rỉ chéo im lặng). Vì setter
+    /// private, đây là đường DUY NHẤT populate; gán lại sẽ thay TOÀN BỘ field (không còn state cũ lẫn vào).
+    /// Fallback Audit→Data gom về một chỗ (trước đây lặp ở middleware).
+    /// </summary>
+    /// <param name="connections">Cặp connection đã phân giải cho tenant của request.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="connections"/> null.</exception>
+    /// <exception cref="ArgumentException"><c>TenantId</c> ≤ 0 (dữ liệu phân giải bất thường).</exception>
+    public void Assign(TenantConnections connections)
+    {
+        ArgumentNullException.ThrowIfNull(connections);
+        if (connections.TenantId <= 0)
+            throw new ArgumentException(
+                $"TenantConnections.TenantId không hợp lệ ({connections.TenantId}) — không gán context.",
+                nameof(connections));
+
+        TenantId               = connections.TenantId;
+        ConfigConnectionString = connections.ConfigConnectionString;
+        DataConnectionString   = connections.DataConnectionString;
+        AuditConnectionString  = string.IsNullOrWhiteSpace(connections.AuditConnectionString)
+            ? connections.DataConnectionString
+            : connections.AuditConnectionString;
+    }
 }
