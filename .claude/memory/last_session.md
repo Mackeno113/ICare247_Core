@@ -1,12 +1,16 @@
 # Last Session Summary
 
-## Tiến độ AUDIT (2026-08-03, master `dfb4a53`)
-- **AUDIT-2 ✅** — gom guard SQL về `SqlIdentifier` (+ hotfix 4 method-group `Bracket` từng làm master hỏng).
-- **AUDIT-1 ① ✅** — `SqlIdentifierTests` (64 ca).
-- **AUDIT-1 ② ✅ (chốt nền)** — tách `SqlClause` + `SqlPaging` (hàm thuần) + 17 test; hoãn FK JOIN/DynamicLookup.
-- **AUDIT-3 ✅ (lớp 2)** — `TenantContext.Assign` nguyên tử (chống lệch id↔connection) + 8 test.
-- Test tổng: **235/235 pass** (Infra 0/0 verify remote; full solution build 0 error trên máy user).
-- **Còn:** AUDIT-4 (engine nuốt exception — code chưa sửa), AUDIT-5 (god-class/switch OCP), AUDIT-6 (nợ TODO).
+## Tiến độ AUDIT (2026-08-03, master `e34c0ac`) — 5/6 xong + AUDIT-6 2/4
+- **AUDIT-1 ✅** — `SqlIdentifierTests` (64) + ② nền `SqlClause`/`SqlPaging` (17). Hoãn FK JOIN/DynamicLookup.
+- **AUDIT-2 ✅** — gom guard SQL `SqlIdentifier` (+ hotfix 4 method-group `Bracket` từng làm master hỏng).
+- **AUDIT-3 ✅** — `TenantContext.Assign` nguyên tử (chống lệch id↔connection) + 8 test.
+- **AUDIT-4 ✅** — engine hết nuốt exception im lặng (ValidationEngine +ILogger, MetadataEngine catch JsonException + log).
+- **AUDIT-5 ✅** — EventEngine switch → Strategy + registry (9 `IEventActionHandler` + `EventActionParam`) +
+  10 characterization + 15 param test. ⚠️ **user nên smoke event actions trên app thật** (UI-critical, tôi không chạy app được).
+- **AUDIT-6 🟡 2/4** — ✅ RestoreForm (audit Form_Id + GetIdByCodeAsync) · ✅ SEC1-4 (enforce quyền Thêm lookup).
+  **Còn:** CC-3 (`ConfigCache.GetFormPermissionsAsync` trả null — auth-critical, cần chốt mô hình quyền) ·
+  JWT keyring → Redis (infra scale-out, chưa hỏng vì có file-share).
+- **Test tổng: 260/260 pass** (Infra 0/0 verify remote; full solution build 0 error trên máy user).
 
 ## ⚙️ Công thức BUILD/TEST trong môi trường REMOTE (Claude Code web — không có .NET SDK sẵn)
 
