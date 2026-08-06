@@ -386,6 +386,24 @@ public sealed class FormRepository : IFormRepository
     }
 
     /// <inheritdoc />
+    public async Task<int?> GetIdByCodeAsync(
+        string formCode, int tenantId, CancellationToken ct = default)
+    {
+        // KHÔNG lọc Is_Active — Restore cần id của form đã ngừng hoạt động.
+        const string sql = """
+            SELECT f.Form_Id
+            FROM   dbo.Ui_Form f
+            JOIN   dbo.Sys_Table t ON t.Table_Id = f.Table_Id
+            WHERE  f.Form_Code = @FormCode
+            """;
+
+        using var conn = _db.CreateConnection();
+        return await conn.QuerySingleOrDefaultAsync<int?>(
+            new CommandDefinition(sql, new { FormCode = formCode, TenantId = tenantId },
+                cancellationToken: ct));
+    }
+
+    /// <inheritdoc />
     public async Task<int> CreateAsync(
         FormCreateParams form, int tenantId, CancellationToken ct = default)
     {

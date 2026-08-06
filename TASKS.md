@@ -978,8 +978,16 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Thêm action mới = thêm 1 handler + 1 dòng DI, KHÔNG sửa EventEngine. Characterization test giữ nguyên → xanh
       = hành vi bảo toàn 1:1. Verify (SDK 10 remote): Application+Infrastructure 0/0, **test 260/260**.
       **Hoãn có chủ đích (khác EventEngine):** tách `ViewSqlBuilder`/`ViewRepository`, switch `ImportEngine`/`ContextParamResolver`.
-- [ ] **AUDIT-6** — Đóng nợ đã đánh dấu: `TODO(SEC1-4)` hạ quyền `LookupController.cs:141`; `CC-3` permission cache
-      trả null `ConfigCache.cs:156`; workaround Restore `RestoreFormCommandHandler.cs:39-41`; JWT keyring in-memory `Program.cs:164`.
+- [~] **AUDIT-6** — Đóng nợ đã đánh dấu (rời rạc).
+      **✅ Restore Form:** thêm `IFormRepository.GetIdByCodeAsync` (không lọc Is_Active) → `RestoreFormCommandHandler`
+      dùng để lấy Form_Id thật, audit không còn `ObjectId=0`; gộp luôn check tồn tại. Infra 0/0, test 260/260.
+      **⛔ 3 món CÒN LẠI — KHÔNG tự đóng (cần quyết định, không phải cleanup):**
+      · `TODO(SEC1-4)` `LookupController.cs` — **cần quyết định nghiệp vụ** (bảng 0/nhiều Ui_Form lấy form nào; "thêm 1
+        option" có buộc quyền Thêm cả form không) → hỏi user, không tự chốt.
+      · `CC-3` `ConfigCache.GetFormPermissionsAsync` trả null — **auth-critical**; wiring permission repo sai = mở quyền
+        ngoài ý muốn → cần chốt mô hình quyền trước.
+      · JWT keyring → Redis `Program.cs` — **infra scale-out**, hiện KHÔNG hỏng (đã có file-share UNC); cần package
+        `Microsoft.AspNetCore.DataProtection.StackExchangeRedis` + config khi vận hành nhiều node.
 
 ---
 
