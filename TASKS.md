@@ -958,8 +958,11 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       (`IsSafe` / `IsSafeQualified` / `Bracket` escape `]` / `ContainsDangerousKeyword`). Thay **11 file** / ~102 call site;
       xóa 11 bản `SafeIdentifierRegex`, 4 bản `Bracket` (1 bản `MasterData` cũ thiếu escape `]` → nay có), 1 blocklist.
       Bảo toàn hành vi 1:1 (`DynamicLookupRepository` giữ pattern có dấu chấm qua `IsSafeQualified`).
-- [ ] **AUDIT-3** — Cô lập tenant chỉ 1 lớp (ADR-035, `tenantId` không lọc SQL). Fix: guard/log tại tầng
-      connection resolver + test cô lập không lẫn connection giữa tenant. Files: `IViewRepository.cs:21,84`, `IDynamicLookupRepository.cs:62`.
+- [~] **AUDIT-3** — Cô lập tenant chỉ 1 lớp (ADR-035, DB-per-tenant, không lọc SQL theo Tenant_Id).
+      **✅ ĐÃ THÊM lớp 2 (defense-in-depth):** `TenantContext` đóng setter `private` + `Assign(TenantConnections)`
+      gán NGUYÊN TỬ (Tenant_Id + 3 connection từ CÙNG 1 nguồn → không thể lệch id↔connection); middleware gọi
+      `Assign`. `TenantContextTests` (8 ca), verify Infra 0/0 + test 235/235. **Còn (tùy chọn):** assert
+      resolver trả đúng Tenant_Id yêu cầu; ⚠️ **cần build Api** (dính DevExpress → user build, thay đổi là 1 dòng `ctx.Assign`).
 
 ### 🟠 Sau
 - [ ] **AUDIT-4** — Engine nuốt exception im lặng (mâu thuẫn rule — đã làm rõ chính sách). Fix code theo policy mới:
