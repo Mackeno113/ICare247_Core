@@ -15,15 +15,18 @@ public sealed class InsertLookupCommandHandler
 {
     private readonly IDynamicLookupRepository              _repo;
     private readonly IConfigCache                          _config;
+    private readonly IPermissionService                    _perm;
     private readonly ILogger<InsertLookupCommandHandler>   _logger;
 
     public InsertLookupCommandHandler(
         IDynamicLookupRepository repo,
         IConfigCache config,
+        IPermissionService perm,
         ILogger<InsertLookupCommandHandler> logger)
     {
         _repo    = repo;
         _config  = config;
+        _perm    = perm;
         _logger  = logger;
     }
 
@@ -37,6 +40,29 @@ public sealed class InsertLookupCommandHandler
         _logger.LogDebug(
             "InsertLookup — FieldId={FieldId} TenantId={TenantId} Columns=[{Cols}]",
             request.FieldId, request.TenantId, string.Join(", ", request.Values.Keys));
+
+        // ── Enforce quyền Thêm (SEC1-4) ─────────────────────────────────────
+        // Bảng đích → form(s). Pass nếu có quyền Thêm ở ≥1 form; không form nào map → cho qua
+        // (enforce-if-mapped). HasPermissionForTargetAsync còn tự enforce-if-mapped ở mức từng form.
+        var formCodes = await _repo.GetLookupTargetFormCodesAsync(request.FieldId, request.TenantId, ct);
+        if (formCodes.Count > 0)
+        {
+            var userId = request.UserId
+                ?? throw new UnauthorizedAccessException("Thiếu thông tin người dùng để kiểm quyền thêm danh mục.");
+
+            var allowed = false;
+            foreach (var formCode in formCodes)
+            {
+                if (await _perm.HasPermissionForTargetAsync(userId, "Form", formCode, PermissionOp.Them, ct))
+                {
+                    allowed = true;
+                    break;
+                }
+            }
+
+            if (!allowed)
+                throw new UnauthorizedAccessException("Bạn không có quyền Thêm cho danh mục này.");
+        }
 
         IDictionary<string, object?>? result;
         try

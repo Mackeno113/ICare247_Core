@@ -138,15 +138,11 @@ public sealed class LookupController : ControllerBase
     /// Body: { "fieldId": 42, "values": { "Ten_Xa": "Xã ABC", "TinhId": 68 } }
     /// Response: { "value": 123, "display": "Xã ABC" }
     /// </remarks>
-    // TODO(SEC1-4): tạm để mức "chỉ cần đăng nhập" (qua FallbackPolicy). Rủi ro thấp: user đã khóa
-    //   đúng tenant (TenantClaimGuard) chỉ thêm 1 option danh mục của chính tenant mình.
-    //   Tinh chỉnh sau (đường resolve ĐÃ xác minh là có sẵn — không cần đổi schema):
-    //   1) Trong DynamicLookupRepository.InsertAsync, từ cfg.Source_Name (bảng đích) → Sys_Table →
-    //      Ui_Form lấy Form_Code (pattern y như truy vấn unique-cols dòng ~403-412 cùng file).
-    //   2) Gọi IPermissionService.HasPermissionForTargetAsync("Form", formCode, PermissionOp.Them).
-    //   CẦN CHỐT (quyết định nghiệp vụ, không rẻ đi nếu làm ngay): (a) bảng nguồn có 0/nhiều Ui_Form →
-    //   lấy form nào? (b) bảng tham chiếu thuần không có form → enforce-if-mapped tự cho qua (chấp nhận?).
-    //   (c) "thêm 1 option" buộc quyền Thêm cả form có hợp lý không, hay quyền nhẹ hơn?
+    // SEC1-4 (đã xử lý): quyền Thêm enforce trong InsertLookupCommandHandler — resolve bảng đích →
+    //   Form_Code(s) (IDynamicLookupRepository.GetLookupTargetFormCodesAsync) → pass nếu có quyền Thêm
+    //   ở ≥1 form (biến thể web/wpf); bảng danh mục thuần không map form → cho qua (enforce-if-mapped);
+    //   thiếu userId/không quyền → UnauthorizedAccessException (→ 403). Endpoint giữ FallbackPolicy +
+    //   TenantClaimGuard; permission-form check ở tầng handler (quyết định nghiệp vụ 2026-08-03).
     [HttpPost("insert")]
     public async Task<IActionResult> Insert(
         [FromBody] InsertLookupRequest body,

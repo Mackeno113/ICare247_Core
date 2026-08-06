@@ -765,6 +765,33 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             values[rule.ColumnCode] = code;
     }
 
+    // ── Enforce quyền (SEC1-4) ──────────────────────────────────────────────────
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetLookupTargetFormCodesAsync(
+        int fieldId, int tenantId, CancellationToken ct = default)
+    {
+        // Bảng đích = Source_Name HIỆU LỰC (template override field — như CfgSqlExtended);
+        // Source_Name khớp Sys_Table.Table_Code (xem query unique-cols cùng file). custom_sql/view →
+        // không khớp Sys_Table → rỗng → caller cho qua (enforce-if-mapped).
+        const string sql = """
+            SELECT DISTINCT fm.Form_Code
+            FROM   dbo.Ui_Field_Lookup fl
+            LEFT JOIN dbo.Ui_Lookup_Template lt
+                   ON lt.Template_Code = fl.Template_Code AND lt.Is_Active = 1
+            JOIN   dbo.Sys_Table t
+                   ON t.Table_Code = CASE WHEN lt.Template_Id IS NOT NULL THEN lt.Source_Name ELSE fl.Source_Name END
+                  AND t.Is_Active = 1
+            JOIN   dbo.Ui_Form   fm ON fm.Table_Id = t.Table_Id AND fm.Is_Active = 1
+            WHERE  fl.Field_Id = @FieldId
+            """;
+
+        using var configConn = _configDb.CreateConnection();
+        var rows = await configConn.QueryAsync<string>(
+            new CommandDefinition(sql, new { FieldId = fieldId }, cancellationToken: ct));
+        return rows.ToList();
+    }
+
     // ── QueryTreeAsync ────────────────────────────────────────────────────────
 
     /// <inheritdoc />

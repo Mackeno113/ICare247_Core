@@ -73,4 +73,16 @@ public interface IDynamicLookupRepository
         Dictionary<string, object?> values,
         long? userId = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy Form_Code của các Ui_Form thao tác trên bảng ĐÍCH của lookup (theo <paramref name="fieldId"/>) —
+    /// để enforce quyền Thêm khi "➕ Thêm mới" (SEC1-4). Nguồn hiệu lực = template override field;
+    /// khớp <c>Source_Name</c> ↔ <c>Sys_Table.Table_Code</c>.
+    /// <para>
+    /// Rỗng nếu bảng đích KHÔNG map form nào (danh mục/tham chiếu thuần) → caller cho qua
+    /// (enforce-if-mapped). Nhiều form (VD biến thể web/wpf) → caller pass nếu có quyền ở ≥1 form.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<string>> GetLookupTargetFormCodesAsync(
+        int fieldId, int tenantId, CancellationToken ct = default);
 }
