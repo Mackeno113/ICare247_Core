@@ -421,7 +421,11 @@ HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quy
 
 ## 7. Nhóm `NS_` — Nhân Sự (Tổ chức nhân sự · Position Management)
 
-> **Trạng thái:** 🟡 SPEC ĐỀ XUẤT — ý tưởng thiết kế đã chốt qua thảo luận, **chưa sinh SQL migration**.
+> **Trạng thái:** 🟢 ĐÃ SINH SQL — toàn bộ bảng nhóm NS_ đã có migration:
+> DM_ nhân sự (`db/097`) · `NS_NhanVien` + 6 bảng con (`db/098`) · danh mục tổ chức/chức danh/chức vụ/
+> loại biến động/loại QĐ (`db/099`) · vị trí + định biên (`db/100`) · biến động (`db/101`) ·
+> người ký QĐ (`db/102`) · seed loại hệ thống (`db/103`) · Form Engine hồ sơ nhân viên (`db/104`–`db/105`).
+> **Chưa sinh:** view `vw_NhanVien_HienTai` (đọc vị trí hiện tại từ biến động) — đợt sau, sau khi có dữ liệu.
 > Mô hình theo **Position Management**: tách *chức danh* (job — làm gì) khỏi *chức vụ* (rank — hàm quản lý),
 > và tách cả hai khỏi *vị trí* (ghế cụ thể). Con người gắn vào ghế theo thời gian qua **biến động nhân sự**
 > (không ghi đè → giữ nguyên lịch sử điều động/kiêm nhiệm). ERD asset: `erd_to_chuc_nhan_su_v2.svg`,
@@ -466,8 +470,40 @@ UNIQUE `(ViTri_Id, Nam, Thang)` WHERE `IsDeleted=0`. Quy tắc đọc: có thán
 
 ### 7.3 Con người & biến động
 
-**`NS_NhanVien`** — Hồ sơ con người (tài khoản `HT_NguoiDung` gắn 1-1, lấy ké `HoTen`/`Email`/ảnh).
-Phòng ban/chức vụ **hiện tại KHÔNG lưu cột** — suy từ `NS_BienDongNhanSu` đang hiệu lực.
+**`NS_NhanVien`** — Hồ sơ con người: **thuộc tính ổn định của 1 người**. Tài khoản `HT_NguoiDung`
+gắn **1-1** (FK `HT_NguoiDung.NhanVien_Id`, `UNIQUE` lọc), lấy ké `HoTen`/`Email`/ảnh từ đây.
+> ⚠️ Công ty / phòng ban / chức vụ / chức danh / vị trí / **trạng thái làm việc** / ngày nghỉ việc
+> **KHÔNG lưu cột** — suy từ `NS_BienDongNhanSu` đang hiệu lực (đọc qua view, xem cuối §7.3).
+> Hợp đồng · lương · chấm công/phép · tuyển dụng · đánh giá → **module riêng**, không nằm ở đây.
+
+Cột lõi (ngoài khối auto ADR-022), nhóm theo chức năng:
+
+| Nhóm | Cột | Ghi chú |
+|---|---|---|
+| Định danh | `MaNhanVien`🔴 (UK lọc), `HoTen`🔴, `TenThuongDung`, `AnhDaiDien_Id`→TT_TepDinhKem | mã NV/tenant |
+| Cá nhân | `NgaySinh`🔴, `GioiTinh`🔴 (tinyint 0 Nữ/1 Nam/2 Khác), `NoiSinh`, `NoiSinh_PhuongXa_Id`→DM_PhuongXa, `QuocTich_Id`🔴→DM_QuocGia, `DanToc_Id`→DM_DanToc, `TonGiao_Id`→DM_TonGiao, `TinhTrangHonNhan` (tinyint), `NhomMau`, `ChieuCao`, `CanNang` | |
+| Giấy tờ/thuế | `SoCCCD` (UK lọc; App bắt buộc với người VN), `NgayCapCCCD`, `NoiCapCCCD`, `SoCMND` (dữ liệu cũ), `MaSoThue` | |
+| Liên hệ | `DienThoai`, `Email`, `EmailCaNhan`, `NguoiLienHeKhan`, `DienThoaiKhan`, `QuanHeLienHeKhan` | App bắt buộc **≥1** `DienThoai`/`Email` |
+| Bảo hiểm | `SoBHXH` (UK lọc), `SoBHYT`, `NoiKhamChuaBenh_Id`→DM_NoiKCB | |
+| Ngân hàng | `NganHang_Id`→DM_NganHang, `ChiNhanhNganHang`, `SoTaiKhoan`, `TenChuTaiKhoan` | tài khoản chính |
+| Học vấn | `TrinhDoHocVan_Id`→DM_TrinhDoHocVan | cao nhất, để lọc; chi tiết ở bảng con |
+| Mốc gốc | `NgayBatDauLamViec`🔴, `MaNVCu`, `GhiChu` | mốc thâm niên |
+
+🔴 = NOT NULL. Migration: `db/098_create_ns_nhanvien.sql`.
+
+**Bảng con 1-N của `NS_NhanVien`** (mỗi bảng + khối auto + `NhanVien_Id` FK):
+
+| Bảng | Cột chính | Ràng buộc |
+|---|---|---|
+| `NS_NhanVien_DiaChi` | `LoaiDiaChi` (1 Thường trú/2 Tạm trú/3 Quê quán), `SoNha`, `PhuongXa_Id`→DM_PhuongXa, `LaChuHo` | UK `(NhanVien_Id, LoaiDiaChi)` lọc |
+| `NS_NhanVien_HocVan` | `TruongDaoTao`, `ChuyenNganh`, `TrinhDoHocVan_Id`, `HeDaoTao`, `XepLoai`, `NamTotNghiep`, `VanBang_File_Id` | |
+| `NS_NhanVien_NgoaiNgu` | `NgoaiNgu_Id`🔴→DM_NgoaiNgu, `TrinhDo`, `XepLoai`, `TenChungChi`, `NgayCap`, `NgayHetHan` | UK `(NhanVien_Id, NgoaiNgu_Id)` lọc |
+| `NS_NhanVien_ChungChi` | `TenChungChi`🔴, `NoiCap`, `NgayCap`, `NgayHetHan`, `File_Id` | |
+| `NS_NhanVien_ThanNhan` | `HoTen`🔴, `QuanHe_Id`→DM_QuanHeThanNhan, `NamSinh`, `NgheNghiep`, `LaGiamTruThue`, `MaSoThuePhuThuoc`, `DienThoai` | người phụ thuộc giảm trừ thuế |
+| `NS_NhanVien_GiayToNuocNgoai` | `LoaiGiayTo` (1 Hộ chiếu/2 Visa/3 GPLĐ), `SoGiayTo`🔴, `NgayCap`, `NgayHetHan`, `NoiCap`, `TrangThai`, `File_Id` | chỉ người nước ngoài; UK `(NhanVien_Id, LoaiGiayTo)` lọc |
+
+**Danh mục `DM_` mới đi kèm** (migration `db/097_create_dm_nhansu_lookups.sql`, seed dữ liệu thật ở đợt sau):
+`DM_DanToc`, `DM_TonGiao`, `DM_TrinhDoHocVan` (có `CapDo` để so sánh), `DM_NgoaiNgu`, `DM_QuanHeThanNhan`, `DM_NoiKCB`.
 
 **`NS_LoaiBienDong`** — Danh mục loại biến động + cờ hành vi:
 

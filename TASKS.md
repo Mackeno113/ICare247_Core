@@ -1157,19 +1157,30 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 > `erd_to_chuc_nhan_su_v2.svg` + `erd_nguoiky_quyetdinh.svg`. Position Management: tách chức danh (job) /
 > chức vụ (rank) / vị trí (ghế); người ↔ ghế theo thời gian qua biến động; định biên 2 cấp năm/tháng theo
 > vị trí; chi phí bóc tách theo khoản mục; người ký quyết định theo Công ty × Loại QĐ × hiệu lực.
-> **CHƯA sinh SQL — chờ duyệt cấu trúc.**
+> **Đã sinh SQL (toàn bộ nhóm NS_):** DM_ nhân sự (`db/097`) · `NS_NhanVien`+6 bảng con (`db/098`) ·
+> danh mục tổ chức/chức danh/chức vụ/loại BĐ/loại QĐ (`db/099`) · vị trí+định biên (`db/100`) ·
+> biến động (`db/101`) · người ký QĐ (`db/102`) · seed loại HT (`db/103`) · Form Engine hồ sơ NV (`db/104`–`db/105`).
+> **CHƯA sinh:** view `vw_NhanVien_HienTai` (đọc vị trí hiện tại từ biến động) — đợt sau.
 
-- [ ] **NS-DDL-1** — 7 bảng lõi: `NS_NhomChucDanh`, `NS_ChucDanh`, `NS_ChucVu`, `NS_ViTriCongViec`,
-      `NS_DinhBien` (UNIQUE `ViTri_Id,Nam,Thang`), `NS_LoaiBienDong` (+cờ hành vi +seed 8 loại `LaHeThong=1`),
-      `NS_BienDongNhanSu`. Bám auto-column (ADR-022), soft-check FK qua `Sys_Relation`.
-- [ ] **NS-DDL-2** — đổi `NS_ViTriCongViec.SoLuongDinhBien`→`SoNguoiToiDa`; vị trí KHÔNG lưu `CongTy_Id`.
-- [ ] **NS-NHANVIEN** — hồ sơ `NS_NhanVien` + siết `HT_NguoiDung.NhanVien_Id` NOT NULL+FK+UNIQUE (§6.4 spec 11).
-- [ ] **NS-KYQD** — `NS_LoaiQuyetDinh` (danh mục ĐỘC LẬP; mỗi dòng 1 loại QĐ: Biến động NS/Hợp đồng/Kỷ luật/Khen thưởng/
+- [x] **NS-DDL-1** — 7 bảng lõi: `NS_NhomChucDanh`, `NS_ChucDanh`, `NS_ChucVu` (`db/099`), `NS_ViTriCongViec`,
+      `NS_DinhBien` (UNIQUE `ViTri_Id,Nam,Thang`) (`db/100`), `NS_LoaiBienDong`+seed loại HT (`db/099`+`db/103`),
+      `NS_BienDongNhanSu` (`db/101`). Auto-column ADR-022, soft-check FK qua `Sys_Relation`.
+- [x] **NS-DDL-2** — `NS_ViTriCongViec.SoNguoiToiDa`; vị trí KHÔNG lưu `CongTy_Id` (`db/100`).
+- [x] **NS-NHANVIEN** — hồ sơ `NS_NhanVien` + 6 bảng con (địa chỉ/học vấn/ngoại ngữ/chứng chỉ/thân nhân/giấy tờ NN)
+      + 6 danh mục `DM_` (`db/097`, `db/098`). FK+UNIQUE `HT_NguoiDung.NhanVien_Id` đã thêm.
+      ⏳ **Còn lại:** ép `NhanVien_Id` NOT NULL — hoãn tới khi backfill nhân viên cho tài khoản cũ (trừ bootstrap, §6.4 spec 11).
+- [x] **NS-KYQD** — `NS_LoaiQuyetDinh` (`db/099`) + `NS_NguoiKyQuyetDinh` (`db/102`). `NS_LoaiQuyetDinh` (danh mục ĐỘC LẬP; mỗi dòng 1 loại QĐ: Biến động NS/Hợp đồng/Kỷ luật/Khen thưởng/
       Diễn biến lương…) + `NS_NguoiKyQuyetDinh` (`CongTy_Id` nullable = fallback; ảnh chữ ký→`TT_TepDinhKem`; hiệu lực +
       mặc định + ủy quyền). **KHÔNG nối `NS_LoaiBienDong`** (đó là danh mục RIÊNG của biến động; biến động NS = 1 loại QĐ).
       Map từ legacy `NS_NhanVien_KyQuyetDinh`, bỏ cột denormalized (HoVaTen/MaNhanVien/MaLoaiQuyetDinh/IsActive) + CoQuanBanHanh/NghiQuyet.
 - [ ] **NS-CHIPHI** — (⏳ đợt lương sau) `NS_KhoanMucChiPhi` + `NS_DinhBien_ChiPhi` (dự toán) + `NS_ChiPhiNhanSu`
       (thực chi, mỗi khoản 1 dòng — không gộp tổng). So kế hoạch vs thực chi theo khoản mục × vị trí × tháng.
+- [x] **NS-FORM-NV** — Form Engine hồ sơ nhân viên (Phương án 1): đăng ký metadata `Sys_Table`/`Sys_Column`
+      7 bảng + `Sys_Lookup` enum (`db/104`); form lõi `NS_NhanVien` full-page 8 section/37 field/7 lookup +
+      6 form CRUD con độc lập (`db/105`). Địa chỉ tạm dùng combobox `DM_PhuongXa` (chưa dùng composite 'address').
+- [ ] **NS-MASTERDETAIL** (Phương án 3) — bổ sung master-detail cho engine: `FormRepository` đọc `Sys_Relation`
+      → child metadata; `FormRunner` render lưới con trong tab; rồi gộp 6 bảng con thành tab lưới trong form
+      nhân viên (thay 6 form độc lập). Kèm cân nhắc chuyển địa chỉ sang composite 'address' (Tỉnh→Xã + số nhà).
 - [ ] **NS-UI** — màn Chức danh/Chức vụ/Vị trí/Định biên + màn Biến động + màn Người ký QĐ + báo cáo định biên KH vs thực tế.
 
 ## 📋 Module upload file (TT_) — logo công ty + đính kèm (2026-06-26)
