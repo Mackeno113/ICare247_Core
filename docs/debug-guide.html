@@ -1,0 +1,528 @@
+<meta charset="utf-8">
+<title>ICare247 — Debug & Data-Flow Guide</title>
+<style>
+:root{
+  --bg:#f4f6fb; --panel:#ffffff; --ink:#1f2933; --muted:#5b6b7b; --line:#e2e8f0;
+  --accent:#2563eb; --accent-weak:#eaf1ff;
+  /* layer colors */
+  --fe:#2563eb;   --fe-bg:#eaf1ff;
+  --api:#7c3aed;  --api-bg:#f2ecff;
+  --app:#0d9488;  --app-bg:#e3f7f4;
+  --infra:#c2620a;--infra-bg:#fdefe0;
+  --db:#475569;   --db-bg:#eef1f5;
+  --ok:#16a34a;   --ok-bg:#e7f6ec;
+  --warn:#d97706;  --warn-bg:#fdf2df;
+  --err:#dc2626;  --err-bg:#fdeaea;
+  --radius:10px;
+  --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--bg);font-size:14.5px;line-height:1.55}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,.mono{font-family:var(--mono);font-size:.9em}
+
+/* ---------- Layout ---------- */
+.wrap{display:grid;grid-template-columns:262px 1fr;min-height:100vh}
+aside{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:18px 14px}
+main{padding:26px 34px 90px;max-width:1180px}
+.brand{font-weight:700;font-size:16px;letter-spacing:.2px;margin:0 0 2px}
+.brand .dot{color:var(--accent)}
+.sub{color:var(--muted);font-size:12px;margin:0 0 14px}
+.search{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;margin-bottom:14px;font-family:var(--sans)}
+.search:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+nav a{display:block;padding:6px 9px;border-radius:7px;color:var(--ink);font-size:13px;margin-bottom:1px}
+nav a:hover{background:var(--accent-weak);text-decoration:none}
+nav a.active{background:var(--accent);color:#fff}
+nav .group{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:14px 0 4px 9px;font-weight:600}
+
+/* ---------- Sections ---------- */
+section{margin-bottom:44px;scroll-margin-top:16px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;margin:0 0 6px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+h3{font-size:15px;margin:22px 0 8px}
+.lead{color:var(--muted);margin:0 0 18px;max-width:760px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin:14px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.card h3:first-child{margin-top:0}
+
+/* ---------- Layer chips ---------- */
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap;line-height:1.7}
+.chip.fe{background:var(--fe-bg);color:var(--fe)}
+.chip.api{background:var(--api-bg);color:var(--api)}
+.chip.app{background:var(--app-bg);color:var(--app)}
+.chip.infra{background:var(--infra-bg);color:var(--infra)}
+.chip.db{background:var(--db-bg);color:var(--db)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.err{background:var(--err-bg);color:var(--err)}
+
+/* ---------- Architecture strip ---------- */
+.arch{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin:8px 0 4px}
+.layer{flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel)}
+.layer .lname{font-weight:700;font-size:13px;margin-bottom:4px}
+.layer ul{margin:6px 0 0;padding-left:16px;color:var(--muted);font-size:12px}
+.layer.l-fe{border-top:3px solid var(--fe)} .layer.l-api{border-top:3px solid var(--api)}
+.layer.l-app{border-top:3px solid var(--app)} .layer.l-infra{border-top:3px solid var(--infra)}
+.layer.l-db{border-top:3px solid var(--db)}
+.arrow{align-self:center;color:var(--muted);font-size:20px;font-weight:700}
+
+/* ---------- Flow steps ---------- */
+.flow{counter-reset:step;margin:10px 0}
+.step{position:relative;display:flex;gap:12px;padding:10px 0 14px 0}
+.step:not(:last-child)::before{content:"";position:absolute;left:13px;top:30px;bottom:-2px;width:2px;background:var(--line)}
+.step .num{flex:0 0 28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;counter-increment:step;z-index:1}
+.step .num::after{content:counter(step)}
+.step .body{flex:1;padding-top:2px}
+.step .t{font-weight:600}
+.step .d{color:var(--muted);font-size:13px;margin-top:2px}
+.step code{background:var(--bg);padding:1px 5px;border-radius:5px;border:1px solid var(--line)}
+
+/* ---------- Tables ---------- */
+.tbl-wrap{overflow-x:auto;margin:10px 0}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:520px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--accent-weak)}
+td code{background:var(--bg);padding:1px 5px;border-radius:5px;border:1px solid var(--line);white-space:nowrap}
+
+/* ---------- Code blocks ---------- */
+pre{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:12.5px;line-height:1.5;margin:10px 0}
+pre .c{color:#94a3b8}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:13px;margin:8px 0}
+.kv .k{color:var(--muted);font-weight:600}
+
+/* ---------- Callouts ---------- */
+.note{border-left:4px solid var(--accent);background:var(--accent-weak);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:13px}
+.note.warn{border-color:var(--warn);background:var(--warn-bg)}
+.note.err{border-color:var(--err);background:var(--err-bg)}
+.note .h{font-weight:700;margin-bottom:2px}
+
+.pill-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.hide{display:none!important}
+.foot{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px;margin-top:40px}
+mark{background:#fff3bf;padding:0 2px;border-radius:3px}
+@media(max-width:860px){.wrap{grid-template-columns:1fr}aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}main{padding:20px}}
+</style>
+
+<div class="wrap">
+<aside>
+  <p class="brand">ICare247 <span class="dot">·</span> Debug</p>
+  <p class="sub">Sổ tay luồng dữ liệu &amp; gỡ lỗi backend</p>
+  <input id="q" class="search" placeholder="🔍 Lọc nhanh (VD: 401, tenant, cache…)" autocomplete="off">
+  <nav id="nav">
+    <div class="group">Nền tảng</div>
+    <a href="#arch">Kiến trúc 4 lớp</a>
+    <a href="#pipeline">Pipeline middleware</a>
+    <a href="#breakpoint">Chiến lược breakpoint</a>
+    <a href="#env">Chuẩn bị môi trường</a>
+    <div class="group">Luồng dữ liệu</div>
+    <a href="#flow-form">Form Runtime (8 pha)</a>
+    <a href="#flow-login">Auth · Đăng nhập</a>
+    <a href="#flow-refresh">Auth · Refresh / Logout</a>
+    <a href="#flow-forms">Cấu hình Form (metadata)</a>
+    <a href="#flow-master">Master Data (CRUD)</a>
+    <a href="#flow-views">Views (lưới)</a>
+    <div class="group">Tra cứu</div>
+    <a href="#cache">Chiến lược cache</a>
+    <a href="#security">Quy tắc bảo mật</a>
+    <a href="#errors">Bảng lỗi thường gặp</a>
+    <a href="#files">Bản đồ file</a>
+  </nav>
+</aside>
+
+<main>
+  <section id="top">
+    <h1>Debug &amp; Data-Flow Guide</h1>
+    <p class="lead">Tổng hợp từ <code>docs/backend-debug/</code> + <code>docs/form-runtime-flow.txt</code>.
+    Mỗi luồng trả lời 4 câu: màn hình gọi <b>API nào</b> → truyền <b>cái gì</b> → code ở <b>lớp nào</b> →
+    <b>đi ra sao</b> + đặt <b>breakpoint</b> ở đâu. Màu sắc theo lớp:</p>
+    <div class="pill-row">
+      <span class="chip fe">Blazor / Frontend</span>
+      <span class="chip api">Api · Controller</span>
+      <span class="chip app">Application · CQRS/Engine</span>
+      <span class="chip infra">Infrastructure · Dapper</span>
+      <span class="chip db">SQL Server</span>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section id="arch">
+    <h2>Kiến trúc 4 lớp — request đi từ ngoài vào</h2>
+    <div class="arch">
+      <div class="layer l-fe"><div class="lname">Blazor WASM</div><span class="chip fe">FE</span>
+        <ul><li>FormRunner.razor</li><li>*ApiService.cs</li><li>gắn Bearer + X-Tenant-Id</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="layer l-api"><div class="lname">Api</div><span class="chip api">Controller</span>
+        <ul><li>ICare247.Api</li><li>Controller + middleware</li><li>JWT / DI</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="layer l-app"><div class="lname">Application</div><span class="chip app">CQRS · Engine</span>
+        <ul><li>MediatR Command/Query</li><li>Engines (Metadata/Event/Validation)</li><li>Interfaces</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="layer l-infra"><div class="lname">Infrastructure</div><span class="chip infra">Dapper</span>
+        <ul><li>Repositories</li><li>JWT / Hasher / Cache</li><li>MultiTenancy</li></ul></div>
+      <div class="arrow">→</div>
+      <div class="layer l-db"><div class="lname">SQL Server</div><span class="chip db">DB</span>
+        <ul><li>Config DB</li><li>Live/Data DB</li></ul></div>
+    </div>
+    <div class="note"><div class="h">Quy tắc vàng khi đọc luồng</div>
+    Controller chỉ điều phối → <code>IMediator.Send(command)</code> → MediatR tìm <b>Handler</b> →
+    Handler gọi <code>IRepository</code> (interface ở Application) → impl Dapper ở Infrastructure → DB.
+    <br><b>Ngoại lệ:</b> <code>RuntimeController</code> inject thẳng 3 engine, <u>không</u> qua MediatR.</div>
+
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Lớp</th><th>Project</th><th>Vai trò</th><th>Ví dụ</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip api">Api</span></td><td><code>src/backend/src/ICare247.Api</code></td><td>Controller, middleware, DI, JWT</td><td><code>Controllers/AuthController.cs</code></td></tr>
+        <tr><td><span class="chip app">Application</span></td><td><code>ICare247.Application</code></td><td>CQRS (MediatR), interface, validate, engines</td><td><code>Features/Auth/…</code></td></tr>
+        <tr><td><span class="chip infra">Infrastructure</span></td><td><code>ICare247.Infrastructure</code></td><td>Dapper repo, JWT, hasher, cache</td><td><code>Repositories/…</code></td></tr>
+        <tr><td><span class="chip db">Domain</span></td><td><code>ICare247.Domain</code></td><td>Entity thuần, không phụ thuộc</td><td><code>Entities/Auth/NguoiDung.cs</code></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ PIPELINE ============ -->
+  <section id="pipeline">
+    <h2>Pipeline middleware — mọi request đều đi qua</h2>
+    <p class="lead">Thứ tự trong <code>Program.cs</code> (mục “Middleware pipeline”). Đặt breakpoint sớm để loại trừ tầng ngoài trước.</p>
+    <div class="card flow">
+      <div class="step"><div class="num"></div><div class="body"><div class="t">ExceptionHandlingMiddleware</div><div class="d">Bắt mọi lỗi → ProblemDetails 500</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">CorrelationMiddleware</div><div class="d">Gắn <code>X-Correlation-Id</code> — dùng để tra log/Nhật ký lỗi</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">SerilogRequestLogging</div><div class="d">Log request</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">(Dev) OpenAPI + Scalar UI · /health</div><div class="d">Chỉ Development</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">UseHttpsRedirection + UseCors</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">★ TenantMiddleware</div><div class="d">Mấu chốt multi-tenant: đọc subdomain (khi có Catalog) hoặc header <code>X-Tenant-Id</code> (fallback = <code>1</code>) → set <code>TenantContext.ConfigConnectionString</code> / <code>DataConnectionString</code>. Hiện Data DB = connstring <code>LiveData</code> (<code>ICare247_Solution</code>).</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">UseAuthentication / Authorization</div></div></div>
+      <div class="step"><div class="num"></div><div class="body"><div class="t">MapControllers</div><div class="d">→ vào Controller</div></div></div>
+    </div>
+  </section>
+
+  <!-- ============ BREAKPOINT ============ -->
+  <section id="breakpoint">
+    <h2>Chiến lược đặt breakpoint theo lớp</h2>
+    <p class="lead">Đi đúng thứ tự này để khoanh vùng lỗi nhanh — dừng ở lớp đầu tiên nơi giá trị bắt đầu “sai”.</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Bước</th><th>Đặt breakpoint tại</th><th>Kiểm tra điều gì</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip api">① Vào API</span></td><td><code>&lt;Controller&gt;.&lt;Action&gt;</code></td><td>Body nhận đúng? <code>GetTenantId()</code> ra <code>1</code>?</td></tr>
+        <tr><td><span class="chip api">② Tenant</span></td><td><code>TenantMiddleware.InvokeAsync</code></td><td><code>TenantContext.DataConnectionString</code> = <code>ICare247_Solution</code>?</td></tr>
+        <tr><td><span class="chip app">③ Validate</span></td><td><code>*CommandValidator</code></td><td>Input có rớt FluentValidation không?</td></tr>
+        <tr><td><span class="chip app">④ Nghiệp vụ</span></td><td><code>*CommandHandler.Handle</code></td><td>Rẽ nhánh nào (sai mk / khóa / disabled…)?</td></tr>
+        <tr><td><span class="chip infra">⑤ DB</span></td><td><code>*Repository.&lt;Method&gt;</code></td><td>SQL + tham số đúng? Kết nối đúng DB?</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note warn"><div class="h">Lỗi không rõ → bật log SQL</div>
+    <code>appsettings.local.json</code> → <code>Serilog:MinimumLevel:Override:Dapper = Debug</code>.</div>
+  </section>
+
+  <!-- ============ ENV ============ -->
+  <section id="env">
+    <h2>Chuẩn bị môi trường debug</h2>
+    <div class="card">
+      <div class="kv">
+        <div class="k">Cấu hình thật</div><div>Ngoài repo: <code>%APPDATA%\ICare247\Api\appsettings.local.json</code> (connstring <code>Config</code>/<code>LiveData</code>/<code>Demo</code>, <code>Jwt:SecretKey</code>).</div>
+        <div class="k">Chạy Debug</div><div><code>dotnet run --project src/backend/src/ICare247.Api/ICare247.Api.csproj</code> hoặc <b>F5</b> trong VS (startup = <code>ICare247.Api</code>).</div>
+        <div class="k">Xác nhận DB</div><div>Đọc log <code>ConnectionChecker</code> trên console — <code>Live DB</code> OK trước khi nghi code.</div>
+        <div class="k">Gọi thử không cần UI</div><div>Scalar UI <code>https://localhost:7130/scalar</code> (chỉ Dev) hoặc file <code>.http</code>. <b>Luôn gửi header <code>X-Tenant-Id: 1</code>.</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLOW: FORM RUNTIME ============ -->
+  <section id="flow-form">
+    <h2>Luồng Form Runtime (end-to-end) — <span class="mono" style="font-size:.8em">/form/{FormCode}</span></h2>
+    <p class="lead">Render → tương tác → submit. Nơi 3 engine chạy: <b>Metadata · Validation · Event</b>. 8 pha:</p>
+
+    <div class="card">
+      <h3><span class="chip fe">Pha 1</span> Load Form Metadata</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t">User navigate <code>/form/sys_UI_Design</code></div><div class="d"><span class="chip fe">FE</span> <code>FormRunner.OnInitializedAsync()</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormApiService.GetFormAsync(code, lang=vi, platform=web)</code></div><div class="d"><span class="chip fe">FE</span> → <code>GET /api/v1/config/forms/sys_UI_Design?lang=vi&platform=web</code> · header <code>X-Tenant-Id: 1</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormController.GetByCode()</code> → <code>GetFormByCodeQuery</code> (MediatR)</div><div class="d"><span class="chip api">Api</span> <span class="chip app">App</span></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormRepository.GetByCodeAsync()</code></div><div class="d"><span class="chip infra">Infra</span> <span class="chip db">Config DB</span> — SELECT <code>Ui_Form</code> · <code>Ui_Tab/Ui_Section</code> · <code>Ui_Field</code> (JOIN <code>Sys_Column</code> → <code>Column_Code AS FieldCode</code>) · <code>Ui_Field_Lookup</code> (nếu dynamic) · <code>Sys_Resource</code> (i18n)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Response <code>FormMetadataDto</code> → build <code>FieldState[]</code></div><div class="d"><span class="chip fe">FE</span> <code>NormalizeFieldType()</code>: TextBox→text · Memo→textarea · CheckBox→bool · ComboBox+dynamic→combobox · LookupBox→fklookup …</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip fe">Pha 2</span> Batch load static lookup options</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>LookupApiService.GetOptionsBatchAsync(["GENDER", …])</code></div><div class="d"><span class="chip fe">FE</span> Check in-memory cache: HIT → dùng ngay · MISS → gọi API song song (<code>Task.WhenAll</code>)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>GET /api/v1/lookups/GENDER?lang=vi</code> → <code>LookupController.GetByCode()</code></div><div class="d"><span class="chip db">DB</span> SELECT <code>Sys_Lookup_Item</code> WHERE <code>Lookup_Code=@Code AND Tenant_Id=@TenantId</code> ORDER BY <code>Sort_Order</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>cache[code] = options</code> → <code>State.Options</code></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip app">Pha 3</span> FORM_LOAD event (Rules Engine)</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormRunner.FireEventAsync("FORM_LOAD", null)</code></div><div class="d"><span class="chip fe">FE</span> → <code>POST /api/v1/forms/sys_UI_Design/handle-event</code> { eventType, contextSnapshot }</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>RuntimeController.HandleEvent()</code></div><div class="d"><span class="chip api">Api</span> → <code>MetadataEngine.GetOrLoadAsync</code> (L1 cache) + <code>EventEngine.HandleEventAsync</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>EventRepository.GetByTriggerAsync(formId, "FORM_LOAD", …)</code></div><div class="d"><span class="chip infra">Infra</span> SELECT <code>Evt_Definition</code> ⋈ <code>Ui_Field</code> ⋈ <code>Sys_Column</code> WHERE <code>Trigger_Code=@…</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Evaluate <code>ConditionExpr</code> (AST) → Execute <code>Evt_Action[]</code> theo <code>Order_No</code></div><div class="d">Trả <code>UiDeltaDto[]</code>: SET_VALUE · SET_VISIBLE · SET_REQUIRED · SET_READONLY · RELOAD_OPTIONS</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormRunner.ApplyDeltas(deltas)</code></div><div class="d"><span class="chip fe">FE</span> áp delta vào <code>FieldState</code></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip fe">Pha 4</span> Render UI (Blazor component tree)</h3>
+      <p><code>FormRunner.razor</code> → foreach Section → foreach Field (if <code>IsVisible</code>) → <code>FieldRenderer</code> → <code>switch(FieldType)</code>:</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>FieldType</th><th>Renderer</th><th>Control</th></tr></thead>
+        <tbody>
+          <tr><td><code>text</code></td><td>TextBoxRenderer</td><td>DxTextBox — TextChanged→OnChange · FocusOut→OnBlur</td></tr>
+          <tr><td><code>textarea</code></td><td>MemoRenderer</td><td>DxMemo</td></tr>
+          <tr><td><code>bool</code> / <code>switch</code></td><td>CheckBoxRenderer</td><td>DxCheckBox (Switch khi IsSwitch=true)</td></tr>
+          <tr><td><code>select</code> / <code>combobox</code></td><td>ComboBoxRenderer</td><td>native <code>&lt;select&gt;</code> <span class="chip warn">TODO DxComboBox</span></td></tr>
+          <tr><td><code>fklookup</code></td><td>LookupBoxRenderer</td><td>EditBox + Popup Grid (search + rows)</td></tr>
+          <tr><td><code>number/date/datetime</code></td><td>native input</td><td><span class="chip warn">Pending DxSpinEdit / DxDateEdit</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip infra">Pha 5</span> Dynamic lookup data (combobox / fklookup)</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Trigger: <code>OnParametersSet</code> lần đầu, hoặc <code>ReloadTriggerField</code> đổi</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>LookupQueryService.QueryAsync(fieldId, Context)</code></div><div class="d"><span class="chip fe">FE</span> → <code>POST /api/v1/lookups/query-dynamic</code> { fieldId, contextValues }</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>DynamicLookupRepository.QueryAsync()</code> — 4 bước an toàn</div><div class="d"><span class="chip infra">Infra</span> ① đọc cấu hình <code>Ui_Field_Lookup</code> (verify tenant) → ② <b>validate identifiers (regex)</b> → ③ build safe SQL (BuildSelectColumns) → ④ execute Dapper params (<code>@TenantId</code> + contextValues sanitized, <u>không</u> concat SQL)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>State.DynamicRows = rows</code> → re-render dropdown / popup grid</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip app">Pha 6–7</span> Field changed &amp; Field blur</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><b>Change:</b> Renderer <code>OnChange(fieldCode, newValue)</code> → <code>FormRunner.OnFieldChanged</code></div><div class="d">set <code>State.Value</code>, clear errors, cập nhật <code>Context</code> → <code>FireEventAsync("FIELD_CHANGED", fieldCode)</code> → EventEngine → UiDelta (VD cascade PhongBanID → reload NhanVienID)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><b>Blur:</b> Renderer <code>OnBlur(fieldCode)</code> → <code>ValidateFieldAsync</code></div><div class="d"><span class="chip app">App</span> → <code>POST /validate-field</code> → <code>ValidationEngine.ValidateFieldAsync</code>: load rule của field → AST evaluate → trả <code>List&lt;ValidationError&gt;</code> → hiển thị badge lỗi dưới field</div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="chip app">Pha 8</span> Submit &amp; Validate toàn form</h3>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Click “Submit &amp; Validate” → <code>ValidateFormAsync(contextSnapshot)</code></div><div class="d"><span class="chip fe">FE</span> → <code>POST /api/v1/forms/…/validate</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>ValidationEngine.ValidateFormAsync()</code></div><div class="d"><span class="chip app">App</span> Load TẤT CẢ rule → <b>topological sort (dependency order)</b> → evaluate → trả <code>Dictionary&lt;fieldCode, List&lt;ValidationError&gt;&gt;</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Có lỗi → focus field lỗi đầu tiên · Sạch → success / gọi save API</div></div></div>
+      </div>
+      <div class="note"><b>Payload Lưu</b> gồm mọi field <code>IsVisible</code> — chỉ loại field ẩn, <u>không</u> loại read-only. (memory: Form Save Payload = Visible)</div>
+    </div>
+
+    <div class="note warn"><div class="h">Breakpoint chính</div>
+    <code>RuntimeController.ValidateField/HandleEvent</code> (formCode, body, tenant) → <code>MetadataEngine.GetFormMetadataAsync</code> (null? cache hit?) → <code>ValidationEngine</code>/<code>EventEngine</code> (rule nào chạy, kết quả AST) → <code>AstEngine</code> nếu nghi sai biểu thức.</div>
+  </section>
+
+  <!-- ============ FLOW: LOGIN ============ -->
+  <section id="flow-login">
+    <h2>Auth · Đăng nhập — <code>POST /api/v1/auth/login</code></h2>
+    <div class="card">
+      <div class="kv">
+        <div class="k">Auth</div><div><code>[AllowAnonymous]</code></div>
+        <div class="k">Header</div><div><code>X-Tenant-Id: 1</code> (bắt buộc)</div>
+        <div class="k">Body</div><div><code>{ "username":"admin", "password":"…", "rememberMe":true }</code></div>
+        <div class="k">DB chính</div><div><span class="chip db">Live DB</span> · verify PBKDF2 với <code>HT_NguoiDung</code></div>
+      </div>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>Login.razor</code> → <code>AuthService.LoginAsync</code></div><div class="d"><span class="chip fe">FE</span> POST + header X-Tenant-Id:1</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Pipeline → <code>TenantMiddleware</code></div><div class="d">X-Tenant-Id=1 → <code>TenantContext.DataConn = LiveData</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>AuthController.Login</code> → <code>new LoginCommand(…)</code> → <code>IMediator.Send</code></div><div class="d"><span class="chip api">Api</span> ValidationBehavior → <code>LoginCommandValidator</code> (rớt input → 400)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>LoginCommandHandler.Handle</code> — toàn bộ logic</div><div class="d"><span class="chip app">App</span> <code>GetByUsernameAsync</code> → null/không-Local/chưa-hash → Invalid · <code>KhoaDenKhi>now</code>→Locked · <code>TrangThai≠HoatDong</code>→Disabled · hết hạn→Expired · <code>Verify(hash,pwd)</code> sai→đếm(≥5→khóa)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">THÀNH CÔNG</div><div class="d"><code>RecordLoginSuccess</code> + <code>GetRoleCodes</code> + <code>JwtTokenService.CreateAccessToken</code> (JWT ~480') + <code>CreateRefreshToken</code> → INSERT <code>HT_RefreshToken</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">200 → FE lưu token</div><div class="d"><span class="chip fe">FE</span> <code>TokenStore.SetAsync</code> (localStorage) + gắn <code>Bearer</code> + <code>NotifyAuthenticationChanged</code></div></div></div>
+      </div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Tình huống</th><th>HTTP</th><th>Title</th></tr></thead>
+      <tbody>
+        <tr><td>Sai tài khoản/mật khẩu</td><td><span class="chip err">401</span></td><td>Đăng nhập thất bại</td></tr>
+        <tr><td>Khóa tạm (sai ≥ 5 lần)</td><td><span class="chip err">423</span></td><td>Tài khoản tạm khóa</td></tr>
+        <tr><td><code>TrangThai ≠ HoatDong</code></td><td><span class="chip err">403</span></td><td>Tài khoản ngừng hoạt động</td></tr>
+        <tr><td>Hết hạn tài khoản</td><td><span class="chip err">403</span></td><td>Tài khoản hết hạn</td></tr>
+        <tr><td>Có 2FA (chưa hỗ trợ)</td><td><span class="chip err">401</span></td><td>Cần xác thực 2 bước</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ FLOW: REFRESH/LOGOUT ============ -->
+  <section id="flow-refresh">
+    <h2>Auth · Refresh &amp; Logout</h2>
+    <div class="card">
+      <h3><code>POST /api/v1/auth/refresh</code> — rotation</h3>
+      <p class="lead">Access token hết hạn → dùng refresh token xin cặp mới. Token cũ bị thu hồi, cấp token mới.</p>
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>AuthController.Refresh</code> → <code>RefreshTokenCommand</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>HashRefreshToken(raw)</code> → SHA-256 → <code>GetByHashAsync</code></div><div class="d">null / <code>DaThuHoi</code> / <code>HetHan≤now</code> → <span class="chip err">401</span> Phiên không hợp lệ</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>GetByIdAsync</code> (user còn HoatDong?) → <code>RevokeAsync</code> token cũ</div><div class="d">rotation — token cũ set <code>DaThuHoi=1</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Create access + refresh mới → <code>InsertAsync</code></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3><code>POST /api/v1/auth/logout</code> — 204 idempotent</h3>
+      <p>Thu hồi refresh token phiên hiện tại. Access token (JWT) <b>không</b> thu hồi được — tự hết hạn (stateless). FE xóa token cục bộ.</p>
+      <div class="note"><b>Đá mọi phiên ngay?</b> gọi <code>RefreshTokenRepository.RevokeAllForUserAsync</code> (đã có, chưa expose endpoint).</div>
+    </div>
+    <div class="note warn"><b>Lỗi hay gặp:</b> 401 ngay lần refresh đầu → FE gọi refresh 2 lần song song (token đã rotate), hoặc gửi token gốc đã hết hạn. Kiểm <code>HetHanUtc</code> (7 ngày, 30 nếu RememberMe).</div>
+  </section>
+
+  <!-- ============ FLOW: FORMS CONFIG ============ -->
+  <section id="flow-forms">
+    <h2>Cấu hình Form (metadata) — <code>api/v1/config/forms</code> · <span class="chip db">Config DB</span></h2>
+    <div class="card">
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>FormController.GetByCode</code> → <code>GetFormByCodeQuery</code></div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>IConfigCache.GetFormAsync(code, lang, platform, tenant)</code> — cache-aside</div><div class="d"><span class="chip app">App</span> hit L1 (MemoryCache) → trả ngay · hit L2 (Redis) → trả + nạp L1 · miss → <code>MetadataEngine</code> → <code>FormRepository</code> (Config DB) → cache lại</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Ghi (POST/PUT) → <code>FormRepository.Insert/Update</code></div><div class="d"><b>Không tự xóa cache</b> — phải gọi <code>POST /{code}/invalidate-cache</code> sau khi sửa ở ConfigStudio</div></div></div>
+      </div>
+    </div>
+    <div class="note warn"><div class="h">Fix cache form (2026-06-19)</div>
+    ① <code>MetadataEngine</code> rebuild <code>enriched</code> bỏ sót <code>Columns/MaxWidth</code> → mất <code>Form_Columns</code>.
+    ② <code>GetFormByCodeQueryHandler</code> dùng version cache cứng = 0 → đã đổi sang <code>_version.Get(tenantId)</code>.
+    ③ <code>InvalidateFormCacheAsync</code> giờ xóa cả <code>CacheKeys.RuntimeForm</code> + <code>CacheKeys.Form</code> (web+mobile).<br>
+    Số cột FORM popup = <code>Ui_Form.Form_Columns</code>; số cột LƯỚI = <code>Ui_Field.Show_In_List</code>.</div>
+  </section>
+
+  <!-- ============ FLOW: MASTER DATA ============ -->
+  <section id="flow-master">
+    <h2>Master Data (CRUD generic) — <code>api/v1/master-data</code> · <span class="chip db">Live DB</span></h2>
+    <p class="lead">CRUD sinh động từ metadata. Bảng đích đọc ở server theo <code>formCode</code> — client <u>không</u> gửi tên bảng. Body key = <b>Field_Code</b> (= tên cột DB).</p>
+    <div class="card">
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>MasterDataController.Create/Update</code> → <code>NormalizeValues(body.values)</code></div><div class="d">unwrap JsonElement → CLR (Dapper không bind được JsonElement)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>SaveMasterDataCommandHandler.Handle</code></div><div class="d"><span class="chip app">App</span> đọc metadata (Config DB) → <code>ValidationEngine.ValidateFormAsync</code> → lỗi → <span class="chip err">422</span> { errors } · check trùng <code>Is_Unique</code> → DuplicateValueException</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t"><code>MasterDataRepository.Insert/Update</code> → bảng đích (Live DB)</div><div class="d"><span class="chip infra">Infra</span> repo inject <b>cả</b> <code>IDbConnectionFactory</code> (Config, metadata) <b>và</b> <code>IDataDbConnectionFactory</code> (Live, dữ liệu) — điểm hay nhầm “sai DB”</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">DELETE → <code>ReferenceCheckService</code> quét FK soft</div><div class="d">có nơi dùng → <span class="chip err">409</span> <code>extensions.blockedBy</code> · trống → xóa → 200</div></div></div>
+      </div>
+    </div>
+    <div class="note warn"><b>Lỗi hay gặp:</b> 422 dù dữ liệu đúng → rule/required từ metadata (kiểm Ui_Field) · Insert sai DB → <code>formCode</code> map sai <code>Sys_Table</code> · Cột bị bỏ khi lưu → field <code>Is_Virtual=1</code> hoặc không nằm trong metadata.</div>
+  </section>
+
+  <!-- ============ FLOW: VIEWS ============ -->
+  <section id="flow-views">
+    <h2>Views (lưới Grid/TreeList) — <code>api/v1/views</code></h2>
+    <p class="lead">Metadata ở <span class="chip db">Config DB</span>, dữ liệu ở <span class="chip db">Live DB</span>. Layout lưới per-user lưu ở Data DB <code>HT_NguoiDung_LuoiLayout</code>.</p>
+    <div class="card">
+      <div class="flow">
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Metadata: <code>GET /{code}/info</code> → <code>IConfigCache.GetViewAsync</code> (cache-aside) → <code>ViewRepository</code> (Config DB)</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Dữ liệu thường (Source=Table): <code>GET /{code}/data</code></div><div class="d">nạp metadata → biết bảng nguồn + cột (<code>Field_Name</code> whitelist) → <code>ViewRepository.GetDataAsync</code> SELECT (Live DB) + search + paging</div></div></div>
+        <div class="step"><div class="num"></div><div class="body"><div class="t">Lưới nâng cao (Source=Sp/Sql): <code>POST /{code}/search</code></div><div class="d">đọc <code>Ui_View_Filter</code> → <b>bind WHITELIST</b> tham số từ <code>body.filters</code> (Filter_Code, chặn SQLi) → thiếu bắt buộc → <span class="chip err">400</span> · gọi SP/SQL (Live DB)</div></div></div>
+      </div>
+    </div>
+    <div class="note warn"><b>Lỗi hay gặp:</b> Cột mất khi render → property DevExpress không tồn tại (VD <code>FilterRowCellVisible</code> ở DX 25.2.3 → dùng <code>FilterRowEditorVisible</code>) · Đổi view ở ConfigStudio không thấy → <code>invalidate-cache</code> · Source=Sp/Sql trả rỗng → SP/tham số sai, chạy SP thủ công trên Live DB.</div>
+  </section>
+
+  <!-- ============ CACHE ============ -->
+  <section id="cache">
+    <h2>Chiến lược cache</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Vị trí</th><th>Cache key</th><th>TTL</th><th>Scope</th></tr></thead>
+      <tbody>
+        <tr><td>LookupApiService</td><td><code>_cache[lookupCode]</code></td><td>∞ session</td><td>Per browser tab</td></tr>
+        <tr><td>MetadataEngine</td><td><code>form:{code}:t:{tenantId}</code></td><td>5 phút</td><td>Server MemoryCache</td></tr>
+        <tr><td>DynamicRows</td><td><code>FieldState.DynamicRows</code></td><td>Until trigger đổi</td><td>Client field</td></tr>
+        <tr><td>FormMetadata (API)</td><td>—</td><td>Không cache</td><td>Mỗi navigate load lại</td></tr>
+        <tr><td>ConfigCache (Form/View)</td><td><code>CacheKeys.Form / .RuntimeForm</code></td><td>L1+L2</td><td>Xóa qua <code>invalidate-cache</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="note err"><div class="h">Nguyên tắc (memory): sửa logic gốc, KHÔNG vá bằng cache</div>
+    Bug → truy root cause, verify DB live trước khi đoán stale. Không reset/xử-lý-case để che lỗi.</div>
+  </section>
+
+  <!-- ============ SECURITY ============ -->
+  <section id="security">
+    <h2>Quy tắc bảo mật (tóm tắt)</h2>
+    <div class="card">
+      <ol>
+        <li><b>Tenant isolation:</b> mọi query filter <code>Sys_Table.Tenant_Id = @TenantId</code>.</li>
+        <li><b>SQL injection:</b> SourceName / column names qua <code>SafeIdentifierRegex</code> (<code>^[a-zA-Z_][a-zA-Z0-9_.]*$</code>); FilterSql/OrderBy block DDL/DML keyword; ContextValues → Dapper params (KHÔNG concat vào SQL).</li>
+        <li><b>Cross-tenant:</b> <code>DynamicLookupRepository</code> verify tenant qua chuỗi <code>Ui_Field_Lookup → Ui_Field → Ui_Form → Sys_Table → Tenant_Id</code>.</li>
+        <li><b>TenantId override:</b> contextValues không được override param <code>@TenantId</code>.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ ERRORS ============ -->
+  <section id="errors">
+    <h2>Bảng lỗi thường gặp — Triệu chứng → Nguyên nhân → Sửa ở đâu</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Triệu chứng</th><th>Nguyên nhân hay gặp</th><th>Sửa ở đâu</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip err">400</span> “Thiếu thông tin tenant”</td><td>Request thiếu header <code>X-Tenant-Id</code></td><td>FE gửi header (Program.cs HttpClient) / thêm header khi test</td></tr>
+        <tr><td>Connection / timeout lúc gọi</td><td><code>LiveData</code> không tới được hoặc sai DB</td><td><code>appsettings.local.json</code> → <code>ConnectionStrings:LiveData</code></td></tr>
+        <tr><td><span class="chip err">401</span> “Tên đăng nhập/mật khẩu không đúng”</td><td>Sai mk, hash lệch, tài khoản ≠ Local</td><td>DB <code>HT_NguoiDung</code>, <code>IdentityPasswordHasher.Verify</code></td></tr>
+        <tr><td>Verify luôn Failed dù mk đúng</td><td>Đọc <b>sai DB</b> (Demo thay vì LiveData) hoặc <code>MatKhauHash</code> không phải Identity v3</td><td>Breakpoint TenantMiddleware + AuthRepository</td></tr>
+        <tr><td><span class="chip err">423</span> “Tài khoản tạm khóa”</td><td>Sai mk ≥ 5 lần → <code>KhoaDenKhi</code></td><td>Đợi 15' hoặc reset <code>SoLanDangNhapSai/KhoaDenKhi</code> trong DB</td></tr>
+        <tr><td>API không khởi động (prod)</td><td><code>Jwt:SecretKey</code> rỗng/yếu/placeholder</td><td>Đặt key ≥ 32 ký tự ở local config</td></tr>
+        <tr><td><span class="chip err">401</span> ở API cần đăng nhập</td><td>Thiếu/hết hạn Bearer token</td><td>FE <code>AuthService</code> gắn Authorization; thử <code>/refresh</code></td></tr>
+        <tr><td>Token nhận được nhưng request sau vẫn 401</td><td>FE chưa gắn <code>Authorization</code></td><td><code>AuthService.ApplyAuthHeader</code></td></tr>
+        <tr><td><span class="chip err">404</span> form-not-found</td><td>Sai <code>formCode</code>/tenant, hoặc form <code>Is_Active=0</code></td><td>Kiểm code + trạng thái form</td></tr>
+        <tr><td>Sửa form ở ConfigStudio nhưng API trả cũ</td><td>Cache chưa xóa</td><td><code>POST /{code}/invalidate-cache</code></td></tr>
+        <tr><td>Rule không chạy / sai kết quả</td><td>Biểu thức Grammar V1 (AST)</td><td>Bật log, kiểm AST · <code>03_GRAMMAR_V1_SPEC.md</code> + <code>04_ENGINE_SPEC.md</code></td></tr>
+        <tr><td>Message hiện <b>key</b> thay vì text</td><td>Thiếu <code>Sys_Resource</code> cho key hoặc sai <code>lang</code></td><td>Thêm resource / kiểm lang</td></tr>
+        <tr><td>Delta không áp dụng ở UI</td><td>Client gửi sai <code>eventType</code>/<code>sourceField</code> (Field_Code)</td><td>Kiểm tên field client gửi</td></tr>
+        <tr><td><span class="chip err">422</span> dù dữ liệu đúng</td><td>Rule/required từ metadata</td><td>Xem <code>errors</code> field nào, kiểm Ui_Field</td></tr>
+        <tr><td>Insert sai DB / table not found</td><td><code>formCode</code> map sai <code>Sys_Table</code> hoặc ghi Config thay vì Live</td><td>Kiểm mapping + connection factory</td></tr>
+        <tr><td><span class="chip err">409</span> không xóa được</td><td>Đúng nghiệp vụ — đang bị tham chiếu</td><td>Xem <code>extensions.blockedBy</code></td></tr>
+        <tr><td>Cột lưới mất khi render</td><td>Property DevExpress không tồn tại ở DX 25.2.3</td><td>VD <code>FilterRowCellVisible</code> → <code>FilterRowEditorVisible</code></td></tr>
+        <tr><td>Source=Sp/Sql trả rỗng</td><td>SP/tham số sai</td><td>Bật log Dapper, chạy SP thủ công trên Live DB</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <!-- ============ FILES ============ -->
+  <section id="files">
+    <h2>Bản đồ file liên quan</h2>
+    <div class="card">
+      <h3><span class="chip fe">Blazor (Frontend)</span></h3>
+      <p class="mono" style="font-size:12.5px;color:var(--muted)">Pages/FormRunner.razor · Components/FieldRenderer.razor · Components/FieldRenderers/{TextBox,Memo,CheckBox,ComboBox,LookupBox}Renderer.razor · Services/{FormApi,LookupApi,LookupQuery,Runtime}Service.cs · Models/FormMetadataDto.cs · Pages/Auth/{Login,ForgotPassword,ResetPassword}.razor · Services/Auth/AuthService.cs</p>
+      <h3><span class="chip api">Api Controllers</span></h3>
+      <p class="mono" style="font-size:12.5px;color:var(--muted)">AuthController · FormController · LookupController · RuntimeController · MasterDataController · ViewController</p>
+      <h3><span class="chip app">Application</span></h3>
+      <p class="mono" style="font-size:12.5px;color:var(--muted)">Features/Forms/Queries/GetFormByCode · Features/Lookups/Queries/QueryDynamic · Features/Auth/{Login,Refresh,Logout,ForgotPassword,ResetPassword} · Features/MasterData/{Queries,Commands} · Features/Views/Queries · Engines/{EventEngine,ValidationEngine,MetadataEngine,ConfigCache}.cs · Domain/Engine/* (AST)</p>
+      <h3><span class="chip infra">Infrastructure (Dapper)</span></h3>
+      <p class="mono" style="font-size:12.5px;color:var(--muted)">Repositories/{Form,Field,DynamicLookup,Event,ValidationRule,Rule,Auth,RefreshToken,MasterData,View,AuditLog}Repository.cs · ReferenceCheckService.cs · Auth/{IdentityPasswordHasher,JwtTokenService}.cs · MultiTenancy/TenantConnectionResolver.cs</p>
+    </div>
+    <p class="foot">Nguồn: <code>docs/backend-debug/</code> (README, auth-*, forms-config, master-data, views, runtime-form) + <code>docs/form-runtime-flow.txt</code>.
+    Trang tĩnh, self-contained — mở trực tiếp bằng trình duyệt, không cần server. Khi tài liệu nguồn đổi, cập nhật lại file này.</p>
+  </section>
+</main>
+</div>
+
+<script>
+// ---- Active nav on scroll ----
+const links=[...document.querySelectorAll('#nav a')];
+const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+const io=new IntersectionObserver((es)=>{
+  es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.remove('active'));const a=map.get(e.target.id);if(a)a.classList.add('active');}});
+},{rootMargin:'-10% 0px -80% 0px'});
+document.querySelectorAll('main section[id]').forEach(s=>io.observe(s));
+
+// ---- Search filter ----
+const q=document.getElementById('q');
+const sections=[...document.querySelectorAll('main section')];
+q.addEventListener('input',()=>{
+  const t=q.value.trim().toLowerCase();
+  if(!t){
+    sections.forEach(s=>{s.classList.remove('hide');s.querySelectorAll('.card,tbody tr').forEach(el=>el.classList.remove('hide'));});
+    return;
+  }
+  sections.forEach(s=>{
+    let anyInSection=false;
+    // filter table rows
+    s.querySelectorAll('tbody tr').forEach(tr=>{
+      const m=tr.textContent.toLowerCase().includes(t);
+      tr.classList.toggle('hide',!m); if(m)anyInSection=true;
+    });
+    // filter cards (that have no table)
+    s.querySelectorAll('.card').forEach(c=>{
+      if(c.querySelector('table'))return;
+      const m=c.textContent.toLowerCase().includes(t);
+      c.classList.toggle('hide',!m); if(m)anyInSection=true;
+    });
+    // section heading / lead match keeps section visible
+    const head=(s.querySelector('h1,h2')?.textContent+' '+(s.querySelector('.lead')?.textContent||'')).toLowerCase();
+    if(head.includes(t))anyInSection=true;
+    s.classList.toggle('hide',!anyInSection);
+  });
+});
+</script>
