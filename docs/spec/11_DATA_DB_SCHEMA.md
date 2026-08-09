@@ -416,3 +416,116 @@ HT_NguoiDung ──< HT_NguoiDung_VaiTro >── HT_VaiTro ──< HT_VaiTro_Quy
    nên đợt nền tảng chưa thể FK. **Phương án (chốt khi làm Auth):** seed sẵn **1 nhân viên hệ thống** +
    **1 tài khoản super-admin** (`LaQuanTri=1`) lúc provisioning; hoặc cho phép `NhanVien_Id` NULL **chỉ** với
    tài khoản hệ thống. → Giữ `NhanVien_Id` nullable ở đợt nền tảng để không kẹt thứ tự migration.
+
+---
+
+## 7. Nhóm `NS_` — Nhân Sự (Tổ chức nhân sự · Position Management)
+
+> **Trạng thái:** 🟡 SPEC ĐỀ XUẤT — ý tưởng thiết kế đã chốt qua thảo luận, **chưa sinh SQL migration**.
+> Mô hình theo **Position Management**: tách *chức danh* (job — làm gì) khỏi *chức vụ* (rank — hàm quản lý),
+> và tách cả hai khỏi *vị trí* (ghế cụ thể). Con người gắn vào ghế theo thời gian qua **biến động nhân sự**
+> (không ghi đè → giữ nguyên lịch sử điều động/kiêm nhiệm). ERD asset: `erd_to_chuc_nhan_su_v2.svg`,
+> `erd_nguoiky_quyetdinh.svg`.
+
+### 7.0 Quyết định thiết kế (chốt)
+
+| # | Quyết định | Lý do |
+|---|---|---|
+| 1 | **Tách `NS_ChucDanh` (job) và `NS_ChucVu` (rank)** — 2 bảng | Chức danh "làm gì", chức vụ "hàm gì"; gộp → không báo cáo được |
+| 2 | **`NS_ViTriCongViec` = ghế** (Chức danh × Phòng ban × hàm), tồn tại cả khi trống | Nơi định biên & tuyển dụng bám vào; đổi cơ cấu không mất lịch sử |
+| 3 | **Vị trí KHÔNG lưu `CongTy_Id`** — suy qua `PhongBan_Id → TC_PhongBan.CongTy_Id` | Quy ước "không lưu cha dẫn xuất" |
+| 4 | **Đổi phòng ban = biến động**, không phải "bổ nhiệm" | "Bổ nhiệm" chỉ là 1 loại (điều động/luân chuyển/kiêm nhiệm…) |
+| 5 | **`NS_LoaiBienDong` là danh mục có cờ hành vi** (không enum cứng) | Engine chạy theo dữ liệu (`MoGheMoi`/`DongGheCu`/`LaKiemNhiem`) |
+| 6 | **Định biên `NS_DinhBien` theo `ViTri_Id × Nam × Thang`** (2 cấp) | Rollup định biên/chi phí theo phòng ban tự nhiên; xem cả năm lẫn tháng |
+| 7 | **Chi phí bóc tách theo khoản mục** (`NS_KhoanMucChiPhi` + dòng dự toán/thực chi), KHÔNG số tổng | So kế hoạch vs thực chi từng mục; đợt lương sau |
+| 8 | **`NS_LoaiQuyetDinh` là danh mục ĐỘC LẬP** cho định tuyến người ký; **`NS_LoaiBienDong` là danh mục RIÊNG của `NS_BienDongNhanSu`** — KHÔNG nối 2 bảng | Biến động NS chỉ là MỘT loại quyết định; hợp đồng/kỷ luật/khen thưởng cũng cần người ký nhưng không thể là loại biến động |
+| 9 | **`NS_NguoiKyQuyetDinh`** theo `(CongTy × LoaiQuyetDinh × khoảng hiệu lực)`, `CongTy_Id` **nullable = fallback mọi công ty**; ảnh chữ ký → `TT_TepDinhKem` | Mỗi loại QĐ 1 người ký, phân theo công ty, có mặc định + ủy quyền + hiệu lực |
+
+### 7.1 Danh mục chức danh / chức vụ
+
+**`NS_NhomChucDanh`** — Nhóm/họ chức danh, tự tham chiếu 2 cấp (`Nhom_Cha_Id` NULL = gốc).
+**`NS_ChucDanh`** — Chức danh (Job): `Ma` UK, `Ten`, `NhomChucDanh_Id` FK, `MoTa` (JD tóm tắt).
+**`NS_ChucVu`** — Chức vụ (Rank): `Ma` UK, `Ten`, `CapQuanLy` int (0=NV…n=cấp cao), `LaLanhDao` bit
+(→ suy "trưởng đơn vị" của phòng ban, thay `TruongDonVi_Id` đã gỡ db/079).
+
+### 7.2 Vị trí công việc & định biên
+
+**`NS_ViTriCongViec`** — Vị trí ("ghế"):
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| ChucDanh_Id | bigint | NOT NULL FK→NS_ChucDanh | |
+| ChucVu_Id | bigint | NULL FK→NS_ChucVu | NULL = ghế không hàm |
+| PhongBan_Id | bigint | NOT NULL FK→TC_PhongBan | → suy công ty (KHÔNG lưu `CongTy_Id`) |
+| SoNguoiToiDa | int | NOT NULL DEFAULT 1 | Sức chứa ghế (>1 = pool/thời vụ) |
+| TrangThai | nvarchar(20) | DEFAULT 'Trong' | Trong / DaBoTri / DongBang |
+
+**`NS_DinhBien`** — Kế hoạch định biên 2 cấp: `ViTri_Id` FK, `Nam`, `Thang` tinyint NULL
+(**NULL = định biên năm**; 1..12 = định biên tháng), `SoLuongDinhBien`, `TrangThai` (DuThao/DaDuyet).
+UNIQUE `(ViTri_Id, Nam, Thang)` WHERE `IsDeleted=0`. Quy tắc đọc: có tháng → ưu tiên tháng; không → theo năm.
+
+### 7.3 Con người & biến động
+
+**`NS_NhanVien`** — Hồ sơ con người (tài khoản `HT_NguoiDung` gắn 1-1, lấy ké `HoTen`/`Email`/ảnh).
+Phòng ban/chức vụ **hiện tại KHÔNG lưu cột** — suy từ `NS_BienDongNhanSu` đang hiệu lực.
+
+**`NS_LoaiBienDong`** — Danh mục loại biến động + cờ hành vi:
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Ma | nvarchar(30) | UNIQUE | BO_NHIEM/DIEU_DONG/LUAN_CHUYEN/BIET_PHAI/KIEM_NHIEM/MIEN_NHIEM/TIEP_NHAN/NGHI_VIEC |
+| MoGheMoi | bit | DEFAULT 1 | Mở bản giữ-ghế mới? |
+| DongGheCu | bit | DEFAULT 0 | Đóng bản đang hiệu lực? (NGHI_VIEC = đóng **tất cả**) |
+| LaKiemNhiem | bit | DEFAULT 0 | Bản mới giữ song song |
+| YeuCauQuyetDinh | bit | DEFAULT 1 | Bắt buộc số/ngày QĐ |
+| LaHeThong | bit | DEFAULT 0 | Loại chuẩn — khóa xóa |
+
+> `NS_LoaiBienDong` là **danh mục riêng của `NS_BienDongNhanSu`** — KHÔNG nối sang `NS_LoaiQuyetDinh`.
+
+**`NS_BienDongNhanSu`** — Người ↔ ghế theo thời gian: `NhanVien_Id` FK, `ViTri_Id` FK, `LoaiBienDong_Id` FK,
+`TuNgay`, `DenNgay` (NULL = đang giữ), `SoQuyetDinh`/`NgayQuyetDinh`, `LyDo`.
+> Đổi phòng ban = đóng bản cũ + mở bản mới `DIEU_DONG`. Kiêm nhiệm = không đóng bản cũ, thêm bản `LaKiemNhiem`.
+
+### 7.4 Chi phí nhân sự — bóc tách theo khoản mục (⏳ đợt lương sau)
+
+**`NS_KhoanMucChiPhi`** — danh mục khoản mục (`Loai`: Lương/PhuCap/BaoHiem/Thuong/Khac; `LaChiPhiDN` bit).
+**`NS_DinhBien_ChiPhi`** — dòng **dự toán** (`DinhBien_Id`, `KhoanMuc_Id`, `SoTien`).
+**`NS_ChiPhiNhanSu`** — dòng **thực chi** (`Nam`, `Thang`, `ViTri_Id`, `NhanVien_Id`, `KhoanMuc_Id`, `SoTien`) —
+**mỗi khoản 1 dòng, không gộp tổng**. So kế hoạch vs thực chi theo khoản mục × vị trí × tháng, rollup phòng ban/công ty.
+
+### 7.5 Ký quyết định (routing chữ ký)
+
+**`NS_LoaiQuyetDinh`** — Taxonomy loại quyết định (RỘNG hơn loại biến động):
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| Ma | nvarchar(30) | UNIQUE | BIEN_DONG_NHAN_SU/HOP_DONG/DIEN_BIEN_LUONG/KHEN_THUONG/KY_LUAT/CHAM_DUT_HDLD… |
+| Ten | nvarchar(200) | NOT NULL | |
+| Nhom | nvarchar(30) | NULL | HopDong/BienDong/Luong/KhenThuong/KyLuat/Khac |
+
+> **Biến động nhân sự = MỘT dòng** ở đây (không tách theo bổ nhiệm/điều động — đó là `NS_LoaiBienDong`, danh mục riêng của biến động). Bảng này KHÔNG liên hệ FK với `NS_LoaiBienDong`.
+
+**`NS_NguoiKyQuyetDinh`** — Người ký theo Công ty × Loại QĐ × thời điểm (map từ legacy `NS_NhanVien_KyQuyetDinh`):
+
+| Column | Type | Constraint | Mô tả |
+|---|---|---|---|
+| CongTy_Id | bigint | **NULL** FK→TC_CongTy | **NULL = fallback mọi công ty**; dòng có CongTy override |
+| LoaiQuyetDinh_Id | bigint | NOT NULL FK→NS_LoaiQuyetDinh | |
+| NhanVien_Id | bigint | NOT NULL FK→NS_NhanVien | Người ký |
+| ChucDanhKy | nvarchar(200) | NULL | Chức danh in ở khối chữ ký (VD "Tổng Giám đốc") |
+| LaNguoiKyMacDinh | bit | DEFAULT 0 | Người ký mặc định của (CongTy, LoaiQĐ) |
+| NgayHieuLuc / NgayHetHieuLuc | date | NgayHieuLuc NOT NULL | DenNgay NULL = vô thời hạn |
+| ThongTinUyQuyen | nvarchar(500) | NULL | Ký thay theo GUQ |
+| AnhChuKyConDau_Id | bigint | NULL FK→TT_TepDinhKem | Ảnh chữ ký + con dấu (KHÔNG lưu bytes trực tiếp) |
+
+> **Bỏ `CoQuanBanHanh`, `NghiQuyet`** khỏi bảng người ký — chúng là nội dung của từng văn bản quyết định (đợt chứng từ QĐ sau), không phải cấu hình định tuyến người ký.
+
+> **Bỏ khỏi legacy** (denormalized, suy qua JOIN): `HoVaTen`, `MaNhanVien`, `MaLoaiQuyetDinh`, `TenChucDanh`(→`ChucDanhKy`), `IsActive`(suy từ khoảng hiệu lực + `IsDeleted`).
+> **Tra người ký:** engine lọc `(CongTy = công ty của vị trí OR CongTy IS NULL, LoaiQuyetDinh, ngày ký ∈ [NgayHieuLuc, DenNgay])`, ưu tiên `LaNguoiKyMacDinh=1` và dòng có CongTy cụ thể trước fallback NULL.
+
+### 7.6 Thống kê nhóm NS_
+
+| Cấp | Bảng |
+|---|---|
+| **Đợt này** | NhomChucDanh, ChucDanh, ChucVu, ViTriCongViec, DinhBien, LoaiBienDong, BienDongNhanSu, NhanVien, LoaiQuyetDinh, NguoiKyQuyetDinh |
+| **Đợt lương sau** | KhoanMucChiPhi, DinhBien_ChiPhi, ChiPhiNhanSu |

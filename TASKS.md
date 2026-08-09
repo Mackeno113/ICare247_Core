@@ -1151,6 +1151,27 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
       Grid **View_Code=`Grid_{Bang}`** (khớp Route). Tỉnh: lookup QuocGia; Phường/Xã: lookup Tỉnh (cascade). → config-sync.
 - [ ] **DATA-SCOPE** — (HOÃN) phân quyền dữ liệu: đọc qua SQL View + RLS `SESSION_CONTEXT` (P1). Thiết kế sau.
 
+## 📋 Roadmap — Module `NS_` Tổ chức & Nhân sự (Position Management) — (2026-07-29, SPEC ĐỀ XUẤT)
+
+> Ý tưởng thiết kế đã chốt qua thảo luận → ghi ở **`docs/spec/11_DATA_DB_SCHEMA.md` §7**. ERD asset:
+> `erd_to_chuc_nhan_su_v2.svg` + `erd_nguoiky_quyetdinh.svg`. Position Management: tách chức danh (job) /
+> chức vụ (rank) / vị trí (ghế); người ↔ ghế theo thời gian qua biến động; định biên 2 cấp năm/tháng theo
+> vị trí; chi phí bóc tách theo khoản mục; người ký quyết định theo Công ty × Loại QĐ × hiệu lực.
+> **CHƯA sinh SQL — chờ duyệt cấu trúc.**
+
+- [ ] **NS-DDL-1** — 7 bảng lõi: `NS_NhomChucDanh`, `NS_ChucDanh`, `NS_ChucVu`, `NS_ViTriCongViec`,
+      `NS_DinhBien` (UNIQUE `ViTri_Id,Nam,Thang`), `NS_LoaiBienDong` (+cờ hành vi +seed 8 loại `LaHeThong=1`),
+      `NS_BienDongNhanSu`. Bám auto-column (ADR-022), soft-check FK qua `Sys_Relation`.
+- [ ] **NS-DDL-2** — đổi `NS_ViTriCongViec.SoLuongDinhBien`→`SoNguoiToiDa`; vị trí KHÔNG lưu `CongTy_Id`.
+- [ ] **NS-NHANVIEN** — hồ sơ `NS_NhanVien` + siết `HT_NguoiDung.NhanVien_Id` NOT NULL+FK+UNIQUE (§6.4 spec 11).
+- [ ] **NS-KYQD** — `NS_LoaiQuyetDinh` (danh mục ĐỘC LẬP; mỗi dòng 1 loại QĐ: Biến động NS/Hợp đồng/Kỷ luật/Khen thưởng/
+      Diễn biến lương…) + `NS_NguoiKyQuyetDinh` (`CongTy_Id` nullable = fallback; ảnh chữ ký→`TT_TepDinhKem`; hiệu lực +
+      mặc định + ủy quyền). **KHÔNG nối `NS_LoaiBienDong`** (đó là danh mục RIÊNG của biến động; biến động NS = 1 loại QĐ).
+      Map từ legacy `NS_NhanVien_KyQuyetDinh`, bỏ cột denormalized (HoVaTen/MaNhanVien/MaLoaiQuyetDinh/IsActive) + CoQuanBanHanh/NghiQuyet.
+- [ ] **NS-CHIPHI** — (⏳ đợt lương sau) `NS_KhoanMucChiPhi` + `NS_DinhBien_ChiPhi` (dự toán) + `NS_ChiPhiNhanSu`
+      (thực chi, mỗi khoản 1 dòng — không gộp tổng). So kế hoạch vs thực chi theo khoản mục × vị trí × tháng.
+- [ ] **NS-UI** — màn Chức danh/Chức vụ/Vị trí/Định biên + màn Biến động + màn Người ký QĐ + báo cáo định biên KH vs thực tế.
+
 ## 📋 Module upload file (TT_) — logo công ty + đính kèm (2026-06-26)
 
 > **Phương án lưu trữ = A (bytes trong DB)** — chốt qua phân tích DB-blob vs đường-dẫn vs object-storage:
