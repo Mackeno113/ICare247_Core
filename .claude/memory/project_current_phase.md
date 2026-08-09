@@ -27,6 +27,12 @@ last_session.md session 88.
 
 ## Đang mở / ad-hoc gần đây (đầy đủ ở TASKS.md)
 
+- **Module NS_ hồ sơ nhân viên** (2026-08-09, commit `012537e`) — `NS_NhanVien` + 6 bảng con (`db/097`/`db/098`,
+  đã commit sẵn `9b86360`) + Form Engine `db/104`/`db/105` (form lõi 8 section + 6 form CRUD con, Phương án 1).
+  Position Management: vị trí/công ty/phòng ban suy từ biến động, KHÔNG lưu cột. **CHƯA chạy migration, CHƯA
+  smoke** `/master/NS_NhanVien`. Còn: view `vw_NhanVien_HienTai` + **NS-MASTERDETAIL** (Phương án 3 — nhúng
+  6 bảng con thành tab lưới). ⚠️ Config DB seed KHÔNG dùng `Tenant_Id` (db/078/ADR-035) — mẫu `db/002` cũ là bẫy.
+
 - **Nhật ký lỗi 500** (ADR-037, session 96 2026-07-27, CHƯA commit) — bảng `NK_LoiHeThong` (Audit DB) +
   màn Admin `/m/administration/error-logs` tra "Mã lỗi" trên web thay vì mở file log server. Build backend+Web
   0W/0E, test 145/145. **CHƯA chạy `db/095`/`db/096`, CHƯA smoke runtime.**

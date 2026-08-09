@@ -37,6 +37,46 @@ Windows) → KHÔNG build được trên remote. Chỉ tự verify được **Ap
 SDK cài rồi sẽ mất khi container bị thu hồi → session sau chạy lại bước 1.
 
 
+## Session (2026-08-09) — Module NS_ hồ sơ nhân viên: NS_NhanVien + Form Engine (commit `012537e`)
+
+**Bối cảnh:** user đưa bảng legacy `NhanVien` ~230 cột, nhờ phân tích/gom nhóm → thiết kế hồ sơ nhân viên
+cho nền tảng. Nhiều vòng hỏi-chốt (đúng luật "luôn hỏi trước").
+
+**Quyết định chốt qua thảo luận:**
+- **Position Management (Phương án A — derive-only):** công ty/phòng ban/chức vụ/chức danh/vị trí/trạng thái
+  làm việc/ngày nghỉ **KHÔNG lưu cột** trên `NS_NhanVien` — suy từ `NS_BienDongNhanSu` đang hiệu lực. User
+  chốt đọc qua **view** (đằng nào cũng phải JOIN lấy tên), không nhồi snapshot. Khớp spec 11 §7.3 sẵn có.
+- View `vw_NhanVien_HienTai` = `OUTER APPLY TOP 1` ghế chính (LaKiemNhiem=0, TuNgay<=today) → NS_ViTriCongViec
+  → PhongBan → CongTy. **CHƯA tạo** (đợt sau, cần dữ liệu). TVF as-of cho báo cáo quá khứ.
+- Enum GioiTinh/TinhTrangHonNhan giữ **tinyint** + Sys_Lookup Item_Code số ('0/1/2') để khớp qua ép kiểu.
+- 6 bảng con 1-N: DiaChi/HocVan/NgoaiNgu/ChungChi/ThanNhan/GiayToNuocNgoai. Địa chỉ dùng Phường/Xã→Tỉnh sẵn có.
+
+**Đã làm (SQL — Claude chỉ viết, user tự chạy):**
+- `db/097` 6 danh mục DM_ nhân sự · `db/098` `NS_NhanVien` + 6 bảng con + FK 1-1 `HT_NguoiDung.NhanVien_Id`
+  (⏳ chưa ép NOT NULL — hoãn tới khi backfill). **Lưu ý:** 097/098 hóa ra ĐÃ commit sẵn trong `9b86360`
+  (nội dung trùng khớp) → git coi sạch.
+- **Form Engine (user chọn Phương án 1, rồi 3):** `db/104` metadata `Sys_Table`/`Sys_Column` 7 bảng +
+  `Sys_Lookup` enum; `db/105` form lõi `NS_NhanVien` full-page (`Display_Mode='Tab'`, 8 section, 37 field,
+  7 lookup động, enum select tĩnh) + **6 form CRUD con độc lập** (chọn NV qua combobox). Địa chỉ tạm dùng
+  combobox `DM_PhuongXa` (chưa dùng composite 'address'). Editor_Type suy từ `FieldRenderer.razor`.
+
+**2 lỗi tự/user bắt trước commit:**
+- **Trùng số migration:** 099/100/101/102/103 đã bị `9b86360` chiếm (NS org/vị trí/biến động/ký QĐ đã sinh
+  SQL từ trước!) → dời 2 file form của tôi **099/100 → 104/105**. Sửa luôn spec §7 + TASKS (tôi từng ghi
+  SAI "chưa sinh vị trí/biến động").
+- **`Tenant_Id` (user bắt):** `db/104` MERGE `Sys_Lookup` bê mẫu GENDER cũ (`db/002`) còn `Tenant_Id` — nhưng
+  `db/078`/ADR-035 đã DROP cột này khỏi 9 bảng Config → sẽ chạy lỗi. Đã bỏ sạch. Ghi memory
+  [[reference-configdb-no-tenant-id]].
+
+**Build:** N/A — lượt này thuần `.sql`+`.md`, không `.cs`/`.razor` nào → không `.slnx` bị ảnh hưởng.
+**Runtime CHƯA verify** — user cần chạy migration (Data DB: 097→103; Config DB: 104,105) rồi mở
+`/master/NS_NhanVien` xác nhận form render (combobox/enum) đúng.
+
+**Commit `012537e`** — 4 file (`db/104`,`db/105`,`docs/spec/11`,`TASKS.md`); 097/098 đã commit sẵn.
+**Task tiếp theo gợi ý:** (1) user chạy migration + smoke `/master/NS_NhanVien` → (2) view `vw_NhanVien_HienTai`
+khi có dữ liệu biến động → (3) **NS-MASTERDETAIL** (Phương án 3): engine đọc `Sys_Relation` → lưới con trong
+tab, gộp 6 bảng con vào form nhân viên thay 6 form độc lập.
+
 ## Session 99 (2026-08-03) — AUDIT-2: gom guard SQL về lớp chung `SqlIdentifier` (⚠️ CHƯA BUILD)
 
 **Việc:** thực thi AUDIT-2 — gom mọi bản copy guard SQL về **1 lớp chung**
