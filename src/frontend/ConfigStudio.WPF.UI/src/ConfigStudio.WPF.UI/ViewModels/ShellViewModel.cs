@@ -288,6 +288,13 @@ public class ShellViewModel : ViewModelBase
                 },
                 new NavigationItem
                 {
+                    Title = "Master-Detail / Rail",
+                    Icon = "▤",
+                    NavigateTo = ViewNames.FormMasterDetailManager,
+                    Level = 1
+                },
+                new NavigationItem
+                {
                     Title = "New Form",
                     Icon = "+",
                     NavigateTo = ViewNames.FormEditor,

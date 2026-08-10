@@ -17,6 +17,7 @@ public static class ViewNames
     public const string MaRuleManager         = nameof(MaRuleManager);
     public const string ViewManager          = nameof(ViewManager);
     public const string RelationManager      = nameof(RelationManager);
+    public const string FormMasterDetailManager = nameof(FormMasterDetailManager);
     public const string FieldConfig = nameof(FieldConfig);
     public const string ValidationRuleEditor = nameof(ValidationRuleEditor);
     public const string EventEditor = nameof(EventEditor);

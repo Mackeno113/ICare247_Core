@@ -12,7 +12,8 @@
 //     engine khớp/UPDATE theo khóa nghiệp vụ. Không có Is_Active → không tombstone.
 //   • Ui_Field_Lookup là bảng mở rộng 1-1 với Ui_Field (UNIQUE Field_Id), không có cột mã riêng →
 //     khóa CHỈ theo cha (KeyColumns rỗng). Cờ sync cấp ở db/062 (cùng Ui_View_Filter).
-//   • Sys_Relation chưa có cờ sync → ngoài phạm vi (chưa engine-hóa master-detail).
+//   • Sys_Relation chưa có cờ sync → ngoài phạm vi. Master-detail engine-hóa qua Ui_Form_Detail
+//     (db/106, mục 6b) — khai báo pane chi tiết theo form, KHÔNG suy từ Sys_Relation.
 //   • Sys_Ma_Rule / Sys_Ma_Rule_Segment (db/089): quy tắc sinh mã. Rule khóa GHÉP Table_Code+Column_Code,
 //     KHÔNG re-link FK (trỏ bảng đích bằng chuỗi Table_Code). Segment khóa theo Order_No trong quy tắc cha.
 //     BỘ ĐẾM không tồn tại (số suy từ dữ liệu bảng đích — ADR-036) nên không có gì "số đã cấp" để sync.
@@ -90,6 +91,23 @@ internal static class ConfigSyncTables
             ContextParent = new ParentLink("Form_Id", "Ui_Form"),
             RelinkParents = [new ParentLink("Form_Id", "Ui_Form")],
             VersionColumn = null,
+        },
+
+        // 6b) Ui_Form_Detail — khai báo pane chi tiết master-detail (Spec 30 / rail workspace, db/106).
+        //     Con của Ui_Form (Detail_Code unique trong Form_Id). Re-link Detail_Form_Id (→ Ui_Form con,
+        //     đã sync ở bước 3) + Section_Id (→ Ui_Section, nullable). Có Is_Active + Version.
+        new ConfigTableDescriptor
+        {
+            TableName = "Ui_Form_Detail",
+            IdColumn = "Detail_Id",
+            LocalKeyColumn = "Detail_Code",
+            ContextParent = new ParentLink("Form_Id", "Ui_Form"),
+            RelinkParents =
+            [
+                new ParentLink("Form_Id", "Ui_Form"),
+                new ParentLink("Detail_Form_Id", "Ui_Form"),
+                new ParentLink("Section_Id", "Ui_Section"),
+            ],
         },
 
         // 7) Val_Rule — sau Migration 003: Field_Id trực tiếp (1 rule/1 field), Error_Key unique TOÀN CỤC

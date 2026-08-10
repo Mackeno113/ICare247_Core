@@ -75,6 +75,7 @@ public partial class App : PrismApplication
         containerRegistry.Register<IMaRuleDataService, MaRuleDataService>();
         containerRegistry.Register<IViewDataService, ViewDataService>();
         containerRegistry.Register<IRelationDataService, RelationDataService>();
+        containerRegistry.Register<IFormMasterDetailDataService, FormMasterDetailDataService>();
         containerRegistry.Register<IPublishCheckService, PublishCheckService>();
         containerRegistry.Register<IImpactPreviewService, ImpactPreviewService>();
         containerRegistry.Register<ISchemaInspectorService, SchemaInspectorService>();

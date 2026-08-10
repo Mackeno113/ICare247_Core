@@ -386,6 +386,69 @@ public sealed class FormRepository : IFormRepository
     }
 
     /// <inheritdoc />
+    public async Task<FormDetailLayout> GetDetailLayoutAsync(
+        string formCode, int tenantId, string langCode = "vi", CancellationToken ct = default)
+    {
+        using var conn = _db.CreateConnection();
+
+        // ĐỌC PHÒNG THỦ: tenant chưa chạy db/106 → chưa có bảng Ui_Form_Detail (và cột Detail_Layout
+        // do CÙNG migration thêm) → trả None thay vì để câu SELECT tham chiếu cột/bảng thiếu gây lỗi
+        // (Invalid object/column). Cùng khuôn MeCompanyRepository/PermissionAdminRepository.
+        const string sqlExists =
+            "SELECT CASE WHEN OBJECT_ID('dbo.Ui_Form_Detail', 'U') IS NULL THEN 0 ELSE 1 END;";
+        var migrated = await conn.ExecuteScalarAsync<int>(
+            new CommandDefinition(sqlExists, cancellationToken: ct));
+        if (migrated == 0)
+            return FormDetailLayout.None;
+
+        // Kiểu bố cục của form master (Detail_Layout tồn tại khi đã migrate). Form không tồn tại → None.
+        const string sqlLayout = """
+            SELECT f.Detail_Layout
+            FROM   dbo.Ui_Form f
+            WHERE  f.Form_Code = @FormCode
+              AND  f.Is_Active = 1
+            """;
+        var layout = await conn.QueryFirstOrDefaultAsync<string?>(
+            new CommandDefinition(sqlLayout, new { FormCode = formCode }, cancellationToken: ct));
+        if (layout is null)
+            return FormDetailLayout.None;
+
+        // Danh sách pane: resolve Form_Code form con + nhãn i18n (fallback Detail_Code khi chưa dịch).
+        const string sqlPanes = """
+            SELECT d.Detail_Id                               AS DetailId,
+                   d.Detail_Code                             AS DetailCode,
+                   d.Pane_Type                               AS PaneType,
+                   cf.Form_Code                              AS DetailFormCode,
+                   d.Parent_Key_Column                       AS ParentKeyColumn,
+                   d.Save_Mode                               AS SaveMode,
+                   COALESCE(r.Resource_Value, d.Detail_Code) AS Title,
+                   d.Icon,
+                   d.Group_Key                               AS GroupKey,
+                   d.Edit_Mode                               AS EditMode,
+                   d.Allow_Add                               AS AllowAdd,
+                   d.Allow_Delete                            AS AllowDelete,
+                   d.Allow_Reorder                           AS AllowReorder,
+                   d.Min_Rows                                AS MinRows,
+                   d.Summary_Json                            AS SummaryJson,
+                   d.Options_Json                            AS OptionsJson,
+                   d.Order_No                                AS OrderNo
+            FROM   dbo.Ui_Form_Detail d
+            JOIN   dbo.Ui_Form mf ON mf.Form_Id = d.Form_Id
+            LEFT JOIN dbo.Ui_Form cf ON cf.Form_Id = d.Detail_Form_Id
+            LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = d.Title_Key
+                                        AND r.Lang_Code     = @LangCode
+            WHERE  mf.Form_Code = @FormCode
+              AND  d.Is_Active = 1
+            ORDER BY d.Order_No
+            """;
+        var panes = (await conn.QueryAsync<FormDetailPane>(
+            new CommandDefinition(sqlPanes, new { FormCode = formCode, LangCode = langCode },
+                cancellationToken: ct))).ToList();
+
+        return new FormDetailLayout { Layout = layout, Panes = panes };
+    }
+
+    /// <inheritdoc />
     public async Task<int?> GetIdByCodeAsync(
         string formCode, int tenantId, CancellationToken ct = default)
     {

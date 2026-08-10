@@ -1,5 +1,34 @@
 # Last Session Summary
 
+## Session (2026-08-10→11) — NS-MASTERDETAIL: chốt RAIL workspace + Pha 1 (BE) + Pha 3 (WPF), CHƯA build
+
+**Bối cảnh:** user hỏi cách hiển thị master-detail cho hồ sơ `NS_NhanVien`. Qua nhiều vòng hỏi-chốt + mockup
+(artifact `bf24e1f5`, tham khảo ảnh HRIS pcg.humax.vn), **CHỐT bố cục = RAIL WORKSPACE** (KHÔNG tab/inline):
+form vô hướng + rail điều hướng con; mỗi quan hệ 1-N = 1 mục rail (pane Grid) hoặc Timeline. Ràng buộc user
+nhấn mạnh: **cấu hình 100% từ WPF** + **control theo thiết kế sẵn**. Chi tiết design → memory auto
+`project-ns-masterdetail-rail-workspace`. Save lưới con = **Immediate per-row** (tái dùng MasterData CRUD).
+
+**Đã làm (Claude chỉ edit code + viết SQL; user tự build + chạy):**
+- **Pha 1 — Config + Backend (đọc):** `db/106` tạo `Ui_Form_Detail` (Grid|Timeline, Save_Mode, Icon,
+  Group_Key, Allow_*, cờ ConfigSync) + cột `Ui_Form.Detail_Layout` (Inline|Rail), idempotent. ConfigSync
+  descriptor `Ui_Form_Detail` (mục 6b, con Ui_Form, re-link Detail_Form_Id/Section_Id). Domain
+  `FormDetailPane`/`FormDetailLayout`. `IFormRepository.GetDetailLayoutAsync` — **đọc PHÒNG THỦ** (guard
+  OBJECT_ID → `None` nếu tenant chưa migrate, không phá hot-path form load). Endpoint `GET
+  /api/v1/forms/{code}/details` (RuntimeController, inject IFormRepository). Impact FormRepository = LOW/0.
+- **Pha 3 — ConfigStudio WPF (màn quản lý RIÊNG, user chốt):** `FormMasterDetailManagerView(+VM)` — chọn
+  form master → đặt Detail_Layout + CRUD pane. Mirror `RelationManager`. `FormMasterDetailDataService`
+  (Dapper Config DB, guard db/106, INSERT Is_Customized=1). Records `FormMasterDetailRecord`/`FormLookupItem`.
+  Wire: ViewNames + FormsModule + App DI + nav ShellViewModel. Naming `FormMasterDetail*` (tránh nhầm
+  `FormDetail*` = chi tiết định nghĩa form). Bỏ `IncrementalFiltering`/`Mask` (DevExpress prop chưa chắc,
+  tránh white-screen); SpinEdit `IsFloatValue=False`.
+- **Pha 2 (Blazor runtime rail) CHƯA làm** — kế tiếp. Timeline pane + thanh %hoàn thiện + ⌘K = bổ sung sau.
+
+**⏳ User cần:** (1) chạy `db/106` (Config DB) · (2) build backend `ICare247.slnx` + ConfigStudio
+`ConfigStudio.WPF.UI.slnx` (0/0) · (3) mở màn "Master-Detail / Rail" → chọn `NS_NhanVien`, đặt Layout=Rail,
+thêm 6 pane trỏ 6 form con (Parent_Key_Column=`NhanVien_Id`, Save_Mode=Immediate). KHÔNG seed SQL (config qua WPF).
+**Cũng đã làm đầu phiên:** đánh dấu smoke NS-FORM-NV xong (migration 097→105 đã chạy, form render OK).
+
+
 ## Tiến độ AUDIT (2026-08-03, master `650df93`) — 5/6 xong + AUDIT-6 3/4 (chỉ còn JWT keyring infra)
 - **AUDIT-1 ✅** — `SqlIdentifierTests` (64) + ② nền `SqlClause`/`SqlPaging` (17). Hoãn FK JOIN/DynamicLookup.
 - **AUDIT-2 ✅** — gom guard SQL `SqlIdentifier` (+ hotfix 4 method-group `Bracket` từng làm master hỏng).
@@ -69,8 +98,9 @@ cho nền tảng. Nhiều vòng hỏi-chốt (đúng luật "luôn hỏi trướ
   [[reference-configdb-no-tenant-id]].
 
 **Build:** N/A — lượt này thuần `.sql`+`.md`, không `.cs`/`.razor` nào → không `.slnx` bị ảnh hưởng.
-**Runtime CHƯA verify** — user cần chạy migration (Data DB: 097→103; Config DB: 104,105) rồi mở
-`/master/NS_NhanVien` xác nhận form render (combobox/enum) đúng.
+**Runtime ✅ VERIFY XONG (2026-08-10):** user đã chạy migration (Data DB: 097→103; Config DB: 104,105)
+và mở `/master/NS_NhanVien` — form render OK. Task NS-FORM-NV đóng smoke; còn NS-MASTERDETAIL (Phương án 3)
++ view `vw_NhanVien_HienTai`.
 
 **Commit `012537e`** — 4 file (`db/104`,`db/105`,`docs/spec/11`,`TASKS.md`); 097/098 đã commit sẵn.
 **Task tiếp theo gợi ý:** (1) user chạy migration + smoke `/master/NS_NhanVien` → (2) view `vw_NhanVien_HienTai`

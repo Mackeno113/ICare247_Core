@@ -1178,9 +1178,28 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
 - [x] **NS-FORM-NV** — Form Engine hồ sơ nhân viên (Phương án 1): đăng ký metadata `Sys_Table`/`Sys_Column`
       7 bảng + `Sys_Lookup` enum (`db/104`); form lõi `NS_NhanVien` full-page 8 section/37 field/7 lookup +
       6 form CRUD con độc lập (`db/105`). Địa chỉ tạm dùng combobox `DM_PhuongXa` (chưa dùng composite 'address').
-- [ ] **NS-MASTERDETAIL** (Phương án 3) — bổ sung master-detail cho engine: `FormRepository` đọc `Sys_Relation`
-      → child metadata; `FormRunner` render lưới con trong tab; rồi gộp 6 bảng con thành tab lưới trong form
-      nhân viên (thay 6 form độc lập). Kèm cân nhắc chuyển địa chỉ sang composite 'address' (Tỉnh→Xã + số nhà).
+      ✅ **Smoke runtime XONG (2026-08-10):** user đã chạy migration (Data DB `097→103` + Config DB `104`,`105`)
+      và mở `/master/NS_NhanVien` — form render OK.
+- [~] **NS-MASTERDETAIL** — engine master-detail = **RAIL WORKSPACE** (chốt 2026-08-10, KHÔNG tab/inline;
+      xem memory `project-ns-masterdetail-rail-workspace`). Cấu hình 100% từ WPF, control theo thiết kế sẵn.
+      Tái dùng `Ui_Form_Detail` (Spec 30) + MasterData CRUD per-row. Mockup duyệt: artifact `bf24e1f5`.
+  - [x] **Pha 1 — Config + Backend (đọc)** (2026-08-10, CHƯA build/chạy):
+        `db/106` tạo `Ui_Form_Detail` (Grid|Timeline, Save_Mode, Icon, Group_Key…) + cột `Ui_Form.Detail_Layout`
+        (Inline|Rail), idempotent. ConfigSync descriptor `Ui_Form_Detail` (mục 6b). Domain `FormDetailPane`/
+        `FormDetailLayout`. `IFormRepository.GetDetailLayoutAsync` (đọc PHÒNG THỦ OBJECT_ID → None nếu tenant
+        chưa migrate). Endpoint `GET /api/v1/forms/{code}/details`. ⏳ **User build BE + chạy `db/106`.**
+        ⚠️ Chưa seed cấu hình NS_ (đúng luật config-qua-WPF) → E2E chờ Pha 3 (hoặc dev-seed tạm).
+  - [ ] **Pha 2 — Blazor runtime**: workspace header dính + rail (từ config) + pane phải. Pane Grid =
+        DetailGridRenderer (DxGrid ghim header) tái dùng MasterData CRUD lọc `NhanVien_Id`; pane Timeline
+        (tách phase sau — cần view biến động `vw_NhanVien_HienTai`/TVF). Field vô hướng dùng 10 renderer sẵn.
+  - [x] **Pha 3 — ConfigStudio WPF** (2026-08-11, CHƯA build): màn quản lý riêng **"Master-Detail / Rail"**
+        (`FormMasterDetailManagerView` + VM) — chọn form master → đặt `Detail_Layout` (Inline/Rail) + CRUD pane
+        `Ui_Form_Detail` (Detail_Code, Pane_Type, Detail_Form, Parent_Key_Column, Save_Mode, Title_Key, Icon,
+        Group_Key, Edit_Mode, Allow_*, Order_No). Mirror pattern `RelationManager`; data service
+        `FormMasterDetailDataService` (Dapper Config DB, guard db/106, Is_Customized=1). Đăng ký ViewNames +
+        FormsModule + App DI + nav ShellViewModel. Naming `FormMasterDetail*` (tránh nhầm `FormDetail*` = định
+        nghĩa form). ⏳ **User build ConfigStudio + chạy db/106** → nhập rail NS_ qua màn này (không seed SQL).
+  - [ ] **Bổ sung sau**: thanh % hoàn thiện hồ sơ + command palette ⌘K. Cân nhắc địa chỉ composite 'address'.
 - [ ] **NS-UI** — màn Chức danh/Chức vụ/Vị trí/Định biên + màn Biến động + màn Người ký QĐ + báo cáo định biên KH vs thực tế.
 
 ## 📋 Module upload file (TT_) — logo công ty + đính kèm (2026-06-26)

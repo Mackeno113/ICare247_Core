@@ -54,6 +54,16 @@ public interface IFormRepository
     Task<bool> ExistsCodeAsync(string formCode, int tenantId, CancellationToken ct = default);
 
     /// <summary>
+    /// Đọc cấu hình master-detail (rail workspace) của form theo Form_Code: kiểu bố cục
+    /// (<c>Ui_Form.Detail_Layout</c>) + danh sách pane (<c>Ui_Form_Detail</c>) đã sắp Order_No,
+    /// nhãn đã resolve i18n theo <paramref name="langCode"/>.
+    /// <para>ĐỌC PHÒNG THỦ: tenant chưa chạy db/106 (thiếu bảng/cột) → trả
+    /// <see cref="FormDetailLayout.None"/> (Inline, rỗng) thay vì lỗi — không phá luồng form thường.</para>
+    /// </summary>
+    Task<FormDetailLayout> GetDetailLayoutAsync(
+        string formCode, int tenantId, string langCode = "vi", CancellationToken ct = default);
+
+    /// <summary>
     /// Lấy Form_Id theo Form_Code — KHÔNG lọc Is_Active (tìm cả form đã ngừng hoạt động).
     /// Dùng cho Restore (cần id của form inactive để ghi audit). Trả <c>null</c> nếu không tồn tại.
     /// </summary>

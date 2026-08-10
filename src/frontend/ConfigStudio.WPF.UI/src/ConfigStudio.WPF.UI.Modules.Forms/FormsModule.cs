@@ -24,6 +24,7 @@ public sealed class FormsModule : IModule
         containerRegistry.RegisterForNavigation<MaRuleManagerView, MaRuleManagerViewModel>(ViewNames.MaRuleManager);
         containerRegistry.RegisterForNavigation<ViewManagerView,    ViewManagerViewModel>    (ViewNames.ViewManager);
         containerRegistry.RegisterForNavigation<RelationManagerView,RelationManagerViewModel>(ViewNames.RelationManager);
+        containerRegistry.RegisterForNavigation<FormMasterDetailManagerView,FormMasterDetailManagerViewModel>(ViewNames.FormMasterDetailManager);
         containerRegistry.RegisterForNavigation<FieldConfigView,    FieldConfigViewModel>    (ViewNames.FieldConfig);
         containerRegistry.RegisterForNavigation<PublishChecklistView,PublishChecklistViewModel>(ViewNames.PublishChecklist);
 

@@ -23,6 +23,7 @@ public sealed class RuntimeController : ControllerBase
     private readonly IValidationEngine _validationEngine;
     private readonly IEventEngine      _eventEngine;
     private readonly IMetadataEngine   _metadataEngine;
+    private readonly IFormRepository   _formRepository;
     private readonly ITenantContext    _tenant;
     private readonly ILogger<RuntimeController> _logger;
 
@@ -30,14 +31,36 @@ public sealed class RuntimeController : ControllerBase
         IValidationEngine validationEngine,
         IEventEngine      eventEngine,
         IMetadataEngine   metadataEngine,
+        IFormRepository   formRepository,
         ITenantContext    tenant,
         ILogger<RuntimeController> logger)
     {
         _validationEngine = validationEngine;
         _eventEngine      = eventEngine;
         _metadataEngine   = metadataEngine;
+        _formRepository   = formRepository;
         _tenant           = tenant;
         _logger           = logger;
+    }
+
+    // ── Master-detail layout (rail workspace) ───────────────────────
+
+    /// <summary>
+    /// Đọc cấu hình master-detail của form: kiểu bố cục (Inline/Rail) + danh sách pane chi tiết.
+    /// Runtime dùng để dựng rail workspace (Spec 30 / NS-MASTERDETAIL). Tenant chưa migrate db/106 →
+    /// trả { layout: 'Inline', panes: [] } (form thường, không chi tiết).
+    /// </summary>
+    [HttpGet("details")]
+    [RequirePermissionForTarget("Form", PermissionOp.Xem)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDetailLayout(
+        string formCode,
+        [FromQuery] string lang = "vi",
+        CancellationToken ct = default)
+    {
+        var layout = await _formRepository.GetDetailLayoutAsync(
+            formCode, _tenant.TenantId, lang, ct);
+        return Ok(layout);
     }
 
     // ── Validate Field ──────────────────────────────────────────────

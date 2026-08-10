@@ -1,0 +1,284 @@
+<UserControl x:Class="ConfigStudio.WPF.UI.Modules.Forms.Views.FormMasterDetailManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             d:DesignHeight="760"
+             d:DesignWidth="1280"
+             mc:Ignorable="d">
+
+    <UserControl.InputBindings>
+        <KeyBinding Modifiers="Control" Key="N" Command="{Binding NewCommand}" />
+        <KeyBinding Modifiers="Control" Key="S" Command="{Binding SaveCommand}" />
+        <KeyBinding Key="F5" Command="{Binding RefreshCommand}" />
+    </UserControl.InputBindings>
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+        <Style x:Key="EditorLabel" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.75" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ── Header ───────────────────────────────────────── -->
+        <Border Grid.Row="0" Margin="16,16,16,0" Padding="16"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <TextBlock Text="▤ Cấu hình Master-Detail / Rail (Ui_Form_Detail)" FontSize="20" FontWeight="Bold"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+                    <Border Background="{DynamicResource AppAccentSoftBrush}" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1"
+                            CornerRadius="4" Padding="10,5" Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="12" Foreground="{DynamicResource AppAccentDarkBrush}"
+                                   Text="Rail workspace: chọn form master → đặt bố cục + các pane chi tiết" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Chọn form master + bố cục -->
+                <Grid Grid.Row="1" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="320" />
+                        <ColumnDefinition Width="24" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="Form master:" VerticalAlignment="Center" Margin="0,0,10,0"
+                               FontWeight="SemiBold" />
+                    <dxg:LookUpEdit Grid.Column="1" ItemsSource="{Binding Forms}" DisplayMember="FormCode"
+                                    SelectedItem="{Binding SelectedForm}" NullText="Chọn form..." />
+
+                    <TextBlock Grid.Column="3" Text="Bố cục chi tiết:" VerticalAlignment="Center" Margin="0,0,10,0"
+                               FontWeight="SemiBold" />
+                    <dxe:ComboBoxEdit Grid.Column="4" ItemsSource="{Binding LayoutOptions}"
+                                      EditValue="{Binding DetailLayout, UpdateSourceTrigger=PropertyChanged}"
+                                      IsTextEditable="False" />
+                    <dx:SimpleButton Grid.Column="6" Content="💾 Lưu bố cục" Margin="0,0,0,0"
+                                     Command="{Binding SaveLayoutCommand}"
+                                     ToolTip="Ghi Ui_Form.Detail_Layout (Inline = lưới trong thân form; Rail = rail điều hướng con)" />
+
+                    <dxe:CheckEdit Grid.Column="8" Content="Hiện đã ẩn" IsChecked="{Binding ShowInactive}"
+                                   VerticalAlignment="Center" />
+                </Grid>
+
+                <Border Grid.Row="2" Margin="0,10,0,0" Padding="10,8"
+                        Background="{DynamicResource AppDangerSoftBrush}" BorderBrush="{DynamicResource AppDangerLightBrush}" BorderThickness="1" CornerRadius="6"
+                        Visibility="{Binding HasLoadError, Converter={StaticResource BoolToVis}}">
+                    <ScrollViewer MaxHeight="80" VerticalScrollBarVisibility="Auto">
+                        <TextBlock Text="{Binding LoadErrorMessage}" Foreground="{DynamicResource AppDangerDarkBrush}"
+                                   FontSize="12" TextWrapping="Wrap" />
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- ── Master-detail ───────────────────────────────── -->
+        <Grid Grid.Row="1" Margin="16,8,16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.4*" MinWidth="380" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="1*" MinWidth="400" />
+            </Grid.ColumnDefinitions>
+
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" Background="Transparent"
+                          ResizeBehavior="PreviousAndNext" ResizeDirection="Columns"
+                          Cursor="SizeWE" ToolTip="Kéo để chỉnh độ rộng 2 bên">
+                <GridSplitter.Template>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border Background="{TemplateBinding Background}">
+                            <Border Width="2" HorizontalAlignment="Center" CornerRadius="1"
+                                    Background="{DynamicResource AppBorderStrongBrush}" />
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
+            <!-- Lưới danh sách pane -->
+            <Border Grid.Column="0" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
+                <dxg:GridControl ItemsSource="{Binding Panes}"
+                                 SelectedItem="{Binding SelectedPane, Mode=TwoWay}"
+                                 AutoGenerateColumns="None">
+                    <dxg:GridControl.View>
+                        <dxg:TableView NavigationStyle="Row" ShowGroupPanel="False"
+                                       AllowEditing="False" AllowPerPixelScrolling="True" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn Header="Thứ tự" FieldName="OrderNo" Width="60" />
+                        <dxg:GridColumn Header="Mã pane" FieldName="DetailCode" Width="*" />
+                        <dxg:GridColumn Header="Kiểu" FieldName="PaneType" Width="80" />
+                        <dxg:GridColumn Header="Form con" FieldName="DetailFormCode" Width="*" />
+                        <dxg:GridColumn Header="Khóa cha" FieldName="ParentKeyColumn" Width="120" />
+                        <dxg:GridColumn Header="Lưu" FieldName="SaveMode" Width="90" />
+                        <dxg:GridColumn Header="Nhóm" FieldName="GroupKey" Width="90" />
+                        <dxg:GridColumn Header="Active" FieldName="IsActive" Width="56" />
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </Border>
+
+            <!-- Editor -->
+            <Border Grid.Column="2" BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6"
+                    Background="{DynamicResource AppSurfaceBrush}">
+                <Grid Margin="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="{Binding EditorTitle}"
+                               FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"
+                               Foreground="{DynamicResource ShellSidebarItemTextBrush}" />
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                        <StackPanel>
+                            <TextBlock Text="Detail_Code * — mã pane (unique trong form)" Style="{StaticResource EditorLabel}" />
+                            <dxe:TextEdit EditValue="{Binding EditDetailCode, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: HocVan" Margin="0,0,0,10" />
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Pane_Type *" Style="{StaticResource EditorLabel}" />
+                                    <dxe:ComboBoxEdit ItemsSource="{Binding PaneTypeOptions}"
+                                                      EditValue="{Binding EditPaneType, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsTextEditable="False" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Order_No (thứ tự trên rail)" Style="{StaticResource EditorLabel}" />
+                                    <dxe:SpinEdit EditValue="{Binding EditOrderNo, UpdateSourceTrigger=PropertyChanged}"
+                                                  IsFloatValue="False" MinValue="0" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Khối chỉ dành cho pane Grid -->
+                            <StackPanel Visibility="{Binding IsGridPane, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="Detail_Form * — form con định nghĩa cột lưới" Style="{StaticResource EditorLabel}" />
+                                <dxg:LookUpEdit ItemsSource="{Binding DetailForms}" DisplayMember="FormCode"
+                                                SelectedItem="{Binding EditDetailForm}"
+                                                NullText="Chọn form con..." Margin="0,0,0,10" />
+
+                                <TextBlock Text="Parent_Key_Column * — cột FK bảng con trỏ về master" Style="{StaticResource EditorLabel}" />
+                                <dxe:TextEdit EditValue="{Binding EditParentKeyColumn, UpdateSourceTrigger=PropertyChanged}"
+                                              NullText="VD: NhanVien_Id" Margin="0,0,0,10" />
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Save_Mode" Style="{StaticResource EditorLabel}" />
+                                        <dxe:ComboBoxEdit ItemsSource="{Binding SaveModeOptions}"
+                                                          EditValue="{Binding EditSaveMode, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsTextEditable="False"
+                                                          ToolTip="Immediate = mỗi dòng lưu ngay (hồ sơ); WithMaster = lưu gộp 1 transaction (chứng từ)" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Edit_Mode (chế độ nhập lưới)" Style="{StaticResource EditorLabel}" />
+                                        <dxe:ComboBoxEdit ItemsSource="{Binding EditModeOptions}"
+                                                          EditValue="{Binding EditEditMode, UpdateSourceTrigger=PropertyChanged}"
+                                                          IsTextEditable="False" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="16" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <dxe:CheckEdit Grid.Column="0" Content="Cho thêm" IsChecked="{Binding EditAllowAdd}" />
+                                    <dxe:CheckEdit Grid.Column="2" Content="Cho xóa" IsChecked="{Binding EditAllowDelete}" />
+                                    <dxe:CheckEdit Grid.Column="4" Content="Kéo sắp thứ tự" IsChecked="{Binding EditAllowReorder}" />
+                                    <StackPanel Grid.Column="6" Orientation="Horizontal">
+                                        <TextBlock Text="Min dòng:" VerticalAlignment="Center" Margin="0,0,6,0" Opacity="0.75" FontSize="12" />
+                                        <dxe:SpinEdit Width="70" EditValue="{Binding EditMinRows, UpdateSourceTrigger=PropertyChanged}"
+                                                      IsFloatValue="False" MinValue="0" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+
+                            <TextBlock Text="Title_Key (i18n nhãn pane)" Style="{StaticResource EditorLabel}" />
+                            <dxe:TextEdit EditValue="{Binding EditTitleKey, UpdateSourceTrigger=PropertyChanged}"
+                                          NullText="VD: ns_nhanvien.detail.hocvan" Margin="0,0,0,10" />
+
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Icon (mục rail)" Style="{StaticResource EditorLabel}" />
+                                    <dxe:TextEdit EditValue="{Binding EditIcon, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: 🎓" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Group_Key (nhóm rail)" Style="{StaticResource EditorLabel}" />
+                                    <dxe:TextEdit EditValue="{Binding EditGroupKey, UpdateSourceTrigger=PropertyChanged}"
+                                                  NullText="VD: RELATED / HISTORY" />
+                                </StackPanel>
+                            </Grid>
+
+                            <dxe:CheckEdit Content="Is_Active (pane đang dùng)" IsChecked="{Binding EditIsActive}"
+                                           Margin="0,0,0,10" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ── Thanh hành động ──────────────────────────────── -->
+        <Border Grid.Row="2" Margin="16,8,16,16" Padding="12,10"
+                Background="{DynamicResource ShellContentBackgroundBrush}"
+                BorderBrush="{DynamicResource AppAccentLightBrush}" BorderThickness="1" CornerRadius="6">
+            <StackPanel Orientation="Horizontal">
+                <dx:SimpleButton Content="＋ Tạo pane" Width="110" Command="{Binding NewCommand}"
+                                 ToolTip="Ctrl+N — soạn pane mới" />
+                <dx:SimpleButton Content="💾 Lưu pane" Width="100" Margin="8,0,0,0" Command="{Binding SaveCommand}"
+                                 ToolTip="Ctrl+S — lưu pane đang soạn" />
+                <dx:SimpleButton Content="🗑 Ẩn" Width="80" Margin="8,0,0,0" Command="{Binding DeleteCommand}"
+                                 ToolTip="Ẩn (soft-delete) pane đang chọn" />
+                <dx:SimpleButton Content="⟳ Tải lại" Width="90" Margin="8,0,0,0" Command="{Binding RefreshCommand}"
+                                 ToolTip="F5 — tải lại danh sách" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
