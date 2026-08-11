@@ -54,11 +54,11 @@
                     }
                     @if (CanEdit)
                     {
-                        <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")" @onclick="() => OnEdit.InvokeAsync(pk)">✏️</button>
+                        <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")" @onclick="() => OnEdit.InvokeAsync(pk)"><Icon Name="pencil" /></button>
                     }
                     @if (CanDelete)
                     {
-                        <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")" @onclick="() => OnDelete.InvokeAsync(pk)">🗑️</button>
+                        <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")" @onclick="() => OnDelete.InvokeAsync(pk)"><Icon Name="trash" /></button>
                     }
                 </CellDisplayTemplate>
             </DxGridCommandColumn>

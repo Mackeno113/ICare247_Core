@@ -18,7 +18,7 @@
 }
 else if (_error is not null)
 {
-    <div class="error-banner"><strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
+    <div class="error-banner"><Icon Name="alert-triangle" Size="16" /> <strong>@Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
 }
 else
 {
@@ -129,7 +129,8 @@ else
         <div class="md-form-footer">
             <button class="btn btn-secondary" @onclick="Cancel" disabled="@_saving">@Loc.L("common.action.cancel", "Hủy")</button>
             <button class="btn btn-primary" @onclick="SaveAsync" disabled="@_saving">
-                @(_saving ? Loc.L("common.action.saving", "Đang lưu…") : "💾 " + Loc.L("common.action.save", "Lưu"))
+                @if (!_saving) { <Icon Name="save" Size="15" /> }
+                @(_saving ? Loc.L("common.action.saving", "Đang lưu…") : Loc.L("common.action.save", "Lưu"))
             </button>
         </div>
     </div>

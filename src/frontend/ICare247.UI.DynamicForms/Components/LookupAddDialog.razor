@@ -9,7 +9,7 @@
 <div class="lookupadd-backdrop" @onclick="OnCancel">
     <div class="lookupadd-dialog" @onclick:stopPropagation>
         <div class="lookupadd-header">
-            <span>➕ @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_formTitle) ? "" : $": {_formTitle}")</span>
+            <span><Icon Name="plus" Size="14" /> @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_formTitle) ? "" : $": {_formTitle}")</span>
             <button class="lookupadd-close" @onclick="OnCancel" title="@Loc.L("common.action.close", "Đóng")">✕</button>
         </div>
 
@@ -20,7 +20,7 @@
             }
             else if (_error is not null)
             {
-                <div class="lookupadd-error">⚠ @_error</div>
+                <div class="lookupadd-error"><Icon Name="alert-triangle" Size="14" /> @_error</div>
             }
             else
             {
@@ -41,7 +41,7 @@
         <div class="lookupadd-footer">
             @if (_saveError is not null)
             {
-                <div class="lookupadd-error" style="flex:1">⚠ @_saveError</div>
+                <div class="lookupadd-error" style="flex:1"><Icon Name="alert-triangle" Size="14" /> @_saveError</div>
             }
             <button class="btn btn-secondary" @onclick="OnCancel" disabled="@_saving">@Loc.L("common.action.cancel", "Hủy")</button>
             <button class="btn btn-primary" @onclick="Save" disabled="@(_saving || _loading || _error is not null)">

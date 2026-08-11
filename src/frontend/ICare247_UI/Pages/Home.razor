@@ -52,7 +52,7 @@
         @if (_loadError is not null)
         {
             <div class="error-banner">
-                ⚠ @Loc.L("dev.forms.loadError", "Không tải được danh sách:") @_loadError
+                <Icon Name="alert-triangle" Size="16" /> @Loc.L("dev.forms.loadError", "Không tải được danh sách:") @_loadError
                 <br /><small>@Loc.L("dev.forms.checkBackend", "Kiểm tra backend đang chạy tại") <code>@Settings.BaseUrl</code></small>
             </div>
         }

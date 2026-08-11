@@ -26,7 +26,7 @@ else if (_error is not null)
 {
     <div class="page-container">
         <div class="error-banner">
-            <strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error
+            <Icon Name="alert-triangle" Size="16" /> <strong>@Loc.L("common.label.error", "Lỗi:")</strong> @_error
         </div>
         <button class="btn btn-secondary" @onclick="GoBack">← @Loc.L("common.action.back", "Quay lại")</button>
     </div>

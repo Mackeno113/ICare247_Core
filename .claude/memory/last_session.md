@@ -1,5 +1,37 @@
 # Last Session Summary
 
+## Session (2026-08-11) — Web UX audit + fix (G/E/D/B) + guard toàn vẹn cây, CHƯA build
+
+**Bối cảnh:** user nhờ audit UX/UI web + **kiểm chứng trực quan** (Claude-in-Chrome trên `localhost:7027` đã
+đăng nhập). Rồi lập kế hoạch fix + triển khai. (Claude chỉ edit code; user tự build/verify — **CHƯA build**.)
+
+**Audit trực quan** → 6 finding; **đính chính 1 finding sai** (KHÔNG có thanh lỗi Blazor — `#blazor-error-ui`
+luôn ẩn `display:none`; `read_page filter=all` liệt cả phần tử ẩn nên tưởng lầm). Memory [[project-web-ux-live-audit]].
+
+**Fix đợt thuần UI (đã chốt scope + cách với user):**
+- **G** emoji→`<Icon>` TOÀN BỘ (nút+banner+placeholder) qua 3 assembly; thêm icon `refresh-cw/upload/save/list/alert-triangle` vào `Icon.razor`.
+- **E** ô ngày native `<input type=date>` → `DxDateEdit` dd/MM/yyyy (UserManagementPage) + rule width global `app.css`.
+- **D** dòng focus/selected lưới xanh ĐẶC → **soft-blue** (`app.css` `!important`; GỠ 3 hack ép-trắng link/badge/icon). Đã **verify live bằng CSS injection**: rowBg `#E5F1FB`, chữ/icon/caret tối rõ.
+- **B** dashboard KPI rỗng `—` → thẻ **lối tắt phân hệ** (`Dashboard.razor`+`.css`, render từ `AppNav`).
+
+**Bug "mất nút mở cây" = DỮ LIỆU** (không phải UI): TC_CongTy `Id=5` có `CongTy_Cha_Id=5` (self-loop) → DevExpress
+DxTreeList ẩn node + node cha thành lá không caret. User đã chạy SQL UPDATE fix. GOTCHA + cơ chế → [[project-tree-integrity-guard]].
+
+**Guard toàn vẹn cây (MỚI):** `IHierarchyGuard`/`HierarchyGuard` chặn self-parent + vòng lặp cho MỌI bảng tự
+tham chiếu — cột cha từ **Sys_Relation Master=Detail + FK vật lý self-ref (union)**; ancestor-walk C# + visited-set
++ MaxDepth. Cắm `SaveMasterDataCommandHandler` (chỉ chạy UPDATE) + DI. Reorder vốn ĐÃ có recursive CTE → không lỗ.
+
+**Task spawn để làm sau (2 chip):** (1) **Design giao diện nhập liệu CHUNG** (khuôn form: tín hiệu nhóm-vs-nội-dung
+= phẳng+gạch hairline+spacing 24–32px, nhịp, chiều cao control đồng bộ 38px, lưới co theo data). (2) **Sửa màn
+Thông tin công ty** (config 4 nhóm+Col_Span qua ConfigStudio + sửa khối địa chỉ `IcAddressBlock`). Đã chốt mockup before/after.
+
+**⏳ User cần:** rebuild `ICare247.slnx` (BE: Application+Infrastructure) + `ICare247_UI.slnx` (đụng 3 assembly FE)
+→ hard-reload → verify D/E/G/B. **CHƯA verify build** (app đang chạy + quy tắc user tự build).
+**Files mới:** `IHierarchyGuard.cs`, `HierarchyGuard.cs`. **Sửa:** SaveMasterDataCommandHandler, DependencyInjection,
+Icon, IcSelectBox, TreeLookupBoxRenderer, LookupAddDialog, + ICare247_UI (ViewPage, DataView, MasterDataForm,
+MasterDataGrid, ConfirmDeleteDialog, ImportWizard, MenuBuilderPage, UserManagementPage, Dashboard(+.css), FormRunner,
+Home, MasterDataListPage, ScreenView, app.css). **Task tiếp theo:** rebuild+verify → 2 task form design đã spawn.
+
 ## Session (2026-08-10→11) — NS-MASTERDETAIL: chốt RAIL workspace + Pha 1 (BE) + Pha 3 (WPF), CHƯA build
 
 **Bối cảnh:** user hỏi cách hiển thị master-detail cho hồ sơ `NS_NhanVien`. Qua nhiều vòng hỏi-chốt + mockup

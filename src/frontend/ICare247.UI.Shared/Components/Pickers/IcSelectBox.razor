@@ -42,7 +42,7 @@
             }
             else if (_error is not null)
             {
-                <div class="icsb-msg icsb-msg--error">⚠ @_error</div>
+                <div class="icsb-msg icsb-msg--error"><Icon Name="alert-triangle" Size="14" /> @_error</div>
             }
             else
             {
@@ -83,7 +83,7 @@
                 {
                     <div class="icsb-addnew"
                          @onmousedown="OnAddNewMouseDown" @onmousedown:preventDefault>
-                        ➕ @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_search) ? "" : $" \"{_search}\"")
+                        <Icon Name="plus" Size="14" /> @Loc.L("common.action.create", "Thêm mới")@(string.IsNullOrWhiteSpace(_search) ? "" : $" \"{_search}\"")
                     </div>
                 }
             }

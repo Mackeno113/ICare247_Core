@@ -10,7 +10,7 @@
 
 <div class="md-modal-backdrop" @onclick="Cancel">
     <div class="md-modal md-modal-sm" @onclick:stopPropagation="true">
-        <div class="md-modal-header">⚠️ @Loc.L("delete.confirm.title", "Xác nhận xóa")</div>
+        <div class="md-modal-header"><Icon Name="alert-triangle" Size="16" /> @Loc.L("delete.confirm.title", "Xác nhận xóa")</div>
         <div class="md-modal-body">
             @if (_checking)
             {
@@ -23,7 +23,7 @@
             else if (_blocked.Count > 0)
             {
                 <div class="result-invalid">
-                    <strong>❌ @Loc.L("delete.blocked.title", "Không thể xóa.")</strong> @Loc.L("delete.blocked.usedAt", "Bản ghi đang được sử dụng tại:")
+                    <Icon Name="alert-triangle" Size="16" /> <strong>@Loc.L("delete.blocked.title", "Không thể xóa.")</strong> @Loc.L("delete.blocked.usedAt", "Bản ghi đang được sử dụng tại:")
                     <ul>
                         @foreach (var u in _blocked)
                         {
@@ -46,7 +46,8 @@
             @if (!_checking && _error is null && _blocked.Count == 0)
             {
                 <button class="btn btn-danger" @onclick="ConfirmAsync" disabled="@_deleting">
-                    @(_deleting ? Loc.L("delete.deleting", "Đang xóa…") : "🗑️ " + Loc.L("delete.confirm.permanent", "Xóa vĩnh viễn"))
+                    @if (!_deleting) { <Icon Name="trash" Size="15" /> }
+                    @(_deleting ? Loc.L("delete.deleting", "Đang xóa…") : Loc.L("delete.confirm.permanent", "Xóa vĩnh viễn"))
                 </button>
             }
         </div>

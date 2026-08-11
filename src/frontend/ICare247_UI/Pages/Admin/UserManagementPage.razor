@@ -128,7 +128,9 @@
                         </label>
                         <label class="usr-field usr-field--sm">
                             <span>@Loc.L("admin.users.f.expire", "Hết hạn tài khoản")</span>
-                            <input type="date" @bind="_detail.HetHanTaiKhoan" />
+                            <DxDateEdit @bind-Date="_detail.HetHanTaiKhoan" DisplayFormat="dd/MM/yyyy"
+                                        NullText="dd/mm/yyyy" ClearButtonDisplayMode="DataEditorClearButtonDisplayMode.Auto"
+                                        CssClass="field-dx" />
                         </label>
                     </div>
                     <label class="usr-check">

@@ -94,12 +94,12 @@
                         @if (View.AllowEdit)
                         {
                             <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")"
-                                    @onclick="() => OnEdit.InvokeAsync(trow)">✏️</button>
+                                    @onclick="() => OnEdit.InvokeAsync(trow)"><Icon Name="pencil" /></button>
                         }
                         @if (View.AllowDelete && IsLeafOrChildless(trow))
                         {
                             <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")"
-                                    @onclick="() => DeleteRowAsync(trow)">🗑️</button>
+                                    @onclick="() => DeleteRowAsync(trow)"><Icon Name="trash" /></button>
                         }
                     </CellDisplayTemplate>
                 </DxTreeListDataColumn>
@@ -176,12 +176,12 @@ else
                         @if (View.AllowEdit)
                         {
                             <button class="btn-icon" title="@Loc.L("common.action.edit", "Sửa")"
-                                    @onclick="() => OnEdit.InvokeAsync(row)">✏️</button>
+                                    @onclick="() => OnEdit.InvokeAsync(row)"><Icon Name="pencil" /></button>
                         }
                         @if (View.AllowDelete)
                         {
                             <button class="btn-icon btn-icon-danger" title="@Loc.L("common.action.delete", "Xóa")"
-                                    @onclick="() => DeleteRowAsync(row)">🗑️</button>
+                                    @onclick="() => DeleteRowAsync(row)"><Icon Name="trash" /></button>
                         }
                     </CellDisplayTemplate>
                 </DxGridCommandColumn>

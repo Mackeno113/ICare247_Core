@@ -11,10 +11,14 @@
     <p class="page-header__sub">@Loc.L("dashboard.welcome", "Chào mừng đến ICare247. Chọn một phân hệ ở thanh điều hướng để bắt đầu.")</p>
 </div>
 
-<div class="kpi-grid">
-    @* TODO(phase-report): thay placeholder bằng KPI thật (nhân sự, tồn kho, công nợ, KQKD). *@
-    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.hr", "Nhân sự")</span><span class="kpi-card__value">—</span></div>
-    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.stock", "Tồn kho")</span><span class="kpi-card__value">—</span></div>
-    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.debt", "Công nợ")</span><span class="kpi-card__value">—</span></div>
-    <div class="kpi-card"><span class="kpi-card__label">@Loc.L("dashboard.kpi.revenue", "Doanh thu tháng")</span><span class="kpi-card__value">—</span></div>
+@* WEB-UX Finding B: bỏ KPI rỗng "—" (đi ngược "không dashboard nếu không cần"), thay bằng thẻ
+   lối tắt vào thẳng phân hệ (nguồn AppNav → nhãn qua Loc.L). KPI thật để dành phase báo cáo. *@
+<div class="quick-grid">
+    @foreach (var m in AppNav.Modules)
+    {
+        <NavLink class="quick-card" href="@($"m/{m.Key}")">
+            <span class="quick-card__icon"><Icon Name="@m.Icon" Size="22" /></span>
+            <span class="quick-card__label">@Loc.L(NavKeys.Module(m.Key), m.Title)</span>
+        </NavLink>
+    }
 </div>

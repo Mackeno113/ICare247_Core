@@ -450,6 +450,10 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
     box-shadow: var(--input-shadow-error);
 }
 
+/* Màn Người dùng (bespoke): DxDateEdit lấp đầy cột .usr-field như input/select native cạnh bên.
+   Rule ĐẶT GLOBAL (không .razor.css) vì CSS isolation không gắn scope lên root editor DevExpress. */
+.usr-field .field-dx.dxbl-edit { width: 100%; }
+
 /* ── Override DX editor variables — phai dung selector .dxbl-text-edit */
 /* DX dinh nghia bien tren .dxbl-text-edit{} nen :root bi override */
 /* app.css load SAU theme DX (Fluent) nen cung selector se thang */
@@ -484,15 +488,25 @@ html, body { margin: 0; font-family: var(--font-body); font-size: var(--fs-base)
     border-bottom-color: var(--input-border-focus);
 }
 
-/* ── Fix link trong dòng focus/selected của lưới (Grid + TreeList) ─────────
-   Theme Fluent đã ép màu CHỮ THƯỜNG sang trắng trên nền dòng focus (xanh) / selected
-   (navy) — text hiển thị tốt. NHƯNG <a> tùy biến trong cell giữ màu link riêng (xanh)
-   nên chìm trên nền xanh/navy. Ép link về token chữ-trên-nền-tối (neutral-10 ≈ #fff)
-   + gạch chân. Loại trừ .dxbl-btn (DX tự lo màu nút của nó). */
+/* ── WEB-UX Finding D — LÀM DỊU dòng focus/selected của lưới (Grid + TreeList) ───────────────
+   Theme Fluent tô dòng focus/selected bằng nền ACCENT XANH ĐẶC (#0F6CBD) + ép chữ trắng. Hệ quả:
+   icon đơn sắc (nút Sửa/Xóa, nút SỔ CÂY của TreeList), badge màu semantic, link… đều chìm/khó nhìn,
+   phải ép-trắng từng thứ. Thay bằng nền SOFT-BLUE nhạt + chữ TỐI như thường → chữ, link, badge (giữ
+   nguyên màu semantic) và mọi icon currentColor đọc/nhìn rõ tự nhiên; đúng chuẩn admin-UI (selected
+   nền soft). app.css load SAU theme Fluent + !important để chắc override biến nền/chữ dòng của DX.
+   Áp cả DxTreeList (dùng chung class .dxbl-grid-*). */
+.dxbl-grid .dxbl-grid-focused-row,
+.dxbl-grid .dxbl-grid-selected-row,
+.dxbl-grid .dxbl-grid-focused-row > td,
+.dxbl-grid .dxbl-grid-selected-row > td {
+    background-color: var(--color-primary-soft) !important;
+    color: var(--color-text) !important;
+}
+
+/* Link trong dòng chọn: về màu primary bình thường (nền đã sáng, không cần ép trắng). */
 .dxbl-grid .dxbl-grid-focused-row a:not(.dxbl-btn),
 .dxbl-grid .dxbl-grid-selected-row a:not(.dxbl-btn) {
-    color: var(--dxds-color-content-neutral-default-static-dark-rest);
-    text-decoration: underline;
+    color: var(--color-primary);
 }
 
 /* ──────────────────────────────────────────────────────────────────────────

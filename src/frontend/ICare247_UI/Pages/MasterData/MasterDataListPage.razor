@@ -21,7 +21,7 @@
     }
     else if (_error is not null)
     {
-        <div class="error-banner"><strong>⚠ @Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
+        <div class="error-banner"><Icon Name="alert-triangle" Size="16" /> <strong>@Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
     }
     else if (_info is not null)
     {
@@ -35,7 +35,7 @@
                 {
                     <button class="btn btn-secondary" disabled="@_clearingCache" @onclick="ClearCacheAsync"
                             title="@Loc.L("masterdata.cache.clear.tip", "Xóa cache cấu hình form + combobox, rồi tải lại")">
-                        ↻ @Loc.L("masterdata.cache.clear", "Xóa cache")
+                        <Icon Name="refresh-cw" Size="15" /> @Loc.L("masterdata.cache.clear", "Xóa cache")
                     </button>
                 }
                 @if (_perm.Them)

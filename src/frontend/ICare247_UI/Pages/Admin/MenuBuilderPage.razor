@@ -21,7 +21,7 @@
     <span class="mb-sub">@Loc.L("admin.menu.sub", "Cấu hình cây menu trỏ tới các View đã cấu hình")</span>
     <span class="mb-spacer"></span>
     <button class="mb-btn mb-btn--primary" @onclick="OpenCreate">+ @Loc.L("admin.menu.new", "Thêm node")</button>
-    <button class="mb-btn" @onclick="ReloadAsync">↻ @Loc.L("common.btn.refresh", "Làm mới")</button>
+    <button class="mb-btn" @onclick="ReloadAsync"><Icon Name="refresh-cw" Size="15" /> @Loc.L("common.btn.refresh", "Làm mới")</button>
 </div>
 
 <div class="mb-layout">
@@ -356,7 +356,7 @@
         <div class="mb-modal__backdrop" @onclick="() => _confirmDelete = null"></div>
         <div class="mb-modal mb-modal--sm">
             <div class="mb-modal__head">
-                <h3>⚠️ @Loc.L("admin.menu.del.title", "Xác nhận xóa node")</h3>
+                <h3><Icon Name="alert-triangle" Size="16" /> @Loc.L("admin.menu.del.title", "Xác nhận xóa node")</h3>
                 <button class="mb-iconbtn" @onclick="() => _confirmDelete = null" title="@Loc.L("common.btn.close", "Đóng")">
                     <Icon Name="x" Size="18" />
                 </button>

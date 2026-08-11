@@ -3,6 +3,29 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Web UX fix (G/E/D/B) + guard toàn vẹn cây (2026-08-11, CHƯA build/commit)
+
+Audit UX web + kiểm chứng trực quan (Claude-in-Chrome) → fix đợt thuần UI + guard cây. Chi tiết →
+`.claude/memory/last_session.md` (2026-08-11) + memory `project-web-ux-live-audit` / `project-tree-integrity-guard`.
+
+- [x] **G** — emoji→`<Icon>` toàn bộ (nút+banner+placeholder, 3 assembly) + 5 icon mới (`refresh-cw/upload/save/list/alert-triangle`) trong `Icon.razor`.
+- [x] **E** — ô ngày native `<input type=date>` → `DxDateEdit` dd/MM/yyyy (`UserManagementPage`) + rule width global `app.css`.
+- [x] **D** — dòng focus/selected lưới xanh ĐẶC → **soft-blue** (`app.css`, gỡ 3 hack ép-trắng); verified live bằng CSS injection.
+- [x] **B** — dashboard KPI rỗng `—` → thẻ lối tắt phân hệ (`Dashboard.razor`+`.css`, render từ `AppNav`).
+- [x] **Guard toàn vẹn cây (MỚI)** — `IHierarchyGuard`/`HierarchyGuard`: chặn self-parent + vòng lặp cho MỌI bảng tự tham chiếu (cột cha từ Sys_Relation Master=Detail + FK vật lý self-ref, union; ancestor-walk C#). Cắm `SaveMasterDataCommandHandler` (chỉ UPDATE) + DI. Reorder vốn ĐÃ có recursive CTE → không lỗ.
+- [x] Bug DATA self-loop `TC_CongTy` Id=5 (`CongTy_Cha_Id=5`) làm DevExpress ẩn node → **user đã chạy SQL UPDATE fix**.
+
+**⏳ User cần:** rebuild `src/backend/ICare247.slnx` (Application+Infrastructure) + `src/frontend/ICare247_UI.slnx`
+(3 assembly FE) → hard-reload → verify D/E/G/B. **CHƯA verify build** (app đang chạy + quy tắc user tự build).
+
+**Task mở (spawn chip):** (1) Design giao diện nhập liệu **CHUNG** (khuôn form). (2) **Sửa màn Thông tin công ty**
+(config 4 nhóm+Col_Span qua ConfigStudio + sửa khối địa chỉ) — Hướng A, đã chốt mockup before/after.
+
+**Decisions Log (2026-08-11):** ① Finding **D** chọn phương án **soft-blue** (làm dịu dòng focus, giữ được màu
+semantic) thay patch ép-trắng từng thứ. ② Nguyên tắc **"MỌI cây cấm self-parent/cycle"** — thực thi bằng guard
+validation ở cả 2 đường ghi (Form Lưu = IHierarchyGuard; reorder = CTE có sẵn). Không phải ADR mới (là validation,
+không đổi kiến trúc). ③ Tách "làm đẹp form" thành 2 việc: khuôn CHUNG (nền) + màn Công ty (áp khuôn).
+
 ## ✅ Đã xong — Màn Admin "Nhật ký lỗi" đọc chi tiết lỗi 500 từ web (ADR-037, session 96, 2026-07-27, CHƯA commit)
 
 **Bối cảnh:** user báo toast lỗi 500 chỉ hiện "Đã xảy ra lỗi không mong đợi... (Mã lỗi: fd7af169)" —

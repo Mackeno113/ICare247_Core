@@ -106,6 +106,8 @@ public static class DependencyInjection
         services.AddScoped<Services.MaCodeGenerator>();
         services.AddScoped<IUserGridLayoutRepository, UserGridLayoutRepository>();
         services.AddScoped<IReferenceCheckService, ReferenceCheckService>();
+        // Guard toàn vẹn cây (self-parent / vòng lặp) — dùng chung MỌI bảng tự tham chiếu (Sys_Relation Master=Detail).
+        services.AddScoped<IHierarchyGuard, HierarchyGuard>();
         services.AddScoped<IViewRepository, ViewRepository>();
         // Token ngữ cảnh (Sys_Context_Param) — registry + resolver (Claim/Header/ActiveScope). Spec 19, ADR-030.
         services.AddScoped<IContextParamRepository, ContextParamRepository>();

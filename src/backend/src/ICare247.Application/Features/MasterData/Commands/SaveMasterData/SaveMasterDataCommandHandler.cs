@@ -23,6 +23,7 @@ public sealed class SaveMasterDataCommandHandler
     private readonly ICodeRuleCatalog      _codeRules;
     private readonly IAuditWriter          _audit;
     private readonly ILookupCacheVersion   _lookupVer;
+    private readonly IHierarchyGuard       _hierarchy;
     private readonly ILogger<SaveMasterDataCommandHandler> _logger;
 
     public SaveMasterDataCommandHandler(
@@ -33,6 +34,7 @@ public sealed class SaveMasterDataCommandHandler
         ICodeRuleCatalog codeRules,
         IAuditWriter audit,
         ILookupCacheVersion lookupVer,
+        IHierarchyGuard hierarchy,
         ILogger<SaveMasterDataCommandHandler> logger)
     {
         _repo        = repo;
@@ -42,6 +44,7 @@ public sealed class SaveMasterDataCommandHandler
         _codeRules   = codeRules;
         _audit       = audit;
         _lookupVer   = lookupVer;
+        _hierarchy   = hierarchy;
         _logger      = logger;
     }
 
@@ -105,6 +108,20 @@ public sealed class SaveMasterDataCommandHandler
                     : $"{label} \"{enteredValue}\" đã tồn tại";
                 errors.Add(new MasterDataFieldError(col.ColumnCode, msg));
             }
+        }
+
+        // ── Toàn vẹn CÂY: chống self-parent / vòng lặp (mọi bảng tự tham chiếu — cột cha từ Sys_Relation) ──
+        // Bịt lỗ: đường Lưu form trước đây KHÔNG chặn cha = chính nó (chỉ reorder kéo-thả có chặn) → tạo
+        // được self-loop khiến node biến mất khỏi lưới cây. Guard này áp CHUNG cho mọi cây.
+        var treeViolation = await _hierarchy.CheckSelfReferenceAsync(
+            info.TableId, info.SchemaName, info.TableName, info.PkColumn, r.Id, r.Values, ct);
+        if (treeViolation is not null)
+        {
+            var (key, fallback) = treeViolation.Kind == HierarchyViolationKind.SelfParent
+                ? ("sys.val.tree.selfparent", "Không thể chọn chính bản ghi này làm cha.")
+                : ("sys.val.tree.cycle",      "Không thể chọn một cấp con/cháu làm cha (sẽ tạo vòng lặp).");
+            var msg = await _config.ResolveKeyAsync(key, lang, r.TenantId, ct) ?? fallback;
+            errors.Add(new MasterDataFieldError(treeViolation.Column, msg));
         }
 
         if (errors.Count > 0)
