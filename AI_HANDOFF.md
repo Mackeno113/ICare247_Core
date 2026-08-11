@@ -19,6 +19,17 @@ Ghi lại mỗi khi bàn giao task giữa Claude Code và Codex.
 
 ## Entries
 
+### [2026-08-09] AI-REPOWISE-PILOT — codex → claude
+
+- Status: done; chưa commit/push.
+- Files: `.gitignore`, `.mcp.json`, `.codex/config.toml`, `tools/repowise/*`,
+  `docs/ai/README.md`, `docs/ai/REPOWISE_INTEGRATION.md`, `AI_DECISIONS.md`, `AI_HANDOFF.md`.
+- Cần biết: RepoWise `0.34.0` chạy local `index-only`, telemetry ép tắt trong wrapper, không hook/plugin/LLM.
+  MCP chỉ mở 6 tool risk/health/context; GitNexus vẫn giữ impact/PDG/detect_changes. Baseline: 1.028 file,
+  9.524 symbol, 76 hotspot, health 8,33/10, index khoảng 54 MB.
+- Verify: smoke clone và full index đều pass; `status`, `health`, `risk HEAD~1..HEAD` pass; config JSON/TOML parse pass.
+- Bước tiếp theo: restart Codex/Claude để nạp MCP, dùng pilot trên 10–15 task thật rồi đánh giá giữ/bỏ.
+
 ### [2026-07-29] WPF-16 (DevExpress editor + popup cấu hình View) — codex → claude
 
 - Status: done; chưa commit/push.

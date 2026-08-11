@@ -164,3 +164,8 @@ src/frontend/source_can_update/
 # Thư mục copy build output ConfigStudio để debug navigation (~110 MB DLL/exe/pdb)
 # Là artifact tạm của phiên debug, build lại được — KHÔNG commit
 .codex/debug-nav/
+
+# RepoWise — CLI environment va local index (khong commit artifact sinh tu may)
+.local-tools/repowise/
+.local-tools/repowise-smoke/
+.repowise/

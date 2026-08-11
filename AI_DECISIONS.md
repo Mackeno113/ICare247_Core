@@ -5,6 +5,17 @@ Ghi lại các quyết định kỹ thuật và quy trình ảnh hưởng đến
 
 ---
 
+## DEC-2026-08-09-001
+
+- **Date:** 2026-08-09
+- **Status:** `accepted`
+- **Context:** ICare247 cần bổ sung git hotspot/co-change, ownership, change-risk và code-health nhưng đã dùng GitNexus cho symbol graph, execution flow, PDG/taint và impact bắt buộc.
+- **Decision:** Tích hợp RepoWise `0.34.0` ở chế độ pilot self-hosted, MCP `stdio`, `index-only`, telemetry bị ép tắt. RepoWise chỉ bổ sung GitNexus; không cài hook/plugin, không dùng hosted/LLM và không cho dead-code/refactoring tự động. Tool surface giới hạn ở `get_overview`, `get_context`, `get_risk`, `get_change_risk`, `get_why`, `get_health`.
+- **Consequences:** GitNexus `impact`/`detect_changes` vẫn bắt buộc. RepoWise không được dùng để kết luận ảnh hưởng metadata runtime hoặc xóa code động. Index và CLI environment chỉ tồn tại local, không commit.
+- **Supersedes:** none
+
+---
+
 ## DEC-2026-04-25-001
 
 - **Date:** 2026-04-25

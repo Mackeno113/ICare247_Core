@@ -1,0 +1,5 @@
+[mcp_servers.repowise]
+command = "powershell"
+args = ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/repowise/invoke.ps1", "mcp"]
+startup_timeout_sec = 30
+

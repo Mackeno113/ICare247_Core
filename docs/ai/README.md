@@ -37,5 +37,14 @@
 | Thêm rule/validate | `/generate-validation-rule` |
 | Nhập 1 template mới từ aitmpl | Đọc [TEMPLATE_INTAKE.md](TEMPLATE_INTAKE.md) TRƯỚC |
 
+## 🧠 Code intelligence
+
+| Công cụ | Phạm vi |
+|---|---|
+| GitNexus | Symbol impact, execution flow, PDG/taint, rename, `detect_changes` |
+| RepoWise (pilot) | Git hotspot/co-change, ownership, change risk và code health |
+
+Quy trình cài đặt, vận hành và rollback RepoWise: [REPOWISE_INTEGRATION.md](REPOWISE_INTEGRATION.md).
+
 ---
 *Cập nhật khi thêm/bớt agent hoặc command. Tạo: session 69 (2026-06-28).*

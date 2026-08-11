@@ -1,4 +1,4 @@
-// File    : ConnectionChecker.cs
+﻿// File    : ConnectionChecker.cs
 // Module  : Api
 // Layer   : Api
 // Purpose : Test kết nối tất cả connection string ngay khi khởi động —
@@ -30,7 +30,7 @@ public static class ConnectionChecker
 
         await CheckSqlAsync(configuration, "Config",   "Config DB (ICare247_Config)");
         await CheckSqlAsync(configuration, "LiveData", "Live DB  (nghiệp vụ thật)  ");
-        await CheckSqlAsync(configuration, "Demo",     "Demo DB  (dữ liệu thử)     ");
+       // await CheckSqlAsync(configuration, "Demo",     "Demo DB  (dữ liệu thử)     ");
         await CheckSqlAsync(configuration, "Audit",    "Audit DB (nhật ký NK_)     ");
         await CheckRedisAsync(configuration);
 

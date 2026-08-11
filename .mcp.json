@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "repowise": {
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "tools/repowise/invoke.ps1",
+        "mcp"
+      ],
+      "description": "RepoWise pilot: local graph, git risk and code health; no hooks, telemetry or LLM"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-07-09 18:00:51",
+  "generatedAt": "2026-08-11 00:56:04",
   "source": "ICare247_UI",
-  "count": 339,
+  "count": 414,
   "entries": [
     {
       "key": "admin.cache.clear",
@@ -481,6 +481,265 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/ConfigSyncPage.razor",
           "line": 64
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.btn.copy",
+      "vi": "Sao chép",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 94
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 123
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.btn.filter",
+      "vi": "Lọc",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 40
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.duongdan",
+      "vi": "Đường dẫn",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 78
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 102
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.maloi",
+      "vi": "Mã lỗi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 70
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 91
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.nguoidung",
+      "vi": "Người dùng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 80
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 108
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.nguon",
+      "vi": "Nguồn",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 76
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 113
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.phuongthuc",
+      "vi": "PT",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.thoigian",
+      "vi": "Thời gian",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 64
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 98
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.col.thongdiep",
+      "vi": "Thông điệp",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 77
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.count",
+      "vi": "{0} lỗi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 43
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.detail.message",
+      "vi": "Thông điệp",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 117
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.detail.stack",
+      "vi": "Stack trace",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 121
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.detail.title",
+      "vi": "Chi tiết lỗi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 88
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.empty",
+      "vi": "Không có lỗi nào trong khoảng thời gian đã lọc.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.den",
+      "vi": "Đến ngày",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.maloi",
+      "vi": "Mã lỗi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 30
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.maloi.hint",
+      "vi": "vd: fd7af169",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.nguon",
+      "vi": "Nguồn",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 35
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.nguon.hint",
+      "vi": "vd: SqlException",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 37
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.f.tu",
+      "vi": "Từ ngày",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "key": "admin.errorlogs.title",
+      "vi": "Nhật ký lỗi",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 14
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 17
         }
       ]
     },
@@ -1206,7 +1465,51 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 58
+          "line": 108
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.companies.empty",
+      "vi": "Chưa có công ty nào (tạo ở màn Công ty).",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 56
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.companies.hint",
+      "vi": "User thuộc vai trò này được truy cập các công ty tick bên dưới (kế thừa động — sửa là áp ngay). Tick công ty cha sẽ tick cả nhánh con, bỏ tick từng công ty tùy ý. Công ty tạo sau này không tự có quyền.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 60
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.departments.empty",
+      "vi": "Chưa có phòng ban nào (tạo ở màn Phòng ban).",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 75
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.departments.hint",
+      "vi": "User thuộc vai trò này được truy cập các phòng ban tick bên dưới (kế thừa động — sửa là áp ngay). Đúng phòng ban được tick — KHÔNG tự gộp phòng ban con, cần cấp thêm thì tick riêng.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 79
         }
       ]
     },
@@ -1217,7 +1520,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 42
+          "line": 92
         }
       ]
     },
@@ -1228,7 +1531,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 52
+          "line": 102
         }
       ]
     },
@@ -1239,7 +1542,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 19
+          "line": 22
         }
       ]
     },
@@ -1250,7 +1553,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 29
+          "line": 41
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 89
         }
       ]
     },
@@ -1261,11 +1568,508 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 14
+          "line": 17
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 17
+          "line": 20
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.view.companies",
+      "vi": "Phạm vi công ty",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.view.departments",
+      "vi": "Phạm vi phòng ban",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 36
+        }
+      ]
+    },
+    {
+      "key": "admin.perm.view.functions",
+      "vi": "Chức năng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "key": "admin.users.add",
+      "vi": "Thêm người dùng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 26
+        }
+      ]
+    },
+    {
+      "key": "admin.users.btn.confirmdelete",
+      "vi": "Xác nhận xóa?",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 175
+        }
+      ]
+    },
+    {
+      "key": "admin.users.btn.resetpw",
+      "vi": "Đặt lại",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 163
+        }
+      ]
+    },
+    {
+      "key": "admin.users.col.admin",
+      "vi": "Quản trị",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 54
+        }
+      ]
+    },
+    {
+      "key": "admin.users.col.ma",
+      "vi": "Mã",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 45
+        }
+      ]
+    },
+    {
+      "key": "admin.users.col.roles",
+      "vi": "Vai trò",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "key": "admin.users.col.status",
+      "vi": "Trạng thái",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "key": "admin.users.col.username",
+      "vi": "Tên đăng nhập",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 46
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.byrole",
+      "vi": "Theo vai trò",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 234
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 282
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.byrole.tip",
+      "vi": "Kế thừa từ vai trò — sửa ở màn Phân quyền",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 233
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 281
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.clear",
+      "vi": "Bỏ hết gán riêng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 255
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 293
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.clear.tip",
+      "vi": "Bỏ toàn bộ gán riêng — quyền theo vai trò vẫn giữ",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 254
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 292
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.default",
+      "vi": "Mặc định",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 244
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.default.tip",
+      "vi": "Công ty chọn sẵn khi đăng nhập",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 240
+        }
+      ]
+    },
+    {
+      "key": "admin.users.companies.hint",
+      "vi": "Tick công ty cha sẽ tick cả nhánh con — bỏ tick từng công ty tùy ý trước khi Lưu. Công ty tạo sau này không tự có quyền.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 219
+        }
+      ]
+    },
+    {
+      "key": "admin.users.departments.hint",
+      "vi": "Đúng phòng ban được tick — KHÔNG tự gộp phòng ban con (khác tab Công ty), cần cấp thêm thì tick riêng.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 267
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.expire",
+      "vi": "Hết hạn tài khoản",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 130
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.forcechange",
+      "vi": "Bắt đổi mật khẩu ở lần đăng nhập kế",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 146
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.isadmin",
+      "vi": "Quản trị tenant (bỏ qua kiểm tra quyền)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 138
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.ma",
+      "vi": "Mã",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 98
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.mobile",
+      "vi": "Cho phép đăng nhập app mobile",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 142
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.newpassword",
+      "vi": "Mật khẩu mới",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 156
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.password",
+      "vi": "Mật khẩu",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 110
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.password.hint",
+      "vi": "Tối thiểu 6 ký tự",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 112
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 158
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.status",
+      "vi": "Trạng thái",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 122
+        }
+      ]
+    },
+    {
+      "key": "admin.users.f.username",
+      "vi": "Tên đăng nhập",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 102
+        }
+      ]
+    },
+    {
+      "key": "admin.users.pick",
+      "vi": "Chọn một người dùng, hoặc bấm Thêm người dùng.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "key": "admin.users.roles.hint",
+      "vi": "Vai trò quyết định quyền chức năng và phạm vi công ty kế thừa (cấu hình ở màn Phân quyền).",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 198
+        }
+      ]
+    },
+    {
+      "key": "admin.users.search",
+      "vi": "Tìm mã, tên đăng nhập…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 22
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.companies",
+      "vi": "Công ty được truy cập (gán riêng)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 218
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.departments",
+      "vi": "Phòng ban được truy cập (gán riêng)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 266
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.identity",
+      "vi": "Định danh",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 95
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.password",
+      "vi": "Đặt lại mật khẩu",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 153
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.roles",
+      "vi": "Vai trò của người dùng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 197
+        }
+      ]
+    },
+    {
+      "key": "admin.users.section.state",
+      "vi": "Trạng thái & bảo mật",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 119
+        }
+      ]
+    },
+    {
+      "key": "admin.users.tab.companies",
+      "vi": "Công ty truy cập",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "key": "admin.users.tab.departments",
+      "vi": "Phòng ban truy cập",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "key": "admin.users.tab.info",
+      "vi": "Thông tin",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 74
+        }
+      ]
+    },
+    {
+      "key": "admin.users.tab.roles",
+      "vi": "Vai trò",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 76
+        }
+      ]
+    },
+    {
+      "key": "admin.users.title",
+      "vi": "Người dùng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 18
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 21
         }
       ]
     },
@@ -1276,7 +2080,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 223
+          "line": 271
         }
       ]
     },
@@ -1287,7 +2091,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 232
+          "line": 280
         }
       ]
     },
@@ -1298,7 +2102,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 225
+          "line": 273
         }
       ]
     },
@@ -1309,7 +2113,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 229
+          "line": 277
         }
       ]
     },
@@ -1320,7 +2124,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 227
+          "line": 275
         }
       ]
     },
@@ -1331,7 +2135,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Services/ViewApiService.cs",
-          "line": 221
+          "line": 269
         }
       ]
     },
@@ -1900,7 +2704,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 129
+          "line": 130
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
@@ -1908,7 +2712,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 109
+          "line": 119
         }
       ]
     },
@@ -1924,6 +2728,10 @@
         {
           "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor",
           "line": 28
+        },
+        {
+          "file": "src/frontend/ICare247.UI.Shared/Components/Pickers/IcSelectBox.razor",
+          "line": 29
         }
       ]
     },
@@ -1934,11 +2742,15 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/DraggableModal.razor",
-          "line": 15
+          "line": 18
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Components/ToastHost.razor",
+          "line": 16
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 36
+          "line": 37
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/ImportWizard.razor",
@@ -1966,37 +2778,6 @@
       ]
     },
     {
-      "key": "common.action.create",
-      "vi": "Thêm mới",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 27
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 42
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 114
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
-          "line": 11
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 53
-        },
-        {
-          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 173
-        }
-      ]
-    },
-    {
       "key": "common.action.delete",
       "vi": "Xóa",
       "source": "ICare247_UI",
@@ -2007,11 +2788,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 95
+          "line": 101
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 175
+          "line": 183
         }
       ]
     },
@@ -2026,11 +2807,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 90
+          "line": 96
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 170
+          "line": 178
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataTabPage.razor",
@@ -2101,7 +2882,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 131
+          "line": 133
         }
       ]
     },
@@ -2112,7 +2893,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 131
+          "line": 133
         }
       ]
     },
@@ -2145,15 +2926,15 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 27
+          "line": 28
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 114
+          "line": 120
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 173
+          "line": 189
         }
       ]
     },
@@ -2178,12 +2959,40 @@
           "line": 20
         },
         {
+          "file": "src/frontend/ICare247.UI.Shared/Components/Pickers/IcSelectBox.razor",
+          "line": 41
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 49
+        },
+        {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
           "line": 31
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 38
+          "line": 52
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 71
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
+          "line": 88
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 34
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 222
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 270
         }
       ]
     },
@@ -2225,6 +3034,10 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
           "line": 374
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 178
         }
       ]
     },
@@ -2255,6 +3068,10 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
           "line": 339
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 184
         }
       ]
     },
@@ -2270,6 +3087,17 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
           "line": 120
+        }
+      ]
+    },
+    {
+      "key": "common.btn.loading",
+      "vi": "Đang tải…",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/ErrorLogPage.razor",
+          "line": 40
         }
       ]
     },
@@ -2295,7 +3123,23 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 32
+          "line": 44
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 190
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 211
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 259
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 297
         }
       ]
     },
@@ -2314,7 +3158,23 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor",
-          "line": 32
+          "line": 44
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 190
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 211
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 259
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 297
         }
       ]
     },
@@ -2329,11 +3189,11 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 83
+          "line": 89
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 164
+          "line": 172
         }
       ]
     },
@@ -2344,33 +3204,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 60
+          "line": 66
         },
         {
           "file": "src/frontend/ICare247_UI/Components/View/DataView.razor",
-          "line": 132
-        }
-      ]
-    },
-    {
-      "key": "common.company.all",
-      "vi": "Tất cả công ty",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Layout/CompanySwitcher.razor",
-          "line": 18
-        }
-      ]
-    },
-    {
-      "key": "common.company.choose",
-      "vi": "Chọn công ty",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Layout/CompanySwitcher.razor",
-          "line": 17
+          "line": 140
         }
       ]
     },
@@ -2451,15 +3289,15 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 20
+          "line": 21
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 23
+          "line": 24
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 25
+          "line": 26
         }
       ]
     },
@@ -2470,7 +3308,37 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 297
+          "line": 425
+        }
+      ]
+    },
+    {
+      "key": "common.msg.saved",
+      "vi": "Đã lưu.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 231
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 369
+        }
+      ]
+    },
+    {
+      "key": "common.msg.savedButReloadFailed",
+      "vi": "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 235
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 373
         }
       ]
     },
@@ -2481,7 +3349,15 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 48
+          "line": 49
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 39
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 40
         }
       ]
     },
@@ -2493,6 +3369,39 @@
         {
           "file": "src/frontend/ICare247_UI/Pages/Home.razor",
           "line": 48
+        }
+      ]
+    },
+    {
+      "key": "common.status.active",
+      "vi": "Hoạt động",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 340
+        }
+      ]
+    },
+    {
+      "key": "common.status.inactive",
+      "vi": "Ngừng hoạt động",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 342
+        }
+      ]
+    },
+    {
+      "key": "common.status.locked",
+      "vi": "Tạm khóa",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/Admin/UserManagementPage.razor",
+          "line": 341
         }
       ]
     },
@@ -2515,50 +3424,6 @@
         {
           "file": "src/frontend/ICare247_UI/Components/View/FilterPanel.razor",
           "line": 92
-        }
-      ]
-    },
-    {
-      "key": "dashboard.kpi.debt",
-      "vi": "Công nợ",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Pages/Dashboard.razor",
-          "line": 18
-        }
-      ]
-    },
-    {
-      "key": "dashboard.kpi.hr",
-      "vi": "Nhân sự",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Pages/Dashboard.razor",
-          "line": 16
-        }
-      ]
-    },
-    {
-      "key": "dashboard.kpi.revenue",
-      "vi": "Doanh thu tháng",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Pages/Dashboard.razor",
-          "line": 19
-        }
-      ]
-    },
-    {
-      "key": "dashboard.kpi.stock",
-      "vi": "Tồn kho",
-      "source": "ICare247_UI",
-      "occurrences": [
-        {
-          "file": "src/frontend/ICare247_UI/Pages/Dashboard.razor",
-          "line": 17
         }
       ]
     },
@@ -2657,11 +3522,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor",
-          "line": 49
+          "line": 50
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 112
+          "line": 123
         }
       ]
     },
@@ -2683,7 +3548,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor",
-          "line": 49
+          "line": 50
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor",
@@ -2691,7 +3556,7 @@
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 112
+          "line": 123
         }
       ]
     },
@@ -3075,6 +3940,66 @@
       ]
     },
     {
+      "key": "form.discard.cancel",
+      "vi": "Tiếp tục sửa",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 211
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 349
+        }
+      ]
+    },
+    {
+      "key": "form.discard.confirm",
+      "vi": "Bỏ & đóng",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 210
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 348
+        }
+      ]
+    },
+    {
+      "key": "form.discard.msg",
+      "vi": "Bạn có thay đổi chưa lưu. Đóng form sẽ mất các thay đổi này.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 209
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 347
+        }
+      ]
+    },
+    {
+      "key": "form.discard.title",
+      "vi": "Bỏ thay đổi?",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
+          "line": 208
+        },
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 346
+        }
+      ]
+    },
+    {
       "key": "formrunner.backToList",
       "vi": "Danh sách",
       "source": "ICare247_UI",
@@ -3114,7 +4039,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/FormRunner.razor",
-          "line": 396
+          "line": 399
         }
       ]
     },
@@ -3290,11 +4215,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 51
+          "line": 58
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 122
+          "line": 133
         }
       ]
     },
@@ -3305,7 +4230,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 50
+          "line": 57
         }
       ]
     },
@@ -3573,7 +4498,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 37
+          "line": 38
         }
       ]
     },
@@ -3584,7 +4509,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 36
+          "line": 37
         }
       ]
     },
@@ -3595,7 +4520,18 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 296
+          "line": 424
+        }
+      ]
+    },
+    {
+      "key": "masterdata.form.haserrorsShort",
+      "vi": "Có {0} lỗi cần sửa.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
+          "line": 466
         }
       ]
     },
@@ -3606,7 +4542,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 16
+          "line": 17
         }
       ]
     },
@@ -3617,7 +4553,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 182
+          "line": 212
         }
       ]
     },
@@ -3628,7 +4564,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
-          "line": 98
+          "line": 99
         }
       ]
     },
@@ -3639,7 +4575,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 52
+          "line": 53
         }
       ]
     },
@@ -3650,7 +4586,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 19
+          "line": 20
         }
       ]
     },
@@ -3661,7 +4597,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 29
+          "line": 30
         }
       ]
     },
@@ -3672,7 +4608,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 134
+          "line": 140
         }
       ]
     },
@@ -3683,7 +4619,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 14
+          "line": 15
         }
       ]
     },
@@ -3694,7 +4630,29 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 30
+          "line": 31
+        }
+      ]
+    },
+    {
+      "key": "masterdata.ma.auto",
+      "vi": "(mã dự kiến — cấp khi lưu)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
+          "line": 359
+        }
+      ]
+    },
+    {
+      "key": "masterdata.ma.autoOptional",
+      "vi": "(để trống = tự sinh)",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Components/MasterData/MasterDataForm.razor",
+          "line": 358
         }
       ]
     },
@@ -3823,7 +4781,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 391
+          "line": 462
         }
       ]
     },
@@ -3834,7 +4792,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 373
+          "line": 444
         }
       ]
     },
@@ -3845,7 +4803,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 388
+          "line": 459
         }
       ]
     },
@@ -3856,7 +4814,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 385
+          "line": 456
         }
       ]
     },
@@ -3867,7 +4825,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 374
+          "line": 445
         }
       ]
     },
@@ -3878,7 +4836,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 44
+          "line": 51
         }
       ]
     },
@@ -3889,7 +4847,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 106
+          "line": 116
         }
       ]
     },
@@ -3900,7 +4858,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 365
+          "line": 436
         }
       ]
     },
@@ -3911,7 +4869,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 103
+          "line": 113
         }
       ]
     },
@@ -3922,7 +4880,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 38
+          "line": 46
         }
       ]
     },
@@ -3933,7 +4891,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 213
+          "line": 231
         }
       ]
     },
@@ -3944,7 +4902,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 37
+          "line": 45
         }
       ]
     },
@@ -3955,7 +4913,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 212
+          "line": 230
         }
       ]
     },
@@ -3966,11 +4924,11 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor",
-          "line": 65
+          "line": 66
         },
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 76
+          "line": 83
         }
       ]
     },
@@ -3981,7 +4939,7 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 21
+          "line": 22
         }
       ]
     },
@@ -3992,7 +4950,18 @@
       "occurrences": [
         {
           "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
-          "line": 184
+          "line": 200
+        }
+      ]
+    },
+    {
+      "key": "view.reorder.failed",
+      "vi": "Không thể sắp xếp lại — thao tác bị chặn.",
+      "source": "ICare247_UI",
+      "occurrences": [
+        {
+          "file": "src/frontend/ICare247_UI/Pages/View/ViewPage.razor",
+          "line": 397
         }
       ]
     }

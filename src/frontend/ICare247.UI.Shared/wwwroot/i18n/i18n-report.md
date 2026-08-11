@@ -1,8 +1,8 @@
 # Báo cáo i18n — chuỗi cần xử lý
 
-_Sinh tự động: 2026-07-09 18:00_
+_Sinh tự động: 2026-08-11 00:56_
 
-## 1. Chuỗi tiếng Việt hardcode (35) — cần bọc L()
+## 1. Chuỗi tiếng Việt hardcode (38) — cần bọc L()
 
 - `src/frontend/ICare247_UI/Components/MasterData/ConfirmDeleteDialog.razor:41` — "vĩnh viễn"
 - `src/frontend/ICare247_UI/Components/TreeSelectBox.razor:66` — "— Chọn —"
@@ -15,9 +15,11 @@ _Sinh tự động: 2026-07-09 18:00_
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:173` — "Tổng quan"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:190` — "Công cụ (Dev)"
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:191` — "Tra cứu i18n"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:115` — "Thêm"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:116` — "Sửa"
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:117` — "Xóa"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:178` — "Thêm"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:179` — "Sửa"
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:180` — "Xóa"
+- `src/frontend/ICare247_UI/Pages/MasterData/MasterDataListPage.razor:236` — "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})"
+- `src/frontend/ICare247_UI/Pages/View/ViewPage.razor:374` — "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})"
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:62` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/CacheAdminApiService.cs:79` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/DocTemplateApiService.cs:54` — "Xuất tài liệu thất bại (HTTP {(int)resp.StatusCode})."
@@ -29,18 +31,19 @@ _Sinh tự động: 2026-07-09 18:00_
 - `src/frontend/ICare247_UI/Services/MenuAdminApiService.cs:98` — "Lỗi máy chủ ({(int)resp.StatusCode})."
 - `src/frontend/ICare247_UI/Services/MenuAdminApiService.cs:133` — "Nhóm"
 - `src/frontend/ICare247_UI/Services/RuntimeApiService.cs:148` — "HTTP {(int)response.StatusCode} — body rỗng"
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:74` — "Lỗi tải JSON: {ex.Message}"
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:222` — "Phiên đăng nhập đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng đăng nhập lại."
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:224` — "Bạn không có quyền xem màn hình{0}. Vui lòng liên hệ quản trị viên để được cấ..."
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:226` — "Không tìm thấy màn hình{0} hoặc màn đã bị ẩn."
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:228` — "Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối rồi thử lại."
-- `src/frontend/ICare247_UI/Services/ViewApiService.cs:230` — "Máy chủ đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:77` — "Lỗi tải JSON: {ex.Message}"
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:181` — "View không tồn tại."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:270` — "Phiên đăng nhập đã hết hạn hoặc bạn chưa đăng nhập. Vui lòng đăng nhập lại."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:272` — "Bạn không có quyền xem màn hình{0}. Vui lòng liên hệ quản trị viên để được cấ..."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:274` — "Không tìm thấy màn hình{0} hoặc màn đã bị ẩn."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:276` — "Máy chủ phản hồi quá lâu. Vui lòng kiểm tra kết nối rồi thử lại."
+- `src/frontend/ICare247_UI/Services/ViewApiService.cs:278` — "Máy chủ đang gặp sự cố. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
 - `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorHelper.cs:73` — "{message} (Mã lỗi: {code})"
 - `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorLocalizer.cs:31` — "Bảng dữ liệu của danh mục này chưa có khóa chính (PRIMARY KEY) nên không thể ..."
 - `src/frontend/ICare247.UI.Shared/Services/Http/ApiErrorLocalizer.cs:32` — "hay lưu. Vui lòng liên hệ quản trị để bổ sung khóa chính cho bảng."
 - `src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs:67` — "Tiếng Việt"
 
-## 2. L() key dựng động (18) — chỉ runtime (phương án A) lấy được
+## 2. L() key dựng động (19) — chỉ runtime (phương án A) lấy được
 
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:12`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:39`
@@ -54,8 +57,9 @@ _Sinh tự động: 2026-07-09 18:00_
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:243`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:256`
 - `src/frontend/ICare247_UI/Layout/NavMenu.razor:259`
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:80`
-- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:111`
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:130`
+- `src/frontend/ICare247_UI/Pages/Admin/PermissionMatrixPage.razor:174`
+- `src/frontend/ICare247_UI/Pages/Dashboard.razor:21`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:5`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:23`
 - `src/frontend/ICare247_UI/Pages/ScreenView.razor:37`
