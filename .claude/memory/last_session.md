@@ -1,5 +1,28 @@
 # Last Session Summary
 
+## Session (2026-08-11) — Fix FK auto-save + GỠ tab Permissions (ConfigStudio), build OK
+
+**Bối cảnh:** auto-save FormEditor (WPF) báo "Lỗi lưu — thử lại". Lý do lỗi bị **nuốt** (chỉ lưu
+`AutoSaveError`, không log, không hiện UI). Đã (1) thêm hạ tầng chẩn: `FlushStructureSaveAsync` wrap
+try/catch → `_logger.Capture("FormEditor.FlushStructureSave")` + re-throw; UI lộ `AutoSaveError`
+(cờ `HasAutoSaveError`) cạnh dải trạng thái. Nhờ đó lộ nguyên nhân thật:
+**`FK_Sys_Permission_Role`** — INSERT `Role_Id` không có trong `Sys_Role`.
+
+**Root cause:** `Sys_Role` (Config DB) RỖNG → `LoadPermissionsAsync` rơi vào **fallback mock RoleId
+1-6** → auto-save INSERT các Id ma vào `Sys_Permission` → FK conflict (vi phạm luật không mock).
+
+**Quyết định (user chọn):** GỠ tab Permissions — phân quyền form thuộc `HT_VaiTro` Data DB runtime
+(ADR-023); `Sys_Role`/`Sys_Permission` Config DB là legacy. Đã: xóa TabItem Permissions
+(FormEditorView.xaml), bỏ block save `SaveFormPermissionsAsync` trong flush, dọn code chết
+(`Permissions`/`LoadPermissionsAsync`/`DirtyCommand`/mock 1-6). Phòng thủ: `SaveFormPermissionsAsync`
+guard `IF EXISTS(Sys_Role)`. Memory [[project-configstudio-permissions-tab-removed]].
+
+**Build:** `dotnet build ConfigStudio.WPF.UI.slnx` = **0 error/0 warning**. ✅
+**Chip spawn (làm sau):** xóa API chết `GetRolesAsync`/`GetFormPermissionsAsync`/`SaveFormPermissionsAsync`
++ record liên quan (không còn caller).
+**Phụ:** user báo lưới web "rất khó nhìn" (dòng chọn xanh đặc) = **build web CŨ**; fix soft-blue (D)
+đã commit từ session trước, chỉ cần rebuild `ICare247_UI.slnx` + hard-reload. Không cần sửa code.
+
 ## Session (2026-08-11) — Web UX audit + fix (G/E/D/B) + guard toàn vẹn cây, CHƯA build
 
 **Bối cảnh:** user nhờ audit UX/UI web + **kiểm chứng trực quan** (Claude-in-Chrome trên `localhost:7027` đã

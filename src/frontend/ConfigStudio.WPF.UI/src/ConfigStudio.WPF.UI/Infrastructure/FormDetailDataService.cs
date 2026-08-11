@@ -476,15 +476,20 @@ public sealed class FormDetailDataService : IFormDetailDataService
     {
         if (!_config.IsConfigured || formId <= 0 || permissions.Count == 0) return;
 
+        // Defense-in-depth: chỉ upsert khi Role_Id thật sự tồn tại trong Sys_Role.
+        // Chặn FK_Sys_Permission_Role conflict nếu có Role_Id lạ (mock/role đã xóa) lọt vào payload.
         const string upsertSql = """
-            IF EXISTS (SELECT 1 FROM dbo.Sys_Permission
-                       WHERE Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId)
-                UPDATE dbo.Sys_Permission
-                SET    Can_Read = @CanRead, Can_Write = @CanWrite, Can_Submit = @CanSubmit
-                WHERE  Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId
-            ELSE
-                INSERT INTO dbo.Sys_Permission (Role_Id, Object_Type, Object_Id, Can_Read, Can_Write, Can_Submit)
-                VALUES (@RoleId, 'Form', @FormId, @CanRead, @CanWrite, @CanSubmit)
+            IF EXISTS (SELECT 1 FROM dbo.Sys_Role WHERE Role_Id = @RoleId)
+            BEGIN
+                IF EXISTS (SELECT 1 FROM dbo.Sys_Permission
+                           WHERE Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId)
+                    UPDATE dbo.Sys_Permission
+                    SET    Can_Read = @CanRead, Can_Write = @CanWrite, Can_Submit = @CanSubmit
+                    WHERE  Role_Id = @RoleId AND Object_Type = 'Form' AND Object_Id = @FormId
+                ELSE
+                    INSERT INTO dbo.Sys_Permission (Role_Id, Object_Type, Object_Id, Can_Read, Can_Write, Can_Submit)
+                    VALUES (@RoleId, 'Form', @FormId, @CanRead, @CanWrite, @CanSubmit)
+            END
             """;
 
         await using var conn = new SqlConnection(_config.ConnectionString);

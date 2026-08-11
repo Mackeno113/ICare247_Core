@@ -3,6 +3,21 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Fix FK auto-save + GỠ tab Permissions ConfigStudio (2026-08-11, build OK)
+
+Auto-save FormEditor (WPF) báo "Lỗi lưu — thử lại" nhưng lý do bị nuốt. Chi tiết →
+`.claude/memory/last_session.md` + memory `project-configstudio-permissions-tab-removed`.
+
+- [x] **Hạ tầng chẩn lỗi** — `FlushStructureSaveAsync` wrap try/catch → `_logger.Capture("FormEditor.FlushStructureSave")` + re-throw; UI lộ `AutoSaveError` (cờ `HasAutoSaveError`) cạnh dải trạng thái. Trước đây lý do lỗi bị nuốt hoàn toàn.
+- [x] **Root cause** — `Sys_Role` (Config DB) rỗng → `LoadPermissionsAsync` fallback **mock RoleId 1-6** → auto-save INSERT Id ma vào `Sys_Permission` → `FK_Sys_Permission_Role` conflict.
+- [x] **GỠ tab Permissions** (user chọn) — xóa TabItem + block save + code chết (`Permissions`/`LoadPermissionsAsync`/`DirtyCommand`/mock). Phân quyền form thuộc `HT_VaiTro` Data DB runtime (ADR-023); Sys_Role/Sys_Permission Config DB = legacy.
+- [x] **Phòng thủ** — `SaveFormPermissionsAsync` guard `IF EXISTS(Sys_Role)`.
+- [x] **Build** `ConfigStudio.WPF.UI.slnx` = 0 error/0 warning.
+
+**Task mở (spawn chip):** xóa API chết `GetRolesAsync`/`GetFormPermissionsAsync`/`SaveFormPermissionsAsync` + record liên quan (không còn caller).
+
+**Decisions Log (2026-08-11):** ① GỠ (không seed) tab Permissions Config-DB — form permission thuộc HT_VaiTro runtime, không cấu hình ở ConfigStudio. Không phải ADR mới (áp dụng ADR-023 sẵn có). ② Không bịa role mock để lấp lưới — dữ liệu thật theo cấu hình.
+
 ## ✅ Đã xong — Web UX fix (G/E/D/B) + guard toàn vẹn cây (2026-08-11, CHƯA build/commit)
 
 Audit UX web + kiểm chứng trực quan (Claude-in-Chrome) → fix đợt thuần UI + guard cây. Chi tiết →

@@ -24,7 +24,6 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 /// - Metadata form (Tab Thông tin): FormCode, FormName, Platform, LayoutEngine, Description, IsActive...
 /// - Sections &amp; Fields (TreeView bên trái + Property Panel)
 /// - Events (Tab Events)
-/// - Permissions (Tab Permissions)
 /// Khi formId=0 → chế độ tạo form mới (IsNewForm=true).
 /// </summary>
 public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
@@ -78,7 +77,10 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         private set
         {
             if (SetProperty(ref _autoSaveStatus, value))
+            {
                 RaisePropertyChanged(nameof(SaveStatusText));
+                RaisePropertyChanged(nameof(HasAutoSaveError));
+            }
         }
     }
 
@@ -112,8 +114,19 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public string? AutoSaveError
     {
         get => _autoSaveError;
-        private set => SetProperty(ref _autoSaveError, value);
+        private set
+        {
+            if (SetProperty(ref _autoSaveError, value))
+                RaisePropertyChanged(nameof(HasAutoSaveError));
+        }
     }
+
+    /// <summary>
+    /// Có lỗi auto-save cần hiển thị: trạng thái Error + có message.
+    /// Dùng để bật dòng chi tiết lý do lỗi trên dải trạng thái (trước đây lý do bị ẩn hoàn toàn).
+    /// </summary>
+    public bool HasAutoSaveError =>
+        AutoSaveStatus == AutoSaveStatus.Error && !string.IsNullOrEmpty(AutoSaveError);
 
     // D1 — Quick Property Bar save status
     private AutoSaveStatus _fieldQuickSaveStatus = AutoSaveStatus.Idle;
@@ -786,8 +799,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         }
     }
 
-    // ── Permissions ───────────────────────────────────────────
-    public ObservableCollection<FormPermissionRow> Permissions { get; } = [];
 
     // ── New Form mode ─────────────────────────────────────────
     private bool _isNewForm;
@@ -827,7 +838,7 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
 
     // ── State ─────────────────────────────────────────────────
     private int _activeTabIndex = 1;
-    /// <summary>Index tab đang chọn trong right panel: 0=Thông tin Form, 1=Thuộc tính, 2=Events, 3=Permissions.</summary>
+    /// <summary>Index tab đang chọn trong right panel: 0=Thông tin Form, 1=Thuộc tính, 2=Events.</summary>
     public int ActiveTabIndex { get => _activeTabIndex; set => SetProperty(ref _activeTabIndex, value); }
 
     private bool _isDirty;
@@ -930,9 +941,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     public DelegateCommand UndoCommand { get; }
     public DelegateCommand RedoCommand { get; }
 
-    // Permissions — dùng để đánh dấu IsDirty khi checkbox thay đổi
-    public DelegateCommand DirtyCommand { get; }
-
     // Auto-generate fields
     public DelegateCommand AutoGenerateFieldsCommand { get; }
 
@@ -1030,9 +1038,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         RedoCommand = new DelegateCommand(ExecuteRedo, () => CanRedoAction)
             .ObservesProperty(() => CanRedoAction);
 
-        // Permissions
-        DirtyCommand = new DelegateCommand(() => IsDirty = true);
-
         // Auto-generate fields từ Target DB schema
         AutoGenerateFieldsCommand = new DelegateCommand(
             async () => await ExecuteAutoGenerateFieldsAsync(),
@@ -1118,7 +1123,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             Tabs.Clear();
             SelectedTab        = null;
             Events.Clear();
-            _ = LoadPermissionsAsync();
             ActiveTabIndex     = 0; // Mở tab "Thông tin Form"
             IsDirty            = false;
 
@@ -1344,9 +1348,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
                 });
             }
 
-            // ── 5. Permissions: load từ Sys_Role (WPF-06) ────────
-            await LoadPermissionsAsync(ct);
-
             // D3 — Flatten field list cho Grid-edit tab
             RebuildAllFields();
 
@@ -1391,58 +1392,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
         await LoadTableLookupSafeAsync();
         SelectedTable = TableLookupItems.FirstOrDefault(t => t.TableId == tableId)
                         ?? TableLookupItems.FirstOrDefault();
-    }
-
-    /// <summary>
-    /// WPF-06: Load danh sách roles thực từ <c>Sys_Role</c> qua <see cref="IFormDataService.GetRolesAsync"/>.
-    /// Fallback sang hardcoded nếu chưa cấu hình DB hoặc bảng chưa có data.
-    /// </summary>
-    private async Task LoadPermissionsAsync(CancellationToken ct = default)
-    {
-        Permissions.Clear();
-
-        if (_formDataService is not null && _appConfig is { IsConfigured: true })
-        {
-            var roles = await _formDataService.GetRolesAsync(_appConfig.TenantId, ct);
-            if (roles.Count > 0)
-            {
-                foreach (var r in roles)
-                    Permissions.Add(new FormPermissionRow
-                    {
-                        RoleId          = r.RoleId,
-                        RoleName        = r.RoleName,
-                        RoleDescription = r.RoleCode,
-                        CanRead         = true,
-                        CanWrite        = false,
-                        CanSubmit       = false
-                    });
-
-                // Overlay quyền đã lưu từ Sys_Permission (nếu form đã tồn tại)
-                if (_detailService is not null && FormId > 0)
-                {
-                    var saved = await _detailService.GetFormPermissionsAsync(FormId, ct);
-                    foreach (var perm in saved)
-                    {
-                        var row = Permissions.FirstOrDefault(p => p.RoleId == perm.RoleId);
-                        if (row is not null)
-                        {
-                            row.CanRead   = perm.CanRead;
-                            row.CanWrite  = perm.CanWrite;
-                            row.CanSubmit = perm.CanSubmit;
-                        }
-                    }
-                }
-                return;
-            }
-        }
-
-        // Fallback hardcoded khi chưa cấu hình DB hoặc Sys_Role chưa có data
-        Permissions.Add(new FormPermissionRow { RoleId = 1, RoleName = "Admin",    RoleDescription = "Quản trị hệ thống",           CanRead = true,  CanWrite = true,  CanSubmit = true  });
-        Permissions.Add(new FormPermissionRow { RoleId = 2, RoleName = "Manager",  RoleDescription = "Quản lý nghiệp vụ",           CanRead = true,  CanWrite = true,  CanSubmit = true  });
-        Permissions.Add(new FormPermissionRow { RoleId = 3, RoleName = "Staff",    RoleDescription = "Nhân viên nhập liệu",         CanRead = true,  CanWrite = true,  CanSubmit = false });
-        Permissions.Add(new FormPermissionRow { RoleId = 4, RoleName = "Viewer",   RoleDescription = "Chỉ xem báo cáo",             CanRead = true,  CanWrite = false, CanSubmit = false });
-        Permissions.Add(new FormPermissionRow { RoleId = 5, RoleName = "Auditor",  RoleDescription = "Kiểm toán — readonly",        CanRead = true,  CanWrite = false, CanSubmit = false });
-        Permissions.Add(new FormPermissionRow { RoleId = 6, RoleName = "External", RoleDescription = "Đối tác / khách hàng ngoài",  CanRead = false, CanWrite = false, CanSubmit = false });
     }
 
     // ── Section inline editing ───────────────────────────────
@@ -2525,13 +2474,36 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
     /// <summary>
     /// Phase 2 — Flush structure-save DUY NHẤT (callback của _autoSave): metadata + permissions
     /// (khi form dirty) + mọi section/tab dirty. Tạo form mới = explicit nên bỏ qua.
-    /// Lỗi version-conflict / DB → throw để AutoSaveService chuyển trạng thái Error.
+    /// Lỗi version-conflict / DB → log rồi throw để AutoSaveService chuyển trạng thái Error.
+    /// Sự kiện theo sau: AutoSaveService bắt exception → Status = Error, hiển thị "Lỗi lưu — thử lại".
     /// </summary>
     private async Task FlushStructureSaveAsync(CancellationToken ct)
     {
+        try
+        {
+            await FlushStructureSaveCoreAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Debounce reset / navigate-away hủy → AutoSaveService tự xử lý, KHÔNG log (không phải lỗi).
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Trước đây lý do lỗi bị nuốt (chỉ lưu vào AutoSaveError, không log). Ghi log để chẩn đoán được.
+            _logger?.Capture(ex, "FormEditor.FlushStructureSave");
+            throw; // re-throw giữ nguyên hành vi: AutoSaveService set Status = Error.
+        }
+    }
+
+    /// <summary>Thân xử lý flush structure-save. Tách riêng để wrapper <see cref="FlushStructureSaveAsync"/> log lỗi.</summary>
+    private async Task FlushStructureSaveCoreAsync(CancellationToken ct)
+    {
         if (_appConfig is not { IsConfigured: true } || IsNewForm) return;
 
-        // ── 1. Metadata + permissions (chỉ khi form dirty) ──
+        // ── 1. Metadata (chỉ khi form dirty) ──
+        // Permissions (Sys_Permission) KHÔNG còn lưu ở đây: tab Permissions đã gỡ,
+        // phân quyền form thuộc HT_VaiTro ở Data DB theo runtime (ADR-023).
         if (IsDirty && _formDataService is not null)
         {
             var success = await _formDataService.UpdateFormMetadataAsync(
@@ -2557,14 +2529,6 @@ public sealed class FormEditorViewModel : ViewModelBase, INavigationAware
             Version++;
             IsDirty = false;
             _undoRedo.Clear();
-
-            if (_detailService is not null && FormId > 0)
-            {
-                var perms = Permissions
-                    .Select(p => new FormPermissionRecord(p.RoleId, p.CanRead, p.CanWrite, p.CanSubmit))
-                    .ToList();
-                await _detailService.SaveFormPermissionsAsync(FormId, perms, ct);
-            }
         }
 
         // ── 2. Section dirty ──

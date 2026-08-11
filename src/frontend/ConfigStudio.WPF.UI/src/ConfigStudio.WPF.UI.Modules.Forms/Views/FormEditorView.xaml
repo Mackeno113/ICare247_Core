@@ -271,6 +271,13 @@
                             <TextBlock Text="{Binding SaveStatusText}" Margin="6,0,0,0"
                                        VerticalAlignment="Center" FontSize="12"
                                        Foreground="{DynamicResource AppTextSecondaryBrush}" />
+                            <!-- Lý do lỗi thật (chỉ hiện khi Status = Error) — trước đây bị ẩn hoàn toàn. -->
+                            <TextBlock Text="{Binding AutoSaveError}" Margin="8,0,0,0"
+                                       VerticalAlignment="Center" FontSize="12"
+                                       MaxWidth="360" TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding AutoSaveError}"
+                                       Foreground="#D32F2F"
+                                       Visibility="{Binding HasAutoSaveError, Converter={StaticResource BoolToVis}}" />
                         </StackPanel>
                     </Border>
 
@@ -1220,99 +1227,9 @@
                         </Grid>
                     </TabItem>
 
-                    <!-- ══════════════════════════════════════════════
-                         TAB 4: Permissions
-                         ══════════════════════════════════════════════ -->
-                    <TabItem>
-                        <TabItem.Header>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Permissions" FontSize="13" FontWeight="Medium" />
-                                <Border Style="{StaticResource TabBadgeStyle}">
-                                    <TextBlock FontSize="11" FontWeight="Bold"
-                                               Foreground="{StaticResource AccentDarkBrush}"
-                                               Text="{Binding Permissions.Count}" />
-                                </Border>
-                            </StackPanel>
-                        </TabItem.Header>
-
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-
-                            <!-- Info bar -->
-                            <Border Grid.Row="0" Padding="12,8"
-                                    Background="{DynamicResource AppInfoSoftBrush}"
-                                    BorderBrush="{DynamicResource AppInfoBorderBrush}" BorderThickness="0,0,0,1">
-                                <DockPanel>
-                                    <TextBlock Text="💡" Margin="0,0,8,0" FontSize="13"
-                                               VerticalAlignment="Center" />
-                                    <TextBlock Text="Cấu hình quyền truy cập form theo từng role. Thay đổi được lưu khi nhấn Lưu."
-                                               FontSize="12"
-                                               Foreground="{StaticResource MutedBrush}"
-                                               VerticalAlignment="Center" />
-                                </DockPanel>
-                            </Border>
-
-                            <!-- Permissions DataGrid -->
-                            <dxg:GridControl Grid.Row="1"
-                                             ItemsSource="{Binding Permissions}"
-                                             AutoPopulateColumns="False">
-                                <dxg:GridControl.View>
-                                    <dxg:TableView ShowGroupPanel="False"
-                                                   AllowEditing="True"
-                                                   AllowPerPixelScrolling="True"
-                                                   NavigationStyle="Cell" />
-                                </dxg:GridControl.View>
-                                <dxg:GridControl.Columns>
-                                    <dxg:GridColumn Header="Role" FieldName="RoleName"
-                                                    Width="130" AllowEditing="False" />
-                                    <dxg:GridColumn Header="Mô tả" FieldName="RoleDescription"
-                                                    Width="*" AllowEditing="False">
-                                        <dxg:GridColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{Binding Row.RoleDescription}"
-                                                           VerticalAlignment="Center" Margin="4,0"
-                                                           FontSize="12"
-                                                           Foreground="{StaticResource MutedBrush}" />
-                                            </DataTemplate>
-                                        </dxg:GridColumn.CellTemplate>
-                                    </dxg:GridColumn>
-                                    <dxg:GridColumn Header="Xem" FieldName="CanRead"
-                                                    Width="65" AllowSorting="False">
-                                        <dxg:GridColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <dxe:CheckEdit IsChecked="{Binding Row.CanRead, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                               HorizontalAlignment="Center"
-                                                               Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
-                                            </DataTemplate>
-                                        </dxg:GridColumn.CellTemplate>
-                                    </dxg:GridColumn>
-                                    <dxg:GridColumn Header="Nhập" FieldName="CanWrite"
-                                                    Width="65" AllowSorting="False">
-                                        <dxg:GridColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <dxe:CheckEdit IsChecked="{Binding Row.CanWrite, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                               HorizontalAlignment="Center"
-                                                               Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
-                                            </DataTemplate>
-                                        </dxg:GridColumn.CellTemplate>
-                                    </dxg:GridColumn>
-                                    <dxg:GridColumn Header="Gửi" FieldName="CanSubmit"
-                                                    Width="65" AllowSorting="False">
-                                        <dxg:GridColumn.CellTemplate>
-                                            <DataTemplate>
-                                                <dxe:CheckEdit IsChecked="{Binding Row.CanSubmit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                               HorizontalAlignment="Center"
-                                                               Command="{Binding DataContext.DirtyCommand, RelativeSource={RelativeSource AncestorType=dxg:GridControl}}" />
-                                            </DataTemplate>
-                                        </dxg:GridColumn.CellTemplate>
-                                    </dxg:GridColumn>
-                                </dxg:GridControl.Columns>
-                            </dxg:GridControl>
-                        </Grid>
-                    </TabItem>
+                    <!-- Tab Permissions (Config-DB Sys_Role/Sys_Permission) ĐÃ GỠ:
+                         phân quyền form thuộc HT_VaiTro ở Data DB theo runtime (ADR-023),
+                         không cấu hình tại ConfigStudio. Gỡ để tránh ghi Sys_Permission gây FK conflict. -->
 
                     <!-- ── Tab D3: Grid-edit Mode (Excel-like) ──────── -->
                     <TabItem>
