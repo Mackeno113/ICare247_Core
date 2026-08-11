@@ -1,29 +1,78 @@
-﻿@* File    : MasterDataTabPage.razor
+@* File    : MasterDataTabPage.razor
    Purpose : Trang Thêm/Sửa danh mục dạng routed page (Display_Mode = Tab — tab nội bộ SPA).
-             Điều hướng: List → Detail → Save/Cancel → Back List. *@
+             Chế độ SỬA + form khai Detail_Layout='Rail' (Ui_Form_Detail) → dựng RAIL WORKSPACE
+             (header dính + rail + pane); ngược lại → form phẳng như cũ. Điều hướng: List → Detail. *@
 
 @page "/master/{FormCode}/edit"
 @page "/master/{FormCode}/edit/{Id}"
 @using ICare247_UI.Components.MasterData
+@using ICare247_UI.Models
+@using ICare247_UI.Services
 @inject NavigationManager Nav
+@inject RuntimeApiService RuntimeApi
 @inherits LocalizedComponentBase
 
 <PageTitle>@FormCode — @(string.IsNullOrEmpty(Id) ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.edit", "Sửa"))</PageTitle>
 
-<div class="page-container page-narrow">
-    <button class="btn-back" @onclick="BackToList">← @Loc.L("masterdata.tab.backToList", "Danh sách")</button>
-    <MasterDataForm FormCode="@FormCode" Id="@IdValue"
-                    OnSaved="OnSaved" OnCancelled="BackToList" />
-</div>
+@if (_layout is not null && _layout.IsRail && IdValue is not null)
+{
+    @* Rail workspace — full width (không .page-narrow). Chỉ ở chế độ Sửa: cần master Id cho lưới con. *@
+    <div class="page-container">
+        <RailWorkspace FormCode="@FormCode" MasterId="@IdValue"
+                       Panes="_layout.Panes" OnBackToList="BackToList" />
+    </div>
+}
+else
+{
+    <div class="page-container page-narrow">
+        <button class="btn-back" @onclick="BackToList">← @Loc.L("masterdata.tab.backToList", "Danh sách")</button>
+        <MasterDataForm FormCode="@FormCode" Id="@IdValue"
+                        OnSaved="OnSaved" OnCancelled="BackToList" />
+    </div>
+}
 
 @code {
     [Parameter] public string FormCode { get; set; } = "";
     /// <summary>PK dạng string từ route; null/empty = Thêm mới.</summary>
     [Parameter] public string? Id { get; set; }
 
+    /// <summary>URL quay lại khi bấm "← Danh sách" (vd màn View gốc). Trống → về /master/{FormCode}.</summary>
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    [Parameter] public string? ReturnUrl { get; set; }
+
     private object? IdValue => string.IsNullOrEmpty(Id) ? null : Id;
 
-    private void BackToList() => Nav.NavigateTo($"/master/{Uri.EscapeDataString(FormCode)}");
+    /// <summary>Cấu hình master-detail của form (Inline/Rail + panes). Null = chưa nạp xong.</summary>
+    private FormDetailLayoutDto? _layout;
+    /// <summary>Chống nạp lại layout khi tham số khác (Id) đổi mà FormCode giữ nguyên.</summary>
+    private string? _loadedFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Chỉ chế độ Sửa mới cần rail (Thêm mới chưa có master Id → không load lưới con).
+        // Nạp layout 1 lần theo FormCode; lỗi/tenant chưa migrate → fallback Inline (form phẳng).
+        if (IdValue is not null && _loadedFor != FormCode)
+        {
+            _loadedFor = FormCode;
+            _layout = await RuntimeApi.GetDetailLayoutAsync(FormCode, Loc.CurrentLanguage);
+        }
+        else if (IdValue is null)
+        {
+            _layout = null;   // Thêm mới → luôn form phẳng
+        }
+    }
+
+    private void BackToList()
+        => Nav.NavigateTo(IsSafeReturnUrl(ReturnUrl)
+            ? ReturnUrl!
+            : $"/master/{Uri.EscapeDataString(FormCode)}");
+
+    /// <summary>
+    /// Chỉ chấp nhận returnUrl là đường dẫn NỘI BỘ (bắt đầu '/' nhưng không phải '//' protocol-relative)
+    /// → chống open-redirect ra ngoài miền.
+    /// </summary>
+    private static bool IsSafeReturnUrl(string? url)
+        => !string.IsNullOrWhiteSpace(url) && url.StartsWith('/') && !url.StartsWith("//");
 
     private void OnSaved(object? _) => BackToList();
 }

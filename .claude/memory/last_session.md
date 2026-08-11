@@ -1,5 +1,59 @@
 # Last Session Summary
 
+## Session (2026-08-11) — NS-MASTERDETAIL Pha 2: Blazor rail workspace runtime (CHƯA build)
+
+**Bối cảnh:** tiếp Pha 1+3 (commit d94e208 — bảng `Ui_Form_Detail` + endpoint `/forms/{code}/details` +
+màn WPF). User chốt qua AskUserQuestion (3 câu, đều Recommended): ① host = **nhánh trong trang Sửa hiện có**
+`MasterDataTabPage` (không tạo route mới) · ② scope = **Grid + scalar + rail + header** (hoãn Timeline/%/⌘K) ·
+③ BE = **thêm `parentKey/parentValue`** vào list query (không endpoint con riêng).
+
+**Đã làm (CHỈ edit code — user tự build):**
+- **BE lọc lưới con:** `GetMasterDataListQuery`(+ handler) + `IMasterDataRepository`/`MasterDataRepository.GetListAsync`
+  + `MasterDataController.GetList` thêm `parentKey/parentValue`. Whitelist parentKey theo `Sys_Column` của bảng
+  (`HasColumn` + `SqlIdentifier.IsSafe`); cột không tồn tại → `WHERE 1=0` (KHÔNG rò dòng cha khác). Controller
+  `CoerceParentValue` ép số nếu FK là int.
+- **FE runtime:** `Models/FormDetailLayoutDto.cs` (mirror domain) · `RuntimeApiService.GetDetailLayoutAsync`
+  (fallback Inline khi lỗi/chưa migrate) · `MasterDataApiService.GetListAsync` +parentKey/parentValue ·
+  `Components/MasterData/RailWorkspace.razor` (header dính + rail gom `Group_Key` + pane phải; "Thông tin chung"
+  = MasterDataForm edit-mode) · `Components/MasterData/DetailGridPane.razor` (= MasterDataListPage thu nhỏ khóa 1
+  cha; prefill+khóa cột FK; CRUD per-row Immediate) · nhánh `Pages/MasterData/MasterDataTabPage.razor`
+  (Detail_Layout='Rail' + Sửa → RailWorkspace full-width, ngược lại form phẳng) · CSS rail (`app.css`).
+- Pane **Timeline = placeholder** "phiên bản sau" (đúng phạm vi đã chốt). Icon config → `<Icon>` fallback chấm
+  tròn nếu tên lạ (an toàn).
+
+**⏳ User cần:** build BE + `ICare247_UI.slnx` + `ConfigStudio` + chạy `db/106`; cấu hình rail NS_ qua màn WPF
+Pha 3 (config qua WPF, không seed SQL). **Điều kiện rail chạy:** form master phải `Display_Mode='Tab'` (Popup
+không có rail).
+
+**Sửa i18n (user bắt 2 lỗi thiết kế, 2026-08-12):**
+- (1) Gỡ anti-pattern `Loc.L($"rail.group.{Group_Key}")` ở RailWorkspace (key i18n động sinh từ DỮ LIỆU config)
+  → nhãn nhóm hiển thị thô. Nhãn pane đã đúng (backend `GetDetailLayoutAsync` LEFT JOIN Sys_Resource on
+  Title_Key). Chuỗi chrome cố định (`rail.pane.*`) giữ Hệ 2 đúng.
+- (2) **Thiết kế NHẬP i18n phải như editor field** (user gửi ảnh dialog "Dịch đa ngôn ngữ"): key TỰ SINH theo
+  cấu trúc, gõ nhãn tiếng Việt THẲNG, nút 🌐 mở `I18nEditorDialog`, KHÔNG gõ Resource_Key tay. Đã sửa màn WPF
+  Master-Detail: `FormMasterDetailManagerViewModel` (+`II18nDataService`+`IDialogService`; `BuildDetailTitleKey`
+  = `{formcode}.detail.{detailcode}.title`; `EditTitleVi`+`TitleKeyPreview`+`OpenTitleI18n`; SaveAsync auto-set
+  Title_Key + upsert Sys_Resource) + View (ô "Tiêu đề pane (tiếng Việt)" + nút 🌐 + dòng key read-only). Mẫu
+  chuẩn `FieldI18nKeyService`/`FieldConfigViewModel`. Ghi memory [[project-frontend-i18n-shell]]. Docs
+  spec/33 + guide huong-dan-wpf cập nhật theo.
+
+- (3) **Áp khuôn 🌐 cho NHÃN NHÓM** (user chốt): BE re-add `FormDetailPane.GroupTitle` + SQL
+  `GetDetailLayoutAsync` LEFT JOIN Sys_Resource on key ghép `LOWER(Form_Code)+'.railgroup.'+LOWER(Group_Key)+'.title'`
+  → `COALESCE(rg.Resource_Value, Group_Key) AS GroupTitle`; FE DTO +GroupTitle, RailWorkspace cụm theo GroupKey
+  hiển thị GroupTitle; WPF thêm ô "Nhãn nhóm (tiếng Việt)" + 🌐 (`BuildGroupTitleKey`/`OpenGroupI18n`,
+  `EditGroupVi`/`GroupKeyPreview`), SaveAsync ghi Sys_Resource. Group_Key giờ = MÃ nhóm (code).
+
+- (4) **Nối reachability rail** (user báo "chưa có màn list nhân viên"): phát hiện màn list chuẩn = Ui_View
+  grid (`/view/{code}`) mở Sửa bằng POPUP → rail (chỉ ở trang routed `/master/{code}/edit/{id}`) KHÔNG với
+  tới. User chốt Option A: `ViewPage.OpenEdit` đọc `GetDetailLayoutAsync(EditFormCode)` → `_editIsRail` →
+  Nav sang `/master/{code}/edit/{id}?returnUrl=/view/{code}` (form thường vẫn popup). `MasterDataTabPage`
+  nhận `returnUrl` (guard chống open-redirect: chỉ path nội bộ '/…' không '//'). Qua View grid,
+  `Display_Mode` form master KHÔNG cần Tab. **User vẫn phải TẠO màn list (Ui_View grid + menu) cho
+  NS_NhanVien, Edit_Form=NS_NhanVien** (config WPF, [cau-hinh-man-danh-muc.md]).
+
+Chưa verify E2E (chưa seed config + luật user-builds). **Gợi ý tiếp:** user tạo View grid+menu NS_NhanVien →
+nghiệm thu rail; Timeline pane (view biến động) + thanh % + ⌘K; back-from-rail giữ filter/search của View (hiện reload).
+
 ## Session (2026-08-11) — Khuôn form nhập liệu CHUNG phẳng (3a) + config màn Công ty (3b), build Web 0/0
 
 **Bối cảnh:** user chọn task 3 (design, 2 chip spawn từ phiên trước) → chốt **3a — khuôn form CHUNG** trước.

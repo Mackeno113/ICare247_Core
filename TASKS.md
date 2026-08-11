@@ -1243,9 +1243,23 @@ DI. i18n đầy đủ (`admin.cfgsync.*`). Build FE 0/0. ⏳ E2E cần backend +
         `FormDetailLayout`. `IFormRepository.GetDetailLayoutAsync` (đọc PHÒNG THỦ OBJECT_ID → None nếu tenant
         chưa migrate). Endpoint `GET /api/v1/forms/{code}/details`. ⏳ **User build BE + chạy `db/106`.**
         ⚠️ Chưa seed cấu hình NS_ (đúng luật config-qua-WPF) → E2E chờ Pha 3 (hoặc dev-seed tạm).
-  - [ ] **Pha 2 — Blazor runtime**: workspace header dính + rail (từ config) + pane phải. Pane Grid =
-        DetailGridRenderer (DxGrid ghim header) tái dùng MasterData CRUD lọc `NhanVien_Id`; pane Timeline
-        (tách phase sau — cần view biến động `vw_NhanVien_HienTai`/TVF). Field vô hướng dùng 10 renderer sẵn.
+  - [x] **Pha 2 — Blazor runtime** (2026-08-11, CHƯA build/chạy): `RailWorkspace.razor` (header định danh
+        dính + rail từ config gom theo `Group_Key` + pane phải) + `DetailGridPane.razor` (= MasterDataListPage
+        thu nhỏ, khóa 1 bản ghi cha: MasterDataGrid ghim header + CRUD per-row Immediate qua MasterDataForm,
+        prefill+khóa cột FK cha). Nhánh trong `MasterDataTabPage` (route Sửa `/master/{code}/edit/{id}`): form
+        khai `Detail_Layout='Rail'` → dựng workspace full-width; ngược lại giữ form phẳng. BE: thêm lọc
+        `parentKey/parentValue` (whitelist theo Sys_Column, cột không tồn tại → 1=0 không rò dòng cha khác) vào
+        `GetMasterDataListQuery`/repo/controller. FE: `RuntimeApiService.GetDetailLayoutAsync` + DTO
+        `FormDetailLayoutDto`. CSS rail workspace (app.css). Pane Timeline = placeholder "phiên bản sau".
+        **Bổ sung 2026-08-12 (build OK: Web 0/0, test 260/260, BE+ConfigStudio chỉ file-lock):**
+        (a) **i18n đúng thiết kế** — nhãn pane/nhóm KHÔNG hand-add JSON; gỡ anti-pattern `Loc.L($"rail.group.{key}")`;
+        màn WPF Master-Detail nhập nhãn như editor field: **gõ nhãn vi thẳng + key TỰ SINH**
+        (`{form}.detail.{code}.title`, `{form}.railgroup.{key}.title`) + nút 🌐 (`I18nEditorDialog`), lưu Sys_Resource;
+        BE `GetDetailLayoutAsync` resolve `Title`/`GroupTitle` từ Sys_Resource.
+        (b) **Reachability** — `ViewPage.OpenEdit`: Edit_Form là Rail → `Nav` sang trang rail (`?returnUrl` về View,
+        guard open-redirect) thay vì popup; qua View grid, `Display_Mode` form master KHÔNG cần Tab.
+        ⏳ **User: build BE+UI+ConfigStudio + db/106 + TẠO màn list (Ui_View grid+menu, Edit_Form=NS_NhanVien) +
+        cấu hình rail NS_ qua màn WPF.**
   - [x] **Pha 3 — ConfigStudio WPF** (2026-08-11, CHƯA build): màn quản lý riêng **"Master-Detail / Rail"**
         (`FormMasterDetailManagerView` + VM) — chọn form master → đặt `Detail_Layout` (Inline/Rail) + CRUD pane
         `Ui_Form_Detail` (Detail_Code, Pane_Type, Detail_Form, Parent_Key_Column, Save_Mode, Title_Key, Icon,

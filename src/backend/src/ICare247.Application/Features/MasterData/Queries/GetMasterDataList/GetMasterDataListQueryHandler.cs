@@ -17,5 +17,6 @@ public sealed class GetMasterDataListQueryHandler
 
     /// <summary>Lấy trang dữ liệu. Sự kiện theo sau: API trả lưới danh sách cho Blazor.</summary>
     public Task<MasterDataListResult> Handle(GetMasterDataListQuery r, CancellationToken ct) =>
-        _repo.GetListAsync(r.FormCode, r.TenantId, r.Search, r.ActiveOnly, r.Page, r.PageSize, ct);
+        _repo.GetListAsync(r.FormCode, r.TenantId, r.Search, r.ActiveOnly, r.Page, r.PageSize,
+            r.ParentKey, r.ParentValue, ct);
 }

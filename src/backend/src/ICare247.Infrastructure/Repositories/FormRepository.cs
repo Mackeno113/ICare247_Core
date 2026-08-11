@@ -424,6 +424,7 @@ public sealed class FormRepository : IFormRepository
                    COALESCE(r.Resource_Value, d.Detail_Code) AS Title,
                    d.Icon,
                    d.Group_Key                               AS GroupKey,
+                   COALESCE(rg.Resource_Value, d.Group_Key)  AS GroupTitle,
                    d.Edit_Mode                               AS EditMode,
                    d.Allow_Add                               AS AllowAdd,
                    d.Allow_Delete                            AS AllowDelete,
@@ -437,6 +438,11 @@ public sealed class FormRepository : IFormRepository
             LEFT JOIN dbo.Ui_Form cf ON cf.Form_Id = d.Detail_Form_Id
             LEFT JOIN dbo.Sys_Resource r ON r.Resource_Key = d.Title_Key
                                         AND r.Lang_Code     = @LangCode
+            -- Nhãn nhóm: key TỰ SINH {form_code}.railgroup.{group_key}.title (thường) — khớp WPF ghi.
+            -- Group_Key NULL → chuỗi ghép NULL → không khớp → GroupTitle = COALESCE(NULL, NULL) = NULL.
+            LEFT JOIN dbo.Sys_Resource rg ON rg.Resource_Key =
+                          LOWER(mf.Form_Code) + N'.railgroup.' + LOWER(d.Group_Key) + N'.title'
+                                        AND rg.Lang_Code     = @LangCode
             WHERE  mf.Form_Code = @FormCode
               AND  d.Is_Active = 1
             ORDER BY d.Order_No

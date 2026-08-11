@@ -235,9 +235,23 @@
                                 </Grid>
                             </StackPanel>
 
-                            <TextBlock Text="Title_Key (i18n nhãn pane)" Style="{StaticResource EditorLabel}" />
-                            <dxe:TextEdit EditValue="{Binding EditTitleKey, UpdateSourceTrigger=PropertyChanged}"
-                                          NullText="VD: ns_nhanvien.detail.hocvan" Margin="0,0,0,10" />
+                            <TextBlock Text="Tiêu đề pane (tiếng Việt)" Style="{StaticResource EditorLabel}" />
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <dxe:TextEdit Grid.Column="0"
+                                              EditValue="{Binding EditTitleVi, UpdateSourceTrigger=PropertyChanged}"
+                                              NullText="Gõ thẳng nhãn tiếng Việt (VD: Học vấn)" />
+                                <dx:SimpleButton Grid.Column="2" Content="🌐 Dịch"
+                                                 Command="{Binding OpenTitleI18nCommand}"
+                                                 ToolTip="Nhập bản dịch ngôn ngữ khác — key i18n tự sinh theo cấu trúc, không nhập tay" />
+                            </Grid>
+                            <TextBlock Text="{Binding TitleKeyPreview}" FontSize="11" Opacity="0.6"
+                                       Margin="0,0,0,10" TextTrimming="CharacterEllipsis"
+                                       ToolTip="Key i18n tự sinh theo cột — bản dịch lưu khi Lưu pane" />
 
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
@@ -248,14 +262,34 @@
                                 <StackPanel Grid.Column="0">
                                     <TextBlock Text="Icon (mục rail)" Style="{StaticResource EditorLabel}" />
                                     <dxe:TextEdit EditValue="{Binding EditIcon, UpdateSourceTrigger=PropertyChanged}"
-                                                  NullText="VD: 🎓" />
+                                                  NullText="Tên Feather: users / building / list" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Group_Key (nhóm rail)" Style="{StaticResource EditorLabel}" />
+                                    <TextBlock Text="Group_Key (mã nhóm rail)" Style="{StaticResource EditorLabel}" />
                                     <dxe:TextEdit EditValue="{Binding EditGroupKey, UpdateSourceTrigger=PropertyChanged}"
                                                   NullText="VD: RELATED / HISTORY" />
                                 </StackPanel>
                             </Grid>
+
+                            <!-- Nhãn nhóm: gõ thẳng tiếng Việt + 🌐 (key tự sinh) — như nhãn pane.
+                                 Mọi pane cùng Group_Key chia sẻ 1 nhãn. -->
+                            <TextBlock Text="Nhãn nhóm (tiếng Việt)" Style="{StaticResource EditorLabel}" />
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <dxe:TextEdit Grid.Column="0"
+                                              EditValue="{Binding EditGroupVi, UpdateSourceTrigger=PropertyChanged}"
+                                              NullText="Nhãn nhóm hiển thị (VD: Liên quan)" />
+                                <dx:SimpleButton Grid.Column="2" Content="🌐 Dịch"
+                                                 Command="{Binding OpenGroupI18nCommand}"
+                                                 ToolTip="Nhập bản dịch nhãn nhóm — key i18n tự sinh theo Group_Key, không nhập tay" />
+                            </Grid>
+                            <TextBlock Text="{Binding GroupKeyPreview}" FontSize="11" Opacity="0.6"
+                                       Margin="0,0,0,10" TextTrimming="CharacterEllipsis"
+                                       ToolTip="Key i18n nhãn nhóm tự sinh — bản dịch lưu khi Lưu pane" />
 
                             <dxe:CheckEdit Content="Is_Active (pane đang dùng)" IsChecked="{Binding EditIsActive}"
                                            Margin="0,0,0,10" />

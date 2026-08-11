@@ -6,9 +6,11 @@
 
 using System.Collections.ObjectModel;
 using System.Windows;
+using ConfigStudio.WPF.UI.Core.Constants;
 using ConfigStudio.WPF.UI.Core.Data;
 using ConfigStudio.WPF.UI.Core.Interfaces;
 using Prism.Commands;
+using Prism.Dialogs;
 using Prism.Mvvm;
 using Prism.Navigation.Regions;
 
@@ -21,12 +23,23 @@ namespace ConfigStudio.WPF.UI.Modules.Forms.ViewModels;
 public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigationAware
 {
     private readonly IFormMasterDetailDataService _service;
+    private readonly II18nDataService? _i18n;
+    private readonly IDialogService? _dialogService;
     private bool _loaded;
 
-    /// <summary>Khởi tạo VM với service master-detail (Config DB).</summary>
-    public FormMasterDetailManagerViewModel(IFormMasterDetailDataService service)
+    /// <summary>
+    /// Khởi tạo VM với service master-detail (Config DB) + i18n (Sys_Resource) + dialog service.
+    /// i18n/dialog tùy chọn (null trong test) — nhãn pane nhập THẲNG như editor field: key i18n TỰ SINH
+    /// theo cấu trúc, người dùng gõ nhãn tiếng Việt, nút 🌐 mở dialog dịch (KHÔNG gõ key tay).
+    /// </summary>
+    public FormMasterDetailManagerViewModel(
+        IFormMasterDetailDataService service,
+        II18nDataService? i18n = null,
+        IDialogService? dialogService = null)
     {
         _service = service;
+        _i18n = i18n;
+        _dialogService = dialogService;
 
         Forms = [];
         DetailForms = [];
@@ -37,6 +50,8 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
         DeleteCommand = new DelegateCommand(() => _ = DeleteAsync());
         RefreshCommand = new DelegateCommand(() => _ = LoadFormsAsync());
         SaveLayoutCommand = new DelegateCommand(() => _ = SaveLayoutAsync());
+        OpenTitleI18nCommand = new DelegateCommand(OpenTitleI18n);
+        OpenGroupI18nCommand = new DelegateCommand(OpenGroupI18n);
     }
 
     // ── Nguồn dữ liệu ───────────────────────────────────────────
@@ -69,7 +84,12 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     public FormLookupItem? SelectedForm
     {
         get => _selectedForm;
-        set { if (SetProperty(ref _selectedForm, value)) _ = LoadFormContextAsync(); }
+        set
+        {
+            if (!SetProperty(ref _selectedForm, value)) return;
+            RaisePropertyChanged(nameof(TitleKeyPreview));
+            _ = LoadFormContextAsync();
+        }
     }
 
     private string _detailLayout = "Inline";
@@ -125,11 +145,11 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     private int _editDetailId;
 
     private string? _editDetailCode;
-    /// <summary>Mã pane (unique trong form).</summary>
+    /// <summary>Mã pane (unique trong form). Đổi → key i18n nhãn pane tự sinh lại (TitleKeyPreview).</summary>
     public string? EditDetailCode
     {
         get => _editDetailCode;
-        set => SetProperty(ref _editDetailCode, value);
+        set { if (SetProperty(ref _editDetailCode, value)) RaisePropertyChanged(nameof(TitleKeyPreview)); }
     }
 
     private string _editPaneType = "Grid";
@@ -168,12 +188,30 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     }
 
     private string? _editTitleKey;
-    /// <summary>Key i18n nhãn pane.</summary>
+    /// <summary>Key i18n nhãn pane — TỰ SINH theo cấu trúc (không nhập tay). Chỉ đọc/hiển thị.</summary>
     public string? EditTitleKey
     {
         get => _editTitleKey;
-        set => SetProperty(ref _editTitleKey, value);
+        private set => SetProperty(ref _editTitleKey, value);
     }
+
+    private string? _editTitleVi;
+    /// <summary>
+    /// Nhãn pane tiếng Việt — người dùng GÕ THẲNG (như editor field). Lưu vào Sys_Resource dưới
+    /// <see cref="TitleKeyPreview"/> khi Lưu pane; các ngôn ngữ khác nhập qua nút 🌐 (dialog dịch).
+    /// </summary>
+    public string? EditTitleVi
+    {
+        get => _editTitleVi;
+        set => SetProperty(ref _editTitleVi, value);
+    }
+
+    /// <summary>
+    /// Key i18n nhãn pane TỰ SINH theo cấu trúc: <c>{formcode}.detail.{detailcode}.title</c>
+    /// (khớp quy ước field <c>{table}.field.{code}.label</c>). Hiển thị read-only để người dùng biết
+    /// key, KHÔNG cho sửa. Rỗng khi chưa đủ form master / mã pane.
+    /// </summary>
+    public string TitleKeyPreview => BuildDetailTitleKey();
 
     private string? _editIcon;
     /// <summary>Icon mục rail.</summary>
@@ -184,12 +222,29 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     }
 
     private string? _editGroupKey;
-    /// <summary>Nhóm rail (vd RELATED / HISTORY).</summary>
+    /// <summary>Nhóm rail — KEY gom nhóm (vd RELATED). Đổi → key nhãn nhóm tự sinh lại (GroupKeyPreview).</summary>
     public string? EditGroupKey
     {
         get => _editGroupKey;
-        set => SetProperty(ref _editGroupKey, value);
+        set { if (SetProperty(ref _editGroupKey, value)) RaisePropertyChanged(nameof(GroupKeyPreview)); }
     }
+
+    private string? _editGroupVi;
+    /// <summary>
+    /// Nhãn nhóm tiếng Việt — GÕ THẲNG (như nhãn pane). Lưu vào Sys_Resource dưới <see cref="GroupKeyPreview"/>
+    /// khi Lưu pane; ngôn ngữ khác nhập qua nút 🌐. Mọi pane cùng Group_Key chia sẻ 1 nhãn.
+    /// </summary>
+    public string? EditGroupVi
+    {
+        get => _editGroupVi;
+        set => SetProperty(ref _editGroupVi, value);
+    }
+
+    /// <summary>
+    /// Key i18n nhãn nhóm TỰ SINH: <c>{formcode}.railgroup.{groupkey}.title</c> (thường). Read-only.
+    /// Rỗng khi chưa có form master hoặc Group_Key.
+    /// </summary>
+    public string GroupKeyPreview => BuildGroupTitleKey();
 
     private string _editEditMode = "EntryPanel";
     /// <summary>Chế độ nhập lưới.</summary>
@@ -267,6 +322,10 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     public DelegateCommand RefreshCommand { get; }
     /// <summary>Lưu bố cục Detail_Layout của form master.</summary>
     public DelegateCommand SaveLayoutCommand { get; }
+    /// <summary>Mở dialog "Dịch đa ngôn ngữ" cho nhãn pane (key tự sinh).</summary>
+    public DelegateCommand OpenTitleI18nCommand { get; }
+    /// <summary>Mở dialog "Dịch đa ngôn ngữ" cho nhãn NHÓM rail (key tự sinh).</summary>
+    public DelegateCommand OpenGroupI18nCommand { get; }
 
     // ── Logic ───────────────────────────────────────────────────
 
@@ -325,8 +384,13 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
         EditParentKeyColumn = r.ParentKeyColumn;
         EditSaveMode = r.SaveMode;
         EditTitleKey = r.TitleKey;
+        RaisePropertyChanged(nameof(TitleKeyPreview));
+        // Nạp nhãn tiếng Việt đang lưu ở Sys_Resource để hiện trong ô "Tiêu đề pane" (best-effort).
+        _ = LoadTitleViAsync(r.TitleKey);
         EditIcon = r.Icon;
         EditGroupKey = r.GroupKey;
+        RaisePropertyChanged(nameof(GroupKeyPreview));
+        _ = LoadGroupViAsync(r.GroupKey);
         EditEditMode = r.EditMode;
         EditAllowAdd = r.AllowAdd;
         EditAllowDelete = r.AllowDelete;
@@ -349,8 +413,12 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
         EditParentKeyColumn = null;
         EditSaveMode = "Immediate";
         EditTitleKey = null;
+        EditTitleVi = null;
+        RaisePropertyChanged(nameof(TitleKeyPreview));
         EditIcon = null;
         EditGroupKey = null;
+        EditGroupVi = null;
+        RaisePropertyChanged(nameof(GroupKeyPreview));
         EditEditMode = "EntryPanel";
         EditAllowAdd = true;
         EditAllowDelete = true;
@@ -365,9 +433,14 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
     private async Task SaveAsync()
     {
         if (SelectedForm is null) { ShowError("Chưa chọn form master."); return; }
+        if (string.IsNullOrWhiteSpace(EditDetailCode)) { ShowError("Chưa nhập Mã pane (Detail_Code)."); return; }
         try
         {
             HasLoadError = false;
+
+            // Key i18n nhãn pane TỰ SINH theo cấu trúc (không nhập tay) — gắn vào bản ghi khi lưu.
+            var titleKey = BuildDetailTitleKey();
+
             var record = new FormMasterDetailRecord
             {
                 DetailId = _editDetailId,
@@ -377,7 +450,7 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
                 DetailFormId = EditDetailForm?.FormId,
                 ParentKeyColumn = EditParentKeyColumn,
                 SaveMode = EditSaveMode,
-                TitleKey = EditTitleKey,
+                TitleKey = string.IsNullOrEmpty(titleKey) ? null : titleKey,
                 Icon = EditIcon,
                 GroupKey = EditGroupKey,
                 EditMode = EditEditMode,
@@ -391,6 +464,24 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
 
             var id = await _service.SavePaneAsync(record);
             _editDetailId = id;
+            EditTitleKey = record.TitleKey;
+
+            // Ghi nhãn tiếng Việt vào Sys_Resource dưới key tự sinh (Hệ 1 metadata-driven):
+            // có nhập → upsert (ghi đè); bỏ trống → init mặc định = Detail_Code nếu chưa có.
+            if (_i18n is not null && !string.IsNullOrEmpty(titleKey))
+            {
+                if (!string.IsNullOrWhiteSpace(EditTitleVi))
+                    await _i18n.SaveResourceAsync(titleKey, "vi", EditTitleVi.Trim());
+                else
+                    await _i18n.InitResourceIfMissingAsync(titleKey, "vi", EditDetailCode!.Trim());
+            }
+
+            // Nhãn NHÓM: chỉ ghi khi có Group_Key + người dùng có nhập nhãn (nhóm không bắt buộc).
+            // Cùng khuôn key tự sinh; mọi pane cùng Group_Key chia sẻ 1 resource.
+            var groupKey = BuildGroupTitleKey();
+            if (_i18n is not null && !string.IsNullOrEmpty(groupKey) && !string.IsNullOrWhiteSpace(EditGroupVi))
+                await _i18n.SaveResourceAsync(groupKey, "vi", EditGroupVi.Trim());
+
             EditorTitle = $"Sửa pane #{id}";
             await LoadPanesAsync();
         }
@@ -427,6 +518,107 @@ public sealed class FormMasterDetailManagerViewModel : BindableBase, INavigation
             await LoadPanesAsync();
         }
         catch (Exception ex) { ShowError(ex.Message); }
+    }
+
+    // ── i18n nhãn pane (key tự sinh + gõ nhãn thẳng + dialog dịch) ───────────────
+
+    /// <summary>
+    /// Key i18n nhãn pane theo cấu trúc: <c>{formcode}.detail.{detailcode}.title</c> (thường, không dấu) —
+    /// khớp quy ước field <c>{table}.field.{code}.label</c>. Rỗng khi thiếu form master hoặc mã pane.
+    /// </summary>
+    private string BuildDetailTitleKey()
+    {
+        var form = SelectedForm?.FormCode?.Trim().ToLowerInvariant() ?? "";
+        var code = EditDetailCode?.Trim().ToLowerInvariant() ?? "";
+        return string.IsNullOrEmpty(form) || string.IsNullOrEmpty(code)
+            ? ""
+            : $"{form}.detail.{code}.title";
+    }
+
+    /// <summary>Nạp nhãn vi đang lưu ở Sys_Resource vào ô "Tiêu đề pane" (best-effort, lỗi không chặn).</summary>
+    private async Task LoadTitleViAsync(string? titleKey)
+    {
+        if (_i18n is null || string.IsNullOrWhiteSpace(titleKey)) { EditTitleVi = null; return; }
+        try { EditTitleVi = await _i18n.ResolveKeyAsync(titleKey, "vi"); }
+        catch { /* ô nhãn chỉ trợ giúp — không chặn nạp pane */ }
+    }
+
+    /// <summary>
+    /// Mở dialog "Dịch đa ngôn ngữ" cho nhãn pane với key TỰ SINH. Popup tự ghi Sys_Resource mọi ngôn ngữ;
+    /// callback cập nhật ô "Tiêu đề pane" (vi) theo giá trị vừa nhập.
+    /// </summary>
+    private void OpenTitleI18n()
+    {
+        if (_dialogService is null) return;
+        var key = BuildDetailTitleKey();
+        if (string.IsNullOrEmpty(key))
+        {
+            ShowError("Cần chọn form master và nhập Mã pane trước khi dịch nhãn.");
+            return;
+        }
+
+        var p = new DialogParameters
+        {
+            { "key",          key },
+            { "contextLabel", "Nhãn pane" },
+            { "seedValue",    EditTitleVi ?? "" }
+        };
+
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            EditTitleVi = result.Parameters.GetValue<string>("primaryValue") ?? EditTitleVi;
+            EditTitleKey = key;
+            RaisePropertyChanged(nameof(TitleKeyPreview));
+        });
+    }
+
+    /// <summary>
+    /// Key i18n nhãn NHÓM theo cấu trúc: <c>{formcode}.railgroup.{groupkey}.title</c> (thường) —
+    /// khớp SQL <c>FormRepository.GetDetailLayoutAsync</c> ghép. Rỗng khi thiếu form master / Group_Key.
+    /// </summary>
+    private string BuildGroupTitleKey()
+    {
+        var form = SelectedForm?.FormCode?.Trim().ToLowerInvariant() ?? "";
+        var grp = EditGroupKey?.Trim().ToLowerInvariant() ?? "";
+        return string.IsNullOrEmpty(form) || string.IsNullOrEmpty(grp)
+            ? ""
+            : $"{form}.railgroup.{grp}.title";
+    }
+
+    /// <summary>Nạp nhãn nhóm (vi) từ Sys_Resource vào ô "Nhãn nhóm" (best-effort).</summary>
+    private async Task LoadGroupViAsync(string? groupKey)
+    {
+        var key = BuildGroupTitleKey();
+        if (_i18n is null || string.IsNullOrEmpty(key)) { EditGroupVi = null; return; }
+        try { EditGroupVi = await _i18n.ResolveKeyAsync(key, "vi"); }
+        catch { /* ô nhãn nhóm chỉ trợ giúp — không chặn nạp pane */ }
+    }
+
+    /// <summary>Mở dialog "Dịch đa ngôn ngữ" cho nhãn NHÓM (key tự sinh). Yêu cầu đã có Group_Key.</summary>
+    private void OpenGroupI18n()
+    {
+        if (_dialogService is null) return;
+        var key = BuildGroupTitleKey();
+        if (string.IsNullOrEmpty(key))
+        {
+            ShowError("Cần chọn form master và nhập Group_Key trước khi dịch nhãn nhóm.");
+            return;
+        }
+
+        var p = new DialogParameters
+        {
+            { "key",          key },
+            { "contextLabel", "Nhãn nhóm rail" },
+            { "seedValue",    EditGroupVi ?? "" }
+        };
+
+        _dialogService.ShowDialog(ViewNames.I18nEditorDialog, p, result =>
+        {
+            if (result.Result != ButtonResult.OK) return;
+            EditGroupVi = result.Parameters.GetValue<string>("primaryValue") ?? EditGroupVi;
+            RaisePropertyChanged(nameof(GroupKeyPreview));
+        });
     }
 
     /// <summary>Hiện banner lỗi đỏ.</summary>

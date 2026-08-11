@@ -11,6 +11,8 @@
 @inject CacheAdminApiService Cache
 @inject PermissionState Perms
 @inject MasterDataApiService MasterApi
+@inject RuntimeApiService RuntimeApi
+@inject NavigationManager Nav
 @inject ToastService Toast
 @inherits LocalizedComponentBase
 
@@ -169,6 +171,7 @@
     private string? _formWidth;  // bề rộng modal Thêm/Sửa theo số cột form (MasterDataForm phát ra)
     private MasterDataForm? _form;      // ref form để hỏi IsDirty khi đóng
     private ConfirmDialog?  _confirm;   // hộp thoại "Bỏ thay đổi?"
+    private bool _editIsRail;           // Edit_Form dạng Rail → Sửa điều hướng trang rail thay vì popup
 
     // ── Chọn nhiều dòng (checkbox) + xóa hàng loạt ──
     private IReadOnlyList<object> _selected = [];
@@ -198,6 +201,15 @@
             _isSuperAdmin = await Perms.IsSuperAdminAsync();
             _view = await ViewApi.GetInfoAsync(ViewCode);
             if (_view is null) { _error = Loc.L("view.notfound", "Không tìm thấy View '{0}'.", ViewCode); return; }
+
+            // Edit_Form dạng RAIL (hồ sơ master-detail) → Sửa mở TRANG rail full-page thay vì popup
+            // (rail cần Id + không hợp popup). Đọc phòng thủ: lỗi/không phải rail → giữ popup như cũ.
+            _editIsRail = false;
+            if (!string.IsNullOrWhiteSpace(_view.EditFormCode))
+            {
+                var layout = await RuntimeApi.GetDetailLayoutAsync(_view.EditFormCode!, Loc.CurrentLanguage);
+                _editIsRail = layout.IsRail;
+            }
 
             _gridSearch = null;   // đổi View → xóa từ khóa tìm cũ (tránh mở màn mới đã bị lọc sẵn)
 
@@ -308,13 +320,27 @@
         if (values.Count > 0) { _prefillValues = values; _prefillLocked = locked; }
     }
 
-    /// <summary>Double-click dòng → mở popup Sửa: resolve khóa từ Key_Field.</summary>
+    /// <summary>
+    /// Double-click dòng → mở Sửa: resolve khóa từ Key_Field. Edit_Form dạng RAIL → điều hướng sang
+    /// trang rail routed (/master/{code}/edit/{id}) full-page; ngược lại mở popup như cũ.
+    /// </summary>
     private void OpenEdit(IDictionary<string, object?> row)
     {
         if (string.IsNullOrWhiteSpace(_view?.EditFormCode) || string.IsNullOrWhiteSpace(_view.KeyField)) return;
         var hit = row.FirstOrDefault(kv => kv.Key.Equals(_view.KeyField, StringComparison.OrdinalIgnoreCase));
         var id = hit.Value;
         if (id is null) return;
+
+        if (_editIsRail)
+        {
+            // Kèm returnUrl để "← Danh sách" ở trang rail quay lại ĐÚNG màn View này (không về /master).
+            var ret = Uri.EscapeDataString($"/view/{Uri.EscapeDataString(ViewCode)}");
+            Nav.NavigateTo(
+                $"/master/{Uri.EscapeDataString(_view.EditFormCode!)}/edit/{Uri.EscapeDataString(id.ToString() ?? "")}"
+                + $"?returnUrl={ret}");
+            return;
+        }
+
         _editId = id;
         _showForm = true;
     }

@@ -1,0 +1,186 @@
+@* File    : RailWorkspace.razor
+   Purpose : Bố cục RAIL WORKSPACE cho form master-detail (NS-MASTERDETAIL Pha 2, chốt 2026-08-10).
+             = header định danh DÍNH + rail điều hướng con bên trái + pane phải đổi nội dung.
+             "Thông tin chung" = field vô hướng (MasterDataForm edit-mode); mỗi pane Grid từ config
+             (Ui_Form_Detail) = DetailGridPane lọc theo FK cha. Chỉ dùng ở chế độ SỬA (cần master Id
+             để load lưới con). Timeline/thanh %/⌘K: hoãn phase sau. *@
+
+@using ICare247_UI.Models
+@using ICare247_UI.Services
+@inject MasterDataApiService MasterApi
+@inject ToastService Toast
+@inherits LocalizedComponentBase
+
+<div class="rail-ws">
+    @* ── Header định danh (dính) ─────────────────────────────────────── *@
+    <div class="rail-ws-header">
+        <button class="btn-back" @onclick="() => OnBackToList.InvokeAsync()">
+            ← @Loc.L("masterdata.tab.backToList", "Danh sách")
+        </button>
+        <div class="rail-ws-identity">
+            <h2>@(_recordLabel.Length > 0 ? _recordLabel : FormCode)</h2>
+            <span class="meta-text">@(_info?.FormCode ?? FormCode) · #@MasterId</span>
+        </div>
+    </div>
+
+    <div class="rail-ws-body">
+        @* ── Rail điều hướng ─────────────────────────────────────────── *@
+        <nav class="rail-nav" aria-label="@Loc.L("rail.nav.aria", "Điều hướng hồ sơ")">
+            <button class="rail-item @(IsActive(GeneralCode) ? "is-active" : "")"
+                    @onclick="() => Select(GeneralCode)">
+                <Icon Name="users" Size="16" />
+                <span>@Loc.L("rail.pane.general", "Thông tin chung")</span>
+            </button>
+
+            @foreach (var grp in GroupedPanes())
+            {
+                @if (!string.IsNullOrWhiteSpace(grp.Key))
+                {
+                    @* Nhãn nhóm = GroupTitle đã resolve i18n phía backend (Sys_Resource, key tự sinh);
+                       fallback Group_Key. KHÔNG dựng key i18n động ở FE. *@
+                    <div class="rail-group-label">@grp.Title</div>
+                }
+                @foreach (var pane in grp.Panes)
+                {
+                    var p = pane;
+                    <button class="rail-item @(IsActive(p.DetailCode) ? "is-active" : "")"
+                            @onclick="() => Select(p.DetailCode)">
+                        <Icon Name="@(string.IsNullOrWhiteSpace(p.Icon) ? "list" : p.Icon!)" Size="16" />
+                        <span>@(p.Title.Length > 0 ? p.Title : p.DetailCode)</span>
+                    </button>
+                }
+            }
+        </nav>
+
+        @* ── Pane phải ───────────────────────────────────────────────── *@
+        <section class="rail-content">
+            @if (IsActive(GeneralCode))
+            {
+                @* Field vô hướng — tái dùng thẳng MasterDataForm ở chế độ Sửa. *@
+                <MasterDataForm FormCode="@FormCode" Id="@MasterId" ShowTitle="false"
+                                OnSaved="OnGeneralSaved" OnCancelled="() => OnBackToList.InvokeAsync()" />
+            }
+            else
+            {
+                var pane = _activePane;
+                @if (pane is null)
+                {
+                    <div class="error-banner">@Loc.L("rail.pane.missing", "Không tìm thấy mục đã chọn.")</div>
+                }
+                else if (pane.PaneType.Equals("Grid", StringComparison.OrdinalIgnoreCase))
+                {
+                    @if (string.IsNullOrWhiteSpace(pane.DetailFormCode) || string.IsNullOrWhiteSpace(pane.ParentKeyColumn))
+                    {
+                        <div class="error-banner">
+                            @Loc.L("rail.pane.gridUnconfigured", "Pane '{0}' chưa cấu hình form con hoặc cột khóa cha.", pane.Title)
+                        </div>
+                    }
+                    else
+                    {
+                        @* key = DetailCode để Blazor dựng lại pane khi đổi mục (reset state/search). *@
+                        <DetailGridPane @key="pane.DetailCode"
+                                        DetailFormCode="@(pane.DetailFormCode!)"
+                                        ParentKeyColumn="@(pane.ParentKeyColumn!)"
+                                        ParentValue="@MasterId"
+                                        Title="@(pane.Title.Length > 0 ? pane.Title : pane.DetailCode)"
+                                        AllowAdd="pane.AllowAdd"
+                                        AllowDelete="pane.AllowDelete" />
+                    }
+                }
+                else
+                {
+                    @* Timeline (và kiểu khác) — hoãn Pha sau (cần view biến động). *@
+                    <div class="rail-pane rail-pane-placeholder">
+                        <Icon Name="clock" Size="28" />
+                        <p>@Loc.L("rail.pane.timelineSoon", "Dòng thời gian sẽ có ở phiên bản sau.")</p>
+                    </div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    /// <summary>Form_Code của form MASTER.</summary>
+    [Parameter] public string FormCode { get; set; } = "";
+    /// <summary>Id bản ghi master đang mở (bắt buộc — rail chỉ hợp lệ ở chế độ Sửa).</summary>
+    [Parameter] public object? MasterId { get; set; }
+    /// <summary>Danh sách pane chi tiết (đã load từ GET /forms/{code}/details) — theo thứ tự OrderNo.</summary>
+    [Parameter] public List<FormDetailPaneDto> Panes { get; set; } = [];
+    /// <summary>Quay về màn danh sách.</summary>
+    [Parameter] public EventCallback OnBackToList { get; set; }
+
+    private const string GeneralCode = "__general";
+    private string _activePaneCode = GeneralCode;
+    private FormDetailPaneDto? _activePane;
+
+    private MasterDataFormInfoDto? _info;
+    private string _recordLabel = "";
+
+    protected override async Task OnInitializedAsync() => await LoadHeaderAsync();
+
+    /// <summary>Nạp nhãn định danh cho header (tên/mã bản ghi) — best-effort, lỗi không chặn workspace.</summary>
+    private async Task LoadHeaderAsync()
+    {
+        try
+        {
+            _info = await MasterApi.GetInfoAsync(FormCode);
+            if (_info is null || MasterId is null) return;
+            var record = await MasterApi.GetByIdAsync(FormCode, MasterId);
+            if (record is not null) _recordLabel = ComputeLabel(_info, record);
+        }
+        catch { /* header chỉ trang trí — không chặn */ }
+    }
+
+    /// <summary>
+    /// Nhãn định danh bản ghi: giá trị cột text hiển-thị-trong-lưới đầu tiên (thường Tên/Mã). Không có
+    /// → rỗng (header fallback về FormCode). Không đoán FK — chỉ đọc giá trị thô đã có trong record.
+    /// </summary>
+    private static string ComputeLabel(MasterDataFormInfoDto info, Dictionary<string, object?> record)
+    {
+        var textCol = info.Columns
+            .Where(c => c.ShowInList && c.NetType.Equals("string", StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.ColumnCode)
+            .FirstOrDefault();
+        if (textCol is null) return "";
+        var hit = record.FirstOrDefault(kv => kv.Key.Equals(textCol, StringComparison.OrdinalIgnoreCase));
+        return hit.Value?.ToString() ?? "";
+    }
+
+    private bool IsActive(string code) => string.Equals(_activePaneCode, code, StringComparison.Ordinal);
+
+    private void Select(string code)
+    {
+        _activePaneCode = code;
+        _activePane = code == GeneralCode
+            ? null
+            : Panes.FirstOrDefault(p => p.DetailCode.Equals(code, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Gom pane theo GroupKey, giữ thứ tự xuất hiện (OrderNo đã sort từ backend). <c>Title</c> = nhãn
+    /// nhóm đã resolve i18n (GroupTitle) của pane đầu nhóm — mọi pane cùng nhóm chung 1 nhãn.
+    /// </summary>
+    private IEnumerable<(string? Key, string? Title, List<FormDetailPaneDto> Panes)> GroupedPanes()
+    {
+        var result = new List<(string? Key, string? Title, List<FormDetailPaneDto> Panes)>();
+        foreach (var pane in Panes)
+        {
+            var key = string.IsNullOrWhiteSpace(pane.GroupKey) ? null : pane.GroupKey;
+            var idx = result.FindIndex(b => string.Equals(b.Key, key, StringComparison.Ordinal));
+            if (idx < 0)
+            {
+                var title = string.IsNullOrWhiteSpace(pane.GroupTitle) ? key : pane.GroupTitle;
+                result.Add((key, title, new List<FormDetailPaneDto> { pane }));
+            }
+            else
+            {
+                result[idx].Panes.Add(pane);
+            }
+        }
+        return result;
+    }
+
+    private void OnGeneralSaved(object? _)
+        => Toast.Success(Loc.L("common.msg.saved", "Đã lưu."));
+}

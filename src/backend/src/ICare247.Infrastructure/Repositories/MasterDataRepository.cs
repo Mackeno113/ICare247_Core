@@ -165,7 +165,9 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
     public async Task<MasterDataListResult> GetListAsync(
         string formCode, int tenantId,
         string? search = null, bool? activeOnly = null,
-        int page = 1, int pageSize = 50, CancellationToken ct = default)
+        int page = 1, int pageSize = 50,
+        string? parentKey = null, object? parentValue = null,
+        CancellationToken ct = default)
     {
         var info = await GetFormInfoAsync(formCode, tenantId, ct)
                    ?? throw new InvalidOperationException($"MasterData: form '{formCode}' không tồn tại.");
@@ -204,6 +206,23 @@ public sealed partial class MasterDataRepository : IMasterDataRepository
 
         if (activeOnly == true && HasColumn(info, "Is_Active"))
             where.Add("[Is_Active] = 1");
+
+        // Lọc lưới con master-detail: [ParentKey] = @ParentValue. Whitelist parentKey theo Sys_Column
+        // của bảng đích (chỉ cột THẬT của bảng này) + IsSafe → không thể bơm identifier lạ. Cột cha không
+        // tồn tại trên bảng → coi như KHÔNG khớp gì (WHERE 1=0) thay vì trả toàn bộ: rail workspace không
+        // được rò dòng của cha khác khi cấu hình sai.
+        if (!string.IsNullOrWhiteSpace(parentKey))
+        {
+            if (HasColumn(info, parentKey) && SqlIdentifier.IsSafe(parentKey))
+            {
+                where.Add($"{SqlIdentifier.Bracket(parentKey)} = @ParentValue");
+                dp.Add("ParentValue", parentValue);
+            }
+            else
+            {
+                where.Add("1 = 0");
+            }
+        }
 
         var whereSql = where.Count > 0 ? " WHERE " + string.Join(" AND ", where) : "";
 

@@ -26,6 +26,40 @@ public sealed class RuntimeApiService
         _logger = logger;
     }
 
+    /// <summary>
+    /// Đọc cấu hình master-detail của form (rail workspace): kiểu bố cục Inline/Rail + danh sách pane.
+    /// Tenant chưa migrate db/106 hoặc form thường → backend trả { layout:'Inline', panes:[] };
+    /// lỗi HTTP → fallback Inline rỗng (không phá form → runtime render form phẳng như cũ).
+    /// </summary>
+    public async Task<FormDetailLayoutDto> GetDetailLayoutAsync(
+        string formCode, string langCode = "vi", CancellationToken ct = default)
+    {
+        var url = $"/api/v1/forms/{Uri.EscapeDataString(formCode)}/details?lang={langCode}";
+
+        _logger.LogDebug("GetDetailLayout → {FormCode}", formCode);
+
+        try
+        {
+            var response = await _http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var detail = await ReadProblemDetailAsync(response);
+                _logger.LogWarning(
+                    "GetDetailLayout {Status} — {FormCode} | {Detail}",
+                    (int)response.StatusCode, formCode, detail);
+                return new FormDetailLayoutDto();
+            }
+
+            return await response.Content.ReadFromJsonAsync<FormDetailLayoutDto>(ct)
+                   ?? new FormDetailLayoutDto();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "GetDetailLayout lỗi — {FormCode}", formCode);
+            return new FormDetailLayoutDto();
+        }
+    }
+
     /// <summary>Validate một field đơn lẻ, trả errors nếu có.</summary>
     public async Task<FieldValidationResponseDto> ValidateFieldAsync(
         string formCode,

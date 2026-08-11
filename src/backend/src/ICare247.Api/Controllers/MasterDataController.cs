@@ -42,8 +42,12 @@ public sealed class MasterDataController : ControllerBase
         return info is null ? FormNotFound(formCode) : Ok(info);
     }
 
-    /// <summary>Danh sách bản ghi danh mục (search + active filter + paging).</summary>
-    /// <remarks>GET /api/v1/master-data/{formCode}?search=&amp;activeOnly=true&amp;page=1&amp;pageSize=50</remarks>
+    /// <summary>Danh sách bản ghi danh mục (search + active filter + paging + lọc lưới con).</summary>
+    /// <remarks>
+    /// GET /api/v1/master-data/{formCode}?search=&amp;activeOnly=true&amp;page=1&amp;pageSize=50
+    /// &amp;parentKey=NhanVien_Id&amp;parentValue=42 — parentKey/parentValue lọc lưới chi tiết
+    /// master-detail (rail workspace): chỉ lấy dòng có [parentKey] = parentValue.
+    /// </remarks>
     [HttpGet("{formCode}")]
     [RequirePermissionForTarget("Form", PermissionOp.Xem)]
     public async Task<IActionResult> GetList(
@@ -52,11 +56,24 @@ public sealed class MasterDataController : ControllerBase
         [FromQuery] bool? activeOnly = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50,
+        [FromQuery] string? parentKey = null,
+        [FromQuery] string? parentValue = null,
         CancellationToken ct = default)
     {
         var result = await _mediator.Send(
-            new GetMasterDataListQuery(formCode, GetTenantId(), search, activeOnly, page, pageSize), ct);
+            new GetMasterDataListQuery(formCode, GetTenantId(), search, activeOnly, page, pageSize,
+                parentKey, CoerceParentValue(parentValue)), ct);
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Ép parentValue (string từ query) về kiểu số nếu là số nguyên — để so khớp cột FK kiểu int/bigint.
+    /// Giữ nguyên chuỗi nếu không phải số (khóa FK dạng mã chữ). Null/rỗng → null (không lọc).
+    /// </summary>
+    private static object? CoerceParentValue(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        return long.TryParse(raw, out var l) ? l : raw;
     }
 
     /// <summary>Lấy 1 bản ghi theo PK (cho form Sửa).</summary>

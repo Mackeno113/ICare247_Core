@@ -35,14 +35,22 @@ public sealed class MasterDataApiService
         return await resp.Content.ReadFromJsonAsync<MasterDataFormInfoDto>(JsonOpts, ct);
     }
 
-    /// <summary>Danh sách bản ghi (search + active filter + paging).</summary>
+    /// <summary>
+    /// Danh sách bản ghi (search + active filter + paging).
+    /// <paramref name="parentKey"/>/<paramref name="parentValue"/>: lọc lưới con master-detail
+    /// (rail workspace) — chỉ lấy dòng có [parentKey] = parentValue.
+    /// </summary>
     public async Task<MasterDataListResultDto> GetListAsync(
         string formCode, string? search, bool? activeOnly, int page = 1, int pageSize = 50,
+        string? parentKey = null, object? parentValue = null,
         CancellationToken ct = default)
     {
         var url = $"/api/v1/master-data/{Uri.EscapeDataString(formCode)}?page={page}&pageSize={pageSize}";
         if (!string.IsNullOrWhiteSpace(search)) url += $"&search={Uri.EscapeDataString(search)}";
         if (activeOnly == true) url += "&activeOnly=true";
+        if (!string.IsNullOrWhiteSpace(parentKey) && parentValue is not null)
+            url += $"&parentKey={Uri.EscapeDataString(parentKey)}" +
+                   $"&parentValue={Uri.EscapeDataString(parentValue.ToString() ?? "")}";
 
         var resp = await _http.GetAsync(url, ct);
         await EnsureOkAsync(resp, $"GetList {formCode}");

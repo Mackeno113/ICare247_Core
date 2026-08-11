@@ -1,0 +1,204 @@
+@* File    : DetailGridPane.razor
+   Purpose : Pane lưới chi tiết trong rail workspace (NS-MASTERDETAIL Pha 2).
+             = MasterDataListPage thu nhỏ, KHÓA theo 1 bản ghi cha: chỉ lấy/thêm dòng có
+             [ParentKeyColumn] = ParentValue. CRUD per-row tức thì (Save_Mode=Immediate) —
+             tái dùng thẳng MasterDataForm + MasterDataGrid + ConfirmDeleteDialog. *@
+
+@using ICare247_UI.Models
+@using ICare247_UI.Services
+@inject MasterDataApiService MasterApi
+@inject PermissionState Perms
+@inject ToastService Toast
+@inherits LocalizedComponentBase
+
+<div class="rail-pane">
+    <div class="rail-pane-head">
+        <div class="rail-pane-titles">
+            <h3>@Title</h3>
+            <span class="rail-pane-sub">@Loc.L("view.footer.count", "Hiển thị {0} / {1} bản ghi", _items.Count, _total)</span>
+        </div>
+        <div class="rail-pane-actions">
+            <input class="md-search rail-pane-search"
+                   placeholder="@Loc.L("common.search.placeholder", "🔍 Tìm kiếm…")"
+                   value="@_search" @onchange="OnSearchChanged" />
+            @if (AllowAdd && _perm.Them)
+            {
+                <button class="btn btn-primary btn-sm" @onclick="() => OpenForm(null)">
+                    + @Loc.L("common.action.create", "Thêm mới")
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="md-form-loading"><div class="spinner"></div><span>@Loc.L("masterdata.list.loading", "Đang tải danh mục…")</span></div>
+    }
+    else if (_error is not null)
+    {
+        <div class="error-banner"><Icon Name="alert-triangle" Size="16" /> <strong>@Loc.L("common.label.error", "Lỗi:")</strong> @_error</div>
+    }
+    else if (_info is not null)
+    {
+        <MasterDataGrid Columns="_listColumns"
+                        Items="_items"
+                        PkColumn="@_info.PkColumn"
+                        Config="_gridConfig"
+                        CanEdit="_perm.Sua"
+                        CanDelete="@(AllowDelete && _perm.Xoa)"
+                        OnEdit="(id) => OpenForm(id)"
+                        OnDelete="OpenDelete" />
+    }
+</div>
+
+@* Popup Thêm/Sửa dòng con — khóa cột cha ở giá trị bản ghi cha (không cho đổi). *@
+@if (_showPopup && _info is not null)
+{
+    <DraggableModal Title="@PopupTitle" Width="@_formWidth" OnClose="CloseForm" BeforeClose="ConfirmCloseIfDirtyAsync">
+        <MasterDataForm @ref="_form" FormCode="@DetailFormCode" Id="_editId" ShowTitle="false"
+                        InitialValues="_parentPrefill" LockedFields="_lockedFields"
+                        OnSaved="OnFormSaved" OnCancelled="CancelFormAsync"
+                        OnWidthResolved="(w) => _formWidth = w" />
+    </DraggableModal>
+}
+
+<ConfirmDialog @ref="_confirm" />
+
+@if (_deleteId is not null && _info is not null)
+{
+    <ConfirmDeleteDialog FormCode="@DetailFormCode" Id="_deleteId"
+                         OnDeleted="OnRecordDeleted" OnClosed="() => _deleteId = null" />
+}
+
+@code {
+    /// <summary>Form_Code của form CON (định nghĩa cột lưới + CRUD).</summary>
+    [Parameter] public string DetailFormCode { get; set; } = "";
+    /// <summary>Cột FK trên bảng con trỏ về master (vd 'NhanVien_Id').</summary>
+    [Parameter] public string ParentKeyColumn { get; set; } = "";
+    /// <summary>Giá trị khóa cha (Id bản ghi master đang mở).</summary>
+    [Parameter] public object? ParentValue { get; set; }
+    /// <summary>Nhãn pane (đã resolve i18n).</summary>
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public bool AllowAdd { get; set; } = true;
+    [Parameter] public bool AllowDelete { get; set; } = true;
+
+    private MasterDataFormInfoDto? _info;
+    private List<MasterDataColumnDto> _listColumns = [];
+    private List<Dictionary<string, object?>> _items = [];
+    private int _total;
+    private bool _loading = true;
+    private string? _error;
+    private string? _search;
+    private PermFlags _perm = PermFlags.All;
+    private readonly MasterDataGridConfig _gridConfig = new();
+
+    private bool _showPopup;
+    private object? _editId;
+    private object? _deleteId;
+    private string? _formWidth;
+    private MasterDataForm? _form;
+    private ConfirmDialog? _confirm;
+
+    /// <summary>Prefill khóa cha khi Thêm mới (ADR-030) — đổ + khóa cột FK về giá trị bản ghi cha.</summary>
+    private Dictionary<string, object?> _parentPrefill = new();
+    private HashSet<string> _lockedFields = new(StringComparer.OrdinalIgnoreCase);
+
+    private string PopupTitle =>
+        $"{(_editId is null ? Loc.L("common.action.create", "Thêm mới") : Loc.L("common.action.update", "Cập nhật"))} — {Title}";
+
+    protected override async Task OnParametersSetAsync() => await InitAsync();
+
+    private async Task InitAsync()
+    {
+        _loading = true; _error = null;
+        try
+        {
+            _parentPrefill = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [ParentKeyColumn] = ParentValue
+            };
+            _lockedFields = new HashSet<string>(new[] { ParentKeyColumn }, StringComparer.OrdinalIgnoreCase);
+
+            _info = await MasterApi.GetInfoAsync(DetailFormCode);
+            if (_info is null)
+            {
+                _error = Loc.L("masterdata.list.notfound", "Không tìm thấy form danh mục '{0}'.", DetailFormCode);
+                return;
+            }
+
+            await Perms.EnsureLoadedAsync();
+            _perm = Perms.ForTarget("Form", DetailFormCode);
+
+            _listColumns = _info.Columns.Where(c => c.ShowInList).ToList();
+            if (_listColumns.Count == 0) _listColumns = _info.Columns.ToList();
+
+            await ReloadListAsync();
+        }
+        catch (Exception ex) { _error = ApiErrorLocalizer.Describe(Loc, ex); }
+        finally { _loading = false; }
+    }
+
+    private async Task ReloadListAsync()
+    {
+        // Load toàn bộ dòng con của bản ghi cha (server-side lọc theo FK) rồi để DxGrid phân trang client.
+        var result = await MasterApi.GetListAsync(DetailFormCode, _search, activeOnly: null,
+            page: 1, pageSize: int.MaxValue,
+            parentKey: ParentKeyColumn, parentValue: ParentValue);
+        _items = result.Items;
+        _total = result.TotalCount;
+    }
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString();
+        await ReloadListAsync();
+    }
+
+    private void OpenForm(object? id)
+    {
+        _editId = id;
+        _showPopup = true;
+    }
+
+    private void CloseForm() { _showPopup = false; _editId = null; _formWidth = null; }
+
+    private async Task<bool> ConfirmCloseIfDirtyAsync()
+    {
+        if (_form is null || !_form.IsDirty) return true;
+        if (_confirm is null) return true;
+        return await _confirm.ShowAsync(
+            Loc.L("form.discard.title", "Bỏ thay đổi?"),
+            Loc.L("form.discard.msg", "Bạn có thay đổi chưa lưu. Đóng form sẽ mất các thay đổi này."),
+            Loc.L("form.discard.confirm", "Bỏ & đóng"),
+            Loc.L("form.discard.cancel", "Tiếp tục sửa"));
+    }
+
+    private async Task CancelFormAsync()
+    {
+        if (await ConfirmCloseIfDirtyAsync())
+            CloseForm();
+    }
+
+    private async Task OnFormSaved(object? _)
+    {
+        CloseForm();
+        try
+        {
+            await ReloadListAsync();
+            Toast.Success(Loc.L("common.msg.saved", "Đã lưu."));
+        }
+        catch (Exception ex)
+        {
+            Toast.Warning(Loc.L("common.msg.savedButReloadFailed",
+                "Đã lưu, nhưng làm mới danh sách lỗi — hãy tải lại trang. ({0})", ex.Message));
+        }
+    }
+
+    private void OpenDelete(object? id) => _deleteId = id;
+
+    private async Task OnRecordDeleted()
+    {
+        _deleteId = null;
+        await ReloadListAsync();
+    }
+}

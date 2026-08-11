@@ -44,8 +44,15 @@ public sealed class FormDetailPane
     /// <summary>Icon mục rail (tùy chọn).</summary>
     public string? Icon { get; init; }
 
-    /// <summary>Nhóm rail (vd 'RELATED' / 'HISTORY') — gom mục cùng nhóm.</summary>
+    /// <summary>Nhóm rail (vd 'RELATED' / 'HISTORY') — KEY gom mục cùng nhóm (không hiển thị trực tiếp).</summary>
     public string? GroupKey { get; init; }
+
+    /// <summary>
+    /// Nhãn nhóm ĐÃ RESOLVE i18n theo lang — Sys_Resource với key TỰ SINH
+    /// <c>{form_code}.railgroup.{group_key}.title</c> (giống khuôn Title_Key); fallback chính
+    /// <see cref="GroupKey"/> khi chưa dịch. Runtime hiển thị tiêu đề nhóm bằng trường này.
+    /// </summary>
+    public string? GroupTitle { get; init; }
 
     /// <summary>Chế độ nhập lưới: EntryPanel | CellInline | RowPopup (Spec 30 §3.1).</summary>
     public string EditMode { get; init; } = "EntryPanel";

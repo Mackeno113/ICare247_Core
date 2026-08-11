@@ -28,11 +28,15 @@ public interface IMasterDataRepository
 
     /// <summary>
     /// Lấy danh sách bản ghi (chỉ cột Show_In_List + PK), có search + active filter + paging.
+    /// <paramref name="parentKey"/>/<paramref name="parentValue"/>: lọc lưới con master-detail
+    /// (rail workspace) — chỉ lấy dòng có [parentKey] = parentValue; parentKey whitelist theo
+    /// Sys_Column của bảng (chống SQL injection). Null = không lọc theo cha.
     /// </summary>
     Task<MasterDataListResult> GetListAsync(
         string formCode, int tenantId,
         string? search = null, bool? activeOnly = null,
         int page = 1, int pageSize = 50,
+        string? parentKey = null, object? parentValue = null,
         CancellationToken ct = default);
 
     /// <summary>Lấy đầy đủ 1 bản ghi theo giá trị PK (cho form Sửa).</summary>

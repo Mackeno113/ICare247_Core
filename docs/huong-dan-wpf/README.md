@@ -8,6 +8,7 @@
 ## Cấu hình màn hình (no-code)
 - [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md) — Màn danh mục engine-driven (master data phẳng).
 - [cau-hinh-man-cong-ty.md](cau-hinh-man-cong-ty.md) — Màn Công ty (lưới cây + popup, master-detail tổ chức).
+- [cau-hinh-master-detail-rail.md](cau-hinh-master-detail-rail.md) — Màn **hồ sơ** (Master-Detail / Rail): 1 bản ghi chủ + n bảng con dạng rail workspace (header dính + rail điều hướng con + pane phải). Ví dụ hồ sơ nhân viên `NS_NhanVien` (6 pane).
 - [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md) — Màn Quản lý View (Grid / Tree Grid).
 - [cau-hinh-menu.md](cau-hinh-menu.md) — Màn Quản lý menu (HT_ChucNang).
 - [cau-hinh-quy-tac-sinh-ma.md](cau-hinh-quy-tac-sinh-ma.md) — Màn Quy tắc sinh mã (tự ghép cột `Ma` từ chữ cố định/ngày/field/tra bảng/số thứ tự).
