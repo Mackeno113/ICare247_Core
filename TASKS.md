@@ -3,6 +3,22 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Khuôn form nhập liệu CHUNG phẳng (3a) + hướng dẫn config màn Công ty (3b) (2026-08-11, build Web 0/0)
+
+Chuẩn hóa khuôn form theo skill `icare247-admin-ui`. Chi tiết → memory `project-form-shell-flat`.
+
+- [x] **3a — Khuôn form CHUNG** (`src/frontend/ICare247_UI/wwwroot/css/app.css`) — class dùng chung bởi **MasterDataForm + FormRunner**:
+  - `.section-card` → **PHẲNG** (bỏ nền/viền/bo, `padding:0`); tách nhóm bằng `.form-body { gap:28px }` + gạch hairline dưới `.section-title`.
+  - `.section-title` → **14px/600** màu chính (bỏ 11px IN HOA micro-caps).
+  - `.fields-grid gap` 14→**12px** (đúng thang 4/8/12).
+  - **Control cao đồng bộ 38px**: `.fields-grid .dxbl-edit { min-height:38px }` — scope trong lưới field, KHÔNG override token `--dxbl-*` (theme khóa).
+- [x] **Build** `src/frontend/ICare247_UI.slnx` = **0 Warning / 0 Error**.
+- [x] **3b — Hướng dẫn config 4 nhóm TC_CongTy** (bạn nhập ConfigStudio): Định danh & phân cấp · Liên hệ & địa chỉ (address full-width) · Người đại diện · Tài chính & nhận diện — kèm Col_Span đề xuất. `IcAddressBlock` giữ nguyên (code đã đạt chuẩn, user chốt không sửa lần này).
+
+**⏳ User cần:** rebuild + hard-reload nghiệm thu khuôn phẳng; nhập 4 Section + Col_Span cho `TC_CongTy` trên ConfigStudio.
+
+**Decisions Log (2026-08-11):** ① Control 38px áp bằng **CSS scope `.fields-grid .dxbl-edit`** (không đụng token `--dxbl-*` khóa) — user chọn. ② Phạm vi = **class chung app.css** (cả 2 form), không tách riêng. ③ `IcAddressBlock` không sửa (đã chuẩn) — user bỏ bước live-view (Chrome extension chưa kết nối). Không ADR mới (refinement CSS theo skill).
+
 ## ✅ Đã xong — Fix FK auto-save + GỠ tab Permissions ConfigStudio (2026-08-11, build OK)
 
 Auto-save FormEditor (WPF) báo "Lỗi lưu — thử lại" nhưng lý do bị nuốt. Chi tiết →

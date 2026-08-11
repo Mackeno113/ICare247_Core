@@ -1,5 +1,32 @@
 # Last Session Summary
 
+## Session (2026-08-11) — Khuôn form nhập liệu CHUNG phẳng (3a) + config màn Công ty (3b), build Web 0/0
+
+**Bối cảnh:** user chọn task 3 (design, 2 chip spawn từ phiên trước) → chốt **3a — khuôn form CHUNG** trước.
+Nạp skill `icare247-admin-ui` + đọc `MasterDataForm.razor`/`FormRunner.razor` → phát hiện **cả 2 form DÙNG CHUNG
+y hệt** bộ class trong `app.css` (`.section-card`/`.section-title`/`.fields-grid`/`.field-wrapper`/`.form-body`).
+Đối chiếu skill → lệch chuẩn: section card-hóa (viền+bo), tiêu đề 11px IN HOA, gap lệch thang, control không đồng bộ.
+
+**3a đã làm (chỉ 1 file — `src/frontend/ICare247_UI/wwwroot/css/app.css`):**
+- `.section-card` → **PHẲNG** (`padding:0`, bỏ nền/viền/bo). Tách nhóm bằng `.form-body { gap:28px }` (thang 24–32)
+  + gạch hairline dưới `.section-title`. `.section-title` 11px IN HOA → **14px/600** màu `--color-text`.
+  `.fields-grid gap` 14→**12px**. **Control 38px**: `.fields-grid .dxbl-edit { min-height:38px }`.
+- 2 quyết định user chốt qua AskUserQuestion: ① control 38px bằng **CSS scope** (KHÔNG override token `--dxbl-*`
+  theme khóa — phương án an toàn) · ② phạm vi = **class chung app.css** (cả 2 form). Memory [[project-form-shell-flat]].
+- Dựng before/after (show_widget) để user duyệt hướng thị giác trước khi sửa CSS global.
+- **Build `src/frontend/ICare247_UI.slnx` = 0 Warning / 0 Error** (10s, verify trong /finish-task).
+
+**3b — màn Thông tin công ty:** `TC_CongTy` render qua engine (view `/view/Tree_TC_CongTy` → form sửa popup),
+KHÔNG page bespoke. `IcAddressBlock` (Shared/Pickers) đọc thấy **code đã khá chuẩn** (label-top 13px, field co
+data, chỉ lưu DiaChi+PhuongXaId). User chốt **bỏ bước xem live** (Chrome extension chưa kết nối) + **không sửa
+IcAddressBlock**. Đã giao **bảng hướng dẫn config 4 nhóm + Col_Span** (tra cột thật `TC_CongTy` từ db/037):
+Định danh & phân cấp · Liên hệ & địa chỉ (address full-width) · Người đại diện · Tài chính & nhận diện.
+→ user nhập vào ConfigStudio (config qua WPF, không SQL — [[feedback-config-via-wpf]]).
+
+**⏳ User cần:** rebuild + hard-reload nghiệm thu khuôn phẳng (section phẳng + control cao đều); nhập 4 Section
++ Col_Span cho `TC_CongTy` trên ConfigStudio. **Task tiếp theo gợi ý:** NS-MASTERDETAIL Pha 2 (Blazor rail
+workspace runtime) — mạch chính còn mở; hoặc verify Web UX (D/E/G/B) phiên trước.
+
 ## Session (2026-08-11) — Fix FK auto-save + GỠ tab Permissions (ConfigStudio), build OK
 
 **Bối cảnh:** auto-save FormEditor (WPF) báo "Lỗi lưu — thử lại". Lý do lỗi bị **nuốt** (chỉ lưu
