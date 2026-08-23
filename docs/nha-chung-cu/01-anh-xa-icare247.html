@@ -1,0 +1,447 @@
+<title>No-code hay Bespoke</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,500;0,600;0,700;1,500&family=Be+Vietnam+Pro:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#f5f2ec; --surface:#fffdf9; --surface-2:#efeae1;
+    --ink:#1c1a16; --muted:#6c665b; --faint:#948d80;
+    --line:#d8d2c6; --line-soft:#e7e1d6;
+    --accent:#b3261e;
+    /* mức triển khai — màu ngữ nghĩa, tách khỏi accent */
+    --lv-nocode:#1f6b3f;   --lv-nocode-bg:#e6f1e9;
+    --lv-hybrid:#8a6100;   --lv-hybrid-bg:#fbf1d8;
+    --lv-bespoke:#b3261e;  --lv-bespoke-bg:#f8e9e6;
+    --lv-external:#3a5a78; --lv-external-bg:#e6edf3;
+    --shadow:0 1px 2px rgba(28,26,22,.05), 0 8px 28px -18px rgba(28,26,22,.30);
+    --sans:"Be Vietnam Pro",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --serif:"Spectral",Georgia,"Times New Roman",serif;
+    --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#171512; --surface:#201d18; --surface-2:#262218;
+      --ink:#ece6da; --muted:#a69e8f; --faint:#7d7568;
+      --line:#37322a; --line-soft:#2a261f;
+      --accent:#e46f64;
+      --lv-nocode:#6cc08d;   --lv-nocode-bg:#16281d;
+      --lv-hybrid:#d3a44f;   --lv-hybrid-bg:#2a2113;
+      --lv-bespoke:#e46f64;  --lv-bespoke-bg:#2c1a17;
+      --lv-external:#8fb0cc; --lv-external-bg:#1a2530;
+      --shadow:0 1px 2px rgba(0,0,0,.30), 0 10px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#171512; --surface:#201d18; --surface-2:#262218;
+    --ink:#ece6da; --muted:#a69e8f; --faint:#7d7568;
+    --line:#37322a; --line-soft:#2a261f;
+    --accent:#e46f64;
+    --lv-nocode:#6cc08d;   --lv-nocode-bg:#16281d;
+    --lv-hybrid:#d3a44f;   --lv-hybrid-bg:#2a2113;
+    --lv-bespoke:#e46f64;  --lv-bespoke-bg:#2c1a17;
+    --lv-external:#8fb0cc; --lv-external-bg:#1a2530;
+    --shadow:0 1px 2px rgba(0,0,0,.30), 0 10px 30px -18px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+  .mono{font-family:var(--mono)}
+  a:focus-visible, button:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+  ::selection{background:var(--lv-bespoke-bg); color:var(--ink)}
+
+  .shell{max-width:1080px; margin:0 auto; padding:0 22px}
+
+  /* top strip */
+  .strip{border-bottom:1px solid var(--line); background:var(--paper); position:sticky; top:0; z-index:30}
+  .strip-in{display:flex; align-items:center; gap:14px; padding:12px 22px; max-width:1080px; margin:0 auto}
+  .mark{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; white-space:nowrap}
+  .mark::before{content:"▍"; margin-right:6px}
+  .strip .spacer{flex:1}
+  .strip .doc-v{font-family:var(--mono); font-size:11px; color:var(--faint); letter-spacing:.04em}
+  .theme-btn{font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase; background:transparent; color:var(--muted); border:1px solid var(--line); padding:5px 10px; cursor:pointer; border-radius:3px}
+  .theme-btn:hover{color:var(--ink); border-color:var(--faint)}
+
+  /* hero */
+  header.hero{padding:56px 0 26px}
+  .eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin:0 0 18px}
+  h1{font-family:var(--serif); font-weight:700; font-size:clamp(2.2rem,5.5vw,3.7rem); line-height:1.03; letter-spacing:-.015em; margin:0 0 20px; text-wrap:balance; max-width:18ch}
+  .lede{font-size:clamp(1.02rem,2.3vw,1.22rem); color:var(--muted); max-width:64ch; margin:0}
+  .lede b{color:var(--ink); font-weight:600}
+  .hero-meta{display:flex; flex-wrap:wrap; gap:9px 24px; margin-top:28px; font-family:var(--mono); font-size:12px; color:var(--faint); letter-spacing:.03em}
+  .hero-meta b{color:var(--muted); font-weight:600}
+
+  /* summary tiles */
+  .tiles{display:grid; gap:1px; grid-template-columns:repeat(2,1fr); background:var(--line); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin:8px 0 28px}
+  @media (min-width:720px){.tiles{grid-template-columns:repeat(4,1fr)}}
+  .tile{background:var(--surface); padding:18px 18px 16px; position:relative}
+  .tile .top{display:flex; align-items:center; gap:8px; margin-bottom:8px}
+  .tile .dot{width:10px; height:10px; border-radius:3px; flex-shrink:0}
+  .tile .lab{font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); font-weight:600}
+  .tile .v{font-family:var(--serif); font-weight:700; font-size:2rem; line-height:1; font-variant-numeric:tabular-nums}
+  .tile .sub{font-size:.8rem; color:var(--faint); margin-top:5px}
+
+  /* filter bar */
+  .filterbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 8px; padding:14px 0; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); position:sticky; top:49px; background:var(--paper); z-index:20}
+  .filterbar .flabel{font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-right:4px}
+  .chip{font-family:var(--sans); font-size:.84rem; font-weight:500; border:1px solid var(--line); background:var(--surface); color:var(--muted); padding:6px 13px; border-radius:20px; cursor:pointer; display:inline-flex; align-items:center; gap:7px; transition:border-color .15s, color .15s, background .15s}
+  .chip .cdot{width:9px; height:9px; border-radius:3px}
+  .chip:hover{color:var(--ink); border-color:var(--faint)}
+  .chip[aria-pressed="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink)}
+  .chip[aria-pressed="true"] .cdot{outline:1.5px solid var(--paper); outline-offset:1px}
+
+  /* group section */
+  section.grp{padding:34px 0 8px; border-bottom:1px solid var(--line-soft)}
+  section.grp.dim{opacity:.32}
+  .grp-head{display:flex; align-items:flex-start; gap:16px; margin-bottom:16px}
+  .grp-code{font-family:var(--serif); font-weight:700; font-size:2.2rem; line-height:.9; color:var(--accent); flex-shrink:0; width:1.4em; text-align:center}
+  .grp-title{font-family:var(--serif); font-weight:600; font-size:1.42rem; letter-spacing:-.01em; margin:0 0 3px; line-height:1.15}
+  .grp-note{font-size:.92rem; color:var(--muted); margin:0; max-width:60ch}
+  .grp-count{margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--faint); white-space:nowrap; padding-top:6px}
+
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:10px; box-shadow:var(--shadow)}
+  table{width:100%; border-collapse:collapse; font-size:.93rem; background:var(--surface); min-width:660px}
+  th{text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:11px 14px; border-bottom:1px solid var(--line); background:var(--surface-2)}
+  td{padding:12px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  tr.hidden{display:none}
+  td.feat{font-weight:600; width:30%}
+  td.reuse{color:var(--muted); font-size:.88rem; width:32%}
+  td.rnote{color:var(--muted); font-size:.88rem}
+  td .code{font-family:var(--mono); font-size:.82em; color:var(--accent); font-weight:600}
+
+  /* level pill */
+  .pill{display:inline-flex; align-items:center; gap:6px; font-family:var(--mono); font-size:10px; letter-spacing:.05em; text-transform:uppercase; font-weight:600; padding:4px 9px; border-radius:20px; white-space:nowrap}
+  .pill .pdot{width:7px; height:7px; border-radius:50%}
+  .lv-nocode{color:var(--lv-nocode); background:var(--lv-nocode-bg)} .lv-nocode .pdot{background:var(--lv-nocode)}
+  .lv-hybrid{color:var(--lv-hybrid); background:var(--lv-hybrid-bg)} .lv-hybrid .pdot{background:var(--lv-hybrid)}
+  .lv-bespoke{color:var(--lv-bespoke); background:var(--lv-bespoke-bg)} .lv-bespoke .pdot{background:var(--lv-bespoke)}
+  .lv-external{color:var(--lv-external); background:var(--lv-external-bg)} .lv-external .pdot{background:var(--lv-external)}
+
+  /* generic section */
+  section.block{padding:44px 0; border-bottom:1px solid var(--line-soft)}
+  .sec-eyebrow{font-family:var(--mono); font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px; display:flex; gap:10px}
+  .sec-eyebrow .n{color:var(--faint)}
+  h2{font-family:var(--serif); font-weight:600; font-size:clamp(1.5rem,3.4vw,2.1rem); line-height:1.12; letter-spacing:-.01em; margin:0 0 18px; text-wrap:balance; max-width:24ch}
+  p{margin:0 0 14px; max-width:66ch}
+
+  /* crosscut list */
+  .cc-list{list-style:none; padding:0; margin:18px 0 0; display:grid; gap:11px}
+  .cc-list li{display:grid; grid-template-columns:auto 1fr; gap:14px; border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--surface); border-radius:0 6px 6px 0; padding:14px 17px}
+  .cc-list .num{font-family:var(--serif); font-weight:700; font-size:1.3rem; color:var(--accent); line-height:1}
+  .cc-list .cc-t{font-weight:600; margin:0 0 3px; font-size:1rem}
+  .cc-list .cc-d{font-size:.9rem; color:var(--muted); margin:0; max-width:none}
+  .cc-list code{font-family:var(--mono); font-size:.82em; background:var(--surface-2); padding:1px 5px; border-radius:3px}
+
+  /* estimate bar */
+  .est{margin-top:22px}
+  .est-bar{display:flex; height:44px; border-radius:8px; overflow:hidden; border:1px solid var(--line)}
+  .est-seg{display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--mono); font-size:12px; font-weight:600; min-width:0; padding:0 8px}
+  .est-legend{display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:12px; font-size:.86rem; color:var(--muted)}
+  .est-legend span{display:inline-flex; align-items:center; gap:8px}
+  .est-legend .k{width:11px; height:11px; border-radius:3px; flex-shrink:0}
+
+  .reco{border:1px solid var(--line); border-left:3px solid var(--lv-nocode); background:var(--surface); border-radius:0 8px 8px 0; padding:18px 20px; margin-top:24px}
+  .reco h3{font-family:var(--serif); margin:0 0 10px; font-size:1.15rem}
+  .reco ul{margin:0; padding-left:18px}
+  .reco li{margin-bottom:8px; font-size:.94rem; color:var(--muted)}
+  .reco li b{color:var(--ink); font-weight:600}
+
+  footer{padding:36px 0 60px; color:var(--faint); font-size:.84rem; font-family:var(--mono); letter-spacing:.03em}
+  footer p{max-width:72ch}
+
+  .edit-hint{font-size:.8rem; color:var(--faint); font-family:var(--mono); border:1px dashed var(--line); border-radius:6px; padding:10px 14px; margin-top:20px; max-width:66ch}
+</style>
+
+<div class="strip">
+  <div class="strip-in">
+    <span class="mark">Chung cư × ICare247</span>
+    <span class="spacer"></span>
+    <span class="doc-v" id="docv"></span>
+    <button class="theme-btn" id="themeBtn" type="button" aria-label="Đổi giao diện sáng/tối">Sáng · Tối</button>
+  </div>
+</div>
+
+<div class="shell">
+  <header class="hero">
+    <p class="eyebrow" id="heroEyebrow"></p>
+    <h1 id="heroTitle"></h1>
+    <p class="lede" id="heroLede"></p>
+    <div class="hero-meta" id="heroMeta"></div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <div class="filterbar" id="filterbar" role="group" aria-label="Lọc theo mức triển khai"></div>
+
+  <main id="matrix"></main>
+
+  <section class="block" id="crosscutBlock">
+    <p class="sec-eyebrow"><span class="n">✦</span> <span id="ccEyebrow"></span></p>
+    <h2 id="ccTitle"></h2>
+    <p id="ccIntro" style="color:var(--muted)"></p>
+    <ul class="cc-list" id="ccList"></ul>
+  </section>
+
+  <section class="block" id="conclBlock" style="border-bottom:none">
+    <p class="sec-eyebrow"><span class="n">→</span> <span id="clEyebrow"></span></p>
+    <h2 id="clTitle"></h2>
+    <div class="est">
+      <div class="est-bar" id="estBar"></div>
+      <div class="est-legend" id="estLegend"></div>
+    </div>
+    <div class="reco" id="reco"></div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+/* =====================================================================
+   ┌─────────────────────────────────────────────────────────────────┐
+   │  NGUỒN DỮ LIỆU DUY NHẤT — chỉ sửa khối DATA bên dưới.            │
+   │  Thêm/bớt hàng, đổi mức (level), sửa ghi chú → KHÔNG đụng HTML.  │
+   │  level hợp lệ: 'nocode' | 'hybrid' | 'bespoke' | 'external'      │
+   └─────────────────────────────────────────────────────────────────┘
+   ===================================================================== */
+const DATA = {
+  meta: {
+    eyebrow: "Ánh xạ đặc tả Nhà chung cư lên nền tảng ICare247",
+    title: "Cái gì dựng no-code, cái gì phải viết tay",
+    lede: "ICare247 tự định vị là <b>“Engine + code tay kết hợp”</b>: danh mục và form đơn giản dựng bằng metadata qua ConfigStudio; nghiệp vụ phức tạp viết tay nhưng dùng chung backbone (Dapper, cache, JWT/multi-tenant, AST, Doc Template, phân quyền). Trang này soi từng chức năng của bộ đặc tả chung cư theo bốn mức triển khai.",
+    version: "Bản ánh xạ v0.1 · 23/08/2026",
+    meta: [
+      ["Đối chiếu:", "Spec 04·14·15·28·30 + ADR-023"],
+      ["Nguồn:", "đặc tả chung cư 6 nhóm A–F"],
+      ["Trạng thái:", "phân tích sơ bộ, chờ thẩm định"]
+    ]
+  },
+
+  levels: {
+    nocode:   { emoji:"", label:"No-code",  desc:"Cấu hình ConfigStudio, gần như không viết code", color:"var(--lv-nocode)",   pill:"lv-nocode" },
+    hybrid:   { emoji:"", label:"Hybrid",   desc:"Khung no-code + một mảnh code tay",              color:"var(--lv-hybrid)",   pill:"lv-hybrid" },
+    bespoke:  { emoji:"", label:"Bespoke",  desc:"Viết tay, chỉ tái dùng backbone hạ tầng",        color:"var(--lv-bespoke)",  pill:"lv-bespoke" },
+    external: { emoji:"", label:"Ngoài nền tảng", desc:"Mobile / tích hợp bên thứ ba",            color:"var(--lv-external)", pill:"lv-external" }
+  },
+
+  groups: [
+    {
+      code:"A", name:"Nền tảng dữ liệu",
+      note:"Gốc nuôi engine tính phiếu — sai ở đây thì kết quả hội nghị sai theo.",
+      items:[
+        { feat:"A1·A6·A7 Tòa/cụm · Phương tiện & thẻ · Hồ sơ pháp lý", level:"nocode",  reuse:"Master Data CRUD + Ui_View + FK lookup (Spec 12/25)", note:"Danh mục thuần, cấu hình được." },
+        { feat:"A2 Căn hộ + phần diện tích khác (1 bảng Unit)",         level:"nocode",  reuse:"1 Sys_Table + form + Ui_View_Filter", note:"ADR-001 gộp 1 bảng khớp mô hình; lọc theo unit_type." },
+        { feat:"A3–A4 Chủ sở hữu, đồng sở hữu, trọng số phiếu",         level:"hybrid",  reuse:"Form Chứng từ (Spec 30) + Formula_Json", note:"Trọng số = diện tích (công thức). Ràng buộc 1 đại diện + Σshare=100% cần Val_Rule + save hook (Spec 18)." },
+        { feat:"A5 Lịch sử sang tên/bàn giao — “tại ngày D”",          level:"bespoke", reuse:"—", note:"Audit-log JSON diff KHÔNG phải temporal query. Cần bảng temporal + logic replay." },
+        { feat:"A3 Import Excel all-or-nothing (dry-run, đối chiếu tổng)", level:"bespoke", reuse:"File upload (Spec 26) + Val_Rule cho validate dòng", note:"Pipeline all-or-nothing viết tay." }
+      ]
+    },
+    {
+      code:"B", name:"Hội nghị nhà chung cư",
+      note:"Mũi nhọn khác biệt — phần lớn bắt buộc viết tay ở mọi nền tảng.",
+      items:[
+        { feat:"B1 Tạo kỳ, cấu hình ngưỡng, hình thức, nghị sự",       level:"hybrid",  reuse:"Form + System Settings (Spec 27); AgendaItem = master-detail", note:"Ngưỡng cấu hình theo tòa; nghị sự là lưới chi tiết." },
+        { feat:"B1 Gửi mời đa kênh + bằng chứng gửi · Mô phỏng quorum", level:"bespoke", reuse:"—", note:"Dispatch đa kênh + tích hợp Zalo/SMS/email." },
+        { feat:"B1 Duyệt ủy quyền (chặn trùng, trần)",                  level:"hybrid",  reuse:"Form + Val_Rule + workflow cờ Duyệt (ADR-023)", note:"Unique VALID proxy/căn = constraint tay." },
+        { feat:"B2 Check-in offline · Quorum real-time 2 tỷ lệ · VoterRoll · Projector", level:"bespoke", reuse:"—", note:"Offline sync, real-time, snapshot bất biến + hash." },
+        { feat:"B3 Engine 1m²=1phiếu · Bầu N/M · Hash chain · 2-man rule", level:"bespoke", reuse:"AST giúp tính ngưỡng", note:"Trái tim sản phẩm — engine tally viết tay." },
+        { feat:"B4 Biên bản TT05 + 6 phụ lục",                          level:"hybrid",  reuse:"Doc Template (Spec 28) — ghép fragment master/detail", note:"Watermark BẢN NHÁP → gỡ sau ký + hash bundle = code tay." },
+        { feat:"B4 Chữ ký số",                                          level:"external", reuse:"—", note:"Tích hợp CA; chờ pháp chế (§9)." }
+      ]
+    },
+    {
+      code:"C", name:"Tài chính",
+      note:"Nuôi doanh thu hằng ngày; chứa ràng buộc quỹ bảo trì nặng nhất ngoài hội nghị.",
+      items:[
+        { feat:"C1 Biểu phí, kỳ tính phí",                             level:"nocode",  reuse:"Danh mục + config", note:"Fee items = danh mục." },
+        { feat:"C2 Chạy kỳ phí batch 2.000 căn + biến động bất thường", level:"bespoke", reuse:"Invoice = chứng từ", note:"Billing engine: batch, chỉ số điện nước, phát hiện bất thường." },
+        { feat:"C3 Công nợ + aging + nhắc nợ hàng loạt",               level:"hybrid",  reuse:"View/report + chứng từ", note:"Aging tính tay; nhắc nợ đa kênh bespoke." },
+        { feat:"C4 Phiếu chi quỹ bảo trì (R9 + tách vai trò lập/duyệt)", level:"hybrid",  reuse:"Form Chứng từ + Val_Rule (DB5) + cờ Duyệt + posting hook", note:"Fit hybrid mạnh nhất; truy vết bằng view." },
+        { feat:"C5 Báo cáo minh bạch cho cư dân",                       level:"external", reuse:"—", note:"Cổng/app cư dân." }
+      ]
+    },
+    {
+      code:"D", name:"Vận hành",
+      note:"Quyết định trải nghiệm hằng ngày; D2 là mắt xích nối hội nghị với chi quỹ.",
+      items:[
+        { feat:"D1 Phản ánh cư dân · SLA (kanban)",                    level:"hybrid",  reuse:"Ticket = form/view; SLA due = Formula", note:"Escalation quá hạn cần scheduler nền (chưa có) → bespoke; kanban UI bespoke." },
+        { feat:"D2 Kế hoạch bảo trì trình hội nghị",                   level:"hybrid",  reuse:"Master-detail + workflow", note:"Auto-gắn số nghị quyết = hook." },
+        { feat:"D3 Tài sản + lịch bảo trì (gantt)",                    level:"hybrid",  reuse:"Danh mục tài sản (no-code)", note:"Gantt + auto-sinh đề xuất khi quá hạn = tay." },
+        { feat:"D4 Đặt tiện ích / đăng ký thi công",                   level:"hybrid",  reuse:"Form + config", note:"Chống trùng khung giờ, block-nếu-nợ = logic tay." }
+      ]
+    },
+    {
+      code:"E", name:"Cổng cư dân",
+      note:"Quyết định tỷ lệ tham dự — nhưng nằm gần trọn ngoài backbone web admin.",
+      items:[
+        { feat:"E1 App cư dân iOS / Android",   level:"external", reuse:"—", note:"ICare247 là web admin WASM, không có tầng mobile." },
+        { feat:"E2 Zalo OA",                    level:"external", reuse:"—", note:"Kênh chính tại VN; tích hợp riêng." },
+        { feat:"E3 Tra cứu phí + thanh toán (VietQR/ví)", level:"external", reuse:"—", note:"Tích hợp thanh toán + đối soát." },
+        { feat:"E4 Cổng hội nghị / lập ủy quyền (web)", level:"hybrid", reuse:"Có thể tái dùng WASM", note:"Là app cư dân riêng, chia sẻ backbone." }
+      ]
+    },
+    {
+      code:"F", name:"Hệ thống",
+      note:"Không ai đòi khi chào hàng, nhưng quyết định sản phẩm có trụ được khi tranh chấp.",
+      items:[
+        { feat:"F1 Phân quyền 6 vai trò + ma trận",     level:"nocode",  reuse:"HT_VaiTro + 5 cờ quyền + ADR-023", note:"Fit rất tốt; menu server-driven + scope công ty/phòng ban." },
+        { feat:"F2 Audit log WORM + hash chain",         level:"hybrid",  reuse:"Audit-log JSON diff có sẵn", note:"WORM + hash chain + trigger chống UPDATE/DELETE + export ký số = hardening tay." },
+        { feat:"F3 Multi-tenant",                        level:"nocode",  reuse:"DB-per-tenant + catalog (native)", note:"Config độc lập theo tòa = config tables." },
+        { feat:"F4 Bảo vệ dữ liệu cá nhân (mã hóa/masking/erasure)", level:"hybrid", reuse:"Masking = field config", note:"Encryption at-rest + luồng erasure = tay." },
+        { feat:"F6 Cổng tra cứu UBND cấp xã",            level:"external", reuse:"—", note:"Portal đọc-only bên ngoài." }
+      ]
+    }
+  ],
+
+  crosscut: {
+    eyebrow:"Va chạm cần xử lý trước", title:"Năm điểm phải chốt trước khi dựng",
+    intro:"Những điểm này cắt ngang mọi nhóm; bỏ qua thì no-code cũng không cứu được.",
+    items:[
+      { t:"Quy ước schema lệch", d:"ERD chung cư dùng <code>uuid</code>/snake_case/enum tiếng Anh; ICare247 dùng <code>Id INT IDENTITY</code> + cột auto tiếng Anh + cột nghiệp vụ tiếng Việt + tiền tố HT_/DM_/TC_. Phải viết lại ERD theo convention nền tảng." },
+      { t:"WORM đối đầu CRUD engine", d:"VoterRoll/Vote/AuditLog “không update/delete kể cả admin” — không đặt được trong Master Data CRUD generic (vốn có sửa/xóa). Phải là bảng append-only + trigger DB, ngoài engine." },
+      { t:"Không có scheduler nền", d:"Event Engine chạy theo form-event, không theo thời gian. Mọi việc theo lịch (SLA escalation, deadline R1, nhắc nợ, đề xuất bảo trì quá hạn) cần background job — chưa có." },
+      { t:"Temporal ≠ audit", d:"“Chủ sở hữu tại ngày D” là temporal, khác audit-log JSON diff hiện có → cần mô hình + query riêng." },
+      { t:"Tầng mobile / tích hợp ngoài", d:"App, Zalo, VietQR, CA ký số nằm hoàn toàn ngoài backbone web admin hiện tại." }
+    ]
+  },
+
+  conclusion: {
+    eyebrow:"Kết luận", title:"Tương quan tổng thể & thứ tự nên làm",
+    estimate:[
+      { label:"No-code / Hybrid", pct:40, color:"var(--lv-nocode)" },
+      { label:"Bespoke trên backbone", pct:45, color:"var(--lv-bespoke)" },
+      { label:"Ngoài nền tảng", pct:15, color:"var(--lv-external)" }
+    ],
+    reco:{
+      title:"Khuyến nghị",
+      points:[
+        "<b>Dựng nhanh (Phase 1 chung cư = M2 nền tảng):</b> nhóm A (trừ import & temporal), C4 phiếu chi, F1 phân quyền, F3 multi-tenant, B4 biên bản, D2 kế hoạch bảo trì — ăn khớp thế mạnh ICare247.",
+        "<b>Bắt buộc viết tay (Phase 2 = mũi nhọn M1):</b> toàn bộ engine hội nghị và audit WORM — không có đường no-code, nhưng vẫn ngồi trên backbone (Dapper/JWT/multi-tenant/Doc Template).",
+        "<b>Ngoài nền tảng (Phase 3–4):</b> cổng cư dân, Zalo, thanh toán, chữ ký số, cổng UBND.",
+        "Điểm mạnh: phần “vũ khí khác biệt” đằng nào cũng phải viết tay ở mọi nền tảng — ICare247 rút ngắn phần vận hành nền (A/C/D/F) để tới Phase 2 sớm hơn."
+      ]
+    }
+  },
+
+  footer:"Bản ánh xạ phục vụ thảo luận nội bộ, tổng hợp từ bộ đặc tả Nhà chung cư và spec nền tảng ICare247. Mức triển khai là ước lượng thiết kế, cần thẩm định lại khi chốt phạm vi từng phase."
+};
+
+/* ===================== RENDER (không cần sửa khi đổi dữ liệu) ===================== */
+(function(){
+  const $ = s => document.querySelector(s);
+  const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+  const L = DATA.levels;
+
+  // hero
+  $("#docv").textContent = DATA.meta.version;
+  $("#heroEyebrow").textContent = DATA.meta.eyebrow;
+  $("#heroTitle").innerHTML = DATA.meta.title;
+  $("#heroLede").innerHTML = DATA.meta.lede;
+  DATA.meta.meta.forEach(([k,v])=>{ $("#heroMeta").appendChild(el("span",null,`<b>${k}</b> ${v}`)); });
+
+  // counts
+  const counts = {nocode:0,hybrid:0,bespoke:0,external:0}; let total=0;
+  DATA.groups.forEach(g=>g.items.forEach(it=>{counts[it.level]++; total++;}));
+
+  // tiles
+  const tiles = $("#tiles");
+  Object.keys(L).forEach(key=>{
+    const lv=L[key];
+    const t=el("div","tile");
+    t.innerHTML = `<div class="top"><span class="dot" style="background:${lv.color}"></span><span class="lab">${lv.label}</span></div>`
+      + `<div class="v" style="color:${lv.color}">${counts[key]}</div>`
+      + `<div class="sub">${lv.desc}</div>`;
+    tiles.appendChild(t);
+  });
+
+  // filter chips
+  const fb = $("#filterbar");
+  fb.appendChild(el("span","flabel","Lọc mức"));
+  let active = "all";
+  const mkChip=(key,label,color)=>{
+    const c=el("button","chip",(color?`<span class="cdot" style="background:${color}"></span>`:"")+label);
+    c.type="button"; c.setAttribute("aria-pressed", key==="all"?"true":"false"); c.dataset.k=key;
+    c.addEventListener("click",()=>{ active=key; applyFilter(); });
+    return c;
+  };
+  fb.appendChild(mkChip("all",`Tất cả · ${total}`,null));
+  Object.keys(L).forEach(key=> fb.appendChild(mkChip(key,`${L[key].label} · ${counts[key]}`,L[key].color)) );
+
+  // matrix
+  const matrix = $("#matrix");
+  DATA.groups.forEach(g=>{
+    const sec=el("section","grp"); sec.dataset.code=g.code;
+    const head=el("div","grp-head");
+    head.innerHTML = `<span class="grp-code">${g.code}</span>`
+      + `<div><h3 class="grp-title">${g.name}</h3><p class="grp-note">${g.note}</p></div>`
+      + `<span class="grp-count" data-count></span>`;
+    sec.appendChild(head);
+
+    const wrap=el("div","tbl-wrap");
+    const tbl=el("table");
+    tbl.innerHTML = `<thead><tr><th>Chức năng</th><th>Mức</th><th>Tái dùng của ICare247</th><th>Ghi chú</th></tr></thead>`;
+    const tb=el("tbody");
+    g.items.forEach(it=>{
+      const lv=L[it.level];
+      const tr=el("tr"); tr.dataset.level=it.level;
+      tr.innerHTML = `<td class="feat">${it.feat}</td>`
+        + `<td><span class="pill ${lv.pill}"><span class="pdot"></span>${lv.label}</span></td>`
+        + `<td class="reuse">${it.reuse}</td>`
+        + `<td class="rnote">${it.note}</td>`;
+      tb.appendChild(tr);
+    });
+    tbl.appendChild(tb); wrap.appendChild(tbl); sec.appendChild(wrap);
+    matrix.appendChild(sec);
+  });
+
+  function applyFilter(){
+    document.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed", c.dataset.k===active?"true":"false"));
+    document.querySelectorAll("section.grp").forEach(sec=>{
+      let shown=0;
+      sec.querySelectorAll("tbody tr").forEach(tr=>{
+        const hit = active==="all" || tr.dataset.level===active;
+        tr.classList.toggle("hidden",!hit); if(hit)shown++;
+      });
+      sec.classList.toggle("dim", shown===0);
+      const cnt=sec.querySelector("[data-count]");
+      cnt.textContent = active==="all" ? `${sec.querySelectorAll("tbody tr").length} chức năng` : `${shown} khớp`;
+    });
+  }
+  applyFilter();
+
+  // crosscut
+  $("#ccEyebrow").textContent = DATA.crosscut.eyebrow;
+  $("#ccTitle").textContent = DATA.crosscut.title;
+  $("#ccIntro").textContent = DATA.crosscut.intro;
+  const ccl=$("#ccList");
+  DATA.crosscut.items.forEach((it,i)=>{
+    ccl.appendChild(el("li",null,`<span class="num">${i+1}</span><div><p class="cc-t">${it.t}</p><p class="cc-d">${it.d}</p></div>`));
+  });
+
+  // conclusion
+  $("#clEyebrow").textContent = DATA.conclusion.eyebrow;
+  $("#clTitle").textContent = DATA.conclusion.title;
+  const eb=$("#estBar"), leg=$("#estLegend");
+  DATA.conclusion.estimate.forEach(s=>{
+    const seg=el("div","est-seg",`${s.pct}%`); seg.style.flex=String(s.pct); seg.style.background=s.color; eb.appendChild(seg);
+    leg.appendChild(el("span",null,`<span class="k" style="background:${s.color}"></span>${s.label} · ${s.pct}%`));
+  });
+  const reco=$("#reco");
+  reco.appendChild(el("h3",null,DATA.conclusion.reco.title));
+  const ul=el("ul"); DATA.conclusion.reco.points.forEach(p=>ul.appendChild(el("li",null,p))); reco.appendChild(ul);
+  reco.appendChild(el("p","edit-hint","✎ Trang này tự dựng từ khối <b>DATA</b> ở đầu &lt;script&gt;. Sửa quy tắc/hàng/mức tại đó — không cần đụng HTML."));
+
+  $("#foot").innerHTML = `<p>${DATA.footer}</p>`;
+
+  // theme toggle
+  const btn=$("#themeBtn");
+  const sysDark=()=>window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;
+  btn.addEventListener("click",()=>{
+    const cur=document.documentElement.getAttribute("data-theme");
+    const isDark=cur?cur==="dark":sysDark();
+    document.documentElement.setAttribute("data-theme",isDark?"light":"dark");
+  });
+})();
+</script>
