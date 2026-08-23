@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe C · Tài chính và quỹ bảo trì</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --mid:#6b6b6b; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --paper:#f7f6f3; --card:#fff;
+    --legal:#b3261e; --legal-bg:#fbeceb;
+    --lock:#8a6100; --lock-bg:#fdf3dd;
+    --ok:#1f6b3f; --ok-bg:#e8f3ec;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+  .sheet{margin-bottom:56px}
+  .sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .frame.narrow{max-width:400px}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert.okstyle{border-left-color:var(--ok);background:var(--ok-bg)}
+  .alert b{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num,th.num{font-family:var(--mono);text-align:right}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px;gap:10px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+  .stat{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .statlbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+  .aging{display:flex;gap:2px;height:26px;margin:10px 0 6px}
+  .aging div{display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:10px;color:#fff}
+  .steps{display:flex;gap:0;margin-bottom:14px;border:1px solid var(--line)}
+  .steps div{flex:1;padding:8px 10px;font-size:12px;color:var(--mid);border-right:1px solid var(--line-soft);text-align:center}
+  .steps div:last-child{border-right:none}
+  .steps div.on{background:var(--ink);color:#fff;font-weight:600}
+  .steps div.done{color:var(--ok)}
+  .trace{padding-left:0;list-style:none;margin:0}
+  .trace li{position:relative;padding:8px 0 8px 22px;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+  .trace li::before{content:"↳";position:absolute;left:4px;color:var(--mid);font-family:var(--mono)}
+  .trace li:first-child::before{content:"●";font-size:9px;top:11px}
+  .barh{height:14px;background:#3a3a3a}
+  @media(max-width:640px){body{padding:20px 12px 60px}.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="meta">Wireframe đợt 2/5 · Nhóm C · v0.1</div>
+  <h1>Tài chính — Biểu phí, công nợ và quỹ bảo trì 2%</h1>
+  <p>Nhóm nuôi doanh thu hằng ngày của BQL, đồng thời chứa ràng buộc pháp lý nặng nhất ngoài hội nghị: quỹ bảo trì.</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý</span>
+  <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Cảnh báo</span>
+  <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Hợp lệ</span>
+  <span>① Chú thích thiết kế</span>
+</div>
+
+<!-- ===== C-01 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>C-01 · Biểu phí và kỳ tính phí</b><span>Web admin · M2-02</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Tòa S2.03 › Biểu phí</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <h3 class="scr">Biểu phí đang áp dụng</h3>
+      <p class="sub">Hiệu lực từ 01/01/2026 · thông qua tại HN thường niên 2025, nội dung số 2</p>
+
+      <div class="alert okstyle">
+        <b>Biểu phí này gắn với Nghị quyết HN thường niên 2025</b>
+        Phí quản lý vận hành do Hội nghị thông qua. Sửa đơn giá cần nghị quyết mới — hệ thống lưu vết thay đổi kèm căn cứ.
+      </div>
+
+      <table>
+        <thead><tr><th>Khoản mục</th><th>Cách tính</th><th class="num">Đơn giá</th><th>Đối tượng</th><th>Nguồn</th></tr></thead>
+        <tbody>
+          <tr><td><b>Phí quản lý vận hành</b></td><td>× m² thông thủy</td><td class="num">7.700 đ/m²</td><td>Căn hộ</td><td><span class="tag ok">Nghị quyết 2025</span></td></tr>
+          <tr><td><b>Phí quản lý vận hành</b></td><td>× m² sàn</td><td class="num">12.000 đ/m²</td><td>Sàn TM, văn phòng</td><td><span class="tag ok">Nghị quyết 2025</span></td></tr>
+          <tr><td>Gửi xe ô tô</td><td>cố định/xe/tháng</td><td class="num">1.250.000 đ</td><td>Theo thẻ</td><td><span class="tag">Thỏa thuận</span></td></tr>
+          <tr><td>Gửi xe máy</td><td>cố định/xe/tháng</td><td class="num">120.000 đ</td><td>Theo thẻ</td><td><span class="tag">Thỏa thuận</span></td></tr>
+          <tr><td>Điện</td><td>bậc thang theo chỉ số</td><td class="num">theo EVN</td><td>Căn hộ</td><td><span class="tag">Nhà cung cấp</span></td></tr>
+          <tr><td>Nước</td><td>bậc thang theo chỉ số</td><td class="num">theo SAWACO</td><td>Căn hộ</td><td><span class="tag">Nhà cung cấp</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="row" style="margin-top:14px">
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Kỳ tính phí</h4>
+          <div class="kv"><span class="k">Chu kỳ</span><span class="v">Hằng tháng</span></div>
+          <div class="kv"><span class="k">Chốt chỉ số điện nước</span><span class="v">ngày 25</span></div>
+          <div class="kv"><span class="k">Phát hành thông báo</span><span class="v">ngày 01</span></div>
+          <div class="kv"><span class="k">Hạn thanh toán</span><span class="v">ngày 15</span></div>
+        </div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--lock)">
+          <h4 style="color:var(--lock)">Khoản mục KHÔNG thuộc quỹ bảo trì</h4>
+          <p style="font-size:12px;margin:0;color:var(--mid)">
+            Phí gửi xe, phí quản lý vận hành, tiền điện nước là các khoản thu riêng, <b>không nộp vào quỹ bảo trì</b>. Chart of accounts phải phản ánh đúng để hai sổ không lẫn nhau.
+          </p>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Cột <b>Nguồn</b> phân biệt khoản do Hội nghị thông qua và khoản theo thỏa thuận. Đây là câu hỏi cư dân hay chất vấn nhất: "ai cho phép thu khoản này?"</li>
+    <li>Phí quản lý cho sàn thương mại tách dòng riêng vì đơn giá và cách tính khác căn hộ — nếu gộp một dòng sẽ phải hardcode ngoại lệ trong code.</li>
+    <li>Ô cảnh báo khoản mục không thuộc quỹ bảo trì đặt ngay tại biểu phí, chỗ người dùng cấu hình — không giấu trong tài liệu hướng dẫn.</li>
+    <li>Lịch kỳ tính phí hiển thị đủ 4 mốc để BQL biết hôm nay đang ở bước nào của chu kỳ.</li>
+  </ol></div>
+</section>
+
+<!-- ===== C-02 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>C-02 · Chạy kỳ phí và phát hành thông báo</b><span>Web admin · M2-02 · batch 2.000 căn dưới 5 phút</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Biểu phí › Kỳ tháng 08/2026</span><span class="spacer"></span><span class="tag lock">BẢN NHÁP</span></div>
+    <div class="body">
+      <div class="steps">
+        <div class="done">✓ Chốt chỉ số</div>
+        <div class="done">✓ Tính phí</div>
+        <div class="on">3 · Soát bản nháp</div>
+        <div>4 · Phát hành</div>
+        <div>5 · Gửi thông báo</div>
+      </div>
+
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Số căn đã tính</div><div class="stat">492</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Tổng phải thu</div><div class="stat">1,84 tỷ</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--lock)"><div class="statlbl" style="color:var(--lock)">Cần soát</div><div class="stat">14</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Thời gian chạy</div><div class="stat">2m 41s</div></div></div>
+      </div>
+
+      <div class="alert lockstyle">
+        <b>14 căn có biến động bất thường so với kỳ trước</b>
+        Soát trước khi phát hành. Sau khi phát hành, sửa phải lập phiếu điều chỉnh có lý do.
+      </div>
+
+      <table>
+        <thead><tr><th>Căn</th><th class="num">Kỳ 07/2026</th><th class="num">Kỳ 08/2026</th><th class="num">Chênh</th><th>Nguyên nhân dự đoán</th></tr></thead>
+        <tbody>
+          <tr style="background:var(--lock-bg)"><td>S2.03-1104</td><td class="num">1.842.000</td><td class="num">6.318.000</td><td class="num">+243%</td><td>Chỉ số nước tăng đột biến · nghi rò rỉ</td></tr>
+          <tr style="background:var(--lock-bg)"><td>S2.03-0908</td><td class="num">2.104.000</td><td class="num">604.000</td><td class="num">−71%</td><td>Thiếu chỉ số điện · chưa chốt</td></tr>
+          <tr style="background:var(--lock-bg)"><td>TM-01</td><td class="num">22.080.000</td><td class="num">30.360.000</td><td class="num">+37%</td><td>Áp dụng đơn giá mới từ kỳ này</td></tr>
+          <tr><td>S2.03-1208</td><td class="num">1.654.000</td><td class="num">1.689.000</td><td class="num">+2%</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost">Xuất bản nháp Excel</button>
+        <button class="btn ghost">Tính lại kỳ</button>
+        <button class="btn">Phát hành 492 thông báo</button>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Thanh 5 bước cho thấy <b>phát hành và gửi thông báo là hai bước tách rời</b>. BQL cần khoảng đệm để soát trước khi tin nhắn bay đến 492 hộ.</li>
+    <li>Bảng chỉ liệt kê <b>căn có biến động bất thường</b>, không phải toàn bộ 492 dòng. Soát 14 dòng thì người ta soát thật; soát 492 dòng thì người ta bấm bừa.</li>
+    <li>Cột nguyên nhân dự đoán do hệ thống gợi ý — giảm thời gian điều tra thủ công, nhưng vẫn để người quyết định.</li>
+    <li>Ngưỡng bất thường nên cấu hình được theo tòa (mặc định ±30% so với trung bình 3 kỳ gần nhất).</li>
+    <li>Sau khi phát hành, sửa phải qua <b>phiếu điều chỉnh có lý do</b> — không sửa đè, để đối soát và giải thích với cư dân.</li>
+  </ol></div>
+</section>
+
+<!-- ===== C-03 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>C-03 · Công nợ và nhắc nợ</b><span>Web admin · M2-03</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Tài chính › Công nợ</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <h3 class="scr">Công nợ tại 22/08/2026</h3>
+      <p class="sub">Tổng dư nợ 412,6 triệu · 87 căn có nợ · tỷ lệ thu kỳ 07/2026: 94,2%</p>
+
+      <div class="aging">
+        <div style="flex:52;background:#3a3a3a">0–30 ngày · 214,5tr</div>
+        <div style="flex:24;background:#6b6b6b">31–60 · 98,2tr</div>
+        <div style="flex:14;background:#a06a2c">61–90 · 57,4tr</div>
+        <div style="flex:10;background:var(--legal)">&gt;90 · 42,5tr</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--mid);margin-bottom:14px">Tuổi nợ theo nhóm · nhóm &gt;90 ngày cần phương án xử lý riêng</div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;margin:0"><span>🔍 Mã căn, tên chủ sở hữu</span></div>
+        <div class="field" style="margin:0"><span class="val">Tuổi nợ: &gt;90 ngày ▾</span></div>
+        <button class="btn ghost">Xuất Excel</button>
+        <button class="btn">Gửi nhắc nợ hàng loạt</button>
+      </div>
+
+      <table>
+        <thead><tr><th>Căn</th><th>Chủ sở hữu</th><th class="num">Dư nợ</th><th class="num">Tuổi nợ</th><th>Lần nhắc gần nhất</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+          <tr style="background:var(--legal-bg)"><td>S2.03-0704</td><td>Công ty TNHH M</td><td class="num">18.420.000</td><td class="num">184 ngày</td><td>05/08 · Email</td><td>Đã gửi văn bản lần 2</td></tr>
+          <tr style="background:var(--legal-bg)"><td>S2.03-1802</td><td>Bùi Thị M</td><td class="num">9.870.000</td><td class="num">126 ngày</td><td>05/08 · Zalo</td><td>Cam kết trả 30/08</td></tr>
+          <tr><td>S2.03-0611</td><td>Vũ Thị F</td><td class="num">4.210.000</td><td class="num">96 ngày</td><td>05/08 · SMS</td><td>—</td></tr>
+          <tr><td>S2.03-1503</td><td>Phạm Văn D</td><td class="num">3.180.000</td><td class="num">92 ngày</td><td>chưa nhắc</td><td>Căn đang cho thuê</td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert" style="margin-top:12px">
+        <b>Nợ phí quản lý không tự động cắt dịch vụ</b>
+        Xử lý theo thỏa thuận trong hợp đồng dịch vụ quản lý vận hành mà BQT đã ký. Hệ thống chỉ hỗ trợ nhắc và lập hồ sơ, không tự khóa thẻ hay ngắt tiện ích.
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Thanh tuổi nợ 4 nhóm hiển thị theo <b>tỷ lệ giá trị</b>, không phải số căn. 42,5 triệu ở nhóm &gt;90 ngày quan trọng hơn 40 căn nợ 5 ngày.</li>
+    <li>Cột "lần nhắc gần nhất" ghi cả kênh — tránh gửi trùng 3 kênh cùng lúc gây phản cảm, và là bằng chứng đã nhắc khi cần lập hồ sơ.</li>
+    <li>Ghi chú tự do cho phép nhân sự lưu cam kết trả nợ — thông tin này nằm ở đầu người thu ngân, cần đưa vào hệ thống.</li>
+    <li>Cảnh báo dưới bảng là ràng buộc quan trọng: <b>hệ thống không tự cắt dịch vụ</b>. Đây là chỗ dễ bị khách hàng yêu cầu làm sai và dễ dẫn đến tranh chấp.</li>
+    <li>Căn đang cho thuê được đánh dấu vì người nhận thông báo và người có nghĩa vụ trả có thể khác nhau.</li>
+  </ol></div>
+</section>
+
+<!-- ===== C-04 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>C-04 · Quỹ bảo trì 2% · lập phiếu chi</b><span>Web admin · M1-11 · MÀN HÌNH RÀNG BUỘC PHÁP LÝ</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Quỹ bảo trì › Lập phiếu chi</span><span class="spacer"></span><span class="tag legal">M1</span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0;border-color:var(--legal)">
+          <div class="statlbl" style="color:var(--legal)">Số dư quỹ bảo trì</div>
+          <div class="stat">8,42 tỷ</div>
+          <div style="font-size:11px;color:var(--mid)">Sổ riêng · không bù trừ với quỹ vận hành</div>
+        </div></div>
+        <div class="col"><div class="box" style="margin:0">
+          <div class="statlbl">Số dư quỹ vận hành</div>
+          <div class="stat">386 tr</div>
+          <div style="font-size:11px;color:var(--mid)">Sổ riêng</div>
+        </div></div>
+        <div class="col"><div class="box" style="margin:0">
+          <div class="statlbl">Đã chi năm 2026</div>
+          <div class="stat">1,26 tỷ</div>
+          <div style="font-size:11px;color:var(--mid)">6/11 hạng mục kế hoạch</div>
+        </div></div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="box" style="border-color:var(--legal)">
+            <h4 style="color:var(--legal)">Hạng mục kế hoạch bảo trì <span class="tag legal">Bắt buộc</span></h4>
+            <div class="field" style="border-color:var(--ink)">
+              <span class="val"><b>KH2026-04 · Thay cáp thang máy tháp A</b><br>
+              <span style="font-size:11px;color:var(--mid)">Dự toán 780.000.000 đ · đã chi 0 đ</span></span>
+              <span class="tag ok">Đã duyệt</span>
+            </div>
+            <div class="trace" style="margin-top:10px">
+              <ul class="trace" style="padding:0">
+                <li><b>Kế hoạch bảo trì 2026</b> — 11 hạng mục</li>
+                <li>Thông qua tại <b>HN thường niên 2025</b>, nội dung số 3</li>
+                <li>Nghị quyết số 03/NQ-HNCC ngày 21/09/2025</li>
+                <li>Biên bản hội nghị · <u>BB-HN2025.pdf</u></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="box">
+            <h4>Thông tin phiếu chi</h4>
+            <div class="field"><span>Số phiếu</span><span class="val">PC-2026-0042</span></div>
+            <div class="field"><span>Ngày chi</span><span class="val">22/08/2026</span></div>
+            <div class="field"><span>Số tiền</span><span class="val"><b>412.000.000 đ</b></span></div>
+            <div class="field"><span>Nhà thầu</span><span class="val">Công ty TNHH Thang máy Q</span></div>
+            <div class="field"><span>Chứng từ</span><span class="val">HĐ-2026-0088.pdf · BB-nghiemthu.pdf</span></div>
+          </div>
+
+          <div class="alert okstyle">
+            <b>Phiếu chi hợp lệ</b>
+            Đã gắn hạng mục KH2026-04. Số tiền 412 triệu nằm trong dự toán 780 triệu. Cần chữ ký BQT trước khi ghi sổ.
+          </div>
+
+          <button class="btn lg" style="width:100%">Trình BQT phê duyệt</button>
+        </div>
+      </div>
+
+      <div class="alert" style="margin-top:14px">
+        <b>Trạng thái khi CHƯA gắn hạng mục kế hoạch</b>
+        Nút "Trình BQT phê duyệt" bị khóa. Thông báo hiển thị: <i>"Kinh phí bảo trì chỉ được dùng theo kế hoạch bảo trì đã được Hội nghị nhà chung cư thông qua. Chọn hạng mục kế hoạch, hoặc chuyển sang luồng chi ngoài kế hoạch."</i>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li><b>Hai số dư đặt cạnh nhau nhưng là hai sổ độc lập.</b> Không có phép cộng nào giữa chúng trong bất kỳ báo cáo nào — ràng buộc <code>DB5</code>.</li>
+    <li>Chuỗi truy vết hiển thị ngay khi lập phiếu: hạng mục → kế hoạch → nghị quyết → biên bản. Người lập phiếu thấy được căn cứ pháp lý của khoản chi mình đang làm.</li>
+    <li>Trường hạng mục kế hoạch là <b>trường bắt buộc chặn cứng</b>, không phải cảnh báo mềm. Không gắn thì không lưu được.</li>
+    <li>Hiển thị dự toán và số đã chi của hạng mục để phát hiện vượt dự toán ngay tại chỗ.</li>
+    <li>Chi ngoài kế hoạch có luồng riêng (khẩn cấp, hoặc chờ hội nghị bất thường) — nêu ra trong thông báo lỗi để người dùng biết lối đi, không bị kẹt.</li>
+  </ol></div>
+</section>
+
+<!-- ===== C-05 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>C-05 · Báo cáo minh bạch cho cư dân</b><span>App cư dân · S-06 · chỉ đọc</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Cư dân</span><span class="crumb">Tài chính tòa nhà</span></div>
+      <div class="body">
+        <h3 class="scr">Quỹ bảo trì 2%</h3>
+        <p class="sub">Cập nhật 22/08/2026</p>
+
+        <div class="box" style="border-color:var(--legal)">
+          <div class="statlbl">Số dư hiện tại</div>
+          <div class="stat">8.420.145.000 đ</div>
+        </div>
+
+        <div class="box">
+          <h4>Đã chi năm 2026</h4>
+          <div class="kv"><span class="k">Sơn chống thấm mái</span><span class="v">318 tr</span></div>
+          <div class="kv"><span class="k">Bảo trì máy phát điện</span><span class="v">245 tr</span></div>
+          <div class="kv"><span class="k">Thay bơm PCCC tầng hầm</span><span class="v">402 tr</span></div>
+          <div class="kv"><span class="k">Hệ thống camera</span><span class="v">295 tr</span></div>
+          <div class="kv"><span class="k"><b>Tổng</b></span><span class="v"><b>1.260 tr</b></span></div>
+        </div>
+
+        <div class="box">
+          <h4>Tiến độ kế hoạch 2026</h4>
+          <div style="font-size:12px;margin-bottom:4px">6 / 11 hạng mục đã thực hiện</div>
+          <div style="height:14px;border:1px solid var(--ink);position:relative;background:#f0efec">
+            <div class="barh" style="width:55%"></div>
+          </div>
+          <p style="font-size:11.5px;color:var(--mid);margin:8px 0 0">
+            Kế hoạch bảo trì 2026 được Hội nghị thường niên 2025 thông qua ngày 21/09/2025.
+          </p>
+          <button class="btn ghost" style="width:100%;margin-top:8px">Xem nghị quyết</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Cư dân</span><span class="crumb">Chi tiết khoản chi</span></div>
+      <div class="body">
+        <h3 class="scr">Thay bơm PCCC tầng hầm</h3>
+        <p class="sub">402.000.000 đ · 14/06/2026</p>
+
+        <ul class="trace" style="padding:0">
+          <li><b>Phiếu chi PC-2026-0031</b> · 402.000.000 đ</li>
+          <li>Hạng mục <b>KH2026-02</b> · dự toán 450.000.000 đ</li>
+          <li>Kế hoạch bảo trì 2026 · nội dung số 3</li>
+          <li><b>Nghị quyết 03/NQ-HNCC</b> ngày 21/09/2025</li>
+          <li>Biên bản HN thường niên 2025</li>
+        </ul>
+
+        <div class="box" style="margin-top:12px">
+          <h4>Chứng từ công khai</h4>
+          <div class="kv"><span class="k">Hợp đồng thi công</span><span class="v">Xem</span></div>
+          <div class="kv"><span class="k">Biên bản nghiệm thu</span><span class="v">Xem</span></div>
+          <div class="kv"><span class="k">Phê duyệt của BQT</span><span class="v">Xem</span></div>
+        </div>
+
+        <p style="font-size:11.5px;color:var(--mid)">
+          Thông tin nhà thầu và giá trị hợp đồng được công khai. Thông tin cá nhân trong chứng từ được che theo quy định bảo vệ dữ liệu.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Đây là màn hình <b>bán được sản phẩm</b>. Minh bạch tài chính là lý do chính khiến cư dân ủng hộ BQT đổi phần mềm.</li>
+    <li>Chuỗi truy vết ngược hiển thị đúng thứ tự cư dân quan tâm: <b>khoản chi → hạng mục → nghị quyết → biên bản</b>. Trả lời trực tiếp câu hỏi "ai cho phép chi khoản này?"</li>
+    <li>Tiến độ kế hoạch dạng 6/11 hạng mục dễ hiểu hơn phần trăm giải ngân — cư dân quan tâm việc đã làm, không quan tâm tỷ lệ tiền.</li>
+    <li>Chứng từ công khai nhưng <b>che thông tin cá nhân</b> — cân bằng giữa minh bạch và bảo vệ dữ liệu.</li>
+    <li>Không có nút bình luận hay đánh giá ở màn hình này. Ý kiến về tài chính nên đi qua luồng phản ánh chính thức để có SLA và lưu vết.</li>
+  </ol></div>
+</section>
+
+<footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+  Đợt 2/5 · Nhóm C hoàn tất. Tiếp theo: D · Vận hành (4 màn hình) — phản ánh cư dân, kế hoạch bảo trì, tài sản, đặt tiện ích.
+</footer>
+</div>
+</body>
+</html>

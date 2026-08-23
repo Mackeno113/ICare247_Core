@@ -1,0 +1,234 @@
+erDiagram
+    FEE_SCHEDULE ||--o{ FEE_ITEM : "khoản mục"
+    FEE_SCHEDULE }o--o| RESOLUTION_REF : "căn cứ nghị quyết"
+    BILLING_PERIOD ||--o{ INVOICE : "phát hành"
+    INVOICE ||--o{ INVOICE_LINE : "chi tiết"
+    INVOICE ||--o{ PAYMENT : "thanh toán"
+    FEE_ITEM ||--o{ INVOICE_LINE : "áp dụng"
+    UNIT_REF ||--o{ INVOICE : "của căn"
+    METER_READING ||--o{ INVOICE_LINE : "chỉ số điện nước"
+
+    MAINTENANCE_PLAN ||--o{ MAINTENANCE_PLAN_ITEM : "hạng mục"
+    MAINTENANCE_PLAN }o--|| RESOLUTION_REF : "R9 - BẮT BUỘC thông qua"
+    MAINTENANCE_PLAN_ITEM ||--o{ EXPENSE_VOUCHER : "DB5 - không có link không lưu"
+    EXPENSE_VOUCHER ||--o{ FUND_LEDGER_ENTRY : "ghi sổ"
+    FUND_ACCOUNT ||--o{ FUND_LEDGER_ENTRY : "sổ tách riêng"
+
+    ASSET ||--o{ ASSET_MAINTENANCE : "lịch định kỳ"
+    ASSET ||--o{ MAINTENANCE_PLAN_ITEM : "sinh đề xuất khi quá hạn"
+    TICKET ||--o{ TICKET_EVENT : "vòng đời"
+    TICKET }o--o{ MAINTENANCE_PLAN_ITEM : "nguồn đề xuất"
+    UNIT_REF ||--o{ TICKET : "phản ánh"
+    UNIT_REF ||--o{ AMENITY_BOOKING : "đặt tiện ích"
+    AMENITY ||--o{ AMENITY_BOOKING : "khung giờ"
+    UNIT_REF ||--o{ RENOVATION_REQUEST : "đăng ký thi công"
+
+    UNIT_REF {
+        uuid id PK "tham chiếu UNIT ở ERD-1"
+    }
+
+    RESOLUTION_REF {
+        uuid id PK "tham chiếu RESOLUTION ở ERD-2"
+    }
+
+    FEE_SCHEDULE {
+        uuid id PK
+        uuid building_id FK
+        date effective_from
+        date effective_to
+        uuid resolution_id FK "phí quản lý do hội nghị thông qua"
+    }
+
+    FEE_ITEM {
+        uuid id PK
+        uuid fee_schedule_id FK
+        string name "phí quản lý, gửi xe, điện, nước"
+        enum calc_method "PER_SQM FIXED_PER_UNIT TIERED_METER"
+        decimal unit_price
+        enum applies_to "APARTMENT COMMERCIAL ALL"
+        enum fund_target "OPERATION_FUND - KHÔNG BAO GIỜ là MAINTENANCE_FUND"
+    }
+
+    BILLING_PERIOD {
+        uuid id PK
+        uuid building_id FK
+        string period_code "2026-08"
+        date meter_cutoff_date
+        date issue_date
+        date due_date
+        enum status "DRAFT REVIEWED ISSUED NOTIFIED CLOSED"
+        int anomaly_count "số căn biến động bất thường cần soát"
+    }
+
+    METER_READING {
+        uuid id PK
+        uuid unit_id FK
+        uuid billing_period_id FK
+        enum meter_type "ELECTRIC WATER"
+        decimal reading_start
+        decimal reading_end
+        decimal consumption
+        boolean is_estimated
+    }
+
+    INVOICE {
+        uuid id PK
+        uuid billing_period_id FK
+        uuid unit_id FK
+        decimal total_amount
+        decimal paid_amount
+        decimal balance
+        int aging_days "0-30 31-60 61-90 90+"
+        enum status "DRAFT ISSUED PARTIAL PAID OVERDUE"
+    }
+
+    INVOICE_LINE {
+        uuid id PK
+        uuid invoice_id FK
+        uuid fee_item_id FK
+        uuid meter_reading_id FK
+        decimal quantity "78.40 m2 hoặc 214 kWh - hiển thị cho cư dân"
+        decimal amount
+    }
+
+    PAYMENT {
+        uuid id PK
+        uuid invoice_id FK
+        enum method "VIETQR EWALLET CARD CASH BANK_TRANSFER"
+        decimal amount
+        string reference_code "mã căn + kỳ - đối soát tự động"
+        timestamp paid_at
+        boolean is_reconciled
+    }
+
+    FUND_ACCOUNT {
+        uuid id PK
+        uuid building_id FK
+        enum fund_type "MAINTENANCE_FUND OPERATION_FUND"
+        decimal balance "DB - hai quỹ KHÔNG BAO GIỜ bù trừ"
+        string bank_account_no "quỹ bảo trì có tài khoản riêng"
+    }
+
+    MAINTENANCE_PLAN {
+        uuid id PK
+        uuid building_id FK
+        int plan_year
+        uuid resolution_id FK "NULL khi còn DRAFT - chưa dùng làm căn cứ chi"
+        enum status "DRAFT UNDER_REVIEW SUBMITTED APPROVED"
+        decimal total_budget
+    }
+
+    MAINTENANCE_PLAN_ITEM {
+        uuid id PK
+        uuid maintenance_plan_id FK
+        string code "KH2027-01"
+        string title
+        enum source "PERIODIC_SCHEDULE INSPECTION RESIDENT_TICKET BQT_PROPOSAL"
+        uuid asset_id FK
+        enum priority "HIGH MEDIUM LOW"
+        decimal budget_amount
+        decimal spent_amount
+        int target_quarter
+    }
+
+    EXPENSE_VOUCHER {
+        uuid id PK
+        uuid fund_account_id FK
+        uuid maintenance_plan_item_id FK "BẮT BUỘC khi fund_type = MAINTENANCE · DB5"
+        string voucher_no
+        decimal amount
+        string contractor_name
+        enum status "DRAFT PENDING_BQT APPROVED PAID REJECTED"
+        uuid created_by FK "BQL lập"
+        uuid approved_by FK "BQT duyệt - TÁCH VAI TRÒ"
+        boolean is_off_plan "chi ngoài kế hoạch - luồng phê duyệt riêng"
+        string evidence_files
+    }
+
+    FUND_LEDGER_ENTRY {
+        uuid id PK
+        uuid fund_account_id FK
+        uuid expense_voucher_id FK
+        enum direction "IN OUT"
+        decimal amount
+        decimal balance_after
+        date posted_date
+    }
+
+    ASSET {
+        uuid id PK
+        uuid building_id FK
+        string name "thang máy tháp A"
+        string manufacturer
+        date installed_date
+        date warranty_end
+        boolean requires_inspection "thang máy, PCCC"
+        date next_inspection_date
+        decimal cumulative_cost "cơ sở quyết định đại tu hay thay mới"
+    }
+
+    ASSET_MAINTENANCE {
+        uuid id PK
+        uuid asset_id FK
+        int cycle_months
+        date scheduled_date
+        date completed_date
+        enum status "PLANNED DUE OVERDUE DONE"
+        uuid expense_voucher_id FK
+    }
+
+    TICKET {
+        uuid id PK
+        uuid unit_id FK
+        uuid reporter_party_id FK
+        enum category "TECHNICAL SANITATION SECURITY NOISE OTHER"
+        string location
+        string description
+        int sla_hours "theo category, cấu hình từng tòa"
+        timestamp due_at
+        enum status "NEW ASSIGNED IN_PROGRESS AWAITING_CONFIRM CLOSED"
+        uuid assignee_id FK
+        int rating "1-5, đánh giá tại hội nghị thường niên"
+    }
+
+    TICKET_EVENT {
+        uuid id PK
+        uuid ticket_id FK
+        enum event_type "CREATED ASSIGNED UPDATED RESOLVED CONFIRMED"
+        string note
+        uuid actor_id FK
+        timestamp occurred_at
+    }
+
+    AMENITY {
+        uuid id PK
+        uuid building_id FK
+        string name "nhà sinh hoạt cộng đồng, bể bơi, BBQ"
+        int capacity
+        decimal free_hours_per_month
+        decimal deposit_amount
+        boolean block_if_overdue "cấu hình theo NỘI QUY từng tòa"
+    }
+
+    AMENITY_BOOKING {
+        uuid id PK
+        uuid amenity_id FK
+        uuid unit_id FK
+        date booking_date
+        time slot_start
+        time slot_end
+        enum status "PENDING APPROVED REJECTED CANCELLED"
+    }
+
+    RENOVATION_REQUEST {
+        uuid id PK
+        uuid unit_id FK
+        enum work_type "INTERIOR PLUMBING ELECTRICAL"
+        date start_date
+        date end_date
+        string contractor_name
+        json worker_list "CCCD bên thứ ba - XÓA sau khi kết thúc"
+        date purge_after "cơ chế xóa tự động"
+        boolean safety_commitment_signed
+        enum status "PENDING APPROVED REJECTED COMPLETED"
+    }

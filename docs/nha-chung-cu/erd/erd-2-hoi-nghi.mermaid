@@ -1,0 +1,184 @@
+erDiagram
+    CONFERENCE ||--o{ AGENDA_ITEM : "chương trình nghị sự"
+    CONFERENCE ||--o{ PROXY : "giấy ủy quyền"
+    CONFERENCE ||--o{ INVITATION : "bằng chứng gửi"
+    CONFERENCE ||--o{ ATTENDANCE : "check-in"
+    CONFERENCE ||--|| VOTER_ROLL : "snapshot tại khai mạc"
+    CONFERENCE ||--o{ CONFERENCE_DOC : "tài liệu"
+    CONFERENCE ||--o{ RESOLUTION : "nghị quyết"
+    CONFERENCE ||--o{ HOME_BALLOT : "phiếu tại căn hộ R6"
+
+    VOTER_ROLL ||--o{ VOTER_ROLL_ENTRY : "BẤT BIẾN"
+    AGENDA_ITEM ||--o{ VOTE_OPTION : "phương án hoặc ứng viên"
+    AGENDA_ITEM ||--|| BALLOT : "phiên bỏ phiếu"
+    AGENDA_ITEM ||--o| RESOLUTION : "kết quả"
+    BALLOT ||--o{ VOTE : "hash chain"
+    VOTER_ROLL_ENTRY ||--o{ VOTE : "1 cử tri nhiều nội dung"
+    VOTE_OPTION ||--o{ VOTE : "lựa chọn"
+    HOME_BALLOT ||--o{ VOTE : "nguồn HOME_BALLOT"
+
+    CONFERENCE {
+        uuid id PK
+        uuid building_id FK
+        enum type "FIRST ANNUAL EXTRAORDINARY"
+        enum format "IN_PERSON ONLINE HYBRID"
+        enum format_reason "EPIDEMIC NATURAL_DISASTER NULL - R5"
+        uuid format_evidence_doc FK "BẮT BUỘC khi format khác IN_PERSON"
+        decimal quorum_threshold_pct "cấu hình theo tòa x loại - R2 R3"
+        int proxy_cap "trần ủy quyền theo nội quy"
+        enum status "DRAFT NOTIFIED CHECKIN QUORUM_MET OPENED VOTING CLOSED PUBLISHED FAILED CANCELLED"
+        timestamp scheduled_at
+        timestamp quorum_met_at "mốc đạt ngưỡng - in lên biên bản"
+        timestamp opened_at
+        timestamp closed_at
+        timestamp published_at
+    }
+
+    VOTER_ROLL {
+        uuid id PK
+        uuid conference_id FK "1-1"
+        string snapshot_hash "SHA-256 - in lên biên bản"
+        decimal total_weight_sqm "MẪU SỐ chốt tại khai mạc"
+        int total_entries
+        timestamp created_at "= conference.opened_at, giao dịch nguyên tử"
+    }
+
+    VOTER_ROLL_ENTRY {
+        uuid id PK
+        uuid voter_roll_id FK
+        uuid unit_id FK
+        string voter_ref "MÃ ẨN DANH - không lưu tên, CCCD"
+        decimal voting_weight_sqm "CHỐT - không join động tới UNIT · DB4"
+        enum attendance_type "IN_PERSON BY_PROXY HOME_BALLOT ABSENT"
+        boolean eligibility_flag
+    }
+
+    PROXY {
+        uuid id PK
+        uuid conference_id FK
+        uuid unit_id FK
+        uuid grantor_party_id FK
+        uuid grantee_party_id FK
+        enum scope "ALL SPECIFIC"
+        json scope_agenda_items "khi scope = SPECIFIC"
+        enum status "PENDING VALID REJECTED REVOKED"
+        string reject_reason "BẮT BUỘC khi REJECTED"
+        string scan_file_path
+        boolean paper_received "bản giấy có chữ ký"
+        timestamp revoked_at
+    }
+
+    ATTENDANCE {
+        uuid id PK
+        uuid conference_id FK
+        uuid unit_id FK
+        uuid party_id FK
+        enum method "QR UNIT_CODE NATIONAL_ID"
+        enum attendance_type "IN_PERSON BY_PROXY HOME_BALLOT"
+        timestamp checkin_at
+        string device_id "offline-first - chống trùng"
+        uuid operator_id FK
+        string idempotency_key UK "chống bản ghi trùng khi sync"
+    }
+
+    INVITATION {
+        uuid id PK
+        uuid conference_id FK
+        uuid unit_id FK
+        enum channel "APP ZALO EMAIL SMS PRINTED"
+        enum delivery_status "SENT DELIVERED READ FAILED"
+        timestamp sent_at
+        timestamp read_at
+        string signature_image "khi channel = PRINTED"
+    }
+
+    CONFERENCE_DOC {
+        uuid id PK
+        uuid conference_id FK
+        enum doc_type "REPORT MAINTENANCE_PLAN CANDIDATE_LIST ELECTION_RULES"
+        string file_path
+        string file_hash
+    }
+
+    AGENDA_ITEM {
+        uuid id PK
+        uuid conference_id FK
+        int seq
+        string title
+        enum item_type "APPROVAL ELECTION DISMISSAL"
+        decimal pass_threshold_pct
+        enum denominator_basis "PRESENT_SQM TOTAL_SQM - CHỜ CHỐT PHÁP CHẾ §9.3"
+        int elect_n "bầu N trong M"
+    }
+
+    VOTE_OPTION {
+        uuid id PK
+        uuid agenda_item_id FK
+        string label "phương án hoặc tên ứng viên"
+        uuid candidate_party_id FK "khi item_type = ELECTION"
+        boolean is_withdrawn "ứng viên rút tên"
+    }
+
+    BALLOT {
+        uuid id PK
+        uuid agenda_item_id FK "1-1"
+        timestamp opened_at
+        timestamp closed_at
+        uuid opened_by FK
+        uuid closed_by FK
+        boolean has_tie "cảnh báo bằng phiếu - hệ thống KHÔNG tự chọn"
+    }
+
+    VOTE {
+        uuid id PK
+        uuid ballot_id FK
+        uuid voter_roll_entry_id FK
+        uuid option_id FK
+        enum choice "FOR AGAINST ABSTAIN NOT_VOTED"
+        decimal weight_sqm "COPY từ VOTER_ROLL_ENTRY · DB4"
+        enum source "ONSITE HOME_BALLOT PAPER - CHỜ CHỐT PHÁP CHẾ §9.2"
+        string prev_hash "hash chain"
+        string record_hash
+        timestamp recorded_at
+    }
+
+    HOME_BALLOT {
+        uuid id PK
+        uuid conference_id FK
+        uuid unit_id FK
+        string ballot_code UK "mã in trên phiếu giấy - quét lại báo trùng"
+        uuid confirmed_by_1 FK "two-man rule"
+        uuid confirmed_by_2 FK "BẮT BUỘC - 1 người không lưu được"
+        string photo_path "ảnh chụp phiếu"
+        timestamp collected_at
+    }
+
+    RESOLUTION {
+        uuid id PK
+        uuid conference_id FK
+        uuid agenda_item_id FK
+        enum result "PASSED REJECTED PENDING_ROUND_2"
+        decimal for_sqm
+        decimal against_sqm
+        decimal abstain_sqm
+        decimal not_voted_sqm "DB6 - tổng 4 = total_weight_sqm"
+        decimal denominator_used "nêu rõ trên biên bản"
+        string document_file
+        timestamp published_at
+    }
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid tenant_id FK
+        uuid actor_id FK
+        string action "OPEN_CONFERENCE RECORD_VOTE PUBLISH_RESULT"
+        string entity_type
+        uuid entity_id
+        json before_value
+        json after_value
+        timestamp occurred_at "có timezone"
+        string ip_address
+        string device_id
+        string prev_hash "APPEND-ONLY - trigger CSDL chặn UPDATE DELETE"
+        string record_hash
+    }

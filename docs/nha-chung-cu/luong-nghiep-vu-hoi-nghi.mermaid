@@ -1,0 +1,132 @@
+flowchart TB
+    %% ================= GIAI ĐOẠN 1 =================
+    subgraph P1["GIAI ĐOẠN 1 · CHUẨN BỊ - trước hội nghị 15-30 ngày"]
+        direction TB
+        S1["Kiểm tra điều kiện mở kỳ<br/>R1: 12 tháng + 50% căn bàn giao"]
+        S2{"Đủ điều kiện<br/>tổ chức?"}
+        S1 --> S2
+        S2 -->|"Không"| S2A["Cảnh báo deadline<br/>Chờ đủ tỷ lệ bàn giao"]
+        S2A -.-> S1
+        S2 -->|"Quá 12 tháng<br/>CĐT không tổ chức"| S2B["R8: UBND cấp xã<br/>tiếp nhận đơn đề nghị"]
+        S2 -->|"Có"| S3["Tạo kỳ hội nghị<br/>chọn loại: lần đầu / thường niên / bất thường"]
+        S2B --> S3
+
+        S3 --> S4["Cấu hình ngưỡng quorum<br/>lần đầu 50% · thường niên 30%"]
+        S4 --> S5{"Hình thức<br/>họp?"}
+        S5 -->|"Trực tiếp<br/>mặc định"| S7
+        S5 -->|"Trực tuyến<br/>Kết hợp"| S6["R5: BẮT BUỘC chọn lý do<br/>dịch bệnh / thiên tai<br/>+ upload văn bản căn cứ"]
+        S6 --> S7["Soạn chương trình nghị sự<br/>Đính kèm tài liệu"]
+
+        S7 --> S8["Chốt danh sách ứng viên BQT<br/>Dự thảo quy chế bầu cử"]
+        S8 --> S9["Gửi mời đa kênh<br/>App · Zalo · Email · SMS · Bản in"]
+        S9 --> S10["Lưu bằng chứng gửi<br/>đã gửi / nhận / đọc / thất bại"]
+
+        S10 --> S11["Tiếp nhận giấy ủy quyền"]
+        S11 --> S12{"Hợp lệ?"}
+        S12 -->|"Trùng căn"| S12A["CHẶN<br/>hiển thị giấy đang hiệu lực"]
+        S12 -->|"Vượt trần"| S12B["TỪ CHỐI<br/>nêu rõ trần cấu hình"]
+        S12 -->|"Đạt"| S13["Duyệt HỢP_LỆ"]
+
+        S10 --> S14["Lập danh sách lấy phiếu<br/>tại căn hộ · R6 người khuyết tật"]
+        S13 --> S15["Mô phỏng quorum<br/>còn thiếu bao nhiêu m2"]
+        S15 --> S16["Vận động các căn trọng số lớn"]
+    end
+
+    %% ================= GIAI ĐOẠN 2 =================
+    subgraph P2["GIAI ĐOẠN 2 · NGÀY HỘI NGHỊ - buổi sáng"]
+        direction TB
+        T1["Mở cổng check-in"]
+        T1 --> T2["Quét QR / nhập số căn / CCCD"]
+        T2 --> T3{"Tư cách?"}
+        T3 -->|"Chủ sở hữu<br/>đến trực tiếp"| T4["TRỰC_TIẾP<br/>tự vô hiệu ủy quyền nếu có"]
+        T3 -->|"Người nhận<br/>ủy quyền"| T5["QUA_ỦY_QUYỀN<br/>kiểm tra phạm vi"]
+        T3 -->|"Người sử dụng<br/>chủ SH không dự"| T6["NGƯỜI_SỬ_DỤNG<br/>trọng số vẫn theo chủ SH"]
+
+        T4 --> T7["Cập nhật quorum real-time"]
+        T5 --> T7
+        T6 --> T7
+        T8["Tổ bầu cử đi lấy phiếu<br/>tại căn hộ · 2 người xác nhận"] --> T7
+
+        T7 --> T9["Hiển thị ĐỒNG THỜI 2 tỷ lệ<br/>A. % đại diện chủ SH tham dự<br/>B. % m2 diện tích hiện diện"]
+        T9 --> T10{"Tỷ lệ A đạt<br/>ngưỡng chưa?"}
+        T10 -->|"Chưa"| T11["Nút KHAI MẠC bị khóa<br/>tooltip: còn thiếu N đại biểu"]
+        T11 -.->|"Tiếp tục vận động"| T2
+        T10 -->|"Đạt"| T12["Mở khóa nút KHAI MẠC<br/>ghi mốc thời gian đạt ngưỡng"]
+
+        T12 --> T13["BẤM KHAI MẠC"]
+        T13 --> T14["TẠO SNAPSHOT CỬ TRI<br/>VoterRoll bất biến + hash SHA-256<br/>chốt tổng m2 làm mẫu số"]
+    end
+
+    %% ================= GIAI ĐOẠN 3 =================
+    subgraph P3["GIAI ĐOẠN 3 · BIỂU QUYẾT VÀ KIỂM PHIẾU"]
+        direction TB
+        U1["Ban kiểm phiếu mở phiếu<br/>nội dung số i"]
+        U1 --> U2{"Loại<br/>nội dung?"}
+        U2 -->|"Thông qua<br/>bãi miễn"| U3["Ghi nhận 4 trạng thái<br/>tán thành / không / không ý kiến / vắng"]
+        U2 -->|"Bầu BQT"| U4["Chọn N trong M ứng viên"]
+
+        U3 --> U5["ENGINE TÍNH PHIẾU<br/>R4: 1m2 sở hữu riêng = 01 phiếu<br/>weight lấy từ VoterRoll, KHÔNG join động"]
+        U4 --> U5
+        U6["Gộp phiếu lấy tại căn hộ<br/>đánh dấu rõ nguồn"] --> U5
+
+        U5 --> U7["Ghi Vote + hash chain<br/>prev_hash / record_hash"]
+        U7 --> U8["Đóng phiếu nội dung i"]
+        U8 --> U9{"Kết quả?"}
+        U9 -->|"Bằng phiếu<br/>vị trí cuối"| U10["CẢNH BÁO<br/>không tự chọn<br/>đề xuất bầu vòng 2"]
+        U9 -->|"Rõ ràng"| U11["Đối chiếu ngưỡng thông qua<br/>nêu rõ mẫu số đã dùng"]
+        U10 --> U11
+
+        U11 --> U12{"Còn nội dung<br/>tiếp theo?"}
+        U12 -->|"Có"| U1
+        U12 -->|"Hết"| U13["Bảng kiểm phiếu tổng hợp"]
+        U13 --> U14["CÔNG BỐ KẾT QUẢ<br/>sau bước này KHÔNG sửa được phiếu"]
+    end
+
+    %% ================= GIAI ĐOẠN 4 =================
+    subgraph P4["GIAI ĐOẠN 4 · HẬU HỘI NGHỊ - trong 30 phút"]
+        direction TB
+        V1["Sinh biên bản theo mẫu TT 05"]
+        V1 --> V2["Đính 6 phụ lục bắt buộc<br/>tham dự · ủy quyền · kiểm phiếu<br/>nghị quyết · bằng chứng gửi · căn cứ hình thức"]
+        V2 --> V3["In biên bản có watermark BẢN NHÁP"]
+        V3 --> V4["R7: LẤY CHỮ KÝ TƯƠI<br/>thành viên chủ trì + thư ký<br/>khi mọi người còn có mặt"]
+        V4 --> V5["Gỡ watermark<br/>đóng gói ZIP + file hash"]
+        V5 --> V6["Công khai nghị quyết, nội quy<br/>app + bản in tại sảnh, nhà SHCĐ"]
+        V6 --> V7["Lập hồ sơ đề nghị công nhận<br/>Ban quản trị gửi UBND"]
+    end
+
+    %% ================= HẬU KỲ =================
+    subgraph P5["SAU HỘI NGHỊ · RÀNG BUỘC LIÊN TỤC"]
+        direction TB
+        W1["Kế hoạch bảo trì<br/>ĐÃ được nghị quyết thông qua"]
+        W1 --> W2["Mỗi phiếu chi quỹ bảo trì<br/>BẮT BUỘC gắn hạng mục kế hoạch"]
+        W2 --> W3{"Có liên kết<br/>hợp lệ?"}
+        W3 -->|"Không"| W4["CHẶN không cho lưu · R9"]
+        W3 -->|"Có"| W5["Ghi sổ quỹ bảo trì<br/>tách riêng khỏi quỹ vận hành"]
+        W5 --> W6["Báo cáo minh bạch cho cư dân<br/>truy vết ngược: chi → hạng mục<br/>→ nghị quyết → biên bản"]
+    end
+
+    P1 --> P2
+    P2 --> P3
+    P3 --> P4
+    P4 --> P5
+
+    AUDIT["AUDIT LOG APPEND-ONLY<br/>ghi mọi thao tác ở cả 5 giai đoạn<br/>không có API xóa/sửa kể cả admin"]
+    P1 -.-> AUDIT
+    P2 -.-> AUDIT
+    P3 -.-> AUDIT
+    P4 -.-> AUDIT
+    P5 -.-> AUDIT
+
+    %% ================= STYLE =================
+    classDef legal fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#7f1d1d
+    classDef block fill:#fecaca,stroke:#991b1b,stroke-width:2px,color:#7f1d1d,font-weight:bold
+    classDef decision fill:#fef9c3,stroke:#ca8a04,color:#713f12
+    classDef normal fill:#f1f5f9,stroke:#64748b,color:#0f172a
+    classDef audit fill:#1e293b,stroke:#0f172a,color:#fff,font-weight:bold
+    classDef phase fill:#f8fafc,stroke:#334155,stroke-width:2px
+
+    class S6,S14,T14,U5,U7,V1,V2,V4,W2 legal
+    class S12A,S12B,T11,U10,U14,W4 block
+    class S2,S5,S12,T3,T10,U2,U9,U12,W3 decision
+    class AUDIT audit
+    class P1,P2,P3,P4,P5 phase

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe D · Vận hành</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --mid:#6b6b6b; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --paper:#f7f6f3; --card:#fff;
+    --legal:#b3261e; --legal-bg:#fbeceb;
+    --lock:#8a6100; --lock-bg:#fdf3dd;
+    --ok:#1f6b3f; --ok-bg:#e8f3ec;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+  .sheet{margin-bottom:56px}
+  .sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .frame.narrow{max-width:400px}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert.okstyle{border-left-color:var(--ok);background:var(--ok-bg)}
+  .alert b{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num,th.num{font-family:var(--mono);text-align:right}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px;gap:10px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+  .stat{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .statlbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+  /* kanban */
+  .kanban{display:flex;gap:10px;overflow-x:auto}
+  .lane{flex:1;min-width:150px;border:1px solid var(--line);background:#fafaf8}
+  .lane-h{padding:7px 9px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);display:flex;justify-content:space-between}
+  .card{background:#fff;border:1px solid var(--line);margin:7px;padding:8px}
+  .card .id{font-family:var(--mono);font-size:10px;color:var(--mid)}
+  .card .t{font-size:12.5px;margin:2px 0 5px;line-height:1.35}
+  .card .f{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:var(--mid)}
+  .card.late{border-color:var(--legal);background:var(--legal-bg)}
+  .card.warn{border-color:var(--lock);background:var(--lock-bg)}
+  /* timeline / gantt */
+  .gantt-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line-soft);font-size:12px}
+  .gantt-row .nm{width:180px;flex-shrink:0}
+  .gantt-track{flex:1;height:16px;background:#f0efec;position:relative;border:1px solid var(--line-soft)}
+  .gantt-bar{position:absolute;top:0;bottom:0;background:#3a3a3a}
+  .gantt-bar.done{background:var(--ok)}
+  .gantt-bar.plan{background:#c9c9c9;border:1px solid var(--line)}
+  .trace{padding-left:0;list-style:none;margin:0}
+  .trace li{position:relative;padding:8px 0 8px 22px;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+  .trace li::before{content:"↳";position:absolute;left:4px;color:var(--mid);font-family:var(--mono)}
+  .trace li:first-child::before{content:"●";font-size:9px;top:11px}
+  .slot{display:flex;gap:6px;flex-wrap:wrap}
+  .slot div{border:1px solid var(--line);padding:6px 10px;font-size:12px;font-family:var(--mono)}
+  .slot div.taken{background:#efeeea;color:#a8a8a8;text-decoration:line-through}
+  .slot div.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+  @media(max-width:640px){body{padding:20px 12px 60px}.row{flex-direction:column}.gantt-row .nm{width:110px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="meta">Wireframe đợt 3/5 · Nhóm D · v0.1</div>
+  <h1>Vận hành — Phản ánh, kế hoạch bảo trì, tài sản, tiện ích</h1>
+  <p>Nhóm quyết định trải nghiệm hằng ngày. D-02 là mắt xích nối hội nghị với chi quỹ bảo trì.</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý / quá hạn</span>
+  <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Cảnh báo</span>
+  <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Hợp lệ</span>
+  <span>① Chú thích thiết kế</span>
+</div>
+
+<!-- ===== D-01 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>D-01 · Phản ánh cư dân · bảng điều phối</b><span>Web admin · M2-04</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Tòa S2.03 › Phản ánh</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Đang mở</div><div class="stat">34</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--legal)"><div class="statlbl" style="color:var(--legal)">Quá hạn SLA</div><div class="stat">5</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Đóng trong tuần</div><div class="stat">61</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Hài lòng TB</div><div class="stat">4,3</div><div style="font-size:11px;color:var(--mid)">trên 5 · 48 đánh giá</div></div></div>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;margin:0"><span>🔍 Mã phản ánh, căn hộ, từ khóa</span></div>
+        <div class="field" style="margin:0"><span class="val">Nhóm: Tất cả ▾</span></div>
+        <div class="field" style="margin:0"><span class="val">Nhân sự ▾</span></div>
+        <button class="btn">Tạo phản ánh</button>
+      </div>
+
+      <div class="kanban">
+        <div class="lane">
+          <div class="lane-h"><span>Tiếp nhận</span><span>9</span></div>
+          <div class="card late">
+            <div class="id">PA-2608 · SLA 4h</div>
+            <div class="t">Rò nước trần tầng 11, chảy xuống căn 1104</div>
+            <div class="f"><span>S2.03-1104</span><span style="color:var(--legal)">Quá 6h</span></div>
+          </div>
+          <div class="card warn">
+            <div class="id">PA-2611 · SLA 24h</div>
+            <div class="t">Thang máy tháp A rung lắc bất thường</div>
+            <div class="f"><span>Khu vực chung</span><span style="color:var(--lock)">Còn 3h</span></div>
+          </div>
+          <div class="card">
+            <div class="id">PA-2614 · SLA 48h</div>
+            <div class="t">Đèn hành lang tầng 7 chập chờn</div>
+            <div class="f"><span>Tầng 7</span><span>Còn 31h</span></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><span>Đã phân công</span><span>12</span></div>
+          <div class="card">
+            <div class="id">PA-2599</div>
+            <div class="t">Cửa tự động sảnh không đóng kín</div>
+            <div class="f"><span>KT · Lê Văn T</span><span>Còn 8h</span></div>
+          </div>
+          <div class="card late">
+            <div class="id">PA-2588</div>
+            <div class="t">Mùi hôi từ hố rác tầng hầm B2</div>
+            <div class="f"><span>VS · Trần Thị U</span><span style="color:var(--legal)">Quá 12h</span></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><span>Đang xử lý</span><span>8</span></div>
+          <div class="card">
+            <div class="id">PA-2571</div>
+            <div class="t">Thay bóng đèn khu vực bể bơi</div>
+            <div class="f"><span>KT · Phạm Văn V</span><span>Còn 20h</span></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><span>Chờ xác nhận</span><span>5</span></div>
+          <div class="card">
+            <div class="id">PA-2544</div>
+            <div class="t">Sửa khóa cửa thoát hiểm tầng 9</div>
+            <div class="f"><span>Chờ cư dân</span><span>2 ngày</span></div>
+          </div>
+        </div>
+
+        <div class="lane">
+          <div class="lane-h"><span>Đã đóng</span><span>61</span></div>
+          <div class="card">
+            <div class="id">PA-2510</div>
+            <div class="t">Vệ sinh hành lang tầng 12</div>
+            <div class="f"><span>★ 5,0</span><span>Đóng 20/08</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert" style="margin-top:14px">
+        <b>5 phản ánh quá hạn SLA</b>
+        Trong đó 1 sự cố nhóm khẩn cấp (rò nước lan sang căn khác). Cảnh báo đã gửi cho trưởng ca và BQT.
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Đồng hồ SLA hiển thị dạng <b>thời gian còn lại</b>, không phải thời gian đã trôi. Nhân sự cần biết còn bao lâu để ưu tiên, không cần biết đã mất bao lâu.</li>
+    <li>Ba mức màu theo SLA: bình thường → sắp hết hạn → quá hạn. Quá hạn dùng cùng màu đỏ với ràng buộc pháp lý vì cả hai đều là "phải xử lý ngay".</li>
+    <li>Cột <b>Chờ xác nhận</b> tách riêng — phản ánh đã sửa xong nhưng cư dân chưa xác nhận không nên tính là quá hạn của nhân sự.</li>
+    <li>SLA cấu hình theo nhóm sự việc, không phải một mức chung: rò nước 4h, thang máy 24h, đèn hành lang 48h.</li>
+    <li>Điểm hài lòng lấy sau khi đóng — đây là chỉ số BQT dùng để đánh giá đơn vị vận hành tại hội nghị thường niên.</li>
+  </ol></div>
+</section>
+
+<!-- ===== D-02 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>D-02 · Kế hoạch bảo trì trình hội nghị</b><span>Web admin · M1 · MẮT XÍCH B–C–D</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Vận hành › Kế hoạch bảo trì 2027</span><span class="spacer"></span><span class="tag lock">Dự thảo</span></div>
+    <div class="body">
+      <h3 class="scr">Kế hoạch bảo trì năm 2027</h3>
+      <p class="sub">Dự thảo · sẽ trình Hội nghị thường niên 2026 ngày 18/09/2026 · nội dung số 2</p>
+
+      <div class="alert lockstyle">
+        <b>Kế hoạch chưa được Hội nghị thông qua</b>
+        Các hạng mục trong danh sách này <b>chưa thể dùng làm căn cứ chi quỹ bảo trì</b>. Sau khi hội nghị thông qua, hệ thống tự gắn nghị quyết và mở khóa cho phiếu chi.
+      </div>
+
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Số hạng mục</div><div class="stat">14</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Tổng dự toán</div><div class="stat">2,18 tỷ</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Số dư quỹ dự kiến</div><div class="stat">8,9 tỷ</div><div style="font-size:11px;color:var(--ok)">Đủ nguồn</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Từ đề xuất kỹ thuật</div><div class="stat">9</div><div style="font-size:11px;color:var(--mid)">5 từ phản ánh cư dân</div></div></div>
+      </div>
+
+      <table>
+        <thead><tr><th>Mã</th><th>Hạng mục</th><th>Nguồn đề xuất</th><th>Ưu tiên</th><th class="num">Dự toán</th><th>Quý dự kiến</th></tr></thead>
+        <tbody>
+          <tr><td>KH2027-01</td><td>Đại tu thang máy tháp B</td><td>Lịch bảo trì định kỳ</td><td><span class="tag legal">Cao</span></td><td class="num">640.000.000</td><td>Q1</td></tr>
+          <tr><td>KH2027-02</td><td>Thay hệ thống báo cháy tầng hầm</td><td>Kiểm định PCCC</td><td><span class="tag legal">Cao</span></td><td class="num">480.000.000</td><td>Q1</td></tr>
+          <tr><td>KH2027-03</td><td>Chống thấm tầng hầm B2</td><td><u>12 phản ánh cư dân</u></td><td><span class="tag lock">Trung bình</span></td><td class="num">320.000.000</td><td>Q2</td></tr>
+          <tr><td>KH2027-04</td><td>Sơn lại mặt ngoài tháp A</td><td>Đề xuất BQT</td><td><span class="tag">Thấp</span></td><td class="num">420.000.000</td><td>Q3</td></tr>
+          <tr><td>KH2027-05</td><td>Nâng cấp camera tầng hầm</td><td><u>7 phản ánh cư dân</u></td><td><span class="tag lock">Trung bình</span></td><td class="num">180.000.000</td><td>Q2</td></tr>
+        </tbody>
+      </table>
+
+      <div class="row" style="margin-top:14px">
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Vòng đời kế hoạch</h4>
+          <ul class="trace" style="padding:0">
+            <li><b>Dự thảo</b> · BQL soạn từ đề xuất kỹ thuật và phản ánh</li>
+            <li>BQT rà soát và điều chỉnh</li>
+            <li>Đính kèm tài liệu hội nghị · gửi trước 15 ngày</li>
+            <li>Hội nghị biểu quyết nội dung số 2</li>
+            <li><b>Thông qua</b> → mở khóa làm căn cứ chi quỹ bảo trì</li>
+          </ul>
+        </div></div>
+        <div class="col" style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost">Xuất bản trình hội nghị</button>
+          <button class="btn">Chuyển BQT rà soát</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Đây là <b>màn hình nối ba nhóm</b>: kế hoạch sinh ra từ vận hành (D), được hội nghị thông qua (B), rồi trở thành căn cứ chi tiền (C). Chia team theo module dễ làm rơi mắt xích này.</li>
+    <li>Cảnh báo "chưa thông qua" đặt ngay đầu màn hình — tránh việc kế toán tưởng kế hoạch dự thảo đã dùng được để lập phiếu chi.</li>
+    <li>Cột <b>Nguồn đề xuất</b> liên kết ngược về phản ánh cư dân ("12 phản ánh"). Khi trình hội nghị, đây là lập luận thuyết phục nhất: hạng mục này do chính cư dân yêu cầu.</li>
+    <li>Đối chiếu tổng dự toán với số dư quỹ dự kiến ngay tại đây, tránh trình hội nghị một kế hoạch vượt khả năng chi trả.</li>
+    <li>Sau khi hội nghị thông qua, hệ thống <b>tự gắn số nghị quyết</b> vào từng hạng mục — không nhập tay, để chuỗi truy vết ở C-04 luôn liền mạch.</li>
+  </ol></div>
+</section>
+
+<!-- ===== D-03 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>D-03 · Tài sản và lịch bảo trì định kỳ</b><span>Web admin · S-05</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Vận hành › Tài sản</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <h3 class="scr">Thiết bị thuộc sở hữu chung</h3>
+      <p class="sub">186 thiết bị · 12 hạng mục có lịch bảo trì định kỳ</p>
+
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0;border-color:var(--legal)"><div class="statlbl" style="color:var(--legal)">Quá hạn bảo trì</div><div class="stat">2</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--lock)"><div class="statlbl" style="color:var(--lock)">Đến hạn 30 ngày</div><div class="stat">6</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Hết bảo hành 2026</div><div class="stat">9</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Kiểm định bắt buộc</div><div class="stat">4</div><div style="font-size:11px;color:var(--mid)">thang máy, PCCC</div></div></div>
+      </div>
+
+      <div style="font-family:var(--mono);font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lịch bảo trì 2026 · Q1 → Q4</div>
+      <div class="gantt-row" style="border-bottom:1px solid var(--line)">
+        <div class="nm" style="font-family:var(--mono);font-size:10px;color:var(--mid)">Thiết bị</div>
+        <div class="gantt-track" style="background:none;border:none;display:flex;font-family:var(--mono);font-size:10px;color:var(--mid)">
+          <span style="flex:1">Q1</span><span style="flex:1">Q2</span><span style="flex:1">Q3</span><span style="flex:1">Q4</span>
+        </div>
+      </div>
+      <div class="gantt-row"><div class="nm">Thang máy tháp A · 4 cabin</div><div class="gantt-track"><div class="gantt-bar done" style="left:4%;width:8%"></div><div class="gantt-bar done" style="left:29%;width:8%"></div><div class="gantt-bar" style="left:54%;width:8%"></div><div class="gantt-bar plan" style="left:79%;width:8%"></div></div></div>
+      <div class="gantt-row"><div class="nm">Máy phát điện dự phòng</div><div class="gantt-track"><div class="gantt-bar done" style="left:10%;width:6%"></div><div class="gantt-bar plan" style="left:60%;width:6%"></div></div></div>
+      <div class="gantt-row"><div class="nm">Hệ thống PCCC · bơm + báo cháy</div><div class="gantt-track"><div class="gantt-bar done" style="left:6%;width:7%"></div><div class="gantt-bar done" style="left:31%;width:7%"></div><div class="gantt-bar" style="left:56%;width:7%"></div><div class="gantt-bar plan" style="left:81%;width:7%"></div></div></div>
+      <div class="gantt-row" style="background:var(--legal-bg)"><div class="nm">Bơm nước sinh hoạt tháp B</div><div class="gantt-track"><div class="gantt-bar done" style="left:8%;width:6%"></div><div class="gantt-bar" style="left:40%;width:6%;background:var(--legal)"></div></div></div>
+      <div class="gantt-row"><div class="nm">Máy lạnh sảnh · 6 dàn</div><div class="gantt-track"><div class="gantt-bar done" style="left:12%;width:6%"></div><div class="gantt-bar plan" style="left:62%;width:6%"></div></div></div>
+
+      <div class="alert" style="margin-top:14px">
+        <b>Bơm nước sinh hoạt tháp B · quá hạn bảo trì 34 ngày</b>
+        Lịch định kỳ 6 tháng/lần. Lần gần nhất 18/02/2026. Đã sinh đề xuất hạng mục cho kế hoạch bảo trì 2027.
+      </div>
+
+      <div class="row">
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Hồ sơ thiết bị · Thang máy tháp A</h4>
+          <div class="kv"><span class="k">Nhà sản xuất</span><span class="v">Mitsubishi</span></div>
+          <div class="kv"><span class="k">Năm lắp đặt</span><span class="v">2023</span></div>
+          <div class="kv"><span class="k">Hết bảo hành</span><span class="v">14/03/2026</span></div>
+          <div class="kv"><span class="k">Kiểm định gần nhất</span><span class="v">21/06/2026</span></div>
+          <div class="kv"><span class="k">Kiểm định kế tiếp</span><span class="v">21/06/2029</span></div>
+        </div></div>
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Lịch sử can thiệp</h4>
+          <div class="kv"><span class="k">Bảo trì định kỳ</span><span class="v">14 lần</span></div>
+          <div class="kv"><span class="k">Sửa chữa đột xuất</span><span class="v">3 lần</span></div>
+          <div class="kv"><span class="k">Từ phản ánh cư dân</span><span class="v">2 lần</span></div>
+          <div class="kv"><span class="k">Chi phí lũy kế</span><span class="v">186.400.000 đ</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Biểu đồ Gantt theo quý cho thấy <b>nhịp bảo trì cả năm trong một màn hình</b> — dạng bảng danh sách không cho thấy được chỗ nào bị bỏ trống.</li>
+    <li>Ba trạng thái thanh: đã làm (xanh), đang tới (đen), theo kế hoạch (xám viền). Quá hạn chuyển đỏ và tô nền cả dòng.</li>
+    <li>Thiết bị quá hạn <b>tự sinh đề xuất</b> vào kế hoạch bảo trì năm sau (D-02) — nối vòng lặp vận hành với hội nghị, không để rơi vào quên lãng.</li>
+    <li>Chi phí lũy kế theo thiết bị là dữ liệu quyết định lúc trình hội nghị: sửa 3 lần tốn 186 triệu thì nên đại tu hay thay mới.</li>
+    <li>Mốc kiểm định bắt buộc (thang máy, PCCC) tách khỏi bảo trì thường — hai loại nghĩa vụ khác nhau, chu kỳ khác nhau.</li>
+  </ol></div>
+</section>
+
+<!-- ===== D-04 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>D-04 · Đặt tiện ích và đăng ký thi công</b><span>App cư dân + Web admin · S-03, S-04</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Cư dân</span><span class="crumb">Đặt tiện ích</span></div>
+      <div class="body">
+        <h3 class="scr">Nhà sinh hoạt cộng đồng</h3>
+        <p class="sub">Sức chứa 80 người · miễn phí 2 giờ/tháng/căn</p>
+
+        <div class="field"><span>Ngày</span><span class="val">24/08/2026 · Chủ nhật</span></div>
+
+        <div style="font-family:var(--mono);font-size:10px;color:var(--mid);text-transform:uppercase;margin:12px 0 6px">Khung giờ còn trống</div>
+        <div class="slot">
+          <div class="taken">08–10</div>
+          <div>10–12</div>
+          <div class="sel">14–16</div>
+          <div>16–18</div>
+          <div class="taken">18–20</div>
+        </div>
+
+        <div class="box" style="margin-top:14px">
+          <div class="kv"><span class="k">Khung giờ</span><span class="v">14:00 – 16:00</span></div>
+          <div class="kv"><span class="k">Đã dùng tháng này</span><span class="v">0 / 2 giờ</span></div>
+          <div class="kv"><span class="k">Phí vượt giờ</span><span class="v">0 đ</span></div>
+          <div class="kv"><span class="k">Tiền cọc</span><span class="v">500.000 đ</span></div>
+        </div>
+
+        <div class="alert lockstyle">
+          <b>Căn đang có công nợ 3.180.000 đ</b>
+          Nội quy tòa nhà quy định thanh toán công nợ trước khi đặt tiện ích. Liên hệ BQL nếu cần hỗ trợ.
+        </div>
+
+        <button class="btn lg disabled" style="width:100%">Gửi yêu cầu đặt</button>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Cư dân</span><span class="crumb">Đăng ký thi công</span></div>
+      <div class="body">
+        <h3 class="scr">Sửa chữa căn hộ</h3>
+        <p class="sub">S2.03-1208 · gửi trước tối thiểu 3 ngày làm việc</p>
+
+        <div class="field"><span>Loại công việc</span><span class="val">Sửa chữa nội thất ▾</span></div>
+        <div class="field"><span>Từ ngày</span><span class="val">26/08/2026</span></div>
+        <div class="field"><span>Đến ngày</span><span class="val">30/08/2026</span></div>
+        <div class="field"><span>Đơn vị thi công</span><span class="val">Công ty TNHH Nội thất Z</span></div>
+        <div class="field"><span>Số người vào công trường</span><span class="val">4</span></div>
+
+        <div class="box">
+          <h4>Hồ sơ đính kèm</h4>
+          <div class="kv"><span class="k">Bản vẽ hoặc mô tả công việc</span><span class="v" style="color:var(--ok)">✓ Đã tải</span></div>
+          <div class="kv"><span class="k">Danh sách nhân sự · CCCD</span><span class="v" style="color:var(--ok)">✓ 4 người</span></div>
+          <div class="kv"><span class="k">Cam kết an toàn PCCC</span><span class="v" style="color:var(--lock)">Chưa ký</span></div>
+        </div>
+
+        <div class="alert">
+          <b>Không được thay đổi kết cấu chịu lực</b>
+          Đục phá tường chịu lực, thay đổi hệ thống PCCC hoặc mặt ngoài tòa nhà phải có ý kiến của BQT và hồ sơ thiết kế được thẩm định.
+        </div>
+
+        <div class="box">
+          <h4>Khung giờ được phép thi công</h4>
+          <p style="font-size:12px;margin:0;color:var(--mid)">
+            Thứ 2 – thứ 7: 08:30 – 11:30 và 13:30 – 17:00<br>
+            Chủ nhật và ngày lễ: không thi công gây tiếng ồn
+          </p>
+        </div>
+
+        <button class="btn lg" style="width:100%">Gửi đăng ký</button>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Chặn đặt tiện ích khi có công nợ là <b>quy định của nội quy tòa nhà</b>, không phải mặc định của phần mềm. Phải cấu hình bật/tắt được theo tòa, và thông báo nêu rõ căn cứ.</li>
+    <li>Hiển thị hạn mức miễn phí đã dùng (0/2 giờ) ngay lúc đặt, tránh cư dân bất ngờ khi bị tính phí.</li>
+    <li>Đăng ký thi công thu <b>danh sách nhân sự kèm CCCD</b> — đây là dữ liệu cá nhân của bên thứ ba, cần cơ chế xóa sau khi kết thúc thi công.</li>
+    <li>Cảnh báo về kết cấu chịu lực đặt ở form đăng ký chứ không ở nội quy — đọc đúng lúc người ta sắp làm.</li>
+    <li>Khung giờ thi công hiển thị dạng văn bản thay vì lịch tương tác: quy định cố định, cư dân chỉ cần biết chứ không cần chọn.</li>
+  </ol></div>
+</section>
+
+<footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+  Đợt 3/5 · Nhóm D hoàn tất. Tiếp theo: E · Cổng cư dân (5 màn hình) — app, Zalo OA, tra cứu phí, cổng hội nghị, ủy quyền online.
+</footer>
+</div>
+</body>
+</html>

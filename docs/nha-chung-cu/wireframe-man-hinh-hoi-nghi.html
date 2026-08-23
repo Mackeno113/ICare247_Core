@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe · Module Hội nghị nhà chung cư</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --mid:#6b6b6b;
+    --line:#c9c9c9;
+    --line-soft:#e4e4e4;
+    --paper:#f7f6f3;
+    --card:#ffffff;
+    --legal:#b3261e;
+    --legal-bg:#fbeceb;
+    --lock:#8a6100;
+    --lock-bg:#fdf3dd;
+    --ok:#1f6b3f;
+    --ok-bg:#e8f3ec;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:14px; line-height:1.5;
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* ---- doc header ---- */
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+
+  /* ---- screen sheet ---- */
+  .sheet{margin-bottom:56px}
+  .sheet-label{
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;
+    display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap
+  }
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);padding:0;overflow:hidden}
+  .frame.narrow{max-width:400px}
+
+  /* ---- app chrome ---- */
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+
+  /* ---- primitives ---- */
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert b{display:block;margin-bottom:2px}
+
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num{font-family:var(--mono);text-align:right}
+
+  /* ---- gauge ---- */
+  .gauge{margin-bottom:14px}
+  .gauge .lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+  .gauge .lbl .pct{font-family:var(--mono);font-weight:600}
+  .track{height:22px;border:1px solid var(--ink);position:relative;background:#f0efec}
+  .fill{position:absolute;left:0;top:0;bottom:0;background:repeating-linear-gradient(45deg,#3a3a3a,#3a3a3a 4px,#4d4d4d 4px,#4d4d4d 8px)}
+  .fill.short{background:repeating-linear-gradient(45deg,#b8b8b8,#b8b8b8 4px,#c9c9c9 4px,#c9c9c9 8px)}
+  .thresh{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--legal)}
+  .thresh span{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;color:var(--legal);white-space:nowrap}
+  .gauge .note{font-size:11px;color:var(--mid);margin-top:5px;font-family:var(--mono)}
+
+  /* ---- projector ---- */
+  .proj{background:#111;color:#fff;padding:28px 24px;text-align:center}
+  .proj .ttl{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:#9a9a9a;text-transform:uppercase;margin-bottom:18px}
+  .proj .big{font-size:52px;font-weight:700;line-height:1;letter-spacing:-.03em}
+  .proj .cap{font-size:12px;color:#b0b0b0;margin-top:6px}
+  .proj .split{display:flex;gap:28px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+  .proj .track2{height:14px;border:1px solid #666;position:relative;background:#222;margin-top:14px}
+  .proj .fill2{position:absolute;left:0;top:0;bottom:0;background:#fff}
+
+  /* ---- mobile scanner ---- */
+  .scan{background:#1a1a1a;color:#fff;aspect-ratio:1/.82;display:flex;align-items:center;justify-content:center;position:relative}
+  .reticle{width:150px;height:150px;border:2px solid #fff;position:relative}
+  .reticle::before,.reticle::after{content:"";position:absolute;left:-2px;right:-2px;height:2px;background:#fff}
+  .reticle::before{top:36%}
+  .reticle::after{display:none}
+  .scan .hint{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:#c8c8c8}
+  .offline{display:flex;align-items:center;gap:6px;justify-content:center;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--lock);background:var(--lock-bg);padding:6px;border-bottom:1px solid var(--line)}
+
+  .result{padding:14px}
+  .result .unit{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .result .who{color:var(--mid);font-size:13px;margin-bottom:10px}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+
+  /* ---- annotations ---- */
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{
+    content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;
+    border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;
+    display:flex;align-items:center;justify-content:center;font-weight:600
+  }
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+
+  .ballot-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .ballot-row .nm{flex:1;font-size:13px}
+  .bar{height:16px;background:#3a3a3a}
+  .bar.against{background:#9a9a9a}
+  .bar.abstain{background:#d0d0d0;border:1px solid var(--line)}
+
+  @media (max-width:640px){
+    body{padding:20px 12px 60px}
+    .row{flex-direction:column}
+    .proj .big{font-size:38px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc-head">
+    <div class="meta">Wireframe low-fidelity · v0.1 · 22/08/2026</div>
+    <h1>Module Hội nghị nhà chung cư — 8 màn hình then chốt</h1>
+    <p>Bản phác thảo bố cục và luồng thao tác. Chưa chốt màu sắc, typography, thương hiệu.</p>
+  </header>
+
+  <div class="legend">
+    <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý</span>
+    <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Trạng thái khóa / cảnh báo</span>
+    <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Đã đạt / hợp lệ</span>
+    <span>① Chú thích thiết kế</span>
+  </div>
+
+  <!-- ============ 1 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-01 · Bảng điều khiển kỳ hội nghị</b><span>Web admin · BQL / BQT</span></div>
+    <div class="frame">
+      <div class="topbar">
+        <span class="brand">QLCC</span>
+        <span class="crumb">Vinhomes Grand Park · Tòa S2.03 › Hội nghị</span>
+        <span class="spacer"></span>
+        <span class="avatar"></span>
+      </div>
+      <div class="body">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div>
+            <h3 class="scr">Hội nghị nhà chung cư</h3>
+            <p class="sub">Tòa S2.03 · 486 căn hộ · 41.280,50 m² sở hữu riêng</p>
+          </div>
+          <button class="btn">Tạo kỳ hội nghị</button>
+        </div>
+
+        <div class="alert">
+          <b>Sắp đến hạn tổ chức Hội nghị lần đầu</b>
+          Bàn giao từ 14/03/2026 · còn 42 ngày đến mốc 12 tháng · đã bàn giao 312/486 căn (64,2%). Đủ điều kiện tổ chức.
+        </div>
+
+        <table>
+          <thead><tr><th>Kỳ hội nghị</th><th>Loại</th><th>Ngày họp</th><th>Trạng thái</th><th style="text-align:right">Quorum</th></tr></thead>
+          <tbody>
+            <tr><td>HN thường niên 2026</td><td>Thường niên</td><td>18/09/2026</td><td><span class="tag lock">Notified</span></td><td class="num">—</td></tr>
+            <tr><td>HN bất thường 03/2026</td><td>Bất thường</td><td>02/03/2026</td><td><span class="tag">Failed</span></td><td class="num">24,1%</td></tr>
+            <tr><td>HN thường niên 2025</td><td>Thường niên</td><td>21/09/2025</td><td><span class="tag ok">Published</span></td><td class="num">38,7%</td></tr>
+            <tr><td>HN lần đầu</td><td>Lần đầu</td><td>11/10/2024</td><td><span class="tag ok">Published</span></td><td class="num">57,3%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Cảnh báo deadline tính tự động từ ngày bàn giao và tỷ lệ căn đã bàn giao — quy tắc <code>R1</code>, không để BQL tự nhớ.</li>
+      <li>Kỳ <b>Failed</b> vẫn hiển thị trong danh sách kèm tỷ lệ đạt được. Đây là dữ liệu để vận động cho kỳ sau, không phải rác cần ẩn đi.</li>
+      <li>Cột Quorum ghi tỷ lệ đại diện chủ sở hữu tại thời điểm khai mạc — đã đóng băng, không tính lại.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 2 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-02 · Tạo kỳ · Cấu hình ngưỡng và hình thức họp</b><span>Web admin · M1-04, M1-07</span></div>
+    <div class="frame">
+      <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Hội nghị › Tạo kỳ mới</span></div>
+      <div class="body">
+        <div class="row">
+          <div class="col">
+            <div class="box">
+              <h4>Thông tin kỳ</h4>
+              <div class="field"><span>Loại hội nghị</span><span class="val">Lần đầu ▾</span></div>
+              <div class="field"><span>Ngày họp dự kiến</span><span class="val">11/10/2026</span></div>
+              <div class="field"><span>Địa điểm</span><span class="val">Nhà sinh hoạt cộng đồng</span></div>
+            </div>
+
+            <div class="box" style="border-color:var(--legal)">
+              <h4 style="color:var(--legal)">Ngưỡng điều kiện tiến hành <span class="tag legal">R2</span></h4>
+              <div class="field"><span>Tỷ lệ tối thiểu</span><span class="val">50 %</span></div>
+              <p style="font-size:12px;color:var(--mid);margin:2px 0 0">
+                Tính trên đại diện chủ sở hữu <b>căn hộ đã nhận bàn giao</b> (312 căn). Cần tối thiểu <b>156 đại biểu</b>.
+              </p>
+            </div>
+          </div>
+
+          <div class="col">
+            <div class="box" style="border-color:var(--legal)">
+              <h4 style="color:var(--legal)">Hình thức họp <span class="tag legal">R5</span></h4>
+              <div class="field" style="border-color:var(--ink)"><span>◉ Trực tiếp</span><span class="tag ok">Mặc định</span></div>
+              <div class="field"><span>○ Trực tuyến</span></div>
+              <div class="field"><span>○ Kết hợp trực tiếp và trực tuyến</span></div>
+
+              <div class="alert" style="margin:10px 0 0">
+                <b>Hình thức trực tuyến chỉ được dùng khi có dịch bệnh hoặc thiên tai</b>
+                Chọn hình thức khác trực tiếp sẽ bắt buộc chọn lý do và đính kèm văn bản căn cứ. Số lượng và thành phần tham dự vẫn phải đủ như họp trực tiếp.
+              </div>
+            </div>
+
+            <div class="box">
+              <h4>Chương trình nghị sự</h4>
+              <div class="field"><span>1. Báo cáo hoạt động</span><span class="tag">Thông qua</span></div>
+              <div class="field"><span>2. Kế hoạch bảo trì 2027</span><span class="tag">Thông qua</span></div>
+              <div class="field"><span>3. Bầu Ban quản trị</span><span class="tag">Bầu cử · 5/9</span></div>
+              <button class="btn ghost" style="width:100%">+ Thêm nội dung</button>
+            </div>
+          </div>
+        </div>
+        <button class="btn">Lưu nháp</button>
+        <button class="btn ghost">Gửi giấy mời</button>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Ngưỡng hiển thị đồng thời dạng <b>phần trăm và số tuyệt đối</b> ("cần 156 đại biểu"). Ban tổ chức làm việc bằng số người, không bằng phần trăm.</li>
+      <li>Mẫu số ghi rõ ngay dưới trường nhập: <b>312 căn đã bàn giao</b>, không phải 486 căn. Đây là chỗ dễ tính sai nhất và cũng là chỗ hay bị khiếu nại.</li>
+      <li>Ba lựa chọn hình thức luôn hiển thị cùng lúc kèm cảnh báo pháp lý — không giấu sau menu, để người dùng thấy ràng buộc trước khi chọn.</li>
+      <li>Nút <b>Gửi giấy mời</b> chuyển trạng thái <code>DRAFT → NOTIFIED</code>; sau bước này sửa nghị sự sẽ yêu cầu gửi lại.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 3 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-03 · Duyệt giấy ủy quyền</b><span>Web admin · M1-03</span></div>
+    <div class="frame">
+      <div class="topbar"><span class="brand">QLCC</span><span class="crumb">HN lần đầu 2026 › Ủy quyền</span></div>
+      <div class="body">
+        <div class="row" style="margin-bottom:12px">
+          <div class="col"><div class="box" style="margin:0"><h4>Chờ duyệt</h4><div style="font-size:26px;font-weight:700">23</div></div></div>
+          <div class="col"><div class="box" style="margin:0"><h4>Hợp lệ</h4><div style="font-size:26px;font-weight:700">86</div></div></div>
+          <div class="col"><div class="box" style="margin:0"><h4>Từ chối</h4><div style="font-size:26px;font-weight:700">7</div></div></div>
+          <div class="col"><div class="box" style="margin:0"><h4>Trần / người</h4><div style="font-size:26px;font-weight:700">5</div></div></div>
+        </div>
+
+        <table>
+          <thead><tr><th>Căn</th><th>Người ủy quyền</th><th>Người nhận</th><th>Phạm vi</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>S2.03-1208</td><td>Nguyễn V. A</td><td>Trần T. B <span class="tag">3/5</span></td><td>Toàn bộ</td><td><span class="tag lock">Chờ duyệt</span></td><td style="text-align:right"><button class="btn ghost" style="padding:4px 10px;font-size:12px">Xem scan</button></td></tr>
+            <tr style="background:var(--legal-bg)"><td>S2.03-0904</td><td>Lê T. C</td><td>Trần T. B <span class="tag legal">6/5</span></td><td>Toàn bộ</td><td><span class="tag legal">Vượt trần</span></td><td style="text-align:right"><span style="font-size:12px;color:var(--legal)">Bị chặn</span></td></tr>
+            <tr style="background:var(--legal-bg)"><td>S2.03-1503</td><td>Phạm V. D</td><td>Hoàng T. E</td><td>Toàn bộ</td><td><span class="tag legal">Trùng căn</span></td><td style="text-align:right"><span style="font-size:12px;color:var(--legal)">Bị chặn</span></td></tr>
+            <tr><td>S2.03-0611</td><td>Vũ T. F</td><td>Đặng V. G</td><td>Chỉ nội dung 3</td><td><span class="tag ok">Hợp lệ</span></td><td></td></tr>
+          </tbody>
+        </table>
+
+        <div class="alert" style="margin-top:12px">
+          <b>Căn S2.03-1503 đã có giấy ủy quyền hiệu lực</b>
+          Người nhận hiện tại: Bùi V. H · duyệt ngày 02/10/2026. Muốn thay đổi thì chủ sở hữu phải thu hồi giấy cũ trước.
+        </div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Ô đếm <b>3/5</b> cạnh tên người nhận cho thấy ngay số ủy quyền đang giữ so với trần — phát hiện gom phiếu trước khi nó thành vấn đề tại hội trường.</li>
+      <li>Dòng bị chặn <b>vẫn hiển thị</b> chứ không biến mất, kèm lý do cụ thể. Người nộp cần biết vì sao bị từ chối để khiếu nại hoặc sửa.</li>
+      <li>Thông báo trùng căn nêu rõ <b>ai đang giữ giấy hiệu lực và duyệt ngày nào</b> — đủ thông tin để BQL giải thích tại chỗ.</li>
+      <li>Ủy quyền phạm vi hẹp ghi rõ nội dung được ủy quyền; khi biểu quyết, người nhận chỉ mở được đúng nội dung đó.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 4 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-04 · Check-in tại sảnh</b><span>Tablet / điện thoại · M1-04 · offline-first</span></div>
+    <div class="row">
+      <div class="frame narrow">
+        <div class="offline">◍ Ngoại tuyến · 14 lượt chờ đồng bộ</div>
+        <div class="scan">
+          <div class="reticle"></div>
+          <div class="hint">Quét mã QR trên giấy mời</div>
+        </div>
+        <div class="body" style="padding:12px">
+          <button class="btn ghost" style="width:100%;margin-bottom:6px">Nhập số căn hộ</button>
+          <button class="btn ghost" style="width:100%">Tra theo số CCCD</button>
+        </div>
+      </div>
+
+      <div class="frame narrow">
+        <div class="topbar"><span class="brand">Check-in</span><span class="spacer"></span><span class="tag ok">Hợp lệ</span></div>
+        <div class="result">
+          <div class="unit">S2.03-1208</div>
+          <div class="who">Nguyễn Văn A · Chủ sở hữu</div>
+          <div class="kv"><span class="k">Diện tích sở hữu riêng</span><span class="v">78,40 m²</span></div>
+          <div class="kv"><span class="k">Tư cách</span><span class="v">TRỰC TIẾP</span></div>
+          <div class="kv"><span class="k">Đã bàn giao</span><span class="v">14/03/2026</span></div>
+
+          <div class="alert lockstyle" style="margin:12px 0">
+            <b>Căn này đã ủy quyền cho Trần T. B</b>
+            Chủ sở hữu đến trực tiếp — xác nhận check-in sẽ tự động vô hiệu giấy ủy quyền và thông báo cho người nhận.
+          </div>
+
+          <button class="btn lg" style="width:100%">Xác nhận check-in</button>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Băng <b>Ngoại tuyến</b> hiện thường trực khi mất mạng, kèm số lượt chờ đồng bộ. Nhân sự tại sảnh cần biết dữ liệu đang ở đâu, không đoán.</li>
+      <li>Ba cách nhận diện xếp theo tốc độ: QR → số căn → CCCD. Cư dân quên giấy mời là chuyện thường ngày.</li>
+      <li>Màn hình kết quả hiển thị <b>diện tích sở hữu riêng</b> ngay — đây là con số quyết định trọng số phiếu, cần đối chiếu được tại chỗ.</li>
+      <li>Xung đột ủy quyền được xử lý ngay trên màn hình check-in, nêu rõ hệ quả trước khi bấm. Luồng tối đa 3 bước theo yêu cầu hỗ trợ người lớn tuổi.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 5 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-05 · Bảng quorum điều hành</b><span>Web admin · M1-04 · màn hình quan trọng nhất</span></div>
+    <div class="frame">
+      <div class="topbar">
+        <span class="brand">QLCC</span><span class="crumb">HN lần đầu 2026 › Quorum</span>
+        <span class="spacer"></span>
+        <span class="tag lock">CHECKIN · 08:47</span>
+      </div>
+      <div class="body">
+        <div class="row">
+          <div class="col" style="min-width:300px">
+            <div class="gauge">
+              <div class="lbl"><span><b>A · Tỷ lệ điều kiện tiến hành</b></span><span class="pct">43,2 %</span></div>
+              <div class="track">
+                <div class="fill short" style="width:43.2%"></div>
+                <div class="thresh" style="left:50%"><span>Ngưỡng 50%</span></div>
+              </div>
+              <div class="note">135 / 312 đại diện chủ sở hữu căn hộ đã bàn giao · còn thiếu 21</div>
+            </div>
+
+            <div class="gauge">
+              <div class="lbl"><span><b>B · Tỷ lệ trọng số m²</b></span><span class="pct">39,8 %</span></div>
+              <div class="track"><div class="fill" style="width:39.8%"></div></div>
+              <div class="note">16.429,60 / 41.280,50 m² · dùng làm mẫu số kiểm phiếu</div>
+            </div>
+
+            <div class="alert lockstyle">
+              <b>Chưa đủ điều kiện khai mạc</b>
+              Còn thiếu 21 đại biểu. Gợi ý vận động: 8 căn diện tích lớn chưa đến (tổng 1.842 m²).
+            </div>
+            <button class="btn lg disabled" style="width:100%">Khai mạc hội nghị</button>
+          </div>
+
+          <div class="col">
+            <div class="box">
+              <h4>Cơ cấu tham dự</h4>
+              <div class="kv"><span class="k">Trực tiếp</span><span class="v">98</span></div>
+              <div class="kv"><span class="k">Qua ủy quyền</span><span class="v">31</span></div>
+              <div class="kv"><span class="k">Phiếu tại căn hộ</span><span class="v">6</span></div>
+              <div class="kv"><span class="k">Chủ sở hữu phần diện tích khác</span><span class="v">2 · 3.610 m²</span></div>
+            </div>
+            <div class="box">
+              <h4>Tốc độ check-in</h4>
+              <div style="display:flex;gap:3px;align-items:flex-end;height:56px">
+                <div style="flex:1;height:20%;background:#c9c9c9"></div>
+                <div style="flex:1;height:45%;background:#a8a8a8"></div>
+                <div style="flex:1;height:80%;background:#6b6b6b"></div>
+                <div style="flex:1;height:100%;background:#3a3a3a"></div>
+                <div style="flex:1;height:62%;background:#6b6b6b"></div>
+                <div style="flex:1;height:38%;background:#a8a8a8"></div>
+              </div>
+              <div style="font-family:var(--mono);font-size:11px;color:var(--mid);margin-top:6px">08:00 → 08:45 · đỉnh 08:30</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li><b>Hai thanh đo riêng biệt, không gộp.</b> A quyết định có được khai mạc hay không; B là mẫu số kiểm phiếu. Gộp lại là sai luật và là lỗi thiết kế nguy hiểm nhất của màn hình này.</li>
+      <li>Vạch ngưỡng vẽ ngay trên thanh đo thay vì ghi số ở chỗ khác — khoảng cách còn thiếu phải nhìn thấy được, không cần tính nhẩm.</li>
+      <li>Nút Khai mạc <b>luôn hiển thị ở trạng thái khóa</b>, kèm lý do cụ thể. Ẩn nút đi sẽ khiến ban tổ chức tưởng hệ thống lỗi.</li>
+      <li>Gợi ý vận động chỉ ra căn diện tích lớn chưa đến — vận động 8 căn này hiệu quả hơn 30 căn nhỏ.</li>
+      <li>Cơ cấu tham dự tách riêng <b>chủ sở hữu phần diện tích khác</b> vì nhóm này ít người nhưng nhiều m², ảnh hưởng lớn đến tỷ lệ B.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 6 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-06 · Màn hình chiếu hội trường</b><span>Projector · chỉ đọc · font lớn, tương phản cao</span></div>
+    <div class="frame">
+      <div class="proj">
+        <div class="ttl">Hội nghị nhà chung cư lần đầu · Tòa S2.03 · 11/10/2026</div>
+        <div class="split">
+          <div>
+            <div class="big">51,3%</div>
+            <div class="cap">Đại diện chủ sở hữu tham dự · 160/312</div>
+          </div>
+          <div>
+            <div class="big">47,6%</div>
+            <div class="cap">Diện tích sở hữu riêng hiện diện</div>
+          </div>
+        </div>
+        <div class="track2"><div class="fill2" style="width:51.3%"></div></div>
+        <div style="margin-top:22px;font-size:19px;font-weight:600">ĐÃ ĐỦ ĐIỀU KIỆN TIẾN HÀNH HỘI NGHỊ</div>
+        <div class="cap" style="margin-top:4px">Đạt ngưỡng 50% lúc 09:12</div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Cùng dữ liệu với MH-05 nhưng bỏ hết công cụ điều hành. Cư dân cần thấy con số minh bạch, không cần thấy nút bấm.</li>
+      <li>Ghi rõ <b>mốc thời gian đạt ngưỡng</b> — chi tiết này đưa thẳng vào biên bản và là bằng chứng khi có khiếu nại về tính hợp lệ.</li>
+      <li>Nền tối, chữ trắng, cỡ lớn: hội trường chung cư thường sáng không đều và người xem ngồi xa.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 7 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-07 · Kiểm phiếu theo trọng số m²</b><span>Web · Ban kiểm phiếu · M1-05</span></div>
+    <div class="frame">
+      <div class="topbar"><span class="brand">QLCC</span><span class="crumb">HN lần đầu 2026 › Nội dung 3</span><span class="spacer"></span><span class="tag lock">VOTING</span></div>
+      <div class="body">
+        <h3 class="scr">Nội dung 3 · Bầu Ban quản trị</h3>
+        <p class="sub">Chọn 5 trong 9 ứng viên · mẫu số: <b>tổng m² của snapshot cử tri = 19.649,50 m²</b></p>
+
+        <div class="box">
+          <h4>Kết quả tạm tính · chỉ Ban kiểm phiếu nhìn thấy</h4>
+          <div class="ballot-row"><span class="nm">1. Trần Thị B</span><div style="flex:2"><div class="bar" style="width:82%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">16.112,4 m²</span></div>
+          <div class="ballot-row"><span class="nm">2. Lê Văn C</span><div style="flex:2"><div class="bar" style="width:74%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">14.540,6 m²</span></div>
+          <div class="ballot-row"><span class="nm">3. Phạm Thị D</span><div style="flex:2"><div class="bar" style="width:68%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">13.361,7 m²</span></div>
+          <div class="ballot-row"><span class="nm">4. Hoàng Văn E</span><div style="flex:2"><div class="bar" style="width:61%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">11.986,2 m²</span></div>
+          <div class="ballot-row" style="background:var(--legal-bg)"><span class="nm">5. Vũ Thị F</span><div style="flex:2"><div class="bar" style="width:44%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">8.645,8 m²</span></div>
+          <div class="ballot-row" style="background:var(--legal-bg)"><span class="nm">6. Đặng Văn G</span><div style="flex:2"><div class="bar" style="width:44%"></div></div><span style="font-family:var(--mono);font-size:12px;width:96px;text-align:right">8.645,8 m²</span></div>
+        </div>
+
+        <div class="alert">
+          <b>Bằng phiếu ở vị trí thứ 5</b>
+          Vũ Thị F và Đặng Văn G cùng đạt 8.645,80 m². Hệ thống không tự chọn. Xử lý theo Quy chế bầu cử đã thông qua: bầu lại vòng 2 giữa hai ứng viên.
+        </div>
+
+        <div class="row">
+          <div class="col"><div class="box" style="margin:0"><h4>Nguồn phiếu</h4>
+            <div class="kv"><span class="k">Tại hội trường</span><span class="v">18.204,30 m²</span></div>
+            <div class="kv"><span class="k">Phiếu lấy tại căn hộ</span><span class="v">1.445,20 m²</span></div>
+            <div class="kv"><span class="k">Tổng</span><span class="v"><b>19.649,50 m²</b></span></div>
+          </div></div>
+          <div class="col"><div class="box" style="margin:0"><h4>Kiểm tra toàn vẹn</h4>
+            <div class="kv"><span class="k">Hash snapshot cử tri</span><span class="v">a7f3…9d1c</span></div>
+            <div class="kv"><span class="k">Bản ghi phiếu</span><span class="v">486 · chuỗi liền</span></div>
+            <div class="kv"><span class="k">Tổng 4 trạng thái</span><span class="v" style="color:var(--ok)">= 100,00%</span></div>
+          </div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <button class="btn">Đóng phiếu nội dung 3</button>
+          <button class="btn ghost">Mở bầu vòng 2</button>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li><b>Mẫu số ghi ngay dưới tiêu đề.</b> Tổng m² của snapshot cử tri, không phải tổng m² toàn tòa. Con số này in nguyên văn lên biên bản.</li>
+      <li>Trường hợp bằng phiếu được tô nổi và hệ thống <b>từ chối tự quyết định</b> — chỉ nêu phương án theo quy chế. Máy chọn thay người là rủi ro pháp lý.</li>
+      <li>Tách bạch nguồn phiếu hội trường và phiếu lấy tại căn hộ, vì phụ lục biên bản yêu cầu ghi riêng.</li>
+      <li>Khối kiểm tra toàn vẹn hiển thị hash và phép cân đối 4 trạng thái = 100%. Ban kiểm phiếu tự kiểm chứng trước khi công bố.</li>
+      <li>Kết quả chỉ Ban kiểm phiếu nhìn thấy trước khi công bố — nhãn cảnh báo ghi rõ để tránh chiếu nhầm lên màn hình lớn.</li>
+    </ol></div>
+  </section>
+
+  <!-- ============ 8 ============ -->
+  <section class="sheet">
+    <div class="sheet-label"><b>MH-08 · Xuất hồ sơ và biên bản</b><span>Web · M1-09 · trong 30 phút sau bế mạc</span></div>
+    <div class="frame">
+      <div class="topbar"><span class="brand">QLCC</span><span class="crumb">HN lần đầu 2026 › Hồ sơ</span><span class="spacer"></span><span class="tag ok">CLOSED · 11:26</span></div>
+      <div class="body">
+        <div class="row">
+          <div class="col">
+            <div class="box">
+              <h4>Biên bản hội nghị</h4>
+              <div class="field"><span>Mẫu</span><span class="val">Phụ lục TT 05/2024/TT-BXD</span></div>
+              <div class="field"><span>Chủ trì ký</span><span class="val">Chưa ký</span></div>
+              <div class="field"><span>Thư ký ký</span><span class="val">Chưa ký</span></div>
+              <div class="alert lockstyle" style="margin:10px 0 0">
+                <b>Bản in đang mang watermark BẢN NHÁP</b>
+                Watermark chỉ gỡ sau khi xác nhận đã lấy đủ chữ ký tươi của thành viên chủ trì và thư ký.
+              </div>
+            </div>
+            <button class="btn" style="width:100%">In biên bản để lấy chữ ký</button>
+          </div>
+
+          <div class="col">
+            <div class="box">
+              <h4>6 phụ lục bắt buộc</h4>
+              <div class="kv"><span class="k">1 · Danh sách đại biểu tham dự</span><span class="v" style="color:var(--ok)">✓ 160</span></div>
+              <div class="kv"><span class="k">2 · Giấy ủy quyền hợp lệ</span><span class="v" style="color:var(--ok)">✓ 86</span></div>
+              <div class="kv"><span class="k">3 · Bảng kiểm phiếu từng nội dung</span><span class="v" style="color:var(--ok)">✓ 3</span></div>
+              <div class="kv"><span class="k">4 · Nghị quyết hội nghị</span><span class="v" style="color:var(--ok)">✓</span></div>
+              <div class="kv"><span class="k">5 · Bằng chứng gửi thông báo</span><span class="v" style="color:var(--ok)">✓ 486</span></div>
+              <div class="kv"><span class="k">6 · Văn bản căn cứ hình thức họp</span><span class="v" style="color:var(--mid)">— không áp dụng</span></div>
+            </div>
+            <div class="box">
+              <h4>Gói hồ sơ</h4>
+              <div class="kv"><span class="k">Định dạng</span><span class="v">PDF + DOCX + ZIP</span></div>
+              <div class="kv"><span class="k">File hash đối chiếu</span><span class="v">SHA-256</span></div>
+              <button class="btn ghost" style="width:100%;margin-top:8px">Tải gói hồ sơ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="notes"><ol>
+      <li>Checklist 6 phụ lục hiển thị <b>số lượng bản ghi thực tế</b> chứ không chỉ dấu tích — số liệu này phải khớp biên bản.</li>
+      <li>Phụ lục 6 ghi "không áp dụng" thay vì ẩn đi, để người kiểm tra hồ sơ thấy nó đã được xem xét chứ không bị bỏ sót.</li>
+      <li>Luồng ký thiết kế theo thứ tự thực tế: in bản nháp → ký tươi tại chỗ → xác nhận → gỡ watermark. Không cho tải bản chính thức trước khi có chữ ký.</li>
+      <li>Trạng thái vẫn là <code>CLOSED</code>, chưa <code>PUBLISHED</code>. Công bố là hành động riêng và là điểm không quay lại.</li>
+    </ol></div>
+  </section>
+
+  <footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+    Wireframe phục vụ thảo luận nội bộ. Chưa gồm: cổng cư dân, cấu hình phí, phản ánh, quản lý quỹ bảo trì.
+  </footer>
+</div>
+</body>
+</html>

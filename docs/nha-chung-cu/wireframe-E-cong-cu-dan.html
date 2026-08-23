@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe E · Cổng cư dân</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --mid:#6b6b6b; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --paper:#f7f6f3; --card:#fff;
+    --legal:#b3261e; --legal-bg:#fbeceb;
+    --lock:#8a6100; --lock-bg:#fdf3dd;
+    --ok:#1f6b3f; --ok-bg:#e8f3ec;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+  .sheet{margin-bottom:56px}
+  .sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .frame.narrow{max-width:390px}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert.okstyle{border-left-color:var(--ok);background:var(--ok-bg)}
+  .alert b{display:block;margin-bottom:2px}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px;gap:10px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num,th.num{font-family:var(--mono);text-align:right}
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+  .stat{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .statlbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+  /* app nav */
+  .tabbar{display:flex;border-top:1px solid var(--line);background:#fafaf8}
+  .tabbar div{flex:1;padding:9px 4px;text-align:center;font-size:10px;color:var(--mid);border-right:1px solid var(--line-soft)}
+  .tabbar div:last-child{border-right:none}
+  .tabbar div.on{color:var(--ink);font-weight:600;border-top:2px solid var(--ink);margin-top:-1px}
+  .amt{font-size:30px;font-weight:700;letter-spacing:-.02em}
+  .chip{display:inline-block;border:1px solid var(--line);padding:4px 9px;font-size:12px;margin:0 5px 5px 0}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* zalo mock */
+  .zmsg{border:1px solid var(--line);padding:11px;font-size:13px;background:#fff;margin-bottom:8px}
+  .zmsg .zh{font-family:var(--mono);font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+  .zmsg .zb{border-top:1px solid var(--line-soft);margin-top:8px;padding-top:8px;display:flex;gap:6px}
+  .zmsg .zb span{flex:1;text-align:center;border:1px solid var(--line);padding:5px;font-size:12px}
+  .qr{width:110px;height:110px;background:repeating-conic-gradient(#1a1a1a 0 25%, #fff 0 50%) 0 0/16px 16px;border:5px solid #fff;outline:1px solid var(--line);margin:0 auto}
+  .doclist .kv{align-items:center}
+  .steps{display:flex;border:1px solid var(--line);margin-bottom:12px}
+  .steps div{flex:1;padding:7px 6px;font-size:11px;color:var(--mid);text-align:center;border-right:1px solid var(--line-soft)}
+  .steps div:last-child{border-right:none}
+  .steps div.on{background:var(--ink);color:#fff;font-weight:600}
+  .steps div.done{color:var(--ok)}
+  @media(max-width:640px){body{padding:20px 12px 60px}.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="meta">Wireframe đợt 4/5 · Nhóm E · v0.1</div>
+  <h1>Cổng cư dân — App, Zalo OA và cổng hội nghị</h1>
+  <p>Nhóm quyết định tỷ lệ tham dự hội nghị. E-03 và E-04 là M1: ủy quyền và tài liệu hội nghị.</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý</span>
+  <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Cảnh báo</span>
+  <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Hợp lệ</span>
+  <span>① Chú thích thiết kế</span>
+</div>
+
+<!-- ===== E-01 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>E-01 · Trang chủ app cư dân</b><span>iOS / Android · S-01</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">S2.03-1208</span><span class="spacer"></span><span class="avatar"></span></div>
+      <div class="body" style="padding:14px">
+        <div class="box" style="border-color:var(--legal);margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div>
+              <div class="statlbl" style="color:var(--legal)">Hội nghị lần đầu</div>
+              <div style="font-size:15px;font-weight:600;margin:2px 0">11/10/2026 · 08:00</div>
+              <div style="font-size:12px;color:var(--mid)">Nhà sinh hoạt cộng đồng · còn 49 ngày</div>
+            </div>
+            <span class="tag legal">Quan trọng</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:10px">
+            <button class="btn" style="flex:1;text-align:center">Xem tài liệu</button>
+            <button class="btn ghost" style="flex:1;text-align:center">Xác nhận dự</button>
+          </div>
+        </div>
+
+        <div class="box">
+          <h4>Phí kỳ 08/2026</h4>
+          <div class="amt">1.689.000 đ</div>
+          <div style="font-size:12px;color:var(--mid);margin-bottom:8px">Hạn thanh toán 15/09/2026</div>
+          <button class="btn" style="width:100%;text-align:center">Thanh toán</button>
+        </div>
+
+        <div class="box">
+          <h4>Thông báo tòa nhà</h4>
+          <div class="kv"><span class="k">Bảo trì thang máy tháp A</span><span class="v">24/08</span></div>
+          <div class="kv"><span class="k">Cắt nước tầng 10–15 · 2 giờ</span><span class="v">26/08</span></div>
+          <div class="kv"><span class="k">Kế hoạch bảo trì 2027 · lấy ý kiến</span><span class="v">20/08</span></div>
+        </div>
+
+        <div class="box" style="margin-bottom:0">
+          <h4>Phản ánh của tôi</h4>
+          <div class="kv"><span class="k">PA-2614 · Đèn hành lang tầng 7</span><span class="v" style="color:var(--lock)">Đang xử lý</span></div>
+          <div class="kv"><span class="k">PA-2510 · Vệ sinh hành lang</span><span class="v" style="color:var(--ok)">Đã đóng</span></div>
+        </div>
+      </div>
+      <div class="tabbar">
+        <div class="on">Trang chủ</div><div>Phí</div><div>Hội nghị</div><div>Phản ánh</div><div>Tiện ích</div>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Zalo OA</span><span class="crumb">BQL Tòa S2.03</span></div>
+      <div class="body" style="padding:14px;background:#f2f4f7">
+        <div class="zmsg">
+          <div class="zh">Thông báo phí · 01/08/2026</div>
+          Phí quản lý kỳ 08/2026 của căn S2.03-1208 là <b>1.689.000 đ</b>. Hạn thanh toán 15/09/2026.
+          <div class="zb"><span>Xem chi tiết</span><span>Thanh toán</span></div>
+        </div>
+
+        <div class="zmsg" style="border-color:var(--legal)">
+          <div class="zh" style="color:var(--legal)">Giấy mời hội nghị · 12/09/2026</div>
+          Kính mời quý chủ sở hữu dự <b>Hội nghị nhà chung cư lần đầu</b> ngày 11/10/2026 lúc 08:00 tại Nhà sinh hoạt cộng đồng.<br><br>
+          Tài liệu gồm: dự thảo báo cáo, kế hoạch bảo trì, danh sách ứng viên BQT, dự thảo quy chế bầu cử.
+          <div class="zb"><span>Tài liệu</span><span>Xác nhận dự</span><span>Ủy quyền</span></div>
+        </div>
+
+        <div class="zmsg">
+          <div class="zh">Nhắc lịch · 09/10/2026</div>
+          Còn 2 ngày đến hội nghị. Mã QR check-in của quý vị:
+          <div class="qr" style="margin-top:10px"></div>
+          <div style="text-align:center;font-family:var(--mono);font-size:11px;color:var(--mid);margin-top:6px">S2.03-1208</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Thẻ hội nghị nằm <b>trên cùng, viền đỏ</b> khi có kỳ đang mở. Đây là hoạt động quyết định tính hợp lệ của cả tòa nhà — không để chìm dưới thông báo cắt nước.</li>
+    <li>Zalo OA không phải kênh phụ mà là <b>kênh chính tại Việt Nam</b>. Mọi hành động quan trọng (xem tài liệu, xác nhận dự, ủy quyền) đều làm được từ Zalo, không bắt cài app.</li>
+    <li>Mã QR check-in gửi trước 2 ngày qua Zalo — cư dân không cần in giấy mời, giảm ùn tắc tại sảnh sáng ngày hội nghị.</li>
+    <li>Thanh tab 5 mục, "Hội nghị" là tab riêng chứ không nằm trong "Thông báo". Tab này chỉ hiện khi có kỳ đang diễn ra.</li>
+    <li>Nút "Xác nhận dự" khác với check-in — chỉ là dự kiến, dùng để mô phỏng quorum trước hội nghị (S-08).</li>
+  </ol></div>
+</section>
+
+<!-- ===== E-02 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>E-02 · Tra cứu phí và thanh toán</b><span>App cư dân · S-02</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Phí</span><span class="crumb">S2.03-1208</span></div>
+      <div class="body" style="padding:14px">
+        <div style="margin-bottom:12px">
+          <span class="chip on">Kỳ 08/2026</span><span class="chip">07/2026</span><span class="chip">06/2026</span><span class="chip">Cả năm</span>
+        </div>
+
+        <div class="box">
+          <div class="statlbl">Tổng phải trả</div>
+          <div class="amt">1.689.000 đ</div>
+          <div style="font-size:12px;color:var(--mid)">Hạn 15/09/2026 · còn 24 ngày</div>
+        </div>
+
+        <table>
+          <thead><tr><th>Khoản mục</th><th class="num">Số lượng</th><th class="num">Thành tiền</th></tr></thead>
+          <tbody>
+            <tr><td>Phí quản lý vận hành</td><td class="num">78,40 m²</td><td class="num">603.680</td></tr>
+            <tr><td>Điện</td><td class="num">214 kWh</td><td class="num">612.400</td></tr>
+            <tr><td>Nước</td><td class="num">18 m³</td><td class="num">232.920</td></tr>
+            <tr><td>Gửi xe ô tô</td><td class="num">1 xe</td><td class="num">1.250.000</td></tr>
+            <tr><td>Gửi xe máy</td><td class="num">1 xe</td><td class="num">120.000</td></tr>
+            <tr><td colspan="2"><b>Đã trả trước</b></td><td class="num">−1.130.000</td></tr>
+          </tbody>
+        </table>
+
+        <div class="box" style="margin-top:12px">
+          <h4>Chi tiết điện · kỳ 08/2026</h4>
+          <div class="kv"><span class="k">Chỉ số đầu · 25/07</span><span class="v">14.208</span></div>
+          <div class="kv"><span class="k">Chỉ số cuối · 25/08</span><span class="v">14.422</span></div>
+          <div class="kv"><span class="k">Tiêu thụ</span><span class="v">214 kWh</span></div>
+          <div class="kv"><span class="k">Kỳ trước</span><span class="v">198 kWh</span></div>
+        </div>
+
+        <button class="btn lg" style="width:100%;text-align:center">Thanh toán 1.689.000 đ</button>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Thanh toán</span><span class="crumb">VietQR</span></div>
+      <div class="body" style="padding:14px;text-align:center">
+        <div class="qr" style="width:150px;height:150px;margin:6px auto 12px"></div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--mid);margin-bottom:14px">
+          Quét bằng app ngân hàng bất kỳ
+        </div>
+
+        <div class="box" style="text-align:left">
+          <div class="kv"><span class="k">Số tiền</span><span class="v"><b>1.689.000 đ</b></span></div>
+          <div class="kv"><span class="k">Nội dung</span><span class="v">S2.03-1208 T08</span></div>
+          <div class="kv"><span class="k">Tài khoản nhận</span><span class="v">BQL Tòa S2.03</span></div>
+        </div>
+
+        <div class="alert okstyle" style="text-align:left">
+          <b>Đối soát tự động trong 5 phút</b>
+          Nội dung chuyển khoản đã mã hóa sẵn mã căn và kỳ phí. Không cần gửi biên lai cho BQL.
+        </div>
+
+        <div style="font-size:12px;color:var(--mid);text-align:left">
+          Hoặc thanh toán bằng: <u>Ví điện tử</u> · <u>Thẻ nội địa</u> · <u>Nộp tiền mặt tại BQL</u>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Bảng chi tiết hiển thị <b>số lượng làm cơ sở tính</b> (78,40 m², 214 kWh) chứ không chỉ thành tiền. Đây là cách giảm thắc mắc và khiếu nại hiệu quả nhất.</li>
+    <li>Khối chỉ số điện đầu–cuối kèm so sánh kỳ trước: cư dân tự kiểm tra được, giảm tải cho tổng đài BQL.</li>
+    <li>VietQR mã hóa sẵn mã căn và kỳ phí trong nội dung chuyển khoản → đối soát tự động, không cần cư dân gửi ảnh biên lai.</li>
+    <li>Vẫn giữ tùy chọn <b>nộp tiền mặt tại BQL</b>. Một tỷ lệ cư dân lớn tuổi không dùng chuyển khoản, ép họ lên app sẽ gây phản ứng.</li>
+  </ol></div>
+</section>
+
+<!-- ===== E-03 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>E-03 · Cổng hội nghị · tài liệu và xác nhận dự</b><span>App / Zalo · M1-08</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Hội nghị</span><span class="crumb">Lần đầu · 11/10/2026</span></div>
+      <div class="body" style="padding:14px">
+        <div class="box" style="border-color:var(--legal)">
+          <div class="statlbl" style="color:var(--legal)">Quyền biểu quyết của quý vị</div>
+          <div class="amt">78,40 phiếu</div>
+          <div style="font-size:12px;color:var(--mid)">
+            Theo diện tích sở hữu riêng căn S2.03-1208 · nguyên tắc 1m² = 01 phiếu
+          </div>
+        </div>
+
+        <div class="box doclist">
+          <h4>Tài liệu hội nghị · 5 tệp</h4>
+          <div class="kv"><span class="k">Giấy mời họp</span><span class="v" style="color:var(--ok)">Đã đọc</span></div>
+          <div class="kv"><span class="k">Dự thảo báo cáo hoạt động</span><span class="v" style="color:var(--ok)">Đã đọc</span></div>
+          <div class="kv"><span class="k">Kế hoạch bảo trì 2027</span><span class="v" style="color:var(--lock)">Chưa đọc</span></div>
+          <div class="kv"><span class="k">Danh sách 9 ứng viên BQT</span><span class="v" style="color:var(--lock)">Chưa đọc</span></div>
+          <div class="kv"><span class="k">Dự thảo quy chế bầu cử</span><span class="v" style="color:var(--lock)">Chưa đọc</span></div>
+        </div>
+
+        <div class="box">
+          <h4>Chương trình nghị sự</h4>
+          <div class="kv"><span class="k">1 · Báo cáo hoạt động</span><span class="v">Thông qua</span></div>
+          <div class="kv"><span class="k">2 · Kế hoạch bảo trì 2027</span><span class="v">Thông qua</span></div>
+          <div class="kv"><span class="k">3 · Bầu Ban quản trị</span><span class="v">Bầu 5/9</span></div>
+        </div>
+
+        <div class="box">
+          <h4>Quý vị sẽ tham dự?</h4>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn" style="flex:1;text-align:center">Tôi sẽ dự</button>
+            <button class="btn ghost" style="flex:1;text-align:center">Ủy quyền</button>
+          </div>
+          <p style="font-size:11.5px;color:var(--mid);margin:8px 0 0">
+            Nếu không thể dự và không ủy quyền, quyền biểu quyết của căn sẽ không được tính vào kết quả.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Hội nghị</span><span class="crumb">Ứng viên BQT</span></div>
+      <div class="body" style="padding:14px">
+        <p class="sub" style="margin-bottom:12px">9 ứng viên · hội nghị bầu 5 người</p>
+
+        <div class="box">
+          <div style="display:flex;gap:10px">
+            <div class="avatar" style="width:42px;height:42px;flex-shrink:0"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px">Trần Thị B</div>
+              <div style="font-size:11.5px;color:var(--mid)">Căn S2.03-0812 · cư trú từ 2024</div>
+            </div>
+          </div>
+          <p style="font-size:12.5px;margin:10px 0 0">
+            Kế toán trưởng · 12 năm kinh nghiệm tài chính. Đề xuất trọng tâm: minh bạch thu chi quỹ bảo trì và công khai báo cáo hằng quý.
+          </p>
+        </div>
+
+        <div class="box">
+          <div style="display:flex;gap:10px">
+            <div class="avatar" style="width:42px;height:42px;flex-shrink:0"></div>
+            <div>
+              <div style="font-weight:600;font-size:14px">Lê Văn C</div>
+              <div style="font-size:11.5px;color:var(--mid)">Căn S2.03-1506 · cư trú từ 2023</div>
+            </div>
+          </div>
+          <p style="font-size:12.5px;margin:10px 0 0">
+            Kỹ sư xây dựng. Đề xuất trọng tâm: rà soát chất lượng hạng mục sở hữu chung và kế hoạch bảo trì dài hạn.
+          </p>
+        </div>
+
+        <div class="alert lockstyle">
+          <b>Không bỏ phiếu qua app</b>
+          Trang này chỉ để tìm hiểu ứng viên trước hội nghị. Việc bầu cử diễn ra tại hội nghị theo quy định.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Hiển thị <b>quyền biểu quyết bằng số cụ thể</b> (78,40 phiếu) ngay đầu trang. Cư dân hiểu ngay lá phiếu của mình đáng bao nhiêu và vì sao nên đi họp.</li>
+    <li>Trạng thái đã đọc / chưa đọc từng tài liệu vừa nhắc cư dân, vừa là <b>bằng chứng gửi</b> phục vụ phụ lục hồ sơ hội nghị (M1-08).</li>
+    <li>Câu cảnh báo "không dự và không ủy quyền thì phiếu không được tính" là <b>động lực tham dự mạnh nhất</b> — nói thẳng hệ quả thay vì kêu gọi chung chung.</li>
+    <li>Trang ứng viên có ảnh và cam kết ngắn — thay cho tình trạng cư dân bầu người mình chưa từng biết tên.</li>
+    <li>Cảnh báo "không bỏ phiếu qua app" bắt buộc phải có. Sản phẩm định vị là công cụ hỗ trợ hội nghị trực tiếp, UI không được gợi ý điều ngược lại.</li>
+  </ol></div>
+</section>
+
+<!-- ===== E-04 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>E-04 · Lập giấy ủy quyền trên app</b><span>App / Zalo · M1-03 · RÀNG BUỘC PHÁP LÝ</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Ủy quyền</span><span class="crumb">HN lần đầu 2026</span></div>
+      <div class="body" style="padding:14px">
+        <div class="steps">
+          <div class="done">✓ Người nhận</div>
+          <div class="on">2 · Phạm vi</div>
+          <div>3 · Ký và nộp</div>
+        </div>
+
+        <div class="box">
+          <h4>Người nhận ủy quyền</h4>
+          <div class="kv"><span class="k">Họ tên</span><span class="v">Trần Thị B</span></div>
+          <div class="kv"><span class="k">Căn hộ</span><span class="v">S2.03-0812</span></div>
+          <div class="kv"><span class="k">Đang nhận ủy quyền</span><span class="v" style="color:var(--lock)">3 / 5 căn</span></div>
+        </div>
+
+        <div class="box">
+          <h4>Phạm vi ủy quyền</h4>
+          <div class="field" style="border-color:var(--ink)"><span>◉ Toàn bộ nội dung hội nghị</span></div>
+          <div class="field"><span>○ Chỉ một số nội dung</span></div>
+          <div style="padding-left:14px;font-size:12.5px;color:var(--mid)">
+            <div style="padding:4px 0">☐ 1 · Báo cáo hoạt động</div>
+            <div style="padding:4px 0">☐ 2 · Kế hoạch bảo trì 2027</div>
+            <div style="padding:4px 0">☐ 3 · Bầu Ban quản trị</div>
+          </div>
+        </div>
+
+        <div class="box">
+          <h4>Thời hạn</h4>
+          <div class="kv"><span class="k">Có hiệu lực đến</span><span class="v">11/10/2026 · hết hội nghị</span></div>
+        </div>
+
+        <div class="alert lockstyle">
+          <b>Trần ủy quyền của tòa nhà là 5 căn/người</b>
+          Người nhận đang giữ 3 giấy. Nếu vượt trần, giấy của quý vị sẽ bị từ chối.
+        </div>
+
+        <button class="btn lg" style="width:100%;text-align:center">Tiếp tục</button>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Ủy quyền</span><span class="crumb">Đã nộp</span><span class="spacer"></span><span class="tag lock">Chờ duyệt</span></div>
+      <div class="body" style="padding:14px">
+        <div class="box">
+          <h4>Giấy ủy quyền UQ-2026-0087</h4>
+          <div class="kv"><span class="k">Căn</span><span class="v">S2.03-1208</span></div>
+          <div class="kv"><span class="k">Người ủy quyền</span><span class="v">Nguyễn Văn A</span></div>
+          <div class="kv"><span class="k">Người nhận</span><span class="v">Trần Thị B</span></div>
+          <div class="kv"><span class="k">Phạm vi</span><span class="v">Toàn bộ</span></div>
+          <div class="kv"><span class="k">Trọng số chuyển giao</span><span class="v">78,40 phiếu</span></div>
+          <div class="kv"><span class="k">Nộp lúc</span><span class="v">22/08 · 14:32</span></div>
+        </div>
+
+        <div class="alert lockstyle">
+          <b>Đang chờ BQT thẩm định</b>
+          Kết quả sẽ báo qua app và Zalo trong 3 ngày làm việc. Nếu bị từ chối, quý vị sẽ nhận được lý do cụ thể.
+        </div>
+
+        <div class="box">
+          <h4>Bản in để ký</h4>
+          <p style="font-size:12.5px;color:var(--mid);margin:0 0 8px">
+            Nộp thêm bản giấy có chữ ký tại quầy lễ tân hoặc mang theo ngày hội nghị. Bản điện tử dùng để BQT thẩm định trước.
+          </p>
+          <button class="btn ghost" style="width:100%;text-align:center">Tải bản in PDF</button>
+        </div>
+
+        <div class="alert">
+          <b>Quý vị có thể thu hồi ủy quyền bất kỳ lúc nào trước giờ khai mạc</b>
+          Nếu tự đến dự họp, ủy quyền sẽ tự động mất hiệu lực khi quý vị check-in.
+        </div>
+
+        <button class="btn ghost" style="width:100%;text-align:center">Thu hồi ủy quyền</button>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Hiển thị <b>số ủy quyền người nhận đang giữ (3/5)</b> ngay lúc chọn — cư dân biết trước rủi ro bị từ chối, thay vì nộp xong mới bị chặn.</li>
+    <li>Trọng số chuyển giao ghi bằng số cụ thể (78,40 phiếu) để người ủy quyền hiểu mình đang trao đi cái gì.</li>
+    <li>Luồng vẫn <b>yêu cầu bản giấy có chữ ký</b>. Bản điện tử dùng để BQT thẩm định trước, giảm ùn tắc ngày hội nghị — phương án an toàn cho đến khi chốt được giá trị pháp lý của chữ ký số (§9 đặc tả).</li>
+    <li>Quyền thu hồi hiển thị nổi bật, kèm giải thích cơ chế tự vô hiệu khi chủ sở hữu tự check-in. Đây là điểm gây tranh cãi tại hội nghị nếu không nói rõ trước.</li>
+    <li>Ủy quyền phạm vi hẹp cho chọn từng nội dung — ít dùng nhưng cần có, vì một số chủ sở hữu chỉ muốn ủy quyền phần bầu cử.</li>
+  </ol></div>
+</section>
+
+<!-- ===== E-05 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>E-05 · Gửi phản ánh</b><span>App cư dân · M2-04</span></div>
+  <div class="row">
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Phản ánh</span><span class="crumb">Tạo mới</span></div>
+      <div class="body" style="padding:14px">
+        <div style="margin-bottom:12px">
+          <span class="chip on">Kỹ thuật</span><span class="chip">Vệ sinh</span><span class="chip">An ninh</span><span class="chip">Tiếng ồn</span><span class="chip">Khác</span>
+        </div>
+
+        <div class="field"><span>Vị trí</span><span class="val">Hành lang tầng 7 ▾</span></div>
+        <div class="field" style="align-items:flex-start;min-height:70px"><span>Mô tả sự việc…</span></div>
+
+        <div class="box">
+          <h4>Ảnh hoặc video</h4>
+          <div style="display:flex;gap:6px">
+            <div style="width:56px;height:56px;border:1px solid var(--line);background:#efeeea"></div>
+            <div style="width:56px;height:56px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--mid)">+</div>
+          </div>
+        </div>
+
+        <div class="alert okstyle">
+          <b>Nhóm Kỹ thuật · cam kết xử lý trong 48 giờ</b>
+          Quý vị sẽ nhận thông báo khi có nhân sự được phân công và khi công việc hoàn tất.
+        </div>
+
+        <button class="btn lg" style="width:100%;text-align:center">Gửi phản ánh</button>
+      </div>
+    </div>
+
+    <div class="frame narrow">
+      <div class="topbar"><span class="brand">Phản ánh</span><span class="crumb">PA-2614</span><span class="spacer"></span><span class="tag lock">Đang xử lý</span></div>
+      <div class="body" style="padding:14px">
+        <h3 class="scr">Đèn hành lang tầng 7 chập chờn</h3>
+        <p class="sub">Gửi 21/08 · 19:14 · nhóm Kỹ thuật</p>
+
+        <div class="steps" style="margin-bottom:14px">
+          <div class="done">✓ Tiếp nhận</div>
+          <div class="done">✓ Phân công</div>
+          <div class="on">Đang xử lý</div>
+          <div>Hoàn tất</div>
+        </div>
+
+        <div class="box">
+          <div class="kv"><span class="k">Tiếp nhận</span><span class="v">21/08 · 19:20</span></div>
+          <div class="kv"><span class="k">Phân công</span><span class="v">Lê Văn T · KT</span></div>
+          <div class="kv"><span class="k">Cam kết hoàn tất</span><span class="v">23/08 · 19:14</span></div>
+          <div class="kv"><span class="k">Còn lại</span><span class="v" style="color:var(--ok)">31 giờ</span></div>
+        </div>
+
+        <div class="box">
+          <h4>Cập nhật từ BQL</h4>
+          <p style="font-size:12.5px;margin:0">
+            22/08 · 09:40 — Đã kiểm tra, nguyên nhân do chấn lưu hỏng. Đã đặt vật tư, dự kiến thay trong hôm nay.
+          </p>
+        </div>
+
+        <p style="font-size:11.5px;color:var(--mid)">
+          Sau khi BQL báo hoàn tất, quý vị xác nhận và đánh giá chất lượng xử lý.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Chọn nhóm sự việc trước, vì <b>SLA phụ thuộc nhóm</b>. Hiển thị cam kết thời gian ngay khi chọn để cư dân biết kỳ vọng hợp lý.</li>
+    <li>Thanh tiến trình 4 bước thay cho một dòng trạng thái — cư dân thấy được việc của mình đang ở đâu, giảm số cuộc gọi hỏi thăm.</li>
+    <li>Đồng hồ "còn lại 31 giờ" hiển thị cho cả cư dân, không chỉ nội bộ. Minh bạch SLA là cam kết chất lượng, cũng là áp lực lành mạnh lên đơn vị vận hành.</li>
+    <li>Cập nhật giữa chừng từ BQL quan trọng hơn tốc độ đóng việc: cư dân chấp nhận chờ nếu biết đang có người xử lý.</li>
+    <li>Bước xác nhận và đánh giá do cư dân thực hiện — chỉ số này dùng để đánh giá đơn vị vận hành tại hội nghị thường niên.</li>
+  </ol></div>
+</section>
+
+<footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+  Đợt 4/5 · Nhóm E hoàn tất. Tiếp theo: F · Hệ thống (4 màn hình) — phân quyền 6 vai trò, audit log, multi-tenant, cổng UBND cấp xã.
+</footer>
+</div>
+</body>
+</html>

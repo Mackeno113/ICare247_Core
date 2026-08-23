@@ -1,0 +1,93 @@
+stateDiagram-v2
+    direction TB
+
+    [*] --> DRAFT
+
+    DRAFT: DRAFT · Nháp
+    DRAFT: Tạo kỳ, chọn loại hội nghị
+    DRAFT: Cấu hình ngưỡng quorum
+    DRAFT: Chọn hình thức họp + lý do
+    DRAFT: Soạn chương trình nghị sự
+    DRAFT: --- Được sửa mọi thứ ---
+
+    NOTIFIED: NOTIFIED · Đã thông báo
+    NOTIFIED: Đã gửi mời, lưu bằng chứng
+    NOTIFIED: Tiếp nhận và duyệt ủy quyền
+    NOTIFIED: Lập danh sách phiếu tại căn hộ
+    NOTIFIED: --- Sửa nghị sự phải gửi lại mời ---
+
+    CHECKIN: CHECKIN · Đang đón đại biểu
+    CHECKIN: Quét QR, ghi tư cách tham dự
+    CHECKIN: Quorum cập nhật real-time
+    CHECKIN: Nút Khai mạc KHÓA
+    CHECKIN: --- Không tạo/sửa ủy quyền mới ---
+
+    QUORUM_MET: QUORUM_MET · Đủ điều kiện
+    QUORUM_MET: Tỷ lệ đại diện chủ SH đạt ngưỡng
+    QUORUM_MET: Mở khóa nút Khai mạc
+    QUORUM_MET: Ghi mốc thời gian đạt ngưỡng
+
+    OPENED: OPENED · Đã khai mạc
+    OPENED: SNAPSHOT VoterRoll đã tạo
+    OPENED: Hash SHA-256 đã ghi audit log
+    OPENED: --- Trọng số phiếu ĐÓNG BĂNG ---
+
+    VOTING: VOTING · Đang biểu quyết
+    VOTING: Mở/đóng phiếu từng nội dung
+    VOTING: Ghi Vote kèm hash chain
+    VOTING: Chỉ Ban kiểm phiếu xem kết quả
+
+    CLOSED: CLOSED · Đã bế mạc
+    CLOSED: Hết nội dung nghị sự
+    CLOSED: Bảng kiểm phiếu tổng hợp
+    CLOSED: Chưa công bố ra cư dân
+
+    PUBLISHED: PUBLISHED · Đã công bố
+    PUBLISHED: Kết quả công khai
+    PUBLISHED: Biên bản + 6 phụ lục đã xuất
+    PUBLISHED: --- KHÔNG sửa phiếu, không ngoại lệ ---
+
+    FAILED: FAILED · Không đủ điều kiện
+    FAILED: Hết giờ chờ mà chưa đạt ngưỡng
+    FAILED: Phải tổ chức lại kỳ mới
+
+    CANCELLED: CANCELLED · Đã hủy
+    CANCELLED: Hủy trước khai mạc, có lý do bắt buộc
+
+    DRAFT --> NOTIFIED: Gửi giấy mời<br/>đủ thời hạn cấu hình
+    DRAFT --> CANCELLED: Hủy kỳ
+
+    NOTIFIED --> CHECKIN: Đến giờ đón đại biểu
+    NOTIFIED --> CANCELLED: Hoãn / hủy<br/>có lý do
+
+    CHECKIN --> QUORUM_MET: Tỷ lệ đạt ngưỡng<br/>R2 hoặc R3
+    CHECKIN --> FAILED: Hết thời gian chờ<br/>vẫn chưa đủ
+
+    QUORUM_MET --> CHECKIN: Đại biểu ra về<br/>tụt dưới ngưỡng
+    QUORUM_MET --> OPENED: BẤM KHAI MẠC<br/>tạo VoterRoll bất biến
+
+    OPENED --> VOTING: Mở phiếu<br/>nội dung đầu tiên
+
+    VOTING --> VOTING: Đóng nội dung i<br/>mở nội dung i+1
+    VOTING --> CLOSED: Hết nội dung<br/>bế mạc
+
+    CLOSED --> PUBLISHED: Công bố kết quả<br/>ĐIỂM KHÔNG QUAY LẠI
+
+    PUBLISHED --> [*]
+    FAILED --> [*]
+    CANCELLED --> [*]
+
+    note right of OPENED
+        RÀNG BUỘC BẤT BIẾN
+        Từ OPENED trở đi
+        VoterRoll không có API
+        UPDATE hay DELETE
+        kể cả quyền admin
+    end note
+
+    note right of PUBLISHED
+        RÀNG BUỘC CUỐI
+        Vote không sửa được
+        Sai sót chỉ xử lý bằng
+        hội nghị bất thường mới
+    end note

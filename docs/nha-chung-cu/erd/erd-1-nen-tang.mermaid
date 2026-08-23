@@ -1,0 +1,171 @@
+erDiagram
+    TENANT ||--o{ PROJECT : "quản lý"
+    PROJECT ||--o{ BUILDING : "gồm"
+    BUILDING ||--o{ UNIT : "chứa"
+
+    UNIT ||--o| UNIT_RESIDENTIAL : "mở rộng khi APARTMENT"
+    UNIT ||--o| UNIT_COMMERCIAL : "mở rộng khi COMMERCIAL/OFFICE"
+    UNIT ||--o{ OWNERSHIP : "temporal"
+    UNIT ||--o{ OCCUPANCY : "temporal"
+    UNIT ||--o{ AREA_CHANGE : "lịch sử diện tích"
+    UNIT ||--o{ HANDOVER_EVENT : "lịch sử bàn giao"
+    UNIT ||--o{ VEHICLE : "đăng ký"
+    UNIT ||--o{ UNIT_DOCUMENT : "chứng từ"
+
+    PARTY ||--o{ OWNERSHIP : "là chủ sở hữu"
+    PARTY ||--o{ OCCUPANCY : "là người sử dụng"
+    PARTY ||--o{ USER_ACCOUNT : "có tài khoản"
+    PARTY ||--o{ VEHICLE : "chủ xe"
+
+    VEHICLE ||--o{ ACCESS_CARD : "cấp thẻ"
+
+    BUILDING ||--o{ BUILDING_CONFIG : "cấu hình riêng"
+    BUILDING ||--o{ LEGAL_DOCUMENT : "hồ sơ pháp lý"
+
+    TENANT {
+        uuid id PK
+        string name "đơn vị quản lý vận hành"
+        string tax_code
+    }
+
+    PROJECT {
+        uuid id PK
+        uuid tenant_id FK "RLS - cách ly dữ liệu"
+        string name
+        string address
+    }
+
+    BUILDING {
+        uuid id PK
+        uuid project_id FK
+        string code "S2.03"
+        string name
+        decimal total_private_area_sqm "DB1 - hằng số kiểm tra"
+        date first_handover_date "mốc tính R1"
+    }
+
+    UNIT {
+        uuid id PK
+        uuid building_id FK
+        string unit_code UK "duy nhất trong building"
+        enum unit_type "APARTMENT COMMERCIAL OFFICE TOURIST"
+        decimal private_area_sqm "DECIMAL 10,2 - CƠ SỞ TÍNH PHIẾU R4"
+        enum handover_status "DELIVERED NOT_DELIVERED DEVELOPER_RETAINED"
+        date handover_date
+        int floor_no
+        timestamp created_at
+    }
+
+    UNIT_RESIDENTIAL {
+        uuid unit_id PK_FK
+        int bedroom_count
+        boolean has_balcony
+    }
+
+    UNIT_COMMERCIAL {
+        uuid unit_id PK_FK
+        string lease_contract_no
+        decimal unit_price_per_sqm
+        date lease_valid_to
+    }
+
+    PARTY {
+        uuid id PK
+        enum party_type "INDIVIDUAL ORGANIZATION"
+        string full_name
+        string national_id_enc "MÃ HÓA at-rest"
+        string phone_enc "MÃ HÓA at-rest"
+        string email
+        enum erasure_status "ACTIVE ANONYMIZED"
+        timestamp anonymized_at "xóa theo yêu cầu - KHÔNG phá hash chain"
+    }
+
+    OWNERSHIP {
+        uuid id PK
+        uuid unit_id FK
+        uuid party_id FK
+        decimal share_ratio "tỷ lệ đồng sở hữu"
+        uuid representative_id FK "BẮT BUỘC khi đồng sở hữu"
+        date valid_from "temporal - không ghi đè"
+        date valid_to "NULL nếu đang hiệu lực"
+        uuid evidence_doc_id FK "chứng từ sang tên"
+    }
+
+    OCCUPANCY {
+        uuid id PK
+        uuid unit_id FK
+        uuid party_id FK
+        enum role "OWNER TENANT RESIDENT"
+        date valid_from
+        date valid_to
+    }
+
+    AREA_CHANGE {
+        uuid id PK
+        uuid unit_id FK
+        decimal area_before
+        decimal area_after
+        uuid evidence_doc_id FK "BẮT BUỘC - không có chứng từ không lưu"
+        uuid actor_id FK
+        timestamp changed_at
+    }
+
+    HANDOVER_EVENT {
+        uuid id PK
+        uuid unit_id FK
+        enum status_before
+        enum status_after
+        date event_date
+        uuid evidence_doc_id FK
+    }
+
+    VEHICLE {
+        uuid id PK
+        uuid unit_id FK
+        uuid owner_party_id FK
+        enum vehicle_type "CAR MOTORBIKE BICYCLE"
+        string plate_number_enc "MÃ HÓA - dữ liệu cá nhân"
+        enum status "PENDING ACTIVE LOCKED"
+    }
+
+    ACCESS_CARD {
+        uuid id PK
+        uuid vehicle_id FK
+        string card_code
+        date valid_from
+        date valid_to
+        enum status "ACTIVE LOCKED EXPIRED"
+    }
+
+    USER_ACCOUNT {
+        uuid id PK
+        uuid party_id FK
+        uuid tenant_id FK
+        enum role "RESIDENT BQL BQT DEVELOPER TELLER WARD_AUTHORITY SYSADMIN"
+        string zalo_user_id
+        boolean is_active
+    }
+
+    BUILDING_CONFIG {
+        uuid id PK
+        uuid building_id FK
+        string config_key "quorum_first quorum_annual proxy_cap sla_group"
+        string config_value "KHÔNG hard-code ngưỡng"
+        date effective_from
+    }
+
+    UNIT_DOCUMENT {
+        uuid id PK
+        uuid unit_id FK
+        enum doc_type "PURCHASE_CONTRACT HANDOVER_MINUTES CERTIFICATE"
+        string file_path
+        string file_hash
+    }
+
+    LEGAL_DOCUMENT {
+        uuid id PK
+        uuid building_id FK
+        enum doc_type "hồ sơ CĐT bàn giao cho BQT"
+        boolean is_received "đánh dấu thiếu đủ"
+        string file_path
+    }

@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe F · Hệ thống</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --mid:#6b6b6b; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --paper:#f7f6f3; --card:#fff;
+    --legal:#b3261e; --legal-bg:#fbeceb;
+    --lock:#8a6100; --lock-bg:#fdf3dd;
+    --ok:#1f6b3f; --ok-bg:#e8f3ec;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+  .sheet{margin-bottom:56px}
+  .sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .frame.narrow{max-width:400px}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert.okstyle{border-left-color:var(--ok);background:var(--ok-bg)}
+  .alert b{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num,th.num{font-family:var(--mono);text-align:right}
+  td.c,th.c{text-align:center}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px;gap:10px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+  .stat{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .statlbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+  .yes{color:var(--ok);font-weight:700}
+  .no{color:#c4c4c4}
+  .never{color:var(--legal);font-weight:700}
+  /* audit log */
+  .log{font-family:var(--mono);font-size:11.5px}
+  .log td{padding:6px 8px;vertical-align:top}
+  .log .hash{color:var(--mid);font-size:10.5px;word-break:break-all}
+  .chain{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;margin:10px 0}
+  .chain .blk{border:1px solid var(--ink);padding:5px 8px;background:#fff}
+  .chain .blk.bad{border-color:var(--legal);background:var(--legal-bg);color:var(--legal)}
+  .chain .lnk{color:var(--mid)}
+  .tenant{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)}
+  .tenant .sq{width:30px;height:30px;border:1px solid var(--line);flex-shrink:0}
+  @media(max-width:640px){body{padding:20px 12px 60px}.row{flex-direction:column}table{font-size:11px}th,td{padding:5px 4px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="meta">Wireframe đợt 5/5 · Nhóm F · v0.1</div>
+  <h1>Hệ thống — Phân quyền, audit log, multi-tenant, cổng UBND</h1>
+  <p>Nhóm không ai đòi hỏi khi chào hàng nhưng quyết định việc sản phẩm có trụ được khi xảy ra tranh chấp hay không.</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý</span>
+  <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Cảnh báo</span>
+  <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Hợp lệ</span>
+  <span>① Chú thích thiết kế</span>
+</div>
+
+<!-- ===== F-01 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>F-01 · Ma trận phân quyền 6 vai trò</b><span>Backoffice · M2-05</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Hệ thống › Phân quyền</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <h3 class="scr">Ma trận phân quyền · Tòa S2.03</h3>
+      <p class="sub">Áp dụng cho toàn bộ tài khoản của tòa · thay đổi cần phê duyệt của quản trị hệ thống</p>
+
+      <div class="alert">
+        <b>Nguyên tắc bất biến: BQT xem được toàn bộ tài chính, không sửa được dữ liệu vận hành</b>
+        Đây là điểm nhiều sản phẩm hiện có làm sai và là nguyên nhân trực tiếp khiến cư dân mất niềm tin.
+      </div>
+
+      <table>
+        <thead><tr>
+          <th>Chức năng</th><th class="c">Cư dân</th><th class="c">BQL</th><th class="c">BQT</th><th class="c">CĐT</th><th class="c">Kiểm phiếu</th><th class="c">UBND xã</th>
+        </tr></thead>
+        <tbody>
+          <tr><td colspan="7" style="background:#fafaf8;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid)">Hội nghị</td></tr>
+          <tr><td>Xem tài liệu hội nghị</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+          <tr><td>Tạo kỳ hội nghị</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">—</td><td class="c yes">✓*</td></tr>
+          <tr><td>Duyệt giấy ủy quyền</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Khai mạc / bế mạc</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">—</td><td class="c yes">✓*</td></tr>
+          <tr><td>Mở / đóng phiếu biểu quyết</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td></tr>
+          <tr><td>Xem kết quả trước công bố</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td></tr>
+          <tr style="background:var(--legal-bg)"><td><b>Sửa / xóa phiếu sau công bố</b></td><td class="c never">✕</td><td class="c never">✕</td><td class="c never">✕</td><td class="c never">✕</td><td class="c never">✕</td><td class="c never">✕</td></tr>
+
+          <tr><td colspan="7" style="background:#fafaf8;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid)">Tài chính</td></tr>
+          <tr><td>Xem sổ quỹ bảo trì</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+          <tr><td>Lập phiếu chi quỹ bảo trì</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr style="background:var(--ok-bg)"><td><b>Phê duyệt phiếu chi</b></td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Sửa biểu phí</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Xem toàn bộ báo cáo tài chính</td><td class="c no">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+
+          <tr><td colspan="7" style="background:#fafaf8;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid)">Vận hành và dữ liệu</td></tr>
+          <tr><td>Sửa diện tích sở hữu riêng</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Xử lý phản ánh</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+          <tr><td>Xem audit log</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c yes">✓</td></tr>
+          <tr><td>Xem dữ liệu cá nhân đầy đủ</td><td class="c no">—</td><td class="c yes">✓</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td><td class="c no">—</td></tr>
+        </tbody>
+      </table>
+
+      <p style="font-size:11.5px;color:var(--mid);margin-top:10px">
+        ✓* chỉ trong trường hợp R8 — quá 12 tháng, đủ 50% căn bàn giao, chủ đầu tư không tổ chức và có đơn đề nghị.
+      </p>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Dòng <b>"Sửa/xóa phiếu sau công bố"</b> dùng dấu ✕ đỏ cho cả 6 vai trò, khác hẳn dấu "—" của quyền thông thường. Đây không phải quyền chưa cấp mà là <b>quyền không tồn tại trong hệ thống</b>.</li>
+    <li>Tách bạch <b>lập phiếu chi (BQL)</b> và <b>phê duyệt phiếu chi (BQT)</b> — một bên làm, một bên duyệt. Gộp vào một vai trò là mở đường cho lạm dụng quỹ bảo trì.</li>
+    <li>BQT không sửa được dữ liệu vận hành nhưng xem được toàn bộ tài chính và audit log. Đúng vai trò giám sát, không kiêm điều hành.</li>
+    <li>Chủ đầu tư sửa được diện tích sở hữu riêng (vì nắm hồ sơ nghiệm thu) nhưng không xem được sổ quỹ bảo trì sau khi đã bàn giao quỹ.</li>
+    <li>Quyền "xem dữ liệu cá nhân đầy đủ" tách riêng khỏi quyền xem danh sách — mặc định mọi vai trò chỉ thấy bản che một phần.</li>
+  </ol></div>
+</section>
+
+<!-- ===== F-02 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>F-02 · Audit log và kiểm tra hash chain</b><span>Web · M1-10 · append-only</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Hệ thống › Audit log</span><span class="spacer"></span><span class="tag legal">Chỉ đọc · không có API xóa</span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Bản ghi kỳ HN 2026</div><div class="stat">4.182</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--ok)"><div class="statlbl" style="color:var(--ok)">Hash chain</div><div class="stat" style="font-size:19px;color:var(--ok)">Toàn vẹn</div><div style="font-size:11px;color:var(--mid)">kiểm tra 22/08 · 09:14</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Bản ghi phiếu</div><div class="stat">486</div><div style="font-size:11px;color:var(--mid)">chuỗi liền, không đứt</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Lần xuất log</div><div class="stat">3</div><div style="font-size:11px;color:var(--mid)">gần nhất: BQT · 12/10</div></div></div>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;margin:0"><span>🔍 Tác nhân, hành động, đối tượng</span></div>
+        <div class="field" style="margin:0"><span class="val">Kỳ: HN lần đầu 2026 ▾</span></div>
+        <div class="field" style="margin:0"><span class="val">Loại: Phiếu bầu ▾</span></div>
+        <button class="btn ghost">Chạy kiểm tra chuỗi</button>
+        <button class="btn">Xuất log ký số</button>
+      </div>
+
+      <table class="log">
+        <thead><tr><th>Thời điểm</th><th>Tác nhân</th><th>Hành động</th><th>Đối tượng</th><th>Trước → Sau</th><th>Hash</th></tr></thead>
+        <tbody>
+          <tr><td>11/10 11:26:04</td><td>tranthib · BQT</td><td>PUBLISH_RESULT</td><td>Conference #14</td><td>CLOSED → PUBLISHED</td><td class="hash">9f2c…a41d</td></tr>
+          <tr><td>11/10 11:18:52</td><td>levanc · Kiểm phiếu</td><td>CLOSE_BALLOT</td><td>AgendaItem #3</td><td>OPEN → CLOSED</td><td class="hash">7b18…c930</td></tr>
+          <tr><td>11/10 10:42:11</td><td>levanc · Kiểm phiếu</td><td>RECORD_VOTE</td><td>Vote #486</td><td>— → FOR · 78,40 m²</td><td class="hash">2e55…8f0a</td></tr>
+          <tr style="background:var(--lock-bg)"><td>11/10 09:12:33</td><td>tranthib · BQT</td><td><b>OPEN_CONFERENCE</b></td><td>Conference #14</td><td>QUORUM_MET → OPENED</td><td class="hash">a7f3…9d1c</td></tr>
+          <tr><td>11/10 09:12:33</td><td>system</td><td>CREATE_VOTERROLL</td><td>VoterRoll #14</td><td>492 mục · 41.280,50 m²</td><td class="hash">a7f3…9d1c</td></tr>
+          <tr><td>11/10 08:47:20</td><td>nguyenq · BQL</td><td>CHECKIN</td><td>Unit S2.03-1208</td><td>— → IN_PERSON</td><td class="hash">4c09…1b7e</td></tr>
+          <tr><td>10/10 16:03:45</td><td>tranthib · BQT</td><td>REJECT_PROXY</td><td>Proxy UQ-0091</td><td>PENDING → REJECTED · vượt trần</td><td class="hash">d182…5a44</td></tr>
+        </tbody>
+      </table>
+
+      <div class="box" style="margin-top:14px">
+        <h4>Kiểm tra chuỗi hash · minh họa khi phát hiện can thiệp</h4>
+        <div class="chain">
+          <span class="blk">#484 ✓</span><span class="lnk">→</span>
+          <span class="blk">#485 ✓</span><span class="lnk">→</span>
+          <span class="blk bad">#486 ✕ lệch</span><span class="lnk">→</span>
+          <span class="blk bad">#487 ✕</span><span class="lnk">→</span>
+          <span class="blk bad">#488 ✕</span>
+        </div>
+        <p style="font-size:12.5px;color:var(--mid);margin:0">
+          Sửa trực tiếp một bản ghi trong CSDL làm gãy chuỗi từ điểm đó trở đi. Công cụ chỉ ra chính xác bản ghi đầu tiên bị đổi.
+        </p>
+      </div>
+
+      <div class="alert">
+        <b>Không có chức năng xóa hay sửa bản ghi log</b>
+        Ràng buộc ở tầng cơ sở dữ liệu, không phải ở tầng giao diện. Kể cả tài khoản quản trị hệ thống của nhà cung cấp cũng không có API này.
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Hai sự kiện <b>OPEN_CONFERENCE và CREATE_VOTERROLL cùng một hash</b> — chúng là một giao dịch nguyên tử. Không thể khai mạc mà không tạo snapshot.</li>
+    <li>Cột "Trước → Sau" ghi giá trị thật, không phải mô tả chung chung. Khi có tố cáo, đây là bằng chứng cụ thể.</li>
+    <li>Sơ đồ chuỗi hash minh họa trực quan cho người không chuyên kỹ thuật — BQT và UBND cần hiểu vì sao dữ liệu này đáng tin.</li>
+    <li>Nút "Xuất log ký số" tạo file phục vụ thanh tra, và <b>bản thân hành động xuất cũng được ghi log</b>.</li>
+    <li>Cảnh báo cuối nhấn mạnh ràng buộc nằm ở tầng CSDL. Nếu chỉ ẩn nút xóa ở giao diện thì cam kết này vô nghĩa.</li>
+  </ol></div>
+</section>
+
+<!-- ===== F-03 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>F-03 · Multi-tenant · bảng điều khiển đơn vị vận hành</b><span>Backoffice · M2-06</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Công ty QLVH Miền Nam › Tổng quan</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Dự án đang quản lý</div><div class="stat">7</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Tổng căn hộ</div><div class="stat">4.186</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--legal)"><div class="statlbl" style="color:var(--legal)">Hội nghị quá hạn</div><div class="stat">2</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--lock)"><div class="statlbl" style="color:var(--lock)">Phản ánh quá SLA</div><div class="stat">18</div></div></div>
+      </div>
+
+      <table>
+        <thead><tr><th>Dự án</th><th class="num">Căn</th><th>Hội nghị gần nhất</th><th>Kỳ tiếp theo</th><th class="num">Tỷ lệ thu</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+          <tr><td><b>Vinhomes Grand Park · S2.03</b></td><td class="num">486</td><td>21/09/2025</td><td>18/09/2026</td><td class="num">94,2%</td><td><span class="tag ok">Bình thường</span></td></tr>
+          <tr style="background:var(--legal-bg)"><td><b>Sunrise City · Tháp V4</b></td><td class="num">612</td><td>chưa tổ chức</td><td><b>quá hạn 87 ngày</b></td><td class="num">88,1%</td><td><span class="tag legal">Quá hạn HN lần đầu</span></td></tr>
+          <tr style="background:var(--legal-bg)"><td><b>Him Lam Riverside</b></td><td class="num">408</td><td>12/03/2024</td><td><b>quá hạn 163 ngày</b></td><td class="num">91,7%</td><td><span class="tag legal">Chưa HN thường niên</span></td></tr>
+          <tr><td><b>Masteri Thảo Điền · T2</b></td><td class="num">744</td><td>08/06/2026</td><td>08/06/2027</td><td class="num">96,4%</td><td><span class="tag ok">Bình thường</span></td></tr>
+          <tr><td><b>The Sun Avenue</b></td><td class="num">1.052</td><td>19/04/2026</td><td>19/04/2027</td><td class="num">92,8%</td><td><span class="tag ok">Bình thường</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert" style="margin-top:14px">
+        <b>2 dự án quá hạn tổ chức hội nghị</b>
+        Sunrise City V4 đã quá 12 tháng kể từ bàn giao và đủ 50% căn bàn giao — chủ sở hữu có quyền đề nghị UBND cấp xã đứng ra tổ chức.
+      </div>
+
+      <div class="row">
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Cách ly dữ liệu giữa các dự án</h4>
+          <div class="kv"><span class="k">Cách ly ở tầng</span><span class="v">Cơ sở dữ liệu</span></div>
+          <div class="kv"><span class="k">Truy vấn xuyên tenant</span><span class="v" style="color:var(--legal)">Bị chặn</span></div>
+          <div class="kv"><span class="k">Báo cáo tổng hợp</span><span class="v">Chỉ số liệu tổng</span></div>
+          <p style="font-size:11.5px;color:var(--mid);margin:8px 0 0">
+            Bảng trên chỉ hiển thị chỉ số tổng hợp. Xem chi tiết phải vào từng dự án với phiên làm việc riêng.
+          </p>
+        </div></div>
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Cấu hình độc lập theo dự án</h4>
+          <div class="kv"><span class="k">Biểu phí</span><span class="v">Riêng</span></div>
+          <div class="kv"><span class="k">Ngưỡng quorum</span><span class="v">Riêng</span></div>
+          <div class="kv"><span class="k">Trần ủy quyền</span><span class="v">Riêng</span></div>
+          <div class="kv"><span class="k">SLA phản ánh</span><span class="v">Riêng</span></div>
+          <div class="kv"><span class="k">Nội quy tòa nhà</span><span class="v">Riêng</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Cột <b>"Kỳ tiếp theo"</b> tính tự động và cảnh báo quá hạn — đơn vị vận hành nhiều dự án không thể nhớ hết mốc pháp lý của từng tòa.</li>
+    <li>Ô "Hội nghị quá hạn" đặt ngang hàng với các chỉ số kinh doanh, vì đây là <b>rủi ro pháp lý</b> chứ không phải việc hành chính.</li>
+    <li>Bảng tổng quan chỉ hiển thị <b>chỉ số tổng hợp</b>, không có dữ liệu cá nhân cư dân. Xem chi tiết phải vào phiên làm việc của từng dự án.</li>
+    <li>Mọi ngưỡng đều cấu hình riêng theo dự án — không có giá trị mặc định dùng chung cho toàn hệ thống, vì ngưỡng thường niên có thể do hội nghị lần đầu của từng tòa quyết định.</li>
+  </ol></div>
+</section>
+
+<!-- ===== F-04 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>F-04 · Cổng tra cứu cho UBND cấp xã</b><span>Web · C-06 · chỉ đọc</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">CỔNG TRA CỨU</span><span class="crumb">UBND phường Long Bình · chỉ đọc</span><span class="spacer"></span><span class="tag">Không có quyền sửa</span></div>
+    <div class="body">
+      <h3 class="scr">Nhà chung cư trên địa bàn</h3>
+      <p class="sub">4 dự án · dữ liệu do đơn vị quản lý vận hành cung cấp</p>
+
+      <table>
+        <thead><tr><th>Dự án</th><th class="num">Căn</th><th>Ban quản trị</th><th>Hội nghị gần nhất</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+          <tr><td>Vinhomes Grand Park · S2.03</td><td class="num">486</td><td>Đã công nhận · 2024</td><td>21/09/2025</td><td><span class="tag ok">Đúng hạn</span></td></tr>
+          <tr style="background:var(--legal-bg)"><td><b>Sunrise City · Tháp V4</b></td><td class="num">612</td><td>Chưa có</td><td>chưa tổ chức</td><td><span class="tag legal">Quá 12 tháng</span></td></tr>
+          <tr><td>Masteri Thảo Điền · T2</td><td class="num">744</td><td>Đã công nhận · 2023</td><td>08/06/2026</td><td><span class="tag ok">Đúng hạn</span></td></tr>
+          <tr><td>The Sun Avenue</td><td class="num">1.052</td><td>Đã công nhận · 2022</td><td>19/04/2026</td><td><span class="tag ok">Đúng hạn</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert" style="margin-top:14px">
+        <b>Sunrise City Tháp V4 · quá 12 tháng kể từ ngày bàn giao</b>
+        Đã bàn giao 358/612 căn (58,5%). Chủ đầu tư chưa tổ chức Hội nghị lần đầu. Đã có 2 đơn đề nghị của đại diện chủ sở hữu.
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="box">
+            <h4>Hồ sơ hội nghị · Vinhomes S2.03 · 2025</h4>
+            <div class="kv"><span class="k">Biên bản hội nghị</span><span class="v">Xem</span></div>
+            <div class="kv"><span class="k">Nghị quyết</span><span class="v">Xem</span></div>
+            <div class="kv"><span class="k">Danh sách đại biểu</span><span class="v">Xem</span></div>
+            <div class="kv"><span class="k">Bảng kiểm phiếu</span><span class="v">Xem</span></div>
+            <div class="kv"><span class="k">Hash đối chiếu</span><span class="v">a7f3…9d1c</span></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="box">
+            <h4>Đơn đề nghị tổ chức hội nghị</h4>
+            <div class="kv"><span class="k">Sunrise City V4</span><span class="v" style="color:var(--legal)">2 đơn</span></div>
+            <p style="font-size:12.5px;color:var(--mid);margin:8px 0 0">
+              Theo quy định, khi quá 12 tháng kể từ bàn giao, đủ 50% căn hộ đã bàn giao mà chủ đầu tư không tổ chức và có đơn đề nghị, UBND cấp xã có trách nhiệm tổ chức hội nghị.
+            </p>
+            <button class="btn" style="width:100%;margin-top:10px;text-align:center">Tiếp nhận và lập kỳ hội nghị</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert lockstyle">
+        <b>Cổng này không hiển thị dữ liệu cá nhân cư dân</b>
+        Chỉ cung cấp thông tin về tình trạng tổ chức hội nghị, hồ sơ pháp lý và Ban quản trị. Danh sách đại biểu che thông tin định danh chi tiết.
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Cổng này là <b>công cụ bán hàng gián tiếp</b>: UBND thấy được tòa nào chấp hành đúng, tạo áp lực lành mạnh lên các dự án chưa tổ chức hội nghị.</li>
+    <li>Trạng thái "Quá 12 tháng" tính tự động từ ngày bàn giao và tỷ lệ căn đã bàn giao — đúng điều kiện luật định của trường hợp R8.</li>
+    <li>Nút "Tiếp nhận và lập kỳ hội nghị" là quyền duy nhất UBND có ngoài quyền đọc, và chỉ mở khi đủ điều kiện R8.</li>
+    <li>Hash đối chiếu công khai để UBND tự kiểm chứng hồ sơ không bị sửa sau khi công bố.</li>
+    <li>Cổng <b>không hiển thị dữ liệu cá nhân cư dân</b> — cân bằng giữa minh bạch với cơ quan quản lý và bảo vệ dữ liệu cá nhân.</li>
+  </ol></div>
+</section>
+
+<footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+  Đợt 5/5 · Hoàn tất bộ wireframe. Tổng cộng 31 màn hình qua 6 nhóm chức năng: hội nghị (8), nền tảng dữ liệu (5), tài chính (5), vận hành (4), cổng cư dân (5), hệ thống (4).
+</footer>
+</div>
+</body>
+</html>

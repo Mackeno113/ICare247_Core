@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wireframe A · Nền tảng dữ liệu</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --mid:#6b6b6b; --line:#c9c9c9; --line-soft:#e4e4e4;
+    --paper:#f7f6f3; --card:#fff;
+    --legal:#b3261e; --legal-bg:#fbeceb;
+    --lock:#8a6100; --lock-bg:#fdf3dd;
+    --ok:#1f6b3f; --ok-bg:#e8f3ec;
+    --mono: ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 20px 80px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .doc-head{border-bottom:2px solid var(--ink);padding-bottom:16px;margin-bottom:8px}
+  .doc-head h1{font-size:21px;margin:0 0 4px;letter-spacing:-.01em}
+  .doc-head p{margin:0;color:var(--mid);font-size:13px}
+  .meta{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:20px 0 40px;font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:12px;height:12px;border:1px solid var(--line)}
+  .sheet{margin-bottom:56px}
+  .sheet-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mid);border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .sheet-label b{color:var(--ink);font-weight:600;letter-spacing:.04em}
+  .frame{background:var(--card);border:1px solid var(--line);overflow:hidden}
+  .frame.narrow{max-width:400px}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line-soft);font-size:13px}
+  .topbar .brand{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--mid)}
+  .topbar .crumb{color:var(--mid);font-size:12px}
+  .topbar .spacer{flex:1}
+  .avatar{width:24px;height:24px;border:1px solid var(--line);border-radius:50%}
+  .body{padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  h3.scr{font-size:16px;margin:0 0 2px}
+  .sub{color:var(--mid);font-size:12px;margin:0 0 14px}
+  .box{border:1px solid var(--line);padding:12px;margin-bottom:12px;background:var(--card)}
+  .box h4{margin:0 0 8px;font-size:12px;font-family:var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600}
+  .field{border:1px solid var(--line);padding:7px 9px;margin-bottom:8px;color:var(--mid);font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .field .val{color:var(--ink)}
+  .btn{display:inline-block;border:1px solid var(--ink);background:var(--ink);color:#fff;padding:7px 14px;font-size:13px;font-weight:500}
+  .btn.ghost{background:transparent;color:var(--ink)}
+  .btn.lg{padding:12px 22px;font-size:15px}
+  .btn.disabled{background:#e0e0e0;border-color:var(--line);color:#9a9a9a}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 6px;border:1px solid var(--line);color:var(--mid);text-transform:uppercase}
+  .tag.legal{border-color:var(--legal);color:var(--legal);background:var(--legal-bg)}
+  .tag.lock{border-color:var(--lock);color:var(--lock);background:var(--lock-bg)}
+  .tag.ok{border-color:var(--ok);color:var(--ok);background:var(--ok-bg)}
+  .alert{border-left:3px solid var(--legal);background:var(--legal-bg);padding:10px 12px;font-size:12.5px;margin-bottom:12px}
+  .alert.lockstyle{border-left-color:var(--lock);background:var(--lock-bg)}
+  .alert.okstyle{border-left-color:var(--ok);background:var(--ok-bg)}
+  .alert b{display:block;margin-bottom:2px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--mid);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid var(--line-soft)}
+  td.num,th.num{font-family:var(--mono);text-align:right}
+  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-soft);font-size:13px;gap:10px}
+  .kv .k{color:var(--mid)}
+  .kv .v{font-family:var(--mono)}
+  .notes{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+  .notes ol{margin:0;padding-left:0;list-style:none;counter-reset:n}
+  .notes li{counter-increment:n;position:relative;padding-left:26px;margin-bottom:6px;font-size:12.5px;color:#3a3a3a}
+  .notes li::before{content:counter(n);position:absolute;left:0;top:1px;width:17px;height:17px;border:1px solid var(--ink);border-radius:50%;font-family:var(--mono);font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:600}
+  .notes code{font-family:var(--mono);font-size:11.5px;background:#efeeea;padding:1px 4px}
+  .stat{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .statlbl{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--mid)}
+  /* timeline */
+  .tl{position:relative;padding-left:20px}
+  .tl::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--line)}
+  .tl-item{position:relative;padding-bottom:14px}
+  .tl-item::before{content:"";position:absolute;left:-19px;top:4px;width:9px;height:9px;border-radius:50%;background:#fff;border:2px solid var(--ink)}
+  .tl-item.now::before{background:var(--ink)}
+  .tl-date{font-family:var(--mono);font-size:11px;color:var(--mid)}
+  .tl-body{font-size:13px}
+  /* import rows */
+  .imp{font-family:var(--mono);font-size:12px}
+  .imp .bad{background:var(--legal-bg)}
+  .drop{border:2px dashed var(--line);padding:26px;text-align:center;color:var(--mid);font-size:13px;margin-bottom:12px}
+  @media(max-width:640px){body{padding:20px 12px 60px}.row{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <div class="meta">Wireframe đợt 1/5 · Nhóm A · v0.1</div>
+  <h1>Nền tảng dữ liệu — Căn hộ, chủ sở hữu, diện tích sở hữu riêng</h1>
+  <p>Nhóm nuôi trực tiếp engine tính phiếu. Sai ở đây thì toàn bộ kết quả hội nghị sai theo.</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="background:var(--legal-bg);border-color:var(--legal)"></i> Ràng buộc pháp lý</span>
+  <span><i class="sw" style="background:var(--lock-bg);border-color:var(--lock)"></i> Cảnh báo</span>
+  <span><i class="sw" style="background:var(--ok-bg);border-color:var(--ok)"></i> Hợp lệ</span>
+  <span>① Chú thích thiết kế</span>
+</div>
+
+<!-- ===== A-01 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>A-01 · Danh mục căn hộ và phần diện tích khác</b><span>Web admin · M1-01</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Tòa S2.03 › Danh mục căn hộ</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Tổng đơn vị</div><div class="stat">492</div><div style="font-size:11px;color:var(--mid)">486 căn hộ · 6 phần diện tích khác</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--legal)"><div class="statlbl" style="color:var(--legal)">Tổng diện tích sở hữu riêng</div><div class="stat">41.280,50 m²</div><div style="font-size:11px;color:var(--ok)">✓ Khớp hồ sơ nghiệm thu</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Đã bàn giao</div><div class="stat">312</div><div style="font-size:11px;color:var(--mid)">64,2% · mẫu số quorum lần đầu</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">CĐT giữ lại</div><div class="stat">18</div><div style="font-size:11px;color:var(--mid)">3.610,00 m² · có quyền phiếu</div></div></div>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;margin:0"><span>🔍 Tìm mã căn, tên chủ sở hữu, số CCCD</span></div>
+        <div class="field" style="margin:0"><span class="val">Loại: Tất cả ▾</span></div>
+        <div class="field" style="margin:0"><span class="val">Bàn giao: Tất cả ▾</span></div>
+        <button class="btn ghost">Nhập từ Excel</button>
+        <button class="btn">Thêm đơn vị</button>
+      </div>
+
+      <table>
+        <thead><tr><th>Mã đơn vị</th><th>Loại</th><th class="num">DT sở hữu riêng</th><th>Chủ sở hữu</th><th>Bàn giao</th><th>Ghi chú</th></tr></thead>
+        <tbody>
+          <tr><td><b>S2.03-1208</b></td><td>Căn hộ</td><td class="num">78,40</td><td>Nguyễn Văn A</td><td><span class="tag ok">Đã bàn giao</span></td><td></td></tr>
+          <tr><td><b>S2.03-1503</b></td><td>Căn hộ</td><td class="num">102,15</td><td>Phạm Văn D <span class="tag">+2 đồng SH</span></td><td><span class="tag ok">Đã bàn giao</span></td><td>Đại diện: Phạm Văn D</td></tr>
+          <tr><td><b>S2.03-0704</b></td><td>Căn hộ</td><td class="num">65,80</td><td>Công ty TNHH M</td><td><span class="tag lock">Chưa bàn giao</span></td><td></td></tr>
+          <tr style="background:#fafaf8"><td><b>TM-01</b></td><td>Sàn thương mại</td><td class="num">1.840,00</td><td>CĐT Vinhomes</td><td><span class="tag">CĐT giữ lại</span></td><td>Không bán</td></tr>
+          <tr style="background:#fafaf8"><td><b>VP-02</b></td><td>Văn phòng</td><td class="num">920,50</td><td>CĐT Vinhomes</td><td><span class="tag">CĐT giữ lại</span></td><td>Không bán</td></tr>
+          <tr><td><b>LT-05</b></td><td>Căn hộ lưu trú DL</td><td class="num">54,20</td><td>Trần Thị K</td><td><span class="tag ok">Đã bàn giao</span></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Bốn ô thống kê phía trên là <b>bốn con số quyết định tính hợp lệ của hội nghị</b>. Đặt cố định ở đầu màn hình, không giấu trong báo cáo.</li>
+    <li>Tổng diện tích sở hữu riêng có dấu tích đối chiếu hồ sơ nghiệm thu. Nếu tổng lệch mà không có chứng từ, chỗ này chuyển thành cảnh báo đỏ — ràng buộc <code>DB1</code>.</li>
+    <li>Phần diện tích khác (sàn TM, văn phòng) nằm <b>chung một bảng</b> với căn hộ, chỉ tô nền nhạt để phân biệt. Tách bảng riêng sẽ khiến người dùng quên rằng chúng cũng có quyền biểu quyết theo m².</li>
+    <li>Ô "CĐT giữ lại" hiển thị luôn tổng m² và ghi chú "có quyền phiếu" — minh bạch tỷ trọng của chủ đầu tư ngay từ danh mục.</li>
+    <li>Đồng sở hữu hiển thị dạng <code>+2 đồng SH</code> kèm tên người đại diện ở cột ghi chú. Một căn vẫn chỉ một quyền biểu quyết.</li>
+  </ol></div>
+</section>
+
+<!-- ===== A-02 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>A-02 · Hồ sơ đơn vị · tab Sở hữu</b><span>Web admin · M1-01</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Danh mục › S2.03-1503</span><span class="spacer"></span><span class="tag ok">Đã bàn giao</span></div>
+    <div class="body">
+      <h3 class="scr">S2.03-1503</h3>
+      <p class="sub">Căn hộ · Tầng 15 · Tòa S2.03 · Vinhomes Grand Park</p>
+
+      <div class="row" style="gap:0;border-bottom:1px solid var(--line);margin-bottom:14px">
+        <div style="padding:8px 14px;border-bottom:2px solid var(--ink);font-weight:600;font-size:13px">Sở hữu</div>
+        <div style="padding:8px 14px;color:var(--mid);font-size:13px">Cư trú</div>
+        <div style="padding:8px 14px;color:var(--mid);font-size:13px">Phương tiện</div>
+        <div style="padding:8px 14px;color:var(--mid);font-size:13px">Công nợ</div>
+        <div style="padding:8px 14px;color:var(--mid);font-size:13px">Lịch sử</div>
+      </div>
+
+      <div class="row">
+        <div class="col">
+          <div class="box" style="border-color:var(--legal)">
+            <h4 style="color:var(--legal)">Diện tích và trọng số phiếu <span class="tag legal">M1</span></h4>
+            <div class="field"><span>Diện tích sở hữu riêng</span><span class="val"><b>102,15 m²</b></span></div>
+            <div class="field"><span>Trọng số phiếu</span><span class="val">102,15 phiếu</span></div>
+            <div class="field"><span>Trạng thái bàn giao</span><span class="val">Đã bàn giao · 14/03/2026</span></div>
+            <p style="font-size:11.5px;color:var(--mid);margin:2px 0 0">
+              Nguyên tắc 1m² = 01 phiếu. Sửa diện tích bắt buộc đính kèm chứng từ và ghi lịch sử.
+            </p>
+          </div>
+
+          <div class="box">
+            <h4>Chứng từ pháp lý</h4>
+            <div class="kv"><span class="k">Hợp đồng mua bán</span><span class="v">HĐ-2024-1503.pdf</span></div>
+            <div class="kv"><span class="k">Biên bản bàn giao</span><span class="v">BB-1503.pdf</span></div>
+            <div class="kv"><span class="k">Giấy chứng nhận</span><span class="v" style="color:var(--lock)">Chưa có</span></div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="box">
+            <h4>Đồng sở hữu · 3 người</h4>
+            <div class="field" style="border-color:var(--ink)">
+              <span><b>Phạm Văn D</b><br><span style="font-size:11px;color:var(--mid)">CCCD 0790••••321 · 40%</span></span>
+              <span class="tag ok">Đại diện</span>
+            </div>
+            <div class="field"><span>Phạm Thị E<br><span style="font-size:11px;color:var(--mid)">CCCD 0790••••887 · 40%</span></span></div>
+            <div class="field"><span>Phạm Văn F<br><span style="font-size:11px;color:var(--mid)">CCCD 0790••••102 · 20%</span></span></div>
+
+            <div class="alert okstyle" style="margin:10px 0 0">
+              <b>Căn này sinh 01 quyền biểu quyết</b>
+              Trọng số 102,15 m² thuộc về người đại diện Phạm Văn D. Tỷ lệ sở hữu 40/40/20 không chia nhỏ phiếu.
+            </div>
+          </div>
+
+          <div class="box">
+            <h4>Người sử dụng hiện tại</h4>
+            <div class="kv"><span class="k">Nguyễn Thị H</span><span class="v">Thuê · đến 31/12/2026</span></div>
+            <p style="font-size:11.5px;color:var(--mid);margin:6px 0 0">
+              Được dự họp khi chủ sở hữu không tham dự. Trọng số phiếu vẫn truy về diện tích của chủ sở hữu.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Trường <b>Trọng số phiếu</b> hiển thị tách khỏi diện tích dù cùng con số — để người dùng thấy rõ quan hệ nhân quả, và để sau này nếu quy định đổi cách tính thì chỗ này đổi mà không phá dữ liệu gốc.</li>
+    <li>Khối đồng sở hữu ghi thẳng kết luận "<b>căn này sinh 01 quyền biểu quyết</b>". BQL hay bị cư dân chất vấn đúng điểm này tại hội nghị.</li>
+    <li>CCCD hiển thị dạng che một phần theo yêu cầu bảo vệ dữ liệu cá nhân; xem đầy đủ phải có quyền riêng và bị ghi log.</li>
+    <li>Người sử dụng đặt ngay cạnh chủ sở hữu, kèm câu giải thích quyền dự họp — tránh nhân viên mới hiểu nhầm là người thuê có phiếu riêng.</li>
+    <li>Giấy chứng nhận chưa có được đánh dấu vàng chứ không ẩn, phục vụ rà soát hồ sơ pháp lý tòa nhà.</li>
+  </ol></div>
+</section>
+
+<!-- ===== A-03 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>A-03 · Nhập danh sách từ Excel</b><span>Web admin · M1-01 AC2</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Danh mục › Nhập từ Excel</span></div>
+    <div class="body">
+      <div class="drop">Kéo thả file .xlsx vào đây · hoặc <u>chọn file</u><br>
+        <span style="font-size:11.5px">Tải <u>file mẫu</u> để đúng định dạng cột</span>
+      </div>
+
+      <div class="alert">
+        <b>Phát hiện 7 lỗi trong 1.000 dòng — không dòng nào được nhập</b>
+        Hệ thống nhập toàn bộ hoặc không nhập gì. Sửa file rồi tải lên lại.
+      </div>
+
+      <table class="imp">
+        <thead><tr><th style="width:60px">Dòng</th><th>Mã đơn vị</th><th class="num">DT sở hữu riêng</th><th>Chủ sở hữu</th><th>Lỗi</th></tr></thead>
+        <tbody>
+          <tr class="bad"><td>18</td><td>S2.03-0204</td><td class="num">0,00</td><td>Lê Văn B</td><td style="color:var(--legal)">Diện tích phải lớn hơn 0</td></tr>
+          <tr class="bad"><td>47</td><td>S2.03-0611</td><td class="num">72,30</td><td>Vũ Thị F</td><td style="color:var(--legal)">Mã đơn vị trùng dòng 46</td></tr>
+          <tr class="bad"><td>112</td><td>S2.03-0908</td><td class="num">88,00</td><td>3 người</td><td style="color:var(--legal)">Đồng sở hữu thiếu người đại diện</td></tr>
+          <tr class="bad"><td>203</td><td>—</td><td class="num">54,20</td><td>Trần Thị K</td><td style="color:var(--legal)">Thiếu mã đơn vị</td></tr>
+          <tr class="bad"><td>388</td><td>S2.03-1104</td><td class="num">95,5</td><td>Đỗ Văn L</td><td style="color:var(--legal)">Sai định dạng · cần 2 chữ số thập phân</td></tr>
+          <tr class="bad"><td>601</td><td>TM-03</td><td class="num">2.100,00</td><td>CĐT</td><td style="color:var(--legal)">Thiếu loại đơn vị</td></tr>
+          <tr class="bad"><td>874</td><td>S2.03-1802</td><td class="num">67,10</td><td>Bùi Thị M</td><td style="color:var(--legal)">Ngày bàn giao sau ngày hôm nay</td></tr>
+        </tbody>
+      </table>
+
+      <div class="row" style="margin-top:14px">
+        <div class="col"><div class="box" style="margin:0">
+          <h4>Đối chiếu tổng</h4>
+          <div class="kv"><span class="k">Tổng m² trong file</span><span class="v">41.352,80</span></div>
+          <div class="kv"><span class="k">Tổng m² hệ thống hiện có</span><span class="v">41.280,50</span></div>
+          <div class="kv"><span class="k">Chênh lệch</span><span class="v" style="color:var(--legal)">+72,30</span></div>
+        </div></div>
+        <div class="col" style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn ghost">Tải file lỗi</button>
+          <button class="btn disabled">Nhập dữ liệu</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li><b>All-or-nothing.</b> Nhập một phần rồi sửa tay là con đường ngắn nhất dẫn đến sai lệch tổng diện tích. Nút Nhập bị khóa cho đến khi hết lỗi.</li>
+    <li>Mỗi lỗi ghi <b>số dòng trong file gốc</b> để người dùng mở Excel sửa đúng chỗ, kèm nút tải file lỗi có cột ghi chú.</li>
+    <li>Khối đối chiếu tổng chạy trước khi nhập: chênh lệch +72,30 m² cảnh báo ngay, vì thay đổi tổng diện tích phải có chứng từ chứ không phải hệ quả của một lần import.</li>
+    <li>Lỗi định dạng thập phân được bắt riêng — đây là nguồn sai số tích lũy khi tính phiếu trên 500 căn.</li>
+  </ol></div>
+</section>
+
+<!-- ===== A-04 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>A-04 · Lịch sử sở hữu theo thời gian</b><span>Web admin · M1-01 AC3 · temporal record</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">S2.03-1503 › Lịch sử</span><span class="spacer"></span><span class="tag">Chỉ đọc</span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="field" style="flex:1;margin:0"><span>Xem trạng thái tại ngày</span><span class="val">11/10/2026 📅</span></div>
+        <button class="btn ghost">Xuất lịch sử PDF</button>
+      </div>
+
+      <div class="alert okstyle">
+        <b>Trạng thái tại ngày 11/10/2026</b>
+        Chủ sở hữu: Phạm Văn D và 2 đồng sở hữu · Diện tích 102,15 m² · Đã bàn giao · Trọng số phiếu 102,15
+      </div>
+
+      <div class="tl">
+        <div class="tl-item now">
+          <div class="tl-date">14/06/2026 · Nguyễn Thị Q (BQL)</div>
+          <div class="tl-body"><b>Đăng ký người sử dụng</b> — Nguyễn Thị H thuê đến 31/12/2026. Chủ sở hữu không đổi.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">02/05/2026 · Nguyễn Thị Q (BQL)</div>
+          <div class="tl-body"><b>Sang tên</b> — từ Công ty TNHH X sang Phạm Văn D + 2 đồng sở hữu. Chứng từ: <u>HĐ-2026-0455.pdf</u>. Diện tích không đổi.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">14/03/2026 · Trần Văn P (CĐT)</div>
+          <div class="tl-body"><b>Bàn giao căn hộ</b> — chuyển trạng thái <code>CHƯA_BÀN_GIAO → ĐÃ_BÀN_GIAO</code>. Biên bản: <u>BB-1503.pdf</u></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">08/01/2026 · Trần Văn P (CĐT)</div>
+          <div class="tl-body"><b>Điều chỉnh diện tích</b> — từ 101,80 m² thành <b>102,15 m²</b> theo kết quả đo đạc nghiệm thu. Chứng từ: <u>BB-nghiemthu-T15.pdf</u></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">20/09/2024 · Hệ thống</div>
+          <div class="tl-body"><b>Khởi tạo đơn vị</b> — nhập từ file danh mục ban đầu.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Bộ chọn ngày ở đầu màn hình trả lời đúng câu hỏi hay gặp nhất: <b>"ai là chủ sở hữu tại ngày hội nghị?"</b> — không phải hôm nay, mà tại ngày D.</li>
+    <li>Mỗi mốc ghi <b>ai thao tác và chứng từ nào</b>. Bản ghi không có chứng từ thì không lưu được, đặc biệt với thay đổi diện tích.</li>
+    <li>Thay đổi diện tích hiển thị cả giá trị cũ và mới — đây là loại thay đổi ảnh hưởng trực tiếp đến trọng số phiếu, cần dễ soát nhất.</li>
+    <li>Màn hình chỉ đọc, không có nút sửa hay xóa. Sửa sai phải tạo bản ghi mới, giữ nguyên vết cũ.</li>
+  </ol></div>
+</section>
+
+<!-- ===== A-05 ===== -->
+<section class="sheet">
+  <div class="sheet-label"><b>A-05 · Phương tiện và thẻ ra vào</b><span>Web admin · M2-01</span></div>
+  <div class="frame">
+    <div class="topbar"><span class="brand">QLCC</span><span class="crumb">Tòa S2.03 › Phương tiện</span><span class="spacer"></span><span class="avatar"></span></div>
+    <div class="body">
+      <div class="row" style="margin-bottom:14px">
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Ô tô</div><div class="stat">198</div><div style="font-size:11px;color:var(--mid)">chỗ trống 12/210</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Xe máy</div><div class="stat">742</div><div style="font-size:11px;color:var(--mid)">chỗ trống 58/800</div></div></div>
+        <div class="col"><div class="box" style="margin:0"><div class="statlbl">Thẻ đang hoạt động</div><div class="stat">1.104</div></div></div>
+        <div class="col"><div class="box" style="margin:0;border-color:var(--lock)"><div class="statlbl" style="color:var(--lock)">Chờ duyệt</div><div class="stat">9</div><div style="font-size:11px;color:var(--mid)">quá hạn 2 ngày: 3</div></div></div>
+      </div>
+
+      <div class="row" style="margin-bottom:10px">
+        <div class="field" style="flex:2;margin:0"><span>🔍 Biển số, mã căn, tên chủ xe</span></div>
+        <div class="field" style="margin:0"><span class="val">Loại xe ▾</span></div>
+        <div class="field" style="margin:0"><span class="val">Trạng thái thẻ ▾</span></div>
+        <button class="btn">Đăng ký xe</button>
+      </div>
+
+      <table>
+        <thead><tr><th>Biển số</th><th>Loại</th><th>Căn</th><th>Chủ xe</th><th>Mã thẻ</th><th>Hiệu lực</th><th>Trạng thái</th></tr></thead>
+        <tbody>
+          <tr><td><b>51K-123••</b></td><td>Ô tô</td><td>S2.03-1208</td><td>Nguyễn Văn A</td><td>C-004821</td><td>đến 31/12/2026</td><td><span class="tag ok">Hoạt động</span></td></tr>
+          <tr><td><b>59H1-456••</b></td><td>Xe máy</td><td>S2.03-1503</td><td>Nguyễn Thị H <span class="tag">Người thuê</span></td><td>M-011940</td><td>đến 31/12/2026</td><td><span class="tag ok">Hoạt động</span></td></tr>
+          <tr style="background:var(--lock-bg)"><td><b>51G-789••</b></td><td>Ô tô</td><td>S2.03-0704</td><td>Lê Thị N</td><td>—</td><td>—</td><td><span class="tag lock">Chờ duyệt · 2 ngày</span></td></tr>
+          <tr><td><b>59Z1-234••</b></td><td>Xe máy</td><td>S2.03-0611</td><td>Vũ Thị F</td><td>M-009117</td><td>hết hạn 30/06/2026</td><td><span class="tag">Đã khóa</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="alert lockstyle" style="margin-top:12px">
+        <b>Bãi ô tô còn 12 chỗ</b>
+        Đề nghị đăng ký mới sẽ vào hàng chờ khi hết chỗ. Cấu hình hạn mức xe mỗi căn tại phần Cấu hình tòa nhà.
+      </div>
+    </div>
+  </div>
+  <div class="notes"><ol>
+    <li>Biển số che một phần trên màn hình danh sách — thuộc nhóm dữ liệu cá nhân cần bảo vệ, xem đầy đủ khi mở chi tiết và bị ghi log.</li>
+    <li>Cột chủ xe đánh dấu <b>Người thuê</b> khi không phải chủ sở hữu, vì quyền đăng ký xe và hạn mức thường tính theo căn chứ không theo người.</li>
+    <li>Đề nghị chờ duyệt hiển thị <b>số ngày đã chờ</b>, gắn với SLA xử lý. Đây là loại yêu cầu cư dân phàn nàn nhiều nhất.</li>
+    <li>Sức chứa bãi xe hiển thị dạng còn trống trên tổng, đặt cạnh nút đăng ký để lễ tân trả lời được ngay tại quầy.</li>
+  </ol></div>
+</section>
+
+<footer style="border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:var(--mid)">
+  Đợt 1/5 · Nhóm A hoàn tất. Tiếp theo: C · Tài chính và quỹ bảo trì (5 màn hình).
+</footer>
+</div>
+</body>
+</html>
