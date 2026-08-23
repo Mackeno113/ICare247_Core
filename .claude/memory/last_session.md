@@ -1,5 +1,36 @@
 # Last Session Summary
 
+## Session (2026-08-23) — Bộ tài liệu "Nhà chung cư" vào repo + rà soát + ánh xạ ICare247 (DỰ ÁN RIÊNG, không đụng code)
+
+**Bối cảnh:** user đưa bộ tài liệu thiết kế phần mềm **Quản lý Nhà chung cư** (trọng tâm module Hội nghị
+nhà chung cư) ở 2 thư mục Desktop (`files/` + `files ERD/`). Đây là **dự án khác**, không phải code nền
+tảng ICare247 — chỉ tài liệu (`.md`/`.mermaid`/`.html`).
+
+**Đã làm (thuần tài liệu, không build):**
+- **Đọc hết 12 file gốc + 3 ERD.** Bám căn cứ pháp lý Luật Nhà ở 2023 + TT 05/2024 (R1–R10; R4 = 1m²=1phiếu).
+- **Rà soát/phản biện:** tìm mâu thuẫn nội tại. 3 điểm CHẶN engine/test: **KT·1** "snapshot/mẫu số" mang
+  2 con số (toàn tòa 41.280 vs hiện diện 19.649) + DB6 lệch MH-07 · **KT·2** phương pháp đếm phiếu bầu N/M
+  chưa định nghĩa + AgendaItem 1-1 Ballot chặn vòng 2 + Vote/Resolution chỉ hợp approval · **KT·3** DB5
+  tuyệt đối mâu thuẫn "chi ngoài kế hoạch" (is_off_plan).
+- **Tạo `docs/nha-chung-cu/`** (không phải `doc/` — theo convention repo `docs/`), copy 12 file gốc + `erd/`
+  (3 ERD) + **`00-doc-hieu-toan-canh.html`** (bản đọc hiểu cho người mới, artifact `5ddf66a4`). Commit `d78d214`.
+- **ADR đợt 2** (`ADR-dot-2-bieu-quyet-va-chi-quy.md`): ADR-003 mẫu số/VoterRoll (tách total_eligible vs
+  present + denominator_basis, sửa DB6) · ADR-004 đếm phiếu WEIGHTED_APPROVAL (cấu hình theo Quy chế bầu cử,
+  1-n Ballot, ELECTION_RESULT, is_secret) · ADR-005 chi off-plan (DB5 XOR + ratification hậu kiểm).
+- **Bản ánh xạ ICare247** (`01-anh-xa-icare247.html`, artifact `26a23e07`): **data-driven** — toàn bộ nội
+  dung trong khối `DATA` ở đầu `<script>`, sửa quy tắc/hàng/mức KHÔNG cần đụng HTML; tự dựng thẻ tổng hợp +
+  bộ lọc + bảng. 30 chức năng theo 4 mức: no-code 5 / hybrid 13 / bespoke 6 / ngoài-nền-tảng 6. Verify JS
+  bằng Node + DOM giả lập (chạy hết, DATA hợp lệ). Ước lượng ~40% no-code+hybrid / 45% bespoke-trên-backbone
+  / 15% ngoài nền tảng. Fit tốt: A (trừ import/temporal), C4 phiếu chi (Form Chứng từ Spec 30 + cờ Duyệt),
+  F1 phân quyền (ADR-023), F3 multi-tenant, B4 biên bản (Doc Template Spec 28). Bespoke bắt buộc: engine hội
+  nghị (VoterRoll/hash chain/vote), audit WORM. Va chạm phải xử: schema uuid vs Id-INT, WORM vs CRUD engine,
+  KHÔNG có scheduler nền (Event Engine chỉ form-event), temporal≠audit, tầng mobile/Zalo/VietQR/CA. Commit `2b01338`.
+
+**Git:** `d78d214` (16 file) + `2b01338` (2 file) — đã push. 3 file i18n bỏ qua như thường lệ.
+**Task tiếp theo gợi ý (nếu tiếp dự án chung cư):** cập nhật `index-bo-tai-lieu.md` liệt kê ADR đợt 2 + bản
+ánh xạ; hoặc đi sâu 1 nhóm (thiết kế bảng append-only VoterRoll/Vote, hoặc dựng C4 phiếu chi qua Form Chứng từ).
+**Lưu ý:** đây là dự án tách biệt — chưa có task trong `TASKS.md` ICare247, chưa quyết có dựng trên nền tảng hay không.
+
 ## Session (2026-08-11) — NS-MASTERDETAIL Pha 2: Blazor rail workspace runtime (CHƯA build)
 
 **Bối cảnh:** tiếp Pha 1+3 (commit d94e208 — bảng `Ui_Form_Detail` + endpoint `/forms/{code}/details` +
