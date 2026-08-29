@@ -25,6 +25,7 @@ namespace ICare247.Infrastructure.Repositories;
 ///   <item>SourceName, column names: chỉ [a-zA-Z0-9_.] — ngăn SQL injection qua identifier.</item>
 ///   <item>FilterSql / OrderBy từ Config DB (admin trust) nhưng vẫn bị block nếu có DDL/DML keyword.</item>
 ///   <item>ContextValues từ frontend luôn truyền qua Dapper params — không concat vào SQL.</item>
+///   <item>InsertAsync: cột ghi được whitelist theo field của Ui_Form (Add_Form_Code) — chống mass assignment.</item>
 /// </list>
 /// </remarks>
 public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
@@ -81,7 +82,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                COALESCE(fl.Popup_Columns_Json, lt.Popup_Columns_Json)                              AS PopupColumnsJson,
                COALESCE(fl.Code_Field,         lt.Code_Field)                                      AS CodeField,
                COALESCE(fl.Parent_Column,      lt.Parent_Column)                                   AS ParentColumn,
-               fl.Param_Map                                                                        AS ParamMap
+               fl.Param_Map                                                                        AS ParamMap,
+               fl.Add_Form_Code                                                                    AS AddFormCode
         FROM   dbo.Ui_Field_Lookup fl
         JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
         JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
@@ -101,7 +103,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
                fl.Order_By            AS OrderBy,
                fl.Popup_Columns_Json  AS PopupColumnsJson,
                fl.Code_Field          AS CodeField,
-               fl.Parent_Column       AS ParentColumn
+               fl.Parent_Column       AS ParentColumn,
+               fl.Add_Form_Code       AS AddFormCode
         FROM   dbo.Ui_Field_Lookup fl
         JOIN   dbo.Ui_Field        fi ON fi.Field_Id = fl.Field_Id
         JOIN   dbo.Ui_Form         fm ON fm.Form_Id  = fi.Form_Id
@@ -646,7 +649,15 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         // ── Sinh mã TRƯỚC khi dựng danh sách cột ─────────────────────────────────
         // Bắt buộc đúng thứ tự này: cols/dp dựng từ `values`, nên mã phải nằm trong `values`
         // trước đó, nếu không cột mã sẽ không lọt vào câu INSERT.
-        await ApplyGeneratedCodeAsync(dataConn, tx, cfg.SourceName, values, tenantId, ct);
+        var forceAllowedCol = await ApplyGeneratedCodeAsync(dataConn, tx, cfg.SourceName, values, tenantId, ct);
+
+        // ── Whitelist cột theo metadata Add_Form_Code (chống mass assignment) ────
+        // Trước đây bộ lọc chỉ có identifier-safe + bỏ PK + bỏ audit — KHÔNG đối chiếu form nào cả,
+        // nên client set được BẤT KỲ cột nào của bảng đích (kể cả cột không có trên dialog "Thêm mới",
+        // vd cột cờ/trạng thái/FK phân quyền). Áp cùng mẫu đã đúng ở MasterDataRepository.BuildColumnParams:
+        // chỉ nhận cột là field KHÔNG readonly của đúng Ui_Form dùng render dialog (Add_Form_Code).
+        var allowedCols = await GetAllowedInsertColumnsAsync(configConn, cfg.AddFormCode, ct);
+        if (forceAllowedCol is not null) allowedCols.Add(forceAllowedCol);
 
         // ── Build INSERT parameterized — chỉ nhận cột có tên identifier hợp lệ ──
         var cols = new List<string>();
@@ -658,13 +669,16 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
             if (key.Equals(valueCol, StringComparison.OrdinalIgnoreCase)) continue;
             // Cột audit do server bơm — KHÔNG cho client tự đặt (chống giả mạo CreatedBy).
             if (AuditColumns.Contains(key)) continue;
+            // Không nằm trong field của Add_Form_Code → bỏ qua (deny-by-default).
+            if (!allowedCols.Contains(key)) continue;
             cols.Add(key);
             dp.Add(key, UnwrapParamValue(val));
         }
 
         if (cols.Count == 0)
             throw new InvalidOperationException(
-                $"LookupInsert FieldId={fieldId}: không có cột hợp lệ để insert.");
+                $"LookupInsert FieldId={fieldId}: không có cột hợp lệ để insert. " +
+                "Kiểm tra Add_Form_Code của field lookup có field ghi được (Is_Visible=1, Is_ReadOnly=0) không.");
 
         // ── Bơm cột audit (ADR-022 §0.1): CreatedBy NOT NULL và KHÔNG có DEFAULT (db/061),
         //    nên phải set tường minh. Chỉ bơm cột bảng đích THỰC SỰ có — bảng cũ/opt-out không vỡ.
@@ -739,11 +753,13 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
     /// KHÔNG được ghép mã theo hai kiểu khác nhau.
     /// Sự kiện theo sau: <c>values[Cot]</c> mang mã, lọt vào cols/dp rồi được INSERT trong transaction này.
     /// </summary>
-    private async Task ApplyGeneratedCodeAsync(
+    /// <returns>Cột vừa được hệ thống cấp mã, để caller ép whitelist Add_Form_Code cho phép ghi dù
+    /// cột đang IsReadOnly trên form; <c>null</c> nếu bảng không có quy tắc hoặc đã nhường giá trị có sẵn.</returns>
+    private async Task<string?> ApplyGeneratedCodeAsync(
         IDbConnection data, IDbTransaction tx, string sourceName,
         Dictionary<string, object?> values, int tenantId, CancellationToken ct)
     {
-        if (_codeRules is null || _codeGen is null) return;
+        if (_codeRules is null || _codeGen is null) return null;
 
         // Source_Name có thể qualify schema ('dbo.TC_CongTy') vì regex ở đường này cho phép dấu chấm,
         // trong khi Sys_Ma_Rule.Table_Code lưu tên TRẦN. Không tách thì tra quy tắc trượt âm thầm
@@ -753,16 +769,52 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         var table = dot > 0 ? sourceName[(dot + 1)..] : sourceName;
 
         var rule = await _codeRules.GetAsync(table, tenantId, ct);
-        if (rule is null) return;
+        if (rule is null) return null;
 
         if (values.TryGetValue(rule.ColumnCode, out var existing)
             && existing is not null and not DBNull
             && !string.IsNullOrWhiteSpace(existing.ToString()))
-            return;
+            return null;
 
         var code = await _codeGen.GenerateAsync(rule, data, tx, values, schema, ct);
-        if (!string.IsNullOrWhiteSpace(code))
-            values[rule.ColumnCode] = code;
+        if (string.IsNullOrWhiteSpace(code)) return null;
+
+        values[rule.ColumnCode] = code;
+        return rule.ColumnCode;
+    }
+
+    /// <summary>
+    /// Whitelist cột cho phép insert = field KHÔNG readonly của Ui_Form gắn <c>Add_Form_Code</c>
+    /// (Migration 022 — cũng chính là form <c>LookupAddDialog</c> render trên FE, nên whitelist khớp
+    /// 1-1 với những gì dialog thực sự cho người dùng nhập). Cùng mẫu join với
+    /// <see cref="MasterDataRepository"/> (Ui_Field JOIN Sys_Column, lọc Is_Visible/Is_Virtual/Is_ReadOnly).
+    /// <para>
+    /// Thiếu <paramref name="addFormCode"/> (chưa cấu hình, hoặc Allow_Add_New bật nhầm không gán form) →
+    /// KHÔNG suy đoán bảng đích có cột gì — trả rỗng (deny-by-default). InsertAsync khi đó lọc hết mọi
+    /// cột và tự báo lỗi cấu hình rõ ràng, thay vì để client set bất kỳ cột nào của bảng (mass assignment).
+    /// </para>
+    /// </summary>
+    private static async Task<HashSet<string>> GetAllowedInsertColumnsAsync(
+        IDbConnection configConn, string? addFormCode, CancellationToken ct)
+    {
+        var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(addFormCode)) return allowed;
+
+        const string sql = """
+            SELECT sc.Column_Code
+            FROM   dbo.Ui_Field uf
+            JOIN   dbo.Sys_Column sc ON sc.Column_Id = uf.Column_Id
+            JOIN   dbo.Ui_Form    fm ON fm.Form_Id   = uf.Form_Id
+            WHERE  fm.Form_Code = @FormCode
+              AND  uf.Is_Visible  = 1
+              AND  uf.Is_Virtual  = 0
+              AND  uf.Is_ReadOnly = 0
+            """;
+        var cols = await configConn.QueryAsync<string>(
+            new CommandDefinition(sql, new { FormCode = addFormCode }, cancellationToken: ct));
+        foreach (var c in cols)
+            if (SqlIdentifier.IsSafe(c)) allowed.Add(c);
+        return allowed;
     }
 
     // ── Enforce quyền (SEC1-4) ──────────────────────────────────────────────────
@@ -939,6 +991,8 @@ public sealed partial class DynamicLookupRepository : IDynamicLookupRepository
         public string? ParentColumn     { get; init; }
         /// <summary>JSON map tham số canonical của mẫu lookup ← Field_Code/@token/hằng số (Migration 083).</summary>
         public string? ParamMap         { get; init; }
+        /// <summary>Form_Code dùng render dialog "Thêm mới" — cũng là whitelist cột cho InsertAsync (Migration 022).</summary>
+        public string? AddFormCode      { get; init; }
     }
 
     /// <summary>

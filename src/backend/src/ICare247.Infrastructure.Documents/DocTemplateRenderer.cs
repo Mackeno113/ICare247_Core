@@ -22,16 +22,18 @@ internal sealed class DocTemplateRenderer : IDocTemplateRenderer
     private readonly DocProcRunner _proc;
     private readonly DocxRenderEngine _engine;
     private readonly ITenantContext _tenant;
+    private readonly IContextParamResolver _contextResolver;
     private readonly ILogger<DocTemplateRenderer> _logger;
 
     public DocTemplateRenderer(
         DocTemplateRepository repo, DocProcRunner proc, DocxRenderEngine engine,
-        ITenantContext tenant, ILogger<DocTemplateRenderer> logger)
+        ITenantContext tenant, IContextParamResolver contextResolver, ILogger<DocTemplateRenderer> logger)
     {
         _repo = repo;
         _proc = proc;
         _engine = engine;
         _tenant = tenant;
+        _contextResolver = contextResolver;
         _logger = logger;
     }
 
@@ -52,7 +54,7 @@ internal sealed class DocTemplateRenderer : IDocTemplateRenderer
         // ── Master (A4 dọc): proc 1 dòng → mail-merge biến ──────────────────
         await EnsureRegisteredAsync(tmpl.MasterProc, tenantId, ct);
         var masterData = await _proc.ExecuteAsync(
-            tmpl.MasterProc, BuildParams(allParams, detailId: null, keyParams, tenantId), ct);
+            tmpl.MasterProc, await BuildParamsAsync(allParams, detailId: null, keyParams, tenantId, ct), ct);
         var masterMerged = _engine.MailMergeFragment(tmpl.MasterDocx, masterData);
 
         // ── Detail (A4 ngang): mỗi proc N dòng → nạp nguyên bảng ────────────
@@ -67,7 +69,7 @@ internal sealed class DocTemplateRenderer : IDocTemplateRenderer
             }
             await EnsureRegisteredAsync(d.DetailProc, tenantId, ct);
             var data = await _proc.ExecuteAsync(
-                d.DetailProc, BuildParams(allParams, detailId: d.Id, keyParams, tenantId), ct);
+                d.DetailProc, await BuildParamsAsync(allParams, detailId: d.Id, keyParams, tenantId, ct), ct);
             detailBytes.Add(_engine.BuildDetailTable(d.DetailDocx, data));
         }
 
@@ -107,18 +109,43 @@ internal sealed class DocTemplateRenderer : IDocTemplateRenderer
             throw new InvalidOperationException($"Stored proc '{procName}' chưa đăng ký trong Doc_Proc_Registry.");
     }
 
-    /// <summary>Dựng tham số proc từ ánh xạ Doc_Template_Param (theo master/detail). Không phát event.</summary>
-    private static DynamicParameters BuildParams(
+    /// <summary>
+    /// Dựng tham số proc từ ánh xạ Doc_Template_Param (theo master/detail). Không phát event.
+    /// <para>
+    /// <c>Nguon="context"</c> trước đây CHỈ hỗ trợ <c>Tenant_Id</c> (hardcode) — muốn proc biết người gọi
+    /// (vd <c>@NguoiDungID</c>) buộc phải cấu hình <c>Nguon="key"</c> = lấy THẲNG từ <paramref name="keyParams"/>
+    /// (client gửi lên) ⇒ giả mạo được (client tự đặt NguoiDungID của người khác). Nay mọi token khác
+    /// <c>Tenant_Id</c> đi qua <see cref="IContextParamResolver"/> — cùng cơ chế server-side đã dùng cho
+    /// View/Lookup (spec 19) — token không đăng ký trong <c>Sys_Context_Param</c> → null, không rơi về client.
+    /// </para>
+    /// </summary>
+    private async Task<DynamicParameters> BuildParamsAsync(
         IReadOnlyList<DocParamRow> allParams, long? detailId,
-        IReadOnlyDictionary<string, object?> keyParams, int tenantId)
+        IReadOnlyDictionary<string, object?> keyParams, int tenantId, CancellationToken ct)
     {
+        var scoped = allParams.Where(x => x.DetailId == detailId).ToList();
+
+        // Batch resolve 1 lần mọi token Nguon="context" khác Tenant_Id (Tenant_Id đã cô lập ở tầng
+        // connection/ADR-035, không phải token registry — giữ fast path riêng như trước).
+        var ctxNames = scoped
+            .Where(x => x.Nguon == "context" && !string.IsNullOrWhiteSpace(x.NguonKey)
+                     && !string.Equals(x.NguonKey, "Tenant_Id", StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.NguonKey!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var ctxValues = ctxNames.Count > 0
+            ? await _contextResolver.ResolveAsync(ctxNames, ct)
+            : new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
         var dp = new DynamicParameters();
-        foreach (var p in allParams.Where(x => x.DetailId == detailId))
+        foreach (var p in scoped)
         {
             object? value = p.Nguon switch
             {
                 "key"     => keyParams.TryGetValue(p.NguonKey ?? p.ParamName.TrimStart('@'), out var v) ? v : null,
-                "context" => string.Equals(p.NguonKey, "Tenant_Id", StringComparison.OrdinalIgnoreCase) ? tenantId : null,
+                "context" => string.Equals(p.NguonKey, "Tenant_Id", StringComparison.OrdinalIgnoreCase)
+                    ? tenantId
+                    : (p.NguonKey is not null && ctxValues.TryGetValue(p.NguonKey, out var cv) ? cv : null),
                 "const"   => p.NguonKey,
                 _         => null
             };

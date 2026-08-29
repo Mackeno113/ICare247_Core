@@ -659,13 +659,36 @@ public sealed partial class ViewRepository : IViewRepository
 
         var isSp = string.Equals(view.SourceType, "Sp", StringComparison.OrdinalIgnoreCase);
 
+        using var data = _dataDb.CreateConnection();
+
+        // ── Token ngữ cảnh (Sys_Context_Param) tham chiếu trong SQL/SP — lấy TRƯỚC filter để khóa
+        //    token định danh (Claim) trước khi filter/cha có cơ hội trùng tên ghi đè. ──
+        var candidates = (isSp
+            ? await GetProcParamNamesAsync(data, view.SourceObject!, ct)
+            : ParamRefRegex().Matches(view.SourceObject!).Select(m => m.Groups[1].Value))
+            .ToList();
+
         // ── Bind tham số: CHỈ từ view.Filters (whitelist). Code lạ trong filterValues bị bỏ qua. ──
         var dp = new DynamicParameters();
         var boundNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Token định danh (Source_Kind='Claim', vd @NguoiDungID) BẤT BIẾN — bind TRƯỚC mọi filter/cha,
+        // không dựa vào hành vi ghi-đè của DynamicParameters.Add (đã dính lỗ hổng tương tự ở lookup,
+        // session 93). Filter nào trùng tên các token này bị BỎ QUA ngay dưới, không cho ghi đè.
+        var claimLocked = await LockClaimTokensAsync(dp, candidates, boundNames, ct);
+
         foreach (var f in view.Filters)
         {
             if (string.IsNullOrWhiteSpace(f.ParamName))
                 continue;
+
+            if (claimLocked.Contains(f.ParamName.TrimStart('@')))
+            {
+                _logger.LogWarning(
+                    "View '{ViewCode}': filter '{FilterCode}' Param_Name trùng token định danh Claim " +
+                    "— bỏ qua giá trị filter, giữ giá trị server.", view.ViewCode, f.FilterCode);
+                continue;
+            }
 
             // Giá trị người dùng (theo Filter_Code) → fallback Default_Value khi không gửi.
             filterValues.TryGetValue(f.FilterCode, out var raw);
@@ -684,12 +707,8 @@ public sealed partial class ViewRepository : IViewRepository
             boundNames.Add(name);
         }
 
-        using var data = _dataDb.CreateConnection();
-
-        // ── Token ngữ cảnh (Sys_Context_Param) tham chiếu trong SQL/SP → bind server-side (spec 19). ──
-        var candidates = isSp
-            ? await GetProcParamNamesAsync(data, view.SourceObject!, ct)
-            : ParamRefRegex().Matches(view.SourceObject!).Select(m => m.Groups[1].Value);
+        // ── Token ngữ cảnh còn lại (không phải Claim) — filter/cha thắng khi trùng (cấu hình hợp lệ,
+        //    vd CongTyID_Active cho user tự chọn công ty trên thanh filter). ──
         await BindContextParamsAsync(dp, candidates, boundNames, ct);
 
         var rows = isSp
@@ -737,6 +756,13 @@ public sealed partial class ViewRepository : IViewRepository
 
             var dp = new DynamicParameters();
             var boundNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var lookupCandidates = ParamRefRegex().Matches(f.LookupSql)
+                .Select(m => m.Groups[1].Value).ToList();
+
+            // Token định danh (Claim) BẤT BIẾN — bind TRƯỚC filter cha, chặn cha trùng tên ghi đè
+            // (cùng lý do đã vá ở GetFilteredDataAsync — filter cha là Param_Name admin đặt, có thể
+            // trùng tên token định danh do misconfig).
+            var claimLocked = await LockClaimTokensAsync(dp, lookupCandidates, boundNames, ct);
 
             // Chỉ bind cha khai trong Depends_On (whitelist); tên param = Param_Name của filter cha.
             var parentCodes = new HashSet<string>(f.ParentFilterCodes, StringComparer.OrdinalIgnoreCase);
@@ -744,6 +770,13 @@ public sealed partial class ViewRepository : IViewRepository
             {
                 if (string.IsNullOrWhiteSpace(parent.ParamName))
                     continue;
+                if (claimLocked.Contains(parent.ParamName.TrimStart('@')))
+                {
+                    _logger.LogWarning(
+                        "View '{ViewCode}': filter cha '{FilterCode}' Param_Name trùng token định danh Claim " +
+                        "— bỏ qua giá trị filter, giữ giá trị server.", view.ViewCode, parent.FilterCode);
+                    continue;
+                }
                 parentValues.TryGetValue(parent.FilterCode, out var raw);
                 var value = ConvertFilterValue(raw, parent.ParamType, "=", parent.FilterCode);
                 var name = NormalizeParamName(parent.ParamName);
@@ -751,9 +784,8 @@ public sealed partial class ViewRepository : IViewRepository
                 boundNames.Add(name);
             }
 
-            // Token ngữ cảnh tham chiếu trong Lookup_Sql (vd @NguoiDungID, @CongTyID_Active).
-            await BindContextParamsAsync(
-                dp, ParamRefRegex().Matches(f.LookupSql).Select(m => m.Groups[1].Value), boundNames, ct);
+            // Token ngữ cảnh còn lại (không phải Claim) tham chiếu trong Lookup_Sql (vd @CongTyID_Active).
+            await BindContextParamsAsync(dp, lookupCandidates, boundNames, ct);
 
             using var data = _dataDb.CreateConnection();
             var rows = await data.QueryAsync(new CommandDefinition(
@@ -781,6 +813,36 @@ public sealed partial class ViewRepository : IViewRepository
             if (vals.Count >= 2) display = vals[1]?.ToString();
         }
         return value is null ? null : new FilterOption { Value = value, Display = display ?? value };
+    }
+
+    /// <summary>
+    /// Bind token định danh (<c>Source_Kind='Claim'</c>, vd <c>@NguoiDungID</c>) vào <paramref name="dp"/>
+    /// TRƯỚC mọi filter/cha ngữ cảnh khác — ranh giới phân quyền BẤT BIẾN, không nguồn nào (kể cả
+    /// filter/cha trùng tên do misconfig hoặc client cố tình) được ghi đè. Không dựa vào hành vi ghi-đè của
+    /// <see cref="DynamicParameters"/>.Add (session 93, đã dính lỗ hổng y hệt ở <c>DynamicLookupRepository</c>)
+    /// — bind trước, caller tự bỏ qua nguồn khác trùng tên trong tập trả về.
+    /// </summary>
+    /// <returns>Tập tên (không '@') vừa bind — caller dùng để bỏ qua filter/cha trùng tên.</returns>
+    private async Task<IReadOnlySet<string>> LockClaimTokensAsync(
+        DynamicParameters dp, IEnumerable<string> candidateNames,
+        HashSet<string> boundNames, CancellationToken ct)
+    {
+        var names = candidateNames.Select(n => n.TrimStart('@'))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (names.Count == 0)
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var locked = await _contextResolver.GetClaimLockedNamesAsync(names, ct);
+        if (locked.Count == 0)
+            return locked;
+
+        var values = await _contextResolver.ResolveAsync(locked, ct);
+        foreach (var (name, value) in values)
+        {
+            dp.Add(name, value);
+            boundNames.Add(name);
+        }
+        return locked;
     }
 
     /// <summary>Resolve + bind token ngữ cảnh (candidate) chưa trùng tham số đã bind (filter/cha thắng khi trùng).</summary>

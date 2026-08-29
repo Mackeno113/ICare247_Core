@@ -56,11 +56,13 @@ public interface IDynamicLookupRepository
     /// <summary>
     /// Insert một bản ghi mới vào bảng nguồn của field lookup (dùng cho "thêm mới" trên LookupBox).
     /// Chỉ áp dụng khi <c>Query_Mode = 'table'</c>. Mỗi cặp key/value trong <paramref name="values"/>
-    /// được map thẳng thành cột → tham số Dapper (key phải là identifier hợp lệ).
+    /// được map thẳng thành cột → tham số Dapper, nhưng CHỈ những cột nằm trong whitelist field
+    /// (KHÔNG readonly) của Ui_Form gắn <c>Ui_Field_Lookup.Add_Form_Code</c> mới được ghi — chống
+    /// mass assignment (client gửi cột ngoài dialog "Thêm mới", vd cột cờ/trạng thái/FK phân quyền).
     /// </summary>
     /// <param name="fieldId">Field_Id của LookupBox — xác định bảng nguồn + Value/Display column.</param>
     /// <param name="tenantId">Tenant hiện tại — chỉ dùng dựng cache key, KHÔNG lọc SQL (ADR-035).</param>
-    /// <param name="values">Cặp Cột↔Giá trị từ dialog thêm mới (key = tên cột DB).</param>
+    /// <param name="values">Cặp Cột↔Giá trị từ dialog thêm mới (key = tên cột DB; bị lọc qua whitelist Add_Form_Code).</param>
     /// <param name="userId">Người thao tác (claim sub) — engine bơm vào <c>CreatedBy</c> nếu bảng đích có cột.</param>
     /// <param name="ct"></param>
     /// <returns>

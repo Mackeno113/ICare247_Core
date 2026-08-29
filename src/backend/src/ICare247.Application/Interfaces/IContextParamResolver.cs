@@ -18,4 +18,13 @@ public interface IContextParamResolver
     /// </summary>
     Task<IReadOnlyDictionary<string, object?>> ResolveAsync(
         IEnumerable<string> referencedNames, CancellationToken ct = default);
+
+    /// <summary>
+    /// Trong <paramref name="referencedNames"/>, trả tập tên có <c>Source_Kind='Claim'</c> — token định danh
+    /// bất biến (vd <c>NguoiDungID</c>). Dùng để caller khóa các tên này khỏi bị filter/cha/tham số khác
+    /// (do admin cấu hình hoặc client gửi) ghi đè khi trùng tên — token định danh PHẢI luôn thắng, vì đây
+    /// thường là ranh giới phân quyền (vd <c>fnt_XyzTheoQuyen(@NguoiDungID)</c>).
+    /// </summary>
+    Task<IReadOnlySet<string>> GetClaimLockedNamesAsync(
+        IEnumerable<string> referencedNames, CancellationToken ct = default);
 }

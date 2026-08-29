@@ -279,29 +279,45 @@ khối vào 1 tham số duy nhất, không cho tên client chạm vào không gi
 
 ### Còn mở từ session này
 
-- [ ] 🔴 **BẢO MẬT — mass assignment ở `DynamicLookupRepository.InsertAsync`** (nút "➕ Thêm mới" trên
-  LookupBox, `POST /api/v1/lookups/insert`). Bộ lọc cột chỉ có 3 chốt: `SafeIdentifierRegex`, bỏ PK
-  (`valueCol`), bỏ `AuditColumns` — **KHÔNG đối chiếu metadata form**. Client set được **bất kỳ cột nào
-  của bảng đích**, kể cả cột không có trên form: vd thêm "Phòng ban" và tự đặt `CongTy_Id` sang công ty
-  khác, hoặc set cột cờ/trạng thái mà UI không cho sửa. **Cách vá: bê nguyên mẫu đã đúng ở
-  `MasterDataRepository.BuildColumnParams`** — whitelist theo cột field của form, lọc `!IsReadOnly`, bỏ PK.
-  Cùng bài toán, hai lời giải, một cái hở.
-- [ ] 🟡 **`ViewRepository.BindContextParamsAsync` — filter đè được token**. Comment ghi rõ là cố ý
-  ("filter/cha thắng khi trùng"). Mức thấp hơn lookup vì tên param do admin đặt ở `Ui_View_Filter.Param_Name`,
-  client không tự chọn được ⇒ là bẫy misconfig, không phải client tấn công trực tiếp. **KHÔNG siết hết như
-  lookup**: bộ lọc tên `CongTyID_Active` cho user tự chọn công ty trên thanh filter là cấu hình HỢP LỆ,
-  siết hết sẽ giết tính năng. Chỉ khoá token `Source_Kind='Claim'` (định danh, bất biến — không bao giờ có
-  lý do chính đáng để filter ghi đè). Cần thêm 1 method vào `IContextParamResolver` để hỏi kind (hiện
-  `ResolveAsync` chỉ trả tên→giá trị); chỉ 1 implementor nên rẻ.
-- [ ] 🟡 **`DocTemplateRenderer.BuildParams` — `Nguon="context"` chỉ hỗ trợ `Tenant_Id`**, KHÔNG có
-  `NguoiDungID`. Proc xuất tài liệu muốn biết người gọi buộc phải nhận qua `Nguon="key"` = lấy từ client
-  ⇒ giả mạo được. Chưa có mẫu nào làm vậy nên chưa khai thác được, nhưng là bẫy chờ mẫu tiếp theo.
-  Vá đúng: cho `Nguon="context"` đi qua `IContextParamResolver` như mọi chỗ khác. **Tách task riêng** —
-  nằm ở project `ICare247.Infrastructure.Documents`, cần thêm quy ước cho `Doc_Template_Param.Nguon`,
-  đụng cả DB lẫn WPF.
-- [ ] ⚪ **Cache registry `Sys_Context_Param`** — `ContextParamRepository.GetActiveAsync` query Config DB
-  MỖI lần resolve; bảng bé và gần như không đổi. Cache qua `ICacheService` là bớt 1 round-trip cho mọi
-  lookup lẫn View. Thuần hiệu năng, không phải bug.
+- [x] 🔴 **BẢO MẬT — mass assignment ở `DynamicLookupRepository.InsertAsync`** (nút "➕ Thêm mới" trên
+  LookupBox, `POST /api/v1/lookups/insert`) — **ĐÃ VÁ (2026-08-29)**. Bộ lọc cột trước đây chỉ có 3 chốt:
+  `SafeIdentifierRegex`, bỏ PK (`valueCol`), bỏ `AuditColumns` — **KHÔNG đối chiếu metadata form**. Client
+  set được **bất kỳ cột nào của bảng đích**, kể cả cột không có trên form: vd thêm "Phòng ban" và tự đặt
+  `CongTy_Id` sang công ty khác, hoặc set cột cờ/trạng thái mà UI không cho sửa.
+  **Đã vá:** whitelist theo field của **đúng `Ui_Form` gắn `Ui_Field_Lookup.Add_Form_Code`** (Migration 022 —
+  cũng chính là form `LookupAddDialog` render trên FE, nên whitelist khớp 1-1 với field dialog thật sự cho
+  nhập), lọc `Is_Visible=1 AND Is_Virtual=0 AND Is_ReadOnly=0` — cùng mẫu join đã đúng ở
+  `MasterDataRepository.BuildColumnParams`. Thiếu `Add_Form_Code` (misconfig) → deny-by-default (whitelist
+  rỗng → báo lỗi cấu hình rõ, không cho qua). `ApplyGeneratedCodeAsync` (sinh mã MA-3b) nay trả về
+  `ColumnCode` vừa cấp để ép whitelist cho phép ghi cột đó dù đang `IsReadOnly` với user — khớp cơ chế
+  `forceAllowedCol` đã có ở `MasterDataRepository`. GitNexus/repowise impact: LOW (1 caller nội bộ
+  `InsertLookupCommandHandler`, không process nào khác chạm `InsertAsync`). ⏳ **User tự build + smoke**
+  test nút "Thêm mới" LookupBox (theo quy tắc Claude chỉ edit code).
+- [x] 🟡 **`ViewRepository.BindContextParamsAsync` — filter đè được token** — **ĐÃ VÁ (2026-08-29)**. Comment
+  cũ ghi rõ là cố ý ("filter/cha thắng khi trùng"). Mức thấp hơn lookup vì tên param do admin đặt ở
+  `Ui_View_Filter.Param_Name`, client không tự chọn được ⇒ là bẫy misconfig, không phải client tấn công trực
+  tiếp. **Đã vá:** thêm `IContextParamResolver.GetClaimLockedNamesAsync` (chỉ 1 implementor
+  `ContextParamResolver`) trả tập tên có `Source_Kind='Claim'`. `ViewRepository` (`GetFilteredDataAsync` +
+  nhánh dynamic của `GetFilterOptionsAsync`) nay bind các token này TRƯỚC filter/cha qua
+  `LockClaimTokensAsync` (không dựa vào hành vi ghi-đè của `DynamicParameters.Add` — cùng bài học session
+  93 ở lookup); filter/cha nào trùng tên token Claim bị bỏ qua (LogWarning) thay vì ghi đè. **KHÔNG siết
+  hết như lookup** — token khác Claim (`Header`/`ActiveScope`, vd `CongTyID_Active`) vẫn để filter/cha thắng
+  khi trùng, giữ tính năng user tự chọn công ty trên thanh filter.
+- [x] 🟡 **`DocTemplateRenderer.BuildParams` — `Nguon="context"` chỉ hỗ trợ `Tenant_Id`** — **ĐÃ VÁ
+  (2026-08-29)**. Trước đây proc xuất tài liệu muốn biết người gọi (vd `NguoiDungID`) buộc phải cấu hình
+  `Nguon="key"` = lấy THẲNG từ client ⇒ giả mạo được (client tự đặt NguoiDungID người khác). **Đã vá:**
+  `BuildParams` → `BuildParamsAsync` (inject `IContextParamResolver` vào `DocTemplateRenderer`), mọi
+  `Nguon="context"` khác `Tenant_Id` đi qua resolver như View/Lookup (spec 19) — token không đăng ký trong
+  `Sys_Context_Param` → null, không rơi về client. `Tenant_Id` giữ fast-path cũ (đã cô lập ở tầng connection,
+  ADR-035, không phải token registry). **Còn lại (không chặn security fix):** chưa có màn WPF cấu hình
+  `Doc_Template_Param.Nguon/NguonKey` (hiện seed SQL) — khi làm màn đó nên thêm dropdown liệt kê
+  `Sys_Context_Param` đang active cho dễ chọn, tránh gõ tay sai tên.
+- [x] ⚪ **Cache registry `Sys_Context_Param`** — **ĐÃ VÁ (2026-08-29)**. `ContextParamRepository.GetActiveAsync`
+  trước đây query Config DB MỖI lần resolve (mọi View/Lookup/DocTemplate chạm token ngữ cảnh); bảng bé và
+  gần như không đổi. **Đã vá:** cache-aside qua `ICacheService` (L1/L2), cùng khuôn `CodeRuleCatalog` —
+  key `CacheKeys.ContextParamRegistry(tenantId, version)` gắn `ICacheVersion` (version-stamp dùng chung nút
+  "Cưỡng chế làm mới cache", ADR-014/CC-4a) nên sửa `Sys_Context_Param` xong bấm nút đó là có hiệu lực ngay,
+  không cần đợi TTL (10 phút L1 / 60 phút L2, cùng TTL CodeRuleCatalog). Thuần hiệu năng, không phải bug.
 - [ ] **`@__SelfId` vô hiệu → tạo được cây vòng**: cơ chế loại chính-nó-và-hậu-duệ chỉ chạy ở
   `Query_Mode='self_parent'`, nhưng `TPL_CONG_TY` là `custom_sql` (db/083) ⇒ không chạy. Sửa công ty
   Id=5 vẫn chọn được cha = chính 5 hoặc công ty con của 5. Client vẫn gửi `@__SelfId` nhưng SQL không

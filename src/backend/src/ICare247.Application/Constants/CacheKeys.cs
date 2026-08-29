@@ -130,4 +130,12 @@ public static class CacheKeys
     /// </summary>
     public static string UserGridLayout(int tenantId, long userId, string viewCode, string platform)
         => $"icare:gridlayout:{tenantId}:{userId}:{viewCode.ToLowerInvariant()}:{platform}";
+
+    /// <summary>
+    /// Registry token ngữ cảnh (<c>Sys_Context_Param</c>, <c>Is_Active=1</c>) — bảng bé, cấu hình gần
+    /// như không đổi. Gắn <c>:v{version}</c> để nút "Cưỡng chế làm mới cache" vô hiệu ngay khi cần.
+    /// Prefix: icare:ctxparam:{tenantId}:v{version}
+    /// </summary>
+    public static string ContextParamRegistry(int tenantId, int version)
+        => $"icare:ctxparam:{tenantId}:v{version}";
 }

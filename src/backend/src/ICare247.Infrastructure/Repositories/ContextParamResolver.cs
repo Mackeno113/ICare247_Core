@@ -55,6 +55,23 @@ public sealed class ContextParamResolver : IContextParamResolver
         return result;
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlySet<string>> GetClaimLockedNamesAsync(
+        IEnumerable<string> referencedNames, CancellationToken ct = default)
+    {
+        var wanted = new HashSet<string>(
+            referencedNames.Select(n => n.TrimStart('@')), StringComparer.OrdinalIgnoreCase);
+        var locked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (wanted.Count == 0)
+            return locked;
+
+        var all = await _registry.GetActiveAsync(ct);
+        foreach (var p in all)
+            if (wanted.Contains(p.ParamName) && p.SourceKind == "Claim")
+                locked.Add(p.ParamName);
+        return locked;
+    }
+
     /// <summary>Resolve 1 token theo Source_Kind → giá trị đã ép kiểu (null khi rỗng và không có Default).</summary>
     private async Task<object?> ResolveOneAsync(ContextParam p, CancellationToken ct)
     {
