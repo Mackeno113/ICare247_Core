@@ -1,5 +1,48 @@
 # Last Session Summary
 
+## Session (2026-08-29) — Vá 4 lỗ hổng bảo mật/hiệu năng backend (mass-assignment + context param), build 0/0 + test 260/260
+
+**Bối cảnh:** user chọn task "Vá bảo mật mass-assignment" từ 5 task gợi ý đầu phiên (từ backlog audit
+2026-07-22, mục `TASKS.md § Còn mở từ session này`), rồi tiếp tục yêu cầu vá nốt 2 mục 🟡 + 1 mục ⚪ còn
+lại trong cùng danh sách. Cả 4 mục đều đã ✅ trong 1 commit `5582a8b`.
+
+**Đã vá (đúng GitNexus/repowise impact check trước khi sửa — cả 4 file đều LOW, không có test mock nào cần
+sửa theo constructor mới):**
+- **🔴 Mass assignment `DynamicLookupRepository.InsertAsync`** (nút "➕ Thêm mới" LookupBox) — bộ lọc cột cũ
+  chỉ chặn identifier + bỏ PK + bỏ audit, KHÔNG đối chiếu form → client set được bất kỳ cột nào của bảng
+  đích. Vá: whitelist theo field KHÔNG readonly của đúng `Ui_Form` gắn `Ui_Field_Lookup.Add_Form_Code`
+  (migration 022 — cũng chính form FE `LookupAddDialog` render, nên khớp 1-1). Thiếu `Add_Form_Code` →
+  deny-by-default. `ApplyGeneratedCodeAsync` (sinh mã MA-3b) nay trả `ColumnCode` để ép whitelist cho cột
+  đang readonly — khớp cơ chế `forceAllowedCol` đã có ở `MasterDataRepository`.
+- **🟡 `ViewRepository.BindContextParamsAsync` — filter đè được token định danh** — thêm
+  `IContextParamResolver.GetClaimLockedNamesAsync` (chỉ 1 implementor) trả tập token `Source_Kind='Claim'`.
+  `GetFilteredDataAsync` + nhánh dynamic `GetFilterOptionsAsync` bind các token này TRƯỚC filter/cha qua
+  `LockClaimTokensAsync` — không dựa vào hành vi ghi-đè của `DynamicParameters.Add` (bài học session 93 ở
+  lookup). Token khác Claim (`Header`/`ActiveScope`, vd `CongTyID_Active`) vẫn để filter/cha thắng khi trùng.
+- **🟡 `DocTemplateRenderer.BuildParams` — `Nguon="context"` chỉ hỗ trợ `Tenant_Id`** — proc xuất tài liệu
+  muốn biết người gọi (`NguoiDungID`) trước đây buộc cấu hình `Nguon="key"` = lấy thẳng từ client (giả mạo
+  được). Vá: `BuildParams` → `BuildParamsAsync` (inject `IContextParamResolver`), mọi token khác `Tenant_Id`
+  đi qua resolver như View/Lookup. `Tenant_Id` giữ fast-path (đã cô lập tầng connection, ADR-035).
+- **⚪ Cache registry `Sys_Context_Param`** — `ContextParamRepository.GetActiveAsync` cache-aside qua
+  `ICacheService`/`ICacheVersion` (cùng khuôn `CodeRuleCatalog`) — key gắn version-stamp dùng chung nút
+  "Cưỡng chế làm mới cache" (ADR-014/CC-4a), TTL 10 phút L1 / 60 phút L2.
+
+**ADR-030** (Context param) cập nhật dòng "Trạng thái triển khai" trong `TASKS.md` — ghi rõ phần siết thêm
+(KHÔNG sửa `architecture_decisions.md`).
+
+**Build/test verify (2026-08-29, chạy trong phiên):** `dotnet build src/backend/ICare247.slnx` = **0
+Warning / 0 Error** (7 project, gồm cả `Infrastructure.Documents` do đổi constructor `DocTemplateRenderer`).
+`dotnet test ICare247.Application.Tests` = **260/260 Passed**. Web/ConfigStudio KHÔNG đụng — không build lại.
+
+**Commit `5582a8b`** — 9 file (không gồm CLAUDE.md/3 file i18n/`docs/project-audit/` — không liên quan
+phiên này, để nguyên như user đã biết). **⏳ Cần user:** build lại backend + restart API (cache mới có hiệu
+lực; không cần migration DB — không đụng schema). Smoke: nút "Thêm mới" LookupBox, filter panel View có
+`CongTyID_Active`.
+
+**Task tiếp theo gợi ý:** các mục còn lại trong backlog audit 2026-07-22 (`TASKS.md` cùng khu vực) — vd
+`@__SelfId` vô hiệu ở `custom_sql` (TPL_CONG_TY); hoặc NS-MASTERDETAIL (tạo View grid NS_NhanVien để nghiệm
+thu rail, còn treo từ phiên 2026-08-11).
+
 ## Session (2026-08-23) — Bộ tài liệu "Nhà chung cư" vào repo + rà soát + ánh xạ ICare247 (DỰ ÁN RIÊNG, không đụng code)
 
 **Bối cảnh:** user đưa bộ tài liệu thiết kế phần mềm **Quản lý Nhà chung cư** (trọng tâm module Hội nghị

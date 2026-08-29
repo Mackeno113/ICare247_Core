@@ -682,7 +682,7 @@ Hai chi tiết cho thấy bảng được nghĩ cho **đồng bộ**, không ph�
 | 027 | Cây cha-con dùng chung (`ThuTu`/`ThuTuCay`/`DuongDanCay`) | ✅ code xong (2026-07-18, session này) | `db/085` proc `sp_RecomputeTreeOrder` (generic mọi bảng cây) · `db/086` `Ui_View.Allow_Reorder` · `ViewRepository.ReorderAsync` + `POST /views/{code}/reorder` · `DataView.razor` kéo-thả DxTreeList · checkbox WPF Tab Cây. ⏳ CHƯA smoke runtime (cần data mẫu); `db/085`+`086` CHƯA chạy DB |
 | 028 | — | ✅ code xong, compile xanh | build fail chỉ do file-lock (app đang chạy) |
 | 029 | Save/validation hook | ✅ code xong | ⏳ E2E `SVHOOK-6` (chạy SQL) |
-| 030 | Context param `@NguoiDungID` | ✅ cấu hình xong | ⏳ chạy `db/059`+`db/060`; chạy lại 2 proc `spc_`/`sp_AfterSave_Grid_DM_PhuongXa` |
+| 030 | Context param `@NguoiDungID` | ✅ cấu hình xong, siết thêm (2026-08-29) | ⏳ chạy `db/059`+`db/060`; chạy lại 2 proc `spc_`/`sp_AfterSave_Grid_DM_PhuongXa`. Bổ sung: `IContextParamResolver.GetClaimLockedNamesAsync` khoá token `Source_Kind='Claim'` khỏi bị filter/cha ghi đè (`ViewRepository`); `DocTemplateRenderer.BuildParamsAsync` nay route `Nguon="context"` qua resolver thay vì chỉ hardcode `Tenant_Id`; `ContextParamRepository.GetActiveAsync` cache-aside (`ICacheService`/`ICacheVersion`) |
 | 031 | Theme ConfigStudio WPF | ⏳ build PENDING | rủi ro: editor mất template nếu DX theme phản ứng → `BasedOn` style mặc định DX |
 | 032 | MasterData path | ✅ code xong | ⏳ restart API + hard-reload WASM. `DM_CHINHANHNGANHANG` thiếu PK (user chưa cho sửa DB) |
 | 033 | View-based grid | ✅ Pha 1 xong (live Tenant 1) | Pha 2 → ADR-034; **Pha 3 (template) chưa làm** |
