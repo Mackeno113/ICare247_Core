@@ -1,0 +1,33 @@
+{
+  "totalDocumentLikeFiles": 185,
+  "categories": [
+    { "group": "Root AI-instruction files", "files": ["BRAIN.md", "CLAUDE.md", "AGENTS.md", "AI_DECISIONS.md", "AI_HANDOFF.md", "AI_PROJECT_BRIEF.md", "AI_TASKS.yaml", "MACHINE_SWITCH.md", "README.md", "ROADMAP.md", "TASKS.md", "TASKS_ARCHIVE.md"], "note": "BRAIN.md là SSOT; CLAUDE.md/AGENTS.md đã được rút gọn đúng thành file trỏ; một số file cũ hơn (AI_PROJECT_BRIEF.md, AI_TASKS.yaml, README.md) có trước quy tắc này nên đã lỗi thời" },
+    { "group": ".claude-rules/", "count": 13, "status": "current" },
+    { "group": ".claude/memory/", "files": ["MEMORY.md", "architecture_decisions.md", "last_session.md", "project_current_phase.md", "project_phase_history.md", "session_history.md", "coding_style_feedback.md", "user_profile.md"], "status": "current, well-governed" },
+    { "group": ".codex/memory/", "count": 3, "status": "current" },
+    { "group": "docs/spec/", "count": 34, "status": "phần lớn còn hiện hành; 2 file bị gắn cờ trạng thái lỗi thời (xem conflicts DOC-003, DOC-004)" },
+    { "group": "docs/human/ + docs/human/archive/", "count": 5, "status": "current, archive properly labeled" },
+    { "group": "docs/ai/", "count": 4, "status": "current — AI template governance docs" },
+    { "group": "docs/backend-debug/", "count": 8, "status": "uncertain, not spot-checked" },
+    { "group": "docs/codes/", "count": 8, "status": "uncertain, not spot-checked" },
+    { "group": "docs/huong-dan-wpf/", "count": 19, "status": "likely current, actively maintained" },
+    { "group": "docs/reference/ (DevExpress property dumps)", "count": 3, "status": "current but explicitly whitelisted in BRAIN.md as 'grep only, don't read whole'" },
+    { "group": "docs/design-system/", "count": 6, "status": "1 file flagged (WEB_UX_IMPROVEMENT_TASKS.md, see DOC-005)" },
+    { "group": "docs/reviews/", "count": 1, "status": "current, one-off" },
+    { "group": "docs/migrations/ (canonical bootstrap, distinct from db/*.sql history)", "count": 2, "status": "current for new-DB bootstrap only, by design" },
+    { "group": "docs/nha-chung-cu/ (new business vertical, draft)", "count": 15, "status": "current, explicitly labeled Draft/exploratory, zero code exists yet" },
+    { "group": "docs/ICare247 Config Studio/TASKS_WPF.md", "count": 1, "status": "current, the declared WPF-specific task tracker per BRAIN.md §9" }
+  ],
+  "singleSourceOfTruthMap": [
+    { "domain": "Architecture", "file": "BRAIN.md + docs/spec/01_ARCHITECTURE.md", "confidence": "confirmed" },
+    { "domain": "Development status", "file": "TASKS.md (general) + docs/ICare247 Config Studio/TASKS_WPF.md (WPF)", "confidence": "confirmed" },
+    { "domain": "ADR implementation status", "file": "TASKS.md § Trạng thái triển khai ADR", "confidence": "confirmed", "note": "Quy ước tường minh, tự thực thi — architecture_decisions.md chủ ý được giữ sạch, không lẫn ngôn ngữ trạng thái" },
+    { "domain": "Technical decisions (immutable)", "file": ".claude/memory/architecture_decisions.md (ADR text) + AI_DECISIONS.md (cross-agent process decisions)", "confidence": "confirmed" },
+    { "domain": "Business rules", "file": "docs/spec/* (per module) + docs/nha-chung-cu/* (new vertical, draft)", "confidence": "likely" },
+    { "domain": "Security", "file": "docs/spec/20_SECURITY_HARDENING_SPEC.md, docs/spec/21_SECURITY_E2E_CHECKLIST.md", "confidence": "likely, not spot-checked" },
+    { "domain": "API", "file": "docs/spec/07_API_CONTRACT.md", "confidence": "uncertain — chưa kiểm tra đối chiếu; khuyến nghị xác minh vì 06_SOLUTION_STRUCTURE.md đã xác nhận lỗi thời" },
+    { "domain": "Database", "file": "docs/spec/02_DATABASE_SCHEMA.md (Config DB) + docs/spec/11_DATA_DB_SCHEMA.md (Data DB, cập nhật header trước — DOC-004)", "confidence": "confirmed with caveat" },
+    { "domain": "Deployment", "file": null, "confidence": "gap — chưa tìm thấy tài liệu triển khai riêng" },
+    { "domain": "TODO/Roadmap", "file": "TASKS.md (near-term) + ROADMAP.md (phase-level, confirmed stale — DOC-008)", "confidence": "TASKS.md đáng tin cậy; ROADMAP.md cần được sinh lại hoặc khai tử" }
+  ]
+}

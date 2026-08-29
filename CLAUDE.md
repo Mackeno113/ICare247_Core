@@ -47,6 +47,7 @@
 |---|---|
 | `.claude-rules/architecture.md` | Layer dependency, DI registration, CQRS pattern |
 | `.claude-rules/csharp-naming.md` | Naming conventions, CQRS/Repository naming |
+| `.claude-rules/debug-logger.md` | Dùng `DebugLogger` thay `Console.WriteLine` cho log debug/trace (khác Serilog) |
 | `.claude-rules/dapper-patterns.md` | SQL patterns, connection factory, async methods |
 | `.claude-rules/sql-safety.md` | Chống SQL injection: guard identifier CHUNG, whitelist, cô lập tenant, test injection bắt buộc |
 | `.claude-rules/debugging.md` | Truy root cause trước khi fix, dừng lại sau ≥3 fix thất bại, validate nhiều lớp (defense-in-depth) |

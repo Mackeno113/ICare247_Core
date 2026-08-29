@@ -1,0 +1,14 @@
+{
+  "auditScopeNote": "Một đợt audit dependency đầy đủ, riêng biệt (package lỗi thời/trùng/xung đột version trên toàn bộ file .csproj) CHƯA được thực hiện thành 1 pass riêng trong đợt này — 9 pass audit song song đã phủ kiến trúc, bảo mật, hiệu năng, database, test, tài liệu và việc còn tồn — nhưng chưa rà soát package-by-package có hệ thống. Nội dung dưới đây là những gì lộ ra tình cờ từ các pass khác. Coi file này là bức tranh MỘT PHẦN, không phải một đợt audit dependency hoàn chỉnh — đánh dấu rõ theo đúng nguyên tắc của dự án là 'không khẳng định vượt quá bằng chứng đang có'.",
+  "knownPackagesObserved": {
+    "backend": ["MediatR", "FluentValidation", "Dapper", "Microsoft.Data.SqlClient", "StackExchange.Redis", "Serilog (+ sinks)", "OpenTelemetry", "SkiaSharp", "DevExpress.Document.Processor (cô lập chỉ trong ICare247.Infrastructure.Documents)", "dbup-sqlserver (DbMigrator)", "xunit + xunit.runner.visualstudio + Microsoft.NET.Test.Sdk (chỉ trong project test)"],
+    "frontendBlazor": ["Component DevExpress Blazor (theme Fluent Light)"],
+    "wpf": ["Prism 9", "DevExpress WPF"],
+    "confirmedAbsent": ["Entity Framework Core (0 tham chiếu ở bất kỳ đâu)", "MaterialDesignThemes (0 tham chiếu trong ConfigStudio, chỉ còn nhắc tới trong doc-comment cũ)", "Bất kỳ mocking library nào (Moq/NSubstitute/FakeItEasy — 0 tham chiếu trong test backend)", "bUnit (0 tham chiếu — không có project test Blazor nào)"]
+  },
+  "packageManagement": {
+    "backend": "Directory.Packages.props ở gốc repo — xác nhận đang dùng quản lý version package tập trung",
+    "note": "Quản lý package tập trung là good practice để tránh trôi version, nhưng audit này chưa xác minh có version nào pin đã hết vòng đời hoặc có CVE đã biết hay không — khuyến nghị chạy riêng `dotnet list package --vulnerable` / `--outdated` như bước theo dõi tiếp theo, việc này nằm ngoài phạm vi của 1 agent chỉ đọc source (read-only)."
+  },
+  "recommendedFollowUp": "Chạy `dotnet list package --vulnerable --include-transitive` trên toàn bộ file .csproj backend, và kiểm tra version DevExpress/Prism còn được hỗ trợ hay không so với trang EOL/support tương ứng, trước khi coi tình trạng dependency là đã được audit."
+}

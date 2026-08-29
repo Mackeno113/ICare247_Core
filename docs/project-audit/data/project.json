@@ -1,0 +1,69 @@
+{
+  "projectName": "ICare247 Core Platform",
+  "auditDate": "2026-08-29",
+  "repositoryPath": "D:\\ICare247_Core",
+  "branch": "master",
+  "commit": "9c95410",
+  "lastCommitMessage": "docs(memory): ghi phiên 2026-08-23 — bộ tài liệu Nhà chung cư + rà soát + ánh xạ ICare247",
+  "solution": ["src/backend/ICare247.slnx", "src/frontend/ICare247_UI.slnx", "src/frontend/ICare247.UI.slnx", "ConfigStudio.WPF.UI (Prism)"],
+  "technologies": [
+    ".NET 9", "ASP.NET Core 9", "Blazor WebAssembly", "WPF", "Prism 9",
+    "DevExpress Blazor (Fluent Light theme)", "DevExpress WPF", "Dapper",
+    "MS SQL Server", "MediatR (CQRS)", "Redis (L2 cache)", "MemoryCache (L1 cache)",
+    "Serilog", "OpenTelemetry", "JWT (policy-based auth)", "xUnit"
+  ],
+  "frameworks": ["Clean Architecture (4 lớp)", "CQRS qua MediatR", "Form engine điều khiển bằng metadata (AST/Grammar V1)"],
+  "databases": {
+    "engine": "MS SQL Server only",
+    "topology": "Catalog/Master DB (tenant resolver) + Config DB (metadata engine dùng chung, theo từng tenant) + Data DB (dữ liệu nghiệp vụ, theo từng tenant, cô lập kiểu DB-per-tenant) + Audit DB",
+    "migrationFiles": 113,
+    "migrationRange": "db/000_create_schema.sql .. db/106_create_ui_form_detail.sql",
+    "storedProcs": ["fn_GhepMa", "sp_AfterImport_DM_PhuongXa", "sp_AfterSave_Grid_DM_PhuongXa", "sp_SinhMa", "sp_XemTruocMa", "spc_Grid_DM_PhuongXa", "sp_recompute_tree_order"]
+  },
+  "majorModules": [
+    "Metadata Engine (Sys_Table/Sys_Column/Sys_Relation)",
+    "AST/Grammar Engine (đánh giá công thức & rule)",
+    "Validation Engine (Val_Rule/Val_Rule_Field)",
+    "Event Engine (Evt_Trigger_Type/Evt_Definition/Evt_Action)",
+    "Form Engine (Ui_Form/Ui_Section/Ui_Field/Ui_Control_Map, không gian làm việc rail Ui_Form_Detail)",
+    "View/Grid Engine (Ui_View/Ui_View_Column/Ui_View_Filter)",
+    "RBAC / Phân quyền (HT_VaiTro, HT_ChucNang, điều khiển theo menu, ADR-023)",
+    "Cấp phát multi-tenant (Catalog DB, DB-per-tenant)",
+    "Config Sync engine (đồng bộ master → tenant theo descriptor, ADR-024/025)",
+    "Import engine (nhập Excel, che dữ liệu, hooks)",
+    "Doc Template engine (xuất Word/PDF, project DevExpress tách riêng)",
+    "i18n shell (key suy từ cấu trúc, JSON overlay, Sys_Resource DB overlay)",
+    "NS_ module (HR / Nhân sự — cơ cấu tổ chức, quản lý vị trí)",
+    "ConfigStudio WPF (công cụ cấu hình cho admin, SQL trực tiếp, các module Prism)"
+  ],
+  "architectureStyle": "Clean Architecture (Domain → Application → Infrastructure → Api) + form engine điều khiển bằng metadata/no-code + multi-tenancy kiểu DB-per-tenant",
+  "totalProjects": 11,
+  "projectList": [
+    "ICare247.Domain", "ICare247.Application", "ICare247.Infrastructure",
+    "ICare247.Infrastructure.Documents", "ICare247.Api", "ICare247.DbMigrator",
+    "ICare247.Application.Tests", "ICare247_UI (Blazor WASM host)",
+    "ICare247.UI.Shared (RCL)", "ICare247.UI.DynamicForms (RCL)",
+    "ConfigStudio.WPF.UI + 6 Prism modules"
+  ],
+  "documentCount": 185,
+  "trackedFileCount": 1253,
+  "codeSummary": {
+    "csFiles": 699,
+    "markdownFiles": 182,
+    "sqlFiles": 115,
+    "razorFiles": 59,
+    "xamlFiles": 41,
+    "cssFiles": 39,
+    "csprojFiles": 20,
+    "note": "Đếm qua `git ls-files`, loại trừ bin/obj/.vs/node_modules/.git và src/frontend/source_can_update bị gitignore (tham chiếu vendor cũ 1.3GB, 0 file được track)."
+  },
+  "excludedFromAudit": [
+    "src/frontend/source_can_update (tham chiếu vendor cũ bị gitignore — theo memory dự án, chỉ dùng để tham khảo spec, chưa từng port vào project)",
+    ".gitnexus, .repowise, .local-tools, .codex (hạ tầng công cụ AI / venv, không phải source của project)",
+    "bin/, obj/, .vs/ (artifact build)"
+  ],
+  "overallHealth": {
+    "rating": "Trung bình khá — kỷ luật kiến trúc vững, còn vài lỗ hổng tập trung nhưng có thể khắc phục",
+    "summary": "Phân lớp Clean Architecture được tuân thủ nghiêm túc (không có EF Core, không phụ thuộc vòng, các engine tách bạch rõ ràng). Quản trị tài liệu ở mức trưởng thành hiếm thấy (TASKS.md từng tự sửa một sự cố lỗi thời trước đó và hiện là nguồn đáng tin cậy cho trạng thái phát triển). Rủi ro thật sự nằm ở 3 điểm tập trung: (1) cặp lỗ hổng stored-XSS + IDOR trong Blazor/API lộ ra đường tấn công khai thác được thật sự, (2) đường xử lý request của Validation/Event engine bỏ qua hoàn toàn lớp cache dù hạ tầng cache đã có sẵn, và (3) gần như không có test coverage tự động ngoài 4 engine lõi (0% coverage cho CQRS handler, repository, RBAC, và không có project test nào cho frontend/WPF)."
+  }
+}

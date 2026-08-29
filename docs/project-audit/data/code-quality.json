@@ -1,0 +1,31 @@
+{
+  "todoFixmeSweep": [
+    { "file": "src/backend/src/ICare247.Api/Program.cs", "line": 164, "marker": "TODO(scale-out)", "snippet": "chuyển keyring sang Redis", "status": "còn mở, giới hạn chỉ chạy 1 instance" },
+    { "file": "src/backend/src/ICare247.Api/Program.cs", "line": 214, "marker": "TODO(prod)", "snippet": "sau reverse proxy, partition theo IP thật cần UseForwardedHeaders", "status": "còn mở, hạng mục cần siết chặt khi lên production" },
+    { "file": "src/backend/src/ICare247.Application/Features/Auth/ResetPassword/ResetPasswordCommandHandler.cs", "line": 13, "marker": "TODO(phase-email)", "snippet": "verify token trong kho, băm mật khẩu mới...", "status": "còn mở, xem TASK-005" },
+    { "file": "src/backend/src/ICare247.Application/Features/Auth/ForgotPassword/ForgotPasswordCommandHandler.cs", "line": 13, "marker": "TODO(phase-email)", "snippet": "tích hợp service gửi mail + token reset", "status": "còn mở, xem TASK-005" },
+    { "file": "src/frontend/ConfigStudio.WPF.UI.Modules.Grammar/Services/AstValidator.cs", "line": 116, "marker": "TODO(phase2)", "snippet": "Type inference đầy đủ... infer từ Gram_Function.Return_Net_Type", "status": "còn mở, cố ý hoãn theo thiết kế" },
+    { "file": "src/frontend/ConfigStudio.WPF.UI.Modules.Forms/ViewModels/FormManagerViewModel.cs", "line": 394, "marker": "TODO", "snippet": "Mở preview form... (phase 2)", "status": "còn mở, cố ý hoãn theo thiết kế" },
+    { "file": "src/frontend/ICare247.UI.DynamicForms/Components/FieldRenderers/NumericBoxRenderer.razor", "line": 71, "marker": "TODO", "snippet": "mặc định theo system config khi CC-config-number-format hoàn thiện", "status": "còn mở, chờ tính năng cấu hình trong tương lai" }
+  ],
+  "notImplementedExceptionCount": 0,
+  "notImplementedExceptionNote": "0 lần xuất hiện trong phạm vi audit. Toàn bộ 13 lần xuất hiện trên cả repo đều nằm trong src/frontend/source_can_update (code tham khảo cũ, gitignore, đã loại khỏi phạm vi tường minh).",
+  "placeholderDeadLogicFindings": [
+    { "file": "src/backend/src/ICare247.Application/Features/Auth/ForgotPasswordCommandHandler.cs", "description": "Tự ghi nhãn STUB ngay trong header file — xem TASK-005/SEC-007" }
+  ],
+  "interfaceImplementationCheck": {
+    "totalInterfacesChecked": 64,
+    "scope": "ICare247.Application + ICare247.Domain",
+    "result": "Toàn bộ 64 interface đều có implementation cụ thể được đăng ký qua DI — không phát hiện interface mồ côi nào."
+  },
+  "unwiredDbTablesAnalysis": {
+    "totalTablesNoDirectCSharpReference": 78,
+    "totalTables": 134,
+    "buckets": [
+      { "bucket": "Cf_* (vertical thu mua nông sản, spec 29)", "count": 35, "verdict": "chưa bắt đầu theo chủ đích — chỉ có schema theo memory dự án, chưa có kế hoạch port sang backend" },
+      { "bucket": "Bảng NS_/DM_ nhân sự", "count": 30, "verdict": "không phải khoảng trống — chỉ được dùng qua metadata engine tổng quát (Sys_Table/Sys_Column + MasterDataRepository), theo chủ đích (mẫu ADR-024/025)" },
+      { "bucket": "Scaffolding thật sự chưa được nối (Sys_Menu, Sys_MenuCatalog, Sys_Role, Sys_Permission, Sys_Version, Sys_Cache_Invalidation, Sys_Perf_Log, Sys_Tenant)", "count": 8, "verdict": "hỗn hợp — Sys_Menu/MenuCatalog và Sys_Role/Permission đã được theo dõi/có chủ đích (xem TASK-006, TASK-010); Sys_Version/Sys_Cache_Invalidation/Sys_Perf_Log/Sys_Tenant không tìm thấy theo dõi nào (xem TASK-007, trạng thái CHƯA RÕ)" }
+    ]
+  },
+  "featureFlagsFound": "Không có — không có IFeatureManager hay section config Features: ở bất kỳ đâu; dự án dùng hành vi engine điều khiển bằng config thay vì cờ bật/tắt, nên không có rủi ro nhánh chết kiểu này."
+}

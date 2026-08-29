@@ -1,0 +1,141 @@
+{
+  "summary": { "confirmedHigh": 2, "confirmedMedium": 4, "confirmedLow": 1, "potentialMedium": 2, "reviewedNoIssue": 6 },
+  "findings": [
+    {
+      "id": "PERF-001",
+      "category": "performance",
+      "title": "Đường xử lý request của Validation/Event Engine bỏ qua hoàn toàn caching — cache key đã định nghĩa nhưng chưa từng được nối vào",
+      "severity": "high",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Validation & Event Engine",
+      "description": "ValidationEngine.ValidateFieldAsync và ValidateFormAsync gọi thẳng vào các repository join nhiều bảng chưa được cache (fields, rules, dependencies) mỗi lần field blur/validate form. EventEngine.HandleEventAsync cũng làm y như vậy mỗi khi có event FIELD_CHANGED/OnBlur/OnLoad. CacheKeys.FieldList và CacheKeys.RuleList đã được định nghĩa trong registry cache-key trung tâm nhưng chưa từng được tham chiếu ở bất kỳ đâu trong codebase — cơ chế cache đã được thiết kế sẵn cho đường này nhưng chưa thực sự được nối vào.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Engines/ValidationEngine.cs", "line": 61, "description": "GetByFormIdAsync / GetByFieldAsync được gọi trực tiếp, không qua lớp cache" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/EventRepository.cs", "line": 26, "description": "Bị gọi mỗi khi có event FIELD_CHANGED/OnBlur/OnLoad, chưa cache" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Constants/CacheKeys.cs", "line": 21, "description": "Key FieldList/RuleList đã định nghĩa nhưng 0 tham chiếu ở bất kỳ đâu trong codebase" }
+      ],
+      "impact": "Mỗi field mà user tab qua trên một form sẽ kích hoạt 2-4 truy vấn DB metadata multi-join chưa cache. Với form có nhiều field, đây là một chuỗi liên tục các round-trip database có thể tránh được, xảy ra ngay trong thao tác tương tác bình thường chứ không chỉ khi tải cao.",
+      "recommendation": "Nối FieldRepository/RuleRepository/EventRepository/DependencyRepository qua ICacheService dùng CacheKeys.FieldList/RuleList đã có sẵn — hạ tầng đã tồn tại, chỉ cần đấu nối. Đây là fix giá trị cao nhất/effort thấp nhất tìm được trong audit này.",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-002",
+      "category": "performance",
+      "title": "ViewRepository resolve lại metadata FK-join và schema mỗi lần có request dữ liệu lưới (grid)",
+      "severity": "high",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / View/Grid Engine",
+      "description": "GetDataAsync/GetAllDataAsync (qua BuildQueryContextAsync) chạy tra cứu Sys_Table, resolve Ui_View_Column/Ui_Field_Lookup, và kiểm tra tồn tại sys.columns (cho Scope_By_Company) ở mỗi lần load trang lưới, tìm kiếm, hoặc export — không cái nào nằm sau lớp cache, dù bản thân ViewMetadata bao quanh đã được cache qua ConfigCache.GetViewAsync.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/ViewRepository.cs", "line": 314, "description": "BuildQueryContextAsync chạy nhiều truy vấn Config-DB chưa cache mỗi request" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/ViewRepository.cs", "line": 407, "description": "Kiểm tra tồn tại sys.columns ở mỗi request khi Scope_By_Company" }
+      ],
+      "impact": "Mỗi lần load lưới phải trả thêm 3-5 round-trip Config-DB trước khi truy vấn dữ liệu thật sự chạy.",
+      "recommendation": "Cache việc resolve FK-join và kiểm tra schema-metadata cùng với entry cache ViewMetadata đã có (cùng phạm vi key/version).",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-003",
+      "category": "performance",
+      "title": "Sys_Context_Param không có entry cache; resolve ActiveScope là N+1",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Tham số ngữ cảnh (Context Params)",
+      "description": "ContextParamRepository.GetActiveAsync luôn gọi thẳng Config DB (không có entry CacheKeys nào cho nó, khác với mọi bảng config còn lại). Nó được gọi ở mỗi lần load lưới theo phạm vi công ty (company-scoped), mỗi lần bind import FK-lookup, và mỗi truy vấn dynamic-lookup. Bên trong vòng lặp của ResolveAsync, mỗi token ActiveScope khớp lại kích hoạt riêng một ExecuteScalarAsync chạy Validate_Sql.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/ContextParamRepository.cs", "line": 20, "description": "Không có entry cache, gọi DB mỗi lần" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/MultiTenancy/ContextParamResolver.cs", "line": 47, "description": "Vòng lặp foreach phát một ExecuteScalarAsync cho mỗi token ActiveScope" }
+      ],
+      "impact": "Hiện tại bị chặn ở mức 1-2 param (phạm vi công ty), nhưng tăng tuyến tính khi có thêm token ActiveScope được đăng ký — phạm vi phòng ban vừa được thêm ở db/092-094, nên tình trạng này sẽ nặng hơn.",
+      "recommendation": "Thêm một entry CacheKeys cho Sys_Context_Param và gộp batch các truy vấn validate ActiveScope thay vì lặp từng cái.",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-004",
+      "category": "performance",
+      "title": "Pattern N+1 khi kiểm tra tồn tại cột unique lúc lưu",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Lưu MasterData",
+      "description": "SaveMasterDataCommandHandler lặp qua từng cột IsUnique và gọi ExistsValueAsync riêng lẻ, mỗi lần mở một connection riêng và phát một SELECT COUNT(*) cho mỗi cột unique thay vì gộp thành một lần kiểm tra tồn tại duy nhất.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Features/MasterData/Commands/SaveMasterData/SaveMasterDataCommandHandler.cs", "line": 91, "description": "foreach qua các cột unique, một truy vấn cho mỗi cột" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/MasterDataRepository.cs", "line": 136, "description": "ExistsValueAsync, mỗi lần một round-trip" }
+      ],
+      "impact": "Bị chặn bởi số lượng cột unique mỗi form (thường nhỏ), nhưng vẫn là N round-trip riêng lẻ cho mỗi lần Insert/Update thay vì một.",
+      "recommendation": "Gộp các kiểm tra tồn tại thành một truy vấn duy nhất (ví dụ: một SELECT cho mỗi cột kết hợp qua UNION, hoặc một truy vấn dùng điều kiện OR với cờ kết quả riêng cho từng cột).",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-005",
+      "category": "performance",
+      "title": "Chưa cấu hình nén response (response compression)",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / API",
+      "description": "Program.cs không có AddResponseCompression/UseResponseCompression ở bất kỳ đâu trong pipeline DI/middleware. Mọi payload JSON của API (dữ liệu lưới, metadata form, dữ liệu view) đều được gửi không nén.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Api/Program.cs", "line": 1, "description": "Không có middleware response-compression nào được đăng ký ở bất kỳ đâu trong file" }
+      ],
+      "impact": "Payload JSON của lưới/form truyền đi không nén qua đường mạng, ảnh hưởng đặc biệt rõ với các lưới 'load hết dữ liệu về client' vốn cố ý có kích thước lớn.",
+      "recommendation": "Thêm AddResponseCompression với provider Brotli/Gzip — một cải thiện rẻ, tác động rộng.",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-006",
+      "category": "performance",
+      "title": "Cache compiled-expression của AstEngine là một ConcurrentDictionary không giới hạn",
+      "severity": "low",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / AST Engine",
+      "description": "Cache compiled-delegate cho biểu thức AST không có chính sách eviction (loại bỏ entry cũ).",
+      "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Application/Engines/AstEngine.cs", "line": 27, "description": "ConcurrentDictionary không bao giờ bị evict" }],
+      "impact": "Rủi ro thực tế hiện tại thấp vì biểu thức đến từ một tập hữu hạn các dòng Val_Rule/Evt_Definition do admin cấu hình.",
+      "recommendation": "Không cần hành động trừ khi nguồn biểu thức trở nên động hơn; ghi chú để lưu ý về sau.",
+      "relatedItems": []
+    },
+    {
+      "id": "PERF-007",
+      "category": "performance",
+      "title": "sp_SinhMa giữ UPDLOCK/HOLDLOCK trên một hàm aggregate non-sargable — tiềm ẩn tranh chấp lock khi sinh mã đồng thời",
+      "severity": "medium",
+      "confidence": "uncertain",
+      "status": "open",
+      "module": "Database / Sinh mã (Code Generation)",
+      "description": "Proc sinh mã chạy MAX(TRY_CONVERT(BIGINT, SUBSTRING(col,...))) dưới UPDLOCK, HOLDLOCK cho toàn bộ transaction — hàm aggregate bọc trong function này là non-sargable, nên SQL Server phải scan và lock mọi row khớp prefix mã cho tới khi commit. Điều này đã được ghi rõ ngay trong header của proc như một đánh đổi (tradeoff) có chủ đích để đảm bảo tính đúng đắn.",
+      "evidence": [{ "type": "CODE", "file": "db/procs/sp_SinhMa.sql", "line": 133, "description": "MAX(TRY_CONVERT(...)) dưới UPDLOCK, HOLDLOCK" }],
+      "impact": "Chỉ là rủi ro hiệu năng tiềm ẩn — serialize hoá các insert đồng thời có cùng phạm vi code-prefix (cùng bảng/công ty/năm). Mức độ tranh chấp thực tế phụ thuộc khối lượng dữ liệu và execution plan, chưa được xác minh bằng execution plan thật trong audit này.",
+      "recommendation": "Theo dõi trong kịch bản bulk-import nhiều luồng đồng thời; cân nhắc dùng sequence hoặc bảng counter theo từng scope nếu quan sát thấy tranh chấp trong thực tế.",
+      "relatedItems": ["DB-005"]
+    },
+    {
+      "id": "PERF-008",
+      "category": "performance",
+      "title": "ImportEngine tải toàn bộ cột khoá của bảng đích vào memory không giới hạn",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Import Engine",
+      "description": "LoadExistingKeysAsync chạy SELECT {keycols} FROM {schema}.{table} không có mệnh đề WHERE và không giới hạn số dòng, khác với đường export ở nơi khác đã cố ý giới hạn (MaxExportRows = 200,000).",
+      "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Import/ImportEngine.cs", "line": 349, "description": "Không có mệnh đề WHERE, không giới hạn số dòng tải vào một Dictionary trong process" }],
+      "impact": "Ổn với bảng lookup/master nhỏ; là rủi ro thật về memory/scan nếu đích import từng là một bảng transactional lớn.",
+      "recommendation": "Thêm guard giới hạn số dòng hoặc chiến lược tra cứu key hiện có theo trang/có giới hạn, nhất quán với mức giới hạn của đường export.",
+      "relatedItems": []
+    }
+  ],
+  "reviewedNoIssue": [
+    "Không tìm thấy .Result/.Wait()/.GetAwaiter().GetResult() ở bất kỳ đâu trong backend — async/await sạch xuyên suốt",
+    "MetadataEngine/ConfigCache/DynamicLookupRepository là các implementation cache-aside được thiết kế tốt, có stampede-lock và negative caching",
+    "Không có mapping dựa trên reflection (AutoMapper) ở bất kỳ đâu; AstCompiler compile một lần và tái sử dụng delegate",
+    "ImportEngine.BuildPlanAsync batch-load đúng cách map mã FK và key hiện có bên ngoài vòng lặp dòng, tránh được N+1 dù xử lý nhiều dòng",
+    "Không tìm thấy SELECT * ở bất kỳ đâu trong db/**",
+    "Frontend: validation chạy lúc blur (không phải oninput), không có API call theo từng dòng trong lưới, không có cache tĩnh phía client không giới hạn, IDisposable được cài đặt đúng ở mọi component có đăng ký event đã kiểm tra",
+    "Pattern 'lưới View load hết dữ liệu về client' đã xác nhận là quyết định kiến trúc có chủ đích, không bị gắn cờ là bug (theo quy ước dự án)"
+  ]
+}

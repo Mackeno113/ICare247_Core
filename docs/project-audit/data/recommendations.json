@@ -1,0 +1,46 @@
+{
+  "priorities": {
+    "P0": [
+      { "id": "REC-001", "title": "Fix lỗi stored XSS trong dialog xoá node Menu Builder", "relatedItems": ["SEC-001"], "complexity": "S" },
+      { "id": "REC-002", "title": "Thêm kiểm tra authorization cấp đối tượng cho endpoint attachment (IDOR)", "relatedItems": ["SEC-002"], "complexity": "M" }
+    ],
+    "P1": [
+      { "id": "REC-003", "title": "Nối repository của Validation/Event Engine qua hạ tầng cache CacheKeys.FieldList/RuleList đã có sẵn (đã định nghĩa từ trước)", "relatedItems": ["PERF-001"], "complexity": "M" },
+      { "id": "REC-004", "title": "Cache việc resolve FK-join/schema-metadata của ViewRepository cùng với cache ViewMetadata đã có", "relatedItems": ["PERF-002"], "complexity": "M" },
+      { "id": "REC-005", "title": "Thêm guard fail-fast cho production với Catalog:EncryptionKey, theo đúng mẫu Jwt:SecretKey đã có", "relatedItems": ["SEC-003"], "complexity": "S" },
+      { "id": "REC-006", "title": "Thêm khả năng che/loại trừ theo từng cột cho audit-diff", "relatedItems": ["SEC-004"], "complexity": "M" },
+      { "id": "REC-007", "title": "Ghi rõ trạng thái STUB của forgot/reset-password vào TASKS.md và cân nhắc hiển thị thông báo bảo trì trên UI", "relatedItems": ["TASK-005", "SEC-007"], "complexity": "S" },
+      { "id": "REC-008", "title": "Thêm test coverage cho HierarchyGuard (tree-integrity) và PermissionService (RBAC) — 2 vùng rủi ro cao nhất chưa có test", "relatedItems": ["TEST-002"], "complexity": "M" }
+    ],
+    "P2": [
+      { "id": "REC-009", "title": "Sinh lại docs/spec/06_SOLUTION_STRUCTURE.md và cập nhật banner trạng thái đã lỗi thời của docs/spec/11_DATA_DB_SCHEMA.md", "relatedItems": ["DOC-003", "DOC-004"], "complexity": "S" },
+      { "id": "REC-010", "title": "Thêm entry CacheKeys + resolve theo batch cho Sys_Context_Param / ActiveScope", "relatedItems": ["PERF-003"], "complexity": "S" },
+      { "id": "REC-011", "title": "Áp dụng guard whitelist SqlIdentifier nhất quán cho các đoạn SQL động còn lại lấy nguồn từ config", "relatedItems": ["SEC-005", "ARCH-004", "DEBT-011"], "complexity": "S" },
+      { "id": "REC-012", "title": "Áp dụng nhất quán guard SqlIdentifier cho các đoạn SQL động còn lại lấy nguồn từ config", "relatedItems": ["SEC-005"], "complexity": "S" },
+      { "id": "REC-013", "title": "Thêm middleware nén response (response compression)", "relatedItems": ["PERF-005"], "complexity": "S" },
+      { "id": "REC-014", "title": "Xoá code chết tầng data của tab permission WPF (FormPermissionRecord/RoleLookupRecord/FormPermissionRow và các method không dùng)", "relatedItems": ["ARCH-012", "DEBT-003"], "complexity": "S" },
+      { "id": "REC-015", "title": "Chốt câu hỏi chính sách override selector component --dxbl-* mà codebase đã tự đánh dấu (finding P3 của DESIGN_AUDIT.md)", "relatedItems": ["ARCH-006", "DEBT-007"], "complexity": "S — quyết định, không phải code" },
+      { "id": "REC-016", "title": "Hợp nhất palette màu cục bộ của FieldConfigView/FormEditorView (WPF) vào DesignTokens.xaml", "relatedItems": ["ARCH-010", "DEBT-008"], "complexity": "S" },
+      { "id": "REC-017", "title": "Thêm test coverage dạng integration/WebApplicationFactory cho auth, resolution tenant, và 1 vòng CRUD", "relatedItems": ["TEST-003"], "complexity": "M" },
+      { "id": "REC-018", "title": "Thêm guard kỹ thuật (RAISERROR) cho file schema Cf_* cũ db/015 để tránh chạy nhầm", "relatedItems": ["DB-002"], "complexity": "S" },
+      { "id": "REC-019", "title": "Hỏi rõ chủ dự án liệu Sys_Version/Sys_Cache_Invalidation/Sys_Perf_Log/Sys_Tenant là dự trữ cho tương lai hay schema chết", "relatedItems": ["TASK-007"], "complexity": "S — câu hỏi, không phải code" },
+      { "id": "REC-020", "title": "Lưu trữ/khai tử AI_PROJECT_BRIEF.md và AI_TASKS.yaml, viết lại README.md", "relatedItems": ["DOC-001", "DOC-002", "DOC-006"], "complexity": "S" }
+    ],
+    "P3": [
+      { "id": "REC-021", "title": "Tách FormEditorViewModel.cs (WPF) thành các class nhỏ hơn phối hợp với nhau", "relatedItems": ["ARCH-013", "DEBT-001"], "complexity": "L" },
+      { "id": "REC-022", "title": "Chuyển control nhập liệu SettingsView/DocTemplateEditorView (WPF) sang editor DevExpress", "relatedItems": ["ARCH-011", "DEBT-009"], "complexity": "M" },
+      { "id": "REC-023", "title": "Dọn thư mục rỗng mồ côi và method chết trong FieldRenderer.razor", "relatedItems": ["ARCH-007", "ARCH-008"], "complexity": "S" },
+      { "id": "REC-024", "title": "Bọc nốt 39 chuỗi tiếng Việt hardcode còn lại theo i18n-report.md đã có", "relatedItems": ["DEBT-010"], "complexity": "S" },
+      { "id": "REC-025", "title": "Chạy 1 đợt audit riêng về sức khoẻ dependency/package (`dotnet list package --vulnerable --outdated`)", "relatedItems": [], "complexity": "S" },
+      { "id": "REC-026", "title": "Thêm project test bUnit cho Blazor và cân nhắc unit test ViewModel cho các WPF ViewModel lớn nhất", "relatedItems": ["TEST-001"], "complexity": "L" }
+    ]
+  },
+  "roadmap": [
+    { "phase": "Phase 0 — Immediate risk", "items": ["REC-001", "REC-002"], "affectedModules": ["Blazor Admin", "Backend Attachments API"], "expectedResult": "Đóng 2 đường tấn công bảo mật khai thác được tìm thấy trong audit này trước khi làm thêm tính năng mới." },
+    { "phase": "Phase 1 — Stabilize", "items": ["REC-003", "REC-004", "REC-005", "REC-006", "REC-007", "REC-008"], "affectedModules": ["Validation/Event Engine", "View Engine", "Multi-tenancy", "Audit Logging", "Auth", "Test Suite"], "expectedResult": "Đóng 2 lỗ hổng hiệu năng có tác động lớn nhất (cả 2 đều fix được bằng hạ tầng đã có sẵn), siết chặt lỗ hổng xử lý secret ở production, và bắt đầu đóng các điểm mù lớn nhất về test coverage." },
+    { "phase": "Phase 2 — Architecture cleanup", "items": ["REC-009", "REC-014", "REC-015", "REC-016", "REC-018", "REC-019", "REC-020"], "affectedModules": ["Documentation", "ConfigStudio WPF", "Database migrations"], "expectedResult": "Đưa 2 tài liệu spec đáng tin cậy nhất trở lại khớp với thực tế, dọn code WPF chết/rủi ro, chốt quyết định override theme mà codebase đã tự đánh dấu, và khai tử các tài liệu hướng dẫn AI đã lỗi thời." },
+    { "phase": "Phase 3 — Security & performance hardening", "items": ["REC-010", "REC-011", "REC-012", "REC-013"], "affectedModules": ["Backend Infrastructure"], "expectedResult": "Hoàn thiện nốt các lỗ hổng nhất quán về caching/SQL-guard còn lại và thêm response compression." },
+    { "phase": "Phase 4 — Test coverage", "items": ["REC-017", "REC-026"], "affectedModules": ["Backend", "Blazor", "WPF"], "expectedResult": "Dựng lưới integration test cho API và project test tự động đầu tiên cho cả 2 frontend, hiện đang chưa có project test nào." },
+    { "phase": "Phase 5 — Documentation normalization", "items": [], "affectedModules": ["docs/"], "expectedResult": "Áp dụng đề xuất tổ chức lại tài liệu (xem AUDIT_SUMMARY.md §6) khi các công việc ổn định hoá ở trên đã được triển khai." }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "summary": {
+    "testProjects": 1,
+    "testProjectPath": "src/backend/tests/ICare247.Application.Tests",
+    "totalTestMethods": 175,
+    "frontendTestProject": null,
+    "wpfTestProject": null,
+    "skippedTests": 0,
+    "integrationTests": 0
+  },
+  "testInventory": [
+    { "file": "Common/Sql/SqlClauseTests.cs", "count": 10 },
+    { "file": "Common/Sql/SqlIdentifierTests.cs", "count": 10 },
+    { "file": "Common/Sql/SqlPagingTests.cs", "count": 7 },
+    { "file": "Engines/AstCompilerTests.cs", "count": 31 },
+    { "file": "Engines/AstEngineTests.cs", "count": 9 },
+    { "file": "Engines/AstParserTests.cs", "count": 17 },
+    { "file": "Engines/BuiltinFunctionsTests.cs", "count": 45 },
+    { "file": "Engines/EventActionParamTests.cs", "count": 11 },
+    { "file": "Engines/EventEngineTests.cs", "count": 9 },
+    { "file": "Engines/ValidationEngineTests.cs", "count": 20 },
+    { "file": "MultiTenancy/TenantContextTests.cs", "count": 6 }
+  ],
+  "coverageByModule": [
+    { "module": "AST/Grammar Engine", "status": "TESTED", "evidence": "AstParserTests, AstCompilerTests, AstEngineTests, BuiltinFunctionsTests — có xử lý tường minh null/chia-cho-0" },
+    { "module": "Validation Engine", "status": "TESTED", "evidence": "ValidationEngineTests — rule Required/Custom/Length/Compare, gating theo điều kiện, severity, sắp xếp tô-pô theo dependency kể cả trường hợp cycle" },
+    { "module": "Event Engine", "status": "TESTED", "evidence": "EventEngineTests — header ghi rõ đây là 'characterization test để khoá hành vi dispatch hiện tại trước khi refactor sang Strategy theo kế hoạch (AUDIT-5)'" },
+    { "module": "Metadata Engine", "status": "NOT_TESTED", "evidence": "Không có file test nào tham chiếu Sys_Table/Sys_Column/Sys_Relation/Sys_Version/cache-invalidation" },
+    { "module": "RBAC / Authorization", "status": "NOT_TESTED", "evidence": "RequirePermissionAttribute, PermissionService, AdminPermissionController có 0% coverage (các class này nằm ở ICare247.Api, dự án không có project test)" },
+    { "module": "CQRS command/query handlers", "status": "NOT_TESTED", "evidence": "Tìm thấy 51 file *Handler.cs; không file nào được test nào tham chiếu" },
+    { "module": "Dapper repositories", "status": "NOT_TESTED", "evidence": "Tìm thấy 53 file *Repository.cs; project test chỉ có stub repo viết tay implement cùng interface phục vụ unit test cho engine — các implementation Dapper thật chưa được test" },
+    { "module": "Config Sync engine", "status": "NOT_TESTED", "evidence": "ConfigSyncService.cs, SyncConfigCommand.cs không có file test nào tham chiếu" },
+    { "module": "Tree-integrity guard (anti-cycle/self-parent)", "status": "NOT_TESTED", "evidence": "HierarchyGuard.cs / IHierarchyGuard không có file test tương ứng, dù đây là bất biến được quản trị chặt theo memory dự án" },
+    { "module": "Doc-template export (Word/PDF)", "status": "NOT_TESTED", "evidence": "DocTemplateRenderer.cs, DocTemplateRepository.cs — không có test" },
+    { "module": "i18n", "status": "NOT_TESTED", "evidence": "Không có test backend nào đụng tới Sys_Resource/i18n; đây chủ yếu là vấn đề frontend, mà frontend cũng không có project test" },
+    { "module": "Multi-tenancy (TenantContext)", "status": "PARTIALLY_TESTED", "evidence": "TenantContextTests — chỉ 6 test, phủ nhánh assign/argument-exception, chưa phủ toàn bộ pipeline resolution (middleware, định tuyến connection)" },
+    { "module": "SQL-safety helpers (SqlClause/SqlIdentifier/SqlPaging)", "status": "TESTED", "evidence": "Tổng 27 test, liên quan trực tiếp tới rule sql-safety.md" }
+  ],
+  "findings": [
+    {
+      "id": "TEST-001",
+      "category": "test-coverage",
+      "title": "Không có project test tự động nào cho frontend Blazor hay WPF ConfigStudio",
+      "severity": "high",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Frontend (Blazor + WPF)",
+      "description": "Không có tham chiếu bUnit ở bất kỳ đâu, không có file/thư mục tên test nào dưới src/frontend/** (không tính source_can_update). 7 file .csproj module của ConfigStudio.WPF.UI không có project test nào.",
+      "evidence": [{ "type": "TEST", "file": "src/frontend/**", "description": "Xác nhận không tồn tại qua grep bUnit/Bunit và *Test*.csproj" }],
+      "impact": "Toàn bộ UI render form, việc dùng grid/control DevExpress, và toàn bộ công cụ soạn thảo ConfigStudio (module Prism, ViewModel MVVM xử lý chỉnh sửa cấu hình phức tạp) đều không có lớp bảo vệ regression tự động nào.",
+      "recommendation": "Đưa bUnit vào cho các component Blazor rủi ro cao nhất (dispatch của FieldRenderer, áp dụng delta của FormRunner) và cân nhắc unit test cấp ViewModel cho các WPF ViewModel lớn nhất (FormEditorViewModel) vì kích thước/độ phức tạp của chúng (xem ARCH-013).",
+      "relatedItems": ["ARCH-013"]
+    },
+    {
+      "id": "TEST-002",
+      "category": "test-coverage",
+      "title": "0% coverage cho CQRS handler, Dapper repository, RBAC, Config Sync và guard tree-integrity",
+      "severity": "high",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend",
+      "description": "175 test hiện có chỉ chạy qua 4 engine lõi (AST/Validation/Event/SQL-safety helper) dùng stub repo viết tay nối với logic engine thật. Không có test nào chạy qua SQL Dapper thật, 51 handler MediatR, kiểm tra permission, config sync, hay guard tree-integrity/chống-cycle mà memory dự án ghi rõ là bất biến được quản trị chặt.",
+      "evidence": [{ "type": "TEST", "file": "src/backend/tests/ICare247.Application.Tests", "description": "51 file *Handler.cs và 53 file *Repository.cs, không file nào được test nào tham chiếu" }],
+      "impact": "Regression trong logic save/permission/tree-integrity sẽ chỉ lộ ra khi chạy thật, không phải trong CI — đây là vùng rủi ro cao nhất vì nền tảng chạy theo metadata/config, và 1 luồng ghi config sai có thể làm hỏng cấu trúc dữ liệu tenant (VD: cycle trong cây).",
+      "recommendation": "Ưu tiên viết test cho HierarchyGuard (tree-integrity, rủi ro nghiệp vụ cao nhất theo memory dự án) và PermissionService (liên quan bảo mật), sau đó mở rộng ra 1 handler tiêu biểu cho mỗi module.",
+      "relatedItems": ["ARCH-012"]
+    },
+    {
+      "id": "TEST-003",
+      "category": "test-coverage",
+      "title": "100% là unit test, 0 integration/E2E test",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend",
+      "description": "Không có nơi nào dùng WebApplicationFactory; file .http duy nhất chỉ là file scratch REST-client thủ công, không phải artifact test tự động. Không có test nào khởi động API host, gọi endpoint HTTP thật/in-memory, hay chạy qua kết nối SQL Server thật.",
+      "evidence": [{ "type": "TEST", "file": "src/backend/src/ICare247.Api/ICare247.Api.http", "description": "File scratch thủ công, không tự động" }],
+      "impact": "Middleware (auth, resolution tenant, xử lý exception), việc nối controller, và thực thi SQL thật đều hoàn toàn nằm ngoài lưới test tự động.",
+      "recommendation": "Thêm 1 bộ nhỏ integration test dùng WebApplicationFactory phủ luồng auth, resolution tenant, và 1 vòng CRUD tiêu biểu chạy trên instance SQL Server thật/test.",
+      "relatedItems": []
+    },
+    {
+      "id": "TEST-004",
+      "category": "test-coverage",
+      "title": "EventEngineTests được ghi rõ là 'characterization test' chờ refactor sang Strategy theo kế hoạch",
+      "severity": "info",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Event Engine",
+      "description": "Header của file test ghi rõ các test này tồn tại để khoá hành vi dispatch hiện tại trước khi refactor theo kế hoạch (tham chiếu AUDIT-5), không phải là thiết kế test vĩnh viễn.",
+      "evidence": [{ "type": "COMMENT", "file": "src/backend/tests/ICare247.Application.Tests/Engines/EventEngineTests.cs", "description": "Comment ở header tham chiếu refactor theo kế hoạch AUDIT-5" }],
+      "impact": "Hiện chưa ảnh hưởng gì; nêu ra để không quên theo dõi refactor này, và để các test này được xem lại (không chỉ giữ nguyên) khi refactor xảy ra.",
+      "recommendation": "Theo dõi refactor Strategy cho Event Engine (AUDIT-5) trong TASKS.md nếu chưa có.",
+      "relatedItems": []
+    }
+  ],
+  "positiveFindings": [
+    "Không dùng thư viện mocking ở bất kỳ đâu — stub repo viết tay được nối với các class engine production thật (AstParser+AstCompiler+FunctionRegistry+BuiltinFunctions+AstEngine), nghĩa là logic AST/Validation được chạy thật end-to-end chứ không bị mock tới mức vô nghĩa",
+    "Không phát hiện test nào bị skip/disable",
+    "Assertion về exception chỉ kiểm tra kiểu (không assert theo message text dễ vỡ) xuyên suốt",
+    "Không phát hiện GUID hardcode hay state mutable dùng chung giữa các test"
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "timeline": [
+    { "range": "000", "theme": "Config DB khởi tạo — 30 bảng Sys_/Ui_/Val_/Gram_/Evt_ + Sys_Dependency", "keyFiles": ["db/000_create_schema.sql"] },
+    { "range": "001-014", "theme": "Vá + mở rộng engine Ui_/Val_/Evt_ đợt đầu", "keyFiles": ["db/001-014"] },
+    { "range": "015", "theme": "NHÁNH KHÔNG DÙNG — schema Cf_* (đại lý cà phê), giữ tham khảo, sẽ chuẩn hoá thành TM_", "keyFiles": ["db/015_create_cf_data_schema.sql"] },
+    { "range": "017-030", "theme": "Tiếp tục refine Ui_Field/Ui_Form", "keyFiles": ["db/017-030"] },
+    { "range": "031-035", "theme": "View engine (Ui_View/Ui_View_Column/Ui_View_Action) + mở rộng Sys_Relation thành registry tường minh", "keyFiles": ["db/031", "db/034", "db/035"] },
+    { "range": "036-041", "theme": "Nền tảng multi-tenant thật — Catalog DB + Data DB per-tenant + NK_ audit", "keyFiles": ["db/036", "db/037", "db/038", "db/040", "db/041"] },
+    { "range": "042-060", "theme": "Authz/menu động (ADR-023) — HT_ChucNang, Sys_Menu master catalog, CFGSYNC-1", "keyFiles": ["db/042-060"] },
+    { "range": "061-076", "theme": "Guard audit-column tự động, CFGSYNC-2, attachment upload, import Excel (masking, log, hooks)", "keyFiles": ["db/061", "db/063", "db/071-076"] },
+    { "range": "077-083", "theme": "Doc template + ADR-035 drop Tenant_Id (9 bảng Config) + chuẩn hoá TC_PhongBan + HT_VaiTro_CongTy", "keyFiles": ["db/077", "db/078", "db/079", "db/081", "db/082", "db/083"] },
+    { "range": "084-096", "theme": "TVF phân quyền theo cây, tree-order generic (ADR-027), Sys_Ma_Rule (ADR-036), HT_VaiTro_PhongBan, NK_LoiHeThong", "keyFiles": ["db/084-096"] },
+    { "range": "097-106", "theme": "Module NS_ (Nhân sự) — NS_NhanVien + 6 bảng con, tổ chức/vị trí/định biên, Ui_Form_Detail rail workspace", "keyFiles": ["db/097-106"] }
+  ],
+  "dbClassification": [
+    { "group": "Sys_*, Ui_*, Val_*, Gram_*, Evt_*, Doc_*", "database": "Config DB (per-tenant)", "note": "Bảng metadata/engine" },
+    { "group": "dbo.Tenant", "database": "Catalog/Master DB", "note": "Bộ phân giải subdomain → cặp connection string" },
+    { "group": "DM_*, TC_*, HT_*, NS_*, TT_*, NK_*", "database": "Data DB (per-tenant)", "note": "Không có cột Tenant_Id — cả DB đã là 1 tenant riêng" },
+    { "group": "Cf_* (db/015)", "database": "Data DB (chưa từng chạy)", "note": "Schema tham khảo cũ; đã ghi chú trong docs/spec/11 là 'giữ để tham khảo, không chạy'; sẽ được chuẩn hoá thành TM_ sau" }
+  ],
+  "findings": [
+    {
+      "id": "DB-001",
+      "category": "database",
+      "title": "Registry metadata Sys_Relation không có cơ chế kiểm tra nhất quán tự động với FK vật lý",
+      "severity": "medium",
+      "confidence": "likely",
+      "status": "open",
+      "module": "Database / Metadata Registry",
+      "description": "Sys_Relation.Master_Key_Column/Detail_FK_Column lặp lại cấu trúc của các FK vật lý thật trong Data DB (điều này là cần thiết vì Config DB và Data DB là 2 database riêng biệt theo từng tenant, nên không thể tạo FK vật lý xuyên DB). Không có migration hay script nào đối chiếu Sys_Relation với định nghĩa FK thật trong Data DB.",
+      "evidence": [{ "type": "DATABASE", "file": "db/035_extend_sys_relation.sql", "description": "Registry Sys_Relation được mở rộng; không tìm thấy script kiểm tra đi kèm" }],
+      "impact": "Nếu 1 FK vật lý trong Data DB sau này bị đổi tên hoặc xoá mà không cập nhật Sys_Relation tương ứng, kiểm tra soft-delete và metadata UI Master-Detail sẽ âm thầm lỗi thời.",
+      "recommendation": "Thêm script đối chiếu định kỳ/CI so sánh các dòng Sys_Relation với metadata FK thật của Data DB (sys.foreign_keys), theo tinh thần tương tự cơ chế tự-vá đã có ở db/061_ensure_audit_columns.sql.",
+      "relatedItems": []
+    },
+    {
+      "id": "DB-002",
+      "category": "database",
+      "title": "File schema Cf_* cũ không có cơ chế chặn kỹ thuật để tránh chạy nhầm",
+      "severity": "medium",
+      "confidence": "likely",
+      "status": "open",
+      "module": "Database / Migrations",
+      "description": "db/015_create_cf_data_schema.sql tạo ~20+ bảng kế toán/tồn kho được ghi chú là 'chỉ để tham khảo, không chạy' — nhưng bản thân file không có RAISERROR/guard header nào chặn việc thực thi; về cấu trúc nó giống hệt bất kỳ migration có thể chạy nào khác.",
+      "evidence": [{ "type": "DATABASE", "file": "db/015_create_cf_data_schema.sql", "description": "Không có guard chặn thực thi; việc bảo vệ hoàn toàn dựa vào tài liệu bên ngoài (docs/spec/11_DATA_DB_SCHEMA.md §6)" }],
+      "impact": "Nếu bị chạy nhầm, sẽ tạo ra 1 nhánh schema xung đột với quy ước Data DB thật ở db/037 trở đi (kiểu cột audit khác, mô hình tenant khác).",
+      "recommendation": "Thêm guard THROW/RAISERROR tường minh ở đầu file, hoặc chuyển file ra khỏi chuỗi migration đánh số vào 1 thư mục tham khảo được ghi nhãn rõ ràng.",
+      "relatedItems": []
+    },
+    {
+      "id": "DB-003",
+      "category": "database",
+      "title": "Các lệnh drop cột phá huỷ dữ liệu (db/090, db/091) dựa vào kiểm tra thủ công thay vì backup/backfill",
+      "severity": "medium",
+      "confidence": "uncertain",
+      "status": "open",
+      "module": "Database / Migrations",
+      "description": "db/090 drop 1 CHECK constraint cùng 3 cột khỏi Sys_Ma_Rule dựa trên khẳng định (chưa được xác minh tự động) rằng không có proc/view/code C# nào đọc các cột này. db/091 drop HT_NguoiDung.PhongBan_Id khỏi 1 bảng đã có dữ liệu thật (tài khoản bootstrap), cũng dựa trên khẳng định tương tự, không có bước backup/backfill.",
+      "evidence": [
+        { "type": "DATABASE", "file": "db/090_drop_ma_rule_legacy_columns.sql", "description": "Header khẳng định không còn tham chiếu; không có snapshot dữ liệu trước khi DROP" },
+        { "type": "DATABASE", "file": "db/091_drop_ht_nguoidung_phongban_id.sql", "description": "Drop 1 cột khỏi bảng đã có dữ liệu thật, không có bước backfill/backup" }
+      ],
+      "impact": "Xác suất thấp nhưng có rủi ro mất dữ liệu thật nếu khẳng định 'không còn tham chiếu' sai ở 1 trong 2 migration; không thể xác minh độc lập với codebase C# thật từ phần audit chỉ-xét-DB này.",
+      "recommendation": "Với các migration phá huỷ dữ liệu trong tương lai trên bảng đã có dữ liệu thật, nên thêm bước snapshot bảng backup (VD: SELECT INTO 1 bảng archive) trước khi DROP, kể cả khi tin rằng đã kiểm tra tham chiếu đầy đủ.",
+      "relatedItems": []
+    },
+    {
+      "id": "DB-004",
+      "category": "database",
+      "title": "Các bảng Doc_Template* áp dụng quy ước audit của Data DB ngay trong Config DB, không nhất quán với phần còn lại của Config DB",
+      "severity": "low",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Database / Doc Template",
+      "description": "Các bảng Config DB nói chung dùng Is_Active + Created_At/Updated_At (không có hậu tố 'By', không có IsDeleted). Trong khi đó các bảng Doc_Template* lại dùng đầy đủ khối audit kiểu Data-DB theo ADR-022 kể cả IsDeleted, theo 1 comment tường minh trích dẫn 'Spec 11 §0.1'.",
+      "evidence": [{ "type": "DATABASE", "file": "db/077_create_doc_template.sql", "description": "Áp dụng đầy đủ khối audit ADR-022 ngay trong Config DB, khác với db/000/db/031" }],
+      "impact": "Không gây hại, nhưng là 1 điểm không nhất quán ngay trong nội bộ Config DB — đáng để ghi nhận quyết định rõ ràng các bảng Config DB mới nên theo quy ước nào từ nay về sau.",
+      "recommendation": "Ghi rõ trong docs/spec/02_DATABASE_SCHEMA.md liệu khối audit đầy đủ hơn của Doc_Template* có phải là chuẩn mới cho bảng Config DB, hay chỉ là ngoại lệ có chủ đích 1 lần.",
+      "relatedItems": []
+    },
+    {
+      "id": "DB-005",
+      "category": "database",
+      "title": "Logic sinh mã bị chia giữa sp_SinhMa/fn_GhepMa (SQL) và bước dịch Sys_Ma_Rule (C#) — rủi ro 2 nguồn sự thật song song",
+      "severity": "medium",
+      "confidence": "likely",
+      "status": "open",
+      "module": "Database / Code Generation",
+      "description": "sp_SinhMa kỳ vọng các tham số (@TienTo/@HauTo/@DoRongSeq) phải được tầng Application C# tính sẵn từ cấu hình Sys_Ma_Rule — bản thân proc không đọc Sys_Ma_Rule. Điều này tạo ra 1 hợp đồng ngầm phải giữ đồng bộ giữa 2 tầng, mà audit này không xác nhận được có bước schema/validation dùng chung nào.",
+      "evidence": [{ "type": "DATABASE", "file": "db/procs/sp_SinhMa.sql", "description": "Proc nhận tham số đã được tính sẵn; không đọc trực tiếp Sys_Ma_Rule" }],
+      "impact": "Nếu bước dịch định dạng-rule-sang-tham-số ở C# và kỳ vọng của proc lệch nhau theo thời gian (VD: 1 bên đổi rule padding/định dạng mà bên kia không đổi theo), việc sinh mã có thể âm thầm ra mã sai hoặc trùng lặp.",
+      "recommendation": "Thêm 1 contract test (trong project test backend) đưa 1 tập cấu hình Sys_Ma_Rule tiêu biểu qua bước dịch C# rồi assert tham số kết quả khớp với kỳ vọng đã ghi của sp_SinhMa.",
+      "relatedItems": ["PERF-007", "TEST-002"]
+    },
+    {
+      "id": "DB-006",
+      "category": "database",
+      "title": "Tiền tố bảng TM_/GD_ đã được dự trữ trong guard audit-column nhưng chưa dùng",
+      "severity": "info",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Database / Naming Convention",
+      "description": "db/061_ensure_audit_columns.sql whitelist sẵn tiền tố TM_ và GD_ cho cơ chế tự-vá audit-column, nhưng chưa có bảng nào dùng 1 trong 2 tiền tố này ở toàn bộ 113 file migration.",
+      "evidence": [{ "type": "DATABASE", "file": "db/061_ensure_audit_columns.sql", "description": "Whitelist tiền tố có TM_,GD_ nhưng chưa có bảng tương ứng" }],
+      "impact": "Hiện chưa ảnh hưởng gì — chỉ mang tính thông tin, có thể được dự trữ cho việc chuẩn hoá Cf_*-sang-TM_ được nhắc tới trong docs/spec/11.",
+      "recommendation": "Không cần hành động; ghi chú cho việc lập kế hoạch module trong tương lai.",
+      "relatedItems": []
+    }
+  ],
+  "positiveFindings": [
+    "db/078_drop_tenant_id.sql (ADR-035) được bảo vệ rất kỹ: tự kiểm tra COUNT(DISTINCT Tenant_Id) <= 1 trước khi thực hiện, kiểm tra khoá trùng, bọc toàn bộ trong TRY/CATCH + TRANSACTION + ROLLBACK",
+    "Quy ước audit-column/soft-delete ADR-022 được tuân thủ nhất quán trong Data DB từ db/037 trở đi, kèm 1 script guard tự-vá (db/061) có ghi rõ whitelist loại trừ cho các bảng cố ý tối giản",
+    "Các bảng audit-log NK_ cố ý không có cột audit/soft-delete riêng (thiết kế log kiểu append-only, đã ghi chú rõ)",
+    "Data DB dùng ràng buộc FK vật lý nhất quán, kể cả xử lý self-reference và chu trình thứ tự FK",
+    "Đối chiếu tài liệu-với-database không phát hiện lệch thật nào ở 2 điểm quan trọng nhất về an toàn đã kiểm tra (drop Sys_Tenant, việc không chạy Cf_*) — cả 2 đều khớp chính xác với lịch sử migration thật",
+    "Quy ước đặt tên (Sys_/Ui_/Val_/Gram_/Evt_/Doc_ = Config DB; DM_/TC_/HT_/NS_/TT_/NK_ = Data DB) nhất quán xuyên suốt toàn bộ 113 migration"
+  ]
+}

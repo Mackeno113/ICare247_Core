@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>ICare247_Core — Dashboard Audit Kỹ thuật</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0f1420; --panel: #161d2e; --panel2: #1c2438; --border: #2a3450;
+    --text: #e6ebf5; --text-dim: #9aa7c2; --accent: #4f8cff;
+    --crit: #ff4d6d; --high: #ff9f43; --med: #ffd166; --low: #6fcf97; --info: #7aa2f7;
+    --mono: 'Consolas','SFMono-Regular',Menlo,monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  a { color: var(--accent); }
+  .layout { display:flex; min-height:100vh; }
+  nav.side {
+    width: 230px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+    padding: 16px 0; position: sticky; top:0; height:100vh; overflow-y:auto;
+  }
+  nav.side .brand { padding: 0 16px 16px; font-weight:700; font-size:15px; border-bottom:1px solid var(--border); margin-bottom:8px;}
+  nav.side .brand small { display:block; color:var(--text-dim); font-weight:400; font-size:11px; margin-top:2px;}
+  nav.side button {
+    display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:none; border:none;
+    color:var(--text-dim); padding:9px 16px; font-size:13.5px; cursor:pointer; border-left:3px solid transparent;
+  }
+  nav.side button:hover { background:var(--panel2); color:var(--text); }
+  nav.side button.active { color:var(--text); background:var(--panel2); border-left-color:var(--accent); font-weight:600; }
+  nav.side .badge { margin-left:auto; background:var(--border); color:var(--text-dim); border-radius:10px; padding:1px 7px; font-size:11px; }
+  main { flex:1; padding: 28px 36px; max-width:1200px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  h2 { font-size:18px; margin:28px 0 12px; border-bottom:1px solid var(--border); padding-bottom:8px; }
+  h3 { font-size:14.5px; margin:20px 0 8px; color: var(--text-dim); text-transform:uppercase; letter-spacing:.03em;}
+  h4 { font-size:12.5px; margin:0 0 6px; color: var(--text-dim); }
+  .subtitle { color:var(--text-dim); font-size:13.5px; margin-bottom:20px;}
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom: 8px;}
+  .card { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:.15s; }
+  .card:hover { border-color:var(--accent); transform: translateY(-1px); }
+  .card .n { font-size:26px; font-weight:700; }
+  .card .l { font-size:12px; color:var(--text-dim); margin-top:2px; }
+  .card.crit .n{color:var(--crit)} .card.high .n{color:var(--high)} .card.med .n{color:var(--med)} .card.low .n{color:var(--low)}
+  table { width:100%; border-collapse:collapse; font-size:13px; margin: 8px 0 20px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
+  th { color:var(--text-dim); font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; position:sticky; top:0; background:var(--bg);}
+  tr.finding-row { cursor:pointer; }
+  tr.finding-row:hover td { background:var(--panel2); }
+  .pill { display:inline-block; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+  .sev-critical, .sev-high { background:rgba(255,77,109,.15); color:var(--crit); }
+  .sev-high { background:rgba(255,159,67,.15); color:var(--high); }
+  .sev-medium, .sev-low-medium { background:rgba(255,209,102,.15); color:var(--med); }
+  .sev-low, .sev-info, .sev-cosmetic, .sev-very-low { background:rgba(111,207,151,.15); color:var(--low); }
+  .conf-confirmed { color: var(--low); } .conf-likely { color: var(--med);} .conf-uncertain { color:var(--text-dim);}
+  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center; }
+  .toolbar input, .toolbar select {
+    background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:7px 10px; font-size:13px;
+  }
+  .toolbar input { flex:1; min-width:180px; }
+  code, .mono { font-family:var(--mono); font-size:12px; background:var(--panel2); padding:1px 5px; border-radius:4px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:16px 18px; margin-bottom:16px; }
+  .empty { color:var(--text-dim); font-style:italic; padding:12px 0; }
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:50; align-items:flex-start; justify-content:center; padding: 5vh 20px; overflow-y:auto;}
+  .modal-bg.show { display:flex; }
+  .modal { background:var(--panel); border:1px solid var(--border); border-radius:12px; max-width:720px; width:100%; padding:22px 26px; margin-bottom: 5vh;}
+  .modal h3 { margin-top:0; color:var(--text); text-transform:none; letter-spacing:0; font-size:17px;}
+  .modal .close { float:right; cursor:pointer; color:var(--text-dim); font-size:20px; line-height:1;}
+  .modal .field { margin-bottom:12px; }
+  .modal .field .k { font-size:11px; text-transform:uppercase; color:var(--text-dim); margin-bottom:3px; letter-spacing:.03em;}
+  .modal .evidence-item { background:var(--panel2); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; }
+  ul.tight { margin:6px 0; padding-left:20px; }
+  ul.tight li { margin-bottom:4px; font-size:13px;}
+  .kpi-strip { display:flex; gap:10px; flex-wrap:wrap; margin-bottom: 18px;}
+  .kpi { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:8px 14px; font-size:12.5px; color:var(--text-dim);}
+  .kpi b { color:var(--text); font-size:14px; }
+  footer.note { color:var(--text-dim); font-size:11.5px; margin-top: 40px; border-top:1px solid var(--border); padding-top:12px;}
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="side">
+    <div class="brand">ICare247 Core<small>Audit Kỹ thuật — 2026-08-29</small></div>
+    <button data-sec="dashboard" class="active">📊 Tổng quan</button>
+    <button data-sec="overview">🗂️ Thông tin dự án</button>
+    <button data-sec="architecture">🏗️ Kiến trúc</button>
+    <button data-sec="documents">📄 Tài liệu</button>
+    <button data-sec="conflicts">⚠️ Mâu thuẫn tài liệu</button>
+    <button data-sec="work">✅ Trạng thái công việc</button>
+    <button data-sec="security">🔒 Bảo mật</button>
+    <button data-sec="performance">⚡ Hiệu năng</button>
+    <button data-sec="database">🗄️ Database</button>
+    <button data-sec="tests">🧪 Test</button>
+    <button data-sec="debt">🧱 Nợ kỹ thuật</button>
+    <button data-sec="recommendations">🎯 Đề xuất</button>
+    <button data-sec="roadmap">🗺️ Roadmap</button>
+  </nav>
+  <main id="main">
+    <div class="empty">Đang tải dữ liệu audit…</div>
+  </main>
+</div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+
+<script>
+const DATA = {};
+const FILES = ['project','architecture','documents','conflicts','tasks','security','performance','code-quality','tests','dependencies','database','technical-debt','recommendations'];
+
+const SEV_VI = { critical:'Nghiêm trọng', high:'Cao', medium:'Trung bình', 'low-medium':'Thấp-Trung bình', low:'Thấp', info:'Info', cosmetic:'Không đáng kể', 'very low':'Rất thấp' };
+const CONF_VI = { confirmed:'Đã xác nhận', likely:'Khả năng cao', uncertain:'Chưa chắc' };
+const TASK_STATUS_VI = { DONE:'Đã xong', PARTIALLY_DONE:'Làm dở', TODO:'Chưa làm', BLOCKED:'Bị chặn', UNKNOWN:'Chưa rõ', OBSOLETE:'Lỗi thời' };
+const TEST_STATUS_VI = { TESTED:'Đã test', PARTIALLY_TESTED:'Test 1 phần', NOT_TESTED:'Chưa test' };
+
+async function loadAll() {
+  try {
+    await Promise.all(FILES.map(async f => {
+      const res = await fetch('data/' + f + '.json');
+      if (!res.ok) throw new Error(f);
+      DATA[f] = await res.json();
+    }));
+    render('dashboard');
+  } catch (e) {
+    document.getElementById('main').innerHTML =
+      '<div class="panel"><h2 style="border:none;margin-top:0">Không tải được dữ liệu JSON</h2>' +
+      '<p>Trình duyệt chặn <code>fetch()</code> khi mở file trực tiếp bằng <code>file://</code>. ' +
+      'Hãy chạy 1 local server rồi mở qua <code>http://localhost</code> — xem hướng dẫn trong README.md cùng thư mục.</p>' +
+      '<p class="mono">Lỗi: ' + e.message + '</p></div>';
+  }
+}
+
+function sevRank(s){ return {critical:0,high:1,medium:2,'low-medium':2.5,low:3,info:4,cosmetic:4,'very low':4}[s] ?? 9; }
+function sevClass(s){ return String(s||'info').replace(/\s+/g,'-'); }
+function allFindings() {
+  const groups = [
+    ...(DATA.security?.findings||[]),
+    ...(DATA.performance?.findings||[]),
+    ...(DATA.database?.findings||[]),
+    ...(DATA.architecture?.driftFindings||[]).map(d=>({id:d.id, category:'architecture', title: d.component, severity: (d.impact||'low'), confidence:'confirmed', module:'Kiến trúc', description:(d.actual||''), evidence:[], recommendation:d.note||'', status:'open'})),
+    ...(DATA.tests?.findings||[]),
+    ...(DATA.conflicts||[]).map(c=>({...c, category:'documentation'})),
+    ...(DATA['technical-debt']||[])
+  ];
+  return groups.filter(Boolean).sort((a,b)=>sevRank(a.severity)-sevRank(b.severity));
+}
+
+function pill(sev){ const c = sevClass(sev); return `<span class="pill sev-${c}">${SEV_VI[sev]||sev}</span>`; }
+function conf(c){ return `<span class="conf-${c}">${CONF_VI[c]||c||''}</span>`; }
+
+function openModal(f) {
+  const ev = (f.evidence||[]).map(e => `<div class="evidence-item"><b>${e.type||'CODE'}</b> — <code>${e.file||''}${e.line?':'+e.line:''}</code><br>${e.description||''}</div>`).join('') || '<div class="empty">Không có evidence chi tiết</div>';
+  document.getElementById('modalBody').innerHTML = `
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div class="mono" style="color:var(--text-dim)">${f.id||''}</div>
+    <h3>${f.title||f.component||''}</h3>
+    <div class="field"><div class="k">Mức độ / Độ tin cậy</div>${pill(f.severity||'info')} &nbsp; ${conf(f.confidence)}</div>
+    <div class="field"><div class="k">Module</div>${f.module||'-'}</div>
+    <div class="field"><div class="k">Mô tả</div>${f.description||f.summary||''}</div>
+    <div class="field"><div class="k">Bằng chứng</div>${ev}</div>
+    ${f.impact ? `<div class="field"><div class="k">Ảnh hưởng</div>${f.impact}</div>` : ''}
+    ${f.recommendation ? `<div class="field"><div class="k">Đề xuất</div>${f.recommendation}</div>` : ''}
+    ${(f.relatedItems&&f.relatedItems.length) ? `<div class="field"><div class="k">Liên quan</div>${f.relatedItems.join(', ')}</div>` : ''}
+  `;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+document.getElementById('modalBg').addEventListener('click', e => { if (e.target.id==='modalBg') closeModal(); });
+
+function findingsTable(list) {
+  if (!list.length) return '<div class="empty">Không có finding nào.</div>';
+  const rows = list.map(f => `
+    <tr class="finding-row" onclick='openModal(${JSON.stringify(f).replace(/'/g,"&#39;")})'>
+      <td class="mono">${f.id||''}</td>
+      <td>${pill(f.severity||'info')}</td>
+      <td>${conf(f.confidence)}</td>
+      <td>${f.module||'-'}</td>
+      <td>${f.title||f.component||''}</td>
+    </tr>`).join('');
+  return `<table><thead><tr><th>ID</th><th>Mức độ</th><th>Độ tin cậy</th><th>Module</th><th>Tiêu đề</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderDashboard() {
+  const findings = allFindings();
+  const bySev = { critical:0, high:0, medium:0, low:0, info:0 };
+  findings.forEach(f => {
+    const s = f.severity;
+    if (s==='critical') bySev.critical++;
+    else if (s==='high') bySev.high++;
+    else if (s==='medium'||s==='low-medium') bySev.medium++;
+    else bySev.low++;
+  });
+  const proj = DATA.project;
+  const t = DATA.tasks?.summary || {};
+  return `
+    <h1>Tổng quan</h1>
+    <div class="subtitle">${proj.projectName} — audit ${proj.auditDate} @ <code>${proj.commit}</code> (branch ${proj.branch})</div>
+    <div class="panel"><b>Đánh giá tổng thể:</b> ${proj.overallHealth.rating}<br><span style="color:var(--text-dim)">${proj.overallHealth.summary}</span></div>
+    <h3>Finding theo mức độ (toàn bộ audit)</h3>
+    <div class="cards">
+      <div class="card crit" onclick="go('security')"><div class="n">${bySev.critical}</div><div class="l">Nghiêm trọng</div></div>
+      <div class="card high" onclick="go('security')"><div class="n">${bySev.high}</div><div class="l">Cao</div></div>
+      <div class="card med" onclick="go('security')"><div class="n">${bySev.medium}</div><div class="l">Trung bình</div></div>
+      <div class="card low" onclick="go('security')"><div class="n">${bySev.low}</div><div class="l">Thấp / Info</div></div>
+    </div>
+    <h3>Trạng thái công việc</h3>
+    <div class="cards">
+      <div class="card low"><div class="n">${t.done||0}</div><div class="l">Đã xong</div></div>
+      <div class="card med"><div class="n">${t.partiallyDone||0}</div><div class="l">Làm dở</div></div>
+      <div class="card"><div class="n">${t.todo||0}</div><div class="l">Chưa làm</div></div>
+      <div class="card high"><div class="n">${t.blocked||0}</div><div class="l">Bị chặn</div></div>
+      <div class="card"><div class="n">${t.unknown||0}</div><div class="l">Chưa rõ</div></div>
+    </div>
+    <div class="kpi-strip">
+      <div class="kpi"><b>${proj.trackedFileCount}</b> file git-tracked</div>
+      <div class="kpi"><b>${proj.documentCount}</b> file tài liệu</div>
+      <div class="kpi"><b>${DATA.tests.summary.totalTestMethods}</b> test backend, <b>0</b> test frontend/WPF</div>
+      <div class="kpi"><b>${(DATA.conflicts||[]).length}</b> mâu thuẫn tài liệu</div>
+      <div class="kpi"><b>${proj.databases.migrationFiles}</b> migration SQL</div>
+    </div>
+    <h3>Finding nổi bật nhất (nghiêm trọng nhất trước)</h3>
+    ${findingsTable(findings.slice(0,10))}
+    <p><button onclick="go('security')" style="all:unset;cursor:pointer;color:var(--accent)">→ Xem tất cả finding theo từng mục ở sidebar</button></p>
+  `;
+}
+
+function renderOverview() {
+  const p = DATA.project;
+  return `
+    <h1>Thông tin dự án</h1>
+    <div class="panel">
+      <div class="field"><div class="k">Phong cách kiến trúc</div>${p.architectureStyle}</div>
+      <div class="field"><div class="k">Công nghệ</div>${p.technologies.join(', ')}</div>
+      <div class="field"><div class="k">Database</div>${p.databases.topology}</div>
+    </div>
+    <h3>Project (${p.totalProjects})</h3>
+    <ul class="tight">${p.projectList.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <h3>Module chính</h3>
+    <ul class="tight">${p.majorModules.map(x=>`<li>${x}</li>`).join('')}</ul>
+    <h3>Loại trừ khỏi audit</h3>
+    <ul class="tight">${p.excludedFromAudit.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+}
+
+function renderArchitecture() {
+  const a = DATA.architecture;
+  const rows = a.dependencyGraph.map(d => `<tr><td class="mono">${d.project}</td><td class="mono">${d.references.join(', ')||'—'}</td><td>${d.note||''}</td></tr>`).join('');
+  const cc = a.constraintCompliance.map(c => `<tr><td>${c.constraint}</td><td>${pill(c.status.includes('violation')?'medium':'low')} <span class="mono" style="font-size:11px">${c.status}</span></td><td style="font-size:12px;color:var(--text-dim)">${c.evidence}</td></tr>`).join('');
+  const engines = a.engineMap.map(e => `<div class="panel"><b>${e.engine}</b><br><span class="mono" style="font-size:11.5px">${e.interface}</span><br>${e.responsibility}<br><span class="mono" style="font-size:11.5px;color:var(--text-dim)">${e.implementation}</span></div>`).join('');
+  return `
+    <h1>Kiến trúc</h1>
+    <h3>Sơ đồ phụ thuộc project (thật, đọc từ .csproj)</h3>
+    <table><thead><tr><th>Project</th><th>Tham chiếu</th><th>Ghi chú</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3>Tuân thủ hard constraint (BRAIN.md)</h3>
+    <table><thead><tr><th>Constraint</th><th>Trạng thái</th><th>Bằng chứng</th></tr></thead><tbody>${cc}</tbody></table>
+    <h3>4 engine lõi</h3>
+    ${engines}
+    <h3>Finding kiến trúc lệch (drift)</h3>
+    ${findingsTable(a.driftFindings.map(d=>({id:d.id, severity: (d.impact||'low'), confidence:'confirmed', module:'Kiến trúc', title:d.component, description:d.actual, recommendation:d.note})))}
+    <h3>File lớn</h3>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+      <div><h4>Backend</h4><ul class="tight">${a.largeFiles.backend.map(f=>`<li class="mono">${f.lines} — ${f.file}</li>`).join('')}</ul></div>
+      <div><h4>Blazor</h4><ul class="tight">${a.largeFiles.frontendBlazor.map(f=>`<li class="mono">${f.lines} — ${f.file}</li>`).join('')}</ul></div>
+      <div><h4>WPF</h4><ul class="tight">${a.largeFiles.wpf.map(f=>`<li class="mono">${f.lines} — ${f.file}</li>`).join('')}</ul></div>
+    </div>
+  `;
+}
+
+function renderDocuments() {
+  const d = DATA.documents;
+  const rows = d.categories.map(c => `<tr><td>${c.group}</td><td>${c.count!=null?c.count:(c.files?c.files.length:'')}</td><td>${c.status||c.note||''}</td></tr>`).join('');
+  const ssot = d.singleSourceOfTruthMap.map(s => `<tr><td>${s.domain}</td><td class="mono" style="font-size:12px">${s.file||'—'}</td><td>${conf(s.confidence)}</td></tr>`).join('');
+  return `
+    <h1>Kiểm kê Tài liệu</h1>
+    <div class="kpi-strip"><div class="kpi"><b>${d.totalDocumentLikeFiles}</b> tổng số file tài liệu</div></div>
+    <h3>Nhóm tài liệu</h3>
+    <table><thead><tr><th>Nhóm</th><th>Số file</th><th>Trạng thái</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3>Bản đồ Single Source of Truth</h3>
+    <table><thead><tr><th>Domain</th><th>File</th><th>Độ tin cậy</th></tr></thead><tbody>${ssot}</tbody></table>
+  `;
+}
+
+function renderConflicts() {
+  return `<h1>Mâu thuẫn Tài liệu</h1><div class="subtitle">${(DATA.conflicts||[]).length} mâu thuẫn được phát hiện — click 1 dòng để xem chi tiết.</div>
+    ${findingsTable((DATA.conflicts||[]).map(c=>({...c})))}`;
+}
+
+function renderWork() {
+  const t = DATA.tasks;
+  const badge = s => ({DONE:'low',PARTIALLY_DONE:'medium',TODO:'info',BLOCKED:'high',UNKNOWN:'medium',OBSOLETE:'low'}[s]||'info');
+  const rows = t.items.map(i => `
+    <tr class="finding-row" onclick='openModal(${JSON.stringify({id:i.id,title:i.title,severity:badge(i.status),confidence:i.priority,module:i.module,description:i.description,recommendation:i.remainingWork,evidence:(i.evidence||[]).map(e=>({file:e})) }).replace(/\'/g,"&#39;")})'>
+      <td class="mono">${i.id}</td><td><span class="pill sev-${badge(i.status)}">${TASK_STATUS_VI[i.status]||i.status}</span></td><td>${i.module}</td><td>${i.title}</td><td>${i.priority}</td>
+    </tr>`).join('');
+  return `
+    <h1>Trạng thái Công việc</h1>
+    <div class="cards">
+      <div class="card low"><div class="n">${t.summary.done}</div><div class="l">Đã xong</div></div>
+      <div class="card med"><div class="n">${t.summary.partiallyDone}</div><div class="l">Làm dở</div></div>
+      <div class="card"><div class="n">${t.summary.todo}</div><div class="l">Chưa làm</div></div>
+      <div class="card high"><div class="n">${t.summary.blocked}</div><div class="l">Bị chặn</div></div>
+      <div class="card"><div class="n">${t.summary.unknown}</div><div class="l">Chưa rõ</div></div>
+    </div>
+    <table><thead><tr><th>ID</th><th>Trạng thái</th><th>Module</th><th>Tiêu đề</th><th>Ưu tiên</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3>Danh sách TODO / FIXME (thô)</h3>
+    <table><thead><tr><th>File</th><th>Dòng</th><th>Marker</th><th>Snippet</th></tr></thead><tbody>
+      ${DATA['code-quality'].todoFixmeSweep.map(x=>`<tr><td class="mono" style="font-size:11.5px">${x.file}</td><td>${x.line}</td><td>${x.marker}</td><td>${x.snippet}</td></tr>`).join('')}
+    </tbody></table>
+  `;
+}
+
+function renderSecurity() {
+  const s = DATA.security;
+  return `
+    <h1>Bảo mật</h1>
+    <div class="cards">
+      <div class="card crit"><div class="n">${s.summary.critical}</div><div class="l">Nghiêm trọng</div></div>
+      <div class="card high"><div class="n">${s.summary.high}</div><div class="l">Cao</div></div>
+      <div class="card med"><div class="n">${s.summary.medium}</div><div class="l">Trung bình</div></div>
+      <div class="card low"><div class="n">${s.summary.low+s.summary.info}</div><div class="l">Thấp/Info</div></div>
+      <div class="card"><div class="n">${s.summary.reviewedNoIssue}</div><div class="l">Đã rà soát, OK</div></div>
+    </div>
+    ${findingsTable(s.findings)}
+    <h3>Đã rà soát — không có vấn đề</h3>
+    <ul class="tight">${s.reviewedNoIssue.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+}
+
+function renderPerformance() {
+  const p = DATA.performance;
+  return `
+    <h1>Hiệu năng</h1>
+    <div class="cards">
+      <div class="card high"><div class="n">${p.summary.confirmedHigh}</div><div class="l">Cao (confirmed)</div></div>
+      <div class="card med"><div class="n">${p.summary.confirmedMedium}</div><div class="l">Trung bình (confirmed)</div></div>
+      <div class="card low"><div class="n">${p.summary.confirmedLow}</div><div class="l">Thấp (confirmed)</div></div>
+      <div class="card"><div class="n">${p.summary.potentialMedium}</div><div class="l">Tiềm ẩn (chưa verify)</div></div>
+    </div>
+    ${findingsTable(p.findings)}
+    <h3>Đã rà soát — không có vấn đề</h3>
+    <ul class="tight">${p.reviewedNoIssue.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+}
+
+function renderDatabase() {
+  const d = DATA.database;
+  const tl = d.timeline.map(t=>`<tr><td class="mono">${t.range}</td><td>${t.theme}</td></tr>`).join('');
+  const cls = d.dbClassification.map(c=>`<tr><td class="mono">${c.group}</td><td>${c.database}</td><td style="font-size:12px;color:var(--text-dim)">${c.note}</td></tr>`).join('');
+  return `
+    <h1>Database</h1>
+    <h3>Dòng thời gian migration (${DATA.project.databases.migrationFiles} file)</h3>
+    <table><thead><tr><th>Khoảng</th><th>Chủ đề</th></tr></thead><tbody>${tl}</tbody></table>
+    <h3>Phân loại Config DB vs Data DB</h3>
+    <table><thead><tr><th>Nhóm tiền tố</th><th>Database</th><th>Ghi chú</th></tr></thead><tbody>${cls}</tbody></table>
+    <h3>Finding</h3>
+    ${findingsTable(d.findings)}
+    <h3>Điểm tích cực</h3>
+    <ul class="tight">${d.positiveFindings.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+}
+
+function renderTests() {
+  const t = DATA.tests;
+  const cov = t.coverageByModule.map(c=>`<tr><td>${c.module}</td><td><span class="pill sev-${c.status==='TESTED'?'low':(c.status==='PARTIALLY_TESTED'?'medium':'high')}">${TEST_STATUS_VI[c.status]||c.status}</span></td><td style="font-size:12px;color:var(--text-dim)">${c.evidence}</td></tr>`).join('');
+  return `
+    <h1>Test</h1>
+    <div class="kpi-strip">
+      <div class="kpi"><b>${t.summary.testProjects}</b> project test backend</div>
+      <div class="kpi"><b>${t.summary.totalTestMethods}</b> test method</div>
+      <div class="kpi"><b>0</b> project test frontend/WPF</div>
+      <div class="kpi"><b>${t.summary.skippedTests}</b> test bị skip</div>
+      <div class="kpi"><b>${t.summary.integrationTests}</b> integration test</div>
+    </div>
+    <h3>Coverage theo module</h3>
+    <table><thead><tr><th>Module</th><th>Trạng thái</th><th>Bằng chứng</th></tr></thead><tbody>${cov}</tbody></table>
+    <h3>Finding</h3>
+    ${findingsTable(t.findings)}
+    <h3>Điểm tích cực</h3>
+    <ul class="tight">${t.positiveFindings.map(x=>`<li>${x}</li>`).join('')}</ul>
+  `;
+}
+
+function renderDebt() {
+  return `<h1>Nợ Kỹ thuật</h1>${findingsTable(DATA['technical-debt'].map(d=>({...d})))}`;
+}
+
+function renderRecommendations() {
+  const r = DATA.recommendations.priorities;
+  const block = (label, items) => `<h3>${label}</h3><table><thead><tr><th>ID</th><th>Tiêu đề</th><th>Liên quan</th><th>Độ phức tạp</th></tr></thead><tbody>
+    ${items.map(i=>`<tr><td class="mono">${i.id}</td><td>${i.title}</td><td class="mono" style="font-size:11.5px">${(i.relatedItems||[]).join(', ')||'—'}</td><td>${i.complexity}</td></tr>`).join('')}
+  </tbody></table>`;
+  return `
+    <h1>Đề xuất</h1>
+    ${block('P0 — Nghiêm trọng (làm ngay)', r.P0)}
+    ${block('P1 — Cao (trước khi làm feature lớn tiếp theo)', r.P1)}
+    ${block('P2 — Trung bình (nợ kỹ thuật quan trọng)', r.P2)}
+    ${block('P3 — Thấp (dọn dẹp / cải thiện)', r.P3)}
+  `;
+}
+
+function renderRoadmap() {
+  const rm = DATA.recommendations.roadmap;
+  return `<h1>Roadmap Đề xuất</h1>` + rm.map(p => `
+    <div class="panel">
+      <h3 style="margin-top:0">${p.phase}</h3>
+      <div class="field"><div class="k">Hạng mục</div>${p.items.length ? p.items.join(', ') : '<span class="empty">áp dụng đề xuất tổ chức lại tài liệu ở AUDIT_SUMMARY.md</span>'}</div>
+      <div class="field"><div class="k">Module ảnh hưởng</div>${p.affectedModules.join(', ')}</div>
+      <div class="field"><div class="k">Kết quả kỳ vọng</div>${p.expectedResult}</div>
+    </div>
+  `).join('');
+}
+
+const RENDERERS = {
+  dashboard: renderDashboard, overview: renderOverview, architecture: renderArchitecture,
+  documents: renderDocuments, conflicts: renderConflicts, work: renderWork,
+  security: renderSecurity, performance: renderPerformance, database: renderDatabase,
+  tests: renderTests, debt: renderDebt, recommendations: renderRecommendations, roadmap: renderRoadmap
+};
+
+function render(sec) {
+  document.querySelectorAll('nav.side button').forEach(b => b.classList.toggle('active', b.dataset.sec===sec));
+  document.getElementById('main').innerHTML = RENDERERS[sec]() + `<footer class="note">Đọc README.md trong thư mục này để biết cách chạy lại audit và cấu trúc dữ liệu JSON.</footer>`;
+}
+function go(sec){ render(sec); }
+
+document.querySelectorAll('nav.side button').forEach(b => b.addEventListener('click', () => render(b.dataset.sec)));
+
+loadAll();
+</script>
+</body>
+</html>

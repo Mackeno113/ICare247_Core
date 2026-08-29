@@ -1,0 +1,144 @@
+[
+  {
+    "id": "DEBT-001",
+    "category": "maintainability",
+    "title": "FormEditorViewModel.cs (WPF) dài 3470 dòng, gánh cả structure editing, bulk selection, drag/move, forward grid-cell, flush auto-save, và điều hướng 5+ màn hình trong 1 class",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "module": "ConfigStudio.WPF.UI / Modules.Forms",
+    "evidence": [{ "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI/Modules.Forms/ViewModels/FormEditorViewModel.cs" }],
+    "recommendation": "Tách thành các ViewModel/service nhỏ hơn phối hợp với nhau (VD: tách bulk-selection và drag/move ra 1 helper riêng) — đây là rủi ro maintainability đơn lẻ lớn nhất tìm thấy trong audit này.",
+    "relatedItems": ["ARCH-013"]
+  },
+  {
+    "id": "DEBT-002",
+    "category": "maintainability",
+    "title": "ViewRepository.cs (1030 dòng) và DynamicLookupRepository.cs (986 dòng) vượt ngưỡng outlier 800 dòng",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Backend / Infrastructure",
+    "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/ViewRepository.cs" }],
+    "recommendation": "Cân nhắc tách phần resolve FK-join và kiểm tra schema-metadata (đã được nêu để cache ở PERF-002) ra 1 class collaborator riêng.",
+    "relatedItems": ["ARCH-005", "PERF-002"]
+  },
+  {
+    "id": "DEBT-003",
+    "category": "dead-code",
+    "title": "Code chết của tab permission còn sót lại ở tầng data WPF sau khi gỡ tính năng",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "module": "ConfigStudio.WPF.UI",
+    "evidence": [
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI.Core/Data/FormPermissionRecord.cs" },
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI.Core/Data/RoleLookupRecord.cs" },
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI.Modules.Forms/Models/FormPermissionRow.cs" }
+    ],
+    "recommendation": "Xoá FormPermissionRecord, RoleLookupRecord, FormPermissionRow, và các method không dùng GetFormPermissionsAsync/SaveFormPermissionsAsync/GetRolesAsync — chúng vẫn compile được và sẽ tái tạo đúng lỗi FK-conflict mà việc gỡ bỏ tính năng vốn nhằm tránh, nếu vô tình nối lại.",
+    "relatedItems": ["ARCH-012"]
+  },
+  {
+    "id": "DEBT-004",
+    "category": "dead-code",
+    "title": "Thư mục rỗng mồ côi còn sót lại sau refactor",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Blazor Frontend",
+    "evidence": [{ "type": "CODE", "file": "src/frontend/ICare247_UI/Components/FieldRenderers/" }],
+    "recommendation": "Xoá thư mục rỗng này (field renderer giờ nằm ở ICare247.UI.DynamicForms).",
+    "relatedItems": ["ARCH-007"]
+  },
+  {
+    "id": "DEBT-005",
+    "category": "dead-code",
+    "title": "Method private không dùng trong FieldRenderer.razor",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Blazor Frontend",
+    "evidence": [{ "type": "CODE", "file": "src/frontend/ICare247.UI.DynamicForms/Components/FieldRenderer.razor", "line": 157 }],
+    "recommendation": "Xoá HandleChange/HandleBoolChange/HandleBlur nếu xác nhận không dùng, hoặc nối vào nếu vốn định dùng.",
+    "relatedItems": ["ARCH-008"]
+  },
+  {
+    "id": "DEBT-006",
+    "category": "consistency",
+    "title": "NavigationCache.cs bỏ qua registry trung tâm CacheKeys.cs",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Backend",
+    "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Services/NavigationCache.cs", "line": 39 }],
+    "recommendation": "Đưa qua CacheKeys.cs như mọi nơi dùng cache khác, để việc audit/rotation key có 1 nguồn sự thật duy nhất.",
+    "relatedItems": ["ARCH-001"]
+  },
+  {
+    "id": "DEBT-007",
+    "category": "consistency",
+    "title": "Chính sách override selector component --dxbl-* chưa chốt (chính codebase tự đánh dấu)",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "module": "Blazor Frontend / Theme",
+    "evidence": [{ "type": "CODE", "file": "src/frontend/ICare247_UI/wwwroot/css/tokens.css", "line": 128, "description": "Comment tường minh: chính sách đang chờ quyết định, tham chiếu finding P3 của DESIGN_AUDIT.md" }],
+    "recommendation": "Đây là 1 điểm cần quyết định mà codebase đã tự theo dõi, không phải bug âm thầm — nên đưa finding P3 của DESIGN_AUDIT.md cho user quyết định thay vì tự ý xử lý.",
+    "relatedItems": ["ARCH-006"]
+  },
+  {
+    "id": "DEBT-008",
+    "category": "consistency",
+    "title": "2 view WPF định nghĩa palette màu cục bộ trùng lặp, không nhất quán, bỏ qua DesignTokens.xaml",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "module": "ConfigStudio.WPF.UI",
+    "evidence": [
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI/Modules.Forms/Views/FieldConfigView.xaml", "line": 33 },
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI/Modules.Forms/Views/FormEditorView.xaml", "line": 30 }
+    ],
+    "recommendation": "Thay resource palette cục bộ bằng tham chiếu tới token chuẩn của DesignTokens.xaml — giá trị ở 2 view thậm chí còn không khớp ý định của nhau, đúng kiểu lỗi mà ADR-031 muốn ngăn chặn.",
+    "relatedItems": ["ARCH-010"]
+  },
+  {
+    "id": "DEBT-009",
+    "category": "consistency",
+    "title": "Dùng control nhập liệu WPF thuần thay vì editor DevExpress theo yêu cầu",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "module": "ConfigStudio.WPF.UI",
+    "evidence": [
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI/Views/SettingsView.xaml", "description": "Được dựng gần như hoàn toàn không dùng control dxe:" },
+      { "type": "CODE", "file": "src/frontend/ConfigStudio.WPF.UI.Modules.DocTemplate/Views/DocTemplateEditorView.xaml", "description": "Tương tự" }
+    ],
+    "recommendation": "Chuyển control nhập liệu ở SettingsView và DocTemplateEditorView sang control dxe: tương ứng của DevExpress theo quy ước dự án.",
+    "relatedItems": ["ARCH-011"]
+  },
+  {
+    "id": "DEBT-010",
+    "category": "i18n-coverage",
+    "title": "39 chuỗi tiếng Việt hardcode chưa được bọc qua helper i18n L()",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Blazor Frontend / i18n",
+    "evidence": [{ "type": "DOCUMENT", "file": "src/frontend/ICare247.UI.Shared/wwwroot/i18n/i18n-report.md", "description": "Báo cáo tự sinh liệt kê chính xác vị trí file:dòng, sinh ngày 2026-08-15" }],
+    "recommendation": "Xử lý lần lượt danh sách trong i18n-report.md tự sinh để bọc nốt các chuỗi còn lại — tooling để tìm các chuỗi này đã có sẵn và hoạt động tốt.",
+    "relatedItems": []
+  },
+  {
+    "id": "DEBT-011",
+    "category": "consistency",
+    "title": "Guard whitelist identifier SQL chưa được áp dụng nhất quán cho SQL động lấy nguồn từ config",
+    "severity": "medium",
+    "confidence": "likely",
+    "module": "Backend",
+    "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs", "line": 918 }],
+    "recommendation": "Xem SEC-005 để biết khung nhìn bảo mật của cùng lỗ hổng này; nên fix cả 2 cùng lúc.",
+    "relatedItems": ["SEC-005", "ARCH-004"]
+  },
+  {
+    "id": "DEBT-012",
+    "category": "consistency",
+    "title": "2 ngoại lệ SELECT * có chủ đích trong MasterDataRepository.cs",
+    "severity": "low",
+    "confidence": "confirmed",
+    "module": "Backend",
+    "evidence": [{ "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/MasterDataRepository.cs", "line": 260 }],
+    "recommendation": "Chấp nhận được như 1 ngoại lệ đã ghi chú cho đọc single-row; vẫn nên cân nhắc nêu tên cột cụ thể để phòng ngừa schema âm thầm lệch dạng.",
+    "relatedItems": ["ARCH-002"]
+  }
+]

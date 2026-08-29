@@ -1,0 +1,126 @@
+[
+  {
+    "id": "DOC-001",
+    "category": "documentation",
+    "title": "AI_PROJECT_BRIEF.md vẫn khẳng định thứ tự SSOT đã bị thay thế",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Governance",
+    "description": "AI_PROJECT_BRIEF.md (đóng băng từ 2026-03-03) vẫn ghi thứ tự đọc 'AGENTS.md → CLAUDE.md → docs/spec → TASKS.md → this file' và nói AGENTS.md thắng khi có ràng buộc bảo mật/kiến trúc. Chính mục ghi của AI_DECISIONS.md (DEC-2026-04-25-001) xác nhận BRAIN.md đã trở thành SSOT và thứ tự này đã bị thay thế — nhưng brief chưa từng được cập nhật hay đưa vào archive sau đó.",
+    "evidence": [
+      { "type": "DOCUMENT", "file": "AI_PROJECT_BRIEF.md", "description": "Ghi thứ tự đọc đã lỗi thời" },
+      { "type": "DOCUMENT", "file": "AI_DECISIONS.md", "description": "DEC-2026-04-25-001 đã thay thế thứ tự này" }
+    ],
+    "impact": "Một agent hoặc contributor tương lai đọc file này đầu tiên (tên file gợi ý nên đọc trước) sẽ đi theo quy tắc ưu tiên đã lỗi thời.",
+    "recommendation": "Chuyển vào docs/human/archive/ (cùng cách xử lý với các doc đã bị thay thế khác) hoặc rút gọn thành một dòng trỏ về BRAIN.md, giống cách CLAUDE.md/AGENTS.md đã làm.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-002",
+    "category": "documentation",
+    "title": "Cấu trúc, đường dẫn quick-start và mục lục tài liệu của README.md bị đóng băng từ lúc khởi tạo dự án",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation",
+    "description": "README.md tham chiếu db/ICare247_Config.sql (không tồn tại), một project frontend tên ICare247.Client (không tồn tại — thực tế là ICare247_UI), và chỉ liệt kê docs/spec 00-08 trong khi hiện đã có 34 file spec.",
+    "evidence": [{ "type": "DOCUMENT", "file": "README.md", "description": "Đóng băng ở trạng thái khởi tạo dự án 2026-03-03" }],
+    "impact": "Contributor mới đi theo quick-start của README sẽ gặp các đường dẫn không tồn tại.",
+    "recommendation": "Viết lại Quick Start, sơ đồ cấu trúc và mục lục tài liệu, hoặc thay bằng một dòng trỏ về BRAIN.md/docs/spec.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-003",
+    "category": "documentation",
+    "title": "docs/spec/06_SOLUTION_STRUCTURE.md không còn khớp với cây thư mục thực tế",
+    "severity": "high",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Architecture Spec",
+    "description": "Chỉ hiển thị Domain/Application/Infrastructure/Api và một placeholder frontend '(Blazor WASM — Phase 5)'; liệt kê db/ICare247_Config.sql / db/ICare247_SeedData.sql vốn không tồn tại. Repo thực tế có ICare247.DbMigrator, ICare247.Infrastructure.Documents (chưa được liệt kê), và frontend là ICare247_UI/ICare247.UI.Shared/ICare247.UI.DynamicForms/ConfigStudio.WPF.UI (đều chưa liệt kê). db/ có 113 file migration đánh số, không phải hai file được nêu tên.",
+    "evidence": [{ "type": "DOCUMENT", "file": "docs/spec/06_SOLUTION_STRUCTURE.md", "description": "Cấu trúc và tên file không khớp với code" }],
+    "impact": "Cao — file này được BRAIN.md §7 liệt kê tường minh là spec đáng tin cậy để tra cứu thay vì tự khám phá cây thư mục, nên việc lỗi thời của nó gây hiểu nhầm trực tiếp.",
+    "recommendation": "Sinh lại từ cây thư mục hiện tại.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-004",
+    "category": "documentation",
+    "title": "Banner trạng thái của docs/spec/11_DATA_DB_SCHEMA.md nói 'chưa migrate' nhưng 43 bảng đã lên production",
+    "severity": "high",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Database Spec",
+    "description": "Header ghi '🟡 SPEC ĐỀ XUẤT — chờ duyệt, chưa sinh SQL migration', nhưng db/037 đến db/106 đã hiện thực 43 bảng HT_/DM_/TC_/NS_ đúng phạm vi spec này.",
+    "evidence": [
+      { "type": "DOCUMENT", "file": "docs/spec/11_DATA_DB_SCHEMA.md", "description": "Banner header nói chỉ là đề xuất" },
+      { "type": "DATABASE", "file": "db/037-106", "description": "43 bảng tương ứng đã tồn tại và đã seed dữ liệu" }
+    ],
+    "impact": "Cao — gây hiểu nhầm trực tiếp cho bất kỳ ai tin theo hướng dẫn của BRAIN.md để đọc spec này thay vì đọc trực tiếp db/*.sql để hiểu schema.",
+    "recommendation": "Đổi banner thành '🟢 In production, Đợt 1' và thêm tham chiếu neo đến db/037.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-005",
+    "category": "documentation",
+    "title": "Header của WEB_UX_IMPROVEMENT_TASKS.md mâu thuẫn với chính nội dung bên trong và với memory dự án",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Design System",
+    "description": "Header ghi 'Backlog — chưa triển khai', nhưng chính nội dung bên trong đã ghi nhận WEB-UX-01 là đã đóng/quyết định không làm, và memory dự án xác nhận WEB-UX-02 và WEB-UX-03 đã được triển khai.",
+    "evidence": [{ "type": "DOCUMENT", "file": "docs/design-system/WEB_UX_IMPROVEMENT_TASKS.md", "description": "Header, nội dung và memory không khớp nhau" }],
+    "impact": "Trung bình — người đọc chỉ tin vào header sẽ nghĩ chưa mục nào trong backlog này được xử lý.",
+    "recommendation": "Cập nhật trạng thái từng task ngay trong file, hoặc gộp các mục đã xử lý vào TASKS.md và chỉ giữ lại trong doc này những mục thực sự còn mở.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-006",
+    "category": "documentation",
+    "title": "AI_TASKS.yaml là một bộ theo dõi task trùng lặp đã bị bỏ rơi",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Task Tracking",
+    "description": "Đóng băng từ 2026-07-20, chỉ còn 2 task backend ở giai đoạn đầu (trạng thái 'todo'), trong khi TASKS.md ghi nhận công việc qua hàng chục session và ADR về sau. Tài liệu governance (AI_DECISIONS DEC-2026-03-03-001) ban đầu yêu cầu file này như một artifact bắt buộc, nhưng nó chưa từng được đồng bộ và TASKS.md đã trở thành bộ theo dõi thực tế.",
+    "evidence": [{ "type": "DOCUMENT", "file": "AI_TASKS.yaml", "description": "2 mục đã lỗi thời so với log lớn hơn nhiều và còn hiện hành của TASKS.md" }],
+    "impact": "Rủi ro thấp ở thời điểm hiện tại vì có vẻ không ai tra cứu nó, nhưng một agent tương lai có thể nhầm lẫn tin nó là hiện hành.",
+    "recommendation": "Hoặc hồi sinh làm một chỉ mục machine-readable nhẹ cho TASKS.md, hoặc thêm một mục AI_DECISIONS mới chính thức khai tử nó rồi xóa file.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-007",
+    "category": "documentation",
+    "title": "CLAUDE.md và BRAIN.md liệt kê hai tập con khác nhau và đều thiếu sót trong số 13 file .claude-rules",
+    "severity": "low",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation",
+    "description": "Bảng coding-rules của CLAUDE.md thiếu debug-logger.md; bảng của BRAIN.md thiếu sql-safety.md, database-design.md, debugging.md, blazor-ui.md.",
+    "evidence": [
+      { "type": "DOCUMENT", "file": "CLAUDE.md", "description": "Thiếu debug-logger.md" },
+      { "type": "DOCUMENT", "file": "BRAIN.md", "description": "Thiếu 4 file rule" }
+    ],
+    "impact": "Thấp — người đọc chỉ tra một trong hai bảng sẽ bỏ sót một số coding rule áp dụng được.",
+    "recommendation": "Đồng bộ cả hai bảng theo đúng danh sách file .claude-rules/ hiện hành đầy đủ.",
+    "relatedItems": []
+  },
+  {
+    "id": "DOC-008",
+    "category": "documentation",
+    "title": "ROADMAP.md đã xác nhận lỗi thời — mâu thuẫn trực tiếp với thực tế hiện tại",
+    "severity": "medium",
+    "confidence": "confirmed",
+    "status": "open",
+    "module": "Documentation / Roadmap",
+    "description": "Bảng 'Trạng thái nền tảng (tính đến 2026-06-09)' của ROADMAP.md ghi 'Shell ERP + Sidebar navigation: 🔴 Chưa làm' dù NavMenu.razor/MainLayout.razor đã được phát triển tích cực qua nhiều session sau đó, và vẫn coi 'DB Migrations (000-030)' là chuẩn trong khi repo hiện đã ở db/106.",
+    "evidence": [
+      { "type": "DOCUMENT", "file": "ROADMAP.md", "description": "Bảng trạng thái lỗi thời khoảng 2.5 tháng" },
+      { "type": "CODE", "file": "src/frontend/ICare247_UI/Layout/NavMenu.razor", "description": "Xác nhận sidebar navigation đã tồn tại và tiếp tục được cải tiến sau đó" }
+    ],
+    "impact": "Trung bình — bất kỳ ai dùng ROADMAP.md để lập kế hoạch cấp phase sẽ dựa trên trạng thái đã lỗi thời.",
+    "recommendation": "Sinh lại từ trạng thái hiện tại của TASKS.md, hoặc đánh dấu ROADMAP.md deprecated và ưu tiên bảng trạng thái ADR của TASKS.md.",
+    "relatedItems": []
+  }
+]

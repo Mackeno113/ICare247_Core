@@ -1,0 +1,96 @@
+{
+  "expectedArchitecture": {
+    "layers": ["Domain (C# thuần, không phụ thuộc)", "Application (chỉ import Domain; CQRS qua MediatR)", "Infrastructure (import Application; Dapper, Redis, Serilog)", "Api (chỉ import Application; import Infrastructure duy nhất tại DI composition root trong Program.cs)"],
+    "hardConstraints": [
+      "Không dùng EF Core — chỉ Dapper",
+      "Không nội suy chuỗi SQL — chỉ dùng tham số hóa",
+      "Không eval/dynamic compile — chỉ thực thi qua AST",
+      "Không thêm class Infrastructure mới trong lớp Api ngoài Program.cs",
+      "Không hardcode cache key — phải đi qua CacheKeys.cs",
+      "Không nuốt exception trong các engine",
+      "Không dùng .Result/.Wait()",
+      "Cô lập tenant trên mọi query/cache key",
+      "Không SELECT *"
+    ]
+  },
+  "dependencyGraph": [
+    { "project": "ICare247.Domain", "references": [], "note": "C# thuần, xác nhận không phụ thuộc" },
+    { "project": "ICare247.Application", "references": ["ICare247.Domain"], "note": "MediatR, FluentValidation" },
+    { "project": "ICare247.Infrastructure", "references": ["ICare247.Application"], "note": "Dapper, SqlClient, Redis, Serilog, OpenTelemetry" },
+    { "project": "ICare247.Infrastructure.Documents", "references": ["ICare247.Application"], "note": "Project DevExpress Document Processor tách riêng, theo quy ước dự án" },
+    { "project": "ICare247.Api", "references": ["ICare247.Application", "ICare247.Infrastructure", "ICare247.Infrastructure.Documents"], "note": "Tham chiếu Infrastructure giới hạn ở Program.cs (composition root) theo quy ước — đã xác minh" },
+    { "project": "ICare247.DbMigrator", "references": [], "note": "Executable DbUp-sqlserver độc lập" },
+    { "project": "ICare247_UI (Blazor host)", "references": ["ICare247.UI.Shared", "ICare247.UI.DynamicForms"], "note": "Microsoft.NET.Sdk.BlazorWebAssembly, có Program.cs + wwwroot" },
+    { "project": "ICare247.UI.Shared (RCL)", "references": [], "note": "Project leaf, không tham chiếu project nào — xác nhận không có phụ thuộc ngược từ DynamicForms" },
+    { "project": "ICare247.UI.DynamicForms (RCL)", "references": ["ICare247.UI.Shared"], "note": "Engine render form" },
+    { "project": "ConfigStudio.WPF.UI + 6 Prism modules", "references": ["ConfigStudio.WPF.UI.Core (shared kernel)"], "note": "Không phát hiện tham chiếu vòng giữa các module" }
+  ],
+  "constraintCompliance": [
+    { "constraint": "Không dùng EF Core", "status": "confirmed-ok", "evidence": "Grep EntityFrameworkCore/DbContext/.Include(/DbSet< trên toàn bộ .cs backend → 0 kết quả" },
+    { "constraint": "Không thêm class Infrastructure mới trong Api ngoài Program.cs", "status": "confirmed-ok-minor-drift", "evidence": "Chỉ Program.cs import ICare247.Infrastructure; ConnectionChecker.cs (lớp Api) khởi tạo trực tiếp SqlConnection/ConnectionMultiplexer chỉ để chẩn đoán lúc khởi động — ngoại lệ hẹp, không có logic nghiệp vụ" },
+    { "constraint": "Không hardcode cache key", "status": "confirmed-violation", "evidence": "NavigationCache.cs:39 dựng key $\"nav:{tenantId}:{userId}\" ad-hoc thay vì qua CacheKeys.cs; mọi vị trí cache khác đã kiểm tra đều tuân thủ" },
+    { "constraint": "Chỉ SQL tham số hóa / định danh theo whitelist", "status": "uncertain-likely-ok-by-design", "evidence": "Mẫu $\"SELECT...{table}\" xuất hiện nhiều nơi nhưng giá trị luôn qua @param; định danh phần lớn được bracket qua SqlIdentifier.Bracket() trừ FilterSql/OrderBy/TargetObject lấy từ config ở vài repository (xem SEC-005)" },
+    { "constraint": "Không SELECT *", "status": "confirmed-violation-acknowledged", "evidence": "MasterDataRepository.cs:260,306 — hai chỗ SELECT * có chủ đích cho đọc single-row, đã comment rõ là ngoại lệ được chấp nhận; mọi repository khác đều khẳng định 'không SELECT *' trong header" },
+    { "constraint": "Không eval/dynamic compile", "status": "confirmed-ok", "evidence": "Không có CSharpScript/Roslyn/Reflection.Emit/DynamicMethod ở bất kỳ đâu; AST engine biên dịch thành closures, không sinh code động" },
+    { "constraint": "Không nuốt exception trong engine", "status": "confirmed-ok", "evidence": "Không tìm thấy khối catch{} rỗng nào dưới src/" },
+    { "constraint": "Không dùng .Result/.Wait()", "status": "confirmed-ok", "evidence": "Mọi kết quả grep đều là false positive (thuộc tính DTO tên Result, không phải Task.Result)" },
+    { "constraint": "Cô lập tenant", "status": "confirmed-ok", "evidence": "DB-per-tenant qua TenantContext scoped, giải quyết theo từng request ở tầng connection-factory, cộng thêm kiểm tra chéo độc lập bằng TenantClaimGuardMiddleware; cache key luôn nhúng tenantId" },
+    { "constraint": "CQRS qua MediatR, controller mỏng", "status": "confirmed-ok", "evidence": "Các controller kiểm tra ngẫu nhiên đều mỏng — mọi action đều ủy quyền qua _mediator.Send(...)" }
+  ],
+  "engineMap": [
+    { "engine": "Metadata Engine", "interface": "ICare247.Domain/Engine/IMetadataEngine.cs", "implementation": "ICare247.Application/Engines/MetadataEngine.cs + ConfigCache.cs", "responsibility": "Nạp/cache RuntimeFormContext theo tenant/version/ngôn ngữ" },
+    { "engine": "AST/Grammar Engine", "interface": "IAstEngine.cs", "implementation": "AstEngine.cs, AstCompiler.cs, AstParser.cs, BuiltinFunctions.cs, FunctionRegistry.cs", "responsibility": "Parse Grammar V1 JSON thành AST, biên dịch thành closures, đánh giá theo EvaluationContext" },
+    { "engine": "Validation Engine", "interface": "IValidationEngine.cs", "implementation": "ValidationEngine.cs (348 lines)", "responsibility": "Chạy các rule điều khiển bởi Val_Rule* trên AST, tôn trọng thứ tự phụ thuộc — hiện chưa cache (PERF-001)" },
+    { "engine": "Event Engine", "interface": "IEventEngine.cs", "implementation": "EventEngine.cs + 9 IEventActionHandler implementations (Strategy pattern)", "responsibility": "Thực thi cấu hình Evt_Definition/Evt_Action, sinh phản hồi UiDelta — hiện chưa cache (PERF-001)" }
+  ],
+  "driftFindings": [
+    { "id": "ARCH-001", "component": "NavigationCache.cs:39", "expected": "Mọi cache key phải qua CacheKeys.cs", "actual": "Key dựng chuỗi ad-hoc", "impact": "low", "note": "Key vẫn scope theo tenant, chỉ bỏ qua quy ước registry trung tâm" },
+    { "id": "ARCH-002", "component": "MasterDataRepository.cs:260,306", "expected": "Không SELECT * ở bất kỳ đâu", "actual": "Hai ngoại lệ có chủ đích, đã comment", "impact": "low-medium", "note": "Nếu schema bảng nguồn đổi, hình dạng kết quả sẽ đổi theo âm thầm" },
+    { "id": "ARCH-003", "component": "ConnectionChecker.cs (Api layer)", "expected": "Api không đụng trực tiếp client ADO.NET/Redis thô", "actual": "Khởi tạo trực tiếp SqlConnection/ConnectionMultiplexer, chỉ để chẩn đoán lúc khởi động", "impact": "very low", "note": "Không có logic nghiệp vụ; tạo tiền lệ cần để ý nếu bị copy sang chỗ khác" },
+    { "id": "ARCH-004", "component": "DynamicLookupRepository.cs, FkLookupResolver.cs, ViewRepository.cs", "expected": "Mọi định danh SQL phải được bracket qua SqlIdentifier guard", "actual": "Một số định danh lấy từ config bị nội suy không bracket", "impact": "medium", "note": "Đối chiếu chéo với SEC-005" },
+    { "id": "ARCH-005", "component": "ViewRepository.cs (1030 lines), DynamicLookupRepository.cs (986 lines)", "expected": "Kích thước file ở mức quản lý được", "actual": "Vượt ngưỡng ngoại lệ 800 dòng", "impact": "low", "note": "Có thể giải thích do dựng SQL động điều khiển bởi config chung, nhưng vẫn là ứng viên nên tách nhỏ" },
+    { "id": "ARCH-006", "component": "app.css:461-481, tokens.css:128-138 (Blazor)", "expected": "Không bao giờ override biến CSS --dxbl-* ở phạm vi global", "actual": "Override qua selector component trên .dxbl-text-edit, chính codebase đã tự đánh dấu đây là quyết định chính sách chưa chốt, đang chờ finding P3 trong DESIGN_AUDIT.md", "impact": "medium", "note": "Không bị hỏng âm thầm — chính codebase đã ghi nhận đây là việc đang chờ quyết định" },
+    { "id": "ARCH-007", "component": "ICare247_UI/Components/FieldRenderers/ (empty dir)", "expected": "Không có thư mục mồ côi", "actual": "Thư mục rỗng còn sót lại sau khi field renderer được chuyển vào DynamicForms RCL", "impact": "cosmetic", "note": "" },
+    { "id": "ARCH-008", "component": "FieldRenderer.razor:157-176 (Blazor)", "expected": "Không có dead code", "actual": "HandleChange/HandleBoolChange/HandleBlur được định nghĩa nhưng chưa nối vào markup nào", "impact": "low", "note": "" },
+    { "id": "ARCH-009", "component": "FieldRenderer.razor:34-134 (Blazor)", "expected": "Cơ chế dispatch field-type có thể mở rộng", "actual": "Switch statement hardcode trên 11 loại field, không có điểm mở rộng qua registry/DI", "impact": "low", "note": "Tập đóng ở quy mô hiện tại — nhẹ, không nghiêm trọng" },
+    { "id": "ARCH-010", "component": "FieldConfigView.xaml:33-41, FormEditorView.xaml:30-37 (WPF)", "expected": "Mọi màu phải lấy từ DesignTokens.xaml qua DynamicResource (ADR-031)", "actual": "Hai view đều tự định nghĩa bảng màu cục bộ trùng lặp, thậm chí không khớp giá trị chuẩn của DesignTokens lẫn của nhau (vd AccentColor #3B82F6 vs giá trị chuẩn #2563EB)", "impact": "medium", "note": "Đúng kiểu lỗi 'sửa 1 chỗ vỡ chỗ khác' mà ADR-031 muốn ngăn; ngoài ra còn hardcode trực tiếp Foreground=\"#D32F2F\" tại FormEditorView.xaml:279" },
+    { "id": "ARCH-011", "component": "SettingsView.xaml, DocTemplateEditorView.xaml, EventEditorView.xaml, SysTableManagerView.xaml, ViewManagerView.xaml, I18nEditorDialog.xaml, AutoGenerateFieldsDialog.xaml, SyncSchemaDialog.xaml, FormEditorView.xaml, FieldConfigView.xaml (WPF)", "expected": "Mọi màn nhập liệu phải dùng control dxe: của DevExpress", "actual": "36 instance TextBox/ComboBox/CheckBox WPF thuần dùng làm nhập liệu thật (so với 781 instance DevExpress toàn project); SettingsView và DocTemplateEditorView gần như dựng hoàn toàn không dùng control dxe:", "impact": "medium", "note": "Tập trung ở những màn có vẻ làm sớm/thô hơn, không phải sai sót rải rác" },
+    { "id": "ARCH-012", "component": "ConfigStudio.WPF.UI.Core/Data/FormPermissionRecord.cs, RoleLookupRecord.cs, Modules.Forms/Models/FormPermissionRow.cs, IFormDetailDataService.GetFormPermissionsAsync/SaveFormPermissionsAsync, IFormDataService.GetRolesAsync (WPF)", "expected": "Gỡ sạch tab Permissions đã deprecated (Sys_Role/Sys_Permission đã bị thay bởi HT_VaiTro, ADR-023)", "actual": "UI/XAML đã gỡ đúng, nhưng class và method ở data-layer vẫn còn — không dùng nhưng vẫn compile và vẫn query Sys_Permission/Sys_Role nếu bị gọi lại", "impact": "medium", "note": "Rủi ro tiềm ẩn: nối lại các phần này mà không biết chúng đã lỗi thời sẽ tái tạo đúng xung đột FK mà việc gỡ bỏ vốn muốn tránh" },
+    { "id": "ARCH-013", "component": "Modules.Forms/ViewModels/FormEditorViewModel.cs (WPF)", "expected": "Kích thước ViewModel ở mức quản lý được", "actual": "3470 dòng — đảm nhận sửa cấu trúc, chọn hàng loạt, kéo/di chuyển, forward chỉnh sửa cell lưới, flush auto-save, và điều hướng sang 5+ màn khác", "impact": "medium", "note": "Ứng viên đáng lo nhất về khả năng bảo trì tìm thấy trong toàn bộ audit" },
+    { "id": "ARCH-014", "component": "~18 *DataService.cs classes (WPF)", "expected": "N/A — chưa có quy ước nêu rõ", "actual": "Không có abstraction IDbConnectionFactory dùng chung; mỗi DataService tự mở new SqlConnection(_config.ConnectionString) riêng", "impact": "low", "note": "Pattern nhất quán trong toàn codebase, dựa vào pooling ngầm của ADO.NET thay vì factory trung tâm" }
+  ],
+  "largeFiles": {
+    "backend": [
+      { "file": "ICare247.Infrastructure/Repositories/ViewRepository.cs", "lines": 1030 },
+      { "file": "ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs", "lines": 986 },
+      { "file": "ICare247.Infrastructure/Repositories/MasterDataRepository.cs", "lines": 750 },
+      { "file": "ICare247.Infrastructure/Repositories/FormRepository.cs", "lines": 729 },
+      { "file": "ICare247.Infrastructure/ConfigSync/ConfigSyncService.cs", "lines": 595 },
+      { "file": "ICare247.Infrastructure/Import/ImportEngine.cs", "lines": 421 },
+      { "file": "ICare247.Api/Controllers/ViewController.cs", "lines": 352 },
+      { "file": "ICare247.Application/Engines/ValidationEngine.cs", "lines": 348 }
+    ],
+    "frontendBlazor": [
+      { "file": "ICare247_UI/Pages/Admin/MenuBuilderPage.razor", "lines": 890 },
+      { "file": "ICare247_UI/Components/View/DataView.razor", "lines": 885 },
+      { "file": "ICare247_UI/Pages/FormRunner.razor", "lines": 640 },
+      { "file": "ICare247.UI.DynamicForms/Components/FieldRenderers/TreeLookupBoxRenderer.razor", "lines": 581 },
+      { "file": "ICare247_UI/Pages/Admin/UserManagementPage.razor", "lines": 564 },
+      { "file": "ICare247_UI/Components/MasterData/MasterDataForm.razor", "lines": 556 }
+    ],
+    "wpf": [
+      { "file": "Modules.Forms/ViewModels/FormEditorViewModel.cs", "lines": 3470 },
+      { "file": "Modules.Forms/ViewModels/FieldConfigViewModel.cs", "lines": 2214 },
+      { "file": "Modules.Forms/Views/FormEditorView.xaml", "lines": 1865 },
+      { "file": "Modules.Forms/Views/FieldConfigView.xaml", "lines": 1782 },
+      { "file": "Modules.Forms/ViewModels/ViewManagerViewModel.cs", "lines": 1770 },
+      { "file": "Modules.Forms/ViewModels/FkLookupConfigVm.cs", "lines": 1196 },
+      { "file": "ConfigStudio.WPF.UI/Infrastructure/FormDataService.cs", "lines": 1189 }
+    ]
+  },
+  "moduleMaps": {
+    "backend": "Domain (contract + model thuần của engine) → Application (handler MediatR, 4 engine) → Infrastructure (repository Dapper, cache, multi-tenancy) → Api (controller mỏng, composition root)",
+    "blazor": "ICare247_UI (host, Pages/Layout/Admin) → phụ thuộc vào → ICare247.UI.Shared (auth/http/i18n/state/pickers, leaf) và ICare247.UI.DynamicForms (engine render form, chỉ phụ thuộc Shared)",
+    "wpf": "ConfigStudio.WPF.UI (shell/bootstrap) + ConfigStudio.WPF.UI.Core (kernel dùng chung: ViewModelBase, IAppConfigService, AutoSaveService) + 6 module Prism (Modules.Forms — lớn nhất, Modules.Rules, Modules.Events, Modules.Grammar, Modules.I18n, Modules.DocTemplate), điều hướng single-region (RegionNames.Content)"
+  }
+}

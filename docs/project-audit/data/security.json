@@ -1,0 +1,134 @@
+{
+  "summary": { "critical": 0, "high": 1, "medium": 4, "low": 2, "info": 3, "reviewedNoIssue": 8 },
+  "findings": [
+    {
+      "id": "SEC-001",
+      "category": "security",
+      "title": "Stored XSS trong dialog xác nhận xoá node của Menu Builder",
+      "severity": "high",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Frontend / Quản trị / Menu Builder",
+      "description": "MenuBuilderPage.razor ép kiểu (cast) trực tiếp sang MarkupString một chuỗi đã localize, được ghép bằng string.Format, chứa tên node menu do admin nhập tự do (free-text). LocalizationService.L() chỉ làm string.Format thông thường, không HTML-encode các tham số thay thế trước khi nơi gọi bọc kết quả vào MarkupString.",
+      "evidence": [
+        { "type": "CODE", "file": "src/frontend/ICare247_UI/Pages/Admin/MenuBuilderPage.razor", "line": 365, "description": "@((MarkupString)Loc.L(\"admin.menu.del.body\", \"...<strong>{0}</strong>...\", _confirmDelete.Ten))" },
+        { "type": "CODE", "file": "src/frontend/ICare247.UI.Shared/Services/I18n/LocalizationService.cs", "line": 135, "description": "L() thực hiện string.Format(template, args) mà không encode args" }
+      ],
+      "impact": "Một user có quyền sửa menu (không nhất thiết phải là SUPERADMIN) có thể đặt tên hiển thị của node thành payload HTML/script. Bất kỳ user nào khác — kể cả SUPERADMIN có quyền cao hơn — sau đó mở dialog xác nhận xoá trên node đó sẽ thực thi payload trong phiên đăng nhập của họ, cho phép đánh cắp token hoặc giả mạo lời gọi API đã xác thực (leo quyền qua chiếm phiên — session hijack).",
+      "recommendation": "Ngừng việc thay tên node vào template raw-HTML trước khi ép kiểu MarkupString. Render phần text bao ngoài cố định qua Loc.L(), còn tên node qua một biểu thức Razor được encode bình thường (ví dụ một phần tử riêng <strong>@_confirmDelete.Ten</strong>), hoặc HTML-encode các args bên trong LocalizationService.L() trước khi string.Format khi nơi gọi có ý định dùng MarkupString.",
+      "relatedItems": ["ARCH-006"]
+    },
+    {
+      "id": "SEC-002",
+      "category": "security",
+      "title": "Broken Object-Level Authorization (IDOR) trên endpoint attachment",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / File đính kèm (Attachments)",
+      "description": "GET /api/v1/attachments/{id}, /{id}/thumbnail, /{id}/info và DELETE /api/v1/attachments/{id} chỉ được gate bằng [Authorize] (bất kỳ user nào đã đăng nhập trong tenant), không có kiểm tra caller có quyền trên record sở hữu attachment đó (OwnerTable/OwnerId) hay không.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Api/Controllers/AttachmentsController.cs", "line": 69, "description": "Endpoint chỉ được gate bằng [Authorize]" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Features/Files/GetAttachment/GetAttachmentContentQueryHandler.cs", "line": 28, "description": "Tra cứu attachment chỉ theo Id số, không kiểm tra chủ sở hữu/quyền" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Features/Files/DeleteAttachment/DeleteAttachmentCommandHandler.cs", "line": 34, "description": "Cùng pattern cho thao tác xoá" }
+      ],
+      "impact": "Bất kỳ user nào đã đăng nhập trong một tenant đều có thể duyệt tuần tự (enumerate) ID attachment để tải về hoặc xoá file thuộc về bất kỳ record/form nào trong tenant đó (ví dụ: hồ sơ nhân sự, hợp đồng, ảnh scan CMND/CCCD của phòng ban khác). Rò rỉ chéo tenant đã được chặn nhờ cơ chế định tuyến kết nối DB-per-tenant, nhưng IDOR trong phạm vi một tenant là có thật.",
+      "recommendation": "Yêu cầu một kiểm tra kiểu RequirePermissionForTarget dựa theo OwnerTable/mã form của attachment trước khi trả nội dung/info/cho xoá, hoặc join tới record sở hữu và xác minh khả năng nhìn thấy (visibility) theo phạm vi vai trò/công ty/phòng ban của caller.",
+      "relatedItems": []
+    },
+    {
+      "id": "SEC-003",
+      "category": "security",
+      "title": "Catalog:EncryptionKey không có guard fail-fast khi chạy production",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Đa tenant (Multi-tenancy)",
+      "description": "Jwt:SecretKey có kiểm tra fail-fast lúc khởi động ở các môi trường khác Development, nhưng Catalog:EncryptionKey tương đương (dùng để bảo vệ connection string của tenant) lại không có guard này — key rỗng/chưa set sẽ âm thầm rơi về chế độ plaintext.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/MultiTenancy/TenantConnectionProtector.cs", "line": 24, "description": "Key null/rỗng được coi là 'chế độ plaintext dev' chỉ bằng một dòng comment code, không có fail-fast" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Api/Program.cs", "line": 85, "description": "Pattern fail-fast đã có cho Jwt:SecretKey nhưng chưa có tương đương cho Catalog:EncryptionKey" }
+      ],
+      "impact": "Nếu deploy lên production mà không set Catalog:EncryptionKey, connection string SQL Server của Config/Data/Audit DB của mọi tenant (có thể bao gồm cả credential SQL-auth) sẽ được lưu và truyền đi từ Catalog DB ở dạng plaintext.",
+      "recommendation": "Thêm pattern fail-fast theo môi trường giống như đã dùng cho Jwt:SecretKey: từ chối khởi động ở môi trường khác Development khi tenant catalog đã cấu hình nhưng protector chưa được bật.",
+      "relatedItems": []
+    },
+    {
+      "id": "SEC-004",
+      "category": "security",
+      "title": "Audit-log JSON diff generic không có cơ chế che (masking) theo field",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Ghi nhật ký audit (Audit Logging)",
+      "description": "Handler lưu MasterData generic serialize nguyên vẹn toàn bộ dictionary field được submit vào audit trail (NK_NhatKyHoatDong) mỗi khi audit được bật cho một bảng, không có cơ chế loại trừ/ẩn (exclude/redact) theo từng cột.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Features/MasterData/Commands/SaveMasterData/SaveMasterDataCommandHandler.cs", "line": 213, "description": "NewValueJson = JsonSerializer.Serialize(r.Values) — toàn bộ field set, không lọc" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Audit/AuditNkWriter.cs", "line": 98, "description": "Lưu diff chưa lọc qua SqlBulkCopy" }
+      ],
+      "impact": "Bất kỳ bảng nào do tenant cấu hình có cột free-text nhạy cảm (số CMND/CCCD, thông tin ngân hàng, v.v.) mà bật audit sẽ lưu các giá trị đó ở dạng rõ (clear text) trong audit log. (Luồng quản lý user riêng không đi qua đường này — HT_NguoiDung.MatKhauHash không bị lộ theo cách này.)",
+      "recommendation": "Thêm cờ 'loại trừ khỏi audit diff' theo từng cột trong metadata (tương tự cơ chế bật/tắt audit theo bảng đã có) và lọc giá trị trước khi serialize.",
+      "relatedItems": []
+    },
+    {
+      "id": "SEC-005",
+      "category": "security",
+      "title": "Áp dụng guard whitelist identifier SQL không nhất quán cho SQL động nguồn-từ-config",
+      "severity": "medium",
+      "confidence": "likely",
+      "status": "open",
+      "module": "Backend / SQL động (Dynamic SQL)",
+      "description": "Guard whitelist SqlIdentifier.Bracket()/IsSafe của chính dự án được áp dụng nhất quán ở phần lớn repository, nhưng các đoạn nguồn từ config admin (FilterSql, OrderBy, đối tượng đích FK) lại được nội suy không bọc ngoặc vuông tại vài call site.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/DynamicLookupRepository.cs", "line": 918, "description": "cfg.FilterSql / cfg.OrderBy được nội suy mà không qua guard SqlIdentifier" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Repositories/FkLookupResolver.cs", "line": 75, "description": "source được nội suy không bọc ngoặc vuông" }
+      ],
+      "impact": "Các đoạn này đến từ config do admin soạn (Sys_Table/Ui_Field/Val_Rule), không phải input runtime của end-user, nên đường khai thác thực tế đòi hỏi một vai trò config-author độc hại hoặc bị chiếm quyền chứ không phải attacker ẩn danh — nhưng đây vẫn là một khoảng hở defense-in-depth so với chính quy tắc 'chỉ tham số hoá/whitelist' mà dự án đã đặt ra.",
+      "recommendation": "Áp dụng SqlIdentifier.Bracket()/IsSafe nhất quán cho mọi identifier nguồn-từ-config trước khi nội suy, khớp với pattern đã dùng ở nơi khác (MasterDataRepository, phần lớn DynamicLookupRepository).",
+      "relatedItems": ["ARCH-004"]
+    },
+    {
+      "id": "SEC-006",
+      "category": "security",
+      "title": "Kiểm tra quyền mặc định cho phép (allow) đối với form/view chưa được map vào cây phân quyền",
+      "severity": "low",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend / Phân quyền (RBAC)",
+      "description": "PermissionService.HasPermissionForTargetAsync trả về 'allow' khi một mã form/view không có dòng tương ứng trong HT_ChucNang với LoaiDoiTuong/DoiTuong được set — đây là 'mặc định no-code' có chủ đích theo ADR-023, nhưng có nghĩa là bất kỳ form/view nào mới tạo đều đọc/ghi được bởi bất kỳ user đã đăng nhập nào cho tới khi admin map tường minh.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Infrastructure/Services/PermissionService.cs", "line": 44, "description": "\"chưa có node nào gắn đối tượng này → cho qua\"" }
+      ],
+      "impact": "Mức thấp xét như một quyết định thiết kế, nhưng đáng để audit định kỳ độ đầy đủ của mapping HT_ChucNang để form mới không bị để mở ngoài ý muốn.",
+      "recommendation": "Thêm một kiểm tra định kỳ/CI liệt kê form/view chưa có mapping HT_ChucNang, như một lớp phòng vệ vận hành thay vì thay đổi code.",
+      "relatedItems": []
+    },
+    {
+      "id": "SEC-007",
+      "category": "security",
+      "title": "Luồng Quên mật khẩu/Đặt lại mật khẩu là ngõ cụt UI đã nối đầy đủ (backend là STUB)",
+      "severity": "info",
+      "confidence": "confirmed",
+      "status": "open",
+      "module": "Backend + Frontend / Xác thực (Auth)",
+      "description": "Trang ForgotPassword/ResetPassword và endpoint API đã nối route đầy đủ đầu-cuối, nhưng handler là STUB tự nhận — chỉ log request rồi trả về, không sinh token, không ghi storage, không gửi email. Đây là fail-closed (không phải lỗ hổng bảo mật), nhưng là một UX gây hiểu lầm mà không có mục TASKS.md/ADR tương ứng.",
+      "evidence": [
+        { "type": "CODE", "file": "src/backend/src/ICare247.Application/Features/Auth/ForgotPassword/ForgotPasswordCommandHandler.cs", "line": 13, "description": "TODO(phase-email): tích hợp service gửi mail + token reset" },
+        { "type": "CODE", "file": "src/backend/src/ICare247.Api/Controllers/AuthController.cs", "line": 118, "description": "Endpoint reset-password trả về HTTP 501" }
+      ],
+      "impact": "Không có lỗ hổng bảo mật (fail-closed), nhưng user thử đặt lại mật khẩu không nhận được bất kỳ dấu hiệu nào cho biết có gì đó bị hỏng — một khoảng trống chức năng chưa được ghi tài liệu.",
+      "recommendation": "Track tường minh trong TASKS.md như một luồng chưa hoàn thiện đã biết, và cân nhắc thêm banner chế độ bảo trì trên trang Forgot Password cho tới khi phase-email được triển khai.",
+      "relatedItems": ["TASK-005"]
+    }
+  ],
+  "reviewedNoIssue": [
+    "Xác thực (Authentication): hash mật khẩu PBKDF2-HMAC-SHA256, khoá tài khoản (lockout) sau 5 lần thử/15 phút, refresh token đã hash trong cookie HttpOnly+Secure+SameSite, thu hồi logout-all, response an toàn trước dò tài khoản (account-enumeration-safe), JWT được validate với short-name claim mapping và kiểm tra fail-fast cho secret",
+    "Phân quyền (Authorization): FallbackPolicy deny-by-default, RequirePermissionAttribute/RequirePermissionForTargetAttribute áp dụng nhất quán trên các endpoint admin có thay đổi dữ liệu (mutating), xác nhận Sys_Role/Sys_Permission legacy đã được thay thế hoàn toàn bởi HT_VaiTro trong các đường code phân quyền đang chạy thật",
+    "Cô lập đa tenant (Multi-tenant isolation): định tuyến kết nối DB-per-tenant cộng với TenantClaimGuardMiddleware độc lập đối chiếu chéo giữa tenant claim trong JWT và tenant đã resolve — phòng thủ 2 lớp chống rò rỉ do định tuyến sai",
+    "SQL injection: guard/whitelist SqlIdentifier tập trung được dùng nhất quán ở phần lớn repository; mọi giá trị dữ liệu đều được tham số hoá (parameterize) qua Dapper",
+    "XSS (tổng quát): dựa vào cơ chế auto-encoding mặc định của Blazor ở các nơi khác; các chỗ dùng MarkupString khác được kiểm tra đều sanitize/encode đúng",
+    "AST/Grammar engine: xác nhận là pure interpreter (parse → compile thành delegate → evaluate), không dùng CSharpScript/Roslyn scripting/Reflection.Emit/dynamic compilation ở bất kỳ đâu trong backend",
+    "Secrets: không có secret thật hardcode trong source đã commit; appsettings chỉ chứa placeholder, có enforce fail-fast ngoài môi trường Development",
+    "Cấu hình/logging: CORS allowlist tường minh, throw lúc khởi động nếu config rỗng ở môi trường non-dev, cookie HttpOnly/Secure/SameSite, HSTS+chuyển hướng HTTPS, đầy đủ bộ security-header (CSP/X-Frame-Options/nosniff), response lỗi dạng generic kèm log correlation-ID phía server, rate limiting (chính sách global + chặt hơn cho endpoint auth), không phát hiện password/token bị log ở bất kỳ đâu"
+  ]
+}
