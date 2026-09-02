@@ -1,16 +1,125 @@
 # Hướng dẫn cấu hình **lưới dữ liệu dạng tham chiếu** (có khóa ngoại) — ConfigStudio
 
-> Áp dụng cho mọi màn nghiệp vụ mà bảng dữ liệu **trỏ FK sang bảng cha** và lưới cần
-> hiển thị **TÊN cha** thay vì Id (vd Tỉnh/TP → Quốc gia, Phường/Xã → Tỉnh, Đơn hàng → Khách hàng).
-> Triết lý vẫn là **KHÔNG code màn** — chỉ cấu hình metadata. (ADR-024)
+> **Tài liệu này dành cho ai?** Người cấu hình hệ thống (Admin, Business Analyst, IT triển khai) —
+> **không cần biết lập trình**. Nếu bạn là lập trình viên/AI cần tra cứu kỹ thuật, đi thẳng xuống
+> [Phần B — Tra cứu kỹ thuật](#phần-b--tra-cứu-kỹ-thuật).
 >
-> Ví dụ xuyên suốt: **`DM_TinhThanhPho`** (`QuocGia_Id → DM_QuocGia`).
-
-> 📖 Nền tảng quy trình (đăng ký bảng, tạo form, tạo view) xem [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md)
-> và [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md). Tài liệu này chỉ nêu **phần KHÁC** của
-> màn tham chiếu so với danh mục phẳng.
+> **Bài này dùng để làm gì?** Với 1 màn danh sách (lưới) mà dữ liệu có **liên kết tới bảng khác** (ví
+> dụ Tỉnh/Thành phải chọn thuộc Quốc gia nào), bài này hướng dẫn làm sao để lưới **hiện TÊN** (ví dụ
+> "Việt Nam") thay vì chỉ hiện **con số Id** khó hiểu.
+>
+> Ví dụ xuyên suốt cả bài: **`DM_TinhThanhPho`** — cột `QuocGia_Id` (khóa ngoại) trỏ tới bảng
+> `DM_QuocGia`.
 
 ---
+
+## Vài thuật ngữ cần biết trước khi đọc
+
+| Thuật ngữ | Nghĩa đơn giản |
+|---|---|
+| **Khóa ngoại (FK)** | Cách 1 bảng dữ liệu "trỏ" tới đúng 1 dòng của bảng khác bằng con số Id — ví dụ cột "Quốc gia" trong bảng Tỉnh/Thành trỏ tới đúng 1 dòng của bảng Quốc gia. |
+| **LookupBox** | Ô nhập trên Form cho phép **chọn** 1 bản ghi có sẵn thay vì gõ tay (xem chi tiết ở [cau-hinh-lookupbox.md](cau-hinh-lookupbox.md)). |
+| **Lưới (View)** | Màn hình danh sách nhiều bản ghi dạng bảng. |
+| **SQL View** | Một "bảng ảo" do IT kỹ thuật viết sẵn, ghép dữ liệu từ nhiều bảng thật lại với nhau — chỉ cần khi cách đơn giản (không viết SQL) không đủ dùng. |
+| **ConfigStudio** | Ứng dụng desktop dùng để khai báo cấu hình. |
+
+---
+
+## Phần A — Làm theo từng bước
+
+### Chuẩn bị trước khi bắt đầu
+
+- Bài này giả định bảng `DM_TinhThanhPho` và Form/Field của nó **đã cấu hình xong cơ bản** (nếu chưa
+  biết cách đăng ký bảng/tạo Form/tạo màn danh sách, xem
+  [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md) và
+  [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md) trước).
+- Field `QuocGia_Id` trên Form sửa **đã là LookupBox** trỏ tới bảng `DM_QuocGia` (xem
+  [cau-hinh-lookupbox.md](cau-hinh-lookupbox.md) nếu chưa cấu hình).
+- Có **2 cách** làm bài này — bài chọn cách đơn giản nhất trước (không cần viết SQL):
+  - **Cách đơn giản (khuyến nghị, gọi là "Cách A" trong Phần B)** — hệ thống tự ghép TÊN, chỉ cần
+    khai báo trong ConfigStudio. Dùng được khi field FK ở trên đã là LookupBox kiểu "Bảng/View" và
+    chỉ lấy 1 cột tên đơn giản.
+  - **Cách nâng cao ("Cách B")** — cần nhờ IT kỹ thuật viết 1 SQL View riêng, dùng khi cách trên
+    không đủ (ví dụ cần ghép tên từ nhiều bảng, hoặc hiển thị phức tạp). Xem
+    [Phần B](#phần-b--tra-cứu-kỹ-thuật).
+
+---
+
+### Bước 1 — Kiểm tra đủ điều kiện dùng cách đơn giản
+
+**Mục đích:** xác nhận màn hình này dùng được cách không cần viết SQL — đỡ tốn công nhờ IT.
+
+**Làm gì:** mở Form sửa của bảng (ví dụ `DM_TINHTHANHPHO`), kiểm tra field `QuocGia_Id`:
+- Editor Type là **LookupBox**.
+- Chế độ truy vấn (Query Mode) là **Bảng / View**.
+- Cột Value và Cột Display đều là **1 cột đơn** (không phải công thức ghép nhiều cột).
+
+**Bạn sẽ thấy gì:** nếu cả 3 điều trên đúng → dùng được cách đơn giản, làm tiếp Bước 2. Nếu không (ví
+dụ tên hiển thị phải ghép từ nhiều cột) → báo IT kỹ thuật làm theo cách nâng cao (Cách B trong
+Phần B).
+
+**Lỗi thường gặp:** field FK dùng **LookupComboBox** thay vì **LookupBox** — 2 control khác nhau,
+cách đơn giản chỉ áp dụng cho LookupBox (khóa ngoại thật).
+
+---
+
+### Bước 2 — Chỉnh màn danh sách đọc thẳng bảng gốc
+
+**Mục đích:** cho màn danh sách biết vẫn đọc thẳng bảng dữ liệu gốc, không cần đọc qua view riêng.
+
+**Làm gì:** mở màn hình **Views** của lưới (ví dụ `Grid_DM_TinhThanhPho`), ở tab **Cơ bản**:
+- Bảng nguồn: để nguyên là bảng gốc `DM_TinhThanhPho`.
+- Ô **Key_Field**: chọn `Id`.
+- Ô **Edit_Form**: chọn form sửa tương ứng (`DM_TINHTHANHPHO`).
+
+**Bạn sẽ thấy gì:** cấu hình lưới không đổi gì nhiều — không cần tạo thêm view mới.
+
+**Lỗi thường gặp:** không có gì đặc biệt, bước này chỉ xác nhận lại cấu hình sẵn có đã đúng.
+
+---
+
+### Bước 3 — Nối cột khóa ngoại với LookupBox để tự hiện tên
+
+**Mục đích:** báo cho hệ thống biết cột `QuocGia_Id` trên lưới này nên hiện **tên** Quốc gia, lấy đúng
+theo cấu hình LookupBox đã có ở Form sửa.
+
+**Làm gì:**
+1. Cần biết **mã số (Field_Id)** của LookupBox `QuocGia_Id` trên Form sửa — mã này là số kỹ thuật,
+   nhờ IT kỹ thuật chạy giúp câu lệnh tra cứu (có sẵn ở [Phần B](#phần-b--tra-cứu-kỹ-thuật)) để lấy
+   đúng số.
+2. Ở màn **Views**, tab **Cột**, tìm dòng cột `QuocGia_Id` → bật hiển thị (**Is_Visible**), đặt tiêu
+   đề "Quốc gia".
+3. Tìm ô **"FK lookup (Field_Id)"** (cạnh cột Render) → nhập đúng số Field_Id vừa lấy ở bước 1.
+   ConfigStudio sẽ **tự ghi cấu hình** phía sau — bạn không cần gõ JSON hay SQL tay.
+
+**Bạn sẽ thấy gì:** sau khi Lưu và mở lại màn, cột `QuocGia_Id` trên lưới hiện đúng **tên Quốc gia**
+thay vì con số Id.
+
+**Lỗi thường gặp:** nhập sai số Field_Id (nhầm field khác) → cột lưới hiện sai tên hoặc rỗng; quên
+bật **Is_Visible** cho cột → cột không hiện trên lưới dù đã cấu hình đúng.
+
+---
+
+### Bước 4 — Lưu, đồng bộ và kiểm tra kết quả
+
+- Bấm **Lưu**.
+- Mở ứng dụng web → **Quản trị › Đồng bộ cấu hình** → **Xem trước** → **Áp dụng từ master**.
+- Mở màn Tỉnh/Thành → cột **Quốc gia** trên lưới hiện đúng tên (ví dụ "Việt Nam") thay vì số Id. ✅
+- Lọc/sắp xếp theo cột Quốc gia vẫn hoạt động bình thường.
+
+Nếu màn hình cần hiển thị phức tạp hơn (ghép nhiều bảng, ghép chữ) mà cách trên không hiện đúng tên,
+xem **Cách B** ở [Phần B — Tra cứu kỹ thuật](#phần-b--tra-cứu-kỹ-thuật) — cần nhờ IT kỹ thuật viết 1
+SQL View riêng. Nếu màn còn cần lọc theo **nhiều cấp** (Phường/Xã → Tỉnh → Quốc gia), xem thêm bài
+[cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md).
+
+---
+
+## Phần B — Tra cứu kỹ thuật
+
+> Dành cho người đã quen cách làm ở Phần A, hoặc lập trình viên/AI cần tra nhanh. 📖 Nền tảng quy
+> trình (đăng ký bảng, tạo form, tạo view) xem [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md)
+> và [cau-hinh-man-quan-ly-view.md](cau-hinh-man-quan-ly-view.md). Tài liệu dưới đây chỉ nêu **phần
+> KHÁC** của màn tham chiếu so với danh mục phẳng.
 
 ## Hai cách hiển thị TÊN khóa ngoại ở lưới (chọn 1)
 

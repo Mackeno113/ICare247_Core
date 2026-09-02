@@ -1,12 +1,138 @@
 # Hướng dẫn cấu hình **LookupBox** — tham chiếu đầy đủ từng mục (ConfigStudio)
 
-> **Đối tượng:** người cấu hình form trong ConfigStudio (WPF).
-> **Phạm vi:** giải thích **chi tiết từng ô** trong tab **Control Props** khi `Editor_Type = LookupBox` (và biến thể `TreeLookupBox`), kèm **ví dụ minh họa theo từng trường hợp** (§6).
-> **Liên quan:**
-> - Tổng quan editor types → [09_FIELD_CONFIG_GUIDE.md §3.7](../spec/09_FIELD_CONFIG_GUIDE.md)
-> - Cơ chế cascade Tỉnh→Xã → [12_CASCADE_LOOKUP_GUIDE.md](../spec/12_CASCADE_LOOKUP_GUIDE.md)
-> - Thêm mới entity ngay trên control → [13_LOOKUP_ADD_NEW_GUIDE.md](../spec/13_LOOKUP_ADD_NEW_GUIDE.md)
-> - Dựng lưới tham chiếu (FK) đầu-cuối → [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md)
+> **Tài liệu này dành cho ai?** Người cấu hình hệ thống (Admin, Business Analyst, IT triển khai) —
+> **không cần biết lập trình**. Nếu bạn là lập trình viên/AI cần tra cứu chi tiết từng ô, đi thẳng
+> xuống [Phần B — Tra cứu kỹ thuật](#phần-b--tra-cứu-kỹ-thuật).
+>
+> **Bài này dùng để làm gì?** Biến 1 ô nhập liệu trên Form thành **LookupBox** — ô cho phép người
+> dùng **chọn** 1 bản ghi có sẵn (ví dụ chọn Ngân hàng) thay vì gõ tay, nhưng phía sau vẫn lưu đúng
+> mã (`Id`) của bản ghi đó xuống cơ sở dữ liệu.
+>
+> Ví dụ xuyên suốt cả bài: **chọn Ngân hàng** cho field `NganHang_Id` — trường hợp LookupBox **đơn
+> giản nhất** (không lọc theo field khác). Muốn tìm hiểu trường hợp 1 ô phải lọc theo ô khác (ví dụ
+> chọn Tỉnh xong mới chọn được Phường/Xã), xem bài riêng
+> [cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md).
+
+---
+
+## Vài thuật ngữ cần biết trước khi đọc
+
+| Thuật ngữ | Nghĩa đơn giản |
+|---|---|
+| **LookupBox** | Loại ô nhập cho phép **chọn** 1 bản ghi có sẵn (thay vì gõ tay); màn hình chỉ hiện **tên** dễ đọc, nhưng phía sau lưu xuống CSDL 1 con số (**Id**). |
+| **Khóa ngoại (FK)** | Cách 1 bảng dữ liệu "trỏ" tới đúng 1 dòng của bảng khác bằng con số Id — ví dụ cột "Ngân hàng" trong bảng Chi nhánh trỏ tới đúng 1 dòng của bảng Ngân hàng. |
+| **Field** | 1 ô nhập liệu trên Form. |
+| **Cascade (lọc theo field khác)** | Khi field này đổi giá trị, 1 field khác **tự lọc lại** danh sách của nó theo giá trị vừa chọn — ví dụ đổi Tỉnh thì Phường/Xã tự lọc lại. |
+| **Popup chọn** | Bảng nhỏ hiện lên khi bấm vào LookupBox, cho người dùng tìm và chọn 1 dòng. |
+| **ConfigStudio** | Ứng dụng desktop dùng để khai báo cấu hình (khác web nghiệp vụ mà nhân viên dùng hằng ngày). |
+
+---
+
+## Phần A — Làm theo từng bước
+
+### Chuẩn bị trước khi bắt đầu
+
+- Field cần đổi thành LookupBox phải là field ứng với **cột khóa ngoại** trong bảng dữ liệu (kiểu số
+  `int`/`bigint`) — ví dụ cột `NganHang_Id`. Field này phải **đã tồn tại** trên Form (xem
+  [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md) nếu chưa biết cách tạo Form/field).
+- Bảng chứa danh sách để chọn (vd `DM_NganHang`) phải **đã có sẵn dữ liệu** và đã được khai báo trong
+  hệ thống — nếu chưa chắc, hỏi IT kỹ thuật.
+
+---
+
+### Bước 1 — Mở field cần cấu hình, đổi thành LookupBox
+
+**Mục đích:** báo cho hệ thống biết ô này sẽ là ô "chọn từ danh sách", không phải ô gõ chữ tự do.
+
+**Làm gì:**
+1. Trong Form đang cấu hình, bấm vào field ứng với cột khóa ngoại (ví dụ `NganHang_Id`).
+2. Đổi **Editor Type** thành **LookupBox**.
+
+**Bạn sẽ thấy gì:** tab **Control Props** hiện ra thêm các ô cấu hình riêng cho LookupBox (nguồn dữ
+liệu, cách hiển thị, popup chọn...).
+
+**Lỗi thường gặp:** chọn nhầm **LookupComboBox** — control này dùng cho danh mục mã cố định (không
+phải khóa ngoại), sẽ lưu sai kiểu dữ liệu xuống DB.
+
+---
+
+### Bước 2 — Khai nguồn dữ liệu (lấy danh sách chọn ở đâu)
+
+**Mục đích:** cho LookupBox biết lấy danh sách để chọn từ bảng nào, cột nào lưu xuống DB, cột nào
+hiển thị cho người dùng.
+
+**Làm gì** (ví dụ Ngân hàng):
+1. **Chế độ truy vấn (Query Mode)**: chọn **Bảng / View**.
+2. **Tên bảng hoặc View**: gõ `DM_NganHang`.
+3. **Cột Value — FK lưu vào DB**: chọn `Id`.
+4. **Cột Display (hiển thị)**: chọn `Ten`.
+5. **Filter SQL / WHERE** *(tuỳ chọn)*: gõ `Is_Active = 1 AND Tenant_Id = @TenantId` để chỉ hiện
+   ngân hàng đang hoạt động.
+6. **Sắp xếp (ORDER BY)**: gõ `Ten ASC`.
+7. Để nguyên **Cho phép tìm kiếm** ở trạng thái bật (mặc định).
+
+**Bạn sẽ thấy gì:** khi bấm thử vào ô LookupBox, popup hiện danh sách ngân hàng sắp xếp theo tên, có
+ô tìm kiếm.
+
+**Lỗi thường gặp:** đổi bảng nguồn nhưng quên đổi lại Cột Value/Cột Display cho khớp tên cột thật của
+bảng mới → LookupBox hiện lỗi hoặc trống trơn.
+
+---
+
+### Bước 3 — (Tuỳ chọn) Thêm cột phụ trong popup chọn
+
+**Mục đích:** giúp người dùng phân biệt các bản ghi trùng tên bằng cách hiện thêm 1-2 cột phụ (ví dụ
+mã ngân hàng) trong popup, thay vì chỉ hiện mỗi tên.
+
+**Làm gì:**
+- Để trống mục **Cột hiển thị trong popup** nếu chỉ cần hiện tên (đơn giản nhất, khuyến nghị cho
+  ví dụ Ngân hàng).
+- Nếu cần thêm cột: bấm **+ Thêm cột**, chọn **Tên cột DB** và đặt **Resource Key (i18n)** cho tiêu đề
+  cột (không gõ chữ tiếng Việt cứng vào ô tiêu đề).
+
+**Bạn sẽ thấy gì:** popup chọn hiện thêm cột phụ đã khai, có tiêu đề đúng ngôn ngữ đang dùng.
+
+**Lỗi thường gặp:** gõ thẳng tiêu đề tiếng Việt thay vì qua Resource Key — sai chuẩn đa ngôn ngữ của
+hệ thống.
+
+---
+
+### Bước 4 — Kiểm tra bằng nút Diễn giải rồi Lưu
+
+**Mục đích:** rà soát lại toàn bộ cấu hình vừa khai trước khi lưu chính thức, tránh phải sửa lại sau.
+
+**Làm gì:**
+1. Bấm **▶ Diễn giải** — hệ thống sinh ra bản mô tả tiếng Việt toàn bộ cấu hình hiện tại.
+2. Đọc lại, đối chiếu đúng bảng nguồn / cột Value / cột Display / Filter SQL đã khai ở Bước 2.
+3. Nếu ổn, bấm **Lưu Field**.
+
+**Bạn sẽ thấy gì:** nếu cấu hình có vấn đề (ví dụ cảnh báo **P2** — chỉ xảy ra khi có lọc theo field
+khác), phần Diễn giải sẽ nêu rõ; với ví dụ Ngân hàng đơn giản này thường không có cảnh báo.
+
+**Lỗi thường gặp:** bấm Diễn giải xong quên bấm **Lưu Field** — Diễn giải chỉ để xem, không tự lưu.
+
+---
+
+### Bước 5 — Kiểm tra kết quả trên web
+
+- Mở ứng dụng web → vào đúng màn hình có field vừa cấu hình.
+- Bấm vào ô **Ngân hàng** → popup hiện danh sách ngân hàng.
+- Chọn 1 dòng → ô hiển thị đúng **tên** ngân hàng vừa chọn.
+- Lưu form → kiểm tra dữ liệu đã lưu đúng **Id** ngân hàng (không phải tên). ✅
+
+Nếu ô cần **lọc theo 1 field khác** (cascade, ví dụ Phường/Xã lọc theo Tỉnh đã chọn), xem bài riêng
+[cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md). Nếu cần hiện **tên** thay cho **Id** ở
+màn danh sách (lưới), xem [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md).
+
+---
+
+## Phần B — Tra cứu kỹ thuật
+
+> Dành cho người đã quen cách làm ở Phần A, hoặc lập trình viên/AI cần tra nhanh tên trường kỹ thuật.
+> **Liên quan:** Tổng quan editor types → [09_FIELD_CONFIG_GUIDE.md §3.7](../spec/09_FIELD_CONFIG_GUIDE.md) ·
+> Cơ chế cascade Tỉnh→Xã → [12_CASCADE_LOOKUP_GUIDE.md](../spec/12_CASCADE_LOOKUP_GUIDE.md) ·
+> Thêm mới entity ngay trên control → [13_LOOKUP_ADD_NEW_GUIDE.md](../spec/13_LOOKUP_ADD_NEW_GUIDE.md) ·
+> Dựng lưới tham chiếu (FK) đầu-cuối → [cau-hinh-luoi-tham-chieu.md](cau-hinh-luoi-tham-chieu.md)
 
 > **⚠ Cập nhật cơ chế reload (2026-07):** LookupBox chế độ **Bảng/View** nay **tự reload theo MỌI `@param` trong Filter SQL** — không cần khai reload thủ công. Ô multi *"🔄 Tự động reload"* đã **ẩn** (runtime không dùng); ô single *"Tự reload"* chuyển thành mục **Nâng cao** (chỉ cần cho TVF/Full SQL hoặc field ngoài Filter SQL). Xem §5.
 

@@ -1,13 +1,136 @@
 # Hướng dẫn cấu hình **AttachmentBox** — đính kèm / upload tệp (ConfigStudio)
 
-> **Đối tượng:** người cấu hình form trong ConfigStudio (WPF).
-> **Phạm vi:** cách bật control đính kèm tệp cho một field, chọn **chế độ đa tệp / một tệp**, và các ô Control Props liên quan.
+> **Tài liệu này dành cho ai?** Người cấu hình form trong ConfigStudio (Admin, Business Analyst, IT
+> triển khai) — không cần biết lập trình. Nếu bạn là lập trình viên/AI cần tra cứu nhanh, đi thẳng
+> xuống [Phần B — Tra cứu kỹ thuật](#phần-b--tra-cứu-kỹ-thuật).
+>
+> **Bài này dùng để làm gì?** Bật control **đính kèm tệp** (ảnh, PDF, Office…) cho 1 field trên
+> form — người dùng chọn tệp, xem tiến trình tải lên, xem thumbnail ảnh, tải về, xóa. Control **tự
+> chuyển giữa 2 chế độ** tùy cách bạn khai field, bạn không cần chọn tay chế độ nào.
+>
+> Ví dụ xuyên suốt cả bài: field **"Tài liệu hợp đồng"** (cần nhiều tệp) và field **"Logo công ty"**
+> (chỉ cần đúng 1 tệp).
+
+---
+
+## Vài thuật ngữ cần biết trước khi đọc
+
+| Thuật ngữ | Nghĩa đơn giản |
+|---|---|
+| **AttachmentBox** | Tên control (kiểu ô nhập liệu) cho phép đính kèm/tải tệp lên, gắn với 1 field trên form. |
+| **Field ảo (IsVirtual)** | Field chỉ tồn tại trên giao diện, **KHÔNG** gắn với 1 cột cụ thể trong bảng dữ liệu — dùng khi 1 field cần chứa **nhiều** giá trị (ở đây là nhiều tệp) mà 1 cột không chứa đủ. |
+| **Editor Type** | Kiểu ô nhập liệu hiển thị cho field (VD TextBox, AttachmentBox…) — chọn trong ConfigStudio, không cần biết lập trình. |
+| **Control Props** | Vài tùy chọn riêng của từng loại control (VD phân loại tệp) — phần lớn trường hợp để mặc định là dùng được ngay. |
+| **Publish** | Thao tác lưu + đưa cấu hình field/form ra để hệ thống thật áp dụng. |
+
+---
+
+## Phần A — Làm theo từng bước
+
+### Chuẩn bị trước khi bắt đầu
+
+Trước khi cấu hình, cần biết (thường IT/vận hành đã chuẩn bị sẵn 1 lần cho toàn hệ thống, không lặp
+lại mỗi form):
+
+1. Đã chạy cập nhật cấu trúc cơ sở dữ liệu để tạo nơi lưu tệp trên Data DB của đơn vị bạn.
+2. Đã cấu hình nơi lưu tệp (dung lượng tối đa, loại tệp cho phép…) — mặc định hệ thống đã chạy được
+   ngay, không cần chỉnh gì thêm.
+
+Nếu đây là lần đầu đơn vị bạn dùng tính năng đính kèm tệp, hỏi IT xác nhận đã làm 2 việc trên chưa
+(chi tiết kỹ thuật xem [Phần B §5](#5-dieu-kien-he-thong-mot-lan-do-dev-van-hanh)).
+
+---
+
+### Bước 1 — Quyết định: field này cần nhiều tệp hay chỉ 1 tệp?
+
+**Mục đích:** AttachmentBox tự đổi cách hoạt động dựa theo bạn khai field kiểu nào — chọn đúng ngay
+từ đầu để đỡ phải sửa lại.
+
+**Làm gì:**
+- Nếu field cần chứa **nhiều tệp** (VD "Tài liệu hợp đồng", "Ảnh sản phẩm") → làm theo **Bước 2**
+  (chế độ Đa tệp).
+- Nếu field chỉ cần **đúng 1 tệp** và bảng dữ liệu đã có sẵn 1 cột kiểu số (`int`/`bigint`) để lưu
+  (VD `Logo_Id`) → làm theo **Bước 3** (chế độ Một tệp).
+
+**Bạn sẽ thấy gì:** xác định được 1 trong 2 hướng cấu hình ở dưới.
+
+**Lỗi thường gặp:** chọn nhầm chế độ Một tệp cho field cần nhiều tệp → hệ thống chỉ giữ được **tệp
+cuối cùng** upload, các tệp trước tự mất — xem Bước 2 để làm đúng chế độ Đa tệp.
+
+---
+
+### Bước 2 — Cấu hình chế độ Đa tệp (VD field "Tài liệu hợp đồng")
+
+**Mục đích:** cho phép người dùng đính kèm **nhiều tệp** vào field này (hợp đồng, ảnh sản phẩm…).
+
+**Làm gì:**
+1. Mở form → **thêm field mới**.
+2. Bật **IsVirtual = true** (field ảo, không map cột DB).
+3. Đặt **Field Code** (VD `TaiLieu`).
+4. Chọn **Editor Type = `AttachmentBox`**.
+5. (Tùy chọn) đặt **Loại tệp** qua Control Props nếu muốn phân loại — xem
+   [Phần B §3](#3-control-props-đều-tùy-chọn); phần lớn trường hợp bỏ qua, để mặc định.
+6. **Lưu form** → Publish.
+
+**Bạn sẽ thấy gì:** field hiện ra dạng khung đính kèm, cho chọn nhiều tệp, xem tiến trình upload,
+xem thumbnail ảnh, tải về, xóa từng tệp.
+
+**Lỗi thường gặp:** bấm Thêm mới (bản ghi **chưa lưu**) mà vẫn upload được tệp — đây là đúng hành
+vi: tệp ở trạng thái "chờ gắn" và **tự gắn vào bản ghi** sau khi bạn bấm Lưu; nếu bấm Hủy (không
+lưu), tệp treo sẽ tự được job dọn xử lý, không phải lỗi.
+
+---
+
+### Bước 3 — Cấu hình chế độ Một tệp (VD field "Logo công ty")
+
+**Mục đích:** lưu đúng **1 tệp** thẳng vào **1 cột** của bảng (giống `Logo_Id`) — dùng cho logo,
+avatar, ảnh đại diện.
+
+**Chuẩn bị cột:** bảng phải có sẵn **1 cột kiểu `int`/`bigint`** để chứa Id tệp (VD `Logo_Id`,
+`Avatar_Id`). Nếu chưa có, báo IT tạo cột trước.
+
+**Làm gì:**
+1. Mở form → thêm field **map vào đúng cột int** đó (IsVirtual = **TẮT**).
+2. Chọn **Editor Type = `AttachmentBox`**.
+3. **Lưu form** → Publish.
+
+**Bạn sẽ thấy gì:** field hiện khung đính kèm chỉ cho chọn **1 tệp**; chọn tệp mới sẽ tự thay tệp cũ
+(tệp cũ tự bị xóa).
+
+**Lỗi thường gặp:** chọn nhiều tệp nhưng chỉ giữ lại 1 tệp cuối → **đúng hành vi** của chế độ này
+(field đang map cột int, chỉ chứa được 1 tham chiếu); muốn nhiều tệp thì quay lại Bước 2.
+
+---
+
+### Bước 4 — Chạy thử
+
+**Mục đích:** xác nhận upload/xem/tải/xóa tệp hoạt động đúng trước khi bàn giao.
+
+**Làm gì:** mở web, vào form vừa cấu hình, thử:
+1. Chọn 1 tệp hợp lệ (VD ảnh `.jpg` hoặc `.pdf`) để upload.
+2. Xem thumbnail (nếu là ảnh), tải tệp về, rồi xóa thử.
+3. Với chế độ **Đa tệp**: thử thêm với bản ghi **mới chưa lưu**, để kiểm tra tệp "chờ gắn" tự gắn
+   sau khi bấm Lưu.
+
+**Bạn sẽ thấy gì:** tệp lên/xuống bình thường; nếu chọn tệp không hợp lệ (đuôi tệp không nằm trong
+danh sách cho phép, hoặc tệp có dấu hiệu không an toàn) → hệ thống **tự chặn** và báo rõ lý do — đây
+là hành vi bảo mật mặc định, không phải lỗi cấu hình.
+
+**Lỗi thường gặp:** control không hiện / field vẫn ra ô nhập chữ bình thường → chưa **Publish** sau
+khi đổi Editor Type, hoặc hệ thống chưa đủ điều kiện ở mục Chuẩn bị. Xem đầy đủ ở bảng
+[Lỗi thường gặp](#6-lỗi-thường-gặp) trong Phần B.
+
+---
+
+## Phần B — Tra cứu kỹ thuật
+
+> Dành cho người đã quen cách làm ở Phần A, hoặc lập trình viên/AI cần tra nhanh tên trường kỹ thuật.
+> Nội dung dưới đây là bản kỹ thuật đầy đủ — không giải thích lại từ đầu.
+>
 > **Liên quan:**
 > - Đặc tả kỹ thuật đầy đủ (backend/frontend/DB/bảo mật) → [26_FILE_UPLOAD_SPEC.md](../spec/26_FILE_UPLOAD_SPEC.md)
 > - Tổng quan editor types → [09_FIELD_CONFIG_GUIDE.md](../spec/09_FIELD_CONFIG_GUIDE.md)
 > - Field ảo là gì → [cau-hinh-field-ao-cascade.md](cau-hinh-field-ao-cascade.md)
-
----
 
 ## 0. AttachmentBox là gì
 
@@ -47,7 +170,7 @@ Dùng khi 1 field cần chứa **nhiều tệp** (VD: "Tài liệu hợp đồng
 
 Dùng khi field chứa **đúng 1 tệp** và muốn lưu tham chiếu **thẳng vào cột** của bản ghi (giống `TC_CongTy.Logo_Id`).
 
-**Chuẩn bị cột:** bảng phải có **1 cột kiểu `int`/`bigint`** để chứa Id tệp (VD: `Logo_Id`, `Avatar_Id`).
+**Chuẩn bị cột:** bảng phải có **1 cột kiểu `int`/`bigint`** để chứa Id tệp (VD `Logo_Id`, `Avatar_Id`).
 
 **Các bước trong ConfigStudio:**
 

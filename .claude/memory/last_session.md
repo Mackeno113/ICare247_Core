@@ -1,5 +1,49 @@
 # Last Session Summary
 
+## Session (2026-08-29, phiên 2) — Tài liệu `docs/huong-dan-wpf/` khuôn 2 phần end-user + site.html tự sinh
+
+**Bối cảnh:** user hỏi "WPF có tài liệu hướng dẫn cấu hình NhanVien chưa?" (tiếp nối phiên 1 cùng
+ngày — vá bảo mật). Có rồi (`cau-hinh-master-detail-rail.md`) nhưng user chê văn phong "hợp AI agent
+hơn end-user" → yêu cầu đề xuất tái cấu trúc cả `docs/huong-dan-wpf/` cho end-user, càng chi tiết
+càng tốt.
+
+**Quyết định qua nhiều vòng AskUserQuestion:**
+1. Cấu trúc: viết đè `.md` hiện có (không tách thư mục riêng) — 2 phần **Phần A (end-user)** + **Phần B
+   (kỹ thuật, giữ nguyên)**. Chỉ chữ, không ảnh (ConfigStudio desktop, không có tool chụp tự động).
+2. "MD không thân thiện end-user" → user muốn **HTML dạng menu xem hết mọi bài** + **1 nguồn dữ liệu
+   duy nhất cho cả AI agent lẫn end-user** (không giữ 2 bản song song) + dễ hiệu chỉnh. → dựng
+   `build-docs-site.js` (Node thuần) sinh `site.html` từ chính `.md`, đọc mục lục trực tiếp từ
+   README.md (không danh sách trùng lặp trong code).
+3. Thí điểm 1 file (`cau-hinh-man-danh-muc.md`) trước → user duyệt → làm hàng loạt 15 file còn lại qua
+   **5 Agent chạy song song** (mỗi agent 2-4 file, bắt buộc đọc rule + file mẫu + đọc TOÀN BỘ nội dung
+   gốc trước khi viết, không bịa chi tiết UI).
+4. `ConfigStudio_User_Guide.md` (overview 15 mục, không phải "1 tác vụ") → fix dấu tiếng Việt (mất dấu
+   toàn bộ từ bản gốc 03/2026) + áp khuôn NHẸ: 1 "Phần A — Bắt đầu nhanh" (walkthrough dựng 1 form từ
+   đầu đến Publish, trỏ link "Xem chi tiết" sang từng mục) + giữ 15 mục làm Phần B — user chọn thay vì
+   viết lại đầy đủ từng mục (khối lượng lớn hơn nhiều, không cần thiết cho 1 tài liệu tổng quan).
+
+**Bug hệ thống tự phát hiện khi verify (KHÔNG do user báo):** sau khi làm xong tưởng ổn, tự chạy script
+đối chiếu `id`/`href` trong `site.html` mới lộ ra: **~30 link "đi thẳng xuống Phần B" trên TOÀN BỘ 17
+file đều trỏ sai** (anchor viết có dấu tiếng Việt, nhưng `id` heading thật đã bỏ dấu qua `slugify()`) +
+heading trùng tên ("Phần B — Tra cứu kỹ thuật") giữa nhiều file gây **trùng `id` toàn trang** (browser
+nhảy nhầm sang file khác khi click). Vá tận gốc trong `build-docs-site.js` (không sửa tay từng `.md`):
+mọi `id` heading giờ có tiền tố `docSlug(file)--` (đảm bảo duy nhất toàn trang); mọi link `[text](#anchor)`
+tự động chuẩn hoá qua CHÍNH hàm `slugify()` dùng để sinh `id` — khớp bất kể tác giả gõ có dấu hay không.
+Verify bằng script tự viết đối chiếu toàn bộ `id`/`href` trong `site.html`: **68 anchor nội bộ, 0
+broken, 0 `id` trùng** (trước khi vá: hầu hết link "Phần B" sai + nguy cơ nhảy nhầm file).
+
+**Rule mới:** `.claude-rules/huong-dan-wpf-docs.md` (đăng ký CLAUDE.md) — khuôn 2 phần bắt buộc + bắt
+buộc chạy lại `node docs/huong-dan-wpf/build-docs-site.js` sau khi sửa `.md` trong thư mục, trước khi
+coi task xong.
+
+**Build verify:** không đụng `.cs`/`.razor`/`.xaml` — không `.slnx` nào bị ảnh hưởng. Verify tương ứng
+đã chạy: `node build-docs-site.js` → 17 bài, 68 anchor, 0 broken, 0 trùng `id`.
+
+**Task tiếp theo gợi ý:** quay lại backlog code — `@__SelfId` vô hiệu ở `TPL_CONG_TY` (custom_sql, bảo
+mật nhẹ) · NS-MASTERDETAIL (tạo View grid+menu cho `NS_NhanVien` để nghiệm thu rail) · JWT keyring →
+Redis (hạ tầng, chưa hỏng).
+
+
 ## Session (2026-08-29) — Vá 4 lỗ hổng bảo mật/hiệu năng backend (mass-assignment + context param), build 0/0 + test 260/260
 
 **Bối cảnh:** user chọn task "Vá bảo mật mass-assignment" từ 5 task gợi ý đầu phiên (từ backlog audit

@@ -58,6 +58,7 @@
 | `.claude-rules/comment-rules.md` | File header, class/method/logic block comments |
 | `.claude-rules/wpf-configstudio.md` | Prism 9, DevExpress WPF, MVVM, navigation |
 | `.claude-rules/blazor-ui.md` | Blazor WASM: tránh `oninput` gây re-render lag, debounce, ghim header lưới |
+| `.claude-rules/huong-dan-wpf-docs.md` | Tài liệu `docs/huong-dan-wpf/`: khuôn 2 phần (end-user + tra cứu kỹ thuật), bắt buộc chạy lại `build-docs-site.js` sau khi sửa |
 
 ## Specification → đọc khi cần tra cứu
 
@@ -122,7 +123,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **ICare247_Core** (11691 symbols, 22031 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **ICare247_Core** (12366 symbols, 23236 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

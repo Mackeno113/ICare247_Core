@@ -3,6 +3,39 @@
 > 📦 Lịch sử hạng mục đã hoàn thành đã chuyển sang **[TASKS_ARCHIVE.md](TASKS_ARCHIVE.md)**
 > (giảm context mỗi session). File này chỉ giữ việc **đang mở / đang làm** + roadmap còn dang dở.
 
+## ✅ Đã xong — Tài liệu `docs/huong-dan-wpf/` khuôn 2 phần end-user + site.html tự sinh (2026-08-29)
+
+User hỏi "WPF có tài liệu hướng dẫn cấu hình NhanVien chưa?" → phát hiện file .md kỹ thuật, không thân
+thiện end-user → làm hẳn 1 đợt tái cấu trúc toàn bộ `docs/huong-dan-wpf/`. Chi tiết → memory
+`project-huongdan-wpf-enduser-site`.
+
+- [x] **16/17 file `.md`** viết lại theo khuôn 2 phần: **Phần A — Làm theo từng bước** (ngôn ngữ
+  end-user, Mục đích/Làm gì/Bạn sẽ thấy gì/Lỗi thường gặp, đúng tên nút/ô/tab thật — không bịa UI) +
+  **Phần B — Tra cứu kỹ thuật** (giữ nguyên nội dung cũ). Làm qua 5 Agent chạy song song, mỗi agent
+  đọc rule + file mẫu trước khi viết. `ConfigStudio_User_Guide.md` (overview 15 mục, không phải "1 tác
+  vụ") xử lý khác: fix dấu tiếng Việt (mất dấu toàn bộ từ bản gốc) + thêm 1 "Phần A — Bắt đầu nhanh"
+  (walkthrough dựng 1 form từ đầu đến Publish) trỏ link sang từng mục chi tiết, giữ 15 mục làm Phần B.
+- [x] **`docs/huong-dan-wpf/build-docs-site.js`** (Node thuần, không cài lib ngoài) — sinh
+  `site.html` (menu trái + tìm kiếm + dark/light tự đổi) từ toàn bộ `.md`; đọc mục lục **trực tiếp từ
+  README.md** (không danh sách trùng lặp trong code) — file mới quên khai báo vẫn tự hiện ở nhóm
+  "Khác" (đã test bằng file tạm). `.md` vẫn là nguồn dữ liệu duy nhất, `site.html` là file sinh ra.
+- [x] **Bug hệ thống phát hiện khi verify:** ~30 link "đi thẳng xuống Phần B" trên toàn bộ 17 file trỏ
+  sai đích (anchor viết có dấu, id thật đã bỏ dấu) + heading trùng tên giữa nhiều file gây **trùng
+  `id` toàn trang** (browser nhảy nhầm sang file khác). Vá gốc trong script: mọi `id` heading giờ có
+  tiền tố theo tên file + mọi link `#anchor` tự chuẩn hoá qua đúng hàm `slugify()` sinh id. Verify
+  bằng script đối chiếu: 68 anchor nội bộ, 0 broken, 0 trùng `id`.
+- [x] **Rule mới** `.claude-rules/huong-dan-wpf-docs.md` (đăng ký bảng CLAUDE.md) — chốt khuôn 2 phần +
+  bắt buộc chạy lại `build-docs-site.js` sau khi sửa `.md` trong thư mục này.
+
+**Build verify:** không có `.cs`/`.razor`/`.xaml` nào đổi — không `.slnx` nào bị ảnh hưởng. Verify tương
+ứng: `node docs/huong-dan-wpf/build-docs-site.js` (chạy trong phiên) → 17 bài, 68 anchor, 0 broken.
+
+**Decisions Log (2026-08-29):** ① Tổ chức: viết đè lên `.md` hiện có (không tách thư mục end-user
+riêng) — `.md` vẫn nguồn duy nhất cho cả AI agent lẫn end-user. ② Không giữ ảnh chụp màn hình (chỉ chữ)
+— ConfigStudio là desktop app, không có công cụ chụp tự động. ③ `ConfigStudio_User_Guide.md` áp khuôn
+nhẹ (1 Phần A "Bắt đầu nhanh" + giữ 15 mục làm Phần B) thay vì viết lại đầy đủ từng mục — user chọn vì
+đây là tài liệu tổng quan toàn app, không phải "1 tác vụ" như 16 file kia.
+
 ## ✅ Đã xong — Khuôn form nhập liệu CHUNG phẳng (3a) + hướng dẫn config màn Công ty (3b) (2026-08-11, build Web 0/0)
 
 Chuẩn hóa khuôn form theo skill `icare247-admin-ui`. Chi tiết → memory `project-form-shell-flat`.

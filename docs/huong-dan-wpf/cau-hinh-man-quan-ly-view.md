@@ -1,5 +1,146 @@
 # Hướng dẫn cấu hình màn **Quản Lý View (Grid / Tree Grid)** — ConfigStudio
 
+> **Tài liệu này dành cho ai?** Người cấu hình hệ thống (Admin, Business Analyst, IT triển khai) —
+> **không cần biết lập trình**. Nếu bạn là lập trình viên/AI cần tra cứu nhanh tên trường kỹ thuật của
+> từng tab, đi thẳng xuống [Phần B — Tra cứu kỹ thuật](#phần-b--tra-cứu-kỹ-thuật).
+>
+> **Bài này dùng để làm gì?** Hướng dẫn cách dùng màn **"Quản Lý View"** — nơi cấu hình mọi **màn danh
+> sách** (lưới phẳng hoặc lưới cây) trong hệ thống: chọn nguồn dữ liệu, chọn cột hiển thị, bật/tắt các
+> nút Thêm/Sửa/Xóa/Xuất file... **không cần viết code**. Đây là màn được dùng lại ở
+> [cau-hinh-man-danh-muc.md](cau-hinh-man-danh-muc.md), [cau-hinh-man-cong-ty.md](cau-hinh-man-cong-ty.md)
+> và [cau-hinh-man-phong-ban.md](cau-hinh-man-phong-ban.md) — bài này giải thích **đầy đủ từng ô** của
+> màn đó, dùng cho khi bạn cần tra cứu kỹ hơn ngoài phần tối thiểu đã nêu ở các bài trên.
+>
+> Ví dụ xuyên suốt cả bài: dựng lưới danh sách **"Khách hàng"** (`Grid_KhachHang`).
+
+---
+
+## Vài thuật ngữ cần biết trước khi đọc
+
+| Thuật ngữ | Nghĩa đơn giản |
+|---|---|
+| **Lưới (Grid)** | Danh sách hiển thị phẳng dạng bảng — mỗi dòng 1 bản ghi, không có quan hệ cha-con. |
+| **Lưới cây (TreeList)** | Danh sách hiển thị dạng cây cha–con lồng nhau (xem thêm bài Công ty/Phòng ban). |
+| **Cột (Column)** | 1 cột dữ liệu hiển thị trên lưới — ứng với 1 field trên Form hoặc 1 cột trong bảng dữ liệu. |
+| **Form Thêm/Sửa (Edit_Form)** | Form popup sẽ mở ra khi người dùng bấm nút Thêm mới, hoặc double-click 1 dòng trên lưới để sửa. |
+| **Xuất file (Export)** | Cho phép tải dữ liệu đang xem ra file Excel/CSV/PDF/Word. |
+| **Bộ lọc nâng cao (panel lọc)** | Panel lọc riêng bên trái màn hình, chỉ dùng cho lưới lấy dữ liệu từ 1 thủ tục/câu lệnh SQL riêng (không phải bảng thường) — tính năng nâng cao, thường cần IT/lập trình viên hỗ trợ khai báo. |
+| **Bảng dữ liệu / Form / ConfigStudio / Đồng bộ cấu hình** | Xem lại [bảng thuật ngữ ở bài Danh mục](cau-hinh-man-danh-muc.md#vài-thuật-ngữ-cần-biết-trước-khi-đọc) nếu chưa rõ. |
+
+---
+
+## Phần A — Làm theo từng bước
+
+### Bước 1 — Chọn nguồn dữ liệu (tab Cơ bản)
+
+**Mục đích:** cho hệ thống biết lưới này hiển thị kiểu gì (phẳng hay cây), lấy dữ liệu từ bảng nào, và
+bấm vào 1 dòng thì mở form nào để sửa.
+
+**Làm gì:**
+1. Bấm **Ctrl+N** (hoặc nút **Tạo mới**) để tạo 1 View mới.
+2. Ở tab **Cơ bản**, **chọn `View_Type` TRƯỚC**: **Grid** (lưới phẳng bình thường) hoặc **TreeList**
+   (lưới cây — dùng cho dữ liệu có quan hệ cha-con như Công ty, Phòng ban).
+3. Ô **View_Code**: gõ phần tên riêng, ví dụ gõ `KhachHang` → hệ thống tự ghép thành **`Grid_KhachHang`**
+   (xem dòng "→ View_Code:" để biết trước kết quả). **Lưu ý:** mã này phải khớp đúng với đường dẫn
+   (route) khai trong menu, nếu không màn hình sẽ không mở được — nếu chưa rõ phần menu, hỏi người phụ
+   trách cấu hình menu.
+4. Ô **Bảng nguồn (Table)**: chọn bảng đã đăng ký trước đó ở màn Sys Table, ví dụ `DM_KhachHang`.
+5. Ô **Title_Key**: bấm **🌐 Dịch**, đặt tiêu đề màn hiển thị cho người dùng, ví dụ "Danh sách khách
+   hàng".
+6. Ô **Form Thêm/Sửa (Edit_Form)**: chọn Form đã tạo trước đó nếu muốn cho phép Thêm/Sửa ngay từ lưới
+   này. **Để trống = lưới chỉ đọc**, không cho sửa.
+7. Ô **Key_Field**: gõ tên cột khóa chính của bảng nguồn, thường là `Id`.
+
+**Bạn sẽ thấy gì:** 1 dòng View mới với mã `Grid_KhachHang` xuất hiện trong danh sách bên trái màn
+hình.
+
+**Lỗi thường gặp:** đổi `View_Type` **sau khi** đã gõ `View_Code` → mã không tự cập nhật đúng tiền tố,
+phải xóa và gõ lại từ đầu (luôn chọn `View_Type` **trước** khi gõ mã).
+
+---
+
+### Bước 2 — Chọn cột hiển thị (tab Cột)
+
+**Mục đích:** quyết định lưới hiện những cột nào, tiêu đề mỗi cột là gì, canh trái/phải, độ rộng ra
+sao.
+
+**Làm gì:**
+1. Sang tab **Cột**.
+2. Bấm **🔍 Chọn cột** → chọn các cột cần hiện từ danh sách cột có sẵn của bảng nguồn.
+3. Với mỗi cột: bấm **🌐** để dịch tiêu đề (Caption) hiển thị cho người dùng cuối; chỉnh Width/Align
+   nếu cần.
+4. Sắp xếp lại thứ tự cột bằng nút **↑ ↓** (hoặc kéo-thả).
+
+**Bạn sẽ thấy gì:** lưới hiện đúng các cột đã chọn, đúng tiêu đề tiếng Việt, đúng thứ tự mong muốn.
+
+**Lỗi thường gặp:** cột hiện tên kỹ thuật (vd `MaKH`) thay vì tiêu đề tiếng Việt → quên bấm **🌐** dịch
+Caption cho cột đó (dấu **✓ xanh** cạnh nút 🌐 nghĩa là đã có bản dịch; không có dấu ✓ = chưa dịch).
+
+---
+
+### Bước 3 — Bật các nút cần thiết (tab Hành vi + Export/Print)
+
+**Mục đích:** quyết định người dùng có được thêm/sửa/xóa dữ liệu từ lưới không, có được xuất
+Excel/PDF không.
+
+**Làm gì:**
+1. Sang tab **Hành vi**: tick **Allow_Add / Allow_Edit / Allow_Delete** nếu muốn cho phép (chỉ có tác
+   dụng khi đã gắn **Edit_Form** ở Bước 1). Chọn **Selection_Mode** = `multiple` nếu cần chọn nhiều
+   dòng để xóa hàng loạt.
+2. (Tuỳ chọn) Sang tab **Export/Print**: tick **Allow_Export**, chọn định dạng ở **Export_Formats**
+   (ví dụ `xlsx,csv,pdf`).
+
+**Bạn sẽ thấy gì:** nút Thêm/nút xóa dòng xuất hiện trên màn thật; nếu bật Export, nút xuất file xuất
+hiện trên thanh công cụ.
+
+**Lỗi thường gặp:** tick **Allow_Add** nhưng không thấy nút Thêm trên màn thật → chưa chọn **Form
+Thêm/Sửa (Edit_Form)** ở tab Cơ bản (Bước 1).
+
+---
+
+### Bước 4 — Cấu hình cho lưới dạng cây (chỉ áp dụng nếu chọn `View_Type = TreeList`)
+
+**Mục đích:** khai báo cột nào là "cột cha" để lưới biết vẽ đúng cấu trúc cây mẹ-con.
+
+**Làm gì:** sang tab **Cây** → chọn **Parent_Field** = cột lưu id của bản ghi cha (ví dụ `ParentId`)
+→ đặt **Expand_Level** = số cấp muốn tự mở sẵn khi vào màn.
+
+**Bạn sẽ thấy gì:** lưới hiện đúng dạng cây (thụt lề theo cấp) thay vì phẳng.
+
+**Lỗi thường gặp:** quên chọn **Parent_Field** → lưới TreeList vẫn hiện phẳng như lưới Grid bình
+thường, không có cây.
+
+---
+
+### Bước 5 — Lưu và đưa ra sử dụng
+
+**Mục đích:** ghi lại cấu hình và cho màn xuất hiện trong menu để nhân viên dùng được.
+
+**Làm gì:**
+1. Bấm **💾 Lưu** (hoặc **Ctrl+S**).
+2. Báo người phụ trách cấu hình menu thêm đường dẫn `/view/{View_Code vừa tạo}` vào menu.
+3. Chạy **đồng bộ cấu hình** (giống các bài khác — vào ứng dụng web, **Quản trị › Đồng bộ cấu hình** →
+   **Xem trước** → **Áp dụng từ master**) để đưa cấu hình xuống môi trường thật.
+
+**Bạn sẽ thấy gì:** màn danh sách xuất hiện đúng trong menu, bấm vào ra đúng lưới vừa cấu hình.
+
+**Lỗi thường gặp:** bấm vào menu báo lỗi "trang không tồn tại" → đường dẫn khai trong menu không khớp
+chính xác `View_Code` (phải khớp cả chữ hoa/thường).
+
+---
+
+> **Cần thêm ô lọc kiểu "từ ngày – đến ngày", "mã khách hàng"... cho 1 màn lấy dữ liệu từ thủ tục/SQL
+> riêng?** Đây là tính năng nâng cao (panel lọc trái, tab **Bộ lọc**) — nên nhờ IT/lập trình viên hỗ
+> trợ vì cần khai đúng tên tham số SQL. Chi tiết đầy đủ xem [Tab 7 — Bộ lọc](#tab-7--bộ-lọc-panel-lọc-trái--lưới-nâng-cao)
+> trong Phần B.
+
+---
+
+## Phần B — Tra cứu kỹ thuật
+
+> Dành cho người đã quen cách làm ở Phần A, hoặc lập trình viên/AI cần tra nhanh tên trường kỹ thuật
+> của từng tab.
+>
 > Màn này cấu hình **hiển thị danh sách** (lưới Grid / cây TreeList) hoàn toàn metadata-driven:
 > nguồn dữ liệu → cột → hành vi → export/print → panel lọc. **Tách khỏi form sửa** (`Ui_Form`/`Ui_Field`):
 > một bảng dữ liệu → nhiều view; view trỏ `Edit_Form` để mở popup Thêm/Sửa.
@@ -7,9 +148,7 @@
 > Bảng dưới Config DB: `Ui_View` (header) + `Ui_View_Column` (cột) + `Ui_View_Action` (nút) + `Ui_View_Filter` (panel lọc).
 > Tham chiếu: spec `14_VIEW_CONFIG_SPEC.md` (ADR-015, ADR-016).
 
----
-
-## ⚠️ Yêu cầu trước (1 lần) — nếu màn báo lỗi "Invalid column name"
+### ⚠️ Yêu cầu trước (1 lần) — nếu màn báo lỗi "Invalid column name"
 
 Màn đọc các cột panel lọc (`Filter_Panel_Enabled`, `Filter_Panel_Position`, `Filter_Collapsible`,
 `Auto_Search_On_Load`, `Search_Label_Key`, `Reset_Label_Key`) trên `Ui_View`. Nếu báo
@@ -25,9 +164,7 @@ Migration này tạo bảng `Ui_View_Filter`, thêm 6 cột cờ panel lọc và
 > **Điều kiện chung:** bảng nguồn đã đăng ký ở **Forms › Sys Table**; (tuỳ) đã có `Ui_Form` Thêm/Sửa nếu
 > muốn cho phép thêm/sửa từ lưới. Xem `cau-hinh-man-danh-muc.md` cho luồng đăng ký bảng + form.
 
----
-
-## Bố cục màn
+### Bố cục màn
 
 | Vùng | Chức năng |
 |---|---|
@@ -39,9 +176,7 @@ Migration này tạo bảng `Ui_View_Filter`, thêm 6 cột cờ panel lọc và
 **Phím tắt:** `Ctrl+N` Tạo mới · `Ctrl+S` Lưu · `F5` Làm mới.
 **Nút dưới editor:** **💾 Lưu** · **Tạo mới** · **Ẩn View** (soft-delete, set `Is_Active = 0`).
 
----
-
-## Tab 1 — Cơ bản (nguồn dữ liệu)
+### Tab 1 — Cơ bản (nguồn dữ liệu)
 
 Thứ tự nhập có chủ đích (① → ②):
 
@@ -61,9 +196,7 @@ Thứ tự nhập có chủ đích (① → ②):
 > **i18n vs literal:** chỉ các `*_Key` là khóa dịch (`Sys_Resource`); `View_Code`, `View_Type`,
 > `Source_*`, `Key_Field` là literal kỹ thuật — KHÔNG dịch.
 
----
-
-## Tab 2 — Hành vi (lưới)
+### Tab 2 — Hành vi (lưới)
 
 | Trường | Mặc định | Ý nghĩa |
 |---|:---:|---|
@@ -77,9 +210,7 @@ Thứ tự nhập có chủ đích (① → ②):
 | Show_Column_Chooser | ✗ | Cho người dùng bật/tắt cột. |
 | **Allow_Add / Allow_Edit / Allow_Delete** | ✓ | Quyền CRUD trên lưới (chỉ hiệu lực khi đã gắn **Edit_Form**). |
 
----
-
-## Tab 3 — Export / Print
+### Tab 3 — Export / Print
 
 | Trường | Ghi chú |
 |---|---|
@@ -91,9 +222,7 @@ Thứ tự nhập có chủ đích (① → ②):
 > **Quy tắc engine:** `xlsx/csv` xuất **client-side** qua DxGrid; `pdf/docx` xuất **server-side** theo template.
 > Export **luôn lấy giá trị thuần** (bỏ qua `Render_Mode`, không xuất thẻ HTML). Nút xuất chi tiết khai ở **tab Actions**.
 
----
-
-## Tab 4 — Cây (TreeList)
+### Tab 4 — Cây (TreeList)
 
 Chỉ dùng khi **View_Type = TreeList** (có cảnh báo vàng nhắc).
 
@@ -103,9 +232,7 @@ Chỉ dùng khi **View_Type = TreeList** (có cảnh báo vàng nhắc).
 | **Parent_Field** | Cột trỏ node cha (hierarchy). VD `ParentId`. |
 | **Expand_Level** | Mở sẵn tới cấp mấy (0–20). |
 
----
-
-## Tab 5 — Cột (`Ui_View_Column`)
+### Tab 5 — Cột (`Ui_View_Column`)
 
 Lưới sửa trực tiếp (inline). Toolbar: **+ Thêm cột** · **− Xóa cột** · **↑ ↓** đổi thứ tự ·
 **🔍 Chọn cột** (lấy từ `Sys_Column` của bảng nguồn) · **🌐 Dịch caption**.
@@ -136,9 +263,7 @@ Lưới sửa trực tiếp (inline). Toolbar: **+ Thêm cột** · **− Xóa c
 > **Dấu ✓ xanh cạnh nút 🌐** (cột Caption/Label): key đã có bản dịch (ngôn ngữ mặc định) trong
 > Sys_Resource. Không có dấu ✓ = key rỗng hoặc chưa dịch — bấm 🌐 để dịch.
 
----
-
-## Tab 6 — Actions (`Ui_View_Action`)
+### Tab 6 — Actions (`Ui_View_Action`)
 
 Nút toolbar / nút trên dòng. Toolbar: **+ Thêm action** · **− Xóa action** · **🌐 Dịch nhãn**.
 
@@ -154,9 +279,7 @@ Nút toolbar / nút trên dòng. Toolbar: **+ Thêm action** · **− Xóa actio
 | **Target** | url / event_code / endpoint / template tuỳ Type. | |
 | **Req_Sel** | Bắt buộc chọn dòng mới chạy. | |
 
----
-
-## Tab 7 — Bộ lọc (panel lọc trái — lưới nâng cao)
+### Tab 7 — Bộ lọc (panel lọc trái — lưới nâng cao)
 
 > **Chỉ hiển thị runtime khi:** `Filter_Panel_Enabled = 1` **VÀ** `Source_Type ∈ {Sp, Sql}` (tab Cơ bản)
 > **VÀ** có ≥1 control. Nguồn `Table` → dùng filter row trong cột, **không** có panel này.
@@ -194,9 +317,7 @@ Nút toolbar / nút trên dòng. Toolbar: **+ Thêm action** · **− Xóa actio
 > **An toàn:** tham số luôn parameterized (Dapper, whitelist từ `Ui_View_Filter`). SP nên dùng pattern
 > `WHERE (@x IS NULL OR col = @x)` để bỏ qua tham số rỗng. `LIKE` được engine bọc `%...%`.
 
----
-
-## Quy trình tạo nhanh (checklist)
+### Quy trình tạo nhanh (checklist)
 
 1. **Tạo mới** → tab **Cơ bản**: chọn `View_Type` → gõ hậu tố `View_Code` → chọn **Bảng nguồn** →
    (nếu cần) gắn **Edit_Form** + **Key_Field** → **💾 Lưu**.

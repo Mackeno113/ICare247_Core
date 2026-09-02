@@ -2,6 +2,20 @@
 
 > Mục lục các tài liệu **hướng dẫn cấu hình trên ConfigStudio (WPF)** — cách dùng app và cách cấu hình no-code từng loại màn/field. Gom riêng khỏi `docs/spec/` (đặc tả kỹ thuật) và `docs/codes/` (luồng mã nguồn).
 
+> 🖥️ **Bản đọc thân thiện cho end-user (menu + tìm kiếm, không cần Git/Markdown viewer):**
+> mở [`site.html`](site.html) trực tiếp bằng trình duyệt. File này **sinh tự động** từ toàn bộ
+> `.md` trong thư mục — sửa nội dung thì sửa `.md` như thường rồi chạy lại:
+> ```
+> node docs/huong-dan-wpf/build-docs-site.js
+> ```
+> `.md` vẫn là nguồn dữ liệu duy nhất (AI agent/dev đọc thẳng, dễ diff qua git); `site.html` chỉ là
+> bản hiển thị, đừng sửa tay file này.
+>
+> **Có bài hướng dẫn mới?** Chỉ cần thêm 1 dòng bullet vào đúng mục (`##`) trong file README.md này —
+> menu của `site.html` đọc thẳng mục lục dưới đây, không cần sửa gì trong `build-docs-site.js`.
+> Lỡ quên thêm vào README cũng không mất bài: file `.md` mới vẫn tự hiện ở cuối `site.html`
+> trong nhóm "Khác (chưa gom nhóm)" sau khi chạy lại script.
+
 ## Bắt đầu
 - [ConfigStudio_User_Guide.md](ConfigStudio_User_Guide.md) — Hướng dẫn sử dụng toàn bộ app: Form Manager, Field Config, Rule/Event Editor, Expression Builder, i18n Manager, Publish, Settings.
 
